@@ -68,6 +68,7 @@ export type Database = {
           created_by: string | null
           id: string
           match_date: string
+          match_type: string | null
           team1_score: number
           team2_score: number
           updated_at: string | null
@@ -77,6 +78,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           match_date: string
+          match_type?: string | null
           team1_score: number
           team2_score: number
           updated_at?: string | null
@@ -86,6 +88,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           match_date?: string
+          match_type?: string | null
           team1_score?: number
           team2_score?: number
           updated_at?: string | null
@@ -111,6 +114,8 @@ export type Database = {
           losses: number | null
           total_matches: number | null
           updated_at: string | null
+          week_start_date: string | null
+          week_start_rating: number | null
           wins: number | null
         }
         Insert: {
@@ -123,6 +128,8 @@ export type Database = {
           losses?: number | null
           total_matches?: number | null
           updated_at?: string | null
+          week_start_date?: string | null
+          week_start_rating?: number | null
           wins?: number | null
         }
         Update: {
@@ -135,7 +142,72 @@ export type Database = {
           losses?: number | null
           total_matches?: number | null
           updated_at?: string | null
+          week_start_date?: string | null
+          week_start_rating?: number | null
           wins?: number | null
+        }
+        Relationships: []
+      }
+      rating_parameters: {
+        Row: {
+          clamp_max: number
+          clamp_min: number
+          created_at: string
+          id: string
+          inactivity_days: number
+          k_format_doubles: number
+          k_format_singles: number
+          k_ladder: number
+          k_league: number
+          k_playoffs: number
+          mean_rating: number
+          mov_cap: number
+          points_per_game: number
+          provisional_bonus: number
+          provisional_matches: number
+          regress_coeff: number
+          tau: number
+          updated_at: string
+        }
+        Insert: {
+          clamp_max?: number
+          clamp_min?: number
+          created_at?: string
+          id?: string
+          inactivity_days?: number
+          k_format_doubles?: number
+          k_format_singles?: number
+          k_ladder?: number
+          k_league?: number
+          k_playoffs?: number
+          mean_rating?: number
+          mov_cap?: number
+          points_per_game?: number
+          provisional_bonus?: number
+          provisional_matches?: number
+          regress_coeff?: number
+          tau?: number
+          updated_at?: string
+        }
+        Update: {
+          clamp_max?: number
+          clamp_min?: number
+          created_at?: string
+          id?: string
+          inactivity_days?: number
+          k_format_doubles?: number
+          k_format_singles?: number
+          k_ladder?: number
+          k_league?: number
+          k_playoffs?: number
+          mean_rating?: number
+          mov_cap?: number
+          points_per_game?: number
+          provisional_bonus?: number
+          provisional_matches?: number
+          regress_coeff?: number
+          tau?: number
+          updated_at?: string
         }
         Relationships: []
       }
@@ -144,6 +216,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_pulse_rating_change: {
+        Args: {
+          p_match_type?: string
+          p_opponent_score: number
+          p_opponent1_rating: number
+          p_opponent2_rating: number
+          p_partner_rating: number
+          p_player_matches?: number
+          p_player_rating: number
+          p_team_score: number
+          p_won: boolean
+        }
+        Returns: number
+      }
       calculate_rating_change: {
         Args: {
           opponent1_rating: number
