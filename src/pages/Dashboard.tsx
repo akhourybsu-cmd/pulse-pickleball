@@ -1,14 +1,12 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Trophy, TrendingUp, Calendar, LogOut, Plus, MapPin, BarChart3, Share2 } from "lucide-react";
+import { Trophy, TrendingUp, Calendar, LogOut, Plus, MapPin, BarChart3 } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import logo from "@/assets/pulse-logo.png";
-import { ShareableStatsCard } from "@/components/ShareableStatsCard";
-import { downloadCardAsImage } from "@/utils/shareUtils";
 
 interface Profile {
   id: string;
@@ -27,8 +25,6 @@ const Dashboard = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-  const statsCardRef = useRef<HTMLDivElement>(null);
-  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -72,23 +68,6 @@ const Dashboard = () => {
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     navigate("/");
-  };
-
-  const handleShareStats = async () => {
-    if (!statsCardRef.current || !profile) return;
-    
-    setIsGeneratingImage(true);
-    try {
-      await downloadCardAsImage(
-        statsCardRef.current,
-        `pulse-stats-${profile.full_name.replace(/\s+/g, "-")}.png`
-      );
-      toast.success("Stats card downloaded!");
-    } catch (error) {
-      toast.error("Failed to generate image");
-    } finally {
-      setIsGeneratingImage(false);
-    }
   };
 
   if (loading) {
@@ -192,7 +171,7 @@ const Dashboard = () => {
           </Card>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <Button 
             size="lg" 
             onClick={() => navigate("/match/new")}
@@ -219,33 +198,6 @@ const Dashboard = () => {
             <MapPin className="w-5 h-5 mr-2" />
             Court History
           </Button>
-
-          <Button 
-            size="lg" 
-            variant="outline"
-            onClick={handleShareStats}
-            disabled={isGeneratingImage}
-          >
-            <Share2 className="w-5 h-5 mr-2" />
-            {isGeneratingImage ? "Generating..." : "Share Stats"}
-          </Button>
-        </div>
-
-        {/* Hidden shareable card for image generation */}
-        <div className="fixed -left-[9999px] -top-[9999px]">
-          {profile && (
-            <ShareableStatsCard
-              cardRef={statsCardRef}
-              playerName={profile.full_name}
-              currentRating={profile.current_rating}
-              totalMatches={profile.total_matches}
-              wins={profile.wins}
-              losses={profile.losses}
-              winRate={winRate}
-              pointDifferential={pointDifferential}
-              avgOpponentRating={profile.avg_opponent_rating}
-            />
-          )}
         </div>
       </div>
     </div>
