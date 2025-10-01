@@ -2,19 +2,18 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Trophy, TrendingUp, Users, Zap } from "lucide-react";
+import logo from "@/assets/pulse-logo.jpg";
 
 const Index = () => {
   const navigate = useNavigate();
 
   return (
     <div className="min-h-screen bg-background">
-      <nav className="border-b bg-card">
+      <nav className="border-b bg-secondary">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-            PULSE
-          </h1>
+          <img src={logo} alt="PULSE Logo" className="h-12 w-auto" />
           <div className="flex gap-2">
-            <Button variant="ghost" onClick={() => navigate("/auth")}>
+            <Button variant="secondary" onClick={() => navigate("/auth")}>
               Sign In
             </Button>
             <Button onClick={() => navigate("/auth")}>

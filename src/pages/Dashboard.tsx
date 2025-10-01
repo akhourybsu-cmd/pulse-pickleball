@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner";
 import { Trophy, TrendingUp, Calendar, LogOut, Plus, MapPin, BarChart3 } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
+import logo from "@/assets/pulse-logo.jpg";
 
 interface Profile {
   id: string;
@@ -85,12 +86,10 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <nav className="border-b bg-card">
+      <nav className="border-b bg-secondary">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-            PULSE
-          </h1>
-          <Button variant="outline" size="sm" onClick={handleSignOut}>
+          <img src={logo} alt="PULSE Logo" className="h-12 w-auto" />
+          <Button variant="secondary" size="sm" onClick={handleSignOut}>
             <LogOut className="w-4 h-4 mr-2" />
             Sign Out
           </Button>
