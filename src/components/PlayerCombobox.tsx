@@ -50,7 +50,7 @@ export function PlayerCombobox({
         >
           {selectedPlayer ? (
             <span>
-              {selectedPlayer.full_name} ({selectedPlayer.current_rating.toFixed(2)})
+              {selectedPlayer.full_name} ({(selectedPlayer.current_rating ?? 3.00).toFixed(2)})
             </span>
           ) : (
             <span className="text-muted-foreground">{placeholder}</span>
@@ -67,7 +67,7 @@ export function PlayerCombobox({
               {players.map((player) => (
                 <CommandItem
                   key={player.id}
-                  value={`${player.full_name} ${player.current_rating}`}
+                  value={`${player.full_name} ${player.current_rating ?? 3.00}`}
                   onSelect={() => {
                     onValueChange(player.id);
                     setOpen(false);
@@ -79,7 +79,7 @@ export function PlayerCombobox({
                       value === player.id ? "opacity-100" : "opacity-0"
                     )}
                   />
-                  {player.full_name} ({player.current_rating.toFixed(2)})
+                  {player.full_name} ({(player.current_rating ?? 3.00).toFixed(2)})
                 </CommandItem>
               ))}
             </CommandGroup>
