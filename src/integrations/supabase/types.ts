@@ -401,6 +401,14 @@ export type Database = {
         Args: { p_player_id: string }
         Returns: undefined
       }
+      user_created_match: {
+        Args: { match_id_param: string; user_id_param: string }
+        Returns: boolean
+      }
+      user_in_match: {
+        Args: { match_id_param: string; user_id_param: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
