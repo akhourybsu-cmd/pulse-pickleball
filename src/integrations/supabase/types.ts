@@ -389,6 +389,10 @@ export type Database = {
         }
         Returns: number
       }
+      get_own_email: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       recalculate_all_player_stats: {
         Args: Record<PropertyKey, never>
         Returns: undefined

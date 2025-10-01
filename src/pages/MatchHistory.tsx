@@ -15,6 +15,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { z } from "zod";
+
+const contestSchema = z.object({
+  reason: z.string().trim().min(10, "Reason must be at least 10 characters").max(500, "Reason too long"),
+  matchId: z.string().uuid("Invalid match ID"),
+});
 
 interface Match {
   match_id: string;
@@ -133,6 +139,18 @@ const MatchHistory = () => {
     if (!selectedMatchId) return;
 
     try {
+      // Validate input
+      const validationResult = contestSchema.safeParse({
+        reason: contestReason,
+        matchId: selectedMatchId,
+      });
+
+      if (!validationResult.success) {
+        const firstError = validationResult.error.errors[0];
+        toast.error(firstError.message);
+        return;
+      }
+
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         toast.error("You must be logged in to contest a match");
@@ -141,8 +159,8 @@ const MatchHistory = () => {
 
       const { error } = await supabase.functions.invoke('notify-contested-match', {
         body: {
-          match_id: selectedMatchId,
-          reason: contestReason,
+          match_id: validationResult.data.matchId,
+          reason: validationResult.data.reason,
         },
       });
 

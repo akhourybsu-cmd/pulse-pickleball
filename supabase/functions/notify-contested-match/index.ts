@@ -76,7 +76,7 @@ serve(async (req) => {
 
     const { data: participants } = await supabase
       .from('match_participants')
-      .select('player_id, profiles(full_name, email)')
+      .select('player_id, profiles(full_name)')
       .eq('match_id', match_id);
 
     const { data: contester } = await supabase
@@ -85,16 +85,13 @@ serve(async (req) => {
       .eq('id', user.id)
       .single();
 
-    // Log the contest notification (in production, you would send emails here)
+    // Log the contest notification (no sensitive data)
     console.log('Match Contest Notification:', {
       match_id,
       contested_by: contester?.full_name,
       reason,
       match_details: matchData,
-      participants: participants?.map(p => ({
-        name: p.profiles?.full_name,
-        email: p.profiles?.email,
-      })),
+      participant_count: participants?.length || 0,
     });
 
     return new Response(

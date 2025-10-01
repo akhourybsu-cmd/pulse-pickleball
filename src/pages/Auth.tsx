@@ -6,6 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
+import { z } from "zod";
+
+const authSchema = z.object({
+  email: z.string().trim().email("Invalid email address").max(255, "Email too long"),
+  password: z.string().min(6, "Password must be at least 6 characters").max(72, "Password too long"),
+  fullName: z.string().trim().min(1, "Name is required").max(100, "Name too long").optional(),
+});
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -20,21 +27,35 @@ const Auth = () => {
     setLoading(true);
 
     try {
+      // Validate input
+      const validationResult = authSchema.safeParse({
+        email,
+        password,
+        fullName: isLogin ? undefined : fullName,
+      });
+
+      if (!validationResult.success) {
+        const firstError = validationResult.error.errors[0];
+        toast.error(firstError.message);
+        setLoading(false);
+        return;
+      }
+
       if (isLogin) {
         const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
+          email: validationResult.data.email,
+          password: validationResult.data.password,
         });
         if (error) throw error;
         toast.success("Logged in successfully!");
         navigate("/dashboard");
       } else {
         const { error } = await supabase.auth.signUp({
-          email,
-          password,
+          email: validationResult.data.email,
+          password: validationResult.data.password,
           options: {
             data: {
-              full_name: fullName,
+              full_name: validationResult.data.fullName,
             },
             emailRedirectTo: `${window.location.origin}/dashboard`,
           },

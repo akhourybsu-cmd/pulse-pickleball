@@ -8,6 +8,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { z } from "zod";
+
+const matchSchema = z.object({
+  matchDate: z.string().refine((date) => {
+    const matchDate = new Date(date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return matchDate <= today;
+  }, "Match date cannot be in the future"),
+  team1Score: z.number().int().min(0, "Score must be non-negative").max(99, "Score too high"),
+  team2Score: z.number().int().min(0, "Score must be non-negative").max(99, "Score too high"),
+  players: z.array(z.string().uuid()).length(4, "Must select exactly 4 players"),
+}).refine((data) => data.team1Score !== data.team2Score, {
+  message: "Scores cannot be tied",
+  path: ["team2Score"],
+});
 
 interface Profile {
   id: string;
@@ -88,8 +104,17 @@ const NewMatch = () => {
       const score1 = parseInt(team1Score);
       const score2 = parseInt(team2Score);
 
-      if (score1 === score2) {
-        toast.error("Scores cannot be tied");
+      // Validate input
+      const validationResult = matchSchema.safeParse({
+        matchDate,
+        team1Score: score1,
+        team2Score: score2,
+        players: selectedPlayers,
+      });
+
+      if (!validationResult.success) {
+        const firstError = validationResult.error.errors[0];
+        toast.error(firstError.message);
         setLoading(false);
         return;
       }
