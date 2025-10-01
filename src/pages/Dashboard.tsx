@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Trophy, TrendingUp, Calendar, LogOut, Plus } from "lucide-react";
+import { Trophy, TrendingUp, Calendar, LogOut, Plus, CheckCircle, MapPin, BarChart3 } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 
 interface Profile {
@@ -14,11 +14,15 @@ interface Profile {
   total_matches: number;
   wins: number;
   losses: number;
+  total_points_for: number;
+  total_points_against: number;
+  avg_opponent_rating: number;
 }
 
 const Dashboard = () => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [pendingCount, setPendingCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
@@ -45,6 +49,15 @@ const Dashboard = () => {
       }
 
       setProfile(profileData);
+
+      // Get pending matches count
+      const { data: pendingData } = await supabase
+        .from("match_approvals")
+        .select("match_id")
+        .eq("player_id", user.id)
+        .is("approved", null);
+
+      setPendingCount(pendingData?.length || 0);
       setLoading(false);
     };
 
@@ -77,6 +90,8 @@ const Dashboard = () => {
   const winRate = profile && profile.total_matches > 0
     ? ((profile.wins / profile.total_matches) * 100).toFixed(1)
     : "0.0";
+
+  const pointDifferential = (profile?.total_points_for || 0) - (profile?.total_points_against || 0);
 
   return (
     <div className="min-h-screen bg-background">
@@ -138,7 +153,49 @@ const Dashboard = () => {
           </Card>
         </div>
 
-        <div className="flex gap-4">
+        <div className="grid gap-6 md:grid-cols-3 mb-8">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardDescription className="flex items-center gap-2">
+                <BarChart3 className="w-4 h-4" />
+                Point Differential
+              </CardDescription>
+              <CardTitle className="text-3xl">
+                {pointDifferential > 0 ? "+" : ""}{pointDifferential}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-muted-foreground">
+              {profile?.total_points_for} for / {profile?.total_points_against} against
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardDescription>Avg. Opponent Rating</CardDescription>
+              <CardTitle className="text-3xl">
+                {profile?.avg_opponent_rating.toFixed(2) || "N/A"}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-muted-foreground">
+              Strength of schedule
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardDescription className="flex items-center gap-2">
+                <CheckCircle className="w-4 h-4" />
+                Pending Approvals
+              </CardDescription>
+              <CardTitle className="text-3xl">{pendingCount}</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-muted-foreground">
+              Matches awaiting your approval
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <Button 
             size="lg" 
             onClick={() => navigate("/match/new")}
@@ -147,13 +204,34 @@ const Dashboard = () => {
             <Plus className="w-5 h-5 mr-2" />
             Record New Match
           </Button>
+          
+          {pendingCount > 0 && (
+            <Button 
+              size="lg" 
+              variant="secondary"
+              onClick={() => navigate("/match/pending")}
+            >
+              <CheckCircle className="w-5 h-5 mr-2" />
+              Approve Matches ({pendingCount})
+            </Button>
+          )}
+          
           <Button 
             size="lg" 
             variant="outline"
-            onClick={() => navigate("/matches")}
+            onClick={() => navigate("/match/history")}
           >
             <Calendar className="w-5 h-5 mr-2" />
-            View Match History
+            My Match History
+          </Button>
+
+          <Button 
+            size="lg" 
+            variant="outline"
+            onClick={() => navigate("/court/history")}
+          >
+            <MapPin className="w-5 h-5 mr-2" />
+            Court History
           </Button>
         </div>
       </div>

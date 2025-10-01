@@ -14,6 +14,78 @@ export type Database = {
   }
   public: {
     Tables: {
+      courts: {
+        Row: {
+          city: string
+          created_at: string
+          id: string
+          location: string
+          name: string
+          state: string
+          updated_at: string
+        }
+        Insert: {
+          city: string
+          created_at?: string
+          id?: string
+          location: string
+          name: string
+          state: string
+          updated_at?: string
+        }
+        Update: {
+          city?: string
+          created_at?: string
+          id?: string
+          location?: string
+          name?: string
+          state?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      match_approvals: {
+        Row: {
+          approved: boolean | null
+          approved_at: string | null
+          created_at: string
+          id: string
+          match_id: string
+          player_id: string
+        }
+        Insert: {
+          approved?: boolean | null
+          approved_at?: string | null
+          created_at?: string
+          id?: string
+          match_id: string
+          player_id: string
+        }
+        Update: {
+          approved?: boolean | null
+          approved_at?: string | null
+          created_at?: string
+          id?: string
+          match_id?: string
+          player_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_approvals_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_approvals_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       match_participants: {
         Row: {
           created_at: string | null
@@ -64,36 +136,49 @@ export type Database = {
       }
       matches: {
         Row: {
+          court_id: string | null
           created_at: string | null
           created_by: string | null
           id: string
           match_date: string
           match_type: string | null
+          status: string | null
           team1_score: number
           team2_score: number
           updated_at: string | null
         }
         Insert: {
+          court_id?: string | null
           created_at?: string | null
           created_by?: string | null
           id?: string
           match_date: string
           match_type?: string | null
+          status?: string | null
           team1_score: number
           team2_score: number
           updated_at?: string | null
         }
         Update: {
+          court_id?: string | null
           created_at?: string | null
           created_by?: string | null
           id?: string
           match_date?: string
           match_type?: string | null
+          status?: string | null
           team1_score?: number
           team2_score?: number
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "matches_court_id_fkey"
+            columns: ["court_id"]
+            isOneToOne: false
+            referencedRelation: "courts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "matches_created_by_fkey"
             columns: ["created_by"]
@@ -105,6 +190,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avg_opponent_rating: number | null
           created_at: string | null
           current_rating: number | null
           email: string
@@ -113,12 +199,15 @@ export type Database = {
           last_rating_update: string | null
           losses: number | null
           total_matches: number | null
+          total_points_against: number | null
+          total_points_for: number | null
           updated_at: string | null
           week_start_date: string | null
           week_start_rating: number | null
           wins: number | null
         }
         Insert: {
+          avg_opponent_rating?: number | null
           created_at?: string | null
           current_rating?: number | null
           email: string
@@ -127,12 +216,15 @@ export type Database = {
           last_rating_update?: string | null
           losses?: number | null
           total_matches?: number | null
+          total_points_against?: number | null
+          total_points_for?: number | null
           updated_at?: string | null
           week_start_date?: string | null
           week_start_rating?: number | null
           wins?: number | null
         }
         Update: {
+          avg_opponent_rating?: number | null
           created_at?: string | null
           current_rating?: number | null
           email?: string
@@ -141,6 +233,8 @@ export type Database = {
           last_rating_update?: string | null
           losses?: number | null
           total_matches?: number | null
+          total_points_against?: number | null
+          total_points_for?: number | null
           updated_at?: string | null
           week_start_date?: string | null
           week_start_rating?: number | null

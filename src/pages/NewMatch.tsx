@@ -21,6 +21,7 @@ interface Profile {
 const NewMatch = () => {
   const [loading, setLoading] = useState(false);
   const [players, setPlayers] = useState<Profile[]>([]);
+  const [courts, setCourts] = useState<Array<{ id: string; name: string; city: string; state: string }>>([]);
   const [currentUserId, setCurrentUserId] = useState<string>("");
   
   const [team1Player1, setTeam1Player1] = useState("");
@@ -29,6 +30,7 @@ const NewMatch = () => {
   const [team2Player2, setTeam2Player2] = useState("");
   const [team1Score, setTeam1Score] = useState("");
   const [team2Score, setTeam2Score] = useState("");
+  const [selectedCourt, setSelectedCourt] = useState("");
   const [matchDate, setMatchDate] = useState(new Date().toISOString().split("T")[0]);
   
   const navigate = useNavigate();
@@ -50,6 +52,19 @@ const NewMatch = () => {
       if (profilesData) {
         setPlayers(profilesData);
         setTeam1Player1(user.id);
+      }
+
+      // Fetch courts
+      const { data: courtsData } = await supabase
+        .from("courts")
+        .select("id, name, city, state")
+        .order("name");
+
+      if (courtsData) {
+        setCourts(courtsData);
+        if (courtsData.length > 0) {
+          setSelectedCourt(courtsData[0].id);
+        }
       }
     };
 
@@ -86,6 +101,8 @@ const NewMatch = () => {
           team1_score: score1,
           team2_score: score2,
           created_by: currentUserId,
+          court_id: selectedCourt,
+          status: 'pending',
         })
         .select()
         .single();
@@ -208,27 +225,22 @@ const NewMatch = () => {
 
       if (participantsError) throw participantsError;
 
-      for (const participant of participants) {
-        const { data: currentProfile } = await supabase
-          .from("profiles")
-          .select("total_matches, wins, losses")
-          .eq("id", participant.player_id)
-          .single();
+      // Create approval requests for all 4 players
+      const approvals = [team1Player1, team1Player2, team2Player1, team2Player2].map(playerId => ({
+        match_id: matchData.id,
+        player_id: playerId,
+        approved: playerId === currentUserId ? true : null, // Creator auto-approves
+        approved_at: playerId === currentUserId ? new Date().toISOString() : null
+      }));
 
-        if (currentProfile) {
-          await supabase
-            .from("profiles")
-            .update({
-              current_rating: participant.rating_after,
-              total_matches: currentProfile.total_matches + 1,
-              wins: participant.rating_change > 0 ? currentProfile.wins + 1 : currentProfile.wins,
-              losses: participant.rating_change < 0 ? currentProfile.losses + 1 : currentProfile.losses,
-            })
-            .eq("id", participant.player_id);
-        }
-      }
+      const { error: approvalsError } = await supabase
+        .from("match_approvals")
+        .insert(approvals);
 
-      toast.success("Match recorded successfully!");
+      if (approvalsError) throw approvalsError;
+
+      // Note: Ratings are NOT updated yet - they'll update when all players approve
+      toast.success("Match submitted! Waiting for player approvals.");
       navigate("/dashboard");
     } catch (error: any) {
       toast.error(error.message || "Failed to record match");
@@ -267,6 +279,22 @@ const NewMatch = () => {
                   onChange={(e) => setMatchDate(e.target.value)}
                   required
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="court">Court Location</Label>
+                <Select value={selectedCourt} onValueChange={setSelectedCourt} required>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select court" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {courts.map((court) => (
+                      <SelectItem key={court.id} value={court.id}>
+                        {court.name} - {court.city}, {court.state}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-4">
