@@ -13,6 +13,9 @@ interface Profile {
   id: string;
   full_name: string;
   current_rating: number;
+  total_matches: number;
+  wins: number;
+  losses: number;
 }
 
 const NewMatch = () => {
@@ -41,7 +44,7 @@ const NewMatch = () => {
 
       const { data: profilesData } = await supabase
         .from("profiles")
-        .select("id, full_name, current_rating")
+        .select("id, full_name, current_rating, total_matches, wins, losses")
         .order("full_name");
 
       if (profilesData) {
@@ -91,59 +94,111 @@ const NewMatch = () => {
 
       const team1Won = score1 > score2;
 
-      const getPlayerRating = (playerId: string) => {
-        const player = players.find((p) => p.id === playerId);
-        return player?.current_rating || 3.0;
+      // Get full player profiles
+      const getPlayer = (playerId: string) => 
+        players.find((p) => p.id === playerId)!;
+      
+      const t1p1 = getPlayer(team1Player1);
+      const t1p2 = getPlayer(team1Player2);
+      const t2p1 = getPlayer(team2Player1);
+      const t2p2 = getPlayer(team2Player2);
+
+      // Get clamping parameters
+      const { data: params } = await supabase
+        .from('rating_parameters')
+        .select('clamp_min, clamp_max')
+        .single();
+      
+      const clampMin = params?.clamp_min || 2.0;
+      const clampMax = params?.clamp_max || 4.5;
+      const clampRating = (rating: number) => 
+        Math.max(clampMin, Math.min(clampMax, rating));
+
+      // Calculate individual rating changes using PULSE algorithm
+      const calculateChange = async (
+        playerRating: number,
+        partnerRating: number,
+        opp1Rating: number,
+        opp2Rating: number,
+        teamScore: number,
+        oppScore: number,
+        won: boolean,
+        playerMatches: number
+      ) => {
+        const { data, error } = await supabase.rpc(
+          'calculate_pulse_rating_change',
+          {
+            p_player_rating: playerRating,
+            p_partner_rating: partnerRating,
+            p_opponent1_rating: opp1Rating,
+            p_opponent2_rating: opp2Rating,
+            p_team_score: teamScore,
+            p_opponent_score: oppScore,
+            p_won: won,
+            p_match_type: 'league',
+            p_player_matches: playerMatches
+          }
+        );
+        if (error) throw error;
+        return data as number;
       };
 
-      const t1p1Rating = getPlayerRating(team1Player1);
-      const t1p2Rating = getPlayerRating(team1Player2);
-      const t2p1Rating = getPlayerRating(team2Player1);
-      const t2p2Rating = getPlayerRating(team2Player2);
+      const t1p1Change = await calculateChange(
+        t1p1.current_rating, t1p2.current_rating,
+        t2p1.current_rating, t2p2.current_rating,
+        score1, score2, team1Won, t1p1.total_matches
+      );
 
-      const { data: ratingChanges } = await supabase.rpc("calculate_rating_change", {
-        player_rating: t1p1Rating,
-        partner_rating: t1p2Rating,
-        opponent1_rating: t2p1Rating,
-        opponent2_rating: t2p2Rating,
-        won: team1Won,
-      });
+      const t1p2Change = await calculateChange(
+        t1p2.current_rating, t1p1.current_rating,
+        t2p1.current_rating, t2p2.current_rating,
+        score1, score2, team1Won, t1p2.total_matches
+      );
 
-      const team1Change = ratingChanges || 0;
-      const team2Change = -team1Change;
+      const t2p1Change = await calculateChange(
+        t2p1.current_rating, t2p2.current_rating,
+        t1p1.current_rating, t1p2.current_rating,
+        score2, score1, !team1Won, t2p1.total_matches
+      );
+
+      const t2p2Change = await calculateChange(
+        t2p2.current_rating, t2p1.current_rating,
+        t1p1.current_rating, t1p2.current_rating,
+        score2, score1, !team1Won, t2p2.total_matches
+      );
 
       const participants = [
         {
           match_id: matchData.id,
           player_id: team1Player1,
           team: 1,
-          rating_before: t1p1Rating,
-          rating_after: Math.max(1.0, t1p1Rating + team1Change),
-          rating_change: team1Change,
+          rating_before: t1p1.current_rating,
+          rating_after: clampRating(t1p1.current_rating + t1p1Change),
+          rating_change: t1p1Change,
         },
         {
           match_id: matchData.id,
           player_id: team1Player2,
           team: 1,
-          rating_before: t1p2Rating,
-          rating_after: Math.max(1.0, t1p2Rating + team1Change),
-          rating_change: team1Change,
+          rating_before: t1p2.current_rating,
+          rating_after: clampRating(t1p2.current_rating + t1p2Change),
+          rating_change: t1p2Change,
         },
         {
           match_id: matchData.id,
           player_id: team2Player1,
           team: 2,
-          rating_before: t2p1Rating,
-          rating_after: Math.max(1.0, t2p1Rating + team2Change),
-          rating_change: team2Change,
+          rating_before: t2p1.current_rating,
+          rating_after: clampRating(t2p1.current_rating + t2p1Change),
+          rating_change: t2p1Change,
         },
         {
           match_id: matchData.id,
           player_id: team2Player2,
           team: 2,
-          rating_before: t2p2Rating,
-          rating_after: Math.max(1.0, t2p2Rating + team2Change),
-          rating_change: team2Change,
+          rating_before: t2p2.current_rating,
+          rating_after: clampRating(t2p2.current_rating + t2p2Change),
+          rating_change: t2p2Change,
         },
       ];
 
