@@ -102,7 +102,7 @@ const NewMatch = () => {
           team2_score: score2,
           created_by: currentUserId,
           court_id: selectedCourt,
-          status: 'pending',
+          status: 'approved',
         })
         .select()
         .single();
@@ -225,22 +225,7 @@ const NewMatch = () => {
 
       if (participantsError) throw participantsError;
 
-      // Create approval requests for all 4 players (including submitter)
-      const approvals = [team1Player1, team1Player2, team2Player1, team2Player2].map(playerId => ({
-        match_id: matchData.id,
-        player_id: playerId,
-        approved: null, // All players must verify, including submitter
-        approved_at: null
-      }));
-
-      const { error: approvalsError } = await supabase
-        .from("match_approvals")
-        .insert(approvals);
-
-      if (approvalsError) throw approvalsError;
-
-      // Note: Ratings are NOT updated yet - they'll update when all players approve
-      toast.success("Match submitted! Waiting for player approvals.");
+      toast.success("Match recorded successfully!");
       navigate("/dashboard");
     } catch (error: any) {
       toast.error(error.message || "Failed to record match");

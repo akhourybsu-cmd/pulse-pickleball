@@ -3,8 +3,18 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 
 interface Match {
   match_id: string;
@@ -28,6 +38,9 @@ const MatchHistory = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const playerId = searchParams.get("player");
+  const [contestDialogOpen, setContestDialogOpen] = useState(false);
+  const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
+  const [contestReason, setContestReason] = useState("");
 
   useEffect(() => {
     fetchMatchHistory();
@@ -116,6 +129,35 @@ const MatchHistory = () => {
     setLoading(false);
   };
 
+  const handleContestMatch = async () => {
+    if (!selectedMatchId) return;
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error("You must be logged in to contest a match");
+        return;
+      }
+
+      const { error } = await supabase.functions.invoke('notify-contested-match', {
+        body: {
+          match_id: selectedMatchId,
+          reason: contestReason,
+        },
+      });
+
+      if (error) throw error;
+
+      toast.success("Match contested successfully. Admins have been notified.");
+      setContestDialogOpen(false);
+      setContestReason("");
+      setSelectedMatchId(null);
+    } catch (error) {
+      console.error("Error contesting match:", error);
+      toast.error("Failed to contest match");
+    }
+  };
+
   if (loading) {
     return <div className="flex justify-center items-center min-h-screen">Loading...</div>;
   }
@@ -188,12 +230,51 @@ const MatchHistory = () => {
                     <span>Rating After:</span>
                     <span className="font-semibold">{match.rating_after.toFixed(2)}</span>
                   </div>
+                  <div className="pt-2 border-t">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full"
+                      onClick={() => {
+                        setSelectedMatchId(match.match_id);
+                        setContestDialogOpen(true);
+                      }}
+                    >
+                      <AlertTriangle className="w-4 h-4 mr-2" />
+                      Contest Result
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ))}
           </div>
         )}
       </div>
+
+      <Dialog open={contestDialogOpen} onOpenChange={setContestDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Contest Match Result</DialogTitle>
+            <DialogDescription>
+              Please provide a reason for contesting this match. Admins will be notified to review the result.
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            placeholder="Explain why you're contesting this match result..."
+            value={contestReason}
+            onChange={(e) => setContestReason(e.target.value)}
+            className="min-h-[100px]"
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setContestDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleContestMatch}>
+              Submit Contest
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

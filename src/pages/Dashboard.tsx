@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Trophy, TrendingUp, Calendar, LogOut, Plus, CheckCircle, MapPin, BarChart3 } from "lucide-react";
+import { Trophy, TrendingUp, Calendar, LogOut, Plus, MapPin, BarChart3 } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 
 interface Profile {
@@ -22,7 +22,6 @@ interface Profile {
 const Dashboard = () => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [pendingCount, setPendingCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
@@ -49,15 +48,6 @@ const Dashboard = () => {
       }
 
       setProfile(profileData);
-
-      // Get pending matches count
-      const { data: pendingData } = await supabase
-        .from("match_approvals")
-        .select("match_id")
-        .eq("player_id", user.id)
-        .is("approved", null);
-
-      setPendingCount(pendingData?.length || 0);
       setLoading(false);
     };
 
@@ -180,19 +170,6 @@ const Dashboard = () => {
               Strength of schedule
             </CardContent>
           </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardDescription className="flex items-center gap-2">
-                <CheckCircle className="w-4 h-4" />
-                Pending Approvals
-              </CardDescription>
-              <CardTitle className="text-3xl">{pendingCount}</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-muted-foreground">
-              Matches awaiting your approval
-            </CardContent>
-          </Card>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -204,17 +181,6 @@ const Dashboard = () => {
             <Plus className="w-5 h-5 mr-2" />
             Record New Match
           </Button>
-          
-          {pendingCount > 0 && (
-            <Button 
-              size="lg" 
-              variant="secondary"
-              onClick={() => navigate("/match/pending")}
-            >
-              <CheckCircle className="w-5 h-5 mr-2" />
-              Approve Matches ({pendingCount})
-            </Button>
-          )}
           
           <Button 
             size="lg" 

@@ -14,6 +14,61 @@ export type Database = {
   }
   public: {
     Tables: {
+      contested_matches: {
+        Row: {
+          contested_at: string
+          contested_by: string
+          id: string
+          match_id: string
+          reason: string | null
+          resolved: boolean | null
+          resolved_at: string | null
+          resolved_by: string | null
+        }
+        Insert: {
+          contested_at?: string
+          contested_by: string
+          id?: string
+          match_id: string
+          reason?: string | null
+          resolved?: boolean | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+        }
+        Update: {
+          contested_at?: string
+          contested_by?: string
+          id?: string
+          match_id?: string
+          reason?: string | null
+          resolved?: boolean | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contested_matches_contested_by_fkey"
+            columns: ["contested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contested_matches_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contested_matches_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       courts: {
         Row: {
           city: string
