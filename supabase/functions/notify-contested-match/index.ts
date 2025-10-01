@@ -79,19 +79,11 @@ serve(async (req) => {
       .select('player_id, profiles(full_name)')
       .eq('match_id', match_id);
 
-    const { data: contester } = await supabase
-      .from('profiles')
-      .select('full_name')
-      .eq('id', user.id)
-      .single();
-
-    // Log the contest notification (no sensitive data)
-    console.log('Match Contest Notification:', {
-      match_id,
-      contested_by: contester?.full_name,
-      reason,
-      match_details: matchData,
-      participant_count: participants?.length || 0,
+    // Log minimal information for debugging (no PII)
+    console.log('Match Contest Event:', {
+      match_id_hash: match_id.substring(0, 8),
+      event_type: 'contest_created',
+      timestamp: new Date().toISOString(),
     });
 
     return new Response(

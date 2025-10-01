@@ -145,8 +145,8 @@ export type Database = {
         Row: {
           created_at: string | null
           id: string
-          match_id: string | null
-          player_id: string | null
+          match_id: string
+          player_id: string
           rating_after: number | null
           rating_before: number | null
           rating_change: number | null
@@ -155,8 +155,8 @@ export type Database = {
         Insert: {
           created_at?: string | null
           id?: string
-          match_id?: string | null
-          player_id?: string | null
+          match_id: string
+          player_id: string
           rating_after?: number | null
           rating_before?: number | null
           rating_change?: number | null
@@ -165,8 +165,8 @@ export type Database = {
         Update: {
           created_at?: string | null
           id?: string
-          match_id?: string | null
-          player_id?: string | null
+          match_id?: string
+          player_id?: string
           rating_after?: number | null
           rating_before?: number | null
           rating_change?: number | null
@@ -193,7 +193,7 @@ export type Database = {
         Row: {
           court_id: string | null
           created_at: string | null
-          created_by: string | null
+          created_by: string
           id: string
           match_date: string
           match_type: string | null
@@ -205,7 +205,7 @@ export type Database = {
         Insert: {
           court_id?: string | null
           created_at?: string | null
-          created_by?: string | null
+          created_by: string
           id?: string
           match_date: string
           match_type?: string | null
@@ -217,7 +217,7 @@ export type Database = {
         Update: {
           court_id?: string | null
           created_at?: string | null
-          created_by?: string | null
+          created_by?: string
           id?: string
           match_date?: string
           match_type?: string | null
