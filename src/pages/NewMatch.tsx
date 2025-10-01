@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PlayerCombobox } from "@/components/PlayerCombobox";
 import { z } from "zod";
 
 const matchSchema = z.object({
@@ -312,34 +313,22 @@ const NewMatch = () => {
                 
                 <div className="space-y-2">
                   <Label>Player 1</Label>
-                  <Select value={team1Player1} onValueChange={setTeam1Player1} required>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select player" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {players.map((player) => (
-                        <SelectItem key={player.id} value={player.id}>
-                          {player.full_name} ({player.current_rating.toFixed(2)})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <PlayerCombobox
+                    players={players}
+                    value={team1Player1}
+                    onValueChange={setTeam1Player1}
+                    placeholder="Search player..."
+                  />
                 </div>
 
                 <div className="space-y-2">
                   <Label>Player 2</Label>
-                  <Select value={team1Player2} onValueChange={setTeam1Player2} required>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select player" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {players.map((player) => (
-                        <SelectItem key={player.id} value={player.id}>
-                          {player.full_name} ({player.current_rating.toFixed(2)})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <PlayerCombobox
+                    players={players}
+                    value={team1Player2}
+                    onValueChange={setTeam1Player2}
+                    placeholder="Search player..."
+                  />
                 </div>
 
                 <div className="space-y-2">
@@ -360,34 +349,22 @@ const NewMatch = () => {
                 
                 <div className="space-y-2">
                   <Label>Player 1</Label>
-                  <Select value={team2Player1} onValueChange={setTeam2Player1} required>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select player" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {players.map((player) => (
-                        <SelectItem key={player.id} value={player.id}>
-                          {player.full_name} ({player.current_rating.toFixed(2)})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <PlayerCombobox
+                    players={players}
+                    value={team2Player1}
+                    onValueChange={setTeam2Player1}
+                    placeholder="Search player..."
+                  />
                 </div>
 
                 <div className="space-y-2">
                   <Label>Player 2</Label>
-                  <Select value={team2Player2} onValueChange={setTeam2Player2} required>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select player" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {players.map((player) => (
-                        <SelectItem key={player.id} value={player.id}>
-                          {player.full_name} ({player.current_rating.toFixed(2)})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <PlayerCombobox
+                    players={players}
+                    value={team2Player2}
+                    onValueChange={setTeam2Player2}
+                    placeholder="Search player..."
+                  />
                 </div>
 
                 <div className="space-y-2">
