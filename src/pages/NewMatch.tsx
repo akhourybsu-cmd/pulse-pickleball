@@ -225,12 +225,12 @@ const NewMatch = () => {
 
       if (participantsError) throw participantsError;
 
-      // Create approval requests for all 4 players
+      // Create approval requests for all 4 players (including submitter)
       const approvals = [team1Player1, team1Player2, team2Player1, team2Player2].map(playerId => ({
         match_id: matchData.id,
         player_id: playerId,
-        approved: playerId === currentUserId ? true : null, // Creator auto-approves
-        approved_at: playerId === currentUserId ? new Date().toISOString() : null
+        approved: null, // All players must verify, including submitter
+        approved_at: null
       }));
 
       const { error: approvalsError } = await supabase
