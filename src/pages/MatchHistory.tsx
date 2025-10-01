@@ -1,11 +1,13 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, AlertTriangle } from "lucide-react";
+import { ArrowLeft, AlertTriangle, Share2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { ShareableMatchCard } from "@/components/ShareableMatchCard";
+import { downloadCardAsImage } from "@/utils/shareUtils";
 import {
   Dialog,
   DialogContent,
@@ -47,6 +49,8 @@ const MatchHistory = () => {
   const [contestDialogOpen, setContestDialogOpen] = useState(false);
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
   const [contestReason, setContestReason] = useState("");
+  const matchCardRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+  const [generatingMatchId, setGeneratingMatchId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchMatchHistory();
@@ -176,6 +180,24 @@ const MatchHistory = () => {
     }
   };
 
+  const handleShareMatch = async (match: Match) => {
+    const cardRef = matchCardRefs.current[match.match_id];
+    if (!cardRef) return;
+
+    setGeneratingMatchId(match.match_id);
+    try {
+      await downloadCardAsImage(
+        cardRef,
+        `pulse-match-${match.court_name.replace(/\s+/g, "-")}-${match.match_date}.png`
+      );
+      toast.success("Match card downloaded!");
+    } catch (error) {
+      toast.error("Failed to generate image");
+    } finally {
+      setGeneratingMatchId(null);
+    }
+  };
+
   if (loading) {
     return <div className="flex justify-center items-center min-h-screen">Loading...</div>;
   }
@@ -248,11 +270,11 @@ const MatchHistory = () => {
                     <span>Rating After:</span>
                     <span className="font-semibold">{match.rating_after.toFixed(2)}</span>
                   </div>
-                  <div className="pt-2 border-t">
+                  <div className="pt-2 border-t flex gap-2">
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      className="w-full"
+                      className="flex-1"
                       onClick={() => {
                         setSelectedMatchId(match.match_id);
                         setContestDialogOpen(true);
@@ -261,12 +283,43 @@ const MatchHistory = () => {
                       <AlertTriangle className="w-4 h-4 mr-2" />
                       Contest Result
                     </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex-1"
+                      onClick={() => handleShareMatch(match)}
+                      disabled={generatingMatchId === match.match_id}
+                    >
+                      <Share2 className="w-4 h-4 mr-2" />
+                      {generatingMatchId === match.match_id ? "Generating..." : "Share"}
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
             ))}
           </div>
         )}
+      </div>
+
+      {/* Hidden shareable cards for image generation */}
+      <div className="fixed -left-[9999px] -top-[9999px]">
+        {matches.map((match) => (
+          <ShareableMatchCard
+            key={match.match_id}
+            ref={(el) => (matchCardRefs.current[match.match_id] = el)}
+            playerName={playerName}
+            partnerName={match.partner_name}
+            opponent1Name={match.opponent1_name}
+            opponent2Name={match.opponent2_name}
+            teamScore={match.my_team === 1 ? match.team1_score : match.team2_score}
+            opponentScore={match.my_team === 1 ? match.team2_score : match.team1_score}
+            won={match.won}
+            ratingChange={match.rating_change}
+            ratingAfter={match.rating_after}
+            courtName={match.court_name}
+            matchDate={match.match_date}
+          />
+        ))}
       </div>
 
       <Dialog open={contestDialogOpen} onOpenChange={setContestDialogOpen}>
