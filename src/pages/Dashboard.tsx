@@ -235,7 +235,7 @@ const Dashboard = () => {
         <div className="fixed -left-[9999px] -top-[9999px]">
           {profile && (
             <ShareableStatsCard
-              ref={statsCardRef}
+              cardRef={statsCardRef}
               playerName={profile.full_name}
               currentRating={profile.current_rating}
               totalMatches={profile.total_matches}

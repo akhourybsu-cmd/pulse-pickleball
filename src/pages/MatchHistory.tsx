@@ -303,23 +303,27 @@ const MatchHistory = () => {
 
       {/* Hidden shareable cards for image generation */}
       <div className="fixed -left-[9999px] -top-[9999px]">
-        {matches.map((match) => (
-          <ShareableMatchCard
-            key={match.match_id}
-            ref={(el) => (matchCardRefs.current[match.match_id] = el)}
-            playerName={playerName}
-            partnerName={match.partner_name}
-            opponent1Name={match.opponent1_name}
-            opponent2Name={match.opponent2_name}
-            teamScore={match.my_team === 1 ? match.team1_score : match.team2_score}
-            opponentScore={match.my_team === 1 ? match.team2_score : match.team1_score}
-            won={match.won}
-            ratingChange={match.rating_change}
-            ratingAfter={match.rating_after}
-            courtName={match.court_name}
-            matchDate={match.match_date}
-          />
-        ))}
+        {matches.map((match) => {
+          const ref = { current: null } as React.RefObject<HTMLDivElement>;
+          matchCardRefs.current[match.match_id] = ref.current;
+          return (
+            <ShareableMatchCard
+              key={match.match_id}
+              cardRef={ref}
+              playerName={playerName}
+              partnerName={match.partner_name}
+              opponent1Name={match.opponent1_name}
+              opponent2Name={match.opponent2_name}
+              teamScore={match.my_team === 1 ? match.team1_score : match.team2_score}
+              opponentScore={match.my_team === 1 ? match.team2_score : match.team1_score}
+              won={match.won}
+              ratingChange={match.rating_change}
+              ratingAfter={match.rating_after}
+              courtName={match.court_name}
+              matchDate={match.match_date}
+            />
+          );
+        })}
       </div>
 
       <Dialog open={contestDialogOpen} onOpenChange={setContestDialogOpen}>

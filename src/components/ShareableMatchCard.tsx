@@ -1,4 +1,3 @@
-import { forwardRef } from "react";
 import logo from "@/assets/pulse-logo.png";
 
 interface ShareableMatchCardProps {
@@ -13,33 +12,31 @@ interface ShareableMatchCardProps {
   ratingAfter: number;
   courtName: string;
   matchDate: string;
+  cardRef?: React.RefObject<HTMLDivElement>;
 }
 
-export const ShareableMatchCard = forwardRef<HTMLDivElement, ShareableMatchCardProps>(
-  (
-    {
-      playerName,
-      partnerName,
-      opponent1Name,
-      opponent2Name,
-      teamScore,
-      opponentScore,
-      won,
-      ratingChange,
-      ratingAfter,
-      courtName,
-      matchDate,
-    },
-    ref
-  ) => {
-    return (
-      <div
-        ref={ref}
-        className="w-[600px] bg-secondary p-8 rounded-2xl shadow-2xl"
-        style={{
-          background: "linear-gradient(135deg, hsl(195, 60%, 20%), hsl(195, 60%, 15%))",
-        }}
-      >
+export const ShareableMatchCard = ({
+  playerName,
+  partnerName,
+  opponent1Name,
+  opponent2Name,
+  teamScore,
+  opponentScore,
+  won,
+  ratingChange,
+  ratingAfter,
+  courtName,
+  matchDate,
+  cardRef,
+}: ShareableMatchCardProps) => {
+  return (
+    <div
+      ref={cardRef}
+      className="w-[600px] bg-secondary p-8 rounded-2xl shadow-2xl"
+      style={{
+        background: "linear-gradient(135deg, hsl(195, 60%, 20%), hsl(195, 60%, 15%))",
+      }}
+    >
         {/* Header with Logo */}
         <div className="flex items-center justify-between mb-6">
           <img src={logo} alt="PULSE" className="h-12 w-auto" />
@@ -103,8 +100,5 @@ export const ShareableMatchCard = forwardRef<HTMLDivElement, ShareableMatchCardP
           <p className="text-white/50 text-xs">PULSE Pickleball League</p>
         </div>
       </div>
-    );
-  }
-);
-
-ShareableMatchCard.displayName = "ShareableMatchCard";
+  );
+};
