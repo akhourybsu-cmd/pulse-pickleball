@@ -5,17 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { Trophy, TrendingUp, Calendar, LogOut, Plus, MapPin, BarChart3, RefreshCw, HelpCircle, MessageSquare, Trash2 } from "lucide-react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import type { User } from "@supabase/supabase-js";
 import logo from "@/assets/pulse-logo.png";
 import { CourtStats } from "@/components/CourtStats";
@@ -193,6 +182,14 @@ const Dashboard = () => {
   const handleClearHistory = async () => {
     if (!user?.id) return;
     
+    const confirmed = window.confirm(
+      "⚠️ WARNING: This will permanently delete ALL matches, approvals, and reset ALL player stats to 3.00.\n\n" +
+      "This action CANNOT be undone and is intended for beta testing only.\n\n" +
+      "Are you absolutely sure you want to continue?"
+    );
+
+    if (!confirmed) return;
+    
     setClearing(true);
     try {
       const { error } = await supabase.rpc('clear_all_match_history_authenticated');
@@ -282,33 +279,15 @@ const Dashboard = () => {
                   Recalculate Ratings
                 </Button>
                 
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button 
-                      variant="destructive" 
-                      size="sm"
-                      disabled={refreshing || clearing}
-                    >
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Clear History
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Clear All Match History?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This will permanently delete all matches, approvals, and reset all player stats to initial values (3.00 rating). 
-                        This action cannot be undone and is intended for beta testing purposes only.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleClearHistory}>
-                        Yes, clear everything
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                <Button 
+                  variant="destructive" 
+                  size="sm"
+                  onClick={handleClearHistory}
+                  disabled={refreshing || clearing}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Clear History
+                </Button>
               </div>
               <p className="text-xs text-muted-foreground">
                 Beta testing tools
