@@ -1,14 +1,16 @@
 import { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Users, Clock, Trophy } from "lucide-react";
+import { Users, Clock, Trophy, Lock } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface Session {
   id: string;
   name: string;
   num_courts: number;
+  created_by: string;
   courts: {
     name: string;
   };
@@ -39,18 +41,72 @@ interface CheckIn {
 
 export default function Kiosk() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { toast } = useToast();
   const sessionId = searchParams.get("session");
   const [session, setSession] = useState<Session | null>(null);
   const [matchTickets, setMatchTickets] = useState<MatchTicket[]>([]);
   const [queueEntries, setQueueEntries] = useState<QueueEntry[]>([]);
   const [checkInCount, setCheckInCount] = useState(0);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (sessionId) {
-      fetchSessionData();
+      checkKioskAccess();
     }
   }, [sessionId]);
+
+  const checkKioskAccess = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        toast({
+          title: "Authentication Required",
+          description: "Please log in to access kiosk mode",
+          variant: "destructive",
+        });
+        navigate(`/session-queue?session=${sessionId}`);
+        return;
+      }
+
+      const { data: sessionData } = await supabase
+        .from("sessions")
+        .select("created_by")
+        .eq("id", sessionId)
+        .single();
+
+      if (!sessionData) {
+        toast({
+          title: "Session Not Found",
+          description: "The requested session could not be found",
+          variant: "destructive",
+        });
+        navigate("/dashboard");
+        return;
+      }
+
+      if (sessionData.created_by !== user.id) {
+        toast({
+          title: "Access Denied",
+          description: "Only the session organizer can access kiosk mode",
+          variant: "destructive",
+        });
+        navigate(`/session-queue?session=${sessionId}`);
+        return;
+      }
+
+      setIsAuthorized(true);
+      fetchSessionData();
+    } catch (error) {
+      console.error("Error checking kiosk access:", error);
+      navigate("/dashboard");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Update time every second
   useEffect(() => {
@@ -214,6 +270,26 @@ export default function Kiosk() {
 
   const liveMatches = matchTickets.filter(t => t.status === "live");
   const onDeckMatches = matchTickets.filter(t => t.status === "on-deck");
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-muted-foreground">Loading kiosk...</p>
+      </div>
+    );
+  }
+
+  if (!isAuthorized) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 to-secondary/10">
+        <div className="text-center">
+          <Lock className="w-24 h-24 mx-auto mb-4 text-destructive" />
+          <h1 className="text-4xl font-bold mb-2">Access Denied</h1>
+          <p className="text-xl text-muted-foreground">Only the session organizer can access kiosk mode</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!session) {
     return (
