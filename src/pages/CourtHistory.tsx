@@ -77,12 +77,12 @@ const CourtHistory = () => {
           .from("match_participants")
           .select(`
             team,
-            profiles(full_name)
+            profiles(full_name, display_name)
           `)
           .eq("match_id", match.id);
 
-        const team1 = participants?.filter(p => p.team === 1).map(p => p.profiles.full_name) || [];
-        const team2 = participants?.filter(p => p.team === 2).map(p => p.profiles.full_name) || [];
+        const team1 = participants?.filter(p => p.team === 1).map(p => p.profiles.display_name || p.profiles.full_name) || [];
+        const team2 = participants?.filter(p => p.team === 2).map(p => p.profiles.display_name || p.profiles.full_name) || [];
 
         return {
           match_id: match.id,
@@ -136,14 +136,14 @@ const CourtHistory = () => {
           player_id,
           team,
           rating_change,
-          profiles(full_name)
+          profiles(full_name, display_name)
         `)
         .eq("match_id", match.id);
 
       if (participants) {
         participants.forEach((participant: any) => {
           const playerId = participant.player_id;
-          const playerName = participant.profiles.full_name;
+          const playerName = participant.profiles.display_name || participant.profiles.full_name;
           const won = participant.rating_change > 0;
 
           if (!winsMap.has(playerId)) {

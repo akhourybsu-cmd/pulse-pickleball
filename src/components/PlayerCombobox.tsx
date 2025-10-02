@@ -19,6 +19,7 @@ import {
 interface Player {
   id: string;
   full_name: string;
+  display_name: string | null;
   current_rating: number;
 }
 
@@ -45,9 +46,10 @@ export function PlayerCombobox({
   // Filter players based on search query
   const filteredPlayers = searchQuery.trim() === ""
     ? []
-    : players.filter((player) =>
-        player.full_name.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+    : players.filter((player) => {
+        const displayName = player.display_name || player.full_name;
+        return displayName.toLowerCase().includes(searchQuery.toLowerCase());
+      });
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -61,7 +63,7 @@ export function PlayerCombobox({
         >
           {selectedPlayer ? (
             <span>
-              {selectedPlayer.full_name} ({(selectedPlayer.current_rating ?? 3.00).toFixed(2)})
+              {selectedPlayer.display_name || selectedPlayer.full_name} ({(selectedPlayer.current_rating ?? 3.00).toFixed(2)})
             </span>
           ) : (
             <span className="text-muted-foreground">{placeholder}</span>
@@ -97,7 +99,7 @@ export function PlayerCombobox({
                       value === player.id ? "opacity-100" : "opacity-0"
                     )}
                   />
-                  {player.full_name} ({(player.current_rating ?? 3.00).toFixed(2)})
+                  {player.display_name || player.full_name} ({(player.current_rating ?? 3.00).toFixed(2)})
                 </CommandItem>
               ))}
             </CommandGroup>

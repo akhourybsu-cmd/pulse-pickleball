@@ -30,6 +30,7 @@ const matchSchema = z.object({
 interface Profile {
   id: string;
   full_name: string;
+  display_name: string | null;
   current_rating: number;
   week_start_rating: number;
   total_matches: number;
@@ -65,7 +66,7 @@ const NewMatch = () => {
 
       const { data: profilesData } = await supabase
         .from("profiles")
-        .select("id, full_name, current_rating, week_start_rating, total_matches, wins, losses")
+        .select("id, full_name, display_name, current_rating, week_start_rating, total_matches, wins, losses")
         .order("full_name");
 
       if (profilesData) {

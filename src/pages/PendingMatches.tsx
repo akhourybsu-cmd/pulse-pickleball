@@ -69,7 +69,7 @@ const PendingMatches = () => {
           .select(`
             player_id,
             team,
-            profiles(full_name)
+            profiles(full_name, display_name)
           `)
           .eq("match_id", p.match_id);
 
@@ -78,8 +78,8 @@ const PendingMatches = () => {
           .select("player_id, approved")
           .eq("match_id", p.match_id);
 
-        const team1 = allParticipants?.filter(p => p.team === 1).map(p => p.profiles.full_name) || [];
-        const team2 = allParticipants?.filter(p => p.team === 2).map(p => p.profiles.full_name) || [];
+        const team1 = allParticipants?.filter(p => p.team === 1).map(p => p.profiles.display_name || p.profiles.full_name) || [];
+        const team2 = allParticipants?.filter(p => p.team === 2).map(p => p.profiles.display_name || p.profiles.full_name) || [];
         const myApproval = approvals?.find(a => a.player_id === user.id)?.approved;
         const totalApprovals = approvals?.filter(a => a.approved === true).length || 0;
 

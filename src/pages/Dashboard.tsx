@@ -14,6 +14,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 interface Profile {
   id: string;
   full_name: string;
+  display_name: string | null;
   current_rating: number;
   week_start_rating: number;
   total_matches: number;
@@ -363,7 +364,7 @@ const Dashboard = () => {
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-3xl font-bold mb-2">Welcome back, {profile?.full_name}!</h2>
+              <h2 className="text-3xl font-bold mb-2">Welcome back, {profile?.display_name || profile?.full_name}!</h2>
               <p className="text-muted-foreground">Track your pickleball journey</p>
             </div>
             <div className="text-right space-y-2">

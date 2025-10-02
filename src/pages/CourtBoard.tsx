@@ -26,6 +26,7 @@ interface Participant {
   joined_at: string;
   profiles: {
     full_name: string;
+    display_name: string | null;
     current_rating: number;
   };
 }
@@ -43,6 +44,7 @@ interface Post {
   court_id: string;
   profiles: {
     full_name: string;
+    display_name: string | null;
     current_rating: number;
   };
   court_post_participants: Participant[];
@@ -155,10 +157,10 @@ const CourtBoard = () => {
       .from("court_posts")
       .select(`
         *,
-        profiles!court_posts_user_id_fkey(full_name, current_rating),
+        profiles!court_posts_user_id_fkey(full_name, display_name, current_rating),
         court_post_participants(
           *,
-          profiles!court_post_participants_user_id_fkey(full_name, current_rating)
+          profiles!court_post_participants_user_id_fkey(full_name, display_name, current_rating)
         )
       `)
       .eq("court_id", selectedCourtId)
@@ -532,7 +534,7 @@ const CourtBoard = () => {
                                   onClick={() => navigate(`/profile/${participant.user_id}`)}
                                   className="font-medium hover:text-primary hover:underline transition-colors"
                                 >
-                                  {participant.profiles.full_name}
+                                  {participant.profiles.display_name || participant.profiles.full_name}
                                 </button>
                                 <span className="text-primary font-semibold">
                                   ({participant.profiles.current_rating?.toFixed(2) || '3.00'})

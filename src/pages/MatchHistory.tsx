@@ -64,11 +64,11 @@ const MatchHistory = () => {
     // Get player name
     const { data: profile } = await supabase
       .from("profiles")
-      .select("full_name")
+      .select("full_name, display_name")
       .eq("id", playerIdToUse)
       .single();
 
-    setPlayerName(profile?.full_name || "Player");
+    setPlayerName(profile?.display_name || profile?.full_name || "Player");
 
     // Get all approved matches for this player
     const { data: participantsData } = await supabase
@@ -104,7 +104,7 @@ const MatchHistory = () => {
           .select(`
             player_id,
             team,
-            profiles(full_name)
+            profiles(full_name, display_name)
           `)
           .eq("match_id", p.match_id);
 
@@ -122,9 +122,9 @@ const MatchHistory = () => {
           team1_score: p.matches.team1_score,
           team2_score: p.matches.team2_score,
           my_team: myTeam,
-          partner_name: teammates?.[0]?.profiles?.full_name || "Unknown",
-          opponent1_name: opponents?.[0]?.profiles?.full_name || "Unknown",
-          opponent2_name: opponents?.[1]?.profiles?.full_name || "Unknown",
+          partner_name: teammates?.[0]?.profiles?.display_name || teammates?.[0]?.profiles?.full_name || "Unknown",
+          opponent1_name: opponents?.[0]?.profiles?.display_name || opponents?.[0]?.profiles?.full_name || "Unknown",
+          opponent2_name: opponents?.[1]?.profiles?.display_name || opponents?.[1]?.profiles?.full_name || "Unknown",
           rating_change: p.rating_change ?? null,
           rating_after: p.rating_after ?? null,
           court_name: p.matches.courts?.name || "Unknown Court",
