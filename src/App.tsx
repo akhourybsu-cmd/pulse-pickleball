@@ -10,6 +10,7 @@ import NewMatch from "./pages/NewMatch";
 import PendingMatches from "./pages/PendingMatches";
 import MatchHistory from "./pages/MatchHistory";
 import CourtHistory from "./pages/CourtHistory";
+import FAQ from "./pages/FAQ";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +29,7 @@ const App = () => (
           <Route path="/match/pending" element={<PendingMatches />} />
           <Route path="/match/history" element={<MatchHistory />} />
           <Route path="/court/history" element={<CourtHistory />} />
+          <Route path="/faq" element={<FAQ />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
