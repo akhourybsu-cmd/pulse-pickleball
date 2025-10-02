@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { ArrowLeft, Save, UserCog, Upload, X } from "lucide-react";
+import { ArrowLeft, Save, UserCog, Upload, X, KeyRound } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import logo from "@/assets/pulse-logo-new.png";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -46,6 +46,7 @@ const EditProfile = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [resettingPassword, setResettingPassword] = useState(false);
   const [courts, setCourts] = useState<Court[]>([]);
   const navigate = useNavigate();
 
@@ -201,6 +202,26 @@ const EditProfile = () => {
     }
   };
 
+  const handleResetPassword = async () => {
+    if (!user?.email) return;
+
+    setResettingPassword(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
+        redirectTo: `${window.location.origin}/auth`,
+      });
+
+      if (error) throw error;
+
+      toast.success("Password reset email sent! Check your inbox.");
+    } catch (error) {
+      console.error("Error sending password reset:", error);
+      toast.error("Failed to send password reset email");
+    } finally {
+      setResettingPassword(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!user?.id) return;
 
@@ -231,7 +252,7 @@ const EditProfile = () => {
           <img src={logo} alt="PULSE Logo" className="h-16 w-auto" />
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            <Button variant="ghost" onClick={() => navigate("/dashboard")}>
+            <Button variant="outline" onClick={() => navigate("/dashboard")}>
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Dashboard
             </Button>
@@ -252,7 +273,7 @@ const EditProfile = () => {
           <img src={logo} alt="PULSE Logo" className="h-16 w-auto" />
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            <Button variant="ghost" onClick={() => navigate("/dashboard")}>
+            <Button variant="outline" onClick={() => navigate("/dashboard")}>
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Dashboard
             </Button>
@@ -328,6 +349,32 @@ const EditProfile = () => {
                     JPG, PNG, or WebP. Max 5MB.
                   </p>
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Security */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Security</CardTitle>
+              <CardDescription>Manage your account security</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label>Password</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Reset your password via email
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={handleResetPassword}
+                  disabled={resettingPassword}
+                >
+                  <KeyRound className="w-4 h-4 mr-2" />
+                  {resettingPassword ? "Sending..." : "Reset Password"}
+                </Button>
               </div>
             </CardContent>
           </Card>
