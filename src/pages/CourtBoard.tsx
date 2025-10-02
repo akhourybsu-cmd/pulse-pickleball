@@ -514,7 +514,7 @@ const CourtBoard = () => {
                               <div className="flex items-center gap-2">
                                 <span className="font-medium">{participant.profiles.full_name}</span>
                                 <span className="text-primary font-semibold">
-                                  ({participant.profiles.current_rating.toFixed(2)})
+                                  ({participant.profiles.current_rating?.toFixed(2) || '3.00'})
                                 </span>
                                 {participant.user_id === post.user_id && (
                                   <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded">
