@@ -177,15 +177,20 @@ const Dashboard = () => {
               <h2 className="text-3xl font-bold mb-2">Welcome back, {profile?.full_name}!</h2>
               <p className="text-muted-foreground">Track your pickleball journey</p>
             </div>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={handleRefreshStats}
-              disabled={refreshing}
-            >
-              <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-              Refresh Stats
-            </Button>
+            <div className="text-right">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleRefreshStats}
+                disabled={refreshing}
+              >
+                <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+                Refresh Stats
+              </Button>
+              <p className="text-xs text-muted-foreground mt-1">
+                Use weekly after matches update
+              </p>
+            </div>
           </div>
         </div>
 
