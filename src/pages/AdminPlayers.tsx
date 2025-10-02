@@ -155,6 +155,7 @@ export default function AdminPlayers() {
                       const winRate = player.total_matches > 0 
                         ? ((player.wins / player.total_matches) * 100).toFixed(1)
                         : "0.0";
+                      const rating = player.current_rating ?? 3.00;
                       
                       return (
                         <TableRow key={player.id} className="cursor-pointer hover:bg-muted/50">
@@ -165,13 +166,13 @@ export default function AdminPlayers() {
                             {player.email}
                           </TableCell>
                           <TableCell className="text-center font-semibold">
-                            {player.current_rating.toFixed(2)}
+                            {rating.toFixed(2)}
                           </TableCell>
                           <TableCell className="text-center">
-                            {player.total_matches}
+                            {player.total_matches ?? 0}
                           </TableCell>
                           <TableCell className="text-center">
-                            {player.wins}-{player.losses}
+                            {player.wins ?? 0}-{player.losses ?? 0}
                           </TableCell>
                           <TableCell className="text-center">
                             {winRate}%
