@@ -149,7 +149,7 @@ const ViewProfile = () => {
     ? ((profile.wins / profile.total_matches) * 100).toFixed(1)
     : "0.0";
 
-  const weeklyChange = profile.current_rating - profile.week_start_rating;
+  const weeklyChange = (profile.current_rating || profile.week_start_rating) - profile.week_start_rating;
 
   return (
     <div className="min-h-screen bg-background">
@@ -192,7 +192,9 @@ const ViewProfile = () => {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
                   <div>
                     <p className="text-sm text-muted-foreground">Pulse Score</p>
-                    <p className="text-2xl font-bold text-primary">{profile.current_rating.toFixed(2)}</p>
+                    <p className="text-2xl font-bold text-primary">
+                      {profile.current_rating?.toFixed(2) || profile.week_start_rating.toFixed(2)}
+                    </p>
                     <p className={`text-xs ${weeklyChange > 0 ? 'text-green-500' : weeklyChange < 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
                       {weeklyChange > 0 ? '+' : ''}{weeklyChange.toFixed(2)} this week
                     </p>
