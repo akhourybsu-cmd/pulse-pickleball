@@ -279,18 +279,20 @@ const Dashboard = () => {
                   Recalculate Ratings
                 </Button>
                 
-                <Button 
-                  variant="destructive" 
-                  size="sm"
-                  onClick={handleClearHistory}
-                  disabled={refreshing || clearing}
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Clear History
-                </Button>
+                {user?.email === 'akhourybsu@gmail.com' && (
+                  <Button 
+                    variant="destructive" 
+                    size="sm"
+                    onClick={handleClearHistory}
+                    disabled={refreshing || clearing}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Clear History
+                  </Button>
+                )}
               </div>
               <p className="text-xs text-muted-foreground">
-                Beta testing tools
+                {user?.email === 'akhourybsu@gmail.com' ? 'Admin tools' : 'Recalculate all player ratings'}
               </p>
             </div>
           </div>
