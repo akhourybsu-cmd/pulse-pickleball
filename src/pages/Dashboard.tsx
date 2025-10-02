@@ -12,6 +12,7 @@ interface Profile {
   id: string;
   full_name: string;
   current_rating: number;
+  week_start_rating: number;
   total_matches: number;
   wins: number;
   losses: number;
@@ -157,6 +158,10 @@ const Dashboard = () => {
     : "0.0";
 
   const pointDifferential = (profile?.total_points_for || 0) - (profile?.total_points_against || 0);
+  
+  const weeklyChange = profile 
+    ? profile.current_rating - profile.week_start_rating 
+    : 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -197,11 +202,19 @@ const Dashboard = () => {
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
           <Card className="border-2 border-primary shadow-[var(--shadow-glow)]">
             <CardHeader className="pb-3">
-              <CardDescription>Current Rating</CardDescription>
+              <CardDescription>Official Pulse Score</CardDescription>
               <CardTitle className="text-5xl font-bold text-primary">
-                {profile?.current_rating.toFixed(2)}
+                {profile?.week_start_rating.toFixed(2)}
               </CardTitle>
             </CardHeader>
+            <CardContent className="pt-0">
+              <div className="text-sm">
+                <span className="text-muted-foreground">Weekly Change: </span>
+                <span className={`font-semibold ${weeklyChange > 0 ? 'text-green-500' : weeklyChange < 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
+                  {weeklyChange > 0 ? '+' : ''}{weeklyChange.toFixed(2)}
+                </span>
+              </div>
+            </CardContent>
           </Card>
 
           <Card>
