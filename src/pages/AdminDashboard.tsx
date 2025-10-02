@@ -112,6 +112,23 @@ const AdminDashboard = () => {
             </CardContent>
           </Card>
 
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate("/admin/players")}>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <Users className="w-10 h-10 text-primary" />
+              </div>
+              <CardTitle className="mt-4">Player Directory</CardTitle>
+              <CardDescription>
+                Search and view all player profiles in the system
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button className="w-full" variant="secondary">
+                View Players
+              </Button>
+            </CardContent>
+          </Card>
+
           <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate("/admin/manage")}>
             <CardHeader>
               <div className="flex items-center justify-between">

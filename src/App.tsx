@@ -24,6 +24,7 @@ import QRCheckIn from "./pages/QRCheckIn";
 import Kiosk from "./pages/Kiosk";
 import AdminManage from "./pages/AdminManage";
 import AdminDashboard from "./pages/AdminDashboard";
+import AdminPlayers from "./pages/AdminPlayers";
 import Changelog from "./pages/Changelog";
 
 const queryClient = new QueryClient();
@@ -52,6 +53,7 @@ const App = () => (
             <Route path="/admin/session" element={<AdminSession />} />
             <Route path="/admin/sessions" element={<AdminSession />} />
             <Route path="/admin/pairing" element={<AdminPairing />} />
+            <Route path="/admin/players" element={<AdminPlayers />} />
             <Route path="/admin/manage/:sessionId" element={<AdminManage />} />
             <Route path="/match/ticket/:ticketId" element={<MatchTicket />} />
             <Route path="/qr-checkin" element={<QRCheckIn />} />
