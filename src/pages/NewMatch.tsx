@@ -30,6 +30,7 @@ interface Profile {
   id: string;
   full_name: string;
   current_rating: number;
+  week_start_rating: number;
   total_matches: number;
   wins: number;
   losses: number;
@@ -63,7 +64,7 @@ const NewMatch = () => {
 
       const { data: profilesData } = await supabase
         .from("profiles")
-        .select("id, full_name, current_rating, total_matches, wins, losses")
+        .select("id, full_name, current_rating, week_start_rating, total_matches, wins, losses")
         .order("full_name");
 
       if (profilesData) {
@@ -186,27 +187,28 @@ const NewMatch = () => {
         return data as number;
       };
 
+      // Use week_start_rating for calculations (weekly-frozen system)
       const t1p1Change = await calculateChange(
-        t1p1.current_rating, t1p2.current_rating,
-        t2p1.current_rating, t2p2.current_rating,
+        t1p1.week_start_rating, t1p2.week_start_rating,
+        t2p1.week_start_rating, t2p2.week_start_rating,
         score1, score2, team1Won, t1p1.total_matches
       );
 
       const t1p2Change = await calculateChange(
-        t1p2.current_rating, t1p1.current_rating,
-        t2p1.current_rating, t2p2.current_rating,
+        t1p2.week_start_rating, t1p1.week_start_rating,
+        t2p1.week_start_rating, t2p2.week_start_rating,
         score1, score2, team1Won, t1p2.total_matches
       );
 
       const t2p1Change = await calculateChange(
-        t2p1.current_rating, t2p2.current_rating,
-        t1p1.current_rating, t1p2.current_rating,
+        t2p1.week_start_rating, t2p2.week_start_rating,
+        t1p1.week_start_rating, t1p2.week_start_rating,
         score2, score1, !team1Won, t2p1.total_matches
       );
 
       const t2p2Change = await calculateChange(
-        t2p2.current_rating, t2p1.current_rating,
-        t1p1.current_rating, t1p2.current_rating,
+        t2p2.week_start_rating, t2p1.week_start_rating,
+        t1p1.week_start_rating, t1p2.week_start_rating,
         score2, score1, !team1Won, t2p2.total_matches
       );
 
@@ -215,32 +217,32 @@ const NewMatch = () => {
           match_id: matchData.id,
           player_id: team1Player1,
           team: 1,
-          rating_before: t1p1.current_rating,
-          rating_after: clampRating(t1p1.current_rating + t1p1Change),
+          rating_before: t1p1.week_start_rating,
+          rating_after: clampRating(t1p1.week_start_rating + t1p1Change),
           rating_change: t1p1Change,
         },
         {
           match_id: matchData.id,
           player_id: team1Player2,
           team: 1,
-          rating_before: t1p2.current_rating,
-          rating_after: clampRating(t1p2.current_rating + t1p2Change),
+          rating_before: t1p2.week_start_rating,
+          rating_after: clampRating(t1p2.week_start_rating + t1p2Change),
           rating_change: t1p2Change,
         },
         {
           match_id: matchData.id,
           player_id: team2Player1,
           team: 2,
-          rating_before: t2p1.current_rating,
-          rating_after: clampRating(t2p1.current_rating + t2p1Change),
+          rating_before: t2p1.week_start_rating,
+          rating_after: clampRating(t2p1.week_start_rating + t2p1Change),
           rating_change: t2p1Change,
         },
         {
           match_id: matchData.id,
           player_id: team2Player2,
           team: 2,
-          rating_before: t2p2.current_rating,
-          rating_after: clampRating(t2p2.current_rating + t2p2Change),
+          rating_before: t2p2.week_start_rating,
+          rating_after: clampRating(t2p2.week_start_rating + t2p2Change),
           rating_change: t2p2Change,
         },
       ];
@@ -250,6 +252,18 @@ const NewMatch = () => {
         .insert(participants);
 
       if (participantsError) throw participantsError;
+
+      // Get the week_start for this match and trigger recomputation from that week
+      const { data: weekData } = await supabase.rpc('get_week_start', { 
+        match_date: matchDate 
+      });
+      
+      if (weekData) {
+        // Trigger recomputation from this week forward (handles backfill)
+        await supabase.rpc('recompute_ratings_from_week', { 
+          start_week: weekData 
+        });
+      }
 
       toast.success("Match recorded successfully!");
       navigate("/dashboard");
