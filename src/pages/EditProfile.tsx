@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { ArrowLeft, Save, UserCog } from "lucide-react";
+import { ArrowLeft, Save, UserCog, Upload, X } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import logo from "@/assets/pulse-logo.png";
 
@@ -27,27 +27,24 @@ interface ProfileData {
   last_name: string | null;
   avatar_url: string | null;
   phonetic_name: string | null;
-  pronouns: string | null;
   notify_score_email: boolean;
   notify_score_sms: boolean;
   notify_score_push: boolean;
   notify_badges_email: boolean;
   notify_badges_sms: boolean;
   notify_badges_push: boolean;
-  notify_weekly_digest: boolean;
   home_court_id: string | null;
   handedness: string | null;
   play_side: string | null;
   paddle_brand: string | null;
   paddle_model: string | null;
-  accessibility_needs: string | null;
-  partner_preferences: string | null;
 }
 
 const EditProfile = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [courts, setCourts] = useState<Court[]>([]);
   const navigate = useNavigate();
 
@@ -57,21 +54,17 @@ const EditProfile = () => {
     last_name: null,
     avatar_url: null,
     phonetic_name: null,
-    pronouns: null,
     notify_score_email: true,
     notify_score_sms: false,
     notify_score_push: true,
     notify_badges_email: true,
     notify_badges_sms: false,
     notify_badges_push: true,
-    notify_weekly_digest: true,
     home_court_id: null,
     handedness: null,
     play_side: null,
     paddle_brand: null,
     paddle_model: null,
-    accessibility_needs: null,
-    partner_preferences: null,
   });
 
   useEffect(() => {
@@ -104,21 +97,17 @@ const EditProfile = () => {
         last_name: profileData.last_name,
         avatar_url: profileData.avatar_url,
         phonetic_name: profileData.phonetic_name,
-        pronouns: profileData.pronouns,
         notify_score_email: profileData.notify_score_email ?? true,
         notify_score_sms: profileData.notify_score_sms ?? false,
         notify_score_push: profileData.notify_score_push ?? true,
         notify_badges_email: profileData.notify_badges_email ?? true,
         notify_badges_sms: profileData.notify_badges_sms ?? false,
         notify_badges_push: profileData.notify_badges_push ?? true,
-        notify_weekly_digest: profileData.notify_weekly_digest ?? true,
         home_court_id: profileData.home_court_id,
         handedness: profileData.handedness,
         play_side: profileData.play_side,
         paddle_brand: profileData.paddle_brand,
         paddle_model: profileData.paddle_model,
-        accessibility_needs: profileData.accessibility_needs,
-        partner_preferences: profileData.partner_preferences,
       });
 
       // Fetch courts
@@ -137,6 +126,79 @@ const EditProfile = () => {
 
     fetchData();
   }, [navigate]);
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !user?.id) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error("Please upload an image file");
+      return;
+    }
+
+    // Validate file size (5MB)
+    if (file.size > 5242880) {
+      toast.error("Image must be less than 5MB");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      // Delete old avatar if exists
+      if (formData.avatar_url) {
+        const oldPath = formData.avatar_url.split('/').pop();
+        if (oldPath) {
+          await supabase.storage
+            .from('avatars')
+            .remove([`${user.id}/${oldPath}`]);
+        }
+      }
+
+      // Upload new avatar
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}.${fileExt}`;
+      const filePath = `${user.id}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      setFormData({ ...formData, avatar_url: publicUrl });
+      toast.success("Profile picture uploaded!");
+    } catch (error) {
+      console.error("Error uploading avatar:", error);
+      toast.error("Failed to upload profile picture");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleRemoveAvatar = async () => {
+    if (!user?.id || !formData.avatar_url) return;
+
+    try {
+      const oldPath = formData.avatar_url.split('/').pop();
+      if (oldPath) {
+        await supabase.storage
+          .from('avatars')
+          .remove([`${user.id}/${oldPath}`]);
+      }
+
+      setFormData({ ...formData, avatar_url: null });
+      toast.success("Profile picture removed");
+    } catch (error) {
+      console.error("Error removing avatar:", error);
+      toast.error("Failed to remove profile picture");
+    }
+  };
 
   const handleSave = async () => {
     if (!user?.id) return;
@@ -201,6 +263,68 @@ const EditProfile = () => {
         </div>
 
         <div className="space-y-6">
+          {/* Profile Picture Upload */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Profile Picture</CardTitle>
+              <CardDescription>Upload a photo to personalize your profile</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-6">
+                <div className="flex-shrink-0">
+                  {formData.avatar_url ? (
+                    <div className="relative">
+                      <img
+                        src={formData.avatar_url}
+                        alt="Profile"
+                        className="w-24 h-24 rounded-full object-cover border-2 border-primary"
+                      />
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="icon"
+                        className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+                        onClick={handleRemoveAvatar}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center border-2 border-dashed border-primary/30">
+                      <UserCog className="w-12 h-12 text-primary/50" />
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <Label htmlFor="avatar-upload" className="cursor-pointer">
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={uploading}
+                        onClick={() => document.getElementById('avatar-upload')?.click()}
+                      >
+                        <Upload className="w-4 h-4 mr-2" />
+                        {uploading ? "Uploading..." : "Upload Photo"}
+                      </Button>
+                    </div>
+                  </Label>
+                  <Input
+                    id="avatar-upload"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleFileUpload}
+                    disabled={uploading}
+                  />
+                  <p className="text-xs text-muted-foreground mt-2">
+                    JPG, PNG, or WebP. Max 5MB.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Identity & Visuals */}
           <Card>
             <CardHeader>
@@ -250,26 +374,6 @@ const EditProfile = () => {
                     placeholder="AL-ex"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="pronouns">Preferred Pronouns (optional)</Label>
-                  <Input
-                    id="pronouns"
-                    value={formData.pronouns || ""}
-                    onChange={(e) => setFormData({ ...formData, pronouns: e.target.value })}
-                    placeholder="they/them"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="avatar_url">Avatar URL (optional)</Label>
-                <Input
-                  id="avatar_url"
-                  type="url"
-                  value={formData.avatar_url || ""}
-                  onChange={(e) => setFormData({ ...formData, avatar_url: e.target.value })}
-                  placeholder="https://example.com/avatar.jpg"
-                />
               </div>
             </CardContent>
           </Card>
@@ -341,20 +445,6 @@ const EditProfile = () => {
                     />
                   </div>
                 </div>
-              </div>
-
-              <Separator />
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label htmlFor="notify_weekly_digest">Weekly Digest</Label>
-                  <p className="text-xs text-muted-foreground">Get a weekly summary of your activity</p>
-                </div>
-                <Switch
-                  id="notify_weekly_digest"
-                  checked={formData.notify_weekly_digest}
-                  onCheckedChange={(checked) => setFormData({ ...formData, notify_weekly_digest: checked })}
-                />
               </div>
             </CardContent>
           </Card>
@@ -442,29 +532,6 @@ const EditProfile = () => {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="accessibility_needs">Accessibility Needs (optional, private)</Label>
-                <Textarea
-                  id="accessibility_needs"
-                  value={formData.accessibility_needs || ""}
-                  onChange={(e) => setFormData({ ...formData, accessibility_needs: e.target.value })}
-                  placeholder="Any accessibility requirements (visible only to you and staff)"
-                  rows={3}
-                />
-                <p className="text-xs text-muted-foreground">This information is kept private</p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="partner_preferences">Partner Preferences (optional, private)</Label>
-                <Textarea
-                  id="partner_preferences"
-                  value={formData.partner_preferences || ""}
-                  onChange={(e) => setFormData({ ...formData, partner_preferences: e.target.value })}
-                  placeholder="Your preferences for choosing partners (kept private)"
-                  rows={3}
-                />
-                <p className="text-xs text-muted-foreground">This information is kept private</p>
-              </div>
             </CardContent>
           </Card>
 

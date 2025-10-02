@@ -3,7 +3,6 @@ import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { ArrowLeft, User, Trophy, TrendingUp, Award } from "lucide-react";
@@ -17,7 +16,6 @@ interface Profile {
   last_name: string | null;
   avatar_url: string | null;
   phonetic_name: string | null;
-  pronouns: string | null;
   current_rating: number;
   week_start_rating: number;
   total_matches: number;
@@ -73,7 +71,6 @@ const ViewProfile = () => {
           last_name,
           avatar_url,
           phonetic_name,
-          pronouns,
           current_rating,
           week_start_rating,
           total_matches,
@@ -186,10 +183,7 @@ const ViewProfile = () => {
               <div className="flex-1">
                 <h1 className="text-3xl font-bold mb-2">{displayName}</h1>
                 {profile.phonetic_name && (
-                  <p className="text-sm text-muted-foreground mb-2">Pronounced: {profile.phonetic_name}</p>
-                )}
-                {profile.pronouns && (
-                  <Badge variant="outline" className="mb-4">{profile.pronouns}</Badge>
+                  <p className="text-sm text-muted-foreground mb-4">Pronounced: {profile.phonetic_name}</p>
                 )}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
                   <div>
