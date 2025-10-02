@@ -19,18 +19,40 @@ export function formatTime12Hour(time: string): string {
 
 /**
  * Format a date in EST timezone
+ * For date-only strings (YYYY-MM-DD), parse them as local dates to avoid timezone shift
  */
 export function formatDateEST(date: Date | string, formatStr: string = "MMM d, yyyy"): string {
-  const dateObj = typeof date === 'string' ? new Date(date) : date;
-  const estDate = toZonedTime(dateObj, 'America/New_York');
+  if (typeof date === 'string') {
+    // If it's a date string without time (YYYY-MM-DD), parse it as local date
+    if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      const [year, month, day] = date.split('-').map(Number);
+      const localDate = new Date(year, month - 1, day);
+      return dateFnsFormat(localDate, formatStr);
+    }
+    // Otherwise, convert to EST timezone
+    const estDate = toZonedTime(new Date(date), 'America/New_York');
+    return dateFnsFormat(estDate, formatStr);
+  }
+  const estDate = toZonedTime(date, 'America/New_York');
   return dateFnsFormat(estDate, formatStr);
 }
 
 /**
  * Format a date to locale string in EST
+ * For date-only strings (YYYY-MM-DD), parse them as local dates to avoid timezone shift
  */
 export function toLocaleDateStringEST(date: Date | string): string {
-  const dateObj = typeof date === 'string' ? new Date(date) : date;
-  const estDate = toZonedTime(dateObj, 'America/New_York');
+  if (typeof date === 'string') {
+    // If it's a date string without time (YYYY-MM-DD), parse it as local date
+    if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      const [year, month, day] = date.split('-').map(Number);
+      const localDate = new Date(year, month - 1, day);
+      return dateFnsFormat(localDate, "MM/dd/yyyy");
+    }
+    // Otherwise, convert to EST timezone
+    const estDate = toZonedTime(new Date(date), 'America/New_York');
+    return dateFnsFormat(estDate, "MM/dd/yyyy");
+  }
+  const estDate = toZonedTime(date, 'America/New_York');
   return dateFnsFormat(estDate, "MM/dd/yyyy");
 }
