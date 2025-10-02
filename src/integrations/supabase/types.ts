@@ -504,16 +504,12 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
-      recalculate_current_ratings: {
+      recalculate_all_ratings: {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
       recalculate_player_stats: {
         Args: { p_player_id: string }
-        Returns: undefined
-      }
-      recompute_ratings_from_week: {
-        Args: { start_week: string }
         Returns: undefined
       }
       user_created_match: {

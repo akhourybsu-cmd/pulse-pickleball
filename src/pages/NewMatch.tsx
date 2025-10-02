@@ -167,16 +167,8 @@ const NewMatch = () => {
       if (participantsError) throw participantsError;
 
       // Get the week_start for this match and trigger recomputation from that week
-      const { data: weekData } = await supabase.rpc('get_week_start', { 
-        match_date: matchDate 
-      });
-      
-      if (weekData) {
-        // Trigger recomputation from this week forward (handles backfill)
-        await supabase.rpc('recompute_ratings_from_week', { 
-          start_week: weekData 
-        });
-      }
+      // Recalculate all ratings (handles new match and any backfill)
+      await supabase.rpc('recalculate_all_ratings');
 
       toast.success("Match recorded successfully!");
       navigate("/dashboard");

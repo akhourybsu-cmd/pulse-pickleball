@@ -97,8 +97,8 @@ const Dashboard = () => {
     
     setRefreshing(true);
     try {
-      // Recalculate current ratings (shows estimated weekly change without updating official score)
-      const { error: recomputeError } = await supabase.rpc('recalculate_current_ratings');
+      // Recalculate all ratings using cumulative model
+      const { error: recomputeError } = await supabase.rpc('recalculate_all_ratings');
 
       if (recomputeError) {
         console.error('Recomputation error:', recomputeError);
@@ -119,7 +119,7 @@ const Dashboard = () => {
       }
 
       setProfile(profileData);
-      toast.success("Estimated weekly change updated");
+      toast.success("Ratings recalculated successfully");
     } catch (error) {
       console.error('Refresh error:', error);
       toast.error("Failed to refresh stats");
@@ -178,10 +178,10 @@ const Dashboard = () => {
                 disabled={refreshing}
               >
                 <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-                Update Estimate
+                Recalculate Ratings
               </Button>
               <p className="text-xs text-muted-foreground mt-1">
-                See estimated weekly change
+                Process all matches
               </p>
             </div>
           </div>
@@ -190,16 +190,19 @@ const Dashboard = () => {
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
           <Card className="border-2 border-primary shadow-[var(--shadow-glow)]">
             <CardHeader className="pb-3">
-              <CardDescription>Official Pulse Score</CardDescription>
+              <CardDescription>Live Pulse Score</CardDescription>
               <CardTitle className="text-5xl font-bold text-primary">
-                {profile?.week_start_rating.toFixed(2)}
+                {profile?.current_rating.toFixed(2)}
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
               <div className="text-sm">
-                <span className="text-muted-foreground">Expected change on refresh: </span>
-                <span className={`font-semibold ${weeklyChange > 0 ? 'text-green-500' : weeklyChange < 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
-                  {weeklyChange > 0 ? '+' : ''}{weeklyChange.toFixed(2)}
+                <span className="text-muted-foreground">Weekly snapshot (Mon): </span>
+                <span className="font-semibold">
+                  {profile?.week_start_rating.toFixed(2)}
+                </span>
+                <span className={`ml-2 font-semibold ${weeklyChange > 0 ? 'text-green-500' : weeklyChange < 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
+                  ({weeklyChange > 0 ? '+' : ''}{weeklyChange.toFixed(2)})
                 </span>
               </div>
             </CardContent>
