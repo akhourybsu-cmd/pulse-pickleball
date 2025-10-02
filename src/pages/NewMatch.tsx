@@ -136,114 +136,27 @@ const NewMatch = () => {
 
       if (matchError) throw matchError;
 
-      const team1Won = score1 > score2;
-
-      // Get full player profiles
-      const getPlayer = (playerId: string) => 
-        players.find((p) => p.id === playerId)!;
-      
-      const t1p1 = getPlayer(team1Player1);
-      const t1p2 = getPlayer(team1Player2);
-      const t2p1 = getPlayer(team2Player1);
-      const t2p2 = getPlayer(team2Player2);
-
-      // Get clamping parameters
-      const { data: params } = await supabase
-        .from('rating_parameters')
-        .select('clamp_min, clamp_max')
-        .single();
-      
-      const clampMin = params?.clamp_min || 2.0;
-      const clampMax = params?.clamp_max || 4.5;
-      const clampRating = (rating: number) => 
-        Math.max(clampMin, Math.min(clampMax, rating));
-
-      // Calculate individual rating changes using PULSE algorithm
-      const calculateChange = async (
-        playerRating: number,
-        partnerRating: number,
-        opp1Rating: number,
-        opp2Rating: number,
-        teamScore: number,
-        oppScore: number,
-        won: boolean,
-        playerMatches: number
-      ) => {
-        const { data, error } = await supabase.rpc(
-          'calculate_pulse_rating_change',
-          {
-            p_player_rating: playerRating,
-            p_partner_rating: partnerRating,
-            p_opponent1_rating: opp1Rating,
-            p_opponent2_rating: opp2Rating,
-            p_team_score: teamScore,
-            p_opponent_score: oppScore,
-            p_won: won,
-            p_match_type: 'league',
-            p_player_matches: playerMatches
-          }
-        );
-        if (error) throw error;
-        return data as number;
-      };
-
-      // Use week_start_rating for calculations (weekly-frozen system)
-      const t1p1Change = await calculateChange(
-        t1p1.week_start_rating, t1p2.week_start_rating,
-        t2p1.week_start_rating, t2p2.week_start_rating,
-        score1, score2, team1Won, t1p1.total_matches
-      );
-
-      const t1p2Change = await calculateChange(
-        t1p2.week_start_rating, t1p1.week_start_rating,
-        t2p1.week_start_rating, t2p2.week_start_rating,
-        score1, score2, team1Won, t1p2.total_matches
-      );
-
-      const t2p1Change = await calculateChange(
-        t2p1.week_start_rating, t2p2.week_start_rating,
-        t1p1.week_start_rating, t1p2.week_start_rating,
-        score2, score1, !team1Won, t2p1.total_matches
-      );
-
-      const t2p2Change = await calculateChange(
-        t2p2.week_start_rating, t2p1.week_start_rating,
-        t1p1.week_start_rating, t1p2.week_start_rating,
-        score2, score1, !team1Won, t2p2.total_matches
-      );
-
+      // Create minimal participant records - ratings will be calculated by recompute function
       const participants = [
         {
           match_id: matchData.id,
           player_id: team1Player1,
           team: 1,
-          rating_before: t1p1.week_start_rating,
-          rating_after: clampRating(t1p1.week_start_rating + t1p1Change),
-          rating_change: t1p1Change,
         },
         {
           match_id: matchData.id,
           player_id: team1Player2,
           team: 1,
-          rating_before: t1p2.week_start_rating,
-          rating_after: clampRating(t1p2.week_start_rating + t1p2Change),
-          rating_change: t1p2Change,
         },
         {
           match_id: matchData.id,
           player_id: team2Player1,
           team: 2,
-          rating_before: t2p1.week_start_rating,
-          rating_after: clampRating(t2p1.week_start_rating + t2p1Change),
-          rating_change: t2p1Change,
         },
         {
           match_id: matchData.id,
           player_id: team2Player2,
           team: 2,
-          rating_before: t2p2.week_start_rating,
-          rating_after: clampRating(t2p2.week_start_rating + t2p2Change),
-          rating_change: t2p2Change,
         },
       ];
 
