@@ -97,25 +97,13 @@ const Dashboard = () => {
     
     setRefreshing(true);
     try {
-      // Get the earliest week to recompute from (start of all time)
-      const { data: earliestMatch } = await supabase
-        .from("matches")
-        .select("week_start")
-        .order("week_start", { ascending: true })
-        .limit(1)
-        .single();
+      // Recalculate current ratings (shows estimated weekly change without updating official score)
+      const { error: recomputeError } = await supabase.rpc('recalculate_current_ratings');
 
-      if (earliestMatch?.week_start) {
-        // Recompute all ratings from the earliest week using weekly-frozen system
-        const { error: recomputeError } = await supabase.rpc('recompute_ratings_from_week', {
-          start_week: earliestMatch.week_start
-        });
-
-        if (recomputeError) {
-          console.error('Recomputation error:', recomputeError);
-          toast.error("Failed to recalculate ratings");
-          return;
-        }
+      if (recomputeError) {
+        console.error('Recomputation error:', recomputeError);
+        toast.error("Failed to recalculate ratings");
+        return;
       }
 
       // Fetch the updated profile
@@ -131,7 +119,7 @@ const Dashboard = () => {
       }
 
       setProfile(profileData);
-      toast.success("Stats recalculated with weekly-frozen system");
+      toast.success("Estimated weekly change updated");
     } catch (error) {
       console.error('Refresh error:', error);
       toast.error("Failed to refresh stats");
@@ -190,10 +178,10 @@ const Dashboard = () => {
                 disabled={refreshing}
               >
                 <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-                Refresh Stats
+                Update Estimate
               </Button>
               <p className="text-xs text-muted-foreground mt-1">
-                Use weekly after matches update
+                See estimated weekly change
               </p>
             </div>
           </div>

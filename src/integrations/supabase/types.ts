@@ -504,6 +504,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      recalculate_current_ratings: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       recalculate_player_stats: {
         Args: { p_player_id: string }
         Returns: undefined
