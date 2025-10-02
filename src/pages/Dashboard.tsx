@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Trophy, TrendingUp, Calendar, LogOut, Plus, MapPin, BarChart3, RefreshCw, HelpCircle, MessageSquare, Bell } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import logo from "@/assets/pulse-logo.png";
+import { CourtStats } from "@/components/CourtStats";
 
 interface Profile {
   id: string;
@@ -194,7 +195,10 @@ const Dashboard = () => {
     ? ((profile.wins / profile.total_matches) * 100).toFixed(1)
     : "0.0";
 
-  const pointDifferential = (profile?.total_points_for || 0) - (profile?.total_points_against || 0);
+  const totalPointDifferential = (profile?.total_points_for || 0) - (profile?.total_points_against || 0);
+  const pointDifferentialPerMatch = profile && profile.total_matches > 0
+    ? (totalPointDifferential / profile.total_matches).toFixed(2)
+    : "0.00";
   
   const weeklyChange = profile 
     ? profile.current_rating - profile.week_start_rating 
@@ -292,14 +296,14 @@ const Dashboard = () => {
             <CardHeader className="pb-3">
               <CardDescription className="flex items-center gap-2">
                 <BarChart3 className="w-4 h-4" />
-                Point Differential
+                Point Differential (Per Match)
               </CardDescription>
               <CardTitle className="text-3xl">
-                {pointDifferential > 0 ? "+" : ""}{pointDifferential}
+                {parseFloat(pointDifferentialPerMatch) > 0 ? "+" : ""}{pointDifferentialPerMatch}
               </CardTitle>
             </CardHeader>
             <CardContent className="text-sm text-muted-foreground">
-              {profile?.total_points_for} for / {profile?.total_points_against} against
+              Total: {totalPointDifferential > 0 ? "+" : ""}{totalPointDifferential} ({profile?.total_points_for} for / {profile?.total_points_against} against)
             </CardContent>
           </Card>
 
@@ -315,6 +319,8 @@ const Dashboard = () => {
             </CardContent>
           </Card>
         </div>
+
+        {user && <CourtStats userId={user.id} />}
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <Button 

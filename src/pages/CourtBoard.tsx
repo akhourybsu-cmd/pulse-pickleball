@@ -79,6 +79,34 @@ const CourtBoard = () => {
     }
   }, [selectedCourtId]);
 
+  // Update viewed participants count for organizer's posts
+  useEffect(() => {
+    if (!currentUserId) return;
+
+    const updateViewedCount = async () => {
+      const { data: userPosts } = await supabase
+        .from("court_posts")
+        .select(`
+          id,
+          court_post_participants(count)
+        `)
+        .eq("user_id", currentUserId)
+        .eq("status", "open");
+
+      if (userPosts) {
+        for (const post of userPosts as any[]) {
+          const currentCount = post.court_post_participants[0]?.count || 0;
+          await supabase
+            .from("court_posts")
+            .update({ viewed_participants_count: currentCount })
+            .eq("id", post.id);
+        }
+      }
+    };
+
+    updateViewedCount();
+  }, [currentUserId, posts]);
+
   const checkUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     setCurrentUserId(user?.id || null);
