@@ -491,6 +491,14 @@ export type Database = {
         }
         Returns: number
       }
+      clear_all_match_history: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      clear_all_match_history_authenticated: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       delete_old_court_posts: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -512,6 +520,10 @@ export type Database = {
         Returns: undefined
       }
       recalculate_all_ratings: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      recalculate_all_ratings_authenticated: {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }

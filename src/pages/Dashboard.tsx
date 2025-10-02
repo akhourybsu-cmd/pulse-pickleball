@@ -4,7 +4,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Trophy, TrendingUp, Calendar, LogOut, Plus, MapPin, BarChart3, RefreshCw, HelpCircle, MessageSquare, Bell } from "lucide-react";
+import { Trophy, TrendingUp, Calendar, LogOut, Plus, MapPin, BarChart3, RefreshCw, HelpCircle, MessageSquare, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import type { User } from "@supabase/supabase-js";
 import logo from "@/assets/pulse-logo.png";
 import { CourtStats } from "@/components/CourtStats";
@@ -27,6 +38,7 @@ const Dashboard = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [clearing, setClearing] = useState(false);
   const [hasNewParticipants, setHasNewParticipants] = useState(false);
   const navigate = useNavigate();
 
@@ -178,6 +190,41 @@ const Dashboard = () => {
     }
   };
 
+  const handleClearHistory = async () => {
+    if (!user?.id) return;
+    
+    setClearing(true);
+    try {
+      const { error } = await supabase.rpc('clear_all_match_history_authenticated');
+
+      if (error) {
+        console.error('Clear history error:', error);
+        toast.error("Failed to clear match history");
+        return;
+      }
+
+      // Fetch the updated profile
+      const { data: profileData, error: fetchError } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+
+      if (fetchError) {
+        toast.error("Failed to refresh profile");
+        return;
+      }
+
+      setProfile(profileData);
+      toast.success("Match history cleared successfully");
+    } catch (error) {
+      console.error('Clear error:', error);
+      toast.error("Failed to clear match history");
+    } finally {
+      setClearing(false);
+    }
+  };
+
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     navigate("/");
@@ -223,18 +270,48 @@ const Dashboard = () => {
               <h2 className="text-3xl font-bold mb-2">Welcome back, {profile?.full_name}!</h2>
               <p className="text-muted-foreground">Track your pickleball journey</p>
             </div>
-            <div className="text-right">
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={handleRefreshStats}
-                disabled={refreshing}
-              >
-                <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-                Recalculate Ratings
-              </Button>
-              <p className="text-xs text-muted-foreground mt-1">
-                Process all matches
+            <div className="text-right space-y-2">
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleRefreshStats}
+                  disabled={refreshing || clearing}
+                >
+                  <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+                  Recalculate Ratings
+                </Button>
+                
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button 
+                      variant="destructive" 
+                      size="sm"
+                      disabled={refreshing || clearing}
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Clear History
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Clear All Match History?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will permanently delete all matches, approvals, and reset all player stats to initial values (3.00 rating). 
+                        This action cannot be undone and is intended for beta testing purposes only.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleClearHistory}>
+                        Yes, clear everything
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Beta testing tools
               </p>
             </div>
           </div>
