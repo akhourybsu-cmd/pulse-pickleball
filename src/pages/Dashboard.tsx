@@ -537,28 +537,10 @@ const Dashboard = () => {
           <Button 
             size="lg" 
             variant="outline"
-            onClick={() => navigate("/profile/edit")}
-          >
-            <UserCog className="w-5 h-5 mr-2" />
-            Edit Profile
-          </Button>
-          
-          <Button 
-            size="lg" 
-            variant="outline"
             onClick={() => navigate("/match/history")}
           >
             <Calendar className="w-5 h-5 mr-2" />
             My Match History
-          </Button>
-
-          <Button 
-            size="lg" 
-            variant="outline"
-            onClick={() => navigate("/court/history")}
-          >
-            <MapPin className="w-5 h-5 mr-2" />
-            Court History
           </Button>
 
           <Button 
@@ -575,6 +557,23 @@ const Dashboard = () => {
                 <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
               </span>
             )}
+          </Button>
+
+          <Button 
+            size="lg" 
+            variant="outline"
+            onClick={() => navigate("/session/queue")}
+          >
+            Session Queue
+          </Button>
+
+          <Button 
+            size="lg" 
+            variant="outline"
+            onClick={() => navigate("/court/history")}
+          >
+            <MapPin className="w-5 h-5 mr-2" />
+            Court History
           </Button>
 
           <Button 
@@ -599,18 +598,19 @@ const Dashboard = () => {
           <Button 
             size="lg" 
             variant="outline"
-            onClick={() => navigate("/faq")}
+            onClick={() => navigate("/profile/edit")}
           >
-            <HelpCircle className="w-5 h-5 mr-2" />
-            Help & FAQ
+            <UserCog className="w-5 h-5 mr-2" />
+            Edit Profile
           </Button>
 
           <Button 
             size="lg" 
             variant="outline"
-            onClick={() => navigate("/session/queue")}
+            onClick={() => navigate("/faq")}
           >
-            Session Queue
+            <HelpCircle className="w-5 h-5 mr-2" />
+            Help & FAQ
           </Button>
         </div>
 
