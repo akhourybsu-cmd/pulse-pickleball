@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Trophy, TrendingUp, Users, Zap } from "lucide-react";
 import logo from "@/assets/pulse-logo.png";
+import InstallInstructions from "@/components/InstallInstructions";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -94,6 +95,8 @@ const Index = () => {
             </div>
           </div>
         </section>
+
+        <InstallInstructions />
 
         <section className="py-20 px-4">
           <div className="container mx-auto text-center max-w-2xl">
