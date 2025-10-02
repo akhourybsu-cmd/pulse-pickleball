@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Trophy, TrendingUp, Calendar, LogOut, Plus, MapPin, BarChart3 } from "lucide-react";
+import { Trophy, TrendingUp, Calendar, LogOut, Plus, MapPin, BarChart3, RefreshCw } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import logo from "@/assets/pulse-logo.png";
 
@@ -24,6 +24,7 @@ const Dashboard = () => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -90,6 +91,31 @@ const Dashboard = () => {
     };
   }, [user?.id]);
 
+  const handleRefreshStats = async () => {
+    if (!user?.id) return;
+    
+    setRefreshing(true);
+    try {
+      const { data: profileData, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+
+      if (error) {
+        toast.error("Failed to refresh stats");
+        return;
+      }
+
+      setProfile(profileData);
+      toast.success("Stats refreshed successfully");
+    } catch (error) {
+      toast.error("Failed to refresh stats");
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     navigate("/");
@@ -123,8 +149,21 @@ const Dashboard = () => {
 
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
-          <h2 className="text-3xl font-bold mb-2">Welcome back, {profile?.full_name}!</h2>
-          <p className="text-muted-foreground">Track your pickleball journey</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-3xl font-bold mb-2">Welcome back, {profile?.full_name}!</h2>
+              <p className="text-muted-foreground">Track your pickleball journey</p>
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleRefreshStats}
+              disabled={refreshing}
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh Stats
+            </Button>
+          </div>
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
