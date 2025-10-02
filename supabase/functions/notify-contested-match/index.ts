@@ -43,6 +43,21 @@ serve(async (req) => {
 
     const { match_id, reason }: ContestRequest = await req.json();
 
+    // Verify user is a participant in the match
+    const { data: participantCheck, error: participantError } = await supabase
+      .from('match_participants')
+      .select('player_id')
+      .eq('match_id', match_id)
+      .eq('player_id', user.id)
+      .single();
+
+    if (participantError || !participantCheck) {
+      return new Response(
+        JSON.stringify({ error: 'You can only contest matches you participated in' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Insert the contested match record
     const { data: contestData, error: contestError } = await supabase
       .from('contested_matches')
