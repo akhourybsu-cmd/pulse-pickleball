@@ -162,8 +162,19 @@ const EditProfile = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-muted-foreground">Loading...</p>
+      <div className="min-h-screen bg-background">
+        <nav className="border-b bg-secondary">
+          <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+            <img src={logo} alt="PULSE Logo" className="h-16 w-auto" />
+            <Button variant="ghost" onClick={() => navigate("/dashboard")}>
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Dashboard
+            </Button>
+          </div>
+        </nav>
+        <div className="min-h-screen flex items-center justify-center">
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
       </div>
     );
   }
