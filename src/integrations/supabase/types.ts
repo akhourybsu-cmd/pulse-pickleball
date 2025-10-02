@@ -899,6 +899,10 @@ export type Database = {
         Args: { player_id_param: string }
         Returns: undefined
       }
+      cleanup_completed_match: {
+        Args: { match_ticket_id: string }
+        Returns: undefined
+      }
       clear_all_match_history: {
         Args: Record<PropertyKey, never>
         Returns: undefined
