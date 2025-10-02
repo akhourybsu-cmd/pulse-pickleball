@@ -96,20 +96,33 @@ const Dashboard = () => {
     
     setRefreshing(true);
     try {
-      const { data: profileData, error } = await supabase
+      // First, recalculate stats from all matches
+      const { error: recalcError } = await supabase.rpc('recalculate_player_stats', {
+        p_player_id: user.id
+      });
+
+      if (recalcError) {
+        console.error('Recalculation error:', recalcError);
+        toast.error("Failed to recalculate stats");
+        return;
+      }
+
+      // Then fetch the updated profile
+      const { data: profileData, error: fetchError } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", user.id)
         .single();
 
-      if (error) {
+      if (fetchError) {
         toast.error("Failed to refresh stats");
         return;
       }
 
       setProfile(profileData);
-      toast.success("Stats refreshed successfully");
+      toast.success("Stats recalculated and refreshed successfully");
     } catch (error) {
+      console.error('Refresh error:', error);
       toast.error("Failed to refresh stats");
     } finally {
       setRefreshing(false);
