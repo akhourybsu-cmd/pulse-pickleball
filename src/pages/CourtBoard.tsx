@@ -62,7 +62,11 @@ const CourtBoard = () => {
   const [newPostContent, setNewPostContent] = useState("");
   const [sessionDate, setSessionDate] = useState("");
   const [sessionTime, setSessionTime] = useState("18:00");
+  const [maxPlayers, setMaxPlayers] = useState("4");
   const [submitting, setSubmitting] = useState(false);
+  
+  // Join session state
+  const [joinComment, setJoinComment] = useState<{[key: string]: string}>({});
 
   useEffect(() => {
     checkUser();
@@ -151,6 +155,16 @@ const CourtBoard = () => {
       return;
     }
 
+    const playersCount = parseInt(maxPlayers);
+    if (isNaN(playersCount) || playersCount < 2 || playersCount > 20) {
+      toast({
+        title: "Invalid player count",
+        description: "Please enter a number between 2 and 20",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setSubmitting(true);
     
     // Create the post
@@ -163,7 +177,7 @@ const CourtBoard = () => {
         content: newPostContent,
         session_date: sessionDate,
         session_time: sessionTime,
-        max_players: 4,
+        max_players: playersCount,
         status: "open",
       })
       .select()
@@ -206,6 +220,7 @@ const CourtBoard = () => {
       setNewPostContent("");
       setSessionDate("");
       setSessionTime("18:00");
+      setMaxPlayers("4");
       setShowNewPost(false);
       fetchPosts();
     }
@@ -221,11 +236,14 @@ const CourtBoard = () => {
       return;
     }
 
+    const comment = joinComment[postId] || null;
+
     const { error } = await (supabase as any)
       .from("court_post_participants")
       .insert({
         post_id: postId,
         user_id: currentUserId,
+        comment: comment,
       });
 
     if (error) {
@@ -239,6 +257,11 @@ const CourtBoard = () => {
       toast({
         title: "Success",
         description: "You've joined the session!",
+      });
+      setJoinComment(prev => {
+        const newState = {...prev};
+        delete newState[postId];
+        return newState;
       });
       fetchPosts();
     }
@@ -286,7 +309,7 @@ const CourtBoard = () => {
         </div>
 
         <div className="space-y-4">
-          <h1 className="text-4xl font-bold">Looking For Group</h1>
+          <h1 className="text-4xl font-bold">Court Connector</h1>
           <p className="text-muted-foreground">Find players at your favorite courts</p>
         </div>
 
@@ -329,7 +352,7 @@ const CourtBoard = () => {
                     placeholder="Looking for players..."
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <div>
                     <Label htmlFor="session-date">Date</Label>
                     <Input
@@ -346,6 +369,17 @@ const CourtBoard = () => {
                       type="time"
                       value={sessionTime}
                       onChange={(e) => setSessionTime(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="max-players">Max Players</Label>
+                    <Input
+                      id="max-players"
+                      type="number"
+                      min="2"
+                      max="20"
+                      value={maxPlayers}
+                      onChange={(e) => setMaxPlayers(e.target.value)}
                     />
                   </div>
                 </div>
@@ -421,25 +455,32 @@ const CourtBoard = () => {
                         {participants.map((participant) => (
                           <div
                             key={participant.id}
-                            className="flex items-center justify-between p-2 rounded-lg bg-muted/50"
+                            className="p-2 rounded-lg bg-muted/50 space-y-1"
                           >
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">{participant.profiles.full_name}</span>
-                              <span className="text-primary font-semibold">
-                                ({participant.profiles.current_rating.toFixed(2)})
-                              </span>
-                              {participant.user_id === post.user_id && (
-                                <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded">
-                                  Organizer
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">{participant.profiles.full_name}</span>
+                                <span className="text-primary font-semibold">
+                                  ({participant.profiles.current_rating.toFixed(2)})
                                 </span>
-                              )}
+                                {participant.user_id === post.user_id && (
+                                  <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded">
+                                    Organizer
+                                  </span>
+                                )}
+                              </div>
                             </div>
+                            {(participant as any).comment && (
+                              <p className="text-sm text-muted-foreground italic">
+                                "{(participant as any).comment}"
+                              </p>
+                            )}
                           </div>
                         ))}
                       </div>
                     </div>
 
-                    <div className="pt-2">
+                    <div className="pt-2 space-y-2">
                       {!currentUserId ? (
                         <p className="text-sm text-muted-foreground">Log in to join this session</p>
                       ) : isParticipant ? (
@@ -455,12 +496,20 @@ const CourtBoard = () => {
                           Session Full
                         </Button>
                       ) : (
-                        <Button
-                          onClick={() => handleJoinSession(post.id)}
-                          className="w-full"
-                        >
-                          Join Session
-                        </Button>
+                        <div className="space-y-2">
+                          <Textarea
+                            placeholder="Add an optional comment (e.g., 'Bringing extra balls!')"
+                            value={joinComment[post.id] || ""}
+                            onChange={(e) => setJoinComment(prev => ({...prev, [post.id]: e.target.value}))}
+                            rows={2}
+                          />
+                          <Button
+                            onClick={() => handleJoinSession(post.id)}
+                            className="w-full"
+                          >
+                            Join Session
+                          </Button>
+                        </div>
                       )}
                     </div>
                   </CardContent>

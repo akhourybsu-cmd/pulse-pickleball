@@ -69,38 +69,38 @@ export type Database = {
           },
         ]
       }
-      court_post_comments: {
+      court_post_participants: {
         Row: {
-          content: string
-          created_at: string
+          comment: string | null
           id: string
+          joined_at: string
           post_id: string
           user_id: string
         }
         Insert: {
-          content: string
-          created_at?: string
+          comment?: string | null
           id?: string
+          joined_at?: string
           post_id: string
           user_id: string
         }
         Update: {
-          content?: string
-          created_at?: string
+          comment?: string | null
           id?: string
+          joined_at?: string
           post_id?: string
           user_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "court_post_comments_post_id_fkey"
+            foreignKeyName: "court_post_participants_post_id_fkey"
             columns: ["post_id"]
             isOneToOne: false
             referencedRelation: "court_posts"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "court_post_comments_user_id_fkey"
+            foreignKeyName: "court_post_participants_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -114,6 +114,10 @@ export type Database = {
           court_id: string
           created_at: string
           id: string
+          max_players: number
+          session_date: string
+          session_time: string
+          status: string
           title: string
           updated_at: string
           user_id: string
@@ -123,6 +127,10 @@ export type Database = {
           court_id: string
           created_at?: string
           id?: string
+          max_players?: number
+          session_date?: string
+          session_time?: string
+          status?: string
           title: string
           updated_at?: string
           user_id: string
@@ -132,6 +140,10 @@ export type Database = {
           court_id?: string
           created_at?: string
           id?: string
+          max_players?: number
+          session_date?: string
+          session_time?: string
+          status?: string
           title?: string
           updated_at?: string
           user_id?: string
