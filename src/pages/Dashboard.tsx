@@ -320,7 +320,9 @@ const Dashboard = () => {
           </Card>
         </div>
 
-        {user && <CourtStats userId={user.id} />}
+        <div className="mb-8">
+          {user && <CourtStats userId={user.id} />}
+        </div>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <Button 
