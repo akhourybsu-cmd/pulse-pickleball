@@ -600,6 +600,10 @@ export type Database = {
         Args: { match_id_param: string; player_id_param: string }
         Returns: string
       }
+      get_profile_email: {
+        Args: { profile_id: string }
+        Returns: string
+      }
       get_week_start: {
         Args: { match_date: string }
         Returns: string
