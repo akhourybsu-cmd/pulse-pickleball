@@ -165,11 +165,48 @@ export default function AdminManage() {
     if (!sessionId) return;
 
     try {
+      const courtNum = parseInt(selectedCourt);
+
+      // Check if court is already in use
+      const { data: existingTicket } = await supabase
+        .from("match_tickets")
+        .select("id")
+        .eq("session_id", sessionId)
+        .eq("court_number", courtNum)
+        .in("status", ["live", "on-deck"])
+        .maybeSingle();
+
+      if (existingTicket) {
+        toast({
+          title: "Court In Use",
+          description: `Court ${courtNum} is already assigned to a match`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Check if any selected player is already playing
+      const { data: playingPlayers } = await supabase
+        .from("queue_entries")
+        .select("player_id")
+        .eq("session_id", sessionId)
+        .eq("status", "playing")
+        .in("player_id", selectedPlayers);
+
+      if (playingPlayers && playingPlayers.length > 0) {
+        toast({
+          title: "Player Already Playing",
+          description: "One or more selected players are already in a match",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const { error } = await supabase
         .from("match_tickets")
         .insert({
           session_id: sessionId,
-          court_number: parseInt(selectedCourt),
+          court_number: courtNum,
           team1_player1_id: selectedPlayers[0],
           team1_player2_id: selectedPlayers[1],
           team2_player1_id: selectedPlayers[2],

@@ -170,16 +170,46 @@ export default function AdminPairing() {
         return;
       }
 
-      // Create match tickets
-      const tickets = pairings.map((pairing, idx) => ({
-        session_id: sessionId,
-        court_number: idx + 1,
-        team1_player1_id: pairing.team1[0].player_id,
-        team1_player2_id: pairing.team1[1].player_id,
-        team2_player1_id: pairing.team2[0].player_id,
-        team2_player2_id: pairing.team2[1].player_id,
-        status: idx === 0 ? "live" : "on-deck",
-      }));
+      // Check for court conflicts
+      const { data: existingTickets } = await supabase
+        .from("match_tickets")
+        .select("court_number")
+        .eq("session_id", sessionId)
+        .in("status", ["live", "on-deck"]);
+
+      const usedCourts = new Set(existingTickets?.map(t => t.court_number) || []);
+      
+      // Create match tickets with available courts only
+      const tickets = pairings
+        .filter((_, idx) => !usedCourts.has(idx + 1))
+        .map((pairing, idx) => {
+          // Find next available court
+          let courtNum = idx + 1;
+          while (usedCourts.has(courtNum) && courtNum <= session.num_courts) {
+            courtNum++;
+          }
+          
+          return {
+            session_id: sessionId,
+            court_number: courtNum,
+            team1_player1_id: pairing.team1[0].player_id,
+            team1_player2_id: pairing.team1[1].player_id,
+            team2_player1_id: pairing.team2[0].player_id,
+            team2_player2_id: pairing.team2[1].player_id,
+            status: idx === 0 ? "live" : "on-deck",
+          };
+        })
+        .filter(t => t.court_number <= session.num_courts);
+
+      if (tickets.length === 0) {
+        toast({
+          title: "No Courts Available",
+          description: "All courts are currently in use",
+          variant: "destructive",
+        });
+        setGenerating(false);
+        return;
+      }
 
       const { error } = await supabase
         .from("match_tickets")
@@ -188,11 +218,11 @@ export default function AdminPairing() {
       if (error) throw error;
 
       // Update queue entries to 'playing'
-      const playerIds = pairings.flatMap(p => [
-        p.team1[0].player_id,
-        p.team1[1].player_id,
-        p.team2[0].player_id,
-        p.team2[1].player_id,
+      const playerIds = tickets.flatMap(t => [
+        t.team1_player1_id,
+        t.team1_player2_id,
+        t.team2_player1_id,
+        t.team2_player2_id,
       ]);
 
       await supabase
@@ -203,7 +233,7 @@ export default function AdminPairing() {
 
       toast({
         title: "Pairings Generated!",
-        description: `Created ${pairings.length} matches`,
+        description: `Created ${tickets.length} match${tickets.length !== 1 ? 'es' : ''}`,
       });
 
       navigate(`/session/queue`);

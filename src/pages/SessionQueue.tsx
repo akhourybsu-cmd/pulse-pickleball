@@ -88,73 +88,130 @@ export default function SessionQueue() {
   useEffect(() => {
     checkUser();
     fetchActiveSession();
+    
+    // Auto-refresh every 30 seconds as fallback
+    const refreshInterval = setInterval(() => {
+      fetchActiveSession();
+    }, 30000);
+
+    return () => clearInterval(refreshInterval);
   }, []);
 
-  // Set up realtime subscriptions
+  // Set up realtime subscriptions with reconnection
   useEffect(() => {
     if (!session) return;
 
-    const channel = supabase
-      .channel(`session_${session.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'check_ins',
-          filter: `session_id=eq.${session.id}`,
-        },
-        () => {
-          console.log('Check-ins updated');
-          fetchSessionData(session.id);
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'queue_entries',
-          filter: `session_id=eq.${session.id}`,
-        },
-        () => {
-          console.log('Queue updated');
-          fetchSessionData(session.id);
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'match_tickets',
-          filter: `session_id=eq.${session.id}`,
-        },
-        (payload) => {
-          console.log('Match tickets updated', payload);
-          fetchSessionData(session.id);
-          
-          // Show notification if user is assigned to a match
-          if (userId && payload.eventType === 'INSERT') {
-            const ticket = payload.new;
-            const isMyMatch = [
-              ticket.team1_player1_id,
-              ticket.team1_player2_id,
-              ticket.team2_player1_id,
-              ticket.team2_player2_id,
-            ].includes(userId);
+    let reconnectAttempts = 0;
+    const maxReconnectAttempts = 5;
 
-            if (isMyMatch) {
-              toast({
-                title: "🎾 You're Up!",
-                description: `Report to Court ${ticket.court_number}`,
-                duration: 10000,
-              });
+    const setupChannel = () => {
+      const channel = supabase
+        .channel(`session_${session.id}`, {
+          config: {
+            broadcast: { self: false },
+            presence: { key: userId || 'anonymous' },
+          },
+        })
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'check_ins',
+            filter: `session_id=eq.${session.id}`,
+          },
+          () => {
+            console.log('Check-ins updated');
+            fetchSessionData(session.id);
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'queue_entries',
+            filter: `session_id=eq.${session.id}`,
+          },
+          () => {
+            console.log('Queue updated');
+            fetchSessionData(session.id);
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'match_tickets',
+            filter: `session_id=eq.${session.id}`,
+          },
+          (payload) => {
+            console.log('Match tickets updated', payload);
+            fetchSessionData(session.id);
+            
+            // Show notification if user is assigned to a match
+            if (userId && payload.eventType === 'INSERT') {
+              const ticket = payload.new;
+              const isMyMatch = [
+                ticket.team1_player1_id,
+                ticket.team1_player2_id,
+                ticket.team2_player1_id,
+                ticket.team2_player2_id,
+              ].includes(userId);
+
+              if (isMyMatch) {
+                toast({
+                  title: "🎾 You're Up!",
+                  description: `Report to Court ${ticket.court_number}`,
+                  duration: 10000,
+                });
+              }
             }
           }
-        }
-      )
-      .subscribe();
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'sessions',
+            filter: `id=eq.${session.id}`,
+          },
+          (payload) => {
+            console.log('Session updated', payload);
+            if (payload.new.status === 'completed') {
+              toast({
+                title: "Session Ended",
+                description: "This session has been closed by the admin",
+                variant: "destructive",
+              });
+              setTimeout(() => {
+                navigate('/dashboard');
+              }, 3000);
+            }
+          }
+        )
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            console.log('Realtime connected');
+            reconnectAttempts = 0;
+          } else if (status === 'CHANNEL_ERROR') {
+            console.error('Realtime error, attempting reconnect...');
+            if (reconnectAttempts < maxReconnectAttempts) {
+              reconnectAttempts++;
+              setTimeout(() => {
+                channel.unsubscribe();
+                setupChannel();
+              }, 1000 * reconnectAttempts);
+            }
+          }
+        });
+
+      return channel;
+    };
+
+    const channel = setupChannel();
 
     return () => {
       supabase.removeChannel(channel);
