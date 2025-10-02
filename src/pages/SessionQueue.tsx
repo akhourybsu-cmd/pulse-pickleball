@@ -529,7 +529,7 @@ export default function SessionQueue() {
                           {entry.profiles.display_name || entry.profiles.full_name}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          Rating: {entry.profiles.current_rating.toFixed(2)} • Games: {entry.games_played}
+                          Rating: {entry.profiles.current_rating?.toFixed(2) ?? '3.00'} • Games: {entry.games_played}
                         </p>
                       </div>
                     </div>
@@ -556,7 +556,7 @@ export default function SessionQueue() {
                       {checkIn.profiles.display_name || checkIn.profiles.full_name}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {checkIn.profiles.current_rating.toFixed(2)}
+                      {checkIn.profiles.current_rating?.toFixed(2) ?? '3.00'}
                     </p>
                   </div>
                 ))}
