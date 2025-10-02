@@ -123,8 +123,8 @@ const MatchHistory = () => {
           partner_name: teammates?.[0]?.profiles?.full_name || "Unknown",
           opponent1_name: opponents?.[0]?.profiles?.full_name || "Unknown",
           opponent2_name: opponents?.[1]?.profiles?.full_name || "Unknown",
-          rating_change: p.rating_change,
-          rating_after: p.rating_after,
+          rating_change: p.rating_change ?? null,
+          rating_after: p.rating_after ?? null,
           court_name: p.matches.courts?.name || "Unknown Court",
           won,
         };
