@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -89,6 +89,77 @@ export default function SessionQueue() {
     checkUser();
     fetchActiveSession();
   }, []);
+
+  // Set up realtime subscriptions
+  useEffect(() => {
+    if (!session) return;
+
+    const channel = supabase
+      .channel(`session_${session.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'check_ins',
+          filter: `session_id=eq.${session.id}`,
+        },
+        () => {
+          console.log('Check-ins updated');
+          fetchSessionData(session.id);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'queue_entries',
+          filter: `session_id=eq.${session.id}`,
+        },
+        () => {
+          console.log('Queue updated');
+          fetchSessionData(session.id);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'match_tickets',
+          filter: `session_id=eq.${session.id}`,
+        },
+        (payload) => {
+          console.log('Match tickets updated', payload);
+          fetchSessionData(session.id);
+          
+          // Show notification if user is assigned to a match
+          if (userId && payload.eventType === 'INSERT') {
+            const ticket = payload.new;
+            const isMyMatch = [
+              ticket.team1_player1_id,
+              ticket.team1_player2_id,
+              ticket.team2_player1_id,
+              ticket.team2_player2_id,
+            ].includes(userId);
+
+            if (isMyMatch) {
+              toast({
+                title: "🎾 You're Up!",
+                description: `Report to Court ${ticket.court_number}`,
+                duration: 10000,
+              });
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [session, userId]);
 
   const checkUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();

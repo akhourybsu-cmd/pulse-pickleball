@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { QRCodeSVG } from "qrcode.react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,7 +8,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Plus, PlayCircle, StopCircle } from "lucide-react";
+import { ArrowLeft, Plus, PlayCircle, StopCircle, QrCode, Download } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Footer } from "@/components/Footer";
 
@@ -44,6 +51,9 @@ export default function AdminSession() {
   const [startTime, setStartTime] = useState("18:00");
   const [numCourts, setNumCourts] = useState("3");
   const [matchType, setMatchType] = useState("ladder");
+  const [showQRDialog, setShowQRDialog] = useState(false);
+  const [selectedSessionForQR, setSelectedSessionForQR] = useState<Session | null>(null);
+  const qrRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     checkAdminAccess();
@@ -167,6 +177,41 @@ export default function AdminSession() {
         variant: "destructive",
       });
     }
+  };
+
+  const handleShowQR = (session: Session) => {
+    setSelectedSessionForQR(session);
+    setShowQRDialog(true);
+  };
+
+  const handleDownloadQR = () => {
+    if (!qrRef.current) return;
+
+    const svg = qrRef.current.querySelector('svg');
+    if (!svg) return;
+
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+
+    img.onload = () => {
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx?.drawImage(img, 0, 0);
+      const pngFile = canvas.toDataURL('image/png');
+
+      const downloadLink = document.createElement('a');
+      downloadLink.download = `session-qr-${selectedSessionForQR?.name}.png`;
+      downloadLink.href = pngFile;
+      downloadLink.click();
+    };
+
+    img.src = 'data:image/svg+xml;base64,' + btoa(svgData);
+  };
+
+  const getQRUrl = (sessionId: string) => {
+    return `${window.location.origin}/qr-checkin?session=${sessionId}`;
   };
 
   const handleEndSession = async (sessionId: string) => {
@@ -337,6 +382,14 @@ export default function AdminSession() {
                           <Button
                             variant="outline"
                             size="sm"
+                            onClick={() => handleShowQR(session)}
+                          >
+                            <QrCode className="mr-2 h-4 w-4" />
+                            QR Code
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
                             onClick={() => navigate(`/admin/pairing?session=${session.id}`)}
                           >
                             Generate Pairings
@@ -357,7 +410,50 @@ export default function AdminSession() {
               </div>
             )}
           </CardContent>
-        </Card>
+          </Card>
+
+        {/* QR Code Dialog */}
+        <Dialog open={showQRDialog} onOpenChange={setShowQRDialog}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Session QR Code</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              {selectedSessionForQR && (
+                <>
+                  <div className="text-center space-y-2">
+                    <p className="font-semibold">{selectedSessionForQR.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      Scan to check in
+                    </p>
+                  </div>
+                  <div 
+                    ref={qrRef}
+                    className="flex justify-center p-6 bg-white rounded-lg"
+                  >
+                    <QRCodeSVG
+                      value={getQRUrl(selectedSessionForQR.id)}
+                      size={256}
+                      level="H"
+                      includeMargin={true}
+                    />
+                  </div>
+                  <div className="text-xs text-muted-foreground text-center break-all">
+                    {getQRUrl(selectedSessionForQR.id)}
+                  </div>
+                  <Button 
+                    onClick={handleDownloadQR} 
+                    variant="outline" 
+                    className="w-full"
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    Download QR Code
+                  </Button>
+                </>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <Footer />
