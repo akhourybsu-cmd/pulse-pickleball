@@ -322,7 +322,7 @@ export default function AdminSession() {
               <div className="space-y-3">
                 {sessions.map((session) => (
                   <div key={session.id} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div>
+                    <div className="flex-1">
                       <p className="font-semibold">{session.name}</p>
                       <p className="text-sm text-muted-foreground">
                         {session.courts.name} • {session.session_date} at {session.start_time}
@@ -331,16 +331,27 @@ export default function AdminSession() {
                         {session.num_courts} courts • {session.status}
                       </p>
                     </div>
-                    {session.status === "active" && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEndSession(session.id)}
-                      >
-                        <StopCircle className="mr-2 h-4 w-4" />
-                        End Session
-                      </Button>
-                    )}
+                    <div className="flex gap-2">
+                      {session.status === "active" && (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => navigate(`/admin/pairing?session=${session.id}`)}
+                          >
+                            Generate Pairings
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEndSession(session.id)}
+                          >
+                            <StopCircle className="mr-2 h-4 w-4" />
+                            End Session
+                          </Button>
+                        </>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>

@@ -18,6 +18,8 @@ import FAQ from "./pages/FAQ";
 import NotFound from "./pages/NotFound";
 import SessionQueue from "./pages/SessionQueue";
 import AdminSession from "./pages/AdminSession";
+import AdminPairing from "./pages/AdminPairing";
+import MatchTicket from "./pages/MatchTicket";
 
 const queryClient = new QueryClient();
 
@@ -42,6 +44,8 @@ const App = () => (
             <Route path="/faq" element={<FAQ />} />
             <Route path="/session/queue" element={<SessionQueue />} />
             <Route path="/admin/session" element={<AdminSession />} />
+            <Route path="/admin/pairing" element={<AdminPairing />} />
+            <Route path="/match/ticket/:ticketId" element={<MatchTicket />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

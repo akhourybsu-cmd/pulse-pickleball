@@ -51,6 +51,10 @@ interface MatchTicket {
   status: string;
   team1_score: number | null;
   team2_score: number | null;
+  team1_player1_id: string;
+  team1_player2_id: string;
+  team2_player1_id: string;
+  team2_player2_id: string;
   team1_player1: {
     display_name: string | null;
     full_name: string;
@@ -330,28 +334,47 @@ export default function SessionQueue() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {matchTickets.map((ticket) => (
-                <div key={ticket.id} className="border rounded-lg p-4 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <p className="font-semibold">Court {ticket.court_number}</p>
-                    <Badge variant={ticket.status === "live" ? "default" : "secondary"}>
-                      {ticket.status === "live" ? "On Court" : "On Deck"}
-                    </Badge>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="font-medium">Team 1</p>
-                      <p>{ticket.team1_player1.display_name || ticket.team1_player1.full_name}</p>
-                      <p>{ticket.team1_player2.display_name || ticket.team1_player2.full_name}</p>
+              {matchTickets.map((ticket) => {
+                const isMyMatch = userId && [
+                  ticket.team1_player1_id,
+                  ticket.team1_player2_id,
+                  ticket.team2_player1_id,
+                  ticket.team2_player2_id,
+                ].includes(userId);
+
+                return (
+                  <div key={ticket.id} className="border rounded-lg p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="font-semibold">Court {ticket.court_number}</p>
+                      <Badge variant={ticket.status === "live" ? "default" : "secondary"}>
+                        {ticket.status === "live" ? "On Court" : "On Deck"}
+                      </Badge>
                     </div>
-                    <div>
-                      <p className="font-medium">Team 2</p>
-                      <p>{ticket.team2_player1.display_name || ticket.team2_player1.full_name}</p>
-                      <p>{ticket.team2_player2.display_name || ticket.team2_player2.full_name}</p>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="font-medium">Team 1</p>
+                        <p>{ticket.team1_player1.display_name || ticket.team1_player1.full_name}</p>
+                        <p>{ticket.team1_player2.display_name || ticket.team1_player2.full_name}</p>
+                      </div>
+                      <div>
+                        <p className="font-medium">Team 2</p>
+                        <p>{ticket.team2_player1.display_name || ticket.team2_player1.full_name}</p>
+                        <p>{ticket.team2_player2.display_name || ticket.team2_player2.full_name}</p>
+                      </div>
                     </div>
+                    {isMyMatch && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full mt-2"
+                        onClick={() => navigate(`/match/ticket/${ticket.id}`)}
+                      >
+                        Submit Score
+                      </Button>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </CardContent>
           </Card>
         )}
