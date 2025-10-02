@@ -112,7 +112,7 @@ const MatchHistory = () => {
         );
         const opponents = allParticipants?.filter(part => part.team !== myTeam);
 
-        const won = p.rating_change > 0;
+        const won = p.rating_change !== null && p.rating_change > 0;
 
         return {
           match_id: p.match_id,
@@ -239,9 +239,15 @@ const MatchHistory = () => {
                   </div>
                   <div className="flex justify-between pt-2 text-sm border-t">
                     <span>Rating Change:</span>
-                    <span className={match.rating_change > 0 ? "text-green-600" : "text-red-600"}>
-                      {match.rating_change > 0 ? "+" : ""}
-                      {match.rating_change.toFixed(3)}
+                    <span className={match.rating_change && match.rating_change > 0 ? "text-green-600" : "text-red-600"}>
+                      {match.rating_change !== null ? (
+                        <>
+                          {match.rating_change > 0 ? "+" : ""}
+                          {match.rating_change.toFixed(3)}
+                        </>
+                      ) : (
+                        "N/A"
+                      )}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
