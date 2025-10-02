@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Plus, PlayCircle, StopCircle, QrCode, Download, Tv } from "lucide-react";
+import { ArrowLeft, Plus, PlayCircle, StopCircle, QrCode, Download, Tv, Settings } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -379,6 +379,14 @@ export default function AdminSession() {
                     <div className="flex gap-2">
                       {session.status === "active" && (
                         <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => navigate(`/admin/manage?session=${session.id}`)}
+                          >
+                            <Settings className="mr-2 h-4 w-4" />
+                            Manage
+                          </Button>
                           <Button
                             variant="outline"
                             size="sm"
