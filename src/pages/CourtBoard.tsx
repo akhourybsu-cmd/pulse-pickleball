@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Users, Calendar, Clock, Trash2 } from "lucide-react";
 import { formatDateEST, formatTime12Hour } from "@/lib/utils";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 interface Court {
   id: string;
@@ -359,6 +360,7 @@ const CourtBoard = () => {
             <ArrowLeft className="w-4 h-4" />
             Back to Dashboard
           </Button>
+          <ThemeToggle />
         </div>
 
         <div className="space-y-4">

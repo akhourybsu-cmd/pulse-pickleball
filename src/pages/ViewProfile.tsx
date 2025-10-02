@@ -6,8 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { ArrowLeft, User, Trophy, TrendingUp, Award } from "lucide-react";
-import logo from "@/assets/pulse-logo.png";
+import logo from "@/assets/pulse-logo-new.png";
 import { BadgeDisplay } from "@/components/BadgeDisplay";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 interface Profile {
   id: string;
@@ -155,10 +156,13 @@ const ViewProfile = () => {
       <nav className="border-b bg-secondary">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <img src={logo} alt="PULSE Logo" className="h-16 w-auto" />
-          <Button variant="ghost" onClick={() => navigate("/dashboard")}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Dashboard
-          </Button>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <Button variant="ghost" onClick={() => navigate("/dashboard")}>
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Dashboard
+            </Button>
+          </div>
         </div>
       </nav>
 

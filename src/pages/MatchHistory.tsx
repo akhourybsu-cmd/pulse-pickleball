@@ -17,6 +17,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { z } from "zod";
 import { toLocaleDateStringEST } from "@/lib/utils";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const contestSchema = z.object({
   reason: z.string().trim().min(10, "Reason must be at least 10 characters").max(500, "Reason too long"),
@@ -184,11 +185,12 @@ const MatchHistory = () => {
   return (
     <div className="min-h-screen bg-background">
       <nav className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4">
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <Button variant="ghost" onClick={() => navigate("/dashboard")}>
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Dashboard
           </Button>
+          <ThemeToggle />
         </div>
       </nav>
 

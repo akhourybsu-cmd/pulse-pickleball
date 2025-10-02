@@ -4,9 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Trophy, TrendingUp, Calendar, LogOut, Plus, MapPin, BarChart3, RefreshCw, HelpCircle, MessageSquare, Trash2, Award, UserCog } from "lucide-react";
+import { Trophy, TrendingUp, Calendar, LogOut, Plus, MapPin, BarChart3, RefreshCw, HelpCircle, MessageSquare, Trash2, Award, UserCog, User as UserIcon } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
-import logo from "@/assets/pulse-logo.png";
+import logo from "@/assets/pulse-logo-new.png";
 import { CourtStats } from "@/components/CourtStats";
 import { BadgeDisplay } from "@/components/BadgeDisplay";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -346,6 +346,10 @@ const Dashboard = () => {
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <img src={logo} alt="PULSE Logo" className="h-16 w-auto" />
           <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" onClick={() => navigate(`/profile/${user?.id}`)} className="rounded-full">
+              <UserIcon className="h-[1.2rem] w-[1.2rem]" />
+              <span className="sr-only">View Profile</span>
+            </Button>
             <ThemeToggle />
             <Button variant="secondary" size="sm" onClick={handleSignOut}>
               <LogOut className="w-4 h-4 mr-2" />

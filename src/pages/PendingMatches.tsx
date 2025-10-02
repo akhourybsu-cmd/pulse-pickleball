@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { ArrowLeft, Check, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { toLocaleDateStringEST } from "@/lib/utils";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 interface PendingMatch {
   match_id: string;
@@ -197,11 +198,12 @@ const PendingMatches = () => {
   return (
     <div className="min-h-screen bg-background">
       <nav className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4">
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <Button variant="ghost" onClick={() => navigate("/dashboard")}>
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Dashboard
           </Button>
+          <ThemeToggle />
         </div>
       </nav>
 

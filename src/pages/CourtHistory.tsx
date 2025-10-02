@@ -7,6 +7,7 @@ import { ArrowLeft, Medal } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toLocaleDateStringEST } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 interface CourtMatch {
   match_id: string;
@@ -179,11 +180,12 @@ const CourtHistory = () => {
   return (
     <div className="min-h-screen bg-background">
       <nav className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4">
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <Button variant="ghost" onClick={() => navigate("/dashboard")}>
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Dashboard
           </Button>
+          <ThemeToggle />
         </div>
       </nav>
 

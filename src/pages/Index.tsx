@@ -2,8 +2,9 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Trophy, TrendingUp, Users, Zap, MapPin, Award } from "lucide-react";
-import logo from "@/assets/pulse-logo.png";
+import logo from "@/assets/pulse-logo-new.png";
 import InstallInstructions from "@/components/InstallInstructions";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -13,7 +14,8 @@ const Index = () => {
       <nav className="border-b bg-secondary">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <img src={logo} alt="PULSE Logo" className="h-16 w-auto" />
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
             <Button variant="secondary" onClick={() => navigate("/auth")}>
               Sign In
             </Button>
