@@ -233,12 +233,13 @@ const NewMatch = () => {
                 <h3 className="font-semibold text-primary">Team 1</h3>
                 
                 <div className="space-y-2">
-                  <Label>Player 1</Label>
+                  <Label>Player 1 (You)</Label>
                   <PlayerCombobox
                     players={players}
                     value={team1Player1}
                     onValueChange={setTeam1Player1}
-                    placeholder="Search player..."
+                    placeholder="You"
+                    disabled={true}
                   />
                 </div>
 

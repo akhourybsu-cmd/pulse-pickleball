@@ -27,6 +27,7 @@ interface PlayerComboboxProps {
   value: string;
   onValueChange: (value: string) => void;
   placeholder?: string;
+  disabled?: boolean;
 }
 
 export function PlayerCombobox({
@@ -34,10 +35,19 @@ export function PlayerCombobox({
   value,
   onValueChange,
   placeholder = "Search player...",
+  disabled = false,
 }: PlayerComboboxProps) {
   const [open, setOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const selectedPlayer = players.find((player) => player.id === value);
+  
+  // Filter players based on search query
+  const filteredPlayers = searchQuery.trim() === ""
+    ? []
+    : players.filter((player) =>
+        player.full_name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -47,6 +57,7 @@ export function PlayerCombobox({
           role="combobox"
           aria-expanded={open}
           className="w-full justify-between"
+          disabled={disabled}
         >
           {selectedPlayer ? (
             <span>
@@ -59,18 +70,25 @@ export function PlayerCombobox({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-full p-0" align="start">
-        <Command>
-          <CommandInput placeholder={placeholder} />
+        <Command shouldFilter={false}>
+          <CommandInput 
+            placeholder={placeholder} 
+            value={searchQuery}
+            onValueChange={setSearchQuery}
+          />
           <CommandList>
-            <CommandEmpty>No player found.</CommandEmpty>
+            <CommandEmpty>
+              {searchQuery.trim() === "" ? "Type to search for players..." : "No player found."}
+            </CommandEmpty>
             <CommandGroup>
-              {players.map((player) => (
+              {filteredPlayers.map((player) => (
                 <CommandItem
                   key={player.id}
-                  value={`${player.full_name} ${player.current_rating ?? 3.00}`}
+                  value={player.id}
                   onSelect={() => {
                     onValueChange(player.id);
                     setOpen(false);
+                    setSearchQuery("");
                   }}
                 >
                   <Check
