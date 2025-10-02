@@ -252,7 +252,9 @@ const MatchHistory = () => {
                   </div>
                   <div className="flex justify-between text-sm">
                     <span>Rating After:</span>
-                    <span className="font-semibold">{match.rating_after.toFixed(2)}</span>
+                    <span className="font-semibold">
+                      {match.rating_after !== null ? match.rating_after.toFixed(2) : "N/A"}
+                    </span>
                   </div>
                   <div className="pt-2 border-t">
                     <Button 
