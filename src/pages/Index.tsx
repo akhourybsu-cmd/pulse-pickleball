@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trophy, TrendingUp, Users, Zap } from "lucide-react";
+import { Trophy, TrendingUp, Users, Zap, MapPin } from "lucide-react";
 import logo from "@/assets/pulse-logo.png";
 import InstallInstructions from "@/components/InstallInstructions";
 
@@ -44,7 +44,7 @@ const Index = () => {
           <div className="container mx-auto">
             <h3 className="text-3xl font-bold text-center mb-12">Why PULSE?</h3>
             
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
               <Card>
                 <CardHeader>
                   <Trophy className="w-10 h-10 text-primary mb-2" />
@@ -83,7 +83,19 @@ const Index = () => {
 
               <Card>
                 <CardHeader>
-                  <Zap className="w-10 h-10 text-secondary mb-2" />
+                  <MapPin className="w-10 h-10 text-secondary mb-2" />
+                  <CardTitle>Court Connector</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <CardDescription>
+                    Find and join pickup games at your local courts - connect with players in your area
+                  </CardDescription>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <Zap className="w-10 h-10 text-primary mb-2" />
                   <CardTitle>Quick Entry</CardTitle>
                 </CardHeader>
                 <CardContent>
