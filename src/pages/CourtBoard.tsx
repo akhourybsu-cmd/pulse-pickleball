@@ -127,7 +127,21 @@ const CourtBoard = () => {
       });
     } else if (data) {
       setCourts(data);
-      if (data.length > 0) {
+      
+      // Get user's home court
+      if (currentUserId) {
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("home_court_id")
+          .eq("id", currentUserId)
+          .single();
+        
+        if (profileData?.home_court_id && data.some(c => c.id === profileData.home_court_id)) {
+          setSelectedCourtId(profileData.home_court_id);
+        } else if (data.length > 0) {
+          setSelectedCourtId(data[0].id);
+        }
+      } else if (data.length > 0) {
         setSelectedCourtId(data[0].id);
       }
     }
@@ -514,7 +528,12 @@ const CourtBoard = () => {
                           >
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
-                                <span className="font-medium">{participant.profiles.full_name}</span>
+                                <button
+                                  onClick={() => navigate(`/profile/${participant.user_id}`)}
+                                  className="font-medium hover:text-primary hover:underline transition-colors"
+                                >
+                                  {participant.profiles.full_name}
+                                </button>
                                 <span className="text-primary font-semibold">
                                   ({participant.profiles.current_rating?.toFixed(2) || '3.00'})
                                 </span>

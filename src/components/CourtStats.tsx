@@ -46,8 +46,20 @@ export const CourtStats = ({ userId }: CourtStatsProps) => {
 
     if (courtsData) {
       setCourts(courtsData);
+      
+      // Get user's home court
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("home_court_id")
+        .eq("id", userId)
+        .single();
+      
       if (courtsData.length > 0 && !selectedCourtId) {
-        setSelectedCourtId(courtsData[0].id);
+        if (profileData?.home_court_id && courtsData.some(c => c.id === profileData.home_court_id)) {
+          setSelectedCourtId(profileData.home_court_id);
+        } else {
+          setSelectedCourtId(courtsData[0].id);
+        }
       }
     }
 

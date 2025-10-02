@@ -81,8 +81,20 @@ const NewMatch = () => {
 
       if (courtsData) {
         setCourts(courtsData);
+        
+        // Get user's home court
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("home_court_id")
+          .eq("id", user.id)
+          .single();
+        
         if (courtsData.length > 0) {
-          setSelectedCourt(courtsData[0].id);
+          if (profileData?.home_court_id && courtsData.some(c => c.id === profileData.home_court_id)) {
+            setSelectedCourt(profileData.home_court_id);
+          } else {
+            setSelectedCourt(courtsData[0].id);
+          }
         }
       }
     };

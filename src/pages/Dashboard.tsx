@@ -346,7 +346,7 @@ const Dashboard = () => {
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <img src={logo} alt="PULSE Logo" className="h-16 w-auto" />
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => navigate(`/profile/${user?.id}`)} className="rounded-full">
+            <Button variant="outline" size="icon" onClick={() => navigate(`/profile/${user?.id}`)} className="rounded-full">
               <UserIcon className="h-[1.2rem] w-[1.2rem]" />
               <span className="sr-only">View Profile</span>
             </Button>
