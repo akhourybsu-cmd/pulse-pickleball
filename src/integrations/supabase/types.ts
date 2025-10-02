@@ -121,6 +121,7 @@ export type Database = {
           title: string
           updated_at: string
           user_id: string
+          viewed_participants_count: number | null
         }
         Insert: {
           content: string
@@ -134,6 +135,7 @@ export type Database = {
           title: string
           updated_at?: string
           user_id: string
+          viewed_participants_count?: number | null
         }
         Update: {
           content?: string
@@ -147,6 +149,7 @@ export type Database = {
           title?: string
           updated_at?: string
           user_id?: string
+          viewed_participants_count?: number | null
         }
         Relationships: [
           {
@@ -487,6 +490,10 @@ export type Database = {
           won: boolean
         }
         Returns: number
+      }
+      delete_old_court_posts: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       freeze_week_ratings: {
         Args: { target_week_start: string }

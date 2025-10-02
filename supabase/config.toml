@@ -1,1 +1,17 @@
 project_id = "ryxklkayezjnwwunuphn"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[auth]
+enabled = true
+
+[functions.notify-contested-match]
+verify_jwt = false
+
+[functions.delete-old-posts]
+verify_jwt = false

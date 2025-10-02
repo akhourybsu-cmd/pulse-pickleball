@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Medal } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toLocaleDateStringEST } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -17,11 +17,18 @@ interface CourtMatch {
   team2_players: string[];
 }
 
+interface LeaderboardEntry {
+  player_id: string;
+  player_name: string;
+  wins: number;
+}
+
 const CourtHistory = () => {
   const [loading, setLoading] = useState(true);
   const [courts, setCourts] = useState<Array<{ id: string; name: string; city: string; state: string }>>([]);
   const [selectedCourt, setSelectedCourt] = useState("");
   const [matches, setMatches] = useState<CourtMatch[]>([]);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -31,6 +38,7 @@ const CourtHistory = () => {
   useEffect(() => {
     if (selectedCourt) {
       fetchCourtMatches();
+      fetchWeeklyLeaderboard();
     }
   }, [selectedCourt]);
 
@@ -89,6 +97,79 @@ const CourtHistory = () => {
     setMatches(matchesWithPlayers);
   };
 
+  const fetchWeeklyLeaderboard = async () => {
+    if (!selectedCourt) return;
+
+    // Get current week start (Monday)
+    const now = new Date();
+    const dayOfWeek = now.getDay();
+    const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - diff);
+    weekStart.setHours(0, 0, 0, 0);
+
+    const { data: matchesData } = await supabase
+      .from("matches")
+      .select(`
+        id,
+        match_date,
+        team1_score,
+        team2_score
+      `)
+      .eq("court_id", selectedCourt)
+      .eq("status", "approved")
+      .gte("match_date", weekStart.toISOString().split('T')[0]);
+
+    if (!matchesData || matchesData.length === 0) {
+      setLeaderboard([]);
+      return;
+    }
+
+    // Get participants for these matches
+    const winsMap = new Map<string, { name: string; wins: number }>();
+    
+    for (const match of matchesData) {
+      const { data: participants } = await supabase
+        .from("match_participants")
+        .select(`
+          player_id,
+          team,
+          rating_change,
+          profiles(full_name)
+        `)
+        .eq("match_id", match.id);
+
+      if (participants) {
+        participants.forEach((participant: any) => {
+          const playerId = participant.player_id;
+          const playerName = participant.profiles.full_name;
+          const won = participant.rating_change > 0;
+
+          if (!winsMap.has(playerId)) {
+            winsMap.set(playerId, { name: playerName, wins: 0 });
+          }
+
+          if (won) {
+            winsMap.get(playerId)!.wins += 1;
+          }
+        });
+      }
+    }
+
+    // Convert to array and sort
+    const leaderboardData: LeaderboardEntry[] = Array.from(winsMap.entries())
+      .map(([player_id, data]) => ({
+        player_id,
+        player_name: data.name,
+        wins: data.wins,
+      }))
+      .filter(entry => entry.wins > 0) // Only show players with at least 1 win
+      .sort((a, b) => b.wins - a.wins)
+      .slice(0, 3);
+
+    setLeaderboard(leaderboardData);
+  };
+
   if (loading) {
     return <div className="flex justify-center items-center min-h-screen">Loading...</div>;
   }
@@ -108,6 +189,39 @@ const CourtHistory = () => {
 
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <h1 className="text-3xl font-bold mb-6">Court Match History</h1>
+
+        {leaderboard.length > 0 && (
+          <Card className="border-2 border-primary shadow-lg mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Medal className="w-5 h-5 text-primary" />
+                This Week's Top Players
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {leaderboard.map((entry, index) => (
+                  <div
+                    key={entry.player_id}
+                    className="flex items-center gap-3 p-3 rounded-lg bg-muted/50"
+                  >
+                    <div className="flex items-center justify-center w-10 h-10 rounded-full bg-background">
+                      {index === 0 && <span className="text-2xl">🥇</span>}
+                      {index === 1 && <span className="text-2xl">🥈</span>}
+                      {index === 2 && <span className="text-2xl">🥉</span>}
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-semibold">{entry.player_name}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {entry.wins} {entry.wins === 1 ? 'win' : 'wins'} this week
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <div className="mb-6">
           <Select value={selectedCourt} onValueChange={setSelectedCourt}>

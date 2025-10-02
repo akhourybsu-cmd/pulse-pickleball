@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Users, Calendar, Clock } from "lucide-react";
+import { ArrowLeft, Users, Calendar, Clock, Trash2 } from "lucide-react";
 import { formatDateEST, formatTime12Hour } from "@/lib/utils";
 
 interface Court {
@@ -292,6 +292,31 @@ const CourtBoard = () => {
     }
   };
 
+  const handleDeletePost = async (postId: string) => {
+    if (!currentUserId) return;
+
+    const { error } = await supabase
+      .from("court_posts")
+      .delete()
+      .eq("id", postId)
+      .eq("user_id", currentUserId);
+
+    if (error) {
+      console.error("Error deleting post:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete post",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Success",
+        description: "Post deleted successfully",
+      });
+      fetchPosts();
+    }
+  };
+
   const selectedCourt = courts.find(c => c.id === selectedCourtId);
 
   return (
@@ -484,13 +509,24 @@ const CourtBoard = () => {
                       {!currentUserId ? (
                         <p className="text-sm text-muted-foreground">Log in to join this session</p>
                       ) : isParticipant ? (
-                        <Button
-                          variant="outline"
-                          onClick={() => handleLeaveSession(post.id)}
-                          className="w-full"
-                        >
-                          Leave Session
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            onClick={() => handleLeaveSession(post.id)}
+                            className="flex-1"
+                          >
+                            Leave Session
+                          </Button>
+                          {isCreator && (
+                            <Button
+                              variant="destructive"
+                              onClick={() => handleDeletePost(post.id)}
+                              size="icon"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
                       ) : isFull ? (
                         <Button variant="outline" disabled className="w-full">
                           Session Full

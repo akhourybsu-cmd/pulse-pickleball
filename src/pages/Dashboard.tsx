@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Trophy, TrendingUp, Calendar, LogOut, Plus, MapPin, BarChart3, RefreshCw, HelpCircle, MessageSquare } from "lucide-react";
+import { Trophy, TrendingUp, Calendar, LogOut, Plus, MapPin, BarChart3, RefreshCw, HelpCircle, MessageSquare, Bell } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import logo from "@/assets/pulse-logo.png";
 
@@ -26,6 +26,7 @@ const Dashboard = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [hasNewParticipants, setHasNewParticipants] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -83,6 +84,54 @@ const Dashboard = () => {
         },
         (payload) => {
           setProfile(payload.new as Profile);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
+
+  // Check for new participants in user's posts
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const checkNewParticipants = async () => {
+      const { data: posts } = await supabase
+        .from("court_posts")
+        .select(`
+          id,
+          viewed_participants_count,
+          court_post_participants(count)
+        `)
+        .eq("user_id", user.id)
+        .eq("status", "open");
+
+      if (posts) {
+        const hasNew = posts.some((post: any) => {
+          const currentCount = post.court_post_participants[0]?.count || 0;
+          const viewedCount = post.viewed_participants_count || 0;
+          return currentCount > viewedCount;
+        });
+        setHasNewParticipants(hasNew);
+      }
+    };
+
+    checkNewParticipants();
+
+    // Listen for new participants
+    const channel = supabase
+      .channel('participant-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'court_post_participants'
+        },
+        () => {
+          checkNewParticipants();
         }
       )
       .subscribe();
@@ -299,9 +348,16 @@ const Dashboard = () => {
             size="lg" 
             variant="outline"
             onClick={() => navigate("/court/board")}
+            className="relative"
           >
             <MessageSquare className="w-5 h-5 mr-2" />
             Court Connector - looking for group
+            {hasNewParticipants && (
+              <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
+              </span>
+            )}
           </Button>
 
           <Button 
