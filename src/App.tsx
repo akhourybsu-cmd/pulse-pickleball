@@ -7,6 +7,8 @@ import { ThemeProvider } from "next-themes";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
+import EditProfile from "./pages/EditProfile";
+import ViewProfile from "./pages/ViewProfile";
 import NewMatch from "./pages/NewMatch";
 import PendingMatches from "./pages/PendingMatches";
 import MatchHistory from "./pages/MatchHistory";
@@ -28,6 +30,8 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/profile/edit" element={<EditProfile />} />
+            <Route path="/profile/:userId" element={<ViewProfile />} />
             <Route path="/match/new" element={<NewMatch />} />
             <Route path="/match/pending" element={<PendingMatches />} />
             <Route path="/match/history" element={<MatchHistory />} />

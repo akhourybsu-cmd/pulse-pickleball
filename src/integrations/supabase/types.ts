@@ -419,14 +419,34 @@ export type Database = {
       }
       profiles: {
         Row: {
+          accessibility_needs: string | null
+          avatar_url: string | null
           avg_opponent_rating: number | null
           created_at: string | null
           current_rating: number | null
+          display_name: string | null
           email: string
+          first_name: string | null
           full_name: string
+          handedness: string | null
+          home_court_id: string | null
           id: string
+          last_name: string | null
           last_rating_update: string | null
           losses: number | null
+          notify_badges_email: boolean | null
+          notify_badges_push: boolean | null
+          notify_badges_sms: boolean | null
+          notify_score_email: boolean | null
+          notify_score_push: boolean | null
+          notify_score_sms: boolean | null
+          notify_weekly_digest: boolean | null
+          paddle_brand: string | null
+          paddle_model: string | null
+          partner_preferences: string | null
+          phonetic_name: string | null
+          play_side: string | null
+          pronouns: string | null
           total_matches: number | null
           total_points_against: number | null
           total_points_for: number | null
@@ -436,14 +456,34 @@ export type Database = {
           wins: number | null
         }
         Insert: {
+          accessibility_needs?: string | null
+          avatar_url?: string | null
           avg_opponent_rating?: number | null
           created_at?: string | null
           current_rating?: number | null
+          display_name?: string | null
           email: string
+          first_name?: string | null
           full_name: string
+          handedness?: string | null
+          home_court_id?: string | null
           id: string
+          last_name?: string | null
           last_rating_update?: string | null
           losses?: number | null
+          notify_badges_email?: boolean | null
+          notify_badges_push?: boolean | null
+          notify_badges_sms?: boolean | null
+          notify_score_email?: boolean | null
+          notify_score_push?: boolean | null
+          notify_score_sms?: boolean | null
+          notify_weekly_digest?: boolean | null
+          paddle_brand?: string | null
+          paddle_model?: string | null
+          partner_preferences?: string | null
+          phonetic_name?: string | null
+          play_side?: string | null
+          pronouns?: string | null
           total_matches?: number | null
           total_points_against?: number | null
           total_points_for?: number | null
@@ -453,14 +493,34 @@ export type Database = {
           wins?: number | null
         }
         Update: {
+          accessibility_needs?: string | null
+          avatar_url?: string | null
           avg_opponent_rating?: number | null
           created_at?: string | null
           current_rating?: number | null
+          display_name?: string | null
           email?: string
+          first_name?: string | null
           full_name?: string
+          handedness?: string | null
+          home_court_id?: string | null
           id?: string
+          last_name?: string | null
           last_rating_update?: string | null
           losses?: number | null
+          notify_badges_email?: boolean | null
+          notify_badges_push?: boolean | null
+          notify_badges_sms?: boolean | null
+          notify_score_email?: boolean | null
+          notify_score_push?: boolean | null
+          notify_score_sms?: boolean | null
+          notify_weekly_digest?: boolean | null
+          paddle_brand?: string | null
+          paddle_model?: string | null
+          partner_preferences?: string | null
+          phonetic_name?: string | null
+          play_side?: string | null
+          pronouns?: string | null
           total_matches?: number | null
           total_points_against?: number | null
           total_points_for?: number | null
@@ -469,7 +529,15 @@ export type Database = {
           week_start_rating?: number | null
           wins?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_home_court_id_fkey"
+            columns: ["home_court_id"]
+            isOneToOne: false
+            referencedRelation: "courts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       rating_parameters: {
         Row: {
@@ -595,6 +663,13 @@ export type Database = {
       get_own_email: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      get_own_private_fields: {
+        Args: { profile_id: string }
+        Returns: {
+          accessibility_needs: string
+          partner_preferences: string
+        }[]
       }
       get_partner_id: {
         Args: { match_id_param: string; player_id_param: string }

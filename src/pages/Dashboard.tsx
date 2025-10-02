@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Trophy, TrendingUp, Calendar, LogOut, Plus, MapPin, BarChart3, RefreshCw, HelpCircle, MessageSquare, Trash2, Award } from "lucide-react";
+import { Trophy, TrendingUp, Calendar, LogOut, Plus, MapPin, BarChart3, RefreshCw, HelpCircle, MessageSquare, Trash2, Award, UserCog } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import logo from "@/assets/pulse-logo.png";
 import { CourtStats } from "@/components/CourtStats";
@@ -497,6 +497,15 @@ const Dashboard = () => {
           >
             <Plus className="w-5 h-5 mr-2" />
             Record New Match
+          </Button>
+
+          <Button 
+            size="lg" 
+            variant="outline"
+            onClick={() => navigate("/profile/edit")}
+          >
+            <UserCog className="w-5 h-5 mr-2" />
+            Edit Profile
           </Button>
           
           <Button 
