@@ -21,6 +21,7 @@ import AdminSession from "./pages/AdminSession";
 import AdminPairing from "./pages/AdminPairing";
 import MatchTicket from "./pages/MatchTicket";
 import QRCheckIn from "./pages/QRCheckIn";
+import Kiosk from "./pages/Kiosk";
 
 const queryClient = new QueryClient();
 
@@ -48,6 +49,7 @@ const App = () => (
             <Route path="/admin/pairing" element={<AdminPairing />} />
             <Route path="/match/ticket/:ticketId" element={<MatchTicket />} />
             <Route path="/qr-checkin" element={<QRCheckIn />} />
+            <Route path="/kiosk" element={<Kiosk />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
