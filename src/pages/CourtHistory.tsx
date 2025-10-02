@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { toLocaleDateStringEST } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 
 interface CourtMatch {
@@ -152,7 +153,7 @@ const CourtHistory = () => {
                 <CardHeader>
                   <div className="flex justify-between items-center">
                     <p className="text-sm text-muted-foreground">
-                      {new Date(match.match_date).toLocaleDateString()}
+                      {toLocaleDateStringEST(match.match_date)}
                     </p>
                     <Badge>
                       {match.team1_score} - {match.team2_score}

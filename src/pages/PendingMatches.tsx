@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner";
 import { ArrowLeft, Check, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { toLocaleDateStringEST } from "@/lib/utils";
 
 interface PendingMatch {
   match_id: string;
@@ -222,7 +223,7 @@ const PendingMatches = () => {
                     <div>
                       <CardTitle>{match.court_name}</CardTitle>
                       <CardDescription>
-                        {new Date(match.match_date).toLocaleDateString()}
+                        {toLocaleDateStringEST(match.match_date)}
                       </CardDescription>
                     </div>
                     <Badge variant={match.my_approval === true ? "default" : "secondary"}>

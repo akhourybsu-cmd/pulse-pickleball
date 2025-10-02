@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { z } from "zod";
+import { toLocaleDateStringEST } from "@/lib/utils";
 
 const contestSchema = z.object({
   reason: z.string().trim().min(10, "Reason must be at least 10 characters").max(500, "Reason too long"),
@@ -209,7 +210,7 @@ const MatchHistory = () => {
                     <div>
                       <CardTitle className="text-lg">{match.court_name}</CardTitle>
                       <p className="text-sm text-muted-foreground">
-                        {new Date(match.match_date).toLocaleDateString()}
+                        {toLocaleDateStringEST(match.match_date)}
                       </p>
                     </div>
                     <Badge variant={match.won ? "default" : "destructive"}>

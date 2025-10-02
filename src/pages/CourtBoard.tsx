@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Users, Calendar, Clock } from "lucide-react";
-import { format } from "date-fns";
+import { formatDateEST, formatTime12Hour } from "@/lib/utils";
 
 interface Court {
   id: string;
@@ -428,11 +428,11 @@ const CourtBoard = () => {
                         <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
                           <div className="flex items-center gap-1">
                             <Calendar className="w-4 h-4" />
-                            {format(new Date(post.session_date), "MMM d, yyyy")}
+                            {formatDateEST(post.session_date)}
                           </div>
                           <div className="flex items-center gap-1">
                             <Clock className="w-4 h-4" />
-                            {post.session_time}
+                            {formatTime12Hour(post.session_time)}
                           </div>
                         </div>
                       </div>
