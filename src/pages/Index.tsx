@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trophy, TrendingUp, Users, Zap, MapPin } from "lucide-react";
+import { Trophy, TrendingUp, Users, Zap, MapPin, Award } from "lucide-react";
 import logo from "@/assets/pulse-logo.png";
 import InstallInstructions from "@/components/InstallInstructions";
 
@@ -31,8 +31,8 @@ const Index = () => {
               Pickleball Universal Level & Skill Estimator
             </h2>
             <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Track your pickleball journey with dynamic ratings that evolve with every match. 
-              Get accurate skill assessments and watch your game improve.
+              Track your pickleball journey and celebrate your local community's love for the game. 
+              Build friendly competition, connect with fellow players, and watch your skills grow through dynamic ratings that evolve with every match.
             </p>
             <Button size="lg" onClick={() => navigate("/auth")} className="shadow-[var(--shadow-glow)]">
               Start Tracking Your Rating
@@ -89,6 +89,18 @@ const Index = () => {
                 <CardContent>
                   <CardDescription>
                     Find and join pickup games at your local courts - connect with players in your area
+                  </CardDescription>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <Award className="w-10 h-10 text-secondary mb-2" />
+                  <CardTitle>Leaderboards & Badges</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <CardDescription>
+                    Earn badges and accolades while competing on local leaderboards - stay motivated year-round
                   </CardDescription>
                 </CardContent>
               </Card>
