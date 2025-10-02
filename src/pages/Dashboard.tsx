@@ -297,7 +297,7 @@ const Dashboard = () => {
             onClick={() => navigate("/court/board")}
           >
             <MessageSquare className="w-5 h-5 mr-2" />
-            Looking For Group
+            Court Connector - looking for group
           </Button>
 
           <Button 
