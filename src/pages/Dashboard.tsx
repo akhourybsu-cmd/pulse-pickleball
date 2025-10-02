@@ -398,31 +398,17 @@ const Dashboard = () => {
               </Button>
             </div>
             <div className="text-right space-y-2">
-              <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={handleRefreshStats}
-                  disabled={refreshing || clearing}
-                >
-                  <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-                  Recalculate Ratings
-                </Button>
-                
-                {user?.email === 'akhourybsu@gmail.com' && (
-                  <Button 
-                    variant="destructive" 
-                    size="sm"
-                    onClick={handleClearHistory}
-                    disabled={refreshing || clearing}
-                  >
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Clear History
-                  </Button>
-                )}
-              </div>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleRefreshStats}
+                disabled={refreshing || clearing}
+              >
+                <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+                Recalculate Ratings
+              </Button>
               <p className="text-xs text-muted-foreground">
-                {user?.email === 'akhourybsu@gmail.com' ? 'Admin tools' : 'Recalculate all player ratings'}
+                Recalculate all player ratings
               </p>
             </div>
           </div>

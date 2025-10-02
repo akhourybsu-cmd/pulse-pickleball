@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Plus, PlayCircle, StopCircle, QrCode, Download, Tv, Settings } from "lucide-react";
+import { ArrowLeft, Plus, PlayCircle, StopCircle, QrCode, Download, Tv, Settings, Trash2, RefreshCw } from "lucide-react";
+import { toast as sonnerToast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -53,7 +54,9 @@ export default function AdminSession() {
   const [matchType, setMatchType] = useState("ladder");
   const [showQRDialog, setShowQRDialog] = useState(false);
   const [selectedSessionForQR, setSelectedSessionForQR] = useState<Session | null>(null);
+  const [clearing, setClearing] = useState(false);
   const qrRef = useRef<HTMLDivElement>(null);
+  const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
     checkUserAccess();
@@ -68,6 +71,8 @@ export default function AdminSession() {
       return;
     }
 
+    setCurrentUserEmail(user.email);
+
     // Check if user is admin
     const { data: roleData } = await supabase
       .from("user_roles")
@@ -81,6 +86,42 @@ export default function AdminSession() {
     }
 
     setLoading(false);
+  };
+
+  const handleClearHistory = async () => {
+    const confirmed = window.confirm(
+      "⚠️ WARNING: This will permanently delete ALL matches, approvals, and reset ALL player stats to 3.00.\n\n" +
+      "This action CANNOT be undone and is intended for beta testing only.\n\n" +
+      "Are you absolutely sure you want to continue?"
+    );
+
+    if (!confirmed) return;
+    
+    setClearing(true);
+    try {
+      const { error } = await supabase.rpc('clear_all_match_history_authenticated');
+
+      if (error) {
+        console.error('Clear history error:', error);
+        toast({
+          title: "Error",
+          description: "Failed to clear match history",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      sonnerToast.success("Match history cleared successfully");
+    } catch (error) {
+      console.error('Clear error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to clear match history",
+        variant: "destructive",
+      });
+    } finally {
+      setClearing(false);
+    }
   };
 
   const fetchCourts = async () => {
@@ -263,11 +304,32 @@ export default function AdminSession() {
       </div>
 
       <div className="flex-1 container mx-auto px-4 py-8 space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Session Management</h1>
-          <p className="text-muted-foreground mt-2">
-            Create and manage court sessions. Only one active session per court allowed.
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Session Management</h1>
+            <p className="text-muted-foreground mt-2">
+              Create and manage court sessions. Only one active session per court allowed.
+            </p>
+          </div>
+          {currentUserEmail === 'akhourybsu@gmail.com' && (
+            <Button 
+              variant="destructive" 
+              onClick={handleClearHistory}
+              disabled={clearing}
+            >
+              {clearing ? (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  Clearing...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Clear All History
+                </>
+              )}
+            </Button>
+          )}
         </div>
 
         {/* Create New Session */}

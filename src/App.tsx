@@ -24,6 +24,7 @@ import QRCheckIn from "./pages/QRCheckIn";
 import Kiosk from "./pages/Kiosk";
 import AdminManage from "./pages/AdminManage";
 import AdminDashboard from "./pages/AdminDashboard";
+import Changelog from "./pages/Changelog";
 
 const queryClient = new QueryClient();
 
@@ -55,6 +56,7 @@ const App = () => (
             <Route path="/match/ticket/:ticketId" element={<MatchTicket />} />
             <Route path="/qr-checkin" element={<QRCheckIn />} />
             <Route path="/kiosk" element={<Kiosk />} />
+            <Route path="/changelog" element={<Changelog />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
