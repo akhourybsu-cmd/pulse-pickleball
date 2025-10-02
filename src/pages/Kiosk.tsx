@@ -60,55 +60,88 @@ export default function Kiosk() {
     return () => clearInterval(timer);
   }, []);
 
-  // Set up realtime subscriptions
+  // Set up realtime subscriptions with reconnection
   useEffect(() => {
     if (!sessionId) return;
 
-    const channel = supabase
-      .channel(`kiosk_${sessionId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'match_tickets',
-          filter: `session_id=eq.${sessionId}`,
-        },
-        () => {
-          console.log('Kiosk: Match tickets updated');
-          fetchSessionData();
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'queue_entries',
-          filter: `session_id=eq.${sessionId}`,
-        },
-        () => {
-          console.log('Kiosk: Queue updated');
-          fetchSessionData();
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'check_ins',
-          filter: `session_id=eq.${sessionId}`,
-        },
-        () => {
-          console.log('Kiosk: Check-ins updated');
-          fetchSessionData();
-        }
-      )
-      .subscribe();
+    let reconnectAttempts = 0;
+    const maxReconnectAttempts = 5;
+
+    const setupChannel = () => {
+      const channel = supabase
+        .channel(`kiosk_${sessionId}`, {
+          config: {
+            broadcast: { self: false },
+          },
+        })
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'match_tickets',
+            filter: `session_id=eq.${sessionId}`,
+          },
+          () => {
+            console.log('Kiosk: Match tickets updated');
+            fetchSessionData();
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'queue_entries',
+            filter: `session_id=eq.${sessionId}`,
+          },
+          () => {
+            console.log('Kiosk: Queue updated');
+            fetchSessionData();
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'check_ins',
+            filter: `session_id=eq.${sessionId}`,
+          },
+          () => {
+            console.log('Kiosk: Check-ins updated');
+            fetchSessionData();
+          }
+        )
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            console.log('Kiosk realtime connected');
+            reconnectAttempts = 0;
+          } else if (status === 'CHANNEL_ERROR') {
+            console.error('Kiosk realtime error, attempting reconnect...');
+            if (reconnectAttempts < maxReconnectAttempts) {
+              reconnectAttempts++;
+              setTimeout(() => {
+                channel.unsubscribe();
+                setupChannel();
+              }, 1000 * reconnectAttempts);
+            }
+          }
+        });
+
+      return channel;
+    };
+
+    const channel = setupChannel();
+
+    // Auto-refresh every 60 seconds as fallback
+    const refreshInterval = setInterval(() => {
+      fetchSessionData();
+    }, 60000);
 
     return () => {
       supabase.removeChannel(channel);
+      clearInterval(refreshInterval);
     };
   }, [sessionId]);
 

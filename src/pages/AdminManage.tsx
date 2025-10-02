@@ -67,7 +67,16 @@ export default function AdminManage() {
 
   useEffect(() => {
     checkAdminAccess();
-  }, []);
+    
+    // Auto-refresh every 15 seconds
+    const refreshInterval = setInterval(() => {
+      if (sessionId) {
+        fetchSessionData();
+      }
+    }, 15000);
+
+    return () => clearInterval(refreshInterval);
+  }, [sessionId]);
 
   const checkAdminAccess = async () => {
     const { data: { user } } = await supabase.auth.getUser();
