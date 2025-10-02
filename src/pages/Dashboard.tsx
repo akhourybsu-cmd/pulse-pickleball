@@ -10,6 +10,7 @@ import logo from "@/assets/pulse-logo-new.png";
 import { CourtStats } from "@/components/CourtStats";
 import { BadgeDisplay } from "@/components/BadgeDisplay";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { Footer } from "@/components/Footer";
 
 interface Profile {
   id: string;
@@ -576,6 +577,8 @@ const Dashboard = () => {
           </Button>
         </div>
       </div>
+
+      <Footer />
     </div>
   );
 };

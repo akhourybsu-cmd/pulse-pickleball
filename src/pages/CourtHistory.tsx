@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toLocaleDateStringEST } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { Footer } from "@/components/Footer";
 
 interface CourtMatch {
   match_id: string;
@@ -297,6 +298,8 @@ const CourtHistory = () => {
           </div>
         )}
       </div>
+
+      <Footer />
     </div>
   );
 };

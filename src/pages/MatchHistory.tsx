@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { z } from "zod";
 import { toLocaleDateStringEST } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { Footer } from "@/components/Footer";
 
 const contestSchema = z.object({
   reason: z.string().trim().min(10, "Reason must be at least 10 characters").max(500, "Reason too long"),
@@ -304,6 +305,8 @@ const MatchHistory = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Footer />
     </div>
   );
 };

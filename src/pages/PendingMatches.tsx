@@ -8,6 +8,7 @@ import { ArrowLeft, Check, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { toLocaleDateStringEST } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { Footer } from "@/components/Footer";
 
 interface PendingMatch {
   match_id: string;
@@ -291,6 +292,8 @@ const PendingMatches = () => {
           </div>
         )}
       </div>
+
+      <Footer />
     </div>
   );
 };
