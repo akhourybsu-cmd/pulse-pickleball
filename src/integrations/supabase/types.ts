@@ -201,6 +201,7 @@ export type Database = {
           team1_score: number
           team2_score: number
           updated_at: string | null
+          week_start: string | null
         }
         Insert: {
           court_id?: string | null
@@ -213,6 +214,7 @@ export type Database = {
           team1_score: number
           team2_score: number
           updated_at?: string | null
+          week_start?: string | null
         }
         Update: {
           court_id?: string | null
@@ -225,6 +227,7 @@ export type Database = {
           team1_score?: number
           team2_score?: number
           updated_at?: string | null
+          week_start?: string | null
         }
         Relationships: [
           {
@@ -389,8 +392,16 @@ export type Database = {
         }
         Returns: number
       }
+      freeze_week_ratings: {
+        Args: { target_week_start: string }
+        Returns: undefined
+      }
       get_own_email: {
         Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      get_week_start: {
+        Args: { match_date: string }
         Returns: string
       }
       recalculate_all_player_stats: {
@@ -399,6 +410,10 @@ export type Database = {
       }
       recalculate_player_stats: {
         Args: { p_player_id: string }
+        Returns: undefined
+      }
+      recompute_ratings_from_week: {
+        Args: { start_week: string }
         Returns: undefined
       }
       user_created_match: {
