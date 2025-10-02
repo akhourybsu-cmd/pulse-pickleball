@@ -16,6 +16,7 @@ interface Session {
   start_time: string;
   num_courts: number;
   status: string;
+  match_type: string;
   courts: {
     name: string;
   };
@@ -529,7 +530,10 @@ export default function SessionQueue() {
                           {entry.profiles.display_name || entry.profiles.full_name}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          Rating: {entry.profiles.current_rating?.toFixed(2) ?? '3.00'} • Games: {entry.games_played}
+                          {session.match_type !== 'casual' && (
+                            <>Rating: {entry.profiles.current_rating?.toFixed(2) ?? '3.00'} • </>
+                          )}
+                          Games: {entry.games_played}
                         </p>
                       </div>
                     </div>
@@ -555,9 +559,11 @@ export default function SessionQueue() {
                     <p className="font-medium">
                       {checkIn.profiles.display_name || checkIn.profiles.full_name}
                     </p>
-                    <p className="text-xs text-muted-foreground">
-                      {checkIn.profiles.current_rating?.toFixed(2) ?? '3.00'}
-                    </p>
+                    {session.match_type !== 'casual' && (
+                      <p className="text-xs text-muted-foreground">
+                        {checkIn.profiles.current_rating?.toFixed(2) ?? '3.00'}
+                      </p>
+                    )}
                   </div>
                 ))}
               </div>
