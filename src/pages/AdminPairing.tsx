@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -261,7 +261,7 @@ export default function AdminPairing() {
     return null;
   }
 
-  const pairings = generateBalancedPairings();
+  const pairings = useMemo(() => generateBalancedPairings(), [queueEntries, session]);
 
   return (
     <div className="min-h-screen flex flex-col">
