@@ -4,10 +4,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Trophy, TrendingUp, Calendar, LogOut, Plus, MapPin, BarChart3, RefreshCw, HelpCircle, MessageSquare, Trash2 } from "lucide-react";
+import { Trophy, TrendingUp, Calendar, LogOut, Plus, MapPin, BarChart3, RefreshCw, HelpCircle, MessageSquare, Trash2, Award } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import logo from "@/assets/pulse-logo.png";
 import { CourtStats } from "@/components/CourtStats";
+import { BadgeDisplay } from "@/components/BadgeDisplay";
 
 interface Profile {
   id: string;
@@ -22,6 +23,19 @@ interface Profile {
   avg_opponent_rating: number;
 }
 
+interface PlayerBadge {
+  id: string;
+  earned_at: string;
+  badges: {
+    id: string;
+    code: string;
+    name: string;
+    description: string;
+    category: string;
+    tier: number;
+  };
+}
+
 const Dashboard = () => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -29,6 +43,8 @@ const Dashboard = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [hasNewParticipants, setHasNewParticipants] = useState(false);
+  const [badges, setBadges] = useState<PlayerBadge[]>([]);
+  const [calculatingBadges, setCalculatingBadges] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -93,6 +109,36 @@ const Dashboard = () => {
     return () => {
       supabase.removeChannel(channel);
     };
+  }, [user?.id]);
+
+  // Fetch player badges
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const fetchBadges = async () => {
+      const { data: badgeData, error } = await supabase
+        .from('player_badges')
+        .select(`
+          id,
+          earned_at,
+          badges (
+            id,
+            code,
+            name,
+            description,
+            category,
+            tier
+          )
+        `)
+        .eq('player_id', user.id)
+        .order('earned_at', { ascending: false });
+
+      if (!error && badgeData) {
+        setBadges(badgeData as PlayerBadge[]);
+      }
+    };
+
+    fetchBadges();
   }, [user?.id]);
 
   // Check for new participants in user's posts
@@ -225,6 +271,51 @@ const Dashboard = () => {
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     navigate("/");
+  };
+
+  const calculateBadges = async () => {
+    if (!user?.id) return;
+    
+    setCalculatingBadges(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('calculate-badges', {
+        body: { player_id: user.id }
+      });
+
+      if (error) {
+        console.error('Badge calculation error:', error);
+        toast.error("Failed to calculate badges");
+        return;
+      }
+
+      // Refresh badges
+      const { data: badgeData, error: fetchError } = await supabase
+        .from('player_badges')
+        .select(`
+          id,
+          earned_at,
+          badges (
+            id,
+            code,
+            name,
+            description,
+            category,
+            tier
+          )
+        `)
+        .eq('player_id', user.id)
+        .order('earned_at', { ascending: false });
+
+      if (!fetchError && badgeData) {
+        setBadges(badgeData as PlayerBadge[]);
+        toast.success(`Badge check complete! ${data.badgesAwarded} badges awarded.`);
+      }
+    } catch (error) {
+      console.error('Badge calculation error:', error);
+      toast.error("Failed to calculate badges");
+    } finally {
+      setCalculatingBadges(false);
+    }
   };
 
   if (loading) {
@@ -382,6 +473,18 @@ const Dashboard = () => {
           {user && <CourtStats userId={user.id} />}
         </div>
 
+        <div className="mb-8">
+          <BadgeDisplay badges={badges.map(b => ({
+            id: b.badges.id,
+            code: b.badges.code,
+            name: b.badges.name,
+            description: b.badges.description,
+            category: b.badges.category,
+            tier: b.badges.tier,
+            earned_at: b.earned_at
+          }))} />
+        </div>
+
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <Button 
             size="lg" 
@@ -423,6 +526,25 @@ const Dashboard = () => {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
               </span>
+            )}
+          </Button>
+
+          <Button 
+            size="lg" 
+            variant="outline"
+            onClick={calculateBadges}
+            disabled={calculatingBadges}
+          >
+            {calculatingBadges ? (
+              <>
+                <RefreshCw className="w-5 h-5 mr-2 animate-spin" />
+                Calculating Badges...
+              </>
+            ) : (
+              <>
+                <Award className="w-5 h-5 mr-2" />
+                Check for New Badges
+              </>
             )}
           </Button>
 

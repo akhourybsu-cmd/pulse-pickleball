@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      badges: {
+        Row: {
+          category: string
+          code: string
+          created_at: string | null
+          description: string
+          icon: string | null
+          id: string
+          name: string
+          tier: number | null
+        }
+        Insert: {
+          category: string
+          code: string
+          created_at?: string | null
+          description: string
+          icon?: string | null
+          id?: string
+          name: string
+          tier?: number | null
+        }
+        Update: {
+          category?: string
+          code?: string
+          created_at?: string | null
+          description?: string
+          icon?: string | null
+          id?: string
+          name?: string
+          tier?: number | null
+        }
+        Relationships: []
+      }
       contested_matches: {
         Row: {
           contested_at: string
@@ -345,6 +378,45 @@ export type Database = {
           },
         ]
       }
+      player_badges: {
+        Row: {
+          badge_id: string
+          earned_at: string | null
+          id: string
+          player_id: string
+          progress: Json | null
+        }
+        Insert: {
+          badge_id: string
+          earned_at?: string | null
+          id?: string
+          player_id: string
+          progress?: Json | null
+        }
+        Update: {
+          badge_id?: string
+          earned_at?: string | null
+          id?: string
+          player_id?: string
+          progress?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_badges_badge_id_fkey"
+            columns: ["badge_id"]
+            isOneToOne: false
+            referencedRelation: "badges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "player_badges_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avg_opponent_rating: number | null
@@ -491,6 +563,19 @@ export type Database = {
         }
         Returns: number
       }
+      calculate_win_probability: {
+        Args: {
+          opponent1_rating: number
+          opponent2_rating: number
+          partner_rating: number
+          player_rating: number
+        }
+        Returns: number
+      }
+      check_and_award_badges: {
+        Args: { player_id_param: string }
+        Returns: undefined
+      }
       clear_all_match_history: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -509,6 +594,10 @@ export type Database = {
       }
       get_own_email: {
         Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      get_partner_id: {
+        Args: { match_id_param: string; player_id_param: string }
         Returns: string
       }
       get_week_start: {

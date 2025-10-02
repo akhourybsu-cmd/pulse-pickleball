@@ -15,3 +15,6 @@ verify_jwt = false
 
 [functions.delete-old-posts]
 verify_jwt = false
+
+[functions.calculate-badges]
+verify_jwt = true
