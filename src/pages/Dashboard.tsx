@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Trophy, TrendingUp, Calendar, LogOut, Plus, MapPin, BarChart3, RefreshCw, HelpCircle, MessageSquare, Trash2, Award, UserCog, User as UserIcon } from "lucide-react";
+import { Trophy, TrendingUp, Calendar, LogOut, Plus, MapPin, BarChart3, RefreshCw, HelpCircle, MessageSquare, Trash2, Award, UserCog, User as UserIcon, Settings } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import logo from "@/assets/pulse-logo-new.png";
 import { CourtStats } from "@/components/CourtStats";
@@ -48,6 +48,7 @@ const Dashboard = () => {
   const [hasNewParticipants, setHasNewParticipants] = useState(false);
   const [badges, setBadges] = useState<PlayerBadge[]>([]);
   const [calculatingBadges, setCalculatingBadges] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -73,6 +74,19 @@ const Dashboard = () => {
       }
 
       setProfile(profileData);
+
+      // Check if user is admin
+      const { data: roleData } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('role', 'admin')
+        .maybeSingle();
+
+      if (roleData) {
+        setIsAdmin(true);
+      }
+
       setLoading(false);
     };
 
@@ -348,6 +362,12 @@ const Dashboard = () => {
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <img src={logo} alt="PULSE Logo" className="h-16 w-auto" />
           <div className="flex items-center gap-3">
+            {isAdmin && (
+              <Button variant="default" size="sm" onClick={() => navigate("/admin")}>
+                <Settings className="w-4 h-4 mr-2" />
+                Admin
+              </Button>
+            )}
             <Button variant="outline" size="icon" onClick={() => navigate(`/profile/${user?.id}`)} className="rounded-full">
               <UserIcon className="h-[1.2rem] w-[1.2rem]" />
               <span className="sr-only">View Profile</span>

@@ -23,6 +23,7 @@ import MatchTicket from "./pages/MatchTicket";
 import QRCheckIn from "./pages/QRCheckIn";
 import Kiosk from "./pages/Kiosk";
 import AdminManage from "./pages/AdminManage";
+import AdminDashboard from "./pages/AdminDashboard";
 
 const queryClient = new QueryClient();
 
@@ -46,12 +47,14 @@ const App = () => (
             <Route path="/court/board" element={<CourtBoard />} />
             <Route path="/faq" element={<FAQ />} />
             <Route path="/session/queue" element={<SessionQueue />} />
+            <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/session" element={<AdminSession />} />
+            <Route path="/admin/sessions" element={<AdminSession />} />
             <Route path="/admin/pairing" element={<AdminPairing />} />
+            <Route path="/admin/manage/:sessionId" element={<AdminManage />} />
             <Route path="/match/ticket/:ticketId" element={<MatchTicket />} />
             <Route path="/qr-checkin" element={<QRCheckIn />} />
             <Route path="/kiosk" element={<Kiosk />} />
-            <Route path="/admin/manage" element={<AdminManage />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
