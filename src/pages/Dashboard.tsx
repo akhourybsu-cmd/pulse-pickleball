@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Trophy, TrendingUp, Calendar, LogOut, Plus, MapPin, BarChart3, RefreshCw, HelpCircle, MessageSquare, Trash2, Award, UserCog, User as UserIcon, Settings } from "lucide-react";
+import { Trophy, TrendingUp, Calendar, LogOut, Plus, MapPin, BarChart3, RefreshCw, HelpCircle, MessageSquare, Trash2, Award, UserCog, User as UserIcon, Settings, Share2 } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import logo from "@/assets/pulse-logo-new.png";
 import { CourtStats } from "@/components/CourtStats";
@@ -335,6 +335,29 @@ const Dashboard = () => {
     }
   };
 
+  const handleShare = async () => {
+    const shareData = {
+      title: 'Pulse Pickleball',
+      text: 'Join me on Pulse - Track your pickleball journey and compete with friends!',
+      url: window.location.origin
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+        toast.success("Thanks for spreading the word!");
+      } else {
+        await navigator.clipboard.writeText(window.location.origin);
+        toast.success("Share link copied to clipboard!");
+      }
+    } catch (error) {
+      if (error instanceof Error && error.name !== 'AbortError') {
+        console.error('Error sharing:', error);
+        toast.error("Could not share. Please try again.");
+      }
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -588,6 +611,19 @@ const Dashboard = () => {
             onClick={() => navigate("/session/queue")}
           >
             Session Queue
+          </Button>
+        </div>
+
+        {/* Share Button */}
+        <div className="flex justify-center mt-8">
+          <Button 
+            onClick={handleShare}
+            variant="default"
+            size="lg"
+            className="gap-2 w-full md:w-auto shadow-[var(--shadow-glow)]"
+          >
+            <Share2 className="h-5 w-5" />
+            Invite Friends to Pulse
           </Button>
         </div>
       </div>
