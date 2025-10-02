@@ -96,18 +96,28 @@ const Dashboard = () => {
     
     setRefreshing(true);
     try {
-      // First, recalculate stats from all matches
-      const { error: recalcError } = await supabase.rpc('recalculate_player_stats', {
-        p_player_id: user.id
-      });
+      // Get the earliest week to recompute from (start of all time)
+      const { data: earliestMatch } = await supabase
+        .from("matches")
+        .select("week_start")
+        .order("week_start", { ascending: true })
+        .limit(1)
+        .single();
 
-      if (recalcError) {
-        console.error('Recalculation error:', recalcError);
-        toast.error("Failed to recalculate stats");
-        return;
+      if (earliestMatch?.week_start) {
+        // Recompute all ratings from the earliest week using weekly-frozen system
+        const { error: recomputeError } = await supabase.rpc('recompute_ratings_from_week', {
+          start_week: earliestMatch.week_start
+        });
+
+        if (recomputeError) {
+          console.error('Recomputation error:', recomputeError);
+          toast.error("Failed to recalculate ratings");
+          return;
+        }
       }
 
-      // Then fetch the updated profile
+      // Fetch the updated profile
       const { data: profileData, error: fetchError } = await supabase
         .from("profiles")
         .select("*")
@@ -120,7 +130,7 @@ const Dashboard = () => {
       }
 
       setProfile(profileData);
-      toast.success("Stats recalculated and refreshed successfully");
+      toast.success("Stats recalculated with weekly-frozen system");
     } catch (error) {
       console.error('Refresh error:', error);
       toast.error("Failed to refresh stats");
