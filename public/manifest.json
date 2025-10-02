@@ -1,0 +1,18 @@
+{
+  "name": "PULSE - Pickleball Rating System",
+  "short_name": "PULSE",
+  "description": "Track your pickleball rating with PULSE - Pickleball Universal Level and Skill Estimator",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0EA5E9",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/pulse-icon.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ]
+}

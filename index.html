@@ -4,6 +4,13 @@
     <meta charset="UTF-8" />
     <link rel="icon" href="/pulse-icon.jpg" type="image/jpeg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0EA5E9" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="PULSE" />
+    <link rel="apple-touch-icon" href="/pulse-icon.jpg" />
     <title>PULSE - Pickleball Rating System</title>
     <meta name="description" content="Track your pickleball rating with PULSE - Pickleball Universal Level and Skill Estimator. Dynamic ratings, match tracking, and performance analytics." />
     <meta name="author" content="PULSE" />
@@ -21,5 +28,12 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js');
+        });
+      }
+    </script>
   </body>
 </html>
