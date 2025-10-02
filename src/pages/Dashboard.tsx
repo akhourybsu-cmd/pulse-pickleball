@@ -9,6 +9,7 @@ import type { User } from "@supabase/supabase-js";
 import logo from "@/assets/pulse-logo.png";
 import { CourtStats } from "@/components/CourtStats";
 import { BadgeDisplay } from "@/components/BadgeDisplay";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 interface Profile {
   id: string;
@@ -344,10 +345,13 @@ const Dashboard = () => {
       <nav className="border-b bg-secondary">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <img src={logo} alt="PULSE Logo" className="h-16 w-auto" />
-          <Button variant="secondary" size="sm" onClick={handleSignOut}>
-            <LogOut className="w-4 h-4 mr-2" />
-            Sign Out
-          </Button>
+          <div className="flex items-center gap-3">
+            <ThemeToggle />
+            <Button variant="secondary" size="sm" onClick={handleSignOut}>
+              <LogOut className="w-4 h-4 mr-2" />
+              Sign Out
+            </Button>
+          </div>
         </div>
       </nav>
 
