@@ -384,9 +384,18 @@ const Dashboard = () => {
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <div className="flex items-center justify-between">
-            <div>
+            <div className="flex-1">
               <h2 className="text-3xl font-bold mb-2">Welcome back, {profile?.display_name || profile?.full_name}!</h2>
-              <p className="text-muted-foreground">Track your pickleball journey</p>
+              <p className="text-muted-foreground mb-4">Track your pickleball journey</p>
+              
+              <Button 
+                size="lg" 
+                onClick={() => navigate("/match/new")}
+                className="shadow-[var(--shadow-glow)]"
+              >
+                <Plus className="w-5 h-5 mr-2" />
+                Record New Match
+              </Button>
             </div>
             <div className="text-right space-y-2">
               <div className="flex gap-2">
@@ -516,15 +525,6 @@ const Dashboard = () => {
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <Button 
-            size="lg" 
-            onClick={() => navigate("/match/new")}
-            className="shadow-[var(--shadow-glow)]"
-          >
-            <Plus className="w-5 h-5 mr-2" />
-            Record New Match
-          </Button>
-
           <Button 
             size="lg" 
             variant="outline"

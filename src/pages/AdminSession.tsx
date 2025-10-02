@@ -56,36 +56,30 @@ export default function AdminSession() {
   const qrRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    checkAdminAccess();
+    checkUserAccess();
     fetchCourts();
     fetchSessions();
   }, []);
 
-  const checkAdminAccess = async () => {
+  const checkUserAccess = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       navigate("/auth");
       return;
     }
 
+    // Check if user is admin
     const { data: roleData } = await supabase
       .from("user_roles")
       .select("role")
       .eq("user_id", user.id)
       .eq("role", "admin")
-      .single();
+      .maybeSingle();
 
-    if (!roleData) {
-      toast({
-        title: "Access Denied",
-        description: "You don't have admin access",
-        variant: "destructive",
-      });
-      navigate("/dashboard");
-      return;
+    if (roleData) {
+      setIsAdmin(true);
     }
 
-    setIsAdmin(true);
     setLoading(false);
   };
 
@@ -157,7 +151,17 @@ export default function AdminSession() {
           created_by: user.id,
         });
 
-      if (error) throw error;
+      if (error) {
+        if (error.code === '23505') {
+          toast({
+            title: "Session Already Active",
+            description: "There's already an active session at this court. End it before creating a new one.",
+            variant: "destructive",
+          });
+          return;
+        }
+        throw error;
+      }
 
       toast({
         title: "Session Created!",
@@ -241,13 +245,9 @@ export default function AdminSession() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-muted-foreground">Checking access...</p>
+        <p className="text-muted-foreground">Loading...</p>
       </div>
     );
-  }
-
-  if (!isAdmin) {
-    return null;
   }
 
   return (
@@ -263,7 +263,12 @@ export default function AdminSession() {
       </div>
 
       <div className="flex-1 container mx-auto px-4 py-8 space-y-6">
-        <h1 className="text-3xl font-bold">Session Management</h1>
+        <div>
+          <h1 className="text-3xl font-bold">Session Management</h1>
+          <p className="text-muted-foreground mt-2">
+            Create and manage court sessions. Only one active session per court allowed.
+          </p>
+        </div>
 
         {/* Create New Session */}
         <Card>
