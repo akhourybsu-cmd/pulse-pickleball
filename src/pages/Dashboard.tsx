@@ -575,6 +575,14 @@ const Dashboard = () => {
             <HelpCircle className="w-5 h-5 mr-2" />
             Help & FAQ
           </Button>
+
+          <Button 
+            size="lg" 
+            variant="outline"
+            onClick={() => navigate("/session/queue")}
+          >
+            Session Queue
+          </Button>
         </div>
       </div>
 

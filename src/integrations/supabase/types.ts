@@ -47,6 +47,48 @@ export type Database = {
         }
         Relationships: []
       }
+      check_ins: {
+        Row: {
+          checked_in_at: string | null
+          id: string
+          last_activity: string | null
+          player_id: string
+          session_id: string
+          status: string
+        }
+        Insert: {
+          checked_in_at?: string | null
+          id?: string
+          last_activity?: string | null
+          player_id: string
+          session_id: string
+          status?: string
+        }
+        Update: {
+          checked_in_at?: string | null
+          id?: string
+          last_activity?: string | null
+          player_id?: string
+          session_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "check_ins_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "check_ins_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contested_matches: {
         Row: {
           contested_at: string
@@ -321,6 +363,100 @@ export type Database = {
           },
         ]
       }
+      match_tickets: {
+        Row: {
+          completed_at: string | null
+          court_number: number
+          created_at: string | null
+          id: string
+          match_id: string | null
+          session_id: string
+          started_at: string | null
+          status: string
+          team1_player1_id: string
+          team1_player2_id: string
+          team1_score: number | null
+          team2_player1_id: string
+          team2_player2_id: string
+          team2_score: number | null
+        }
+        Insert: {
+          completed_at?: string | null
+          court_number: number
+          created_at?: string | null
+          id?: string
+          match_id?: string | null
+          session_id: string
+          started_at?: string | null
+          status?: string
+          team1_player1_id: string
+          team1_player2_id: string
+          team1_score?: number | null
+          team2_player1_id: string
+          team2_player2_id: string
+          team2_score?: number | null
+        }
+        Update: {
+          completed_at?: string | null
+          court_number?: number
+          created_at?: string | null
+          id?: string
+          match_id?: string | null
+          session_id?: string
+          started_at?: string | null
+          status?: string
+          team1_player1_id?: string
+          team1_player2_id?: string
+          team1_score?: number | null
+          team2_player1_id?: string
+          team2_player2_id?: string
+          team2_score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_tickets_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_tickets_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_tickets_team1_player1_id_fkey"
+            columns: ["team1_player1_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_tickets_team1_player2_id_fkey"
+            columns: ["team1_player2_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_tickets_team2_player1_id_fkey"
+            columns: ["team2_player1_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_tickets_team2_player2_id_fkey"
+            columns: ["team2_player2_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       matches: {
         Row: {
           court_id: string | null
@@ -539,6 +675,51 @@ export type Database = {
           },
         ]
       }
+      queue_entries: {
+        Row: {
+          games_played: number | null
+          id: string
+          joined_at: string | null
+          player_id: string
+          priority: number | null
+          session_id: string
+          status: string
+        }
+        Insert: {
+          games_played?: number | null
+          id?: string
+          joined_at?: string | null
+          player_id: string
+          priority?: number | null
+          session_id: string
+          status?: string
+        }
+        Update: {
+          games_played?: number | null
+          id?: string
+          joined_at?: string | null
+          player_id?: string
+          priority?: number | null
+          session_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "queue_entries_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "queue_entries_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rating_parameters: {
         Row: {
           clamp_max: number
@@ -599,6 +780,80 @@ export type Database = {
           regress_coeff?: number
           tau?: number
           updated_at?: string
+        }
+        Relationships: []
+      }
+      sessions: {
+        Row: {
+          court_id: string
+          created_at: string | null
+          created_by: string
+          end_time: string | null
+          id: string
+          match_type: string
+          name: string
+          num_courts: number
+          session_date: string
+          start_time: string
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          court_id: string
+          created_at?: string | null
+          created_by: string
+          end_time?: string | null
+          id?: string
+          match_type?: string
+          name: string
+          num_courts?: number
+          session_date?: string
+          start_time: string
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          court_id?: string
+          created_at?: string | null
+          created_by?: string
+          end_time?: string | null
+          id?: string
+          match_type?: string
+          name?: string
+          num_courts?: number
+          session_date?: string
+          start_time?: string
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sessions_court_id_fkey"
+            columns: ["court_id"]
+            isOneToOne: false
+            referencedRelation: "courts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
         }
         Relationships: []
       }
@@ -683,6 +938,13 @@ export type Database = {
         Args: { match_date: string }
         Returns: string
       }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       recalculate_all_player_stats: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -709,7 +971,7 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -836,6 +1098,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "user"],
+    },
   },
 } as const

@@ -16,6 +16,8 @@ import CourtHistory from "./pages/CourtHistory";
 import CourtBoard from "./pages/CourtBoard";
 import FAQ from "./pages/FAQ";
 import NotFound from "./pages/NotFound";
+import SessionQueue from "./pages/SessionQueue";
+import AdminSession from "./pages/AdminSession";
 
 const queryClient = new QueryClient();
 
@@ -38,6 +40,8 @@ const App = () => (
             <Route path="/court/history" element={<CourtHistory />} />
             <Route path="/court/board" element={<CourtBoard />} />
             <Route path="/faq" element={<FAQ />} />
+            <Route path="/session/queue" element={<SessionQueue />} />
+            <Route path="/admin/session" element={<AdminSession />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
