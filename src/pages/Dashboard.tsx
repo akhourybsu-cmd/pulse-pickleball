@@ -209,7 +209,7 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent className="pt-0">
               <div className="text-sm">
-                <span className="text-muted-foreground">Weekly Change: </span>
+                <span className="text-muted-foreground">Expected change on refresh: </span>
                 <span className={`font-semibold ${weeklyChange > 0 ? 'text-green-500' : weeklyChange < 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
                   {weeklyChange > 0 ? '+' : ''}{weeklyChange.toFixed(2)}
                 </span>
