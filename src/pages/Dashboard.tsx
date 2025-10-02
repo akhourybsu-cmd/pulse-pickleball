@@ -303,14 +303,14 @@ const Dashboard = () => {
             <CardHeader className="pb-3">
               <CardDescription>Live Pulse Score</CardDescription>
               <CardTitle className="text-5xl font-bold text-primary">
-                {profile?.current_rating.toFixed(2)}
+                {profile?.current_rating?.toFixed(2) || '3.00'}
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
               <div className="text-sm">
                 <span className="text-muted-foreground">Weekly snapshot (Mon): </span>
                 <span className="font-semibold">
-                  {profile?.week_start_rating.toFixed(2)}
+                  {profile?.week_start_rating?.toFixed(2) || '3.00'}
                 </span>
                 <span className={`ml-2 font-semibold ${weeklyChange > 0 ? 'text-green-500' : weeklyChange < 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
                   ({weeklyChange > 0 ? '+' : ''}{weeklyChange.toFixed(2)})
@@ -369,7 +369,7 @@ const Dashboard = () => {
             <CardHeader className="pb-3">
               <CardDescription>Avg. Opponent Rating</CardDescription>
               <CardTitle className="text-3xl">
-                {profile?.avg_opponent_rating.toFixed(2) || "N/A"}
+                {profile?.avg_opponent_rating?.toFixed(2) || "N/A"}
               </CardTitle>
             </CardHeader>
             <CardContent className="text-sm text-muted-foreground">
