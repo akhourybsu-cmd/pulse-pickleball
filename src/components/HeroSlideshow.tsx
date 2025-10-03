@@ -2,11 +2,13 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { Trophy, Target, Users, TrendingUp } from "lucide-react";
+import regionMap from "@/assets/region-map.png";
 
 interface Slide {
   title: string;
   subtitle: string;
   icon?: React.ReactNode;
+  image?: string;
   cta?: string;
 }
 
@@ -33,6 +35,12 @@ const slides: Slide[] = [
     subtitle: "Our specialized rating algorithm considers team dynamics, partner synergy, and opponent strength to give you the most accurate doubles rating possible.",
     icon: <Users className="w-16 h-16 mx-auto mb-4 text-primary" />,
     cta: "Start Playing"
+  },
+  {
+    title: "Your Local Community",
+    subtitle: "PULSE is designed specifically for pickleball players in Southeastern Massachusetts and Rhode Island. Track your progress and compete within your regional community.",
+    image: regionMap,
+    cta: "Join Your Region"
   }
 ];
 
@@ -63,6 +71,15 @@ export const HeroSlideshow = () => {
         }`}
       >
         {slide.icon && <div className="mb-4">{slide.icon}</div>}
+        {slide.image && (
+          <div className="mb-6 flex justify-center">
+            <img 
+              src={slide.image} 
+              alt="Regional map" 
+              className="rounded-lg shadow-lg max-w-2xl w-full h-auto"
+            />
+          </div>
+        )}
         
         <h2 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
           {slide.title}
