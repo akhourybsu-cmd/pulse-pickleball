@@ -55,10 +55,10 @@ const Dashboard = () => {
     const fetchUser = async () => {
       try {
         // Check for existing session first
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
-        if (!session) {
-          console.log("No session found, redirecting to auth");
+        if (sessionError || !session?.user) {
+          console.log("No valid session, redirecting to auth");
           navigate("/auth");
           return;
         }
@@ -80,24 +80,25 @@ const Dashboard = () => {
         }
 
         setProfile(profileData);
+
+        // Check if user is admin
+        const { data: roleData } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id)
+          .eq('role', 'admin')
+          .maybeSingle();
+
+        if (roleData) {
+          setIsAdmin(true);
+        }
+
+        setLoading(false);
       } catch (error) {
         console.error("Dashboard load error:", error);
         toast.error("Failed to load dashboard");
+        navigate("/auth");
       }
-
-      // Check if user is admin
-      const { data: roleData } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .eq('role', 'admin')
-        .maybeSingle();
-
-      if (roleData) {
-        setIsAdmin(true);
-      }
-
-      setLoading(false);
     };
 
     fetchUser();
