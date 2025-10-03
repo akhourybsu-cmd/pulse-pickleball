@@ -1,7 +1,6 @@
-import { Award, Trophy, Zap, Target, Users, Heart } from "lucide-react";
+import { Award, Trophy, Zap, Target, Users, Heart, TrendingUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { Badge as BadgeUI } from "./ui/badge";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
+import { FlippableBadge } from "./FlippableBadge";
 
 interface Badge {
   id: string;
@@ -10,6 +9,7 @@ interface Badge {
   description: string;
   category: string;
   tier: number;
+  icon?: string;
   earned_at?: string;
 }
 
@@ -34,59 +34,6 @@ const getCategoryIcon = (category: string) => {
     default:
       return <Award className="w-4 h-4" />;
   }
-};
-
-const getTierColor = (tier: number) => {
-  switch (tier) {
-    case 1:
-      return 'bg-amber-600/20 text-amber-600 border-amber-600/30';
-    case 2:
-      return 'bg-gray-400/20 text-gray-300 border-gray-400/30';
-    case 3:
-      return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
-    default:
-      return 'bg-primary/20 text-primary border-primary/30';
-  }
-};
-
-const BadgeItem = ({ badge }: { badge: Badge }) => {
-  const tierColor = getTierColor(badge.tier);
-  const categoryIcon = getCategoryIcon(badge.category);
-
-  return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div className={`
-            flex flex-col items-center gap-2 p-4 rounded-lg border-2 transition-all
-            hover:scale-105 cursor-pointer ${tierColor}
-          `}>
-            <div className="flex items-center gap-1">
-              {categoryIcon}
-              <Award className="w-6 h-6" />
-            </div>
-            <div className="text-center">
-              <div className="font-semibold text-sm">{badge.name}</div>
-              {badge.tier > 1 && (
-                <BadgeUI variant="outline" className="mt-1 text-xs">
-                  Tier {badge.tier}
-                </BadgeUI>
-              )}
-            </div>
-          </div>
-        </TooltipTrigger>
-        <TooltipContent side="bottom" className="max-w-xs">
-          <p className="font-semibold">{badge.name}</p>
-          <p className="text-sm text-muted-foreground">{badge.description}</p>
-          {badge.earned_at && (
-            <p className="text-xs text-muted-foreground mt-2">
-              Earned: {new Date(badge.earned_at).toLocaleDateString()}
-            </p>
-          )}
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
 };
 
 export const BadgeDisplay = ({ badges }: BadgeDisplayProps) => {
@@ -133,6 +80,9 @@ export const BadgeDisplay = ({ badges }: BadgeDisplayProps) => {
           <Award className="w-5 h-5" />
           Badges & Accolades ({badges.length})
         </CardTitle>
+        <p className="text-sm text-muted-foreground mt-2">
+          Click any badge to flip and see details
+        </p>
       </CardHeader>
       <CardContent className="space-y-6">
         {Object.entries(badgesByCategory).map(([category, categoryBadges]) => (
@@ -143,7 +93,7 @@ export const BadgeDisplay = ({ badges }: BadgeDisplayProps) => {
             </h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
               {categoryBadges.map((badge) => (
-                <BadgeItem key={badge.id} badge={badge} />
+                <FlippableBadge key={badge.id} badge={badge} />
               ))}
             </div>
           </div>
@@ -152,5 +102,3 @@ export const BadgeDisplay = ({ badges }: BadgeDisplayProps) => {
     </Card>
   );
 };
-
-import { TrendingUp } from "lucide-react";
