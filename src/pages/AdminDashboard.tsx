@@ -129,6 +129,23 @@ const AdminDashboard = () => {
             </CardContent>
           </Card>
 
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate("/admin/badges")}>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <Trophy className="w-10 h-10 text-primary" />
+              </div>
+              <CardTitle className="mt-4">Badge Management</CardTitle>
+              <CardDescription>
+                Manually assign and remove badges from player profiles
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button className="w-full" variant="secondary">
+                Manage Badges
+              </Button>
+            </CardContent>
+          </Card>
+
           <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate("/admin/manage")}>
             <CardHeader>
               <div className="flex items-center justify-between">
