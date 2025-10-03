@@ -32,6 +32,34 @@ const FAQ = () => {
         </p>
 
         <Accordion type="single" collapsible className="space-y-4">
+          <AccordionItem value="simple-breakdown">
+            <Card>
+              <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                <CardTitle className="text-lg text-left">
+                  How is my score calculated? (Simple Version)
+                </CardTitle>
+              </AccordionTrigger>
+              <AccordionContent>
+                <CardContent className="space-y-4 text-sm">
+                  <p className="text-base">
+                    Your rating changes based on <strong>whether you win or lose</strong>, <strong>who you played against</strong>, and <strong>by how much you won or lost</strong>.
+                  </p>
+                  <div className="bg-muted p-4 rounded-lg space-y-2">
+                    <p>✅ <strong>Beat a higher-rated team?</strong> Your rating goes up a lot!</p>
+                    <p>✅ <strong>Beat a lower-rated team?</strong> Your rating goes up a little.</p>
+                    <p>❌ <strong>Lose to a lower-rated team?</strong> Your rating goes down a lot.</p>
+                    <p>❌ <strong>Lose to a higher-rated team?</strong> Your rating goes down a little.</p>
+                    <p>📊 <strong>Score matters:</strong> An 11-4 win changes your rating more than an 11-9 win.</p>
+                    <p>🆕 <strong>New player bonus:</strong> If you've played fewer than 8 matches, your rating moves faster to find your true level.</p>
+                  </div>
+                  <p className="text-muted-foreground">
+                    That's it! The system is designed to be fair - upsets matter more, and blowouts have more impact than close games.
+                  </p>
+                </CardContent>
+              </AccordionContent>
+            </Card>
+          </AccordionItem>
+
           <AccordionItem value="how-ratings-work">
             <Card>
               <AccordionTrigger className="px-6 py-4 hover:no-underline">
