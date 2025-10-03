@@ -146,7 +146,7 @@ export const FlippableBadge = ({ badge }: FlippableBadgeProps) => {
 
   return (
     <div 
-      className="flip-card cursor-pointer"
+      className="flip-card cursor-pointer w-32 h-32 mx-auto"
       onClick={() => setIsFlipped(!isFlipped)}
       style={{ perspective: '1000px' }}
     >
@@ -155,7 +155,7 @@ export const FlippableBadge = ({ badge }: FlippableBadgeProps) => {
         style={{
           position: 'relative',
           width: '100%',
-          height: '120px',
+          height: '100%',
           transition: 'transform 0.6s',
           transformStyle: 'preserve-3d',
           transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
@@ -172,7 +172,7 @@ export const FlippableBadge = ({ badge }: FlippableBadgeProps) => {
             WebkitBackfaceVisibility: 'hidden',
           }}
         >
-          <div className="flex flex-col items-center justify-center gap-3 p-4 rounded-xl border-2 h-full backdrop-blur-sm">
+          <div className="flex flex-col items-center justify-center gap-2 p-3 rounded-full border-2 w-full h-full backdrop-blur-sm">
             {badgeImage ? (
               <div className="relative w-16 h-16 flex-shrink-0">
                 <img 
@@ -182,17 +182,17 @@ export const FlippableBadge = ({ badge }: FlippableBadgeProps) => {
                 />
               </div>
             ) : badge.icon ? (
-              <div className="text-4xl drop-shadow-md">{badge.icon}</div>
+              <div className="text-3xl drop-shadow-md">{badge.icon}</div>
             ) : (
               <div className="flex items-center gap-1 drop-shadow-md">
                 {categoryIcon}
-                <Award className="w-6 h-6" />
+                <Award className="w-5 h-5" />
               </div>
             )}
             <div className="text-center">
-              <div className="font-bold text-sm leading-tight drop-shadow-sm">{badge.name}</div>
+              <div className="font-bold text-[10px] leading-tight drop-shadow-sm px-1">{badge.name}</div>
               {badge.tier > 1 && (
-                <div className="mt-1.5 text-xs font-semibold opacity-90">
+                <div className="mt-0.5 text-[8px] font-semibold opacity-90">
                   Tier {badge.tier}
                 </div>
               )}
@@ -212,15 +212,15 @@ export const FlippableBadge = ({ badge }: FlippableBadgeProps) => {
             transform: 'rotateY(180deg)',
           }}
         >
-          <div className="flex flex-col justify-center p-4 rounded-xl border-2 h-full backdrop-blur-sm">
-            <div className="flex items-center gap-1.5 mb-2">
+          <div className="flex flex-col justify-center items-center p-3 rounded-full border-2 w-full h-full backdrop-blur-sm text-center">
+            <div className="flex items-center gap-1 mb-1">
               {categoryIcon}
-              <span className="font-bold text-sm drop-shadow-sm">{badge.name}</span>
+              <span className="font-bold text-[10px] drop-shadow-sm">{badge.name}</span>
             </div>
-            <p className="text-xs leading-relaxed mb-2 opacity-95">{badge.description}</p>
+            <p className="text-[9px] leading-tight mb-1 opacity-95 px-2">{badge.description}</p>
             {badge.earned_at && (
-              <p className="text-xs opacity-75 mt-auto font-medium">
-                Earned: {new Date(badge.earned_at).toLocaleDateString()}
+              <p className="text-[8px] opacity-75 font-medium">
+                {new Date(badge.earned_at).toLocaleDateString()}
               </p>
             )}
           </div>
