@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Trophy, TrendingUp, Calendar, LogOut, Plus, MapPin, BarChart3, RefreshCw, HelpCircle, MessageSquare, Trash2, Award, UserCog, User as UserIcon, Settings, Share2 } from "lucide-react";
+import { Trophy, TrendingUp, Calendar, LogOut, Plus, MapPin, BarChart3, RefreshCw, HelpCircle, MessageSquare, Trash2, Award, UserCog, User as UserIcon, Settings, Share2, CalendarDays } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import logo from "@/assets/pulse-logo-new.png";
 import { CourtStats } from "@/components/CourtStats";
@@ -570,12 +570,23 @@ const Dashboard = () => {
             )}
           </Button>
 
+          {isAdmin && (
+            <Button 
+              size="lg" 
+              variant="outline"
+              onClick={() => navigate("/session/queue")}
+            >
+              Session Queue (Admin)
+            </Button>
+          )}
+
           <Button 
             size="lg" 
             variant="outline"
-            onClick={() => navigate("/session/queue")}
+            onClick={() => navigate("/events")}
           >
-            Session Queue
+            <CalendarDays className="w-5 h-5 mr-2" />
+            Events
           </Button>
 
           <Button 

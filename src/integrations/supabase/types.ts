@@ -273,6 +273,63 @@ export type Database = {
         }
         Relationships: []
       }
+      events: {
+        Row: {
+          created_at: string | null
+          end_time: string | null
+          event_date: string | null
+          id: string
+          location: string | null
+          name: string
+          num_courts: number | null
+          organizer_id: string
+          points_to: number | null
+          rating_eligible: boolean | null
+          rating_type: string | null
+          start_time: string | null
+          status: string | null
+          updated_at: string | null
+          visibility: string | null
+          win_by_2: boolean | null
+        }
+        Insert: {
+          created_at?: string | null
+          end_time?: string | null
+          event_date?: string | null
+          id?: string
+          location?: string | null
+          name: string
+          num_courts?: number | null
+          organizer_id: string
+          points_to?: number | null
+          rating_eligible?: boolean | null
+          rating_type?: string | null
+          start_time?: string | null
+          status?: string | null
+          updated_at?: string | null
+          visibility?: string | null
+          win_by_2?: boolean | null
+        }
+        Update: {
+          created_at?: string | null
+          end_time?: string | null
+          event_date?: string | null
+          id?: string
+          location?: string | null
+          name?: string
+          num_courts?: number | null
+          organizer_id?: string
+          points_to?: number | null
+          rating_eligible?: boolean | null
+          rating_type?: string | null
+          start_time?: string | null
+          status?: string | null
+          updated_at?: string | null
+          visibility?: string | null
+          win_by_2?: boolean | null
+        }
+        Relationships: []
+      }
       match_approvals: {
         Row: {
           approved: boolean | null
@@ -462,9 +519,12 @@ export type Database = {
           court_id: string | null
           created_at: string | null
           created_by: string
+          event_court_number: number | null
+          event_id: string | null
           id: string
           match_date: string
           match_type: string | null
+          round_number: string | null
           status: string | null
           team1_score: number
           team2_score: number
@@ -475,9 +535,12 @@ export type Database = {
           court_id?: string | null
           created_at?: string | null
           created_by: string
+          event_court_number?: number | null
+          event_id?: string | null
           id?: string
           match_date: string
           match_type?: string | null
+          round_number?: string | null
           status?: string | null
           team1_score: number
           team2_score: number
@@ -488,9 +551,12 @@ export type Database = {
           court_id?: string | null
           created_at?: string | null
           created_by?: string
+          event_court_number?: number | null
+          event_id?: string | null
           id?: string
           match_date?: string
           match_type?: string | null
+          round_number?: string | null
           status?: string | null
           team1_score?: number
           team2_score?: number
@@ -510,6 +576,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matches_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
             referencedColumns: ["id"]
           },
         ]

@@ -27,6 +27,10 @@ import AdminDashboard from "./pages/AdminDashboard";
 import AdminPlayers from "./pages/AdminPlayers";
 import AdminBadges from "./pages/AdminBadges";
 import Changelog from "./pages/Changelog";
+import Events from "./pages/Events";
+import NewEvent from "./pages/NewEvent";
+import EventDetail from "./pages/EventDetail";
+import EventMatchEntry from "./pages/EventMatchEntry";
 
 const queryClient = new QueryClient();
 
@@ -61,6 +65,10 @@ const App = () => (
             <Route path="/qr-checkin" element={<QRCheckIn />} />
             <Route path="/kiosk" element={<Kiosk />} />
             <Route path="/changelog" element={<Changelog />} />
+            <Route path="/events" element={<Events />} />
+            <Route path="/events/new" element={<NewEvent />} />
+            <Route path="/events/:eventId" element={<EventDetail />} />
+            <Route path="/events/:eventId/add-match" element={<EventMatchEntry />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
