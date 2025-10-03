@@ -432,7 +432,7 @@ export default function SessionQueue() {
           </CardHeader>
           <CardContent className="space-y-2">
             <p className="text-sm text-muted-foreground">
-              <strong>Venue:</strong> {session.courts.name}
+              <strong>Court:</strong> {session.courts.name}
             </p>
             <p className="text-sm text-muted-foreground">
               <strong>Courts:</strong> {session.num_courts}

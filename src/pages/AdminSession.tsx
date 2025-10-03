@@ -353,10 +353,10 @@ export default function AdminSession() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="court">Venue</Label>
+                <Label htmlFor="court">Court</Label>
                 <Select value={selectedCourt} onValueChange={setSelectedCourt}>
                   <SelectTrigger id="court">
-                    <SelectValue placeholder="Select venue" />
+                    <SelectValue placeholder="Select court" />
                   </SelectTrigger>
                   <SelectContent>
                     {courts.map((court) => (

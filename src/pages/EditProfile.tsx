@@ -511,7 +511,7 @@ const EditProfile = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="home_court">Home Venue</Label>
+                <Label htmlFor="home_court">Home Court</Label>
                 <Select
                   value={formData.home_court_id || ""}
                   onValueChange={(value) => setFormData({ ...formData, home_court_id: value })}
