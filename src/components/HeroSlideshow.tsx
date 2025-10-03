@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { Trophy, Target, Users, TrendingUp } from "lucide-react";
-import regionMap from "@/assets/region-map.png";
 
 interface Slide {
   title: string;
@@ -39,7 +38,7 @@ const slides: Slide[] = [
   {
     title: "Your Local Community",
     subtitle: "PULSE is designed specifically for pickleball players in Southeastern Massachusetts and Rhode Island. Track your progress and compete within your regional community.",
-    image: regionMap,
+    icon: <Trophy className="w-16 h-16 mx-auto mb-4 text-secondary" />,
     cta: "Join Your Region"
   }
 ];
