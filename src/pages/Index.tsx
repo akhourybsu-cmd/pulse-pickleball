@@ -5,6 +5,7 @@ import { Trophy, TrendingUp, Users, Zap, MapPin, Award } from "lucide-react";
 import logo from "@/assets/pulse-logo-new.png";
 import InstallInstructions from "@/components/InstallInstructions";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { HeroSlideshow } from "@/components/HeroSlideshow";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -28,18 +29,8 @@ const Index = () => {
 
       <main>
         <section className="py-20 px-4">
-          <div className="container mx-auto text-center max-w-4xl">
-            <h2 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-              Your Community. Your Rankings.
-            </h2>
-            <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-              PULSE is a <strong className="text-foreground">community-driven platform</strong> designed for local pickleball players. 
-              See where you stack up among your fellow peers—not against national rankings like DUPR, 
-              but within the community you play and compete with every day.
-            </p>
-            <Button size="lg" onClick={() => navigate("/auth")} className="shadow-[var(--shadow-glow)]">
-              Start Tracking Your Rating
-            </Button>
+          <div className="container mx-auto">
+            <HeroSlideshow />
           </div>
         </section>
 
