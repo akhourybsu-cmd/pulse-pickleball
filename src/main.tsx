@@ -9,20 +9,20 @@ if ('serviceWorker' in navigator) {
       .then((registration) => {
         console.log('Service Worker registered');
         
-        // Check for updates every 60 seconds
+        // Check for updates periodically but don't auto-reload
         setInterval(() => {
           registration.update();
         }, 60000);
 
-        // Listen for updates
+        // Listen for updates but let user control reload
         registration.addEventListener('updatefound', () => {
           const newWorker = registration.installing;
           if (newWorker) {
             newWorker.addEventListener('statechange', () => {
               if (newWorker.state === 'activated' && navigator.serviceWorker.controller) {
-                // New service worker activated, reload to get new version
-                console.log('New version available, reloading...');
-                window.location.reload();
+                // New version available - log but don't auto-reload
+                console.log('New version available. Reload page to update.');
+                // You can show a toast here if needed
               }
             });
           }
