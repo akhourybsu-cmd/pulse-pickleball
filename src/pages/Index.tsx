@@ -30,11 +30,12 @@ const Index = () => {
         <section className="py-20 px-4">
           <div className="container mx-auto text-center max-w-4xl">
             <h2 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-              Pickleball Universal Level & Skill Estimator
+              Your Community. Your Rankings.
             </h2>
             <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Track your pickleball journey and celebrate your local community's love for the game. 
-              Build friendly competition, connect with fellow players, and watch your skills grow through dynamic ratings that evolve with every match.
+              PULSE is a <strong className="text-foreground">community-driven platform</strong> designed for local pickleball players. 
+              See where you stack up among your fellow peers—not against national rankings like DUPR, 
+              but within the community you play and compete with every day.
             </p>
             <Button size="lg" onClick={() => navigate("/auth")} className="shadow-[var(--shadow-glow)]">
               Start Tracking Your Rating
@@ -44,7 +45,11 @@ const Index = () => {
 
         <section className="py-16 px-4 bg-muted/30">
           <div className="container mx-auto">
-            <h3 className="text-3xl font-bold text-center mb-12">Why PULSE?</h3>
+            <h3 className="text-3xl font-bold text-center mb-12">Built for Your Local Community</h3>
+            <p className="text-center text-muted-foreground mb-8 max-w-2xl mx-auto">
+              PULSE creates a friendly, competitive environment where you can track your progress and compare yourself 
+              with the players you actually play with—your local community, not a national database.
+            </p>
             
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
               <Card>
@@ -98,11 +103,11 @@ const Index = () => {
               <Card>
                 <CardHeader>
                   <Award className="w-10 h-10 text-secondary mb-2" />
-                  <CardTitle>Leaderboards & Badges</CardTitle>
+                  <CardTitle>Community Leaderboards</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <CardDescription>
-                    Earn badges and accolades while competing on local leaderboards - stay motivated year-round
+                    Compete on local leaderboards and earn badges within your community—see how you rank among your peers
                   </CardDescription>
                 </CardContent>
               </Card>
@@ -126,9 +131,9 @@ const Index = () => {
 
         <section className="py-20 px-4">
           <div className="container mx-auto text-center max-w-2xl">
-            <h3 className="text-3xl font-bold mb-6">Ready to elevate your game?</h3>
+            <h3 className="text-3xl font-bold mb-6">Ready to Join Your Community?</h3>
             <p className="text-muted-foreground mb-8">
-              Join PULSE today and start tracking your pickleball rating with precision
+              Start tracking your local ranking today and see where you stand among the players you compete with every week
             </p>
             <Button size="lg" onClick={() => navigate("/auth")} className="shadow-[var(--shadow-glow)]">
               Create Your Account
