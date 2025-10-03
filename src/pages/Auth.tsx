@@ -42,13 +42,20 @@ const Auth = () => {
       }
 
       if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email: validationResult.data.email,
           password: validationResult.data.password,
         });
         if (error) throw error;
-        toast.success("Logged in successfully!");
-        navigate("/dashboard");
+        
+        // Wait for session to be set before navigating
+        if (data.session) {
+          toast.success("Logged in successfully!");
+          // Small delay to ensure session is fully set
+          setTimeout(() => {
+            navigate("/dashboard");
+          }, 100);
+        }
       } else {
         const { error } = await supabase.auth.signUp({
           email: validationResult.data.email,

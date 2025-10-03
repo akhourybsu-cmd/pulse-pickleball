@@ -53,27 +53,37 @@ const Dashboard = () => {
 
   useEffect(() => {
     const fetchUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        navigate("/auth");
-        return;
+      try {
+        // Check for existing session first
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session) {
+          console.log("No session found, redirecting to auth");
+          navigate("/auth");
+          return;
+        }
+
+        const user = session.user;
+        setUser(user);
+
+        const { data: profileData, error } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", user.id)
+          .single();
+
+        if (error) {
+          console.error("Profile fetch error:", error);
+          toast.error("Failed to load profile");
+          setLoading(false);
+          return;
+        }
+
+        setProfile(profileData);
+      } catch (error) {
+        console.error("Dashboard load error:", error);
+        toast.error("Failed to load dashboard");
       }
-
-      setUser(user);
-
-      const { data: profileData, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .single();
-
-      if (error) {
-        toast.error("Failed to load profile");
-        return;
-      }
-
-      setProfile(profileData);
 
       // Check if user is admin
       const { data: roleData } = await supabase
