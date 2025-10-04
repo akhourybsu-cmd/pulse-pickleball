@@ -137,7 +137,7 @@ export const OnboardingTutorial = ({ userId, onComplete }: OnboardingTutorialPro
       setRun(false);
       
       // Navigate to edit profile
-      navigate('/edit-profile');
+      navigate('/profile/edit');
       onComplete();
     }
   };
