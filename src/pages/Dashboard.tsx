@@ -11,6 +11,7 @@ import { CourtStats } from "@/components/CourtStats";
 import { BadgeDisplay } from "@/components/BadgeDisplay";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Footer } from "@/components/Footer";
+import { OnboardingTutorial } from "@/components/OnboardingTutorial";
 
 interface Profile {
   id: string;
@@ -392,6 +393,13 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      {user && (
+        <OnboardingTutorial 
+          userId={user.id} 
+          onComplete={() => console.log('Tutorial completed')}
+        />
+      )}
+      
       <nav className="border-b bg-secondary">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <img src={logo} alt="PULSE Logo" className="h-16 w-auto" />
@@ -402,7 +410,13 @@ const Dashboard = () => {
                 Admin
               </Button>
             )}
-            <Button variant="outline" size="icon" onClick={() => navigate(`/profile/${user?.id}`)} className="rounded-full">
+            <Button 
+              variant="outline" 
+              size="icon" 
+              onClick={() => navigate(`/profile/${user?.id}`)} 
+              className="rounded-full"
+              data-tour="view-profile"
+            >
               <UserIcon className="h-[1.2rem] w-[1.2rem]" />
               <span className="sr-only">View Profile</span>
             </Button>
@@ -426,6 +440,7 @@ const Dashboard = () => {
                 size="lg" 
                 onClick={() => navigate("/match/new")}
                 className="shadow-[var(--shadow-glow)]"
+                data-tour="record-match"
               >
                 <Plus className="w-5 h-5 mr-2" />
                 Record New Match
@@ -449,7 +464,7 @@ const Dashboard = () => {
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
-          <Card className="border-2 border-primary shadow-[var(--shadow-glow)]">
+          <Card className="border-2 border-primary shadow-[var(--shadow-glow)]" data-tour="pulse-score">
             <CardHeader className="pb-3">
               <CardDescription>Live Pulse Score</CardDescription>
               <CardTitle className="text-5xl font-bold text-primary">
@@ -532,7 +547,7 @@ const Dashboard = () => {
           {user && <CourtStats userId={user.id} />}
         </div>
 
-        <div className="mb-8">
+        <div className="mb-8" data-tour="badges">
           <BadgeDisplay badges={badges.map(b => ({
             id: b.badges.id,
             code: b.badges.code,
@@ -549,6 +564,7 @@ const Dashboard = () => {
             size="lg" 
             variant="outline"
             onClick={() => navigate("/match/history")}
+            data-tour="match-history"
           >
             <Calendar className="w-5 h-5 mr-2" />
             My Match History
@@ -559,6 +575,7 @@ const Dashboard = () => {
             variant="outline"
             onClick={() => navigate("/court/board")}
             className="relative"
+            data-tour="court-board"
           >
             <MessageSquare className="w-5 h-5 mr-2" />
             Court Connector - looking for group
@@ -584,6 +601,7 @@ const Dashboard = () => {
             size="lg" 
             variant="outline"
             onClick={() => navigate("/events")}
+            data-tour="events"
           >
             <CalendarDays className="w-5 h-5 mr-2" />
             Events
@@ -593,6 +611,7 @@ const Dashboard = () => {
             size="lg" 
             variant="outline"
             onClick={() => navigate("/court/history")}
+            data-tour="leaderboard"
           >
             <MapPin className="w-5 h-5 mr-2" />
             Court History

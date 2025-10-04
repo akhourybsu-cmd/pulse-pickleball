@@ -659,6 +659,7 @@ export type Database = {
           total_matches: number | null
           total_points_against: number | null
           total_points_for: number | null
+          tutorial_completed: boolean
           updated_at: string | null
           week_start_date: string | null
           week_start_rating: number | null
@@ -696,6 +697,7 @@ export type Database = {
           total_matches?: number | null
           total_points_against?: number | null
           total_points_for?: number | null
+          tutorial_completed?: boolean
           updated_at?: string | null
           week_start_date?: string | null
           week_start_rating?: number | null
@@ -733,6 +735,7 @@ export type Database = {
           total_matches?: number | null
           total_points_against?: number | null
           total_points_for?: number | null
+          tutorial_completed?: boolean
           updated_at?: string | null
           week_start_date?: string | null
           week_start_rating?: number | null
