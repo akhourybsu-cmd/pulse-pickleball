@@ -23,6 +23,8 @@ interface Event {
   id: string;
   name: string;
   organizer_id: string;
+  location: string | null;
+  other_location: string | null;
   num_courts: number | null;
   points_to: number;
   rating_type: string;
@@ -45,6 +47,7 @@ const EventMatchEntry = () => {
   const [team2Player2, setTeam2Player2] = useState("");
   const [team1Score, setTeam1Score] = useState("");
   const [team2Score, setTeam2Score] = useState("");
+  const [otherLocation, setOtherLocation] = useState("");
   const [ratingEligible, setRatingEligible] = useState(true);
   const [ratingType, setRatingType] = useState("ladder");
   
@@ -155,6 +158,8 @@ const EventMatchEntry = () => {
           match_type: ratingType,
           team1_score: score1,
           team2_score: score2,
+          court_id: event.location === 'other' ? null : undefined,
+          other_location: event.location === 'other' ? event.other_location : null,
           status: "approved", // Event matches are auto-approved
         })
         .select()

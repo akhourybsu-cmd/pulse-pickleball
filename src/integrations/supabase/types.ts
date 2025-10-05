@@ -283,6 +283,7 @@ export type Database = {
           name: string
           num_courts: number | null
           organizer_id: string
+          other_location: string | null
           points_to: number | null
           rating_eligible: boolean | null
           rating_type: string | null
@@ -301,6 +302,7 @@ export type Database = {
           name: string
           num_courts?: number | null
           organizer_id: string
+          other_location?: string | null
           points_to?: number | null
           rating_eligible?: boolean | null
           rating_type?: string | null
@@ -319,6 +321,7 @@ export type Database = {
           name?: string
           num_courts?: number | null
           organizer_id?: string
+          other_location?: string | null
           points_to?: number | null
           rating_eligible?: boolean | null
           rating_type?: string | null
@@ -524,6 +527,7 @@ export type Database = {
           id: string
           match_date: string
           match_type: string | null
+          other_location: string | null
           round_number: string | null
           status: string | null
           team1_score: number
@@ -540,6 +544,7 @@ export type Database = {
           id?: string
           match_date: string
           match_type?: string | null
+          other_location?: string | null
           round_number?: string | null
           status?: string | null
           team1_score: number
@@ -556,6 +561,7 @@ export type Database = {
           id?: string
           match_date?: string
           match_type?: string | null
+          other_location?: string | null
           round_number?: string | null
           status?: string | null
           team1_score?: number

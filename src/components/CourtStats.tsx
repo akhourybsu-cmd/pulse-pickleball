@@ -38,14 +38,19 @@ export const CourtStats = ({ userId }: CourtStatsProps) => {
   const fetchCourtsAndStats = async () => {
     setLoading(true);
 
-    // Fetch all courts
+    // Fetch all courts and add "Other" option
     const { data: courtsData } = await supabase
       .from("courts")
       .select("*")
       .order("name");
 
     if (courtsData) {
-      setCourts(courtsData);
+      // Add "Other" as a special court option
+      const courtsWithOther = [
+        ...courtsData,
+        { id: 'other', name: 'Other', city: '', state: '', location: '', created_at: '', updated_at: '' }
+      ];
+      setCourts(courtsWithOther);
       
       // Get user's home court
       const { data: profileData } = await supabase
@@ -73,6 +78,7 @@ export const CourtStats = ({ userId }: CourtStatsProps) => {
         matches!inner(
           id,
           court_id,
+          other_location,
           team1_score,
           team2_score,
           status
@@ -84,9 +90,11 @@ export const CourtStats = ({ userId }: CourtStatsProps) => {
       const courtStatsMap = new Map<string, CourtStat>();
 
       for (const mp of matchesData as any[]) {
-        if (mp.matches.status !== "approved" || !mp.matches.court_id) continue;
+        if (mp.matches.status !== "approved") continue;
 
-        const courtId = mp.matches.court_id;
+        // Determine court ID - use 'other' for matches with other_location
+        const courtId = mp.matches.other_location ? 'other' : mp.matches.court_id;
+        if (!courtId) continue;
         
         if (!courtStatsMap.has(courtId)) {
           courtStatsMap.set(courtId, {

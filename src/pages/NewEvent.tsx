@@ -27,6 +27,7 @@ const NewEvent = () => {
   const [ratingType, setRatingType] = useState("ladder");
   const [ratingEligible, setRatingEligible] = useState(true);
   const [visibility, setVisibility] = useState("public");
+  const [otherLocation, setOtherLocation] = useState("");
   
   const navigate = useNavigate();
 
@@ -68,7 +69,8 @@ const NewEvent = () => {
         .insert({
           name: name.trim(),
           organizer_id: userId,
-          location: location.trim() || null,
+          location: location === 'other' ? 'other' : (location.trim() || null),
+          other_location: location === 'other' ? otherLocation : null,
           event_date: eventDate || null,
           start_time: startTime || null,
           end_time: endTime || null,
@@ -146,13 +148,28 @@ const NewEvent = () => {
               {/* Location */}
               <div className="space-y-2">
                 <Label htmlFor="location">Location</Label>
-                <Input
-                  id="location"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  placeholder="e.g., Nickerson Beach"
-                />
+                <Select value={location} onValueChange={setLocation}>
+                  <SelectTrigger id="location">
+                    <SelectValue placeholder="Select or enter location" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
+
+              {location === 'other' && (
+                <div className="space-y-2">
+                  <Label htmlFor="otherLocation">Location Name</Label>
+                  <Input
+                    id="otherLocation"
+                    value={otherLocation}
+                    onChange={(e) => setOtherLocation(e.target.value)}
+                    placeholder="Enter custom location name"
+                    required
+                  />
+                </div>
+              )}
 
               {/* Date and Time */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

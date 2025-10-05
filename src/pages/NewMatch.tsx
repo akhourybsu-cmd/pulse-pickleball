@@ -51,6 +51,7 @@ const NewMatch = () => {
   const [team1Score, setTeam1Score] = useState("");
   const [team2Score, setTeam2Score] = useState("");
   const [selectedCourt, setSelectedCourt] = useState("");
+  const [otherLocation, setOtherLocation] = useState("");
   const [matchDate, setMatchDate] = useState(new Date().toISOString().split("T")[0]);
   
   const navigate = useNavigate();
@@ -142,7 +143,8 @@ const NewMatch = () => {
           team1_score: score1,
           team2_score: score2,
           created_by: currentUserId,
-          court_id: selectedCourt,
+          court_id: selectedCourt === 'other' ? null : selectedCourt,
+          other_location: selectedCourt === 'other' ? otherLocation : null,
           status: 'approved',
         })
         .select()
@@ -238,9 +240,23 @@ const NewMatch = () => {
                         {court.name} - {court.city}, {court.state}
                       </SelectItem>
                     ))}
+                    <SelectItem value="other">Other</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+
+              {selectedCourt === 'other' && (
+                <div className="space-y-2">
+                  <Label htmlFor="otherLocation">Location Name</Label>
+                  <Input
+                    id="otherLocation"
+                    value={otherLocation}
+                    onChange={(e) => setOtherLocation(e.target.value)}
+                    placeholder="Enter custom location name"
+                    required
+                  />
+                </div>
+              )}
 
               <div className="space-y-4">
                 <h3 className="font-semibold text-primary">Team 1</h3>

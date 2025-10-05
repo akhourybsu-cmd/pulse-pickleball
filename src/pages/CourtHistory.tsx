@@ -51,6 +51,7 @@ const CourtHistory = () => {
       .order("name");
 
     if (data) {
+      // Do NOT add "Other" to court history - per requirements
       setCourts(data);
       if (data.length > 0) {
         setSelectedCourt(data[0].id);
@@ -60,6 +61,12 @@ const CourtHistory = () => {
   };
 
   const fetchCourtMatches = async () => {
+    // Skip if "Other" court is selected - we don't show history for "Other"
+    if (selectedCourt === 'other') {
+      setMatches([]);
+      return;
+    }
+
     const { data: matchesData } = await supabase
       .from("matches")
       .select("id, match_date, team1_score, team2_score, status")
@@ -100,7 +107,7 @@ const CourtHistory = () => {
   };
 
   const fetchWeeklyLeaderboard = async () => {
-    if (!selectedCourt) return;
+    if (!selectedCourt || selectedCourt === 'other') return;
 
     // Get current week start (Monday)
     const now = new Date();
