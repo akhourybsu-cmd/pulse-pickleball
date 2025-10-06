@@ -12,15 +12,22 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <nav className="border-b bg-secondary">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <img src={logo} alt="PULSE Logo" className="h-16 w-auto" />
-          <div className="flex items-center gap-2">
+      <nav className="sticky top-0 z-50 border-b bg-secondary/95 backdrop-blur-sm">
+        <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4 flex items-center justify-between">
+          <img src={logo} alt="PULSE Logo" className="h-12 sm:h-16 w-auto" />
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <ThemeToggle />
-            <Button variant="secondary" onClick={() => navigate("/auth")}>
+            <Button 
+              variant="secondary" 
+              onClick={() => navigate("/auth")}
+              className="text-xs sm:text-sm px-2.5 sm:px-4 h-9 sm:h-10"
+            >
               Sign In
             </Button>
-            <Button onClick={() => navigate("/auth")}>
+            <Button 
+              onClick={() => navigate("/auth")}
+              className="text-xs sm:text-sm px-2.5 sm:px-4 h-9 sm:h-10"
+            >
               Get Started
             </Button>
           </div>
@@ -28,21 +35,21 @@ const Index = () => {
       </nav>
 
       <main>
-        <section className="py-20 px-4">
+        <section className="py-8 sm:py-12 md:py-20 px-3 sm:px-4">
           <div className="container mx-auto">
             <HeroSlideshow />
           </div>
         </section>
 
-        <section className="py-16 px-4 bg-muted/30">
+        <section className="py-10 sm:py-12 md:py-16 px-3 sm:px-4 bg-muted/30">
           <div className="container mx-auto">
-            <h3 className="text-3xl font-bold text-center mb-12">Built for Your Local Community</h3>
-            <p className="text-center text-muted-foreground mb-8 max-w-2xl mx-auto">
+            <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold text-center mb-6 sm:mb-8 md:mb-12 px-2">Built for Your Local Community</h3>
+            <p className="text-center text-muted-foreground text-sm sm:text-base mb-6 sm:mb-8 max-w-2xl mx-auto px-2">
               PULSE creates a friendly, competitive environment where you can track your progress and compare yourself 
               with the players you actually play with—your local community, not a national database.
             </p>
             
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 max-w-6xl mx-auto">
               <Card>
                 <CardHeader>
                   <Trophy className="w-10 h-10 text-primary mb-2" />
@@ -120,22 +127,26 @@ const Index = () => {
 
         <InstallInstructions />
 
-        <section className="py-20 px-4">
+        <section className="py-12 sm:py-16 md:py-20 px-3 sm:px-4">
           <div className="container mx-auto text-center max-w-2xl">
-            <h3 className="text-3xl font-bold mb-6">Ready to Join Your Community?</h3>
-            <p className="text-muted-foreground mb-8">
+            <h3 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-6 px-2">Ready to Join Your Community?</h3>
+            <p className="text-muted-foreground text-sm sm:text-base mb-6 sm:mb-8 px-2">
               Start tracking your local ranking today and see where you stand among the players you compete with every week
             </p>
-            <Button size="lg" onClick={() => navigate("/auth")} className="shadow-[var(--shadow-glow)]">
+            <Button 
+              size="lg" 
+              onClick={() => navigate("/auth")} 
+              className="shadow-[var(--shadow-glow)] w-full sm:w-auto min-h-[44px]"
+            >
               Create Your Account
             </Button>
           </div>
         </section>
       </main>
 
-      <footer className="border-t py-8 px-4">
+      <footer className="border-t py-6 sm:py-8 px-3 sm:px-4">
         <div className="container mx-auto text-center text-muted-foreground">
-          <p>© 2025 PULSE - Pickleball Universal Level & Skill Estimator</p>
+          <p className="text-xs sm:text-sm">© 2025 PULSE - Pickleball Universal Level & Skill Estimator</p>
         </div>
       </footer>
     </div>
