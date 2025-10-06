@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { 
   Users, 
@@ -12,8 +13,11 @@ import {
   QrCode,
   ArrowLeft,
   Trophy,
-  LayoutDashboard
+  LayoutDashboard,
+  Download,
+  UserPlus
 } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import logo from "@/assets/pulse-logo-new.png";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Footer } from "@/components/Footer";
@@ -21,6 +25,7 @@ import { Footer } from "@/components/Footer";
 const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [showSignupQR, setShowSignupQR] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -53,6 +58,36 @@ const AdminDashboard = () => {
 
     checkAdminAccess();
   }, [navigate]);
+
+  const getSignupUrl = () => {
+    return `${window.location.origin}/auth`;
+  };
+
+  const handleDownloadSignupQR = () => {
+    const svg = document.getElementById("signup-qr-code");
+    if (!svg) return;
+
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    const img = new Image();
+
+    img.onload = () => {
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx?.drawImage(img, 0, 0);
+      const pngFile = canvas.toDataURL("image/png");
+
+      const downloadLink = document.createElement("a");
+      downloadLink.download = "pickleball-signup-qr.png";
+      downloadLink.href = pngFile;
+      downloadLink.click();
+
+      toast.success("QR code downloaded successfully!");
+    };
+
+    img.src = "data:image/svg+xml;base64," + btoa(svgData);
+  };
 
   if (loading) {
     return (
@@ -230,6 +265,23 @@ const AdminDashboard = () => {
               </Button>
             </CardContent>
           </Card>
+
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => setShowSignupQR(true)}>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <UserPlus className="w-10 h-10 text-primary" />
+              </div>
+              <CardTitle className="mt-4">Sign Up QR Code</CardTitle>
+              <CardDescription>
+                Generate QR code for new players to join and register
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button className="w-full" variant="secondary">
+                View QR Code
+              </Button>
+            </CardContent>
+          </Card>
         </div>
 
         <Card className="mt-8 border-primary/20">
@@ -252,6 +304,37 @@ const AdminDashboard = () => {
           </CardContent>
         </Card>
       </div>
+
+      <Dialog open={showSignupQR} onOpenChange={setShowSignupQR}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Pickleball Sign Up QR Code</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center space-y-4 p-6">
+            <div className="bg-white p-6 rounded-lg">
+              <QRCodeSVG
+                id="signup-qr-code"
+                value={getSignupUrl()}
+                size={256}
+                level="H"
+                includeMargin
+              />
+            </div>
+            <p className="text-sm text-muted-foreground text-center">
+              Scan this QR code to sign up for Pickleball
+            </p>
+            <div className="flex gap-2 w-full">
+              <Button 
+                onClick={handleDownloadSignupQR}
+                className="flex-1"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Download QR Code
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Footer />
     </div>
