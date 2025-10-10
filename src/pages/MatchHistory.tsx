@@ -7,13 +7,15 @@ import { ArrowLeft, AlertTriangle, CheckCircle2, Flag } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Sheet,
   SheetContent,
@@ -66,6 +68,8 @@ const MatchHistory = () => {
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
   const [issueDetails, setIssueDetails] = useState("");
   const [selectedIssueType, setSelectedIssueType] = useState<string | null>(null);
+  const [verifyDialogOpen, setVerifyDialogOpen] = useState(false);
+  const [matchToVerify, setMatchToVerify] = useState<string | null>(null);
 
   useEffect(() => {
     fetchMatchHistory();
@@ -227,39 +231,31 @@ const MatchHistory = () => {
     }
   };
 
-  const handleVerifyMatch = async (matchId: string) => {
-    if (!currentUserId) return;
+  const handleVerifyMatch = async () => {
+    if (!currentUserId || !matchToVerify) return;
 
-    const match = matches.find(m => m.match_id === matchId);
+    const match = matches.find(m => m.match_id === matchToVerify);
     if (!match) return;
 
-    const isVerified = match.verified_by.includes(currentUserId);
-    let newVerifiedBy: string[];
-
-    if (isVerified) {
-      // Remove verification
-      newVerifiedBy = match.verified_by.filter(id => id !== currentUserId);
-    } else {
-      // Add verification
-      newVerifiedBy = [...match.verified_by, currentUserId];
-    }
+    const newVerifiedBy = [...match.verified_by, currentUserId];
 
     try {
       const { error } = await supabase
         .from("matches")
         .update({ verified_by: newVerifiedBy })
-        .eq("id", matchId);
+        .eq("id", matchToVerify);
 
       if (error) throw error;
 
-      // Update local state
       setMatches(matches.map(m => 
-        m.match_id === matchId 
+        m.match_id === matchToVerify 
           ? { ...m, verified_by: newVerifiedBy }
           : m
       ));
 
-      toast.success(isVerified ? "Verification removed" : "Match verified");
+      toast.success("Match verified");
+      setVerifyDialogOpen(false);
+      setMatchToVerify(null);
     } catch (error) {
       console.error("Error verifying match:", error);
       toast.error("Failed to verify match");
@@ -335,8 +331,30 @@ const MatchHistory = () => {
                     <div className="grid grid-cols-3 gap-4 items-center">
                       <div>
                         <p className="text-sm font-semibold">Your Team</p>
-                        <p className="text-sm">{playerName}</p>
-                        <p className="text-sm">{match.partner_name}</p>
+                        <p className={`text-sm flex items-center gap-1 ${
+                          match.verified_by.includes(playerId || currentUserId || '') 
+                            ? 'text-green-600 dark:text-green-500' 
+                            : 'text-red-600 dark:text-red-500'
+                        }`}>
+                          {match.verified_by.includes(playerId || currentUserId || '') ? (
+                            <CheckCircle2 className="w-3 h-3" />
+                          ) : (
+                            <AlertTriangle className="w-3 h-3" />
+                          )}
+                          {playerName}
+                        </p>
+                        <p className={`text-sm flex items-center gap-1 ${
+                          match.verified_by.includes(match.partner_id) 
+                            ? 'text-green-600 dark:text-green-500' 
+                            : 'text-red-600 dark:text-red-500'
+                        }`}>
+                          {match.verified_by.includes(match.partner_id) ? (
+                            <CheckCircle2 className="w-3 h-3" />
+                          ) : (
+                            <AlertTriangle className="w-3 h-3" />
+                          )}
+                          {match.partner_name}
+                        </p>
                       </div>
                       <div className="text-center">
                         <p className="text-2xl font-bold">
@@ -347,8 +365,30 @@ const MatchHistory = () => {
                       </div>
                       <div className="text-right">
                         <p className="text-sm font-semibold">Opponents</p>
-                        <p className="text-sm">{match.opponent1_name}</p>
-                        <p className="text-sm">{match.opponent2_name}</p>
+                        <p className={`text-sm flex items-center justify-end gap-1 ${
+                          match.verified_by.includes(match.opponent1_id) 
+                            ? 'text-green-600 dark:text-green-500' 
+                            : 'text-red-600 dark:text-red-500'
+                        }`}>
+                          {match.verified_by.includes(match.opponent1_id) ? (
+                            <CheckCircle2 className="w-3 h-3" />
+                          ) : (
+                            <AlertTriangle className="w-3 h-3" />
+                          )}
+                          {match.opponent1_name}
+                        </p>
+                        <p className={`text-sm flex items-center justify-end gap-1 ${
+                          match.verified_by.includes(match.opponent2_id) 
+                            ? 'text-green-600 dark:text-green-500' 
+                            : 'text-red-600 dark:text-red-500'
+                        }`}>
+                          {match.verified_by.includes(match.opponent2_id) ? (
+                            <CheckCircle2 className="w-3 h-3" />
+                          ) : (
+                            <AlertTriangle className="w-3 h-3" />
+                          )}
+                          {match.opponent2_name}
+                        </p>
                       </div>
                     </div>
                     <div className="flex justify-between pt-2 text-sm border-t">
@@ -371,29 +411,41 @@ const MatchHistory = () => {
                       </span>
                     </div>
                     <div className="pt-2 border-t flex gap-2 items-center justify-between">
-                      <Button 
-                        variant={isCurrentUserVerified ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => handleVerifyMatch(match.match_id)}
-                        className="flex-1"
-                      >
-                        <CheckCircle2 className="w-4 h-4 mr-2" />
-                        {isCurrentUserVerified ? "Verified" : "Verify Match"}
-                        <span className="ml-2 text-xs">
-                          ({verifiedCount}/{totalPlayers})
-                        </span>
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => {
-                          setSelectedMatchId(match.match_id);
-                          setReportSheetOpen(true);
-                        }}
-                        className="flex-shrink-0"
-                      >
-                        <Flag className="w-4 h-4" />
-                      </Button>
+                      {!isCurrentUserVerified ? (
+                        <Button 
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setMatchToVerify(match.match_id);
+                            setVerifyDialogOpen(true);
+                          }}
+                          className="flex-1"
+                        >
+                          <CheckCircle2 className="w-4 h-4 mr-2" />
+                          Verify Match
+                          <span className="ml-2 text-xs">
+                            ({verifiedCount}/{totalPlayers})
+                          </span>
+                        </Button>
+                      ) : (
+                        <div className="flex-1 flex items-center justify-center gap-2 text-sm text-green-600 dark:text-green-500">
+                          <CheckCircle2 className="w-4 h-4" />
+                          Verified ({verifiedCount}/{totalPlayers})
+                        </div>
+                      )}
+                      {!isCurrentUserVerified && (
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => {
+                            setSelectedMatchId(match.match_id);
+                            setReportSheetOpen(true);
+                          }}
+                          className="flex-shrink-0"
+                        >
+                          <Flag className="w-4 h-4" />
+                        </Button>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -414,14 +466,6 @@ const MatchHistory = () => {
           
           {!selectedIssueType ? (
             <div className="space-y-2 mt-4">
-              <Button 
-                variant="outline" 
-                className="w-full justify-start"
-                onClick={() => setSelectedIssueType('contest_result')}
-              >
-                <AlertTriangle className="w-4 h-4 mr-2" />
-                Contest Result
-              </Button>
               <Button 
                 variant="outline" 
                 className="w-full justify-start"
@@ -477,6 +521,21 @@ const MatchHistory = () => {
           )}
         </SheetContent>
       </Sheet>
+
+      <AlertDialog open={verifyDialogOpen} onOpenChange={setVerifyDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Verify this match?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to verify this score? This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleVerifyMatch}>Verify</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Footer />
     </div>
