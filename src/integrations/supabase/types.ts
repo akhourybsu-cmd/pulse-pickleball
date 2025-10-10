@@ -375,6 +375,64 @@ export type Database = {
           },
         ]
       }
+      match_issues: {
+        Row: {
+          created_at: string
+          details: string | null
+          id: string
+          issue_type: string
+          match_id: string
+          reported_by: string
+          resolved: boolean | null
+          resolved_at: string | null
+          resolved_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          details?: string | null
+          id?: string
+          issue_type: string
+          match_id: string
+          reported_by: string
+          resolved?: boolean | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          details?: string | null
+          id?: string
+          issue_type?: string
+          match_id?: string
+          reported_by?: string
+          resolved?: boolean | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_issues_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_issues_reported_by_fkey"
+            columns: ["reported_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_issues_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       match_participants: {
         Row: {
           created_at: string | null
@@ -533,6 +591,7 @@ export type Database = {
           team1_score: number
           team2_score: number
           updated_at: string | null
+          verified_by: string[] | null
           week_start: string | null
         }
         Insert: {
@@ -550,6 +609,7 @@ export type Database = {
           team1_score: number
           team2_score: number
           updated_at?: string | null
+          verified_by?: string[] | null
           week_start?: string | null
         }
         Update: {
@@ -567,6 +627,7 @@ export type Database = {
           team1_score?: number
           team2_score?: number
           updated_at?: string | null
+          verified_by?: string[] | null
           week_start?: string | null
         }
         Relationships: [
