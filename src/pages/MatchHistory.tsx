@@ -73,6 +73,35 @@ const MatchHistory = () => {
 
   useEffect(() => {
     fetchMatchHistory();
+
+    // Subscribe to realtime updates for match verifications
+    const channel = supabase
+      .channel('match-verifications')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'matches'
+        },
+        (payload) => {
+          // Update local state when a match is verified
+          if (payload.new && 'verified_by' in payload.new) {
+            setMatches(prevMatches => 
+              prevMatches.map(m => 
+                m.match_id === payload.new.id 
+                  ? { ...m, verified_by: payload.new.verified_by || [] }
+                  : m
+              )
+            );
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [playerId]);
 
   const fetchMatchHistory = async () => {
