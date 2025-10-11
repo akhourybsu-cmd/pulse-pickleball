@@ -375,6 +375,44 @@ export type Database = {
           },
         ]
       }
+      match_edits: {
+        Row: {
+          changes: Json
+          created_at: string | null
+          edited_at: string
+          editor_id: string
+          id: string
+          match_id: string
+          reason: string | null
+        }
+        Insert: {
+          changes: Json
+          created_at?: string | null
+          edited_at?: string
+          editor_id: string
+          id?: string
+          match_id: string
+          reason?: string | null
+        }
+        Update: {
+          changes?: Json
+          created_at?: string | null
+          edited_at?: string
+          editor_id?: string
+          id?: string
+          match_id?: string
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_edits_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       match_issues: {
         Row: {
           created_at: string
@@ -592,6 +630,10 @@ export type Database = {
           team2_score: number
           updated_at: string | null
           verified_by: string[] | null
+          void_reason: string | null
+          voided: boolean | null
+          voided_at: string | null
+          voided_by: string | null
           week_start: string | null
         }
         Insert: {
@@ -610,6 +652,10 @@ export type Database = {
           team2_score: number
           updated_at?: string | null
           verified_by?: string[] | null
+          void_reason?: string | null
+          voided?: boolean | null
+          voided_at?: string | null
+          voided_by?: string | null
           week_start?: string | null
         }
         Update: {
@@ -628,6 +674,10 @@ export type Database = {
           team2_score?: number
           updated_at?: string | null
           verified_by?: string[] | null
+          void_reason?: string | null
+          voided?: boolean | null
+          voided_at?: string | null
+          voided_by?: string | null
           week_start?: string | null
         }
         Relationships: [

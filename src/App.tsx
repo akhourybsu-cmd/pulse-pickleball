@@ -26,6 +26,7 @@ import AdminManage from "./pages/AdminManage";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminPlayers from "./pages/AdminPlayers";
 import AdminBadges from "./pages/AdminBadges";
+import AdminMatches from "./pages/AdminMatches";
 import Changelog from "./pages/Changelog";
 import Events from "./pages/Events";
 import NewEvent from "./pages/NewEvent";
@@ -60,6 +61,7 @@ const App = () => (
             <Route path="/admin/pairing" element={<AdminPairing />} />
             <Route path="/admin/players" element={<AdminPlayers />} />
             <Route path="/admin/badges" element={<AdminBadges />} />
+            <Route path="/admin/matches" element={<AdminMatches />} />
             <Route path="/admin/manage/:sessionId" element={<AdminManage />} />
             <Route path="/match/ticket/:ticketId" element={<MatchTicket />} />
             <Route path="/qr-checkin" element={<QRCheckIn />} />
