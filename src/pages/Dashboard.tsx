@@ -451,7 +451,7 @@ const Dashboard = () => {
                   size="lg" 
                   variant="outline"
                   onClick={() => navigate("/court/board")}
-                  className="relative w-full md:w-auto flex flex-col items-start py-6 h-auto"
+                  className="relative w-full md:w-auto flex flex-col items-start py-3 h-auto"
                 >
                   <div className="flex items-center w-full">
                     <MessageSquare className="w-5 h-5 mr-2" />
@@ -466,20 +466,6 @@ const Dashboard = () => {
                   <span className="text-xs text-muted-foreground mt-1">Find a group near you</span>
                 </Button>
               </div>
-            </div>
-            <div className="text-right space-y-2">
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={handleRefreshStats}
-                disabled={refreshing || clearing}
-              >
-                <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-                Recalculate Ratings
-              </Button>
-              <p className="text-xs text-muted-foreground">
-                Recalculate all player ratings
-              </p>
             </div>
           </div>
         </div>
@@ -672,6 +658,21 @@ const Dashboard = () => {
             Invite Friends to Pulse
           </Button>
         </div>
+
+        {/* Admin Only - Recalculate Ratings */}
+        {isAdmin && (
+          <div className="flex justify-center mt-4">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleRefreshStats}
+              disabled={refreshing || clearing}
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+              Recalculate Ratings
+            </Button>
+          </div>
+        )}
       </div>
 
       <Footer />
