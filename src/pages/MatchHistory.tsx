@@ -82,15 +82,17 @@ const MatchHistory = () => {
         {
           event: 'UPDATE',
           schema: 'public',
-          table: 'matches'
+          table: 'matches',
+          filter: 'verified_by=not.is.null'
         },
-        (payload) => {
+        (payload: any) => {
+          console.log('Realtime verification update:', payload);
           // Update local state when a match is verified
           if (payload.new && 'verified_by' in payload.new) {
             setMatches(prevMatches => 
               prevMatches.map(m => 
-                m.match_id === payload.new.id 
-                  ? { ...m, verified_by: payload.new.verified_by || [] }
+                m.match_id === (payload.new as any).id 
+                  ? { ...m, verified_by: (payload.new as any).verified_by || [] }
                   : m
               )
             );
@@ -266,6 +268,14 @@ const MatchHistory = () => {
     const match = matches.find(m => m.match_id === matchToVerify);
     if (!match) return;
 
+    // Don't add if already verified
+    if (match.verified_by.includes(currentUserId)) {
+      toast.info("You have already verified this match");
+      setVerifyDialogOpen(false);
+      setMatchToVerify(null);
+      return;
+    }
+
     const newVerifiedBy = [...match.verified_by, currentUserId];
 
     try {
@@ -276,7 +286,8 @@ const MatchHistory = () => {
 
       if (error) throw error;
 
-      setMatches(matches.map(m => 
+      // Optimistically update local state
+      setMatches(prevMatches => prevMatches.map(m => 
         m.match_id === matchToVerify 
           ? { ...m, verified_by: newVerifiedBy }
           : m
