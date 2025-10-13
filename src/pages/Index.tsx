@@ -18,6 +18,13 @@ const Index = () => {
           <div className="flex items-center gap-1.5 sm:gap-2">
             <ThemeToggle />
             <Button 
+              variant="outline" 
+              onClick={() => navigate("/demo")}
+              className="text-xs sm:text-sm px-2.5 sm:px-4 h-9 sm:h-10"
+            >
+              Take a Tour
+            </Button>
+            <Button 
               variant="secondary" 
               onClick={() => navigate("/auth")}
               className="text-xs sm:text-sm px-2.5 sm:px-4 h-9 sm:h-10"

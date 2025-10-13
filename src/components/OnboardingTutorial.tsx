@@ -65,17 +65,7 @@ export const OnboardingTutorial = ({ userId, onComplete }: OnboardingTutorialPro
       target: '[data-tour="match-history"]',
       content: (
         <div>
-          <h3 className="font-bold mb-2">Match History</h3>
-          <p>View all your past matches, see detailed stats, and track your progress over time.</p>
-        </div>
-      ),
-      placement: 'top',
-    },
-    {
-      target: '[data-tour="court-board"]',
-      content: (
-        <div>
-          <h3 className="font-bold mb-2">Court Board</h3>
+          <h3 className="font-bold mb-2">Court Connector</h3>
           <p>Post when you're looking for players or see who else is looking to play. Organize pickup games easily!</p>
         </div>
       ),
@@ -95,8 +85,8 @@ export const OnboardingTutorial = ({ userId, onComplete }: OnboardingTutorialPro
       target: '[data-tour="leaderboard"]',
       content: (
         <div>
-          <h3 className="font-bold mb-2">Leaderboard</h3>
-          <p>See how you rank against other players in your region. Competition is friendly, but the stats are real!</p>
+          <h3 className="font-bold mb-2">Court History</h3>
+          <p>View match history by court location and see player rankings for each venue in your community.</p>
         </div>
       ),
       placement: 'top',

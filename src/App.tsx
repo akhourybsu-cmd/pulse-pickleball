@@ -32,6 +32,7 @@ import Events from "./pages/Events";
 import NewEvent from "./pages/NewEvent";
 import EventDetail from "./pages/EventDetail";
 import EventMatchEntry from "./pages/EventMatchEntry";
+import DemoTour from "./pages/DemoTour";
 
 const queryClient = new QueryClient();
 
@@ -45,6 +46,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/demo" element={<DemoTour />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/profile/edit" element={<EditProfile />} />
             <Route path="/profile/:userId" element={<ViewProfile />} />
