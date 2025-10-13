@@ -74,6 +74,8 @@ const MatchHistory = () => {
   useEffect(() => {
     fetchMatchHistory();
 
+    console.log('👀 Setting up realtime subscription for match verifications');
+    
     // Subscribe to realtime updates for match verifications
     const channel = supabase
       .channel('match-verifications')
@@ -86,28 +88,35 @@ const MatchHistory = () => {
         },
         (payload: any) => {
           console.log('🔔 Realtime verification update received:', payload);
+          console.log('🔔 Updated match ID:', (payload.new as any).id);
+          console.log('🔔 New verified_by:', (payload.new as any).verified_by);
+          
           // Update local state when a match is verified
           if (payload.new && 'verified_by' in payload.new) {
             const newVerifiedBy = (payload.new as any).verified_by || [];
-            console.log('Updating match', (payload.new as any).id, 'with verified_by:', newVerifiedBy);
+            const matchId = (payload.new as any).id;
+            console.log('🔄 Updating local state for match', matchId, 'with verified_by:', newVerifiedBy);
+            
             setMatches(prevMatches => {
-              const updated = prevMatches.map(m => 
-                m.match_id === (payload.new as any).id 
-                  ? { ...m, verified_by: newVerifiedBy }
-                  : m
-              );
-              console.log('Updated matches state:', updated);
+              const updated = prevMatches.map(m => {
+                if (m.match_id === matchId) {
+                  console.log('✅ Found match to update:', m.match_id);
+                  return { ...m, verified_by: newVerifiedBy };
+                }
+                return m;
+              });
+              console.log('📊 Updated matches state');
               return updated;
             });
           }
         }
       )
       .subscribe((status) => {
-        console.log('Realtime subscription status:', status);
+        console.log('📡 Realtime subscription status:', status);
       });
 
     return () => {
-      console.log('Cleaning up realtime subscription');
+      console.log('🔌 Cleaning up realtime subscription');
       supabase.removeChannel(channel);
     };
   }, [playerId]);
