@@ -383,9 +383,9 @@ const Dashboard = () => {
     : "0.0";
 
   const totalPointDifferential = (profile?.total_points_for || 0) - (profile?.total_points_against || 0);
-  const pointDifferentialPerMatch = profile && profile.total_matches > 0
-    ? (totalPointDifferential / profile.total_matches).toFixed(2)
-    : "0.00";
+  const pointDifferentialPerGame = profile && profile.total_matches > 0
+    ? (totalPointDifferential / profile.total_matches).toFixed(1)
+    : "0.0";
   
   const weeklyChange = profile 
     ? profile.current_rating - profile.week_start_rating 
@@ -536,14 +536,14 @@ const Dashboard = () => {
               <CardHeader className="pb-2 pt-3">
                 <CardDescription className="flex items-center gap-2 text-xs">
                   <BarChart3 className="w-3 h-3" />
-                  Point Differential
+                  Point Diff / Game
                 </CardDescription>
                 <CardTitle className="text-3xl">
-                  {parseFloat(pointDifferentialPerMatch) > 0 ? "+" : ""}{pointDifferentialPerMatch}
+                  {parseFloat(pointDifferentialPerGame) > 0 ? "+" : ""}{pointDifferentialPerGame}
                 </CardTitle>
               </CardHeader>
               <CardContent className="text-xs text-muted-foreground pb-3">
-                Total: {totalPointDifferential > 0 ? "+" : ""}{totalPointDifferential}
+                For: {profile?.total_points_for || 0} • Against: {profile?.total_points_against || 0}
               </CardContent>
             </Card>
 
