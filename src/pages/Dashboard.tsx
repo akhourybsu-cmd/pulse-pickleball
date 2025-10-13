@@ -447,24 +447,40 @@ const Dashboard = () => {
                   Record New Match
                 </Button>
                 
-                <Button 
-                  size="lg" 
-                  variant="outline"
-                  onClick={() => navigate("/court/board")}
-                  className="relative w-full md:w-auto flex flex-col items-start py-3 h-auto"
-                >
-                  <div className="flex items-center w-full">
-                    <MessageSquare className="w-5 h-5 mr-2" />
-                    <span className="font-semibold">Court Connector</span>
-                    {hasNewParticipants && (
-                      <span className="absolute top-2 right-2 flex h-3 w-3">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
-                      </span>
-                    )}
-                  </div>
-                  <span className="text-xs text-muted-foreground mt-1">Find a group near you</span>
-                </Button>
+                <div className="grid grid-cols-2 gap-3">
+                  <Button 
+                    size="lg" 
+                    variant="outline"
+                    onClick={() => navigate("/court/board")}
+                    className="relative flex flex-col items-start py-3 h-auto"
+                  >
+                    <div className="flex items-center w-full">
+                      <MessageSquare className="w-5 h-5 mr-2 flex-shrink-0" />
+                      <span className="font-semibold text-sm">Court Connector</span>
+                      {hasNewParticipants && (
+                        <span className="absolute top-2 right-2 flex h-3 w-3">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-xs text-muted-foreground mt-1">Find a group near you</span>
+                  </Button>
+
+                  <Button 
+                    size="lg" 
+                    variant="outline"
+                    onClick={() => navigate("/match/history")}
+                    className="flex flex-col items-start py-3 h-auto"
+                    data-tour="match-history"
+                  >
+                    <div className="flex items-center w-full">
+                      <Calendar className="w-5 h-5 mr-2 flex-shrink-0" />
+                      <span className="font-semibold text-sm">Match History</span>
+                    </div>
+                    <span className="text-xs text-muted-foreground mt-1">View your matches</span>
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
@@ -567,15 +583,6 @@ const Dashboard = () => {
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <Button 
-            size="lg" 
-            variant="outline"
-            onClick={() => navigate("/match/history")}
-            data-tour="match-history"
-          >
-            <Calendar className="w-5 h-5 mr-2" />
-            My Match History
-          </Button>
 
 
           {isAdmin && (
