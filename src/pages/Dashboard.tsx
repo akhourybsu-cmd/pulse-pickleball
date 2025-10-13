@@ -486,7 +486,7 @@ const Dashboard = () => {
           </div>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2 mb-8">
+        <div className="grid gap-4 md:grid-cols-2 mb-6">
           <Card className="border-2 border-primary shadow-[var(--shadow-glow)] md:col-span-2" data-tour="pulse-score">
             <CardHeader className="pb-3">
               <CardDescription>Live Pulse Score</CardDescription>
@@ -507,51 +507,51 @@ const Dashboard = () => {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="pb-3">
-              <CardDescription>Record</CardDescription>
-              <CardTitle className="text-4xl">
+          <Card className="py-2">
+            <CardHeader className="pb-2 pt-3">
+              <CardDescription className="text-xs">Record</CardDescription>
+              <CardTitle className="text-3xl">
                 {profile?.wins}W - {profile?.losses}L
               </CardTitle>
             </CardHeader>
-            <CardContent className="text-sm text-muted-foreground">
+            <CardContent className="text-xs text-muted-foreground pb-3">
               {profile?.total_matches} {profile?.total_matches === 1 ? 'match' : 'matches'} played
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="pb-3">
-              <CardDescription className="flex items-center gap-2">
-                <TrendingUp className="w-4 h-4" />
+          <Card className="py-2">
+            <CardHeader className="pb-2 pt-3">
+              <CardDescription className="flex items-center gap-2 text-xs">
+                <TrendingUp className="w-3 h-3" />
                 Win Rate
               </CardDescription>
-              <CardTitle className="text-4xl">{winRate}%</CardTitle>
+              <CardTitle className="text-3xl">{winRate}%</CardTitle>
             </CardHeader>
           </Card>
 
-          <Card>
-            <CardHeader className="pb-3">
-              <CardDescription className="flex items-center gap-2">
-                <BarChart3 className="w-4 h-4" />
-                Point Differential (Per Match)
+          <Card className="py-2">
+            <CardHeader className="pb-2 pt-3">
+              <CardDescription className="flex items-center gap-2 text-xs">
+                <BarChart3 className="w-3 h-3" />
+                Point Differential
               </CardDescription>
-              <CardTitle className="text-3xl">
+              <CardTitle className="text-2xl">
                 {parseFloat(pointDifferentialPerMatch) > 0 ? "+" : ""}{pointDifferentialPerMatch}
               </CardTitle>
             </CardHeader>
-            <CardContent className="text-sm text-muted-foreground">
-              Total: {totalPointDifferential > 0 ? "+" : ""}{totalPointDifferential} ({profile?.total_points_for} for / {profile?.total_points_against} against)
+            <CardContent className="text-xs text-muted-foreground pb-3">
+              Total: {totalPointDifferential > 0 ? "+" : ""}{totalPointDifferential}
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="pb-3">
-              <CardDescription>Avg. Opponent Rating</CardDescription>
-              <CardTitle className="text-3xl">
+          <Card className="py-2">
+            <CardHeader className="pb-2 pt-3">
+              <CardDescription className="text-xs">Avg. Opponent Rating</CardDescription>
+              <CardTitle className="text-2xl">
                 {profile?.avg_opponent_rating?.toFixed(2) || "N/A"}
               </CardTitle>
             </CardHeader>
-            <CardContent className="text-sm text-muted-foreground">
+            <CardContent className="text-xs text-muted-foreground pb-3">
               Strength of schedule
             </CardContent>
           </Card>
