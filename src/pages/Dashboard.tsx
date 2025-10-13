@@ -486,8 +486,8 @@ const Dashboard = () => {
           </div>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
-          <Card className="border-2 border-primary shadow-[var(--shadow-glow)]" data-tour="pulse-score">
+        <div className="grid gap-6 md:grid-cols-2 mb-8">
+          <Card className="border-2 border-primary shadow-[var(--shadow-glow)] md:col-span-2" data-tour="pulse-score">
             <CardHeader className="pb-3">
               <CardDescription>Live Pulse Score</CardDescription>
               <CardTitle className="text-5xl font-bold text-primary">
@@ -509,12 +509,14 @@ const Dashboard = () => {
 
           <Card>
             <CardHeader className="pb-3">
-              <CardDescription className="flex items-center gap-2">
-                <Trophy className="w-4 h-4" />
-                Total Matches
-              </CardDescription>
-              <CardTitle className="text-4xl">{profile?.total_matches}</CardTitle>
+              <CardDescription>Record</CardDescription>
+              <CardTitle className="text-4xl">
+                {profile?.wins}W - {profile?.losses}L
+              </CardTitle>
             </CardHeader>
+            <CardContent className="text-sm text-muted-foreground">
+              {profile?.total_matches} {profile?.total_matches === 1 ? 'match' : 'matches'} played
+            </CardContent>
           </Card>
 
           <Card>
@@ -527,17 +529,6 @@ const Dashboard = () => {
             </CardHeader>
           </Card>
 
-          <Card>
-            <CardHeader className="pb-3">
-              <CardDescription>Record</CardDescription>
-              <CardTitle className="text-4xl">
-                {profile?.wins}W - {profile?.losses}L
-              </CardTitle>
-            </CardHeader>
-          </Card>
-        </div>
-
-        <div className="grid gap-6 md:grid-cols-3 mb-8">
           <Card>
             <CardHeader className="pb-3">
               <CardDescription className="flex items-center gap-2">
