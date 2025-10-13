@@ -436,15 +436,36 @@ const Dashboard = () => {
               <h2 className="text-3xl font-bold mb-2">Welcome back, {profile?.display_name || profile?.full_name}!</h2>
               <p className="text-muted-foreground mb-4">Track your pickleball journey</p>
               
-              <Button 
-                size="lg" 
-                onClick={() => navigate("/match/new")}
-                className="shadow-[var(--shadow-glow)]"
-                data-tour="record-match"
-              >
-                <Plus className="w-5 h-5 mr-2" />
-                Record New Match
-              </Button>
+              <div className="space-y-3 w-full md:w-auto">
+                <Button 
+                  size="lg" 
+                  onClick={() => navigate("/match/new")}
+                  className="shadow-[var(--shadow-glow)] w-full md:w-auto"
+                  data-tour="record-match"
+                >
+                  <Plus className="w-5 h-5 mr-2" />
+                  Record New Match
+                </Button>
+                
+                <Button 
+                  size="lg" 
+                  variant="outline"
+                  onClick={() => navigate("/court/board")}
+                  className="relative w-full md:w-auto flex flex-col items-start py-6 h-auto"
+                >
+                  <div className="flex items-center w-full">
+                    <MessageSquare className="w-5 h-5 mr-2" />
+                    <span className="font-semibold">Court Connector</span>
+                    {hasNewParticipants && (
+                      <span className="absolute top-2 right-2 flex h-3 w-3">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-xs text-muted-foreground mt-1">Find a group near you</span>
+                </Button>
+              </div>
             </div>
             <div className="text-right space-y-2">
               <Button 
@@ -570,22 +591,6 @@ const Dashboard = () => {
             My Match History
           </Button>
 
-          <Button 
-            size="lg" 
-            variant="outline"
-            onClick={() => navigate("/court/board")}
-            className="relative"
-            data-tour="court-board"
-          >
-            <MessageSquare className="w-5 h-5 mr-2" />
-            Court Connector - looking for group
-            {hasNewParticipants && (
-              <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
-              </span>
-            )}
-          </Button>
 
           {isAdmin && (
             <Button 
