@@ -82,26 +82,32 @@ const MatchHistory = () => {
         {
           event: 'UPDATE',
           schema: 'public',
-          table: 'matches',
-          filter: 'verified_by=not.is.null'
+          table: 'matches'
         },
         (payload: any) => {
-          console.log('Realtime verification update:', payload);
+          console.log('🔔 Realtime verification update received:', payload);
           // Update local state when a match is verified
           if (payload.new && 'verified_by' in payload.new) {
-            setMatches(prevMatches => 
-              prevMatches.map(m => 
+            const newVerifiedBy = (payload.new as any).verified_by || [];
+            console.log('Updating match', (payload.new as any).id, 'with verified_by:', newVerifiedBy);
+            setMatches(prevMatches => {
+              const updated = prevMatches.map(m => 
                 m.match_id === (payload.new as any).id 
-                  ? { ...m, verified_by: (payload.new as any).verified_by || [] }
+                  ? { ...m, verified_by: newVerifiedBy }
                   : m
-              )
-            );
+              );
+              console.log('Updated matches state:', updated);
+              return updated;
+            });
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Realtime subscription status:', status);
+      });
 
     return () => {
+      console.log('Cleaning up realtime subscription');
       supabase.removeChannel(channel);
     };
   }, [playerId]);
@@ -109,6 +115,9 @@ const MatchHistory = () => {
   const fetchMatchHistory = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     const playerIdToUse = playerId || user?.id;
+    
+    console.log('Fetching match history for player:', playerIdToUse);
+    console.log('Current user ID:', user?.id);
     
     if (!playerIdToUse) {
       navigate("/auth");
@@ -127,7 +136,7 @@ const MatchHistory = () => {
     setPlayerName(profile?.display_name || profile?.full_name || "Player");
 
     // Get all approved matches for this player
-    const { data: participantsData } = await supabase
+    const { data: participantsData, error: fetchError } = await supabase
       .from("match_participants")
       .select(`
         match_id,
@@ -149,6 +158,9 @@ const MatchHistory = () => {
       `)
       .eq("player_id", playerIdToUse)
       .eq("matches.status", "approved");
+
+    console.log('Fetched participants data:', participantsData);
+    console.log('Fetch error:', fetchError);
 
     if (!participantsData) {
       setLoading(false);
@@ -186,7 +198,7 @@ const MatchHistory = () => {
           courtName = p.matches.courts.name;
         }
 
-        return {
+        const matchData = {
           match_id: p.match_id,
           match_date: p.matches.match_date,
           created_at: p.matches.created_at,
@@ -206,6 +218,11 @@ const MatchHistory = () => {
           won,
           verified_by: p.matches.verified_by || [],
         };
+        
+        console.log('Match data for', p.match_id, ':', matchData);
+        console.log('Verified by array:', p.matches.verified_by);
+        
+        return matchData;
       })
     );
 
@@ -263,10 +280,19 @@ const MatchHistory = () => {
   };
 
   const handleVerifyMatch = async () => {
-    if (!currentUserId || !matchToVerify) return;
+    if (!currentUserId || !matchToVerify) {
+      console.error('Missing currentUserId or matchToVerify', { currentUserId, matchToVerify });
+      return;
+    }
 
     const match = matches.find(m => m.match_id === matchToVerify);
-    if (!match) return;
+    if (!match) {
+      console.error('Match not found:', matchToVerify);
+      return;
+    }
+
+    console.log('Current match verified_by:', match.verified_by);
+    console.log('Current user ID:', currentUserId);
 
     // Don't add if already verified
     if (match.verified_by.includes(currentUserId)) {
@@ -277,12 +303,16 @@ const MatchHistory = () => {
     }
 
     const newVerifiedBy = [...match.verified_by, currentUserId];
+    console.log('New verified_by array:', newVerifiedBy);
 
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("matches")
         .update({ verified_by: newVerifiedBy })
-        .eq("id", matchToVerify);
+        .eq("id", matchToVerify)
+        .select();
+
+      console.log('Update response:', { data, error });
 
       if (error) throw error;
 
@@ -293,11 +323,12 @@ const MatchHistory = () => {
           : m
       ));
 
+      console.log('✅ Match verified successfully');
       toast.success("Match verified");
       setVerifyDialogOpen(false);
       setMatchToVerify(null);
     } catch (error) {
-      console.error("Error verifying match:", error);
+      console.error("❌ Error verifying match:", error);
       toast.error("Failed to verify match");
     }
   };
