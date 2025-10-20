@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +14,7 @@ interface Event {
   id: string;
   name: string;
   date: string;
+  location: string | null;
   status: string;
   current_round: number;
   num_rounds: number;
@@ -45,6 +47,11 @@ interface ScheduleMatch {
   match_id: string | null;
 }
 
+interface MatchScore {
+  team1_score: number;
+  team2_score: number;
+}
+
 export default function RoundRobinDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -54,6 +61,8 @@ export default function RoundRobinDetail() {
   const [loading, setLoading] = useState(true);
   const [isOrganizer, setIsOrganizer] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const [scores, setScores] = useState<Record<string, MatchScore>>({});
+  const [savingScore, setSavingScore] = useState<string | null>(null);
 
   useEffect(() => {
     fetchEventDetails();
@@ -170,6 +179,91 @@ export default function RoundRobinDetail() {
     return schedule.filter((s) => s.round_no === roundNo);
   };
 
+  const handleScoreChange = (matchId: string, team: 'team1' | 'team2', value: string) => {
+    const numValue = parseInt(value) || 0;
+    setScores(prev => ({
+      ...prev,
+      [matchId]: {
+        ...prev[matchId],
+        [team === 'team1' ? 'team1_score' : 'team2_score']: numValue,
+      }
+    }));
+  };
+
+  const handleSaveScore = async (match: ScheduleMatch) => {
+    if (!event || match.match_id) return;
+    
+    const score = scores[match.id];
+    if (!score || (score.team1_score === 0 && score.team2_score === 0)) {
+      toast.error("Enter valid scores");
+      return;
+    }
+
+    setSavingScore(match.id);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Create match record
+      const { data: matchData, error: matchError } = await supabase
+        .from("matches")
+        .insert({
+          match_date: event.date,
+          team1_score: score.team1_score,
+          team2_score: score.team2_score,
+          created_by: user.id,
+          source: "round_robin",
+          event_id: event.id,
+          round_no: match.round_no,
+          court_no: match.court_no,
+          rating_eligible: event.rating_eligible,
+          match_type: event.rating_type,
+          status: "approved",
+        })
+        .select()
+        .single();
+
+      if (matchError) throw matchError;
+
+      // Create match participants
+      const participants = [
+        { match_id: matchData.id, player_id: match.a1_player_id!, team: 1 },
+        { match_id: matchData.id, player_id: match.a2_player_id!, team: 1 },
+        { match_id: matchData.id, player_id: match.b1_player_id!, team: 2 },
+        { match_id: matchData.id, player_id: match.b2_player_id!, team: 2 },
+      ];
+
+      const { error: participantsError } = await supabase
+        .from("match_participants")
+        .insert(participants);
+
+      if (participantsError) throw participantsError;
+
+      // Update schedule with match_id
+      const { error: scheduleError } = await supabase
+        .from("round_robin_schedule")
+        .update({ match_id: matchData.id })
+        .eq("id", match.id);
+
+      if (scheduleError) throw scheduleError;
+
+      toast.success("Score saved!");
+      fetchEventDetails();
+      
+      // Clear the score input
+      setScores(prev => {
+        const newScores = { ...prev };
+        delete newScores[match.id];
+        return newScores;
+      });
+    } catch (error: any) {
+      toast.error("Failed to save score");
+      console.error(error);
+    } finally {
+      setSavingScore(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -197,6 +291,7 @@ export default function RoundRobinDetail() {
               <h1 className="text-2xl font-bold">{event.name}</h1>
               <p className="text-sm text-muted-foreground">
                 {new Date(event.date).toLocaleDateString()}
+                {event.location && ` • ${event.location}`}
               </p>
             </div>
             <Badge>{event.status.toUpperCase()}</Badge>
@@ -252,31 +347,58 @@ export default function RoundRobinDetail() {
                       </CardHeader>
                       <CardContent className="space-y-4">
                         {matches.map((match) => (
-                          <div
-                            key={match.id}
-                            className="p-4 border rounded-lg"
-                            onClick={() => {
-                              if (isOrganizer && event.status === "live") {
-                                navigate(`/round-robin/${event.id}/match/${match.id}`);
-                              }
-                            }}
-                          >
-                            <div className="font-semibold mb-2">Court {match.court_no}</div>
+                          <div key={match.id} className="p-4 border rounded-lg space-y-3">
+                            <div className="font-semibold">Court {match.court_no}</div>
                             {match.is_bye ? (
                               <p className="text-sm text-muted-foreground">Bye</p>
                             ) : (
-                              <div className="text-sm">
-                                <div>
-                                  {getPlayerName(match.a1_player_id)} / {getPlayerName(match.a2_player_id)}
+                              <>
+                                <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+                                  <div className="text-sm text-right">
+                                    {getPlayerName(match.a1_player_id)} / {getPlayerName(match.a2_player_id)}
+                                  </div>
+                                  {match.match_id ? (
+                                    <Badge variant="secondary">Done</Badge>
+                                  ) : isOrganizer && event.status === "live" ? (
+                                    <div className="flex gap-2">
+                                      <Input
+                                        type="number"
+                                        min="0"
+                                        max="99"
+                                        className="w-14 h-9 text-center"
+                                        placeholder="0"
+                                        value={scores[match.id]?.team1_score ?? ''}
+                                        onChange={(e) => handleScoreChange(match.id, 'team1', e.target.value)}
+                                      />
+                                      <span className="text-muted-foreground">-</span>
+                                      <Input
+                                        type="number"
+                                        min="0"
+                                        max="99"
+                                        className="w-14 h-9 text-center"
+                                        placeholder="0"
+                                        value={scores[match.id]?.team2_score ?? ''}
+                                        onChange={(e) => handleScoreChange(match.id, 'team2', e.target.value)}
+                                      />
+                                    </div>
+                                  ) : (
+                                    <div className="text-muted-foreground text-sm">vs</div>
+                                  )}
+                                  <div className="text-sm">
+                                    {getPlayerName(match.b1_player_id)} / {getPlayerName(match.b2_player_id)}
+                                  </div>
                                 </div>
-                                <div className="text-muted-foreground">vs</div>
-                                <div>
-                                  {getPlayerName(match.b1_player_id)} / {getPlayerName(match.b2_player_id)}
-                                </div>
-                              </div>
-                            )}
-                            {match.match_id && (
-                              <Badge variant="secondary" className="mt-2">Completed</Badge>
+                                {isOrganizer && event.status === "live" && !match.match_id && (
+                                  <Button
+                                    onClick={() => handleSaveScore(match)}
+                                    disabled={savingScore === match.id}
+                                    size="sm"
+                                    className="w-full"
+                                  >
+                                    {savingScore === match.id ? "Saving..." : "Save Score"}
+                                  </Button>
+                                )}
+                              </>
                             )}
                           </div>
                         ))}

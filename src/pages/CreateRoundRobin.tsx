@@ -22,6 +22,7 @@ export default function CreateRoundRobin() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState("");
+  const [location, setLocation] = useState("");
   const [notes, setNotes] = useState("");
   const [selectedPlayers, setSelectedPlayers] = useState<Profile[]>([]);
   const [numCourts, setNumCourts] = useState("2");
@@ -53,6 +54,7 @@ export default function CreateRoundRobin() {
         .from("round_robin_events")
         .insert({
           name: name.trim(),
+          location: location.trim() || null,
           notes: notes.trim() || null,
           organizer_id: user.id,
           num_courts: parseInt(numCourts),
@@ -126,6 +128,17 @@ export default function CreateRoundRobin() {
                 <Calendar className="h-4 w-4" />
                 {new Date().toLocaleDateString()} (Today, locked)
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="location">Location (Optional)</Label>
+              <Input
+                id="location"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                placeholder="Court name or address"
+                maxLength={200}
+              />
             </div>
 
             <div className="space-y-2">

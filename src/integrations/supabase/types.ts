@@ -991,6 +991,7 @@ export type Database = {
           current_round: number | null
           date: string
           id: string
+          location: string | null
           name: string
           notes: string | null
           num_courts: number
@@ -1006,6 +1007,7 @@ export type Database = {
           current_round?: number | null
           date?: string
           id?: string
+          location?: string | null
           name: string
           notes?: string | null
           num_courts: number
@@ -1021,6 +1023,7 @@ export type Database = {
           current_round?: number | null
           date?: string
           id?: string
+          location?: string | null
           name?: string
           notes?: string | null
           num_courts?: number
