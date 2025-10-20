@@ -1326,6 +1326,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_event_participant: {
+        Args: { _event_id: string; _user_id: string }
+        Returns: boolean
+      }
       recalculate_all_player_stats: {
         Args: Record<PropertyKey, never>
         Returns: undefined
