@@ -987,6 +987,7 @@ export type Database = {
       }
       round_robin_events: {
         Row: {
+          completed_at: string | null
           created_at: string
           current_round: number | null
           date: string
@@ -1003,6 +1004,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          completed_at?: string | null
           created_at?: string
           current_round?: number | null
           date?: string
@@ -1019,6 +1021,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          completed_at?: string | null
           created_at?: string
           current_round?: number | null
           date?: string
@@ -1091,6 +1094,8 @@ export type Database = {
           is_bye: boolean
           match_id: string | null
           round_no: number
+          team1_score: number | null
+          team2_score: number | null
         }
         Insert: {
           a1_player_id?: string | null
@@ -1104,6 +1109,8 @@ export type Database = {
           is_bye?: boolean
           match_id?: string | null
           round_no: number
+          team1_score?: number | null
+          team2_score?: number | null
         }
         Update: {
           a1_player_id?: string | null
@@ -1117,6 +1124,8 @@ export type Database = {
           is_bye?: boolean
           match_id?: string | null
           round_no?: number
+          team1_score?: number | null
+          team2_score?: number | null
         }
         Relationships: [
           {

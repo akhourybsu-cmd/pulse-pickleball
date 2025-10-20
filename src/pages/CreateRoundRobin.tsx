@@ -18,9 +18,18 @@ interface Profile {
   display_name: string | null;
 }
 
+interface Court {
+  id: string;
+  name: string;
+  location: string;
+  city: string;
+  state: string;
+}
+
 export default function CreateRoundRobin() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [courts, setCourts] = useState<Court[]>([]);
   const [name, setName] = useState("");
   const [location, setLocation] = useState("");
   const [notes, setNotes] = useState("");
@@ -29,6 +38,15 @@ export default function CreateRoundRobin() {
   const [numRounds, setNumRounds] = useState("4");
   const [ratingEligible, setRatingEligible] = useState(true);
   const [ratingType, setRatingType] = useState<"ladder" | "league" | "playoffs" | "casual">("league");
+
+  useEffect(() => {
+    fetchCourts();
+  }, []);
+
+  const fetchCourts = async () => {
+    const { data } = await supabase.from("courts").select("*").order("name");
+    if (data) setCourts(data);
+  };
 
   const handleCreate = async () => {
     if (!name.trim()) {
@@ -132,13 +150,18 @@ export default function CreateRoundRobin() {
 
             <div className="space-y-2">
               <Label htmlFor="location">Location (Optional)</Label>
-              <Input
-                id="location"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                placeholder="Court name or address"
-                maxLength={200}
-              />
+              <Select value={location} onValueChange={setLocation}>
+                <SelectTrigger id="location">
+                  <SelectValue placeholder="Select a court" />
+                </SelectTrigger>
+                <SelectContent>
+                  {courts.map((court) => (
+                    <SelectItem key={court.id} value={court.name}>
+                      {court.name} - {court.city}, {court.state}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
