@@ -1166,6 +1166,31 @@ export type Database = {
         Args: { match_id_param: string; user_id_param: string }
         Returns: boolean
       }
+      verify_match: {
+        Args: { p_match_id: string }
+        Returns: {
+          court_id: string | null
+          created_at: string | null
+          created_by: string
+          event_court_number: number | null
+          event_id: string | null
+          id: string
+          match_date: string
+          match_type: string | null
+          other_location: string | null
+          round_number: string | null
+          status: string | null
+          team1_score: number
+          team2_score: number
+          updated_at: string | null
+          verified_by: string[] | null
+          void_reason: string | null
+          voided: boolean | null
+          voided_at: string | null
+          voided_by: string | null
+          week_start: string | null
+        }
+      }
     }
     Enums: {
       app_role: "admin" | "user"

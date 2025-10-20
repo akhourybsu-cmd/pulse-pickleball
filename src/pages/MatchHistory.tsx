@@ -311,34 +311,32 @@ const MatchHistory = () => {
       return;
     }
 
-    const newVerifiedBy = [...match.verified_by, currentUserId];
-    console.log('New verified_by array:', newVerifiedBy);
-
     try {
-      const { data, error } = await supabase
-        .from("matches")
-        .update({ verified_by: newVerifiedBy })
-        .eq("id", matchToVerify)
-        .select();
+      // Use RPC function to safely append and dedupe
+      const { data, error } = await supabase.rpc('verify_match', { 
+        p_match_id: matchToVerify 
+      });
 
-      console.log('Update response:', { data, error });
+      console.log('RPC response:', { data, error });
 
       if (error) throw error;
 
-      // Optimistically update local state
-      setMatches(prevMatches => prevMatches.map(m => 
-        m.match_id === matchToVerify 
-          ? { ...m, verified_by: newVerifiedBy }
-          : m
-      ));
+      // Update local state with server response
+      if (data?.verified_by) {
+        setMatches(prevMatches => prevMatches.map(m => 
+          m.match_id === matchToVerify 
+            ? { ...m, verified_by: data.verified_by }
+            : m
+        ));
+      }
 
       console.log('✅ Match verified successfully');
       toast.success("Match verified");
       setVerifyDialogOpen(false);
       setMatchToVerify(null);
-    } catch (error) {
+    } catch (error: any) {
       console.error("❌ Error verifying match:", error);
-      toast.error("Failed to verify match");
+      toast.error(error?.message || "Failed to verify match");
     }
   };
 
