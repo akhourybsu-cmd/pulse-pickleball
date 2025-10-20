@@ -578,6 +578,15 @@ const Dashboard = () => {
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <Button 
+            size="lg" 
+            variant="outline"
+            onClick={() => navigate("/round-robin")}
+            className="h-auto py-4"
+          >
+            <Trophy className="w-5 h-5 mr-2" />
+            Round Robin
+          </Button>
 
 
           {isAdmin && (

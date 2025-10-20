@@ -616,6 +616,7 @@ export type Database = {
       matches: {
         Row: {
           court_id: string | null
+          court_no: number | null
           created_at: string | null
           created_by: string
           event_court_number: number | null
@@ -624,7 +625,9 @@ export type Database = {
           match_date: string
           match_type: string | null
           other_location: string | null
+          round_no: number | null
           round_number: string | null
+          source: string | null
           status: string | null
           team1_score: number
           team2_score: number
@@ -638,6 +641,7 @@ export type Database = {
         }
         Insert: {
           court_id?: string | null
+          court_no?: number | null
           created_at?: string | null
           created_by: string
           event_court_number?: number | null
@@ -646,7 +650,9 @@ export type Database = {
           match_date: string
           match_type?: string | null
           other_location?: string | null
+          round_no?: number | null
           round_number?: string | null
+          source?: string | null
           status?: string | null
           team1_score: number
           team2_score: number
@@ -660,6 +666,7 @@ export type Database = {
         }
         Update: {
           court_id?: string | null
+          court_no?: number | null
           created_at?: string | null
           created_by?: string
           event_court_number?: number | null
@@ -668,7 +675,9 @@ export type Database = {
           match_date?: string
           match_type?: string | null
           other_location?: string | null
+          round_no?: number | null
           round_number?: string | null
+          source?: string | null
           status?: string | null
           team1_score?: number
           team2_score?: number
@@ -976,6 +985,181 @@ export type Database = {
         }
         Relationships: []
       }
+      round_robin_events: {
+        Row: {
+          created_at: string
+          current_round: number | null
+          date: string
+          id: string
+          name: string
+          notes: string | null
+          num_courts: number
+          num_rounds: number
+          organizer_id: string
+          rating_eligible: boolean
+          rating_type: Database["public"]["Enums"]["rating_type"]
+          status: Database["public"]["Enums"]["round_robin_status"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          current_round?: number | null
+          date?: string
+          id?: string
+          name: string
+          notes?: string | null
+          num_courts: number
+          num_rounds: number
+          organizer_id: string
+          rating_eligible?: boolean
+          rating_type?: Database["public"]["Enums"]["rating_type"]
+          status?: Database["public"]["Enums"]["round_robin_status"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          current_round?: number | null
+          date?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          num_courts?: number
+          num_rounds?: number
+          organizer_id?: string
+          rating_eligible?: boolean
+          rating_type?: Database["public"]["Enums"]["rating_type"]
+          status?: Database["public"]["Enums"]["round_robin_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      round_robin_players: {
+        Row: {
+          active: boolean
+          bye_count: number
+          event_id: string
+          id: string
+          joined_at: string
+          player_id: string
+        }
+        Insert: {
+          active?: boolean
+          bye_count?: number
+          event_id: string
+          id?: string
+          joined_at?: string
+          player_id: string
+        }
+        Update: {
+          active?: boolean
+          bye_count?: number
+          event_id?: string
+          id?: string
+          joined_at?: string
+          player_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "round_robin_players_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "round_robin_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "round_robin_players_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      round_robin_schedule: {
+        Row: {
+          a1_player_id: string | null
+          a2_player_id: string | null
+          b1_player_id: string | null
+          b2_player_id: string | null
+          court_no: number
+          created_at: string
+          event_id: string
+          id: string
+          is_bye: boolean
+          match_id: string | null
+          round_no: number
+        }
+        Insert: {
+          a1_player_id?: string | null
+          a2_player_id?: string | null
+          b1_player_id?: string | null
+          b2_player_id?: string | null
+          court_no: number
+          created_at?: string
+          event_id: string
+          id?: string
+          is_bye?: boolean
+          match_id?: string | null
+          round_no: number
+        }
+        Update: {
+          a1_player_id?: string | null
+          a2_player_id?: string | null
+          b1_player_id?: string | null
+          b2_player_id?: string | null
+          court_no?: number
+          created_at?: string
+          event_id?: string
+          id?: string
+          is_bye?: boolean
+          match_id?: string | null
+          round_no?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "round_robin_schedule_a1_player_id_fkey"
+            columns: ["a1_player_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "round_robin_schedule_a2_player_id_fkey"
+            columns: ["a2_player_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "round_robin_schedule_b1_player_id_fkey"
+            columns: ["b1_player_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "round_robin_schedule_b2_player_id_fkey"
+            columns: ["b2_player_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "round_robin_schedule_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "round_robin_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "round_robin_schedule_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sessions: {
         Row: {
           court_id: string
@@ -1170,6 +1354,7 @@ export type Database = {
         Args: { p_match_id: string }
         Returns: {
           court_id: string | null
+          court_no: number | null
           created_at: string | null
           created_by: string
           event_court_number: number | null
@@ -1178,7 +1363,9 @@ export type Database = {
           match_date: string
           match_type: string | null
           other_location: string | null
+          round_no: number | null
           round_number: string | null
+          source: string | null
           status: string | null
           team1_score: number
           team2_score: number
@@ -1194,6 +1381,8 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
+      rating_type: "ladder" | "league" | "playoffs" | "casual"
+      round_robin_status: "draft" | "live" | "completed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1322,6 +1511,8 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
+      rating_type: ["ladder", "league", "playoffs", "casual"],
+      round_robin_status: ["draft", "live", "completed"],
     },
   },
 } as const

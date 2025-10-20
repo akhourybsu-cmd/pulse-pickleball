@@ -33,6 +33,9 @@ import NewEvent from "./pages/NewEvent";
 import EventDetail from "./pages/EventDetail";
 import EventMatchEntry from "./pages/EventMatchEntry";
 import DemoTour from "./pages/DemoTour";
+import RoundRobinHub from "./pages/RoundRobinHub";
+import CreateRoundRobin from "./pages/CreateRoundRobin";
+import RoundRobinDetail from "./pages/RoundRobinDetail";
 
 const queryClient = new QueryClient();
 
@@ -73,6 +76,9 @@ const App = () => (
             <Route path="/events/new" element={<NewEvent />} />
             <Route path="/events/:eventId" element={<EventDetail />} />
             <Route path="/events/:eventId/add-match" element={<EventMatchEntry />} />
+            <Route path="/round-robin" element={<RoundRobinHub />} />
+            <Route path="/round-robin/create" element={<CreateRoundRobin />} />
+            <Route path="/round-robin/:id" element={<RoundRobinDetail />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
