@@ -104,8 +104,8 @@ export function ActiveRoundRobinIndicator() {
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
           <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
         </span>
-        <Trophy className="w-4 h-4 mr-2" />
-        Active Round Robin
+        <Trophy className="w-4 h-4 md:mr-2" />
+        <span className="hidden md:inline">Active Round Robin</span>
       </Button>
     );
   }
@@ -118,8 +118,9 @@ export function ActiveRoundRobinIndicator() {
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
             <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
           </span>
-          <Trophy className="w-4 h-4 mr-2" />
-          Active Round Robin ({liveEvents.length})
+          <Trophy className="w-4 h-4 md:mr-2" />
+          <span className="hidden md:inline">Active Round Robin ({liveEvents.length})</span>
+          <span className="md:hidden">({liveEvents.length})</span>
         </Button>
       </SheetTrigger>
       <SheetContent>

@@ -406,12 +406,6 @@ const Dashboard = () => {
           <img src={logo} alt="PULSE Logo" className="h-16 w-auto" />
           <div className="flex items-center gap-3">
             <ActiveRoundRobinIndicator />
-            {isAdmin && (
-              <Button variant="default" size="sm" onClick={() => navigate("/admin")}>
-                <Settings className="w-4 h-4 mr-2" />
-                Admin
-              </Button>
-            )}
             <Button 
               variant="outline" 
               size="icon" 
@@ -672,14 +666,24 @@ const Dashboard = () => {
           </Button>
         </div>
 
-        {/* Admin Only - Recalculate Ratings */}
+        {/* Admin Controls */}
         {isAdmin && (
-          <div className="flex justify-center mt-4">
+          <div className="flex flex-col gap-3 mt-8">
+            <Button 
+              variant="default" 
+              size="lg"
+              onClick={() => navigate("/admin")}
+              className="w-full md:w-auto"
+            >
+              <Settings className="w-4 h-4 mr-2" />
+              Admin Dashboard
+            </Button>
             <Button 
               variant="outline" 
               size="sm"
               onClick={handleRefreshStats}
               disabled={refreshing || clearing}
+              className="w-full md:w-auto"
             >
               <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
               Recalculate Ratings
