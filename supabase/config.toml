@@ -14,7 +14,7 @@ enabled = true
 verify_jwt = false
 
 [functions.delete-old-posts]
-verify_jwt = false
+verify_jwt = true
 
 [functions.calculate-badges]
 verify_jwt = true
