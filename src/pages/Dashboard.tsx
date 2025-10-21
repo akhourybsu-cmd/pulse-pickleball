@@ -12,6 +12,7 @@ import { BadgeDisplay } from "@/components/BadgeDisplay";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Footer } from "@/components/Footer";
 import { OnboardingTutorial } from "@/components/OnboardingTutorial";
+import { ActiveRoundRobinIndicator } from "@/components/ActiveRoundRobinIndicator";
 
 interface Profile {
   id: string;
@@ -404,6 +405,7 @@ const Dashboard = () => {
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <img src={logo} alt="PULSE Logo" className="h-16 w-auto" />
           <div className="flex items-center gap-3">
+            <ActiveRoundRobinIndicator />
             {isAdmin && (
               <Button variant="default" size="sm" onClick={() => navigate("/admin")}>
                 <Settings className="w-4 h-4 mr-2" />

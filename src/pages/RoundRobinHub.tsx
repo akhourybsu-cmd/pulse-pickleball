@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Calendar, Users, Trophy } from "lucide-react";
 import { toast } from "sonner";
+import { BackToDashboard } from "@/components/BackToDashboard";
 
 interface RoundRobinEvent {
   id: string;
@@ -130,7 +131,10 @@ export default function RoundRobinHub() {
       <header className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold">Round Robin</h1>
+            <div className="flex items-center gap-4">
+              <BackToDashboard />
+              <h1 className="text-2xl font-bold">Round Robin</h1>
+            </div>
             <Button onClick={() => navigate("/round-robin/create")}>
               <Plus className="h-4 w-4 mr-2" />
               Create Event

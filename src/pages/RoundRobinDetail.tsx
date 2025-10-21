@@ -2,34 +2,69 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Users, Trophy, Play, SkipForward, Settings, AlertCircle } from "lucide-react";
-import { toast } from "sonner";
+import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Play, Trophy, AlertCircle, Settings, Trash2, Ban, CheckCircle } from "lucide-react";
+import { toast } from "sonner";
+import { BackToDashboard } from "@/components/BackToDashboard";
+import { z } from "zod";
+
+// Score validation schema
+const scoreSchema = z.object({
+  team1_score: z.number().min(0).max(99),
+  team2_score: z.number().min(0).max(99),
+}).refine(
+  (data) => data.team1_score !== data.team2_score,
+  { message: "Scores cannot be tied" }
+);
 
 interface Event {
   id: string;
   name: string;
   date: string;
   location: string | null;
-  status: string;
-  current_round: number;
-  num_rounds: number;
-  num_courts: number;
+  notes: string | null;
   organizer_id: string;
+  num_courts: number;
+  num_rounds: number;
+  current_round: number | null;
+  status: string;
   rating_eligible: boolean;
   rating_type: string;
-  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  completed_at: string | null;
+  voided: boolean;
 }
 
 interface Player {
   id: string;
+  event_id: string;
   player_id: string;
+  joined_at: string;
   active: boolean;
   profiles: {
+    id: string;
     full_name: string;
     display_name: string | null;
   };
@@ -37,6 +72,7 @@ interface Player {
 
 interface ScheduleMatch {
   id: string;
+  event_id: string;
   round_no: number;
   court_no: number;
   a1_player_id: string | null;
@@ -44,9 +80,9 @@ interface ScheduleMatch {
   b1_player_id: string | null;
   b2_player_id: string | null;
   is_bye: boolean;
-  match_id: string | null;
   team1_score: number | null;
   team2_score: number | null;
+  match_id: string | null;
 }
 
 interface StandingsRow {
@@ -60,25 +96,62 @@ interface StandingsRow {
 }
 
 interface MatchScore {
-  team1_score: number;
-  team2_score: number;
+  [matchId: string]: {
+    team1_score: number;
+    team2_score: number;
+  };
 }
 
 export default function RoundRobinDetail() {
-  const { id } = useParams<{ id: string }>();
+  const { id } = useParams();
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
   const [event, setEvent] = useState<Event | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [schedule, setSchedule] = useState<ScheduleMatch[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isOrganizer, setIsOrganizer] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
-  const [scores, setScores] = useState<Record<string, MatchScore>>({});
+  const [isOrganizer, setIsOrganizer] = useState(false);
+  const [scores, setScores] = useState<MatchScore>({});
   const [savingScore, setSavingScore] = useState<string | null>(null);
   const [standings, setStandings] = useState<StandingsRow[]>([]);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteMode, setDeleteMode] = useState<'void' | 'hard'>('void');
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     fetchEventDetails();
+    
+    const channel = supabase
+      .channel('round-robin-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'round_robin_events',
+          filter: `id=eq.${id}`
+        },
+        () => {
+          fetchEventDetails();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'round_robin_schedule',
+          filter: `event_id=eq.${id}`
+        },
+        () => {
+          fetchEventDetails();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [id]);
 
   const fetchEventDetails = async () => {
@@ -90,7 +163,15 @@ export default function RoundRobinDetail() {
       }
       setUserId(user.id);
 
-      // Fetch event
+      // Check if user is admin
+      const { data: roleData } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id)
+        .eq('role', 'admin')
+        .maybeSingle();
+      setIsAdmin(!!roleData);
+
       const { data: eventData, error: eventError } = await supabase
         .from("round_robin_events")
         .select("*")
@@ -101,24 +182,14 @@ export default function RoundRobinDetail() {
       setEvent(eventData);
       setIsOrganizer(eventData.organizer_id === user.id);
 
-      // Fetch players
       const { data: playersData, error: playersError } = await supabase
         .from("round_robin_players")
-        .select(`
-          id,
-          player_id,
-          active,
-          profiles (
-            full_name,
-            display_name
-          )
-        `)
+        .select("*, profiles(*)")
         .eq("event_id", id);
 
       if (playersError) throw playersError;
       setPlayers(playersData || []);
 
-      // Fetch schedule
       const { data: scheduleData, error: scheduleError } = await supabase
         .from("round_robin_schedule")
         .select("*")
@@ -129,28 +200,28 @@ export default function RoundRobinDetail() {
       if (scheduleError) throw scheduleError;
       setSchedule(scheduleData || []);
 
-      // Calculate standings
-      calculateStandings(scheduleData || [], playersData || []);
+      if (scheduleData && playersData) {
+        calculateStandings(scheduleData, playersData);
+      }
+
+      setLoading(false);
     } catch (error: any) {
-      toast.error("Failed to load event");
+      toast.error("Failed to load event details");
       console.error(error);
-      navigate("/round-robin");
-    } finally {
       setLoading(false);
     }
   };
 
   const handleGenerateSchedule = async () => {
     if (!event) return;
-
+    
     const activePlayers = players.filter((p) => p.active);
     if (activePlayers.length < 4) {
-      toast.error("Need at least 4 active players");
+      toast.error("At least 4 active players are required");
       return;
     }
 
     try {
-      // Call edge function to generate schedule
       const { data, error } = await supabase.functions.invoke("generate-round-robin-schedule", {
         body: {
           event_id: event.id,
@@ -181,6 +252,35 @@ export default function RoundRobinDetail() {
       fetchEventDetails();
     } catch (error: any) {
       toast.error("Failed to start event");
+      console.error(error);
+    }
+  };
+
+  const handleCloseRound = async (roundNo: number) => {
+    if (!event) return;
+    
+    const roundMatches = schedule.filter(s => s.round_no === roundNo && !s.is_bye);
+    const allScored = roundMatches.every(m => m.team1_score !== null && m.team2_score !== null);
+    
+    if (!allScored) {
+      toast.error("All matches in this round must be scored before closing");
+      return;
+    }
+
+    try {
+      const nextRound = roundNo + 1;
+      if (nextRound <= event.num_rounds) {
+        await supabase
+          .from("round_robin_events")
+          .update({ current_round: nextRound })
+          .eq("id", id);
+        toast.success(`Round ${roundNo} closed! Round ${nextRound} is now active.`);
+      } else {
+        toast.info("This is the final round. Complete the event to submit to match history.");
+      }
+      fetchEventDetails();
+    } catch (error: any) {
+      toast.error("Failed to close round");
       console.error(error);
     }
   };
@@ -262,14 +362,20 @@ export default function RoundRobinDetail() {
     if (!event) return;
     
     const score = scores[match.id];
-    if (!score || (score.team1_score === 0 && score.team2_score === 0)) {
-      toast.error("Enter valid scores");
+    if (!score) {
+      toast.error("Enter scores for both teams");
+      return;
+    }
+
+    // Validate scores
+    const validation = scoreSchema.safeParse(score);
+    if (!validation.success) {
+      toast.error(validation.error.errors[0].message);
       return;
     }
 
     setSavingScore(match.id);
     try {
-      // Just save scores to the schedule table
       const { error: scheduleError } = await supabase
         .from("round_robin_schedule")
         .update({ 
@@ -283,7 +389,6 @@ export default function RoundRobinDetail() {
       toast.success("Score saved!");
       fetchEventDetails();
       
-      // Clear the score input
       setScores(prev => {
         const newScores = { ...prev };
         delete newScores[match.id];
@@ -301,7 +406,6 @@ export default function RoundRobinDetail() {
     if (!event) return;
     
     try {
-      // Create all matches from schedule
       for (const match of schedule) {
         if (!match.is_bye && match.team1_score !== null && match.team2_score !== null && !match.match_id) {
           const { data: matchData, error: matchError } = await supabase
@@ -315,7 +419,6 @@ export default function RoundRobinDetail() {
               event_id: event.id,
               round_no: match.round_no,
               court_no: match.court_no,
-              rating_eligible: event.rating_eligible,
               match_type: event.rating_type,
               status: "approved",
             })
@@ -344,7 +447,6 @@ export default function RoundRobinDetail() {
         }
       }
 
-      // Mark event as completed
       const { error } = await supabase
         .from("round_robin_events")
         .update({ 
@@ -363,6 +465,35 @@ export default function RoundRobinDetail() {
     }
   };
 
+  const handleDeleteEvent = async () => {
+    if (!event) return;
+
+    try {
+      if (deleteMode === 'void') {
+        const { error } = await supabase.rpc('void_round_robin_event', {
+          p_event_id: event.id,
+          p_reason: 'Event voided by organizer'
+        });
+        if (error) throw error;
+        toast.success("Event voided. Results will not affect ratings.");
+      } else {
+        const { error } = await supabase.rpc('delete_round_robin_event', {
+          p_event_id: event.id
+        });
+        if (error) throw error;
+        toast.success("Event deleted successfully.");
+        navigate("/round-robin");
+        return;
+      }
+      
+      setDeleteDialogOpen(false);
+      fetchEventDetails();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to delete event");
+      console.error(error);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -377,23 +508,62 @@ export default function RoundRobinDetail() {
 
   const hasSchedule = schedule.length > 0;
   const canGenerate = players.filter((p) => p.active).length >= 4;
+  const hasScores = schedule.some(m => m.team1_score !== null || m.team2_score !== null);
+  const currentRound = event.current_round || 1;
 
   return (
     <div className="min-h-screen bg-background pb-20">
       <header className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/round-robin")}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
+            <BackToDashboard />
             <div className="flex-1">
-              <h1 className="text-2xl font-bold">{event.name}</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-bold">{event.name}</h1>
+                {event.voided && <Badge variant="destructive">Voided</Badge>}
+              </div>
               <p className="text-sm text-muted-foreground">
                 {new Date(event.date).toLocaleDateString()}
                 {event.location && ` • ${event.location}`}
               </p>
             </div>
-            <Badge>{event.status.toUpperCase()}</Badge>
+            <Badge variant={event.status === 'live' ? 'default' : 'outline'}>{event.status.toUpperCase()}</Badge>
+            {isOrganizer && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon">
+                    <Settings className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setDeleteMode('void');
+                      setDeleteDialogOpen(true);
+                    }}
+                    disabled={!hasScores}
+                  >
+                    <Ban className="h-4 w-4 mr-2" />
+                    Void Event
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => {
+                      if (hasScores && !isAdmin) {
+                        toast.error("Only admins can hard delete events with scores. Use void instead.");
+                        return;
+                      }
+                      setDeleteMode('hard');
+                      setDeleteDialogOpen(true);
+                    }}
+                    className="text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete Event
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
         </div>
       </header>
@@ -446,19 +616,32 @@ export default function RoundRobinDetail() {
                 <div className="space-y-8">
                   {Array.from({ length: event.num_rounds }, (_, i) => i + 1).map((roundNo) => {
                     const matches = getRoundMatches(roundNo);
+                    const isCurrentRound = roundNo === currentRound;
+                    const isFutureRound = roundNo > currentRound;
+                    const allRoundScored = matches.filter(m => !m.is_bye).every(m => m.team1_score !== null && m.team2_score !== null);
+                    
                     return (
-                      <div key={roundNo} className="space-y-4">
-                        <div className="flex items-center gap-3">
-                          <div className="h-px bg-border flex-1" />
-                          <h3 className="text-lg font-bold px-4 py-2 bg-primary/10 rounded-full">
-                            Round {roundNo}
-                          </h3>
-                          <div className="h-px bg-border flex-1" />
+                      <div key={roundNo} className={`space-y-4 ${isFutureRound ? 'opacity-50' : ''}`}>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="h-px bg-border flex-1 w-12" />
+                            <div className={`text-lg font-bold px-4 py-2 rounded-full ${isCurrentRound ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                              Round {roundNo}
+                              {isCurrentRound && <span className="ml-2 text-xs">(Active)</span>}
+                            </div>
+                            <div className="h-px bg-border flex-1 w-12" />
+                          </div>
+                          {isOrganizer && event.status === "live" && isCurrentRound && allRoundScored && roundNo < event.num_rounds && (
+                            <Button size="sm" onClick={() => handleCloseRound(roundNo)}>
+                              <CheckCircle className="h-4 w-4 mr-2" />
+                              Close Round
+                            </Button>
+                          )}
                         </div>
                         
                         <div className="grid gap-4 md:grid-cols-2">
                           {matches.map((match) => (
-                            <Card key={match.id} className="overflow-hidden">
+                            <Card key={match.id} className={`overflow-hidden ${isFutureRound ? 'pointer-events-none' : ''}`}>
                               <CardContent className="p-4 space-y-3">
                                 <div className="flex items-center justify-between">
                                   <Badge variant="outline" className="font-mono">Court {match.court_no}</Badge>
@@ -478,7 +661,7 @@ export default function RoundRobinDetail() {
                                         </div>
                                         {match.team1_score !== null ? (
                                           <div className="text-lg font-bold">{match.team1_score}</div>
-                                        ) : isOrganizer && event.status === "live" ? (
+                                        ) : isOrganizer && event.status === "live" && isCurrentRound ? (
                                           <Input
                                             type="number"
                                             min="0"
@@ -499,7 +682,7 @@ export default function RoundRobinDetail() {
                                         </div>
                                         {match.team2_score !== null ? (
                                           <div className="text-lg font-bold">{match.team2_score}</div>
-                                        ) : isOrganizer && event.status === "live" ? (
+                                        ) : isOrganizer && event.status === "live" && isCurrentRound ? (
                                           <Input
                                             type="number"
                                             min="0"
@@ -515,7 +698,7 @@ export default function RoundRobinDetail() {
                                       </div>
                                     </div>
                                     
-                                    {isOrganizer && event.status === "live" && match.team1_score === null && (
+                                    {isOrganizer && event.status === "live" && isCurrentRound && match.team1_score === null && (
                                       <Button
                                         onClick={() => handleSaveScore(match)}
                                         disabled={savingScore === match.id}
@@ -613,6 +796,42 @@ export default function RoundRobinDetail() {
           </TabsContent>
         </Tabs>
       </main>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {deleteMode === 'void' ? 'Void this Round Robin?' : 'Delete this Round Robin?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteMode === 'void' ? (
+                <>
+                  This will mark the event as voided. The schedule and results will remain visible with a "Voided" badge, but matches will not affect player ratings. This action can be undone by an admin.
+                </>
+              ) : (
+                <>
+                  This will permanently remove the schedule and all results for this event. <strong>This cannot be undone.</strong>
+                  {hasScores && !isAdmin && (
+                    <p className="mt-2 text-destructive font-semibold">
+                      Only admins can hard delete events with scores. Use "Void & Keep record" instead.
+                    </p>
+                  )}
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteEvent}
+              disabled={deleteMode === 'hard' && hasScores && !isAdmin}
+              className={deleteMode === 'hard' ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : ''}
+            >
+              {deleteMode === 'void' ? 'Void & Keep Record' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

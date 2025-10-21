@@ -1002,6 +1002,10 @@ export type Database = {
           rating_type: Database["public"]["Enums"]["rating_type"]
           status: Database["public"]["Enums"]["round_robin_status"]
           updated_at: string
+          void_reason: string | null
+          voided: boolean | null
+          voided_at: string | null
+          voided_by: string | null
         }
         Insert: {
           completed_at?: string | null
@@ -1019,6 +1023,10 @@ export type Database = {
           rating_type?: Database["public"]["Enums"]["rating_type"]
           status?: Database["public"]["Enums"]["round_robin_status"]
           updated_at?: string
+          void_reason?: string | null
+          voided?: boolean | null
+          voided_at?: string | null
+          voided_by?: string | null
         }
         Update: {
           completed_at?: string | null
@@ -1036,6 +1044,10 @@ export type Database = {
           rating_type?: Database["public"]["Enums"]["rating_type"]
           status?: Database["public"]["Enums"]["round_robin_status"]
           updated_at?: string
+          void_reason?: string | null
+          voided?: boolean | null
+          voided_at?: string | null
+          voided_by?: string | null
         }
         Relationships: []
       }
@@ -1304,6 +1316,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      delete_round_robin_event: {
+        Args: { p_event_id: string }
+        Returns: undefined
+      }
       freeze_week_ratings: {
         Args: { target_week_start: string }
         Returns: undefined
@@ -1393,6 +1409,10 @@ export type Database = {
           voided_by: string | null
           week_start: string | null
         }
+      }
+      void_round_robin_event: {
+        Args: { p_event_id: string; p_reason?: string }
+        Returns: undefined
       }
     }
     Enums: {

@@ -8,9 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Calendar } from "lucide-react";
+import { Calendar } from "lucide-react";
 import { toast } from "sonner";
 import { MultiPlayerCombobox } from "@/components/MultiPlayerCombobox";
+import { BackToDashboard } from "@/components/BackToDashboard";
 
 interface Profile {
   id: string;
@@ -114,9 +115,7 @@ export default function CreateRoundRobin() {
       <header className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/round-robin")}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
+            <BackToDashboard />
             <h1 className="text-2xl font-bold">Create Round Robin</h1>
           </div>
         </div>

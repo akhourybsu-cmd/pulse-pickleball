@@ -54,6 +54,9 @@ interface Match {
   other_location: string | null;
   won: boolean;
   verified_by: string[];
+  source?: string;
+  round_no?: number;
+  court_no?: number;
 }
 
 const MatchHistory = () => {
@@ -391,6 +394,11 @@ const MatchHistory = () => {
                     <div className="flex justify-between items-start">
                       <div>
                         <CardTitle className="text-lg">{match.court_name}</CardTitle>
+                        {match.source === 'round_robin' && (
+                          <Badge variant="outline" className="text-xs mt-1">
+                            Round Robin • R{match.round_no} Court {match.court_no}
+                          </Badge>
+                        )}
                         {match.other_location && (
                           <p className="text-xs text-muted-foreground italic">
                             Not an official community court
