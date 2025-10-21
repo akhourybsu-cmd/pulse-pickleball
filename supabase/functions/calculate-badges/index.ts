@@ -31,7 +31,7 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Calculating badges for player: ${player_id}`);
+    console.log(`Calculating badges for player: ${player_id.substring(0, 8)}`);
 
     // Fetch all badge definitions
     const { data: allBadges } = await supabase
@@ -108,10 +108,11 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Error calculating badges:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Badge calculation failed:', { 
+      error_type: error instanceof Error ? error.constructor.name : 'UnknownError'
+    });
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ error: 'Failed to calculate badges' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

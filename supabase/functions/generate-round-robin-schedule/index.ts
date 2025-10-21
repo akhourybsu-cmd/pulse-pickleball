@@ -227,7 +227,7 @@ serve(async (req) => {
       })));
 
     if (insertError) {
-      console.error('Insert error:', insertError);
+      console.error('Schedule insert failed:', { event_id: event_id.substring(0, 8), error_code: insertError.code });
       throw insertError;
     }
 
@@ -236,10 +236,11 @@ serve(async (req) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
-    console.error('Error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Schedule generation failed:', { 
+      error_type: error instanceof Error ? error.constructor.name : 'UnknownError'
+    });
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ error: 'Failed to generate schedule' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
