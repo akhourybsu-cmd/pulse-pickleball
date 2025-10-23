@@ -8,7 +8,7 @@ import { Trophy, TrendingUp, Calendar, LogOut, Plus, MapPin, BarChart3, RefreshC
 import type { User } from "@supabase/supabase-js";
 import logo from "@/assets/pulse-logo-new.png";
 import { CourtStats } from "@/components/CourtStats";
-import { BadgeDisplay } from "@/components/BadgeDisplay";
+
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Footer } from "@/components/Footer";
 import { OnboardingTutorial } from "@/components/OnboardingTutorial";
@@ -28,18 +28,6 @@ interface Profile {
   avg_opponent_rating: number;
 }
 
-interface PlayerBadge {
-  id: string;
-  earned_at: string;
-  badges: {
-    id: string;
-    code: string;
-    name: string;
-    description: string;
-    category: string;
-    tier: number;
-  };
-}
 
 const Dashboard = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -48,8 +36,6 @@ const Dashboard = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [hasNewParticipants, setHasNewParticipants] = useState(false);
-  const [badges, setBadges] = useState<PlayerBadge[]>([]);
-  const [calculatingBadges, setCalculatingBadges] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const navigate = useNavigate();
 
@@ -141,35 +127,6 @@ const Dashboard = () => {
     };
   }, [user?.id]);
 
-  // Fetch player badges
-  useEffect(() => {
-    if (!user?.id) return;
-
-    const fetchBadges = async () => {
-      const { data: badgeData, error } = await supabase
-        .from('player_badges')
-        .select(`
-          id,
-          earned_at,
-          badges (
-            id,
-            code,
-            name,
-            description,
-            category,
-            tier
-          )
-        `)
-        .eq('player_id', user.id)
-        .order('earned_at', { ascending: false });
-
-      if (!error && badgeData) {
-        setBadges(badgeData as PlayerBadge[]);
-      }
-    };
-
-    fetchBadges();
-  }, [user?.id]);
 
   // Check for new participants in user's posts
   useEffect(() => {
@@ -303,50 +260,6 @@ const Dashboard = () => {
     navigate("/");
   };
 
-  const calculateBadges = async () => {
-    if (!user?.id) return;
-    
-    setCalculatingBadges(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('calculate-badges', {
-        body: { player_id: user.id }
-      });
-
-      if (error) {
-        console.error('Badge calculation error:', error);
-        toast.error("Failed to calculate badges");
-        return;
-      }
-
-      // Refresh badges
-      const { data: badgeData, error: fetchError } = await supabase
-        .from('player_badges')
-        .select(`
-          id,
-          earned_at,
-          badges (
-            id,
-            code,
-            name,
-            description,
-            category,
-            tier
-          )
-        `)
-        .eq('player_id', user.id)
-        .order('earned_at', { ascending: false });
-
-      if (!fetchError && badgeData) {
-        setBadges(badgeData as PlayerBadge[]);
-        toast.success(`Badge check complete! ${data.badgesAwarded} badges awarded.`);
-      }
-    } catch (error) {
-      console.error('Badge calculation error:', error);
-      toast.error("Failed to calculate badges");
-    } finally {
-      setCalculatingBadges(false);
-    }
-  };
 
   const handleShare = async () => {
     const shareData = {
@@ -425,34 +338,34 @@ const Dashboard = () => {
         </div>
       </nav>
 
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
+      <div className="container mx-auto px-4 py-6 md:py-8 md:py-12">
+        <div className="mb-6 md:mb-8">
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              <h2 className="text-3xl font-bold mb-2">Welcome back, {profile?.display_name || profile?.full_name}!</h2>
-              <p className="text-muted-foreground mb-4">Track your pickleball journey</p>
+              <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-2">Welcome back, {profile?.display_name || profile?.full_name}!</h2>
+              <p className="text-muted-foreground mb-4 md:text-lg">Track your pickleball journey</p>
               
               <div className="space-y-3 w-full md:w-auto">
                 <Button 
                   size="lg" 
                   onClick={() => navigate("/match/new")}
-                  className="shadow-[var(--shadow-glow)] w-full md:w-auto"
+                  className="shadow-[var(--shadow-glow)] w-full md:w-auto md:text-lg md:py-6"
                   data-tour="record-match"
                 >
-                  <Plus className="w-5 h-5 mr-2" />
+                  <Plus className="w-5 h-5 md:w-6 md:h-6 mr-2" />
                   Record New Match
                 </Button>
                 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-3 md:gap-6">
                   <Button 
                     size="lg" 
                     variant="outline"
                     onClick={() => navigate("/court/board")}
-                    className="relative flex flex-col items-start py-3 h-auto"
+                    className="relative flex flex-col items-start py-3 h-auto md:text-lg md:py-6"
                   >
                     <div className="flex items-center w-full">
-                      <MessageSquare className="w-5 h-5 mr-2 flex-shrink-0" />
-                      <span className="font-semibold text-sm">Court Connector</span>
+                      <MessageSquare className="w-5 h-5 md:w-6 md:h-6 mr-2 flex-shrink-0" />
+                      <span className="font-semibold text-sm md:text-base">Court Connector</span>
                       {hasNewParticipants && (
                         <span className="absolute top-2 right-2 flex h-3 w-3">
                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
@@ -460,21 +373,21 @@ const Dashboard = () => {
                         </span>
                       )}
                     </div>
-                    <span className="text-xs text-muted-foreground mt-1">Find a group near you</span>
+                    <span className="text-xs md:text-sm text-muted-foreground mt-1">Find a group near you</span>
                   </Button>
 
                   <Button 
                     size="lg" 
                     variant="outline"
                     onClick={() => navigate("/match/history")}
-                    className="flex flex-col items-start py-3 h-auto"
+                    className="flex flex-col items-start py-3 h-auto md:text-lg md:py-6"
                     data-tour="match-history"
                   >
                     <div className="flex items-center w-full">
-                      <Calendar className="w-5 h-5 mr-2 flex-shrink-0" />
-                      <span className="font-semibold text-sm">Match History</span>
+                      <Calendar className="w-5 h-5 md:w-6 md:h-6 mr-2 flex-shrink-0" />
+                      <span className="font-semibold text-sm md:text-base">Match History</span>
                     </div>
-                    <span className="text-xs text-muted-foreground mt-1">View your matches</span>
+                    <span className="text-xs md:text-sm text-muted-foreground mt-1">View your matches</span>
                   </Button>
                 </div>
               </div>
@@ -482,16 +395,16 @@ const Dashboard = () => {
           </div>
         </div>
 
-        <div className="grid gap-4 mb-6">
+        <div className="grid gap-4 md:gap-6 mb-6 md:mb-8">
           <Card className="border-2 border-primary shadow-[var(--shadow-glow)]" data-tour="pulse-score">
-            <CardHeader className="pb-3">
-              <CardDescription>Live Pulse Score</CardDescription>
-              <CardTitle className="text-5xl font-bold text-primary">
+            <CardHeader className="pb-3 md:pb-4">
+              <CardDescription className="md:text-base">Live Pulse Score</CardDescription>
+              <CardTitle className="text-5xl md:text-6xl lg:text-7xl font-bold text-primary">
                 {profile?.current_rating?.toFixed(2) || '3.00'}
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
-              <div className="text-sm">
+              <div className="text-sm md:text-base">
                 <span className="text-muted-foreground">Weekly snapshot (Mon): </span>
                 <span className="font-semibold">
                   {profile?.week_start_rating?.toFixed(2) || '3.00'}
@@ -503,54 +416,54 @@ const Dashboard = () => {
             </CardContent>
           </Card>
 
-          <div className="grid grid-cols-2 gap-4">
-            <Card className="py-2">
-              <CardHeader className="pb-2 pt-3">
-                <CardDescription className="text-xs">Record</CardDescription>
-                <CardTitle className="text-3xl">
+          <div className="grid grid-cols-2 gap-4 md:gap-6">
+            <Card className="py-2 md:py-3">
+              <CardHeader className="pb-2 pt-3 md:pb-3 md:pt-4">
+                <CardDescription className="text-xs md:text-sm">Record</CardDescription>
+                <CardTitle className="text-3xl md:text-4xl lg:text-5xl">
                   {profile?.wins}W - {profile?.losses}L
                 </CardTitle>
               </CardHeader>
-              <CardContent className="text-xs text-muted-foreground pb-3">
+              <CardContent className="text-xs md:text-sm text-muted-foreground pb-3 md:pb-4">
                 {profile?.total_matches} {profile?.total_matches === 1 ? 'match' : 'matches'} played
               </CardContent>
             </Card>
 
-            <Card className="py-2">
-              <CardHeader className="pb-2 pt-3">
-                <CardDescription className="flex items-center gap-2 text-xs">
-                  <TrendingUp className="w-3 h-3" />
+            <Card className="py-2 md:py-3">
+              <CardHeader className="pb-2 pt-3 md:pb-3 md:pt-4">
+                <CardDescription className="flex items-center gap-2 text-xs md:text-sm">
+                  <TrendingUp className="w-3 h-3 md:w-4 md:h-4" />
                   Win Rate
                 </CardDescription>
-                <CardTitle className="text-3xl">{winRate}%</CardTitle>
+                <CardTitle className="text-3xl md:text-4xl lg:text-5xl">{winRate}%</CardTitle>
               </CardHeader>
             </Card>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <Card className="py-2">
-              <CardHeader className="pb-2 pt-3">
-                <CardDescription className="flex items-center gap-2 text-xs">
-                  <BarChart3 className="w-3 h-3" />
+          <div className="grid grid-cols-2 gap-4 md:gap-6">
+            <Card className="py-2 md:py-3">
+              <CardHeader className="pb-2 pt-3 md:pb-3 md:pt-4">
+                <CardDescription className="flex items-center gap-2 text-xs md:text-sm">
+                  <BarChart3 className="w-3 h-3 md:w-4 md:h-4" />
                   Point Diff / Game
                 </CardDescription>
-                <CardTitle className="text-3xl">
+                <CardTitle className="text-3xl md:text-4xl lg:text-5xl">
                   {parseFloat(pointDifferentialPerGame) > 0 ? "+" : ""}{pointDifferentialPerGame}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="text-xs text-muted-foreground pb-3">
+              <CardContent className="text-xs md:text-sm text-muted-foreground pb-3 md:pb-4">
                 For: {profile?.total_points_for || 0} • Against: {profile?.total_points_against || 0}
               </CardContent>
             </Card>
 
-            <Card className="py-2">
-              <CardHeader className="pb-2 pt-3">
-                <CardDescription className="text-xs">Avg. Opponent Rating</CardDescription>
-                <CardTitle className="text-3xl">
+            <Card className="py-2 md:py-3">
+              <CardHeader className="pb-2 pt-3 md:pb-3 md:pt-4">
+                <CardDescription className="text-xs md:text-sm">Avg. Opponent Rating</CardDescription>
+                <CardTitle className="text-3xl md:text-4xl lg:text-5xl">
                   {profile?.avg_opponent_rating?.toFixed(2) || "N/A"}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="text-xs text-muted-foreground pb-3">
+              <CardContent className="text-xs md:text-sm text-muted-foreground pb-3 md:pb-4">
                 Strength of schedule
               </CardContent>
             </Card>
@@ -561,85 +474,59 @@ const Dashboard = () => {
           {user && <CourtStats userId={user.id} />}
         </div>
 
-        <div className="mb-8" data-tour="badges">
-          <BadgeDisplay badges={badges.map(b => ({
-            id: b.badges.id,
-            code: b.badges.code,
-            name: b.badges.name,
-            description: b.badges.description,
-            category: b.badges.category,
-            tier: b.badges.tier,
-            earned_at: b.earned_at
-          }))} />
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 md:gap-6 md:grid-cols-2 lg:grid-cols-3">
           <Button 
             size="lg" 
             variant="outline"
             onClick={() => navigate("/round-robin")}
-            className="h-auto py-4"
+            className="h-auto py-4 md:text-lg md:py-6"
           >
-            <Trophy className="w-5 h-5 mr-2" />
-            Round Robin
+            <Trophy className="w-5 h-5 md:w-6 md:h-6 mr-2" />
+            Organize a Round Robin Event
           </Button>
-
 
           {isAdmin && (
-            <Button 
-              size="lg" 
-              variant="outline"
-              onClick={() => navigate("/session/queue")}
-            >
-              Session Queue (Admin)
-            </Button>
+            <>
+              <Button 
+                size="lg" 
+                variant="outline"
+                onClick={() => navigate("/session/queue")}
+                className="md:text-lg md:py-6"
+              >
+                Session Queue (Admin)
+              </Button>
+              
+              <Button 
+                size="lg" 
+                variant="outline"
+                onClick={() => navigate("/events")}
+                data-tour="events"
+                className="md:text-lg md:py-6"
+              >
+                <CalendarDays className="w-5 h-5 md:w-6 md:h-6 mr-2" />
+                Events
+              </Button>
+            </>
           )}
-
-          <Button 
-            size="lg" 
-            variant="outline"
-            onClick={() => navigate("/events")}
-            data-tour="events"
-          >
-            <CalendarDays className="w-5 h-5 mr-2" />
-            Events
-          </Button>
 
           <Button 
             size="lg" 
             variant="outline"
             onClick={() => navigate("/court/history")}
             data-tour="leaderboard"
+            className="md:text-lg md:py-6"
           >
-            <MapPin className="w-5 h-5 mr-2" />
+            <MapPin className="w-5 h-5 md:w-6 md:h-6 mr-2" />
             Court History
           </Button>
 
-          <Button 
-            size="lg" 
-            variant="outline"
-            onClick={calculateBadges}
-            disabled={calculatingBadges}
-          >
-            {calculatingBadges ? (
-              <>
-                <RefreshCw className="w-5 h-5 mr-2 animate-spin" />
-                Calculating Badges...
-              </>
-            ) : (
-              <>
-                <Award className="w-5 h-5 mr-2" />
-                Check for New Badges
-              </>
-            )}
-          </Button>
-
-          <Button 
+          <Button
             size="lg" 
             variant="outline"
             onClick={() => navigate("/profile/edit")}
+            className="md:text-lg md:py-6"
           >
-            <UserCog className="w-5 h-5 mr-2" />
+            <UserCog className="w-5 h-5 md:w-6 md:h-6 mr-2" />
             Edit Profile
           </Button>
 
@@ -647,8 +534,9 @@ const Dashboard = () => {
             size="lg" 
             variant="outline"
             onClick={() => navigate("/faq")}
+            className="md:text-lg md:py-6"
           >
-            <HelpCircle className="w-5 h-5 mr-2" />
+            <HelpCircle className="w-5 h-5 md:w-6 md:h-6 mr-2" />
             Help & FAQ
           </Button>
         </div>

@@ -7,7 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { ArrowLeft, User, Trophy, TrendingUp, Award } from "lucide-react";
 import logo from "@/assets/pulse-logo-new.png";
-import { BadgeDisplay } from "@/components/BadgeDisplay";
+
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 interface Profile {
@@ -35,22 +35,9 @@ interface Profile {
   } | null;
 }
 
-interface PlayerBadge {
-  id: string;
-  earned_at: string;
-  badges: {
-    id: string;
-    code: string;
-    name: string;
-    description: string;
-    category: string;
-    tier: number;
-  };
-}
 
 const ViewProfile = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [badges, setBadges] = useState<PlayerBadge[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { userId } = useParams<{ userId: string }>();
@@ -99,29 +86,6 @@ const ViewProfile = () => {
       }
 
       setProfile(profileData as Profile);
-
-      // Fetch badges
-      const { data: badgeData } = await supabase
-        .from('player_badges')
-        .select(`
-          id,
-          earned_at,
-          badges (
-            id,
-            code,
-            name,
-            description,
-            category,
-            tier
-          )
-        `)
-        .eq('player_id', userId)
-        .order('earned_at', { ascending: false });
-
-      if (badgeData) {
-        setBadges(badgeData as PlayerBadge[]);
-      }
-
       setLoading(false);
     };
 
@@ -293,21 +257,6 @@ const ViewProfile = () => {
             </CardContent>
           </Card>
         </div>
-
-        {/* Badges */}
-        {badges.length > 0 && (
-          <div className="mb-8">
-            <BadgeDisplay badges={badges.map(b => ({
-              id: b.badges.id,
-              code: b.badges.code,
-              name: b.badges.name,
-              description: b.badges.description,
-              category: b.badges.category,
-              tier: b.badges.tier,
-              earned_at: b.earned_at
-            }))} />
-          </div>
-        )}
       </div>
     </div>
   );

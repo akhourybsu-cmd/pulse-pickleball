@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Calendar, Users, Trophy } from "lucide-react";
 import { toast } from "sonner";
 import { BackToDashboard } from "@/components/BackToDashboard";
+import logo from "@/assets/pulse-logo-new.png";
 
 interface RoundRobinEvent {
   id: string;
@@ -128,14 +129,17 @@ export default function RoundRobinHub() {
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      <header className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+      <header className="sticky top-0 z-10 bg-secondary border-b">
+        <div className="container mx-auto px-4 py-3 sm:py-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+            <div className="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
               <BackToDashboard />
-              <h1 className="text-2xl font-bold">Round Robin</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl sm:text-2xl font-bold whitespace-nowrap">Round Robin by</h1>
+                <img src={logo} alt="PULSE" className="h-8 sm:h-10 w-auto" />
+              </div>
             </div>
-            <Button onClick={() => navigate("/round-robin/create")}>
+            <Button onClick={() => navigate("/round-robin/create")} className="w-full sm:w-auto">
               <Plus className="h-4 w-4 mr-2" />
               Create Event
             </Button>

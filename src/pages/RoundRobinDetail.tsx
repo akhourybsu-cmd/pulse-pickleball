@@ -28,6 +28,7 @@ import { Play, Trophy, AlertCircle, Settings, Trash2, Ban, CheckCircle } from "l
 import { toast } from "sonner";
 import { BackToDashboard } from "@/components/BackToDashboard";
 import { z } from "zod";
+import logo from "@/assets/pulse-logo-new.png";
 
 // Score validation schema
 const scoreSchema = z.object({
@@ -513,22 +514,29 @@ export default function RoundRobinDetail() {
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      <header className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
+      <header className="sticky top-0 z-10 bg-secondary border-b">
+        <div className="container mx-auto px-4 py-3 sm:py-4">
+          <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4">
             <BackToDashboard />
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-bold">{event.name}</h1>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-xl sm:text-2xl font-bold whitespace-nowrap">Round Robin by</h1>
+                  <img src={logo} alt="PULSE" className="h-8 sm:h-10 w-auto" />
+                </div>
+              </div>
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                <h2 className="text-base sm:text-lg font-semibold truncate">{event.name}</h2>
                 {event.voided && <Badge variant="destructive">Voided</Badge>}
               </div>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs sm:text-sm text-muted-foreground truncate">
                 {new Date(event.date).toLocaleDateString()}
                 {event.location && ` • ${event.location}`}
               </p>
             </div>
-            <Badge variant={event.status === 'live' ? 'default' : 'outline'}>{event.status.toUpperCase()}</Badge>
-            {isOrganizer && (
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <Badge variant={event.status === 'live' ? 'default' : 'outline'} className="whitespace-nowrap">{event.status.toUpperCase()}</Badge>
+              {isOrganizer && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="icon">
@@ -563,7 +571,8 @@ export default function RoundRobinDetail() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </header>
