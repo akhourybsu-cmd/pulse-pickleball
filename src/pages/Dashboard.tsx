@@ -399,8 +399,28 @@ const Dashboard = () => {
           <Card className="border-2 border-primary shadow-[var(--shadow-glow)]" data-tour="pulse-score">
             <CardHeader className="pb-3 md:pb-4">
               <CardDescription className="md:text-base">Live Pulse Score</CardDescription>
-              <CardTitle className="text-5xl md:text-6xl lg:text-7xl font-bold text-primary">
-                {profile?.current_rating?.toFixed(2) || '3.00'}
+              <CardTitle className="flex items-center gap-3">
+                <span className="text-5xl md:text-6xl lg:text-7xl font-bold text-primary pulse-score-number">
+                  {profile?.current_rating?.toFixed(2) || '3.00'}
+                </span>
+                <svg 
+                  className="hidden sm:block ecg-pulse flex-shrink-0" 
+                  width="80" 
+                  height="24" 
+                  viewBox="0 0 80 24" 
+                  fill="none" 
+                  xmlns="http://www.w3.org/2000/svg"
+                  aria-hidden="true"
+                >
+                  <path 
+                    d="M0 12 L20 12 L25 4 L30 20 L35 12 L80 12" 
+                    stroke="rgb(163, 230, 53)" 
+                    strokeWidth="2.5" 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round"
+                    pathLength="100"
+                  />
+                </svg>
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-0">

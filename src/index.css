@@ -105,7 +105,45 @@ All colors MUST be HSL.
     @apply border-border;
   }
 
-  body {
-    @apply bg-background text-foreground;
+body {
+  @apply bg-background text-foreground;
+}
+
+/* ECG Pulse Animation */
+@keyframes ecg-sweep {
+  0% {
+    stroke-dashoffset: 100;
   }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.98;
+    transform: scale(1.005);
+  }
+}
+
+.ecg-pulse path {
+  stroke-dasharray: 100;
+  animation: ecg-sweep 2.5s ease-in-out infinite;
+}
+
+.pulse-score-number {
+  animation: pulse-glow 7s ease-in-out infinite;
+}
+
+/* Respect prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .ecg-pulse path,
+  .pulse-score-number {
+    animation: none;
+  }
+}
 }
