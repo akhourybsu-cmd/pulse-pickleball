@@ -4,9 +4,10 @@ import { useNavigate } from "react-router-dom";
 
 interface BackToDashboardProps {
   onNavigate?: () => boolean; // Return false to cancel navigation
+  className?: string;
 }
 
-export function BackToDashboard({ onNavigate }: BackToDashboardProps) {
+export function BackToDashboard({ onNavigate, className }: BackToDashboardProps) {
   const navigate = useNavigate();
 
   const handleClick = () => {
@@ -17,7 +18,7 @@ export function BackToDashboard({ onNavigate }: BackToDashboardProps) {
   };
 
   return (
-    <Button variant="ghost" size="sm" onClick={handleClick}>
+    <Button variant="ghost" size="sm" onClick={handleClick} className={className}>
       <ArrowLeft className="w-4 h-4 mr-2" />
       Back to Dashboard
     </Button>
