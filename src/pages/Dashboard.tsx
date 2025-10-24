@@ -404,9 +404,9 @@ const Dashboard = () => {
                   {profile?.current_rating?.toFixed(2) || '3.00'}
                 </span>
                 <svg 
-                  className="hidden sm:block ecg-pulse flex-shrink-0" 
-                  width="80" 
-                  height="24" 
+                  className="ecg-pulse flex-shrink-0" 
+                  width="60" 
+                  height="20" 
                   viewBox="0 0 80 24" 
                   fill="none" 
                   xmlns="http://www.w3.org/2000/svg"
