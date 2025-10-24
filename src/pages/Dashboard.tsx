@@ -540,6 +540,16 @@ const Dashboard = () => {
             Court History
           </Button>
 
+          <Button 
+            size="lg" 
+            variant="outline"
+            onClick={() => navigate("/court/connector")}
+            className="md:text-lg md:py-6"
+          >
+            <MessageSquare className="w-5 h-5 md:w-6 md:h-6 mr-2" />
+            Court Connector
+          </Button>
+
           <Button
             size="lg" 
             variant="outline"

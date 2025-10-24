@@ -200,14 +200,16 @@ export default function CourtConnector() {
           <ThemeToggle />
         </div>
 
-        <div className="flex items-start justify-between">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="space-y-2">
             <h1 className="text-4xl font-bold">Court Connector</h1>
             <p className="text-muted-foreground">Find players, chat, and organize games</p>
           </div>
-          <Button onClick={() => navigate("/settings/courts")} variant="outline" size="sm">
-            Manage Courts
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => navigate("/settings/courts")} variant="outline" size="sm">
+              Court Settings
+            </Button>
+          </div>
         </div>
 
         <Card>
