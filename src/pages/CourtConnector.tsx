@@ -10,6 +10,8 @@ import { ArrowLeft, MessageSquare, Users, Eye, EyeOff, Bell, BellOff } from "luc
 import { CourtChannel } from "@/components/court/CourtChannel";
 import { LFGList } from "@/components/court/LFGList";
 import { CreateLFGDialog } from "@/components/court/CreateLFGDialog";
+import { CourtPresence } from "@/components/court/CourtPresence";
+import { CourtCheckIn } from "@/components/court/CourtCheckIn";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,6 +33,11 @@ interface CourtPref {
   favorite: boolean;
 }
 
+interface CourtChannel {
+  id: string;
+  court_id: string;
+}
+
 export default function CourtConnector() {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -40,6 +47,7 @@ export default function CourtConnector() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [showCreateLFG, setShowCreateLFG] = useState(false);
+  const [channelId, setChannelId] = useState<string>("");
 
   useEffect(() => {
     checkUser();
@@ -108,14 +116,27 @@ export default function CourtConnector() {
         .eq("id", currentUserId!)
         .single();
 
-      if (profile?.home_court_id && visibleCourts.some(c => c.id === profile.home_court_id)) {
-        setSelectedCourtId(profile.home_court_id);
-      } else {
-        setSelectedCourtId(visibleCourts[0].id);
-      }
+      const selectedId = profile?.home_court_id && visibleCourts.some(c => c.id === profile.home_court_id)
+        ? profile.home_court_id
+        : visibleCourts[0].id;
+      
+      setSelectedCourtId(selectedId);
+      await fetchChannelId(selectedId);
     }
 
     setLoading(false);
+  };
+
+  const fetchChannelId = async (courtId: string) => {
+    const { data } = await (supabase as any)
+      .from("court_channels")
+      .select("id")
+      .eq("court_id", courtId)
+      .single();
+
+    if (data) {
+      setChannelId(data.id);
+    }
   };
 
   const handleHideCourt = async (courtId: string, duration: 'indefinite' | '7' | '30' | '90') => {
@@ -185,6 +206,11 @@ export default function CourtConnector() {
   const selectedCourt = courts.find(c => c.id === selectedCourtId);
   const selectedPref = courtPrefs.get(selectedCourtId);
 
+  const handleCourtChange = async (courtId: string) => {
+    setSelectedCourtId(courtId);
+    await fetchChannelId(courtId);
+  };
+
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-6xl mx-auto space-y-6">
@@ -216,7 +242,7 @@ export default function CourtConnector() {
           <CardContent className="pt-6">
             <div className="flex gap-4 items-end">
               <div className="flex-1">
-                <Select value={selectedCourtId} onValueChange={setSelectedCourtId}>
+                <Select value={selectedCourtId} onValueChange={handleCourtChange}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a court" />
                   </SelectTrigger>
@@ -306,10 +332,11 @@ export default function CourtConnector() {
 
             <div className="space-y-6">
               <Card>
-                <CardHeader>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
                   <CardTitle>Court Info</CardTitle>
+                  <CourtCheckIn courtId={selectedCourtId} userId={currentUserId} />
                 </CardHeader>
-                <CardContent className="space-y-2">
+                <CardContent className="space-y-4">
                   <div>
                     <p className="font-semibold">{selectedCourt?.name}</p>
                     <p className="text-sm text-muted-foreground">
@@ -321,6 +348,9 @@ export default function CourtConnector() {
                       <BellOff className="w-4 h-4" />
                       Notifications muted
                     </div>
+                  )}
+                  {channelId && (
+                    <CourtPresence courtId={selectedCourtId} channelId={channelId} />
                   )}
                 </CardContent>
               </Card>
