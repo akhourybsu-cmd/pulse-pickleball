@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Trophy, TrendingUp, Calendar, LogOut, Plus, MapPin, BarChart3, RefreshCw, HelpCircle, MessageSquare, Trash2, Award, UserCog, User as UserIcon, Settings, Share2, CalendarDays } from "lucide-react";
+import { Trophy, TrendingUp, Calendar, LogOut, Plus, MapPin, BarChart3, RefreshCw, HelpCircle, MessageSquare, Trash2, Award, UserCog, User as UserIcon, Settings, Share2, CalendarDays, Activity } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import logo from "@/assets/pulse-logo-new.png";
 import { CourtStats } from "@/components/CourtStats";
@@ -360,7 +360,7 @@ const Dashboard = () => {
                   <Button 
                     size="lg" 
                     variant="outline"
-                    onClick={() => navigate("/court/board")}
+                    onClick={() => navigate("/court/connector")}
                     className="relative flex flex-col items-start py-3 h-auto md:text-lg md:py-6"
                   >
                     <div className="flex items-center w-full">
@@ -378,6 +378,19 @@ const Dashboard = () => {
 
                   <Button 
                     size="lg" 
+                    variant="outline"
+                    onClick={() => navigate("/court/history")}
+                    className="flex flex-col items-start py-3 h-auto md:text-lg md:py-6"
+                  >
+                    <div className="flex items-center w-full">
+                      <Activity className="w-5 h-5 md:w-6 md:h-6 mr-2 flex-shrink-0" />
+                      <span className="font-semibold text-sm md:text-base">Court Activity</span>
+                    </div>
+                    <span className="text-xs md:text-sm text-muted-foreground mt-1">See who's playing</span>
+                  </Button>
+
+                  <Button 
+                    size="lg"
                     variant="outline"
                     onClick={() => navigate("/match/history")}
                     className="flex flex-col items-start py-3 h-auto md:text-lg md:py-6"

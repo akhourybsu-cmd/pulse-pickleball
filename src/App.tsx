@@ -60,8 +60,10 @@ const App = () => (
             <Route path="/match/history" element={<MatchHistory />} />
             <Route path="/court/history" element={<CourtHistory />} />
             <Route path="/court/board" element={<CourtBoard />} />
-            <Route path="/court/connector" element={<CourtConnector />} />
-            <Route path="/settings/courts" element={<CourtSettings />} />
+          <Route path="/court/connector" element={<CourtConnector />} />
+          <Route path="/court/board/:courtId" element={<CourtBoard />} />
+          <Route path="/court/history" element={<CourtHistory />} />
+          <Route path="/settings/courts" element={<CourtSettings />} />
             <Route path="/faq" element={<FAQ />} />
             <Route path="/session/queue" element={<SessionQueue />} />
             <Route path="/admin" element={<AdminDashboard />} />

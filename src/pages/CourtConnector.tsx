@@ -12,6 +12,7 @@ import { LFGList } from "@/components/court/LFGList";
 import { CreateLFGDialog } from "@/components/court/CreateLFGDialog";
 import { CourtPresence } from "@/components/court/CourtPresence";
 import { CourtCheckIn } from "@/components/court/CourtCheckIn";
+import { CourtHeatmap } from "@/components/court/CourtHeatmap";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -232,6 +233,9 @@ export default function CourtConnector() {
             <p className="text-muted-foreground">Find players, chat, and organize games</p>
           </div>
           <div className="flex gap-2">
+            <Button onClick={() => navigate("/court/history")} variant="outline" size="sm">
+              Court Activity
+            </Button>
             <Button onClick={() => navigate("/settings/courts")} variant="outline" size="sm">
               Court Settings
             </Button>
@@ -300,8 +304,41 @@ export default function CourtConnector() {
         {loading ? (
           <div className="text-center py-12">Loading...</div>
         ) : selectedCourtId ? (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-6">
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2">
+                <CourtHeatmap courtId={selectedCourtId} />
+              </div>
+
+              <div>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                    <CardTitle>Court Info</CardTitle>
+                    <CourtCheckIn courtId={selectedCourtId} userId={currentUserId} />
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <p className="font-semibold">{selectedCourt?.name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {selectedCourt?.city}, {selectedCourt?.state}
+                      </p>
+                    </div>
+                    {selectedPref?.muted && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <BellOff className="w-4 h-4" />
+                        Notifications muted
+                      </div>
+                    )}
+                    {channelId && (
+                      <CourtPresence courtId={selectedCourtId} channelId={channelId} />
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 space-y-6">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle className="flex items-center gap-2">
@@ -330,30 +367,15 @@ export default function CourtConnector() {
               </Card>
             </div>
 
-            <div className="space-y-6">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                  <CardTitle>Court Info</CardTitle>
-                  <CourtCheckIn courtId={selectedCourtId} userId={currentUserId} />
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <p className="font-semibold">{selectedCourt?.name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {selectedCourt?.city}, {selectedCourt?.state}
-                    </p>
-                  </div>
-                  {selectedPref?.muted && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <BellOff className="w-4 h-4" />
-                      Notifications muted
-                    </div>
-                  )}
-                  {channelId && (
-                    <CourtPresence courtId={selectedCourtId} channelId={channelId} />
-                  )}
-                </CardContent>
-              </Card>
+              <div>
+                <Button 
+                  onClick={() => navigate(`/court/board/${selectedCourtId}`)}
+                  variant="outline"
+                  className="w-full"
+                >
+                  View Full Court Board
+                </Button>
+              </div>
             </div>
           </div>
         ) : (
