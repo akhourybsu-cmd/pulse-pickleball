@@ -1237,6 +1237,33 @@ export type Database = {
           },
         ]
       }
+      user_availability: {
+        Row: {
+          created_at: string | null
+          day_of_week: number
+          end_time: string
+          id: string
+          start_time: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          day_of_week: number
+          end_time: string
+          id?: string
+          start_time: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          day_of_week?: number
+          end_time?: string
+          id?: string
+          start_time?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string | null
@@ -1304,18 +1331,9 @@ export type Database = {
         Args: { match_ticket_id: string }
         Returns: undefined
       }
-      clear_all_match_history: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      clear_all_match_history_authenticated: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      delete_old_court_posts: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      clear_all_match_history: { Args: never; Returns: undefined }
+      clear_all_match_history_authenticated: { Args: never; Returns: undefined }
+      delete_old_court_posts: { Args: never; Returns: undefined }
       delete_round_robin_event: {
         Args: { p_event_id: string }
         Returns: undefined
@@ -1324,10 +1342,7 @@ export type Database = {
         Args: { target_week_start: string }
         Returns: undefined
       }
-      get_own_email: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      get_own_email: { Args: never; Returns: string }
       get_own_private_fields: {
         Args: { profile_id: string }
         Returns: {
@@ -1339,14 +1354,8 @@ export type Database = {
         Args: { match_id_param: string; player_id_param: string }
         Returns: string
       }
-      get_profile_email: {
-        Args: { profile_id: string }
-        Returns: string
-      }
-      get_week_start: {
-        Args: { match_date: string }
-        Returns: string
-      }
+      get_profile_email: { Args: { profile_id: string }; Returns: string }
+      get_week_start: { Args: { match_date: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1358,18 +1367,9 @@ export type Database = {
         Args: { _event_id: string; _user_id: string }
         Returns: boolean
       }
-      recalculate_all_player_stats: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      recalculate_all_ratings: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      recalculate_all_ratings_authenticated: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      recalculate_all_player_stats: { Args: never; Returns: undefined }
+      recalculate_all_ratings: { Args: never; Returns: undefined }
+      recalculate_all_ratings_authenticated: { Args: never; Returns: undefined }
       recalculate_player_stats: {
         Args: { p_player_id: string }
         Returns: undefined
@@ -1408,6 +1408,12 @@ export type Database = {
           voided_at: string | null
           voided_by: string | null
           week_start: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "matches"
+          isOneToOne: true
+          isSetofReturn: false
         }
       }
       void_round_robin_event: {

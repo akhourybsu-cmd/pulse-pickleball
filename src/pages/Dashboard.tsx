@@ -13,6 +13,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { Footer } from "@/components/Footer";
 import { OnboardingTutorial } from "@/components/OnboardingTutorial";
 import { ActiveRoundRobinIndicator } from "@/components/ActiveRoundRobinIndicator";
+import { SmartMatch } from "@/components/court/SmartMatch";
 
 interface Profile {
   id: string;
@@ -503,7 +504,8 @@ const Dashboard = () => {
           </div>
         </div>
 
-        <div className="mb-8">
+        <div className="mb-8 space-y-6">
+          <SmartMatch userId={user?.id || null} />
           {user && <CourtStats userId={user.id} />}
         </div>
 

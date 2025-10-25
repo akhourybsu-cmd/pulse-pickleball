@@ -9,6 +9,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Eye, Bell, BellOff, Star } from "lucide-react";
 import { formatDateEST } from "@/lib/utils";
+import { AvailabilitySettings } from "@/components/court/AvailabilitySettings";
 
 interface Court {
   id: string;
@@ -171,7 +172,9 @@ export default function CourtSettings() {
         ) : (
           <div className="space-y-6">
             {/* Visible Courts */}
-            <Card>
+        <AvailabilitySettings />
+        
+        <Card>
               <CardHeader>
                 <CardTitle>My Courts ({visibleCourts.length})</CardTitle>
               </CardHeader>
