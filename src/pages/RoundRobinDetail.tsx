@@ -29,6 +29,7 @@ import { toast } from "sonner";
 import { BackToDashboard } from "@/components/BackToDashboard";
 import { EditEventDialog } from "@/components/round-robin/EditEventDialog";
 import { EditModeBanner } from "@/components/round-robin/EditModeBanner";
+import { PlayerManagementDialog } from "@/components/round-robin/PlayerManagementDialog";
 import { z } from "zod";
 import logo from "@/assets/pulse-logo-new.png";
 
@@ -123,6 +124,7 @@ export default function RoundRobinDetail() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [playerManagementOpen, setPlayerManagementOpen] = useState(false);
 
   useEffect(() => {
     fetchEventDetails();
@@ -549,6 +551,196 @@ export default function RoundRobinDetail() {
     setIsEditMode(!isEditMode);
   };
 
+  const regenerateScheduleFromRound = async (fromRound: number) => {
+    if (!event) return;
+
+    const activePlayers = players.filter(p => p.active);
+    if (activePlayers.length < 4) {
+      toast.error("At least 4 active players are required");
+      return;
+    }
+
+    try {
+      // Delete schedule from the specified round onward
+      const { error: deleteError } = await supabase
+        .from("round_robin_schedule")
+        .delete()
+        .eq("event_id", event.id)
+        .gte("round_no", fromRound);
+
+      if (deleteError) throw deleteError;
+
+      // Regenerate schedule
+      const { error: generateError } = await supabase.functions.invoke("generate-round-robin-schedule", {
+        body: {
+          event_id: event.id,
+          player_ids: activePlayers.map(p => p.player_id),
+          num_courts: event.num_courts,
+          num_rounds: event.num_rounds,
+        },
+      });
+
+      if (generateError) throw generateError;
+
+      await fetchEventDetails();
+    } catch (error: any) {
+      throw error;
+    }
+  };
+
+  const handleAddPlayer = async (playerId: string) => {
+    if (!event || !userId) return;
+
+    try {
+      // Add player to event
+      const { error: insertError } = await supabase
+        .from("round_robin_players")
+        .insert({
+          event_id: event.id,
+          player_id: playerId,
+          active: true,
+        });
+
+      if (insertError) throw insertError;
+
+      // Audit entry
+      await supabase.from("round_robin_audit").insert({
+        event_id: event.id,
+        editor_id: userId,
+        change_type: "player_add",
+        changes: { player_id: playerId },
+        reason: "Player added (late join)",
+      });
+
+      // Regenerate from current round
+      const fromRound = event.current_round || 1;
+      await regenerateScheduleFromRound(fromRound);
+
+      toast.success("Player added and schedule regenerated");
+    } catch (error: any) {
+      toast.error("Failed to add player");
+      console.error(error);
+      throw error;
+    }
+  };
+
+  const handleMarkInactive = async (playerEventId: string) => {
+    if (!event || !userId) return;
+
+    const player = players.find(p => p.id === playerEventId);
+    if (!player) return;
+
+    try {
+      // Mark player inactive
+      const { error: updateError } = await supabase
+        .from("round_robin_players")
+        .update({ active: false })
+        .eq("id", playerEventId);
+
+      if (updateError) throw updateError;
+
+      // Audit entry
+      await supabase.from("round_robin_audit").insert({
+        event_id: event.id,
+        editor_id: userId,
+        change_type: "player_remove",
+        changes: { player_id: player.player_id },
+        reason: "Player marked inactive (early exit)",
+      });
+
+      // Regenerate from current round
+      const fromRound = event.current_round || 1;
+      await regenerateScheduleFromRound(fromRound);
+
+      toast.success("Player marked inactive and schedule regenerated");
+    } catch (error: any) {
+      toast.error("Failed to mark player inactive");
+      console.error(error);
+      throw error;
+    }
+  };
+
+  const handleSubstitute = async (
+    originalPlayerId: string,
+    newPlayerId: string,
+    scope: 'global' | number
+  ) => {
+    if (!event || !userId) return;
+
+    try {
+      if (scope === 'global') {
+        // Global substitution: add new player, mark old as inactive, regenerate
+        await supabase.from("round_robin_players").insert({
+          event_id: event.id,
+          player_id: newPlayerId,
+          active: true,
+        });
+
+        const oldPlayer = players.find(p => p.player_id === originalPlayerId);
+        if (oldPlayer) {
+          await supabase
+            .from("round_robin_players")
+            .update({ active: false })
+            .eq("id", oldPlayer.id);
+        }
+
+        await supabase.from("round_robin_audit").insert({
+          event_id: event.id,
+          editor_id: userId,
+          change_type: "player_substitute",
+          changes: {
+            original_player_id: originalPlayerId,
+            new_player_id: newPlayerId,
+            scope: 'global',
+          },
+          reason: "Global player substitution",
+        });
+
+        const fromRound = event.current_round || 1;
+        await regenerateScheduleFromRound(fromRound);
+
+        toast.success("Player substituted globally");
+      } else {
+        // Single round substitution: update specific matches
+        const roundMatches = schedule.filter(s => s.round_no === scope && !s.is_bye);
+        
+        for (const match of roundMatches) {
+          const updates: any = {};
+          if (match.a1_player_id === originalPlayerId) updates.a1_player_id = newPlayerId;
+          if (match.a2_player_id === originalPlayerId) updates.a2_player_id = newPlayerId;
+          if (match.b1_player_id === originalPlayerId) updates.b1_player_id = newPlayerId;
+          if (match.b2_player_id === originalPlayerId) updates.b2_player_id = newPlayerId;
+
+          if (Object.keys(updates).length > 0) {
+            await supabase
+              .from("round_robin_schedule")
+              .update(updates)
+              .eq("id", match.id);
+          }
+        }
+
+        await supabase.from("round_robin_audit").insert({
+          event_id: event.id,
+          editor_id: userId,
+          change_type: "player_substitute",
+          changes: {
+            original_player_id: originalPlayerId,
+            new_player_id: newPlayerId,
+            scope: scope,
+          },
+          reason: `Player substitution for Round ${scope}`,
+        });
+
+        await fetchEventDetails();
+        toast.success(`Player substituted for Round ${scope}`);
+      }
+    } catch (error: any) {
+      toast.error("Failed to substitute player");
+      console.error(error);
+      throw error;
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -810,22 +1002,55 @@ export default function RoundRobinDetail() {
           <TabsContent value="players" className="mt-6">
             <Card>
               <CardHeader>
-                <CardTitle>Participants</CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Participants</CardTitle>
+                  {isOrganizer && !event.voided && event.status !== 'completed' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPlayerManagementOpen(true)}
+                    >
+                      <Edit className="w-4 h-4 mr-2" />
+                      Manage Players
+                    </Button>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  {players.map((player) => (
-                    <div key={player.id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div>
-                        <div className="font-medium">
-                          {player.profiles.display_name || player.profiles.full_name}
+                  {players.filter(p => p.active).length > 0 && (
+                    <>
+                      <p className="text-sm font-medium text-muted-foreground mb-2">
+                        Active Players ({players.filter(p => p.active).length})
+                      </p>
+                      {players.filter(p => p.active).map((player) => (
+                        <div key={player.id} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div className="font-medium">
+                            {player.profiles.display_name || player.profiles.full_name}
+                          </div>
+                          <Badge variant="default">Active</Badge>
                         </div>
+                      ))}
+                    </>
+                  )}
+                  
+                  {players.filter(p => !p.active).length > 0 && (
+                    <>
+                      <div className="pt-4 border-t mt-4">
+                        <p className="text-sm font-medium text-muted-foreground mb-2">
+                          Inactive Players ({players.filter(p => !p.active).length})
+                        </p>
                       </div>
-                      {!player.active && (
-                        <Badge variant="outline">Inactive</Badge>
-                      )}
-                    </div>
-                  ))}
+                      {players.filter(p => !p.active).map((player) => (
+                        <div key={player.id} className="flex items-center justify-between p-3 border rounded-lg opacity-60">
+                          <div className="font-medium">
+                            {player.profiles.display_name || player.profiles.full_name}
+                          </div>
+                          <Badge variant="outline">Inactive</Badge>
+                        </div>
+                      ))}
+                    </>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -919,12 +1144,25 @@ export default function RoundRobinDetail() {
       </AlertDialog>
 
       {event && (
-        <EditEventDialog
-          open={editDialogOpen}
-          onOpenChange={setEditDialogOpen}
-          event={event}
-          onSave={handleSaveEventSettings}
-        />
+        <>
+          <EditEventDialog
+            open={editDialogOpen}
+            onOpenChange={setEditDialogOpen}
+            event={event}
+            onSave={handleSaveEventSettings}
+          />
+          
+          <PlayerManagementDialog
+            open={playerManagementOpen}
+            onOpenChange={setPlayerManagementOpen}
+            players={players}
+            currentRound={event.current_round}
+            totalRounds={event.num_rounds}
+            onAddPlayer={handleAddPlayer}
+            onMarkInactive={handleMarkInactive}
+            onSubstitute={handleSubstitute}
+          />
+        </>
       )}
     </div>
   );
