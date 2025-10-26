@@ -32,6 +32,22 @@ export const MFAEnrollment = ({ open, onOpenChange, onEnrollmentComplete }: MFAE
   const handleEnroll = async () => {
     setLoading(true);
     try {
+      // Check for existing factors first
+      const { data: factors } = await supabase.auth.mfa.listFactors();
+      
+      // If there's an unverified factor, unenroll it first
+      if (factors?.totp && factors.totp.length > 0) {
+        const existingFactor = factors.totp[0];
+        if (existingFactor.status === "unverified") {
+          await supabase.auth.mfa.unenroll({ factorId: existingFactor.id });
+          toast.info("Removing previous incomplete setup...");
+        } else if (existingFactor.status === "verified") {
+          toast.error("MFA is already enabled. Disable it first to re-enroll.");
+          onOpenChange(false);
+          return;
+        }
+      }
+
       const { data, error } = await supabase.auth.mfa.enroll({
         factorType: "totp",
         friendlyName: "Authenticator App",
