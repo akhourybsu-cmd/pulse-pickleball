@@ -7,14 +7,12 @@ import { toast } from "sonner";
 import { Trophy, TrendingUp, Calendar, LogOut, Plus, MapPin, BarChart3, RefreshCw, HelpCircle, MessageSquare, Trash2, Award, UserCog, User as UserIcon, Settings, Share2, CalendarDays, Activity } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import logo from "@/assets/pulse-logo-new.png";
-import { CourtStats } from "@/components/CourtStats";
+
 
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Footer } from "@/components/Footer";
 import { OnboardingTutorial } from "@/components/OnboardingTutorial";
 import { ActiveRoundRobinIndicator } from "@/components/ActiveRoundRobinIndicator";
-import { SmartMatch } from "@/components/court/SmartMatch";
-import { LFGNotifications } from "@/components/court/LFGNotifications";
 
 interface Profile {
   id: string;
@@ -505,11 +503,6 @@ const Dashboard = () => {
           </div>
         </div>
 
-        <div className="mb-8 space-y-6">
-          <SmartMatch userId={user?.id || null} />
-          <LFGNotifications />
-          {user && <CourtStats userId={user.id} />}
-        </div>
 
         <div className="grid gap-4 md:gap-6 md:grid-cols-2 lg:grid-cols-3">
           <Button 
