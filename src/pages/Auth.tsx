@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner";
 import { z } from "zod";
 import { MFAChallenge } from "@/components/auth/MFAChallenge";
+import { EmailMFAChallenge } from "@/components/auth/EmailMFAChallenge";
 
 const authSchema = z.object({
   email: z.string().trim().email("Invalid email address").max(255, "Email too long"),
@@ -23,6 +24,8 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [showMFAChallenge, setShowMFAChallenge] = useState(false);
+  const [showEmailMFA, setShowEmailMFA] = useState(false);
+  const [mfaMethod, setMfaMethod] = useState<"authenticator" | "email" | "none">("none");
   const navigate = useNavigate();
 
   const handleAuth = async (e: React.FormEvent) => {
@@ -52,14 +55,28 @@ const Auth = () => {
         
         if (error) throw error;
         
-        // Check if user has MFA enabled
+        // Check user's MFA preference from profile
         if (data.session) {
-          const { data: factors } = await supabase.auth.mfa.listFactors();
-          const hasMFA = factors?.totp?.some((factor) => factor.status === "verified");
-          
-          if (hasMFA) {
-            // User has MFA enabled, show challenge
-            setShowMFAChallenge(true);
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("mfa_method")
+            .eq("id", data.user?.id)
+            .single();
+
+          const userMFAMethod = profile?.mfa_method || "none";
+          setMfaMethod(userMFAMethod as "authenticator" | "email" | "none");
+
+          if (userMFAMethod === "authenticator") {
+            const { data: factors } = await supabase.auth.mfa.listFactors();
+            const hasMFA = factors?.totp?.some((factor) => factor.status === "verified");
+            
+            if (hasMFA) {
+              setShowMFAChallenge(true);
+              setLoading(false);
+              return;
+            }
+          } else if (userMFAMethod === "email") {
+            setShowEmailMFA(true);
             setLoading(false);
             return;
           }
@@ -123,6 +140,7 @@ const Auth = () => {
 
   const handleMFASuccess = () => {
     setShowMFAChallenge(false);
+    setShowEmailMFA(false);
     toast.success("Logged in successfully!");
     setTimeout(() => {
       navigate("/dashboard");
@@ -131,6 +149,7 @@ const Auth = () => {
 
   const handleMFACancel = async () => {
     setShowMFAChallenge(false);
+    setShowEmailMFA(false);
     await supabase.auth.signOut();
     toast.info("Login cancelled");
   };
@@ -267,6 +286,13 @@ const Auth = () => {
 
         <MFAChallenge
           open={showMFAChallenge}
+          onSuccess={handleMFASuccess}
+          onCancel={handleMFACancel}
+        />
+
+        <EmailMFAChallenge
+          open={showEmailMFA}
+          email={email}
           onSuccess={handleMFASuccess}
           onCancel={handleMFACancel}
         />

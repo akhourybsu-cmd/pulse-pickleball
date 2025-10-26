@@ -860,6 +860,36 @@ export type Database = {
           },
         ]
       }
+      mfa_verification_codes: {
+        Row: {
+          code: string
+          created_at: string
+          expires_at: string
+          id: string
+          method: string
+          used: boolean
+          user_id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          method: string
+          used?: boolean
+          user_id: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          method?: string
+          used?: boolean
+          user_id?: string
+        }
+        Relationships: []
+      }
       player_badges: {
         Row: {
           badge_id: string
@@ -916,6 +946,7 @@ export type Database = {
           last_name: string | null
           last_rating_update: string | null
           losses: number | null
+          mfa_method: string | null
           notify_badges_email: boolean | null
           notify_badges_push: boolean | null
           notify_badges_sms: boolean | null
@@ -926,6 +957,7 @@ export type Database = {
           paddle_brand: string | null
           paddle_model: string | null
           partner_preferences: string | null
+          phone_number: string | null
           phonetic_name: string | null
           play_side: string | null
           pronouns: string | null
@@ -954,6 +986,7 @@ export type Database = {
           last_name?: string | null
           last_rating_update?: string | null
           losses?: number | null
+          mfa_method?: string | null
           notify_badges_email?: boolean | null
           notify_badges_push?: boolean | null
           notify_badges_sms?: boolean | null
@@ -964,6 +997,7 @@ export type Database = {
           paddle_brand?: string | null
           paddle_model?: string | null
           partner_preferences?: string | null
+          phone_number?: string | null
           phonetic_name?: string | null
           play_side?: string | null
           pronouns?: string | null
@@ -992,6 +1026,7 @@ export type Database = {
           last_name?: string | null
           last_rating_update?: string | null
           losses?: number | null
+          mfa_method?: string | null
           notify_badges_email?: boolean | null
           notify_badges_push?: boolean | null
           notify_badges_sms?: boolean | null
@@ -1002,6 +1037,7 @@ export type Database = {
           paddle_brand?: string | null
           paddle_model?: string | null
           partner_preferences?: string | null
+          phone_number?: string | null
           phonetic_name?: string | null
           play_side?: string | null
           pronouns?: string | null
@@ -1526,6 +1562,7 @@ export type Database = {
         Args: { match_ticket_id: string }
         Returns: undefined
       }
+      cleanup_expired_mfa_codes: { Args: never; Returns: undefined }
       clear_all_match_history: { Args: never; Returns: undefined }
       clear_all_match_history_authenticated: { Args: never; Returns: undefined }
       delete_old_court_posts: { Args: never; Returns: undefined }
