@@ -494,7 +494,7 @@ export default function RoundRobinDetail() {
         // Only process scored matches that haven't been submitted yet
         if (!match.is_bye && match.team1_score !== null && match.team2_score !== null && !match.match_id) {
           try {
-            // Insert match
+            // Insert match (don't set event_id for round_robin as it references events table, not round_robin_events)
             const { data: matchData, error: matchError } = await supabase
               .from("matches")
               .insert({
@@ -503,7 +503,6 @@ export default function RoundRobinDetail() {
                 team2_score: match.team2_score,
                 created_by: userId!,
                 source: "round_robin",
-                event_id: event.id,
                 round_no: match.round_no,
                 court_no: match.court_no,
                 match_type: event.rating_type,
