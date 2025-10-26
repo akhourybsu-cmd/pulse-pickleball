@@ -24,7 +24,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Play, Trophy, AlertCircle, Settings, Trash2, Ban, CheckCircle, Edit } from "lucide-react";
+import { Play, Trophy, AlertCircle, Settings, Trash2, Ban, CheckCircle, Edit, Edit3 } from "lucide-react";
 import { toast } from "sonner";
 import { BackToDashboard } from "@/components/BackToDashboard";
 import { EditEventDialog } from "@/components/round-robin/EditEventDialog";
@@ -32,6 +32,7 @@ import { EditModeBanner } from "@/components/round-robin/EditModeBanner";
 import { PlayerManagementDialog } from "@/components/round-robin/PlayerManagementDialog";
 import { CourtsRoundsDialog } from "@/components/round-robin/CourtsRoundsDialog";
 import { ScheduleEditorDialog } from "@/components/round-robin/ScheduleEditorDialog";
+import { ScoreManagementDialog } from "@/components/round-robin/ScoreManagementDialog";
 import { z } from "zod";
 import logo from "@/assets/pulse-logo-new.png";
 
@@ -129,6 +130,7 @@ export default function RoundRobinDetail() {
   const [playerManagementOpen, setPlayerManagementOpen] = useState(false);
   const [courtsRoundsOpen, setCourtsRoundsOpen] = useState(false);
   const [scheduleEditorOpen, setScheduleEditorOpen] = useState(false);
+  const [scoreManagementOpen, setScoreManagementOpen] = useState(false);
 
   useEffect(() => {
     fetchEventDetails();
@@ -955,6 +957,173 @@ export default function RoundRobinDetail() {
     }
   };
 
+  const handleEditMatchScore = async (matchId: string, team1Score: number, team2Score: number) => {
+    if (!event || !userId) return;
+
+    try {
+      const match = schedule.find(m => m.id === matchId);
+      if (!match) return;
+
+      const before = {
+        team1_score: match.team1_score,
+        team2_score: match.team2_score,
+      };
+
+      // Update score
+      const { error: updateError } = await supabase
+        .from("round_robin_schedule")
+        .update({
+          team1_score: team1Score,
+          team2_score: team2Score,
+        })
+        .eq("id", matchId);
+
+      if (updateError) throw updateError;
+
+      // Reset verification if match was linked to matches table
+      if (match.match_id) {
+        await supabase
+          .from("matches")
+          .update({
+            team1_score: team1Score,
+            team2_score: team2Score,
+            verified_by: [],
+          })
+          .eq("id", match.match_id);
+      }
+
+      // Audit entry
+      await supabase.from("round_robin_audit").insert({
+        event_id: event.id,
+        editor_id: userId,
+        change_type: "score_edit",
+        changes: {
+          match_id: matchId,
+          before,
+          after: { team1_score: team1Score, team2_score: team2Score },
+        },
+        reason: `Score edited for Round ${match.round_no}, Court ${match.court_no}`,
+      });
+
+      // If rating eligible and match is in matches table, trigger rating recalculation
+      if (event.rating_eligible && match.match_id) {
+        // Trigger rating recalculation by calling the recalculate function
+        await supabase.rpc("recalculate_all_ratings");
+      }
+
+      toast.success("Score updated and verification reset");
+      await fetchEventDetails();
+    } catch (error: any) {
+      toast.error("Failed to update score");
+      console.error(error);
+      throw error;
+    }
+  };
+
+  const handleVoidMatch = async (matchId: string) => {
+    if (!event || !userId) return;
+
+    try {
+      const match = schedule.find(m => m.id === matchId);
+      if (!match) return;
+
+      // If match is linked to matches table, void it there
+      if (match.match_id) {
+        await supabase
+          .from("matches")
+          .update({
+            voided: true,
+            voided_by: userId,
+            voided_at: new Date().toISOString(),
+            void_reason: "Voided via Round Robin editor",
+          })
+          .eq("id", match.match_id);
+
+        // Recalculate ratings if event is rating eligible
+        if (event.rating_eligible) {
+          await supabase.rpc("recalculate_all_ratings");
+        }
+      }
+
+      // Audit entry
+      await supabase.from("round_robin_audit").insert({
+        event_id: event.id,
+        editor_id: userId,
+        change_type: "match_void",
+        changes: {
+          match_id: matchId,
+          schedule_match_id: match.match_id,
+        },
+        reason: `Match voided for Round ${match.round_no}, Court ${match.court_no}`,
+      });
+
+      toast.success("Match voided and removed from ratings");
+      await fetchEventDetails();
+    } catch (error: any) {
+      toast.error("Failed to void match");
+      console.error(error);
+      throw error;
+    }
+  };
+
+  const handleDeleteMatch = async (matchId: string) => {
+    if (!event || !userId || !isAdmin) return;
+
+    try {
+      const match = schedule.find(m => m.id === matchId);
+      if (!match) return;
+
+      // Delete from matches table if linked
+      if (match.match_id) {
+        // Delete match participants first
+        await supabase
+          .from("match_participants")
+          .delete()
+          .eq("match_id", match.match_id);
+
+        // Delete match
+        await supabase
+          .from("matches")
+          .delete()
+          .eq("id", match.match_id);
+
+        // Recalculate ratings if event is rating eligible
+        if (event.rating_eligible) {
+          await supabase.rpc("recalculate_all_ratings");
+        }
+      }
+
+      // Clear scores from schedule
+      await supabase
+        .from("round_robin_schedule")
+        .update({
+          team1_score: null,
+          team2_score: null,
+          match_id: null,
+        })
+        .eq("id", matchId);
+
+      // Audit entry
+      await supabase.from("round_robin_audit").insert({
+        event_id: event.id,
+        editor_id: userId,
+        change_type: "match_delete",
+        changes: {
+          match_id: matchId,
+          schedule_match_id: match.match_id,
+        },
+        reason: `Match deleted by admin for Round ${match.round_no}, Court ${match.court_no}`,
+      });
+
+      toast.success("Match deleted and ratings reflowed");
+      await fetchEventDetails();
+    } catch (error: any) {
+      toast.error("Failed to delete match");
+      console.error(error);
+      throw error;
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -1120,6 +1289,16 @@ export default function RoundRobinDetail() {
                       <Edit className="h-4 w-4 mr-2" />
                       Edit Schedule
                     </Button>
+                    {hasScores && (
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setScoreManagementOpen(true)}
+                        className="flex-1"
+                      >
+                        <Edit3 className="h-4 w-4 mr-2" />
+                        Manage Scores
+                      </Button>
+                    )}
                   </div>
                 )}
 
@@ -1422,6 +1601,18 @@ export default function RoundRobinDetail() {
             onSwapPartners={handleSwapPartners}
             onSwapOpponents={handleSwapOpponents}
             onMoveCourt={handleMoveCourt}
+          />
+
+          <ScoreManagementDialog
+            open={scoreManagementOpen}
+            onOpenChange={setScoreManagementOpen}
+            schedule={schedule}
+            isAdmin={isAdmin}
+            ratingEligible={event.rating_eligible}
+            getPlayerName={getPlayerName}
+            onEditScore={handleEditMatchScore}
+            onVoidMatch={handleVoidMatch}
+            onDeleteMatch={handleDeleteMatch}
           />
         </>
       )}
