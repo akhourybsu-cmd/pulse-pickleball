@@ -24,9 +24,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Play, Trophy, AlertCircle, Settings, Trash2, Ban, CheckCircle } from "lucide-react";
+import { Play, Trophy, AlertCircle, Settings, Trash2, Ban, CheckCircle, Edit } from "lucide-react";
 import { toast } from "sonner";
 import { BackToDashboard } from "@/components/BackToDashboard";
+import { EditEventDialog } from "@/components/round-robin/EditEventDialog";
+import { EditModeBanner } from "@/components/round-robin/EditModeBanner";
 import { z } from "zod";
 import logo from "@/assets/pulse-logo-new.png";
 
@@ -49,9 +51,9 @@ interface Event {
   num_courts: number;
   num_rounds: number;
   current_round: number | null;
-  status: string;
+  status: "draft" | "live" | "completed";
   rating_eligible: boolean;
-  rating_type: string;
+  rating_type: "ladder" | "league" | "playoffs" | "casual";
   created_at: string;
   updated_at: string;
   completed_at: string | null;
@@ -118,6 +120,9 @@ export default function RoundRobinDetail() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteMode, setDeleteMode] = useState<'void' | 'hard'>('void');
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   useEffect(() => {
     fetchEventDetails();
@@ -495,6 +500,55 @@ export default function RoundRobinDetail() {
     }
   };
 
+  const handleSaveEventSettings = async (updates: Partial<Event>) => {
+    if (!event || !userId) return;
+
+    try {
+      // Create audit entry
+      const before = {
+        name: event.name,
+        notes: event.notes,
+        rating_eligible: event.rating_eligible,
+        rating_type: event.rating_type,
+      };
+
+      const after = { ...before, ...updates };
+
+      await supabase.from("round_robin_audit").insert({
+        event_id: event.id,
+        editor_id: userId,
+        change_type: "event_settings",
+        changes: { before, after },
+        reason: "Event settings updated",
+      });
+
+      // Update event
+      const { error } = await supabase
+        .from("round_robin_events")
+        .update(updates)
+        .eq("id", event.id);
+
+      if (error) throw error;
+
+      toast.success("Event settings updated");
+      fetchEventDetails();
+      setHasUnsavedChanges(false);
+    } catch (error: any) {
+      toast.error("Failed to update event settings");
+      console.error(error);
+    }
+  };
+
+  const handleToggleEditMode = () => {
+    if (hasUnsavedChanges) {
+      if (!confirm("You have unsaved changes. Discard them?")) {
+        return;
+      }
+      setHasUnsavedChanges(false);
+    }
+    setIsEditMode(!isEditMode);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -536,41 +590,52 @@ export default function RoundRobinDetail() {
             </div>
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <Badge variant={event.status === 'live' ? 'default' : 'outline'} className="whitespace-nowrap">{event.status.toUpperCase()}</Badge>
-              {isOrganizer && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="icon">
-                    <Settings className="h-4 w-4" />
+              {isOrganizer && !event.voided && (
+                <>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setEditDialogOpen(true)}
+                    disabled={isEditMode}
+                  >
+                    <Settings className="h-4 w-4 mr-2" />
+                    Settings
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    onClick={() => {
-                      setDeleteMode('void');
-                      setDeleteDialogOpen(true);
-                    }}
-                    disabled={!hasScores}
-                  >
-                    <Ban className="h-4 w-4 mr-2" />
-                    Void Event
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => {
-                      if (hasScores && !isAdmin) {
-                        toast.error("Only admins can hard delete events with scores. Use void instead.");
-                        return;
-                      }
-                      setDeleteMode('hard');
-                      setDeleteDialogOpen(true);
-                    }}
-                    className="text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete Event
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="icon">
+                        <Settings className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setDeleteMode('void');
+                          setDeleteDialogOpen(true);
+                        }}
+                        disabled={!hasScores}
+                      >
+                        <Ban className="h-4 w-4 mr-2" />
+                        Void Event
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => {
+                          if (hasScores && !isAdmin) {
+                            toast.error("Only admins can hard delete events with scores. Use void instead.");
+                            return;
+                          }
+                          setDeleteMode('hard');
+                          setDeleteDialogOpen(true);
+                        }}
+                        className="text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete Event
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </>
               )}
             </div>
           </div>
@@ -578,6 +643,17 @@ export default function RoundRobinDetail() {
       </header>
 
       <main className="container mx-auto px-4 py-6">
+        {isOrganizer && isEditMode && (
+          <div className="mb-6">
+            <EditModeBanner
+              isEditMode={isEditMode}
+              eventName={event.name}
+              hasUnsavedChanges={hasUnsavedChanges}
+              onToggleEdit={handleToggleEditMode}
+            />
+          </div>
+        )}
+
         {!hasSchedule && isOrganizer && (
           <Alert className="mb-6">
             <AlertCircle className="h-4 w-4" />
@@ -841,6 +917,15 @@ export default function RoundRobinDetail() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {event && (
+        <EditEventDialog
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+          event={event}
+          onSave={handleSaveEventSettings}
+        />
+      )}
     </div>
   );
 }

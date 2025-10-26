@@ -1132,6 +1132,54 @@ export type Database = {
         }
         Relationships: []
       }
+      round_robin_audit: {
+        Row: {
+          change_type: string
+          changes: Json
+          created_at: string
+          edited_at: string
+          editor_id: string
+          event_id: string
+          id: string
+          reason: string | null
+        }
+        Insert: {
+          change_type: string
+          changes: Json
+          created_at?: string
+          edited_at?: string
+          editor_id: string
+          event_id: string
+          id?: string
+          reason?: string | null
+        }
+        Update: {
+          change_type?: string
+          changes?: Json
+          created_at?: string
+          edited_at?: string
+          editor_id?: string
+          event_id?: string
+          id?: string
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "round_robin_audit_editor_id_fkey"
+            columns: ["editor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "round_robin_audit_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "round_robin_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       round_robin_events: {
         Row: {
           completed_at: string | null
