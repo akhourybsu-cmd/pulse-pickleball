@@ -180,12 +180,12 @@ export default function RoundRobinDetail() {
       .from("round_robin_audit")
       .select(`
         id,
-        action_type,
-        changed_by,
-        old_value,
-        new_value,
+        change_type,
+        editor_id,
+        changes,
         created_at,
-        profiles:changed_by (
+        reason,
+        profiles:editor_id (
           display_name,
           email
         )
@@ -200,7 +200,7 @@ export default function RoundRobinDetail() {
 
     const formattedEntries = data.map((entry: any) => ({
       ...entry,
-      changed_by_name:
+      editor_name:
         entry.profiles?.display_name || entry.profiles?.email || "Unknown",
     }));
 
@@ -688,7 +688,7 @@ export default function RoundRobinDetail() {
       await supabase.from("round_robin_audit").insert({
         event_id: event.id,
         editor_id: userId,
-        change_type: "player_remove",
+        change_type: "player_inactive",
         changes: { player_id: player.player_id },
         reason: "Player marked inactive (early exit)",
       });
@@ -805,7 +805,7 @@ export default function RoundRobinDetail() {
       await supabase.from("round_robin_audit").insert({
         event_id: event.id,
         editor_id: userId,
-        change_type: "courts_adjusted",
+        change_type: "courts_update",
         changes: { before, after },
         reason: `Courts ${newCourts > event.num_courts ? 'increased' : 'decreased'} to ${newCourts}`,
       });
@@ -852,7 +852,7 @@ export default function RoundRobinDetail() {
       await supabase.from("round_robin_audit").insert({
         event_id: event.id,
         editor_id: userId,
-        change_type: "rounds_adjusted",
+        change_type: "rounds_update",
         changes: { before, after },
         reason: `Rounds ${newRounds > event.num_rounds ? 'increased' : 'decreased'} to ${newRounds}`,
       });

@@ -6,12 +6,15 @@ import { Clock, User, FileEdit } from "lucide-react";
 
 interface AuditEntry {
   id: string;
-  action_type: string;
-  changed_by: string;
-  changed_by_name?: string;
-  old_value: any;
-  new_value: any;
+  change_type: string;
+  editor_id: string;
+  editor_name?: string;
+  changes: {
+    before?: any;
+    after?: any;
+  };
   created_at: string;
+  reason?: string;
 }
 
 interface AuditHistoryDialogProps {
@@ -25,40 +28,47 @@ export function AuditHistoryDialog({
   onOpenChange,
   auditEntries,
 }: AuditHistoryDialogProps) {
-  const getActionLabel = (actionType: string) => {
+  const getActionLabel = (changeType: string) => {
     const labels: Record<string, string> = {
-      update_settings: "Updated Event Settings",
-      add_player: "Added Player",
-      mark_inactive: "Marked Player Inactive",
-      substitute_player: "Substituted Player",
-      update_courts: "Updated Courts",
-      update_rounds: "Updated Rounds",
-      swap_partners: "Swapped Partners",
-      swap_opponents: "Swapped Opponents",
-      move_court: "Moved Match Court",
-      edit_score: "Edited Match Score",
-      void_match: "Voided Match",
-      delete_match: "Deleted Match",
+      event_settings: "Updated Event Settings",
+      player_add: "Added Player",
+      player_inactive: "Marked Player Inactive",
+      player_substitute: "Substituted Player",
+      courts_update: "Updated Courts",
+      rounds_update: "Updated Rounds",
+      schedule_edit: "Edited Schedule",
+      score_edit: "Edited Match Score",
+      match_void: "Voided Match",
+      match_delete: "Deleted Match",
     };
-    return labels[actionType] || actionType;
+    return labels[changeType] || changeType;
   };
 
-  const getActionColor = (actionType: string) => {
-    if (actionType.includes("delete") || actionType.includes("void")) {
+  const getActionColor = (changeType: string) => {
+    if (changeType.includes("delete") || changeType.includes("void")) {
       return "destructive";
     }
-    if (actionType.includes("add") || actionType.includes("substitute")) {
+    if (changeType.includes("add") || changeType.includes("substitute")) {
       return "default";
     }
     return "secondary";
   };
 
-  const formatValue = (value: any): string => {
-    if (!value) return "N/A";
-    if (typeof value === "object") {
-      return JSON.stringify(value, null, 2);
-    }
-    return String(value);
+  const formatChanges = (changes: any): { before: string; after: string } => {
+    if (!changes) return { before: "N/A", after: "N/A" };
+    
+    const formatValue = (value: any): string => {
+      if (!value) return "N/A";
+      if (typeof value === "object") {
+        return JSON.stringify(value, null, 2);
+      }
+      return String(value);
+    };
+
+    return {
+      before: formatValue(changes.before),
+      after: formatValue(changes.after),
+    };
   };
 
   return (
@@ -78,55 +88,64 @@ export function AuditHistoryDialog({
             </div>
           ) : (
             <div className="space-y-4">
-              {auditEntries.map((entry) => (
-                <div
-                  key={entry.id}
-                  className="border rounded-lg p-4 space-y-3 bg-card"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <Badge variant={getActionColor(entry.action_type)}>
-                        {getActionLabel(entry.action_type)}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <User className="w-4 h-4" />
-                        <span>{entry.changed_by_name || "Unknown"}</span>
+              {auditEntries.map((entry) => {
+                const formattedChanges = formatChanges(entry.changes);
+                return (
+                  <div
+                    key={entry.id}
+                    className="border rounded-lg p-4 space-y-3 bg-card"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <Badge variant={getActionColor(entry.change_type)}>
+                          {getActionLabel(entry.change_type)}
+                        </Badge>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <Clock className="w-4 h-4" />
-                        <span>
-                          {format(new Date(entry.created_at), "MMM d, h:mm a")}
-                        </span>
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-1">
+                          <User className="w-4 h-4" />
+                          <span>{entry.editor_name || "Unknown"}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Clock className="w-4 h-4" />
+                          <span>
+                            {format(new Date(entry.created_at), "MMM d, h:mm a")}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    {entry.old_value && (
-                      <div>
-                        <div className="font-medium text-muted-foreground mb-1">
-                          Previous Value
-                        </div>
-                        <div className="bg-muted/50 rounded p-2 font-mono text-xs whitespace-pre-wrap break-all">
-                          {formatValue(entry.old_value)}
-                        </div>
+                    {entry.reason && (
+                      <div className="text-sm text-muted-foreground italic">
+                        {entry.reason}
                       </div>
                     )}
-                    {entry.new_value && (
-                      <div>
-                        <div className="font-medium text-muted-foreground mb-1">
-                          New Value
+
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      {formattedChanges.before !== "N/A" && (
+                        <div>
+                          <div className="font-medium text-muted-foreground mb-1">
+                            Previous Value
+                          </div>
+                          <div className="bg-muted/50 rounded p-2 font-mono text-xs whitespace-pre-wrap break-all">
+                            {formattedChanges.before}
+                          </div>
                         </div>
-                        <div className="bg-muted/50 rounded p-2 font-mono text-xs whitespace-pre-wrap break-all">
-                          {formatValue(entry.new_value)}
+                      )}
+                      {formattedChanges.after !== "N/A" && (
+                        <div>
+                          <div className="font-medium text-muted-foreground mb-1">
+                            New Value
+                          </div>
+                          <div className="bg-muted/50 rounded p-2 font-mono text-xs whitespace-pre-wrap break-all">
+                            {formattedChanges.after}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </ScrollArea>
