@@ -539,16 +539,6 @@ const Dashboard = () => {
             </>
           )}
 
-          <Button 
-            size="lg" 
-            variant="outline"
-            onClick={() => navigate("/court/history")}
-            data-tour="leaderboard"
-            className="md:text-lg md:py-6"
-          >
-            <MapPin className="w-5 h-5 md:w-6 md:h-6 mr-2" />
-            Court History
-          </Button>
 
           <Button 
             size="lg" 
