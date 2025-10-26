@@ -245,7 +245,13 @@ export default function RoundRobinDetail() {
 
       const { data: scheduleData, error: scheduleError } = await supabase
         .from("round_robin_schedule")
-        .select("*")
+        .select(`
+          *,
+          a1_profile:profiles!round_robin_schedule_a1_player_id_fkey(display_name, full_name),
+          a2_profile:profiles!round_robin_schedule_a2_player_id_fkey(display_name, full_name),
+          b1_profile:profiles!round_robin_schedule_b1_player_id_fkey(display_name, full_name),
+          b2_profile:profiles!round_robin_schedule_b2_player_id_fkey(display_name, full_name)
+        `)
         .eq("event_id", id)
         .order("round_no")
         .order("court_no");
@@ -338,10 +344,25 @@ export default function RoundRobinDetail() {
     }
   };
 
-  const getPlayerName = (playerId: string | null) => {
+  const getPlayerName = (playerId: string | null, matchData?: any) => {
     if (!playerId) return "—";
+    
+    // First try to get from the match data if provided (has joined profile data)
+    if (matchData) {
+      const profileKey = 
+        playerId === matchData.a1_player_id ? 'a1_profile' :
+        playerId === matchData.a2_player_id ? 'a2_profile' :
+        playerId === matchData.b1_player_id ? 'b1_profile' :
+        playerId === matchData.b2_player_id ? 'b2_profile' : null;
+      
+      if (profileKey && matchData[profileKey]) {
+        return matchData[profileKey].display_name || matchData[profileKey].full_name;
+      }
+    }
+    
+    // Fallback to players array
     const player = players.find((p) => p.player_id === playerId);
-    return player?.profiles.display_name || player?.profiles.full_name || "Unknown";
+    return player?.profiles?.display_name || player?.profiles?.full_name || "Unknown Player";
   };
 
   const getRoundMatches = (roundNo: number) => {
@@ -1390,9 +1411,9 @@ export default function RoundRobinDetail() {
                                 ) : (
                                   <>
                                     <div className="space-y-2">
-                                      <div className={`flex items-center justify-between p-3 rounded-lg ${match.team1_score !== null && match.team1_score > (match.team2_score || 0) ? 'bg-primary/10 font-semibold' : 'bg-muted/50'}`}>
+                                    <div className={`flex items-center justify-between p-3 rounded-lg ${match.team1_score !== null && match.team1_score > (match.team2_score || 0) ? 'bg-primary/10 font-semibold' : 'bg-muted/50'}`}>
                                         <div className="text-sm">
-                                          {getPlayerName(match.a1_player_id)} / {getPlayerName(match.a2_player_id)}
+                                          {getPlayerName(match.a1_player_id, match)} / {getPlayerName(match.a2_player_id, match)}
                                         </div>
                                         {match.team1_score !== null ? (
                                           <div className="text-lg font-bold">{match.team1_score}</div>
@@ -1413,7 +1434,7 @@ export default function RoundRobinDetail() {
                                       
                                       <div className={`flex items-center justify-between p-3 rounded-lg ${match.team2_score !== null && match.team2_score > (match.team1_score || 0) ? 'bg-primary/10 font-semibold' : 'bg-muted/50'}`}>
                                         <div className="text-sm">
-                                          {getPlayerName(match.b1_player_id)} / {getPlayerName(match.b2_player_id)}
+                                          {getPlayerName(match.b1_player_id, match)} / {getPlayerName(match.b2_player_id, match)}
                                         </div>
                                         {match.team2_score !== null ? (
                                           <div className="text-lg font-bold">{match.team2_score}</div>
