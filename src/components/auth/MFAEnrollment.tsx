@@ -141,7 +141,7 @@ export const MFAEnrollment = ({ open, onOpenChange, onEnrollmentComplete }: MFAE
         ) : (
           <div className="space-y-4">
             <div className="flex justify-center p-4 bg-white rounded-lg">
-              <QRCodeSVG value={qrCode} size={200} level="M" />
+              <QRCodeSVG value={qrCode} size={256} level="L" />
             </div>
 
             <div className="space-y-2">
