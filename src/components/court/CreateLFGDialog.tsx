@@ -19,11 +19,10 @@ export function CreateLFGDialog({ courtId, userId, onClose, onSuccess }: CreateL
   const { toast } = useToast();
   const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
+    title: "",
     date: "",
     startTime: "18:00",
     endTime: "20:00",
-    skillMin: "3.0",
-    skillMax: "3.5",
     format: "doubles",
     capacity: "4",
     intensity: "casual",
@@ -40,7 +39,7 @@ export function CreateLFGDialog({ courtId, userId, onClose, onSuccess }: CreateL
       return;
     }
 
-    if (!formData.date || !formData.startTime || !formData.endTime) {
+    if (!formData.title || !formData.date || !formData.startTime || !formData.endTime) {
       toast({
         title: "Missing Information",
         description: "Please fill in all required fields",
@@ -54,46 +53,15 @@ export function CreateLFGDialog({ courtId, userId, onClose, onSuccess }: CreateL
     const startsAt = new Date(`${formData.date}T${formData.startTime}`).toISOString();
     const endsAt = new Date(`${formData.date}T${formData.endTime}`).toISOString();
 
-    // First, get or create the court channel
-    let channelId: string;
-    const { data: existingChannel } = await (supabase as any)
-      .from("court_channels")
-      .select("id")
-      .eq("court_id", courtId)
-      .single();
-
-    if (existingChannel) {
-      channelId = existingChannel.id;
-    } else {
-      const { data: newChannel, error: channelError } = await (supabase as any)
-        .from("court_channels")
-        .insert({ court_id: courtId })
-        .select("id")
-        .single();
-
-      if (channelError || !newChannel) {
-        setSubmitting(false);
-        toast({
-          title: "Error",
-          description: "Failed to create channel",
-          variant: "destructive",
-        });
-        return;
-      }
-      channelId = newChannel.id;
-    }
-
     // Create the LFG post
     const { data: lfgPost, error: postError } = await (supabase as any)
       .from("lfg_posts")
       .insert({
         court_id: courtId,
-        channel_id: channelId,
-        creator_id: userId,
+        created_by: userId,
+        title: formData.title,
         starts_at: startsAt,
         ends_at: endsAt,
-        skill_min: parseFloat(formData.skillMin),
-        skill_max: parseFloat(formData.skillMax),
         format: formData.format,
         capacity: parseInt(formData.capacity),
         intensity: formData.intensity,
@@ -133,6 +101,17 @@ export function CreateLFGDialog({ courtId, userId, onClose, onSuccess }: CreateL
           <DialogTitle>Create LFG Post</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
+          <div>
+            <Label htmlFor="title">Title</Label>
+            <Input
+              id="title"
+              type="text"
+              placeholder="e.g., Morning Drills, Competitive Doubles"
+              value={formData.title}
+              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+            />
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="date">Date</Label>
@@ -173,33 +152,6 @@ export function CreateLFGDialog({ courtId, userId, onClose, onSuccess }: CreateL
                 type="time"
                 value={formData.endTime}
                 onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="skillMin">Min Skill</Label>
-              <Input
-                id="skillMin"
-                type="number"
-                step="0.1"
-                min="2.0"
-                max="5.0"
-                value={formData.skillMin}
-                onChange={(e) => setFormData({ ...formData, skillMin: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label htmlFor="skillMax">Max Skill</Label>
-              <Input
-                id="skillMax"
-                type="number"
-                step="0.1"
-                min="2.0"
-                max="5.0"
-                value={formData.skillMax}
-                onChange={(e) => setFormData({ ...formData, skillMax: e.target.value })}
               />
             </div>
           </div>

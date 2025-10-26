@@ -384,11 +384,11 @@ export type Database = {
           ends_at: string
           format: string
           id: string
+          intensity: string
           notes: string | null
-          skill_max: number
-          skill_min: number
           starts_at: string
           status: string
+          title: string
           updated_at: string
         }
         Insert: {
@@ -399,11 +399,11 @@ export type Database = {
           ends_at: string
           format?: string
           id?: string
+          intensity?: string
           notes?: string | null
-          skill_max?: number
-          skill_min?: number
           starts_at: string
           status?: string
+          title?: string
           updated_at?: string
         }
         Update: {
@@ -414,11 +414,11 @@ export type Database = {
           ends_at?: string
           format?: string
           id?: string
+          intensity?: string
           notes?: string | null
-          skill_max?: number
-          skill_min?: number
           starts_at?: string
           status?: string
+          title?: string
           updated_at?: string
         }
         Relationships: [

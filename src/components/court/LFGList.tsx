@@ -10,10 +10,9 @@ import { useToast } from "@/hooks/use-toast";
 
 interface LFGPost {
   id: string;
+  title: string;
   starts_at: string;
   ends_at: string;
-  skill_min: number;
-  skill_max: number;
   format: string;
   capacity: number;
   intensity: string;
@@ -53,7 +52,7 @@ export function LFGList({ courtId, userId }: LFGListProps) {
       .from("lfg_posts")
       .select(`
         *,
-        profiles:creator_id (full_name, display_name),
+        profiles:created_by (full_name, display_name),
         lfg_rsvps (
           user_id,
           status,
@@ -176,11 +175,12 @@ export function LFGList({ courtId, userId }: LFGListProps) {
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <CardTitle className="text-base">
-                    {formatDateEST(new Date(post.starts_at), "EEE, MMM d")} • {formatTime12Hour(new Date(post.starts_at).toTimeString().slice(0, 5))}
-                  </CardTitle>
+                  <CardTitle className="text-lg">{post.title}</CardTitle>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Organized by {post.profiles?.display_name || post.profiles?.full_name || "Unknown"}
+                    {formatDateEST(new Date(post.starts_at), "EEE, MMM d")} • {formatTime12Hour(new Date(post.starts_at).toTimeString().slice(0, 5))}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    By {post.profiles?.display_name || post.profiles?.full_name || "Unknown"}
                   </p>
                 </div>
                 <Badge variant={isFull ? "secondary" : "default"}>
@@ -190,15 +190,11 @@ export function LFGList({ courtId, userId }: LFGListProps) {
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex flex-wrap gap-2 text-sm">
-                <div className="flex items-center gap-1 text-muted-foreground">
-                  <TrendingUp className="w-4 h-4" />
-                  {post.skill_min.toFixed(1)} - {post.skill_max.toFixed(1)}
-                </div>
+                <Badge variant="outline" className="capitalize">{post.intensity}</Badge>
                 <div className="flex items-center gap-1 text-muted-foreground">
                   <Users className="w-4 h-4" />
                   {post.format}
                 </div>
-                <Badge variant="outline">{post.intensity}</Badge>
               </div>
 
               {post.notes && (
