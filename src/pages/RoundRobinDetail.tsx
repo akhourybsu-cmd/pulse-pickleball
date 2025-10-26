@@ -31,6 +31,7 @@ import { EditEventDialog } from "@/components/round-robin/EditEventDialog";
 import { EditModeBanner } from "@/components/round-robin/EditModeBanner";
 import { PlayerManagementDialog } from "@/components/round-robin/PlayerManagementDialog";
 import { CourtsRoundsDialog } from "@/components/round-robin/CourtsRoundsDialog";
+import { ScheduleEditorDialog } from "@/components/round-robin/ScheduleEditorDialog";
 import { z } from "zod";
 import logo from "@/assets/pulse-logo-new.png";
 
@@ -127,6 +128,7 @@ export default function RoundRobinDetail() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [playerManagementOpen, setPlayerManagementOpen] = useState(false);
   const [courtsRoundsOpen, setCourtsRoundsOpen] = useState(false);
+  const [scheduleEditorOpen, setScheduleEditorOpen] = useState(false);
 
   useEffect(() => {
     fetchEventDetails();
@@ -828,6 +830,131 @@ export default function RoundRobinDetail() {
     }
   };
 
+  const handleSwapPartners = async (matchId: string, team: 'A' | 'B') => {
+    if (!event || !userId) return;
+
+    try {
+      const match = schedule.find(m => m.id === matchId);
+      if (!match) return;
+
+      const updates = team === 'A' 
+        ? { a1_player_id: match.a2_player_id, a2_player_id: match.a1_player_id }
+        : { b1_player_id: match.b2_player_id, b2_player_id: match.b1_player_id };
+
+      const { error } = await supabase
+        .from("round_robin_schedule")
+        .update(updates)
+        .eq("id", matchId);
+
+      if (error) throw error;
+
+      await supabase.from("round_robin_audit").insert({
+        event_id: event.id,
+        editor_id: userId,
+        change_type: "schedule_edit",
+        changes: {
+          action: "swap_partners",
+          match_id: matchId,
+          team,
+          before: team === 'A' 
+            ? { a1: match.a1_player_id, a2: match.a2_player_id }
+            : { b1: match.b1_player_id, b2: match.b2_player_id },
+          after: updates,
+        },
+        reason: `Swapped partners in Team ${team} for Round ${match.round_no}, Court ${match.court_no}`,
+      });
+
+      toast.success("Partners swapped");
+      await fetchEventDetails();
+    } catch (error: any) {
+      toast.error("Failed to swap partners");
+      console.error(error);
+      throw error;
+    }
+  };
+
+  const handleSwapOpponents = async (match1Id: string, match2Id: string) => {
+    if (!event || !userId) return;
+
+    try {
+      const match1 = schedule.find(m => m.id === match1Id);
+      const match2 = schedule.find(m => m.id === match2Id);
+      if (!match1 || !match2) return;
+
+      // Swap Team B from match1 with Team A from match2
+      await supabase
+        .from("round_robin_schedule")
+        .update({
+          b1_player_id: match2.a1_player_id,
+          b2_player_id: match2.a2_player_id,
+        })
+        .eq("id", match1Id);
+
+      await supabase
+        .from("round_robin_schedule")
+        .update({
+          a1_player_id: match1.b1_player_id,
+          a2_player_id: match1.b2_player_id,
+        })
+        .eq("id", match2Id);
+
+      await supabase.from("round_robin_audit").insert({
+        event_id: event.id,
+        editor_id: userId,
+        change_type: "schedule_edit",
+        changes: {
+          action: "swap_opponents",
+          match1_id: match1Id,
+          match2_id: match2Id,
+        },
+        reason: `Swapped opponents between Round ${match1.round_no} Court ${match1.court_no} and Court ${match2.court_no}`,
+      });
+
+      toast.success("Opponents swapped");
+      await fetchEventDetails();
+    } catch (error: any) {
+      toast.error("Failed to swap opponents");
+      console.error(error);
+      throw error;
+    }
+  };
+
+  const handleMoveCourt = async (matchId: string, newCourtNo: number) => {
+    if (!event || !userId) return;
+
+    try {
+      const match = schedule.find(m => m.id === matchId);
+      if (!match) return;
+
+      const { error } = await supabase
+        .from("round_robin_schedule")
+        .update({ court_no: newCourtNo })
+        .eq("id", matchId);
+
+      if (error) throw error;
+
+      await supabase.from("round_robin_audit").insert({
+        event_id: event.id,
+        editor_id: userId,
+        change_type: "schedule_edit",
+        changes: {
+          action: "move_court",
+          match_id: matchId,
+          before: { court_no: match.court_no },
+          after: { court_no: newCourtNo },
+        },
+        reason: `Moved match from Court ${match.court_no} to Court ${newCourtNo} in Round ${match.round_no}`,
+      });
+
+      toast.success(`Match moved to Court ${newCourtNo}`);
+      await fetchEventDetails();
+    } catch (error: any) {
+      toast.error("Failed to move match");
+      console.error(error);
+      throw error;
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -981,6 +1108,19 @@ export default function RoundRobinDetail() {
                     <Play className="h-4 w-4 mr-2" />
                     Start Event
                   </Button>
+                )}
+
+                {isOrganizer && !event.voided && event.status !== 'completed' && (
+                  <div className="flex gap-2 mb-6">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setScheduleEditorOpen(true)}
+                      className="flex-1"
+                    >
+                      <Edit className="h-4 w-4 mr-2" />
+                      Edit Schedule
+                    </Button>
+                  </div>
                 )}
 
                 {isOrganizer && event.status === "live" && (
@@ -1271,6 +1411,17 @@ export default function RoundRobinDetail() {
             hasScores={hasScores}
             onUpdateCourts={handleUpdateCourts}
             onUpdateRounds={handleUpdateRounds}
+          />
+
+          <ScheduleEditorDialog
+            open={scheduleEditorOpen}
+            onOpenChange={setScheduleEditorOpen}
+            schedule={schedule}
+            currentRound={event.current_round}
+            getPlayerName={getPlayerName}
+            onSwapPartners={handleSwapPartners}
+            onSwapOpponents={handleSwapOpponents}
+            onMoveCourt={handleMoveCourt}
           />
         </>
       )}
