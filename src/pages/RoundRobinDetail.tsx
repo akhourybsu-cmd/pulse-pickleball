@@ -578,7 +578,8 @@ export default function RoundRobinDetail() {
       if (error) throw error;
 
       toast.success("Event settings updated");
-      fetchEventDetails();
+      await fetchEventDetails();
+      await fetchAuditHistory();
       setHasUnsavedChanges(false);
     } catch (error: any) {
       toast.error("Failed to update event settings");
