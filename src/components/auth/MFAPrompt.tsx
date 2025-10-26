@@ -1,0 +1,103 @@
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Shield, X } from "lucide-react";
+import { MFAEnrollment } from "./MFAEnrollment";
+
+export const MFAPrompt = () => {
+  const [showPrompt, setShowPrompt] = useState(false);
+  const [showEnrollment, setShowEnrollment] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
+
+  useEffect(() => {
+    checkIfShouldPrompt();
+  }, []);
+
+  const checkIfShouldPrompt = async () => {
+    try {
+      // Check if user already dismissed the prompt in this session
+      const sessionDismissed = sessionStorage.getItem("mfa-prompt-dismissed");
+      if (sessionDismissed === "true") {
+        setDismissed(true);
+        return;
+      }
+
+      const { data, error } = await supabase.auth.mfa.listFactors();
+      if (error) throw error;
+
+      const hasActiveFactor = data.totp.some((factor) => factor.status === "verified");
+      if (!hasActiveFactor) {
+        setShowPrompt(true);
+      }
+    } catch (error) {
+      console.error("Error checking MFA status:", error);
+    }
+  };
+
+  const handleDismiss = () => {
+    setShowPrompt(false);
+    setDismissed(true);
+    sessionStorage.setItem("mfa-prompt-dismissed", "true");
+  };
+
+  const handleSetupLater = () => {
+    handleDismiss();
+  };
+
+  const handleEnableNow = () => {
+    setShowEnrollment(true);
+  };
+
+  const handleEnrollmentComplete = () => {
+    setShowPrompt(false);
+    setDismissed(true);
+  };
+
+  if (dismissed || !showPrompt) {
+    return null;
+  }
+
+  return (
+    <>
+      <Card className="border-primary/50 bg-primary/5">
+        <CardHeader className="relative pb-3">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute right-2 top-2 h-6 w-6"
+            onClick={handleDismiss}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Shield className="h-5 w-5 text-primary" />
+            Secure Your Account with MFA
+          </CardTitle>
+          <CardDescription>
+            Enable two-factor authentication for enhanced security
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Protect your account by requiring a verification code from your authenticator app in addition to your password.
+          </p>
+          <div className="flex gap-2">
+            <Button onClick={handleEnableNow} className="flex-1">
+              Enable Now
+            </Button>
+            <Button variant="outline" onClick={handleSetupLater} className="flex-1">
+              Maybe Later
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <MFAEnrollment
+        open={showEnrollment}
+        onOpenChange={setShowEnrollment}
+        onEnrollmentComplete={handleEnrollmentComplete}
+      />
+    </>
+  );
+};

@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { z } from "zod";
+import { MFAChallenge } from "@/components/auth/MFAChallenge";
 
 const authSchema = z.object({
   email: z.string().trim().email("Invalid email address").max(255, "Email too long"),
@@ -21,6 +22,7 @@ const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [showMFAChallenge, setShowMFAChallenge] = useState(false);
   const navigate = useNavigate();
 
   const handleAuth = async (e: React.FormEvent) => {
@@ -49,10 +51,19 @@ const Auth = () => {
         });
         if (error) throw error;
         
-        // Wait for session to be set before navigating
+        // Check if MFA is required
         if (data.session) {
+          // Check if user has MFA enabled
+          const { data: factors } = await supabase.auth.mfa.listFactors();
+          const hasMFA = factors?.totp?.some((factor) => factor.status === "verified");
+          
+          if (hasMFA) {
+            setShowMFAChallenge(true);
+            setLoading(false);
+            return;
+          }
+          
           toast.success("Logged in successfully!");
-          // Small delay to ensure session is fully set
           setTimeout(() => {
             navigate("/dashboard");
           }, 100);
@@ -106,6 +117,20 @@ const Auth = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleMFASuccess = () => {
+    setShowMFAChallenge(false);
+    toast.success("Logged in successfully!");
+    setTimeout(() => {
+      navigate("/dashboard");
+    }, 100);
+  };
+
+  const handleMFACancel = async () => {
+    setShowMFAChallenge(false);
+    await supabase.auth.signOut();
+    toast.info("Login cancelled");
   };
 
   return (
@@ -237,6 +262,12 @@ const Auth = () => {
             )}
           </CardContent>
         </Card>
+
+        <MFAChallenge
+          open={showMFAChallenge}
+          onSuccess={handleMFASuccess}
+          onCancel={handleMFACancel}
+        />
       </div>
     </div>
   );

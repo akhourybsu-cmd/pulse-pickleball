@@ -14,6 +14,7 @@ import { ArrowLeft, Save, UserCog, Upload, X, KeyRound } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 import logo from "@/assets/pulse-logo-new.png";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { MFAManagement } from "@/components/auth/MFAManagement";
 
 interface Court {
   id: string;
@@ -378,6 +379,9 @@ const EditProfile = () => {
               </div>
             </CardContent>
           </Card>
+
+          {/* MFA Management */}
+          <MFAManagement />
 
           {/* Identity & Visuals */}
           <Card>

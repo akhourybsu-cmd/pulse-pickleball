@@ -15,6 +15,7 @@ import { OnboardingTutorial } from "@/components/OnboardingTutorial";
 import { ActiveRoundRobinIndicator } from "@/components/ActiveRoundRobinIndicator";
 import { SmartMatch } from "@/components/court/SmartMatch";
 import { LFGNotifications } from "@/components/court/LFGNotifications";
+import { MFAPrompt } from "@/components/auth/MFAPrompt";
 
 interface Profile {
   id: string;
@@ -341,6 +342,11 @@ const Dashboard = () => {
       </nav>
 
       <div className="container mx-auto px-4 py-6 md:py-8 md:py-12">
+        {/* MFA Prompt */}
+        <div className="mb-6">
+          <MFAPrompt />
+        </div>
+
         <div className="mb-6 md:mb-8">
           <div className="flex items-center justify-between">
             <div className="flex-1">
