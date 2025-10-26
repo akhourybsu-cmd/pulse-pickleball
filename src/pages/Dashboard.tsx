@@ -14,6 +14,7 @@ import { Footer } from "@/components/Footer";
 import { OnboardingTutorial } from "@/components/OnboardingTutorial";
 import { ActiveRoundRobinIndicator } from "@/components/ActiveRoundRobinIndicator";
 import { SmartMatch } from "@/components/court/SmartMatch";
+import { LFGNotifications } from "@/components/court/LFGNotifications";
 
 interface Profile {
   id: string;
@@ -506,6 +507,7 @@ const Dashboard = () => {
 
         <div className="mb-8 space-y-6">
           <SmartMatch userId={user?.id || null} />
+          <LFGNotifications />
           {user && <CourtStats userId={user.id} />}
         </div>
 

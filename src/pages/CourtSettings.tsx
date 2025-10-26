@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Eye, Bell, BellOff, Star } from "lucide-react";
 import { formatDateEST } from "@/lib/utils";
 import { AvailabilitySettings } from "@/components/court/AvailabilitySettings";
+import { User } from "lucide-react";
 
 interface Court {
   id: string;
@@ -171,10 +172,30 @@ export default function CourtSettings() {
           <div className="text-center py-12">Loading...</div>
         ) : (
           <div className="space-y-6">
+            {/* Availability Settings */}
+            <AvailabilitySettings />
+            
+            {/* Court Preferences Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <User className="w-5 h-5" />
+                  Court Preferences
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Set your availability to get personalized recommendations for games at your preferred times.
+                  Smart Match will suggest LFG posts that match your skill level and schedule.
+                </p>
+                <Button variant="outline" onClick={() => navigate("/profile/edit")}>
+                  Edit Profile & Preferences
+                </Button>
+              </CardContent>
+            </Card>
+            
             {/* Visible Courts */}
-        <AvailabilitySettings />
-        
-        <Card>
+            <Card>
               <CardHeader>
                 <CardTitle>My Courts ({visibleCourts.length})</CardTitle>
               </CardHeader>

@@ -144,6 +144,48 @@ export type Database = {
           },
         ]
       }
+      court_checkins: {
+        Row: {
+          checked_out_at: string | null
+          court_id: string
+          created_at: string
+          ends_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          checked_out_at?: string | null
+          court_id: string
+          created_at?: string
+          ends_at: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          checked_out_at?: string | null
+          court_id?: string
+          created_at?: string
+          ends_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "court_checkins_court_id_fkey"
+            columns: ["court_id"]
+            isOneToOne: false
+            referencedRelation: "courts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "court_checkins_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       court_post_participants: {
         Row: {
           comment: string | null
@@ -332,6 +374,111 @@ export type Database = {
           win_by_2?: boolean | null
         }
         Relationships: []
+      }
+      lfg_posts: {
+        Row: {
+          capacity: number
+          court_id: string
+          created_at: string
+          created_by: string
+          ends_at: string
+          format: string
+          id: string
+          notes: string | null
+          skill_max: number
+          skill_min: number
+          starts_at: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          capacity?: number
+          court_id: string
+          created_at?: string
+          created_by: string
+          ends_at: string
+          format?: string
+          id?: string
+          notes?: string | null
+          skill_max?: number
+          skill_min?: number
+          starts_at: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          capacity?: number
+          court_id?: string
+          created_at?: string
+          created_by?: string
+          ends_at?: string
+          format?: string
+          id?: string
+          notes?: string | null
+          skill_max?: number
+          skill_min?: number
+          starts_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lfg_posts_court_id_fkey"
+            columns: ["court_id"]
+            isOneToOne: false
+            referencedRelation: "courts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lfg_posts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lfg_rsvps: {
+        Row: {
+          created_at: string
+          id: string
+          lfg_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lfg_id: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lfg_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lfg_rsvps_lfg_id_fkey"
+            columns: ["lfg_id"]
+            isOneToOne: false
+            referencedRelation: "lfg_posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lfg_rsvps_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       match_approvals: {
         Row: {

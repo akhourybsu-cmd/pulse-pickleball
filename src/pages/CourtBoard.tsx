@@ -6,13 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { CourtHeatmap } from "@/components/court/CourtHeatmap";
+import { CourtAnalytics } from "@/components/court/CourtAnalytics";
 import { CourtPresence } from "@/components/court/CourtPresence";
 import { CourtCheckIn } from "@/components/court/CourtCheckIn";
 import { LFGList } from "@/components/court/LFGList";
 import { CourtChannel } from "@/components/court/CourtChannel";
 import { CreateLFGDialog } from "@/components/court/CreateLFGDialog";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, MapPin, Users, Calendar, MessageSquare } from "lucide-react";
+import { ArrowLeft, MapPin, Users, Calendar, MessageSquare, Activity } from "lucide-react";
 
 interface Court {
   id: string;
@@ -134,11 +135,11 @@ export default function CourtBoard() {
             </TabsTrigger>
             <TabsTrigger value="chat" className="gap-2">
               <MessageSquare className="w-4 h-4" />
-              Channel
+              Court Chat
             </TabsTrigger>
             <TabsTrigger value="stats" className="gap-2">
-              <Calendar className="w-4 h-4" />
-              Activity
+              <Activity className="w-4 h-4" />
+              Insights
             </TabsTrigger>
           </TabsList>
 
@@ -170,6 +171,7 @@ export default function CourtBoard() {
           </TabsContent>
 
           <TabsContent value="stats" className="space-y-4">
+            <CourtAnalytics courtId={court.id} />
             <CourtHeatmap courtId={court.id} />
           </TabsContent>
         </Tabs>
