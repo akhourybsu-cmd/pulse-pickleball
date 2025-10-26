@@ -48,7 +48,7 @@ const EventDetail = () => {
   const [showQR, setShowQR] = useState(false);
   const navigate = useNavigate();
 
-  const matchUrl = `${window.location.origin}/events/${eventId}/add-match`;
+  const matchUrl = `https://pulsepb.com/events/${eventId}/add-match`;
 
   useEffect(() => {
     const fetchData = async () => {

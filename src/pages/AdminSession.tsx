@@ -256,7 +256,7 @@ export default function AdminSession() {
   };
 
   const getQRUrl = (sessionId: string) => {
-    return `${window.location.origin}/qr-checkin?session=${sessionId}`;
+    return `https://pulsepb.com/qr-checkin?session=${sessionId}`;
   };
 
   const handleEndSession = async (sessionId: string) => {

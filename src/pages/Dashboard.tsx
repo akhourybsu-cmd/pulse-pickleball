@@ -267,7 +267,7 @@ const Dashboard = () => {
     const shareData = {
       title: 'Pulse Pickleball',
       text: 'Join me on Pulse - Track your pickleball journey and compete with friends!',
-      url: window.location.origin
+      url: 'https://pulsepb.com'
     };
 
     try {
@@ -275,7 +275,7 @@ const Dashboard = () => {
         await navigator.share(shareData);
         toast.success("Thanks for spreading the word!");
       } else {
-        await navigator.clipboard.writeText(window.location.origin);
+        await navigator.clipboard.writeText('https://pulsepb.com');
         toast.success("Share link copied to clipboard!");
       }
     } catch (error) {

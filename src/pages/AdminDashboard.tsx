@@ -61,7 +61,7 @@ const AdminDashboard = () => {
   }, [navigate]);
 
   const getSignupUrl = () => {
-    return `${window.location.origin}/auth`;
+    return `https://pulsepb.com/auth`;
   };
 
   const handleDownloadSignupQR = () => {
