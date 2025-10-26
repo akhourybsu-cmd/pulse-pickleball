@@ -271,6 +271,37 @@ export default function RoundRobinDetail() {
     }
   };
 
+  // Auto-trigger rating recalculation for completed events with unprocessed matches
+  useEffect(() => {
+    const checkAndRecalculateRatings = async () => {
+      if (!event || event.status !== 'completed' || !event.rating_eligible) return;
+      
+      // Check if there are any matches with match_id but no rating_after
+      const matchesWithIds = schedule.filter(m => m.match_id && !m.is_bye);
+      if (matchesWithIds.length === 0) return;
+      
+      // Check if ratings have been calculated for these matches
+      const { data: participants } = await supabase
+        .from('match_participants')
+        .select('rating_after')
+        .in('match_id', matchesWithIds.map(m => m.match_id))
+        .limit(1);
+      
+      // If we have matches but no ratings calculated, trigger recalculation
+      if (participants && participants.length > 0 && participants[0].rating_after === null) {
+        console.log('Triggering rating recalculation for completed round robin...');
+        const { error } = await supabase.rpc('recalculate_all_ratings');
+        if (error) {
+          console.error('Failed to recalculate ratings:', error);
+        } else {
+          toast.success('Ratings calculated for round robin matches!');
+        }
+      }
+    };
+    
+    checkAndRecalculateRatings();
+  }, [event, schedule]);
+
   const handleGenerateSchedule = async () => {
     if (!event) return;
     
