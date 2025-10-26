@@ -49,20 +49,22 @@ const Auth = () => {
           email: validationResult.data.email,
           password: validationResult.data.password,
         });
+        
         if (error) throw error;
         
-        // Check if MFA is required
+        // Check if user has MFA enabled
         if (data.session) {
-          // Check if user has MFA enabled
           const { data: factors } = await supabase.auth.mfa.listFactors();
           const hasMFA = factors?.totp?.some((factor) => factor.status === "verified");
           
           if (hasMFA) {
+            // User has MFA enabled, show challenge
             setShowMFAChallenge(true);
             setLoading(false);
             return;
           }
           
+          // No MFA enabled, proceed to dashboard
           toast.success("Logged in successfully!");
           setTimeout(() => {
             navigate("/dashboard");

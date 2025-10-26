@@ -31,29 +31,43 @@ export const MFAChallenge = ({ open, onSuccess, onCancel }: MFAChallengeProps) =
 
     setLoading(true);
     try {
-      const factors = await supabase.auth.mfa.listFactors();
-      if (factors.error) throw factors.error;
+      // List all MFA factors
+      const { data: factorsData, error: factorsError } = await supabase.auth.mfa.listFactors();
+      if (factorsError) throw factorsError;
 
-      const totpFactor = factors.data.totp[0];
-      if (!totpFactor) throw new Error("No MFA factor found");
+      // Find the verified TOTP factor
+      const totpFactor = factorsData.totp.find((factor) => factor.status === "verified");
+      if (!totpFactor) {
+        throw new Error("No verified MFA factor found. Please set up MFA first.");
+      }
 
-      const challenge = await supabase.auth.mfa.challenge({
+      // Create a challenge for this factor
+      const { data: challengeData, error: challengeError } = await supabase.auth.mfa.challenge({
         factorId: totpFactor.id,
       });
-      if (challenge.error) throw challenge.error;
+      if (challengeError) throw challengeError;
 
-      const verify = await supabase.auth.mfa.verify({
+      // Verify the code
+      const { data: verifyData, error: verifyError } = await supabase.auth.mfa.verify({
         factorId: totpFactor.id,
-        challengeId: challenge.data.id,
+        challengeId: challengeData.id,
         code: code,
       });
 
-      if (verify.error) throw verify.error;
+      if (verifyError) throw verifyError;
 
-      toast.success("MFA verification successful!");
-      onSuccess();
+      // Check if verification was successful
+      if (verifyData) {
+        toast.success("MFA verification successful!");
+        setCode(""); // Clear the code
+        onSuccess();
+      } else {
+        throw new Error("Verification failed");
+      }
     } catch (error: any) {
-      toast.error(error.message || "Invalid verification code");
+      console.error("MFA verification error:", error);
+      toast.error(error.message || "Invalid verification code. Please try again.");
+      setCode(""); // Clear the code on error
     } finally {
       setLoading(false);
     }

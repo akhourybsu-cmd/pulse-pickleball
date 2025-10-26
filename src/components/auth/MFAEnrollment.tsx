@@ -24,6 +24,7 @@ export const MFAEnrollment = ({ open, onOpenChange, onEnrollmentComplete }: MFAE
   const [step, setStep] = useState<"setup" | "verify">("setup");
   const [qrCode, setQrCode] = useState("");
   const [secret, setSecret] = useState("");
+  const [factorId, setFactorId] = useState<string>("");
   const [verifyCode, setVerifyCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -33,14 +34,22 @@ export const MFAEnrollment = ({ open, onOpenChange, onEnrollmentComplete }: MFAE
     try {
       const { data, error } = await supabase.auth.mfa.enroll({
         factorType: "totp",
+        friendlyName: "Authenticator App",
       });
 
       if (error) throw error;
 
+      if (!data?.totp?.qr_code || !data?.totp?.secret || !data?.id) {
+        throw new Error("Invalid enrollment data received");
+      }
+
       setQrCode(data.totp.qr_code);
       setSecret(data.totp.secret);
+      setFactorId(data.id);
       setStep("verify");
+      toast.success("Scan the QR code with your authenticator app");
     } catch (error: any) {
+      console.error("MFA enrollment error:", error);
       toast.error(error.message || "Failed to set up MFA");
     } finally {
       setLoading(false);
@@ -53,27 +62,34 @@ export const MFAEnrollment = ({ open, onOpenChange, onEnrollmentComplete }: MFAE
       return;
     }
 
+    if (!factorId) {
+      toast.error("No MFA factor found. Please restart enrollment.");
+      resetState();
+      return;
+    }
+
     setLoading(true);
     try {
-      const factors = await supabase.auth.mfa.listFactors();
-      if (factors.error) throw factors.error;
-
-      const totpFactor = factors.data.totp[0];
-      if (!totpFactor) throw new Error("No TOTP factor found");
-
-      const { error } = await supabase.auth.mfa.challengeAndVerify({
-        factorId: totpFactor.id,
+      // Use challengeAndVerify for enrollment verification
+      const { data, error } = await supabase.auth.mfa.challengeAndVerify({
+        factorId: factorId,
         code: verifyCode,
       });
 
       if (error) throw error;
 
-      toast.success("MFA successfully enabled!");
-      onEnrollmentComplete();
-      onOpenChange(false);
-      resetState();
+      if (data) {
+        toast.success("MFA successfully enabled!");
+        onEnrollmentComplete();
+        onOpenChange(false);
+        resetState();
+      } else {
+        throw new Error("Verification failed");
+      }
     } catch (error: any) {
-      toast.error(error.message || "Invalid verification code");
+      console.error("MFA verification error:", error);
+      toast.error(error.message || "Invalid verification code. Please try again.");
+      setVerifyCode(""); // Clear the code on error
     } finally {
       setLoading(false);
     }
@@ -83,6 +99,7 @@ export const MFAEnrollment = ({ open, onOpenChange, onEnrollmentComplete }: MFAE
     setStep("setup");
     setQrCode("");
     setSecret("");
+    setFactorId("");
     setVerifyCode("");
     setCopied(false);
   };
