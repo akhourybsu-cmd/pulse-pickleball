@@ -24,7 +24,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Play, Trophy, AlertCircle, Settings, Trash2, Ban, CheckCircle, Edit, Edit3 } from "lucide-react";
+import { Play, Trophy, AlertCircle, Settings, Trash2, Ban, CheckCircle, Edit, Edit3, Bell } from "lucide-react";
 import { toast } from "sonner";
 import { BackToDashboard } from "@/components/BackToDashboard";
 import { EditEventDialog } from "@/components/round-robin/EditEventDialog";
@@ -33,6 +33,8 @@ import { PlayerManagementDialog } from "@/components/round-robin/PlayerManagemen
 import { CourtsRoundsDialog } from "@/components/round-robin/CourtsRoundsDialog";
 import { ScheduleEditorDialog } from "@/components/round-robin/ScheduleEditorDialog";
 import { ScoreManagementDialog } from "@/components/round-robin/ScoreManagementDialog";
+import { AuditHistoryDialog } from "@/components/round-robin/AuditHistoryDialog";
+import { EditNotifications } from "@/components/round-robin/EditNotifications";
 import { z } from "zod";
 import logo from "@/assets/pulse-logo-new.png";
 
@@ -131,9 +133,12 @@ export default function RoundRobinDetail() {
   const [courtsRoundsOpen, setCourtsRoundsOpen] = useState(false);
   const [scheduleEditorOpen, setScheduleEditorOpen] = useState(false);
   const [scoreManagementOpen, setScoreManagementOpen] = useState(false);
+  const [auditHistoryOpen, setAuditHistoryOpen] = useState(false);
+  const [auditEntries, setAuditEntries] = useState<any[]>([]);
 
   useEffect(() => {
     fetchEventDetails();
+    fetchAuditHistory();
     
     const channel = supabase
       .channel('round-robin-changes')
@@ -167,6 +172,40 @@ export default function RoundRobinDetail() {
       supabase.removeChannel(channel);
     };
   }, [id]);
+
+  const fetchAuditHistory = async () => {
+    if (!id) return;
+
+    const { data, error } = await supabase
+      .from("round_robin_audit")
+      .select(`
+        id,
+        action_type,
+        changed_by,
+        old_value,
+        new_value,
+        created_at,
+        profiles:changed_by (
+          display_name,
+          email
+        )
+      `)
+      .eq("event_id", id)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching audit history:", error);
+      return;
+    }
+
+    const formattedEntries = data.map((entry: any) => ({
+      ...entry,
+      changed_by_name:
+        entry.profiles?.display_name || entry.profiles?.email || "Unknown",
+    }));
+
+    setAuditEntries(formattedEntries);
+  };
 
   const fetchEventDetails = async () => {
     try {
@@ -1613,6 +1652,18 @@ export default function RoundRobinDetail() {
             onEditScore={handleEditMatchScore}
             onVoidMatch={handleVoidMatch}
             onDeleteMatch={handleDeleteMatch}
+          />
+
+          <AuditHistoryDialog
+            open={auditHistoryOpen}
+            onOpenChange={setAuditHistoryOpen}
+            auditEntries={auditEntries}
+          />
+
+          <EditNotifications
+            eventId={id || ""}
+            userId={userId}
+            isOrganizer={isOrganizer}
           />
         </>
       )}
