@@ -479,8 +479,18 @@ export default function RoundRobinDetail() {
   const handleCompleteEvent = async () => {
     if (!event) return;
     
+    // Check if all matches have scores
+    const unscoredMatches = schedule.filter(m => !m.is_bye && (m.team1_score === null || m.team2_score === null));
+    if (unscoredMatches.length > 0) {
+      toast.error(`${unscoredMatches.length} match(es) still need scores before completing the event.`);
+      return;
+    }
+    
     try {
+      let matchesCreated = 0;
+      
       for (const match of schedule) {
+        // Only process scored matches that haven't been submitted yet
         if (!match.is_bye && match.team1_score !== null && match.team2_score !== null && !match.match_id) {
           const { data: matchData, error: matchError } = await supabase
             .from("matches")
@@ -518,6 +528,8 @@ export default function RoundRobinDetail() {
             .from("round_robin_schedule")
             .update({ match_id: matchData.id })
             .eq("id", match.id);
+            
+          matchesCreated++;
         }
       }
 
@@ -531,7 +543,11 @@ export default function RoundRobinDetail() {
 
       if (error) throw error;
       
-      toast.success("Event completed! All matches added to history.");
+      if (matchesCreated > 0) {
+        toast.success(`Event completed! ${matchesCreated} match(es) added to history and ratings calculated.`);
+      } else {
+        toast.success("Event completed! All matches were already in history.");
+      }
       fetchEventDetails();
     } catch (error: any) {
       toast.error("Failed to complete event");
