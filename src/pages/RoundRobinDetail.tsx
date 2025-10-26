@@ -488,51 +488,72 @@ export default function RoundRobinDetail() {
     
     try {
       let matchesCreated = 0;
+      const errors: string[] = [];
       
       for (const match of schedule) {
         // Only process scored matches that haven't been submitted yet
         if (!match.is_bye && match.team1_score !== null && match.team2_score !== null && !match.match_id) {
-          const { data: matchData, error: matchError } = await supabase
-            .from("matches")
-            .insert({
-              match_date: event.date,
-              team1_score: match.team1_score,
-              team2_score: match.team2_score,
-              created_by: userId!,
-              source: "round_robin",
-              event_id: event.id,
-              round_no: match.round_no,
-              court_no: match.court_no,
-              match_type: event.rating_type,
-              status: "approved",
-            })
-            .select()
-            .single();
+          try {
+            // Insert match
+            const { data: matchData, error: matchError } = await supabase
+              .from("matches")
+              .insert({
+                match_date: event.date,
+                team1_score: match.team1_score,
+                team2_score: match.team2_score,
+                created_by: userId!,
+                source: "round_robin",
+                event_id: event.id,
+                round_no: match.round_no,
+                court_no: match.court_no,
+                match_type: event.rating_type,
+                status: "approved",
+              })
+              .select()
+              .single();
 
-          if (matchError) throw matchError;
+            if (matchError) {
+              errors.push(`Round ${match.round_no} Court ${match.court_no}: ${matchError.message}`);
+              continue;
+            }
 
-          const participants = [
-            { match_id: matchData.id, player_id: match.a1_player_id!, team: 1 },
-            { match_id: matchData.id, player_id: match.a2_player_id!, team: 1 },
-            { match_id: matchData.id, player_id: match.b1_player_id!, team: 2 },
-            { match_id: matchData.id, player_id: match.b2_player_id!, team: 2 },
-          ];
+            // Insert participants
+            const participants = [
+              { match_id: matchData.id, player_id: match.a1_player_id!, team: 1 },
+              { match_id: matchData.id, player_id: match.a2_player_id!, team: 1 },
+              { match_id: matchData.id, player_id: match.b1_player_id!, team: 2 },
+              { match_id: matchData.id, player_id: match.b2_player_id!, team: 2 },
+            ];
 
-          const { error: participantsError } = await supabase
-            .from("match_participants")
-            .insert(participants);
+            const { error: participantsError } = await supabase
+              .from("match_participants")
+              .insert(participants);
 
-          if (participantsError) throw participantsError;
+            if (participantsError) {
+              errors.push(`Round ${match.round_no} Court ${match.court_no} participants: ${participantsError.message}`);
+              // Try to clean up the orphaned match
+              await supabase.from("matches").delete().eq("id", matchData.id);
+              continue;
+            }
 
-          await supabase
-            .from("round_robin_schedule")
-            .update({ match_id: matchData.id })
-            .eq("id", match.id);
+            // Link match to schedule
+            const { error: linkError } = await supabase
+              .from("round_robin_schedule")
+              .update({ match_id: matchData.id })
+              .eq("id", match.id);
+              
+            if (linkError) {
+              console.error("Failed to link match to schedule:", linkError);
+            }
             
-          matchesCreated++;
+            matchesCreated++;
+          } catch (matchErr: any) {
+            errors.push(`Round ${match.round_no} Court ${match.court_no}: ${matchErr.message}`);
+          }
         }
       }
 
+      // Update event status
       const { error } = await supabase
         .from("round_robin_events")
         .update({ 
@@ -543,14 +564,17 @@ export default function RoundRobinDetail() {
 
       if (error) throw error;
       
-      if (matchesCreated > 0) {
+      if (errors.length > 0) {
+        toast.error(`Event completed with ${errors.length} error(s). ${matchesCreated} match(es) added successfully. Check console for details.`);
+        console.error("Match submission errors:", errors);
+      } else if (matchesCreated > 0) {
         toast.success(`Event completed! ${matchesCreated} match(es) added to history and ratings calculated.`);
       } else {
         toast.success("Event completed! All matches were already in history.");
       }
       fetchEventDetails();
     } catch (error: any) {
-      toast.error("Failed to complete event");
+      toast.error(`Failed to complete event: ${error.message}`);
       console.error(error);
     }
   };
