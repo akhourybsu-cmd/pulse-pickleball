@@ -20,6 +20,7 @@ interface CourtsRoundsDialogProps {
   currentRounds: number;
   currentRound: number | null;
   hasScores: boolean;
+  totalPlayers: number;
   onUpdateCourts: (newCourts: number) => Promise<void>;
   onUpdateRounds: (newRounds: number) => Promise<void>;
 }
@@ -33,6 +34,7 @@ export function CourtsRoundsDialog({
   currentRounds,
   currentRound,
   hasScores,
+  totalPlayers,
   onUpdateCourts,
   onUpdateRounds,
 }: CourtsRoundsDialogProps) {
@@ -40,6 +42,16 @@ export function CourtsRoundsDialog({
   const [newCourts, setNewCourts] = useState(currentCourts);
   const [newRounds, setNewRounds] = useState(currentRounds);
   const [loading, setLoading] = useState(false);
+
+  // Calculate optimal rounds to maximize games played
+  const calculateOptimalRounds = (courts: number, players: number): number => {
+    const playersPerRound = courts * 4;
+    const matchesNeededForEachPair = Math.ceil((players * (players - 1)) / 8); // Each player with each other as partner/opponent
+    const baseRounds = Math.ceil(matchesNeededForEachPair / courts);
+    return Math.max(baseRounds, Math.ceil(players / 2)); // At least enough rounds so everyone plays multiple times
+  };
+
+  const optimalRounds = calculateOptimalRounds(newCourts, totalPlayers);
 
   const handleUpdateCourts = async () => {
     if (newCourts === currentCourts || newCourts < 1) return;
@@ -151,6 +163,16 @@ export function CourtsRoundsDialog({
               </p>
             </div>
 
+            <Alert>
+              <AlertDescription>
+                <strong>Suggested rounds with {newCourts} {newCourts === 1 ? 'court' : 'courts'}:</strong> {optimalRounds} rounds
+                <br />
+                <span className="text-xs text-muted-foreground">
+                  This maximizes games for {totalPlayers} players. You can adjust rounds separately if needed.
+                </span>
+              </AlertDescription>
+            </Alert>
+
             {courtsWillDecrease && hasScores && (
               <Alert variant="destructive">
                 <AlertTriangle className="w-4 h-4" />
@@ -226,12 +248,32 @@ export function CourtsRoundsDialog({
             Cancel
           </Button>
           {mode === 'courts' && (
-            <Button 
-              onClick={handleUpdateCourts} 
-              disabled={newCourts === currentCourts || newCourts < 1 || loading}
-            >
-              {loading ? "Updating..." : "Update Courts"}
-            </Button>
+            <>
+              {optimalRounds !== currentRounds && (
+                <Button 
+                  onClick={async () => {
+                    setLoading(true);
+                    try {
+                      await onUpdateCourts(newCourts);
+                      await onUpdateRounds(optimalRounds);
+                      setMode(null);
+                    } finally {
+                      setLoading(false);
+                    }
+                  }} 
+                  disabled={newCourts === currentCourts || newCourts < 1 || loading}
+                >
+                  {loading ? "Updating..." : `Update & Set ${optimalRounds} Rounds`}
+                </Button>
+              )}
+              <Button 
+                variant={optimalRounds !== currentRounds ? "outline" : "default"}
+                onClick={handleUpdateCourts} 
+                disabled={newCourts === currentCourts || newCourts < 1 || loading}
+              >
+                {loading ? "Updating..." : "Update Courts Only"}
+              </Button>
+            </>
           )}
           {mode === 'rounds' && (
             <Button 

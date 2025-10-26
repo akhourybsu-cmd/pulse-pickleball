@@ -1628,6 +1628,7 @@ export default function RoundRobinDetail() {
             currentRounds={event.num_rounds}
             currentRound={event.current_round}
             hasScores={hasScores}
+            totalPlayers={players.filter(p => p.active).length}
             onUpdateCourts={handleUpdateCourts}
             onUpdateRounds={handleUpdateRounds}
           />
