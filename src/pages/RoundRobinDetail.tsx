@@ -30,6 +30,7 @@ import { BackToDashboard } from "@/components/BackToDashboard";
 import { EditEventDialog } from "@/components/round-robin/EditEventDialog";
 import { EditModeBanner } from "@/components/round-robin/EditModeBanner";
 import { PlayerManagementDialog } from "@/components/round-robin/PlayerManagementDialog";
+import { CourtsRoundsDialog } from "@/components/round-robin/CourtsRoundsDialog";
 import { z } from "zod";
 import logo from "@/assets/pulse-logo-new.png";
 
@@ -125,6 +126,7 @@ export default function RoundRobinDetail() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [playerManagementOpen, setPlayerManagementOpen] = useState(false);
+  const [courtsRoundsOpen, setCourtsRoundsOpen] = useState(false);
 
   useEffect(() => {
     fetchEventDetails();
@@ -741,6 +743,91 @@ export default function RoundRobinDetail() {
     }
   };
 
+  const handleUpdateCourts = async (newCourts: number) => {
+    if (!event || !userId) return;
+
+    try {
+      const before = { num_courts: event.num_courts };
+      const after = { num_courts: newCourts };
+
+      // Update event
+      const { error: updateError } = await supabase
+        .from("round_robin_events")
+        .update({ num_courts: newCourts })
+        .eq("id", event.id);
+
+      if (updateError) throw updateError;
+
+      // Audit entry
+      await supabase.from("round_robin_audit").insert({
+        event_id: event.id,
+        editor_id: userId,
+        change_type: "courts_adjusted",
+        changes: { before, after },
+        reason: `Courts ${newCourts > event.num_courts ? 'increased' : 'decreased'} to ${newCourts}`,
+      });
+
+      // Regenerate from current round
+      const fromRound = event.current_round || 1;
+      await regenerateScheduleFromRound(fromRound);
+
+      toast.success(`Courts updated to ${newCourts}`);
+    } catch (error: any) {
+      toast.error("Failed to update courts");
+      console.error(error);
+      throw error;
+    }
+  };
+
+  const handleUpdateRounds = async (newRounds: number) => {
+    if (!event || !userId) return;
+
+    try {
+      const before = { num_rounds: event.num_rounds };
+      const after = { num_rounds: newRounds };
+
+      if (newRounds < event.num_rounds) {
+        // Decreasing: delete rounds beyond newRounds
+        const { error: deleteError } = await supabase
+          .from("round_robin_schedule")
+          .delete()
+          .eq("event_id", event.id)
+          .gt("round_no", newRounds);
+
+        if (deleteError) throw deleteError;
+      }
+
+      // Update event
+      const { error: updateError } = await supabase
+        .from("round_robin_events")
+        .update({ num_rounds: newRounds })
+        .eq("id", event.id);
+
+      if (updateError) throw updateError;
+
+      // Audit entry
+      await supabase.from("round_robin_audit").insert({
+        event_id: event.id,
+        editor_id: userId,
+        change_type: "rounds_adjusted",
+        changes: { before, after },
+        reason: `Rounds ${newRounds > event.num_rounds ? 'increased' : 'decreased'} to ${newRounds}`,
+      });
+
+      if (newRounds > event.num_rounds) {
+        // Increasing: regenerate to add new rounds
+        await regenerateScheduleFromRound(1);
+      }
+
+      toast.success(`Rounds updated to ${newRounds}`);
+      await fetchEventDetails();
+    } catch (error: any) {
+      toast.error("Failed to update rounds");
+      console.error(error);
+      throw error;
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -784,15 +871,27 @@ export default function RoundRobinDetail() {
               <Badge variant={event.status === 'live' ? 'default' : 'outline'} className="whitespace-nowrap">{event.status.toUpperCase()}</Badge>
               {isOrganizer && !event.voided && (
                 <>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => setEditDialogOpen(true)}
-                    disabled={isEditMode}
-                  >
-                    <Settings className="h-4 w-4 mr-2" />
-                    Settings
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setEditDialogOpen(true)}
+                      disabled={isEditMode}
+                    >
+                      <Settings className="h-4 w-4 mr-2" />
+                      Settings
+                    </Button>
+                    {event.status !== 'completed' && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setCourtsRoundsOpen(true)}
+                      >
+                        <Edit className="h-4 w-4 mr-2" />
+                        Courts & Rounds
+                      </Button>
+                    )}
+                  </div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="outline" size="icon">
@@ -1161,6 +1260,17 @@ export default function RoundRobinDetail() {
             onAddPlayer={handleAddPlayer}
             onMarkInactive={handleMarkInactive}
             onSubstitute={handleSubstitute}
+          />
+
+          <CourtsRoundsDialog
+            open={courtsRoundsOpen}
+            onOpenChange={setCourtsRoundsOpen}
+            currentCourts={event.num_courts}
+            currentRounds={event.num_rounds}
+            currentRound={event.current_round}
+            hasScores={hasScores}
+            onUpdateCourts={handleUpdateCourts}
+            onUpdateRounds={handleUpdateRounds}
           />
         </>
       )}
