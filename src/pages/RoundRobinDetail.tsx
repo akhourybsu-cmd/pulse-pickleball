@@ -525,6 +525,18 @@ export default function RoundRobinDetail() {
         // Only process scored matches that haven't been submitted yet
         if (!match.is_bye && match.team1_score !== null && match.team2_score !== null && !match.match_id) {
           try {
+            // Get court_id from event location if it matches a court name
+            let courtId: string | null = null;
+            if (event.location) {
+              const { data: courtData } = await supabase
+                .from("courts")
+                .select("id")
+                .or(`name.ilike.%${event.location}%,location.ilike.%${event.location}%`)
+                .limit(1)
+                .single();
+              courtId = courtData?.id || null;
+            }
+            
             // Insert match (don't set event_id for round_robin as it references events table, not round_robin_events)
             const { data: matchData, error: matchError } = await supabase
               .from("matches")
@@ -536,6 +548,8 @@ export default function RoundRobinDetail() {
                 source: "round_robin",
                 round_no: match.round_no,
                 court_no: match.court_no,
+                court_id: courtId,
+                other_location: courtId ? null : event.location,
                 match_type: event.rating_type,
                 status: "approved",
               })
