@@ -27,6 +27,7 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [showSignupQR, setShowSignupQR] = useState(false);
+  const [recalculating, setRecalculating] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -88,6 +89,20 @@ const AdminDashboard = () => {
     };
 
     img.src = "data:image/svg+xml;base64," + btoa(svgData);
+  };
+
+  const handleRecalculateRatings = async () => {
+    setRecalculating(true);
+    try {
+      const { error } = await supabase.rpc('recalculate_all_ratings_authenticated');
+      if (error) throw error;
+      toast.success("All player ratings and stats have been recalculated!");
+    } catch (error: any) {
+      toast.error(`Failed to recalculate ratings: ${error.message}`);
+      console.error(error);
+    } finally {
+      setRecalculating(false);
+    }
   };
 
   if (loading) {
@@ -317,6 +332,13 @@ const AdminDashboard = () => {
               </Button>
               <Button variant="outline" onClick={() => navigate("/court-board")}>
                 View Court Board
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={handleRecalculateRatings}
+                disabled={recalculating}
+              >
+                {recalculating ? "Recalculating..." : "Recalculate All Ratings"}
               </Button>
             </div>
           </CardContent>
