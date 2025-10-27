@@ -13,6 +13,7 @@ import {
 import { toast } from "sonner";
 import { Shield, Copy, Check } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
+import { logger } from "@/lib/logger";
 
 interface MFAEnrollmentProps {
   open: boolean;
@@ -65,7 +66,7 @@ export const MFAEnrollment = ({ open, onOpenChange, onEnrollmentComplete }: MFAE
       setStep("verify");
       toast.success("Scan the QR code with your authenticator app");
     } catch (error: any) {
-      console.error("MFA enrollment error:", error);
+      logger.error("MFA enrollment error:", error);
       toast.error(error.message || "Failed to set up MFA");
     } finally {
       setLoading(false);
@@ -103,7 +104,7 @@ export const MFAEnrollment = ({ open, onOpenChange, onEnrollmentComplete }: MFAE
         throw new Error("Verification failed");
       }
     } catch (error: any) {
-      console.error("MFA verification error:", error);
+      logger.error("MFA verification error:", error);
       toast.error(error.message || "Invalid verification code. Please try again.");
       setVerifyCode(""); // Clear the code on error
     } finally {

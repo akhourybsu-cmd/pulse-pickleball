@@ -119,7 +119,6 @@ const handler = async (req: Request): Promise<Response> => {
       });
 
     if (verifyError) {
-      console.error("Verification error:", verifyError);
       return new Response(
         JSON.stringify({ success: false, error: "Verification failed" }),
         {
@@ -147,7 +146,6 @@ const handler = async (req: Request): Promise<Response> => {
       }
     );
   } catch (error: any) {
-    console.error("Unexpected error in verify-mfa-code:", error);
     return new Response(
       JSON.stringify({ success: false, error: "An unexpected error occurred" }),
       {

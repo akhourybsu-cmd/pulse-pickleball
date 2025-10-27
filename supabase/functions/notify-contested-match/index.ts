@@ -70,7 +70,6 @@ serve(async (req) => {
       .single();
 
     if (contestError) {
-      console.error('Error creating contest:', contestError);
       return new Response(
         JSON.stringify({ error: 'Failed to contest match' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -94,13 +93,6 @@ serve(async (req) => {
       .select('player_id, profiles(full_name)')
       .eq('match_id', match_id);
 
-    // Log minimal information for debugging (no PII)
-    console.log('Match Contest Event:', {
-      match_id_hash: match_id.substring(0, 8),
-      event_type: 'contest_created',
-      timestamp: new Date().toISOString(),
-    });
-
     return new Response(
       JSON.stringify({ 
         success: true, 
@@ -113,9 +105,8 @@ serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error('Error in notify-contested-match:', error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
+      JSON.stringify({ error: 'An unexpected error occurred' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

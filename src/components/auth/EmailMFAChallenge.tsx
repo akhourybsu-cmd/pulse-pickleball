@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Mail } from "lucide-react";
+import { logger } from "@/lib/logger";
 
 interface EmailMFAChallengeProps {
   open: boolean;
@@ -38,7 +39,7 @@ export const EmailMFAChallenge = ({ open, email, onSuccess, onCancel }: EmailMFA
       if (error) throw error;
       toast.success("Verification code sent to your email");
     } catch (error: any) {
-      console.error("Error sending code:", error);
+      logger.error("Error sending code:", error);
       toast.error(error.message || "Failed to send verification code");
     } finally {
       setSending(false);
@@ -67,7 +68,7 @@ export const EmailMFAChallenge = ({ open, email, onSuccess, onCancel }: EmailMFA
         throw new Error(data.error || "Verification failed");
       }
     } catch (error: any) {
-      console.error("Email MFA verification error:", error);
+      logger.error("Email MFA verification error:", error);
       toast.error(error.message || "Invalid verification code");
       setCode("");
     } finally {

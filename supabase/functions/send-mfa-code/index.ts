@@ -188,7 +188,6 @@ const handler = async (req: Request): Promise<Response> => {
       });
 
     if (insertError) {
-      console.error("Database error:", insertError);
       return new Response(
         JSON.stringify({ error: "Failed to store verification code" }),
         {
@@ -203,9 +202,8 @@ const handler = async (req: Request): Promise<Response> => {
       try {
         await sendEmail(email, code);
       } catch (emailError: any) {
-        console.error("Email sending error:", emailError);
         return new Response(
-          JSON.stringify({ error: emailError.message || "Failed to send verification email" }),
+          JSON.stringify({ error: "Failed to send verification email" }),
           {
             status: 500,
             headers: { "Content-Type": "application/json", ...corsHeaders },
@@ -230,7 +228,6 @@ const handler = async (req: Request): Promise<Response> => {
       }
     );
   } catch (error: any) {
-    console.error("Unexpected error in send-mfa-code:", error);
     return new Response(
       JSON.stringify({ error: "An unexpected error occurred" }),
       {
