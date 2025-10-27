@@ -13,6 +13,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { Footer } from "@/components/Footer";
 import { OnboardingTutorial } from "@/components/OnboardingTutorial";
 import { ActiveRoundRobinIndicator } from "@/components/ActiveRoundRobinIndicator";
+import { UnverifiedMatchesIndicator } from "@/components/UnverifiedMatchesIndicator";
 import { SmartMatch } from "@/components/court/SmartMatch";
 import { LFGNotifications } from "@/components/court/LFGNotifications";
 import { MFAPrompt } from "@/components/auth/MFAPrompt";
@@ -322,6 +323,7 @@ const Dashboard = () => {
           <img src={logo} alt="PULSE Logo" className="h-16 w-auto" />
           <div className="flex items-center gap-3">
             <ActiveRoundRobinIndicator />
+            <UnverifiedMatchesIndicator />
             <Button 
               variant="outline" 
               size="icon" 
