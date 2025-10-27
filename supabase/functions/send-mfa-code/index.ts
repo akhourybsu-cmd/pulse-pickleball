@@ -50,15 +50,13 @@ const handler = async (req: Request): Promise<Response> => {
     const code = generateCode();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-    // Store the code in database
-    const { error: insertError } = await supabaseClient
-      .from("mfa_verification_codes")
-      .insert({
-        user_id: user.id,
-        code,
-        method,
-        expires_at: expiresAt.toISOString(),
-        used: false,
+    // Store the code in database using secure function
+    const { data: codeId, error: insertError } = await supabaseClient
+      .rpc("insert_mfa_code", {
+        p_user_id: user.id,
+        p_code: code,
+        p_method: method,
+        p_expires_at: expiresAt.toISOString(),
       });
 
     if (insertError) throw insertError;

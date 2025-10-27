@@ -9,6 +9,7 @@ const corsHeaders = {
 interface VerifyMFACodeRequest {
   code: string;
   email: string;
+  method?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -22,7 +23,7 @@ const handler = async (req: Request): Promise<Response> => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
     );
 
-    const { code, email }: VerifyMFACodeRequest = await req.json();
+    const { code, email, method }: VerifyMFACodeRequest = await req.json();
 
     // Get user by email
     const { data: userData, error: userError } = await supabaseClient
@@ -35,19 +36,17 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("User not found");
     }
 
-    // Check if code exists and is valid
-    const { data: codeData, error: codeError } = await supabaseClient
-      .from("mfa_verification_codes")
-      .select("*")
-      .eq("user_id", userData.id)
-      .eq("code", code)
-      .eq("used", false)
-      .gt("expires_at", new Date().toISOString())
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single();
+    // Verify and use code using secure function
+    const { data: isValid, error: verifyError } = await supabaseClient
+      .rpc("verify_and_use_mfa_code", {
+        p_user_id: userData.id,
+        p_code: code,
+        p_method: method || "email",
+      });
 
-    if (codeError || !codeData) {
+    if (verifyError) throw verifyError;
+
+    if (!isValid) {
       return new Response(
         JSON.stringify({ success: false, error: "Invalid or expired code" }),
         {
@@ -56,12 +55,6 @@ const handler = async (req: Request): Promise<Response> => {
         }
       );
     }
-
-    // Mark code as used
-    await supabaseClient
-      .from("mfa_verification_codes")
-      .update({ used: true })
-      .eq("id", codeData.id);
 
     return new Response(
       JSON.stringify({ success: true, message: "Code verified successfully" }),
