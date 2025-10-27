@@ -156,10 +156,6 @@ export const MFAEnrollment = ({ open, onOpenChange, onEnrollmentComplete }: MFAE
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="flex justify-center p-4 bg-white rounded-lg">
-              <QRCodeSVG value={qrCode} size={256} level="L" />
-            </div>
-
             <div className="space-y-2">
               <Label>Manual Entry Code</Label>
               <div className="flex gap-2">
@@ -178,7 +174,7 @@ export const MFAEnrollment = ({ open, onOpenChange, onEnrollmentComplete }: MFAE
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Use this code if you can't scan the QR code
+                Enter this code manually in your authenticator app
               </p>
             </div>
 
