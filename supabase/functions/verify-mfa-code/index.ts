@@ -1,20 +1,10 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
-const ALLOWED_ORIGINS = [
-  "http://localhost:5173",
-  "http://localhost:8080",
-  "https://pulse.lovable.app",
-  "https://ryxklkayezjnwwunuphn.supabase.co"
-];
-
-function getCorsHeaders(origin: string | null): Record<string, string> {
-  const allowedOrigin = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
-  return {
-    "Access-Control-Allow-Origin": allowedOrigin,
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  };
-}
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
 
 interface VerifyMFACodeRequest {
   code: string;
@@ -45,9 +35,6 @@ const checkRateLimit = (email: string): boolean => {
 };
 
 const handler = async (req: Request): Promise<Response> => {
-  const origin = req.headers.get("Origin");
-  const corsHeaders = getCorsHeaders(origin);
-  
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
