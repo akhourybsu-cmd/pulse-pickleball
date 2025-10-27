@@ -35,10 +35,34 @@ self.addEventListener('activate', (event) => {
 
 // Fetch - network first, fallback to cache
 self.addEventListener('fetch', (event) => {
+  const url = new URL(event.request.url);
+  
+  // Only cache GET requests from same origin
+  if (event.request.method !== 'GET' || url.origin !== location.origin) {
+    return;
+  }
+  
+  // Never cache auth/API/storage endpoints
+  const noCachePaths = ['/auth', '/rest', '/storage', '/functions', '.supabase.co'];
+  if (noCachePaths.some(path => url.href.includes(path))) {
+    return;
+  }
+  
+  // Don't cache requests with Authorization headers
+  if (event.request.headers.has('Authorization')) {
+    return;
+  }
+  
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // Clone the response before caching
+        // Respect Cache-Control headers
+        const cacheControl = response.headers.get('Cache-Control');
+        if (cacheControl && (cacheControl.includes('no-cache') || cacheControl.includes('no-store'))) {
+          return response;
+        }
+        
+        // Clone and cache static assets only
         const responseToCache = response.clone();
         caches.open(CACHE_VERSION)
           .then((cache) => {
