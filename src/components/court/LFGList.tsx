@@ -176,14 +176,14 @@ export function LFGList({ courtId, userId }: LFGListProps) {
           <Card key={post.id}>
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between">
-                <div className="flex-1 space-y-1">
+                <div className="flex-1">
                   <CardTitle className="text-lg">{post.title}</CardTitle>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-muted-foreground mt-0.5">
                     {formatDateEST(new Date(post.starts_at), "EEE, MMM d")} • {formatTime12Hour(new Date(post.starts_at).toTimeString().slice(0, 5))}
                   </p>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="capitalize">{post.intensity}</Badge>
-                    <Badge variant="outline">{post.format}</Badge>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <Badge variant="outline" className="capitalize text-xs">{post.intensity}</Badge>
+                    <Badge variant="outline" className="text-xs">{post.format}</Badge>
                     <p className="text-xs text-muted-foreground">
                       by {post.profiles?.display_name || post.profiles?.full_name || "Unknown"}
                       {post.profiles?.current_rating && (
@@ -203,18 +203,16 @@ export function LFGList({ courtId, userId }: LFGListProps) {
                 <p className="text-sm text-muted-foreground">{post.notes}</p>
               )}
 
-              {post.lfg_rsvps && post.lfg_rsvps.length > 0 && (
+              {post.lfg_rsvps && post.lfg_rsvps.filter(r => r.status === 'yes').length > 0 && (
                 <div className="space-y-2">
                   <p className="text-xs font-semibold text-muted-foreground">Confirmed Players:</p>
-                  <div className="space-y-1">
+                  <div className="space-y-1.5">
                     {post.lfg_rsvps.filter(r => r.status === 'yes').map((rsvp, i) => (
                       <div key={i} className="flex items-center justify-between text-sm">
-                        <span>{rsvp.profiles?.display_name || rsvp.profiles?.full_name || "Unknown"}</span>
-                        {rsvp.profiles?.current_rating && (
-                          <Badge variant="secondary" className="text-xs">
-                            {rsvp.profiles.current_rating.toFixed(2)}
-                          </Badge>
-                        )}
+                        <span className="font-medium">{rsvp.profiles?.display_name || rsvp.profiles?.full_name || "Unknown"}</span>
+                        <Badge variant="secondary" className="text-xs font-semibold">
+                          {rsvp.profiles?.current_rating ? rsvp.profiles.current_rating.toFixed(2) : 'N/A'}
+                        </Badge>
                       </div>
                     ))}
                   </div>
