@@ -153,6 +153,8 @@ export default function RoundRobinKiosk() {
 
       if (currentError) throw currentError;
       setCurrentRoundMatches(currentMatches || []);
+      
+      console.log("Loaded current round matches:", currentMatches);
 
       // Fetch next round matches if not last round
       if (currentRound < eventData.num_rounds) {
@@ -178,6 +180,7 @@ export default function RoundRobinKiosk() {
     } catch (error: any) {
       console.error("Error fetching event data:", error);
       toast.error("Failed to load event data");
+      setLoading(false);
     } finally {
       setLoading(false);
     }
