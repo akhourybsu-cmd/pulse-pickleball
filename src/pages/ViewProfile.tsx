@@ -120,7 +120,7 @@ const ViewProfile = () => {
       <nav className="border-b bg-secondary">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <Link to="/dashboard">
-            <img src={logo} alt="PULSE Logo" className="h-16 w-auto cursor-pointer hover:opacity-80 transition-opacity" />
+            <img src={logo} alt="PULSE Logo" className="h-[90px] w-auto cursor-pointer hover:opacity-80 transition-opacity" />
           </Link>
           <div className="flex items-center gap-2">
             <ThemeToggle />

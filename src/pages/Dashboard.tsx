@@ -320,7 +320,7 @@ const Dashboard = () => {
       <nav className="border-b bg-secondary">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <Link to="/dashboard">
-            <img src={logo} alt="PULSE Logo" className="h-16 w-auto cursor-pointer hover:opacity-80 transition-opacity logo-pulse" />
+            <img src={logo} alt="PULSE Logo" className="h-[90px] w-auto cursor-pointer hover:opacity-80 transition-opacity logo-pulse" />
           </Link>
           <div className="flex items-center gap-3">
             <UnverifiedMatchesIndicator />

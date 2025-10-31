@@ -390,7 +390,7 @@ export default function RoundRobinKiosk() {
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
           {/* Pulse Branding */}
           <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#0B3F45] border border-white/10">
-            <img src={pulseLogo} alt="Pulse" className="h-6 w-6" />
+            <img src={pulseLogo} alt="Pulse" className="h-[34px] w-[34px]" />
             <span className="text-white text-sm font-semibold whitespace-nowrap">Round Robin by Pulse</span>
           </div>
 

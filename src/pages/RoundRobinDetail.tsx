@@ -1300,7 +1300,7 @@ export default function RoundRobinDetail() {
               <BackToDashboard />
               <div className="flex items-center gap-2">
                 <h1 className="text-base sm:text-lg font-semibold text-white whitespace-nowrap">Round Robin by</h1>
-                <img src={logo} alt="PULSE" className="h-6 sm:h-7 w-auto" />
+                <img src={logo} alt="PULSE" className="h-[34px] sm:h-[39px] w-auto" />
               </div>
             </div>
             <div className="flex items-center gap-2">
