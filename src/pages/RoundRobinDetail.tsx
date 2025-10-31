@@ -1703,10 +1703,70 @@ export default function RoundRobinDetail() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="standings" className="mt-6">
+          <TabsContent value="standings" className="mt-6 space-y-6">
+            {/* Top 3 Leaderboard */}
+            {standings.length >= 3 && (
+              <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
+                <CardHeader className="pb-4">
+                  <div className="flex items-center gap-2">
+                    <Trophy className="w-5 h-5 text-primary" />
+                    <CardTitle className="text-lg">Top 3 Leaders</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-3 gap-3">
+                    {standings.slice(0, 3).map((row, idx) => (
+                      <div 
+                        key={row.player_id} 
+                        className={`relative p-4 rounded-lg border-2 ${
+                          idx === 0 
+                            ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-400 dark:border-amber-600' 
+                            : idx === 1
+                            ? 'bg-slate-50 dark:bg-slate-950/30 border-slate-400 dark:border-slate-600'
+                            : 'bg-orange-50 dark:bg-orange-950/30 border-orange-400 dark:border-orange-600'
+                        }`}
+                      >
+                        <div className="text-center space-y-2">
+                          <div className={`text-3xl font-bold ${
+                            idx === 0 
+                              ? 'text-amber-600 dark:text-amber-400' 
+                              : idx === 1
+                              ? 'text-slate-600 dark:text-slate-400'
+                              : 'text-orange-600 dark:text-orange-400'
+                          }`}>
+                            {idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉'}
+                          </div>
+                          <div className="font-semibold text-sm line-clamp-1">
+                            {row.player_name}
+                          </div>
+                          <div className="flex justify-center gap-3 text-xs">
+                            <div className="flex flex-col items-center">
+                              <span className="text-green-600 dark:text-green-400 font-bold">{row.wins}</span>
+                              <span className="text-muted-foreground">W</span>
+                            </div>
+                            <div className="flex flex-col items-center">
+                              <span className="text-muted-foreground font-bold">{row.losses}</span>
+                              <span className="text-muted-foreground">L</span>
+                            </div>
+                            <div className="flex flex-col items-center">
+                              <span className={`font-bold ${row.point_diff > 0 ? 'text-green-600 dark:text-green-400' : row.point_diff < 0 ? 'text-red-600 dark:text-red-400' : 'text-muted-foreground'}`}>
+                                {row.point_diff > 0 ? '+' : ''}{row.point_diff}
+                              </span>
+                              <span className="text-muted-foreground">Diff</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Full Standings Table */}
             <Card>
               <CardHeader>
-                <CardTitle>Standings</CardTitle>
+                <CardTitle>Full Standings</CardTitle>
                 <CardDescription>Based on completed matches</CardDescription>
               </CardHeader>
               <CardContent>
@@ -1730,16 +1790,16 @@ export default function RoundRobinDetail() {
                         {standings.map((row, idx) => (
                           <tr key={row.player_id} className="border-b hover:bg-muted/50">
                             <td className="py-3 px-2">
-                              <Badge variant={idx === 0 ? "default" : "outline"} className="w-8 h-8 flex items-center justify-center">
-                                {idx + 1}
+                              <Badge variant={idx < 3 ? "default" : "outline"} className="w-8 h-8 flex items-center justify-center">
+                                {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : idx + 1}
                               </Badge>
                             </td>
                             <td className="py-3 px-2 font-medium">{row.player_name}</td>
-                            <td className="text-center py-3 px-2 font-semibold text-green-600">{row.wins}</td>
+                            <td className="text-center py-3 px-2 font-semibold text-green-600 dark:text-green-400">{row.wins}</td>
                             <td className="text-center py-3 px-2 text-muted-foreground">{row.losses}</td>
                             <td className="text-center py-3 px-2 hidden sm:table-cell">{row.points_for}</td>
                             <td className="text-center py-3 px-2 hidden sm:table-cell">{row.points_against}</td>
-                            <td className={`text-center py-3 px-2 font-semibold ${row.point_diff > 0 ? 'text-green-600' : row.point_diff < 0 ? 'text-red-600' : ''}`}>
+                            <td className={`text-center py-3 px-2 font-semibold ${row.point_diff > 0 ? 'text-green-600 dark:text-green-400' : row.point_diff < 0 ? 'text-red-600 dark:text-red-400' : ''}`}>
                               {row.point_diff > 0 ? '+' : ''}{row.point_diff}
                             </td>
                           </tr>
