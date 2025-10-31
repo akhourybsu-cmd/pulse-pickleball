@@ -371,7 +371,7 @@ const Dashboard = () => {
                     size="lg" 
                     variant="outline"
                     onClick={() => navigate("/court/connector")}
-                    className="relative flex flex-col items-start py-3 h-auto md:text-lg md:py-6"
+                    className="relative flex flex-col items-start py-3 h-auto md:text-lg md:py-6 hover:bg-muted transition-colors"
                     data-tour="court-connector"
                   >
                     <div className="flex items-center w-full">
@@ -391,7 +391,7 @@ const Dashboard = () => {
                     size="lg"
                     variant="outline"
                     onClick={() => navigate("/match/history")}
-                    className="flex flex-col items-start py-3 h-auto md:text-lg md:py-6"
+                    className="flex flex-col items-start py-3 h-auto md:text-lg md:py-6 hover:bg-muted transition-colors"
                     data-tour="match-history"
                   >
                     <div className="flex items-center w-full">
