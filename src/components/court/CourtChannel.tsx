@@ -47,31 +47,47 @@ export function CourtChannel({ courtId, userId }: CourtChannelProps) {
     scrollToBottom();
   }, [messages]);
 
+  // Refetch messages when tab becomes visible again
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && channelId) {
+        fetchMessages();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [channelId]);
+
   const fetchOrCreateChannel = async () => {
     // Check if channel exists
     const { data: existing } = await (supabase as any)
       .from("court_channels")
       .select("id")
       .eq("court_id", courtId)
-      .single();
+      .maybeSingle();
 
     if (existing) {
       setChannelId(existing.id);
     } else {
       // Create channel
-      const { data: newChannel } = await (supabase as any)
+      const { data: newChannel, error } = await (supabase as any)
         .from("court_channels")
         .insert({ court_id: courtId })
         .select("id")
         .single();
 
-      if (newChannel) {
+      if (newChannel && !error) {
         setChannelId(newChannel.id);
       }
     }
   };
 
   const fetchMessages = async () => {
+    if (!channelId) return;
+    
     setLoading(true);
     const { data } = await (supabase as any)
       .from("channel_messages")
