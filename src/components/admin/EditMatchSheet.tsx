@@ -105,7 +105,7 @@ export function EditMatchSheet({ matchId, open, onOpenChange, onSaved }: EditMat
       .single();
 
     if (matchError) {
-      toast.error("Failed to load match");
+      toast.error("Failed to load match. Please try again.");
       console.error(matchError);
       setLoading(false);
       return;
@@ -119,7 +119,7 @@ export function EditMatchSheet({ matchId, open, onOpenChange, onSaved }: EditMat
       .order("player_id");
 
     if (participantsError) {
-      toast.error("Failed to load participants");
+      toast.error("Failed to load participants. Please try again.");
       console.error(participantsError);
       setLoading(false);
       return;
@@ -318,9 +318,12 @@ export function EditMatchSheet({ matchId, open, onOpenChange, onSaved }: EditMat
         : "Match updated");
       
       onSaved();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving match:", error);
-      toast.error("Failed to save match");
+      const userMessage = error.message?.includes('unique') || error.message?.includes('duplicate')
+        ? "A match with this information already exists"
+        : "Failed to save match. Please try again.";
+      toast.error(userMessage);
     } finally {
       setSaving(false);
     }
@@ -370,9 +373,9 @@ export function EditMatchSheet({ matchId, open, onOpenChange, onSaved }: EditMat
       toast.success("Match voided");
       setVoidDialogOpen(false);
       onSaved();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error voiding match:", error);
-      toast.error("Failed to void match");
+      toast.error("Failed to void match. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -417,9 +420,9 @@ export function EditMatchSheet({ matchId, open, onOpenChange, onSaved }: EditMat
       toast.success("Match deleted");
       setDeleteDialogOpen(false);
       onSaved();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting match:", error);
-      toast.error("Failed to delete match");
+      toast.error("Failed to delete match. Please try again.");
     } finally {
       setSaving(false);
     }

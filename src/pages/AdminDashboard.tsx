@@ -98,7 +98,7 @@ const AdminDashboard = () => {
       if (error) throw error;
       toast.success("All player ratings and stats have been recalculated!");
     } catch (error: any) {
-      toast.error(`Failed to recalculate ratings: ${error.message}`);
+      toast.error("Failed to recalculate ratings. Please try again.");
       console.error(error);
     } finally {
       setRecalculating(false);

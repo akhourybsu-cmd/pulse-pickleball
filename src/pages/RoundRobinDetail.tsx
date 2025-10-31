@@ -267,7 +267,7 @@ export default function RoundRobinDetail() {
 
       setLoading(false);
     } catch (error: any) {
-      toast.error("Failed to load event details");
+      toast.error("Failed to load event details. Please try again.");
       console.error(error);
       setLoading(false);
     }

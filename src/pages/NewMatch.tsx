@@ -189,7 +189,11 @@ const NewMatch = () => {
       toast.success("Match recorded successfully!");
       navigate("/dashboard");
     } catch (error: any) {
-      toast.error(error.message || "Failed to record match");
+      const userMessage = error.message?.includes('unique') || error.message?.includes('duplicate')
+        ? "A match with this information already exists"
+        : "Failed to record match. Please try again.";
+      toast.error(userMessage);
+      console.error(error);
     } finally {
       setLoading(false);
     }

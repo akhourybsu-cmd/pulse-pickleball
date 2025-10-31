@@ -7,6 +7,23 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { z } from "zod";
+
+const lfgSchema = z.object({
+  title: z.string().trim().min(3, "Title must be at least 3 characters").max(100, "Title must be less than 100 characters"),
+  date: z.string().min(1, "Date is required"),
+  startTime: z.string().min(1, "Start time is required"),
+  endTime: z.string().min(1, "End time is required"),
+  capacity: z.number().int().min(2, "Minimum 2 players").max(20, "Maximum 20 players"),
+  notes: z.string().max(500, "Notes must be less than 500 characters").optional(),
+}).refine(
+  (data) => {
+    const start = new Date(`${data.date}T${data.startTime}`);
+    const end = new Date(`${data.date}T${data.endTime}`);
+    return end > start;
+  },
+  { message: "End time must be after start time", path: ["endTime"] }
+);
 
 interface CreateLFGDialogProps {
   courtId: string;
@@ -39,10 +56,21 @@ export function CreateLFGDialog({ courtId, userId, onClose, onSuccess }: CreateL
       return;
     }
 
-    if (!formData.title || !formData.date || !formData.startTime || !formData.endTime) {
+    // Validate input
+    const validationResult = lfgSchema.safeParse({
+      title: formData.title,
+      date: formData.date,
+      startTime: formData.startTime,
+      endTime: formData.endTime,
+      capacity: parseInt(formData.capacity),
+      notes: formData.notes,
+    });
+
+    if (!validationResult.success) {
+      const firstError = validationResult.error.errors[0];
       toast({
-        title: "Missing Information",
-        description: "Please fill in all required fields",
+        title: "Validation Error",
+        description: firstError.message,
         variant: "destructive",
       });
       return;
@@ -75,7 +103,7 @@ export function CreateLFGDialog({ courtId, userId, onClose, onSuccess }: CreateL
       setSubmitting(false);
       toast({
         title: "Error",
-        description: "Failed to create LFG post",
+        description: "Failed to create LFG post. Please try again.",
         variant: "destructive",
       });
       return;
