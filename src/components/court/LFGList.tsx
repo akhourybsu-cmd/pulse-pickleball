@@ -21,6 +21,7 @@ interface LFGPost {
   profiles?: {
     full_name: string;
     display_name: string | null;
+    current_rating: number;
   };
   lfg_rsvps: {
     user_id: string;
@@ -28,6 +29,7 @@ interface LFGPost {
     profiles?: {
       full_name: string;
       display_name: string | null;
+      current_rating: number;
     };
   }[];
 }
@@ -52,11 +54,11 @@ export function LFGList({ courtId, userId }: LFGListProps) {
       .from("lfg_posts")
       .select(`
         *,
-        profiles:created_by (full_name, display_name),
+        profiles:created_by (full_name, display_name, current_rating),
         lfg_rsvps (
           user_id,
           status,
-          profiles:user_id (full_name, display_name)
+          profiles:user_id (full_name, display_name, current_rating)
         )
       `)
       .eq("court_id", courtId)
@@ -174,14 +176,20 @@ export function LFGList({ courtId, userId }: LFGListProps) {
           <Card key={post.id}>
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between">
-                <div className="flex-1">
+                <div className="flex-1 space-y-1">
                   <CardTitle className="text-lg">{post.title}</CardTitle>
-                  <p className="text-sm text-muted-foreground mt-1">
+                  <p className="text-sm text-muted-foreground">
                     {formatDateEST(new Date(post.starts_at), "EEE, MMM d")} • {formatTime12Hour(new Date(post.starts_at).toTimeString().slice(0, 5))}
                   </p>
-                  <p className="text-xs text-muted-foreground">
-                    By {post.profiles?.display_name || post.profiles?.full_name || "Unknown"}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="capitalize">{post.intensity}</Badge>
+                    <p className="text-xs text-muted-foreground">
+                      by {post.profiles?.display_name || post.profiles?.full_name || "Unknown"}
+                      {post.profiles?.current_rating && (
+                        <span className="ml-1 font-semibold">({post.profiles.current_rating.toFixed(2)})</span>
+                      )}
+                    </p>
+                  </div>
                 </div>
                 <Badge variant={isFull ? "secondary" : "default"}>
                   {confirmed}/{post.capacity}
@@ -189,12 +197,9 @@ export function LFGList({ courtId, userId }: LFGListProps) {
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="flex flex-wrap gap-2 text-sm">
-                <Badge variant="outline" className="capitalize">{post.intensity}</Badge>
-                <div className="flex items-center gap-1 text-muted-foreground">
-                  <Users className="w-4 h-4" />
-                  {post.format}
-                </div>
+              <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                <Users className="w-4 h-4" />
+                {post.format}
               </div>
 
               {post.notes && (
@@ -202,19 +207,20 @@ export function LFGList({ courtId, userId }: LFGListProps) {
               )}
 
               {post.lfg_rsvps && post.lfg_rsvps.length > 0 && (
-                <div className="flex items-center gap-2">
-                  <div className="flex -space-x-2">
-                    {post.lfg_rsvps.filter(r => r.status === 'yes').slice(0, 4).map((rsvp, i) => (
-                      <Avatar key={i} className="w-8 h-8 border-2 border-background">
-                        <AvatarFallback className="text-xs">
-                          {(rsvp.profiles?.display_name || rsvp.profiles?.full_name || "?")[0]}
-                        </AvatarFallback>
-                      </Avatar>
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-muted-foreground">Confirmed Players:</p>
+                  <div className="space-y-1">
+                    {post.lfg_rsvps.filter(r => r.status === 'yes').map((rsvp, i) => (
+                      <div key={i} className="flex items-center justify-between text-sm">
+                        <span>{rsvp.profiles?.display_name || rsvp.profiles?.full_name || "Unknown"}</span>
+                        {rsvp.profiles?.current_rating && (
+                          <Badge variant="secondary" className="text-xs">
+                            {rsvp.profiles.current_rating.toFixed(2)}
+                          </Badge>
+                        )}
+                      </div>
                     ))}
                   </div>
-                  {confirmed > 4 && (
-                    <span className="text-xs text-muted-foreground">+{confirmed - 4} more</span>
-                  )}
                 </div>
               )}
 
