@@ -111,7 +111,13 @@ export default function RoundRobinKiosk() {
   }, [eventId]);
 
   const fetchEventData = async () => {
-    if (!eventId) return;
+    if (!eventId) {
+      console.log("No eventId provided");
+      setLoading(false);
+      return;
+    }
+
+    console.log("Fetching event data for:", eventId);
 
     try {
       // Fetch event
@@ -120,10 +126,13 @@ export default function RoundRobinKiosk() {
         .select("*")
         .eq("id", eventId)
         .single();
+      
+      console.log("Event data:", eventData, "Error:", eventError);
 
       if (eventError) throw eventError;
       if (!eventData) {
         toast.error("Event not found");
+        setLoading(false);
         return;
       }
 
@@ -131,6 +140,7 @@ export default function RoundRobinKiosk() {
 
       if (eventData.status === "completed") {
         toast.info("This event has been completed");
+        setLoading(false);
         return;
       }
 
@@ -151,10 +161,13 @@ export default function RoundRobinKiosk() {
         .eq("is_bye", false)
         .order("court_no");
 
-      if (currentError) throw currentError;
-      setCurrentRoundMatches(currentMatches || []);
+      if (currentError) {
+        console.error("Error loading current matches:", currentError);
+        throw currentError;
+      }
       
       console.log("Loaded current round matches:", currentMatches);
+      setCurrentRoundMatches(currentMatches || []);
 
       // Fetch next round matches if not last round
       if (currentRound < eventData.num_rounds) {
@@ -172,16 +185,22 @@ export default function RoundRobinKiosk() {
           .eq("is_bye", false)
           .order("court_no");
 
-        if (nextError) throw nextError;
+        if (nextError) {
+          console.error("Error loading next matches:", nextError);
+          throw nextError;
+        }
+        console.log("Loaded next round matches:", nextMatches);
         setNextRoundMatches(nextMatches || []);
       } else {
         setNextRoundMatches([]);
       }
+      
+      console.log("Fetch complete, setting loading to false");
     } catch (error: any) {
       console.error("Error fetching event data:", error);
       toast.error("Failed to load event data");
-      setLoading(false);
     } finally {
+      console.log("Finally block - setting loading to false");
       setLoading(false);
     }
   };
