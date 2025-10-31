@@ -159,13 +159,7 @@ export default function CourtBoard() {
           <TabsContent value="chat">
             <Card>
               <CardContent className="pt-6">
-                {channelId ? (
-                  <CourtChannel courtId={court.id} userId={currentUserId} />
-                ) : (
-                  <div className="text-center py-12 text-muted-foreground">
-                    Channel not available
-                  </div>
-                )}
+                <CourtChannel courtId={court.id} userId={currentUserId} />
               </CardContent>
             </Card>
           </TabsContent>
