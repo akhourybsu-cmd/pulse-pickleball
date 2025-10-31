@@ -1303,7 +1303,6 @@ export default function RoundRobinDetail() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Badge variant={event.status === 'live' ? 'default' : 'outline'} className="whitespace-nowrap">{event.status.toUpperCase()}</Badge>
               {isOrganizer && !event.voided && (
                 <>
                   <Button 
