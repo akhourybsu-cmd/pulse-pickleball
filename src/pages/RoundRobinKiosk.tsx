@@ -161,6 +161,8 @@ export default function RoundRobinKiosk() {
         throw currentError;
       }
 
+      console.log("Current matches fetched:", currentMatches?.length);
+
       // Fetch all unique player IDs from current matches
       const currentPlayerIds = new Set<string>();
       currentMatches?.forEach(m => {
@@ -170,11 +172,25 @@ export default function RoundRobinKiosk() {
         if (m.b2_player_id) currentPlayerIds.add(m.b2_player_id);
       });
 
-      // Fetch profiles separately
-      const { data: currentProfiles } = await supabase
-        .from("profiles")
-        .select("id, display_name, full_name")
-        .in("id", Array.from(currentPlayerIds));
+      console.log("Player IDs to fetch:", Array.from(currentPlayerIds));
+
+      // Fetch profiles separately - only if there are player IDs
+      let currentProfiles = [];
+      if (currentPlayerIds.size > 0) {
+        const { data: profiles, error: profileError } = await supabase
+          .from("profiles")
+          .select("id, display_name, full_name")
+          .in("id", Array.from(currentPlayerIds));
+
+        if (profileError) {
+          console.error("Error loading profiles:", profileError);
+          // Don't throw - continue with empty profiles
+        } else {
+          currentProfiles = profiles || [];
+        }
+      }
+
+      console.log("Profiles fetched:", currentProfiles?.length);
 
       // Create a profile lookup map
       const profileMap = new Map();
@@ -185,10 +201,10 @@ export default function RoundRobinKiosk() {
       // Manually attach profiles to matches
       const matchesWithProfiles = currentMatches?.map(m => ({
         ...m,
-        a1_profile: profileMap.get(m.a1_player_id),
-        a2_profile: profileMap.get(m.a2_player_id),
-        b1_profile: profileMap.get(m.b1_player_id),
-        b2_profile: profileMap.get(m.b2_player_id),
+        a1_profile: m.a1_player_id ? profileMap.get(m.a1_player_id) : null,
+        a2_profile: m.a2_player_id ? profileMap.get(m.a2_player_id) : null,
+        b1_profile: m.b1_player_id ? profileMap.get(m.b1_player_id) : null,
+        b2_profile: m.b2_player_id ? profileMap.get(m.b2_player_id) : null,
       }));
 
       console.log("=== KIOSK DEBUG ===");
@@ -207,38 +223,47 @@ export default function RoundRobinKiosk() {
 
         if (nextError) {
           console.error("Error loading next matches:", nextError);
-          throw nextError;
+          // Don't throw - just skip next round
+        } else {
+          // Fetch profiles for next round
+          const nextPlayerIds = new Set<string>();
+          nextMatches?.forEach(m => {
+            if (m.a1_player_id) nextPlayerIds.add(m.a1_player_id);
+            if (m.a2_player_id) nextPlayerIds.add(m.a2_player_id);
+            if (m.b1_player_id) nextPlayerIds.add(m.b1_player_id);
+            if (m.b2_player_id) nextPlayerIds.add(m.b2_player_id);
+          });
+
+          let nextProfiles = [];
+          if (nextPlayerIds.size > 0) {
+            const { data: profiles, error: nextProfileError } = await supabase
+              .from("profiles")
+              .select("id, display_name, full_name")
+              .in("id", Array.from(nextPlayerIds));
+
+            if (nextProfileError) {
+              console.error("Error loading next profiles:", nextProfileError);
+            } else {
+              nextProfiles = profiles || [];
+            }
+          }
+
+          const nextProfileMap = new Map();
+          nextProfiles?.forEach(p => {
+            nextProfileMap.set(p.id, p);
+          });
+
+          const nextMatchesWithProfiles = nextMatches?.map(m => ({
+            ...m,
+            a1_profile: m.a1_player_id ? nextProfileMap.get(m.a1_player_id) : null,
+            a2_profile: m.a2_player_id ? nextProfileMap.get(m.a2_player_id) : null,
+            b1_profile: m.b1_player_id ? nextProfileMap.get(m.b1_player_id) : null,
+            b2_profile: m.b2_player_id ? nextProfileMap.get(m.b2_player_id) : null,
+          }));
+
+          console.log("Loaded next round matches:", nextMatchesWithProfiles);
+          setNextRoundMatches(nextMatchesWithProfiles || []);
         }
-
-        // Fetch profiles for next round
-        const nextPlayerIds = new Set<string>();
-        nextMatches?.forEach(m => {
-          if (m.a1_player_id) nextPlayerIds.add(m.a1_player_id);
-          if (m.a2_player_id) nextPlayerIds.add(m.a2_player_id);
-          if (m.b1_player_id) nextPlayerIds.add(m.b1_player_id);
-          if (m.b2_player_id) nextPlayerIds.add(m.b2_player_id);
-        });
-
-        const { data: nextProfiles } = await supabase
-          .from("profiles")
-          .select("id, display_name, full_name")
-          .in("id", Array.from(nextPlayerIds));
-
-        const nextProfileMap = new Map();
-        nextProfiles?.forEach(p => {
-          nextProfileMap.set(p.id, p);
-        });
-
-        const nextMatchesWithProfiles = nextMatches?.map(m => ({
-          ...m,
-          a1_profile: nextProfileMap.get(m.a1_player_id),
-          a2_profile: nextProfileMap.get(m.a2_player_id),
-          b1_profile: nextProfileMap.get(m.b1_player_id),
-          b2_profile: nextProfileMap.get(m.b2_player_id),
-        }));
-
-        console.log("Loaded next round matches:", nextMatchesWithProfiles);
-        setNextRoundMatches(nextMatchesWithProfiles || []);
       } else {
         setNextRoundMatches([]);
       }
