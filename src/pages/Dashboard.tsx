@@ -352,8 +352,8 @@ const Dashboard = () => {
         <div className="mb-6 md:mb-8">
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-2">Welcome back, {profile?.display_name || profile?.full_name}!</h2>
-              <p className="text-muted-foreground mb-4 md:text-lg">Track your pickleball journey</p>
+              <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-1">Welcome back, {profile?.display_name || profile?.full_name}!</h2>
+              <p className="mb-4 text-sm md:text-base font-normal" style={{ color: '#C1E3E8' }}>Track your pickleball journey</p>
               
               <div className="space-y-3 w-full md:w-auto">
                 <Button 
