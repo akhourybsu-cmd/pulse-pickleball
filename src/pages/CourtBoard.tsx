@@ -122,24 +122,26 @@ export default function CourtBoard() {
 
       <div className="container mx-auto px-4 py-6 space-y-6">
 
-        <div className="flex flex-col gap-4">
-          <div className="flex items-start justify-between">
-            <div className="space-y-2">
-              <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold">{court.name}</h1>
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <MapPin className="w-4 h-4" />
-                <span>{court.city}, {court.state}</span>
+        <div className="flex flex-col gap-3 sm:gap-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-start justify-between gap-3">
+            <div className="space-y-1 sm:space-y-2 flex-1">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold break-words">{court.name}</h1>
+              <div className="flex items-center gap-1 sm:gap-2 text-muted-foreground text-sm sm:text-base">
+                <MapPin className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                <span className="break-words">{court.city}, {court.state}</span>
               </div>
               {court.location && (
-                <p className="text-sm text-muted-foreground">{court.location}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground break-words">{court.location}</p>
               )}
             </div>
-            <CourtCheckIn courtId={court.id} userId={currentUserId} />
+            <div className="w-full sm:w-auto">
+              <CourtCheckIn courtId={court.id} userId={currentUserId} />
+            </div>
           </div>
 
           {channelId && (
             <Card>
-              <CardContent className="pt-6">
+              <CardContent className="pt-4 sm:pt-6">
                 <CourtPresence courtId={court.id} channelId={channelId} />
               </CardContent>
             </Card>
@@ -147,29 +149,32 @@ export default function CourtBoard() {
         </div>
 
         <Tabs defaultValue="lfg" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="lfg" className="gap-2">
-              <Users className="w-4 h-4" />
-              Looking for Game
+          <TabsList className="grid w-full grid-cols-3 h-auto">
+            <TabsTrigger value="lfg" className="gap-1 flex-col py-2 px-2 text-xs sm:flex-row sm:gap-2 sm:text-sm">
+              <Users className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Looking for Game</span>
+              <span className="sm:hidden">LFG</span>
             </TabsTrigger>
-            <TabsTrigger value="chat" className="gap-2">
-              <MessageSquare className="w-4 h-4" />
-              Court Chat
+            <TabsTrigger value="chat" className="gap-1 flex-col py-2 px-2 text-xs sm:flex-row sm:gap-2 sm:text-sm">
+              <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Court Chat</span>
+              <span className="sm:hidden">Chat</span>
             </TabsTrigger>
-            <TabsTrigger value="stats" className="gap-2">
-              <Activity className="w-4 h-4" />
-              Insights
+            <TabsTrigger value="stats" className="gap-1 flex-col py-2 px-2 text-xs sm:flex-row sm:gap-2 sm:text-sm">
+              <Activity className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">Insights</span>
+              <span className="sm:hidden">Stats</span>
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="lfg" className="space-y-4">
+          <TabsContent value="lfg" className="space-y-3 sm:space-y-4">
             <div className="flex justify-end">
-              <Button onClick={() => setShowCreateLFG(true)}>
+              <Button onClick={() => setShowCreateLFG(true)} className="w-full sm:w-auto">
                 Post LFG
               </Button>
             </div>
             <Card>
-              <CardContent className="pt-6">
+              <CardContent className="pt-4 sm:pt-6 px-3 sm:px-6">
                 <LFGList courtId={court.id} userId={currentUserId} />
               </CardContent>
             </Card>
@@ -177,13 +182,13 @@ export default function CourtBoard() {
 
           <TabsContent value="chat">
             <Card>
-              <CardContent className="pt-6">
+              <CardContent className="pt-4 sm:pt-6 px-0 sm:px-6">
                 <CourtChannel courtId={court.id} userId={currentUserId} />
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="stats" className="space-y-4">
+          <TabsContent value="stats" className="space-y-3 sm:space-y-4">
             <CourtAnalytics courtId={court.id} />
             <CourtHeatmap courtId={court.id} />
           </TabsContent>

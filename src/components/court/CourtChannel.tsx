@@ -189,15 +189,15 @@ export function CourtChannel({ courtId, userId }: CourtChannelProps) {
   }
 
   return (
-    <div className="flex flex-col h-[500px] border rounded-lg bg-card">
+    <div className="flex flex-col h-[400px] sm:h-[500px] border rounded-lg bg-card overflow-hidden">
       <div className="flex-1 overflow-hidden">
         <ScrollArea className="h-full">
-          <div className="p-4 space-y-4">
+          <div className="p-2 sm:p-4 space-y-3 sm:space-y-4">
             {messages.length === 0 ? (
-              <div className="flex items-center justify-center h-full min-h-[400px]">
-                <div className="text-center space-y-2">
-                  <p className="text-muted-foreground">No messages yet</p>
-                  <p className="text-sm text-muted-foreground">Start the conversation!</p>
+              <div className="flex items-center justify-center h-full min-h-[300px] sm:min-h-[400px]">
+                <div className="text-center space-y-1 sm:space-y-2">
+                  <p className="text-sm sm:text-base text-muted-foreground">No messages yet</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground">Start the conversation!</p>
                 </div>
               </div>
             ) : (
@@ -212,32 +212,32 @@ export function CourtChannel({ courtId, userId }: CourtChannelProps) {
                       className={`flex gap-3 ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}
                     >
                       {showAvatar ? (
-                        <Avatar className="w-8 h-8 flex-shrink-0">
-                          <AvatarFallback className="text-xs bg-primary/10">
+                        <Avatar className="w-7 h-7 sm:w-8 sm:h-8 flex-shrink-0">
+                          <AvatarFallback className="text-[10px] sm:text-xs bg-primary/10">
                             {getInitials(msg)}
                           </AvatarFallback>
                         </Avatar>
                       ) : (
-                        <div className="w-8 flex-shrink-0" />
+                        <div className="w-7 sm:w-8 flex-shrink-0" />
                       )}
                       
-                      <div className={`flex-1 max-w-[70%] ${isOwn ? 'items-end' : 'items-start'} flex flex-col`}>
+                      <div className={`flex-1 max-w-[80%] sm:max-w-[70%] ${isOwn ? 'items-end' : 'items-start'} flex flex-col`}>
                         {showAvatar && (
-                          <div className={`flex items-baseline gap-2 mb-1 ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}>
-                            <span className="font-semibold text-sm">{getDisplayName(msg)}</span>
-                            <span className="text-xs text-muted-foreground">
+                          <div className={`flex items-baseline gap-1 sm:gap-2 mb-1 ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}>
+                            <span className="font-semibold text-xs sm:text-sm truncate">{getDisplayName(msg)}</span>
+                            <span className="text-[10px] sm:text-xs text-muted-foreground flex-shrink-0">
                               {getTimeAgo(msg.created_at)}
                             </span>
                           </div>
                         )}
                         <div
-                          className={`rounded-lg px-4 py-2 ${
+                          className={`rounded-lg px-2 py-1.5 sm:px-4 sm:py-2 ${
                             isOwn
                               ? 'bg-primary text-primary-foreground'
                               : 'bg-muted'
                           }`}
                         >
-                          <p className="text-sm whitespace-pre-wrap break-words">{msg.body}</p>
+                          <p className="text-xs sm:text-sm whitespace-pre-wrap break-words">{msg.body}</p>
                         </div>
                       </div>
                     </div>
@@ -251,7 +251,7 @@ export function CourtChannel({ courtId, userId }: CourtChannelProps) {
       </div>
 
       {userId ? (
-        <div className="p-4 border-t bg-background">
+        <div className="p-2 sm:p-4 border-t bg-background">
           <div className="flex gap-2">
             <Input
               ref={inputRef}
@@ -260,18 +260,18 @@ export function CourtChannel({ courtId, userId }: CourtChannelProps) {
               onKeyPress={handleKeyPress}
               placeholder="Type a message..."
               disabled={sending}
-              className="flex-1"
+              className="flex-1 text-sm sm:text-base h-9 sm:h-10"
             />
             <Button 
               onClick={handleSend} 
               disabled={sending || !newMessage.trim()} 
               size="icon"
-              className="flex-shrink-0"
+              className="flex-shrink-0 h-9 w-9 sm:h-10 sm:w-10"
             >
               {sending ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin" />
               ) : (
-                <Send className="w-4 h-4" />
+                <Send className="w-3 h-3 sm:w-4 sm:h-4" />
               )}
             </Button>
           </div>

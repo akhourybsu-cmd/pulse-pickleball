@@ -166,25 +166,25 @@ export function LFGList({ courtId, userId }: LFGListProps) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       {posts.map((post) => {
         const userRSVP = getUserRSVP(post);
         const confirmed = getConfirmedCount(post);
         const isFull = confirmed >= post.capacity;
 
         return (
-          <Card key={post.id}>
-            <CardHeader className="pb-3">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <CardTitle className="text-lg">{post.title}</CardTitle>
-                  <p className="text-sm text-muted-foreground mt-0.5">
+          <Card key={post.id} className="overflow-hidden">
+            <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  <CardTitle className="text-base sm:text-lg break-words">{post.title}</CardTitle>
+                  <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 break-words">
                     {formatDateEST(new Date(post.starts_at), "EEE, MMM d")} • {formatTime12Hour(new Date(post.starts_at).toTimeString().slice(0, 5))}
                   </p>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <Badge variant="outline" className="capitalize text-xs">{post.intensity}</Badge>
-                    <Badge variant="outline" className="text-xs">{post.format}</Badge>
-                    <p className="text-xs text-muted-foreground">
+                  <div className="flex flex-wrap items-center gap-1 sm:gap-1.5 mt-0.5">
+                    <Badge variant="outline" className="capitalize text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5">{post.intensity}</Badge>
+                    <Badge variant="outline" className="text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5">{post.format}</Badge>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground truncate">
                       by {post.profiles?.display_name || post.profiles?.full_name || "Unknown"}
                       {post.profiles?.current_rating && (
                         <span className="ml-1 font-semibold">({post.profiles.current_rating.toFixed(2)})</span>
@@ -192,25 +192,25 @@ export function LFGList({ courtId, userId }: LFGListProps) {
                     </p>
                   </div>
                 </div>
-                <Badge variant={isFull ? "secondary" : "default"}>
+                <Badge variant={isFull ? "secondary" : "default"} className="flex-shrink-0 text-[10px] sm:text-xs">
                   {confirmed}/{post.capacity}
                 </Badge>
               </div>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-2 sm:space-y-3 px-3 sm:px-6 pb-3 sm:pb-4">
 
               {post.notes && (
-                <p className="text-sm text-muted-foreground">{post.notes}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground break-words">{post.notes}</p>
               )}
 
               {post.lfg_rsvps && post.lfg_rsvps.filter(r => r.status === 'yes').length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-xs font-semibold text-muted-foreground">Confirmed Players:</p>
-                  <div className="space-y-1.5">
+                <div className="space-y-1.5 sm:space-y-2">
+                  <p className="text-[10px] sm:text-xs font-semibold text-muted-foreground">Confirmed Players:</p>
+                  <div className="space-y-1 sm:space-y-1.5">
                     {post.lfg_rsvps.filter(r => r.status === 'yes').map((rsvp, i) => (
-                      <div key={i} className="flex items-center justify-between text-sm">
-                        <span className="font-medium">{rsvp.profiles?.display_name || rsvp.profiles?.full_name || "Unknown"}</span>
-                        <Badge variant="secondary" className="text-xs font-semibold">
+                      <div key={i} className="flex items-center justify-between text-xs sm:text-sm gap-2">
+                        <span className="font-medium truncate flex-1">{rsvp.profiles?.display_name || rsvp.profiles?.full_name || "Unknown"}</span>
+                        <Badge variant="secondary" className="text-[10px] sm:text-xs font-semibold flex-shrink-0">
                           {rsvp.profiles?.current_rating ? rsvp.profiles.current_rating.toFixed(2) : 'N/A'}
                         </Badge>
                       </div>
@@ -219,13 +219,13 @@ export function LFGList({ courtId, userId }: LFGListProps) {
                 </div>
               )}
 
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 {userRSVP ? (
                   <>
-                    <Badge variant={userRSVP.status === 'yes' ? 'default' : 'secondary'}>
+                    <Badge variant={userRSVP.status === 'yes' ? 'default' : 'secondary'} className="text-[10px] sm:text-xs">
                       {userRSVP.status === 'yes' ? 'Confirmed' : userRSVP.status === 'maybe' ? 'Maybe' : 'Waitlist'}
                     </Badge>
-                    <Button variant="outline" size="sm" onClick={() => handleLeave(post.id)}>
+                    <Button variant="outline" size="sm" onClick={() => handleLeave(post.id)} className="text-xs h-7 sm:h-8">
                       Leave
                     </Button>
                   </>
@@ -235,6 +235,7 @@ export function LFGList({ courtId, userId }: LFGListProps) {
                       size="sm"
                       onClick={() => handleRSVP(post.id, 'yes')}
                       disabled={isFull}
+                      className="text-xs h-7 sm:h-8"
                     >
                       {isFull ? 'Full' : 'I\'m In'}
                     </Button>
@@ -242,6 +243,7 @@ export function LFGList({ courtId, userId }: LFGListProps) {
                       variant="outline"
                       size="sm"
                       onClick={() => handleRSVP(post.id, 'maybe')}
+                      className="text-xs h-7 sm:h-8"
                     >
                       Maybe
                     </Button>
@@ -250,6 +252,7 @@ export function LFGList({ courtId, userId }: LFGListProps) {
                         variant="outline"
                         size="sm"
                         onClick={() => handleRSVP(post.id, 'waitlist')}
+                        className="text-xs h-7 sm:h-8"
                       >
                         Waitlist
                       </Button>
