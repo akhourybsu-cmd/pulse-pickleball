@@ -507,19 +507,46 @@ const Dashboard = () => {
           {user && <CourtStats userId={user.id} />}
         </div>
 
-        <div className="grid gap-4 md:gap-6 md:grid-cols-2 lg:grid-cols-3">
-          <Button 
-            size="lg" 
-            variant="outline"
-            onClick={() => navigate("/round-robin")}
-            className="h-auto py-4 md:text-lg md:py-6"
-          >
-            <Trophy className="w-5 h-5 md:w-6 md:h-6 mr-2" />
-            Organize a Round Robin Event
-          </Button>
+        <div className="space-y-4 md:space-y-6">
+          {/* First row - Round Robin centered */}
+          <div className="flex justify-center">
+            <Button 
+              size="lg" 
+              variant="outline"
+              onClick={() => navigate("/round-robin")}
+              className="h-auto py-4 md:text-lg md:py-6 w-full md:w-auto"
+            >
+              <Trophy className="w-5 h-5 md:w-6 md:h-6 mr-2" />
+              Organize a Round Robin Event
+            </Button>
+          </div>
 
+          {/* Second row - Edit Profile and Help & FAQ */}
+          <div className="grid grid-cols-2 gap-4 md:gap-6">
+            <Button
+              size="lg" 
+              variant="outline"
+              onClick={() => navigate("/profile/edit")}
+              className="md:text-lg md:py-6"
+            >
+              <UserCog className="w-5 h-5 md:w-6 md:h-6 mr-2" />
+              Edit Profile
+            </Button>
+
+            <Button 
+              size="lg" 
+              variant="outline"
+              onClick={() => navigate("/faq")}
+              className="md:text-lg md:py-6"
+            >
+              <HelpCircle className="w-5 h-5 md:w-6 md:h-6 mr-2" />
+              Help & FAQ
+            </Button>
+          </div>
+
+          {/* Admin buttons if admin */}
           {isAdmin && (
-            <>
+            <div className="grid gap-4 md:gap-6 md:grid-cols-2">
               <Button 
                 size="lg" 
                 variant="outline"
@@ -539,49 +566,8 @@ const Dashboard = () => {
                 <CalendarDays className="w-5 h-5 md:w-6 md:h-6 mr-2" />
                 Events
               </Button>
-            </>
+            </div>
           )}
-
-          <Button 
-            size="lg" 
-            variant="outline"
-            onClick={() => navigate("/court/history")}
-            data-tour="leaderboard"
-            className="md:text-lg md:py-6"
-          >
-            <MapPin className="w-5 h-5 md:w-6 md:h-6 mr-2" />
-            Court History
-          </Button>
-
-          <Button 
-            size="lg" 
-            variant="outline"
-            onClick={() => navigate("/court/connector")}
-            className="md:text-lg md:py-6"
-          >
-            <MessageSquare className="w-5 h-5 md:w-6 md:h-6 mr-2" />
-            Court Connector
-          </Button>
-
-          <Button
-            size="lg" 
-            variant="outline"
-            onClick={() => navigate("/profile/edit")}
-            className="md:text-lg md:py-6"
-          >
-            <UserCog className="w-5 h-5 md:w-6 md:h-6 mr-2" />
-            Edit Profile
-          </Button>
-
-          <Button 
-            size="lg" 
-            variant="outline"
-            onClick={() => navigate("/faq")}
-            className="md:text-lg md:py-6"
-          >
-            <HelpCircle className="w-5 h-5 md:w-6 md:h-6 mr-2" />
-            Help & FAQ
-          </Button>
         </div>
 
         {/* Share Button */}
