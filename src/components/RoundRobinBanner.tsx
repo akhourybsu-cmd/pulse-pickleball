@@ -14,11 +14,31 @@ interface LiveEvent {
 export function RoundRobinBanner() {
   const [liveEvent, setLiveEvent] = useState<LiveEvent | null>(null);
   const [isDismissed, setIsDismissed] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
-    fetchLiveEvent();
+    // Check authentication status
+    const checkAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setIsAuthenticated(!!user);
+      if (user) {
+        fetchLiveEvent();
+      }
+    };
+
+    checkAuth();
+    
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAuthenticated(!!session);
+      if (session) {
+        fetchLiveEvent();
+      } else {
+        setLiveEvent(null);
+      }
+    });
     
     const channel = supabase
       .channel('round-robin-banner-changes')
@@ -38,6 +58,7 @@ export function RoundRobinBanner() {
       .subscribe();
 
     return () => {
+      subscription.unsubscribe();
       supabase.removeChannel(channel);
     };
   }, []);
@@ -90,8 +111,8 @@ export function RoundRobinBanner() {
     setIsDismissed(true);
   };
 
-  // Don't show if no live event, dismissed, or already on the round robin detail page
-  if (!liveEvent || isDismissed || location.pathname.includes(`/round-robin/${liveEvent.id}`)) {
+  // Don't show if not authenticated, no live event, dismissed, or already on the round robin detail page
+  if (!isAuthenticated || !liveEvent || isDismissed || location.pathname.includes(`/round-robin/${liveEvent.id}`)) {
     return null;
   }
 
