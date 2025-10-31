@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 import { MFAChallenge } from "@/components/auth/MFAChallenge";
 import { EmailMFAChallenge } from "@/components/auth/EmailMFAChallenge";
+import pulseLogo from "@/assets/pulse-logo-new.png";
 
 const authSchema = z.object({
   email: z.string().trim().email("Invalid email address").max(255, "Email too long"),
@@ -177,9 +178,11 @@ const Auth = () => {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent mb-2">
-            PULSE
-          </h1>
+          <img 
+            src={pulseLogo} 
+            alt="PULSE" 
+            className="h-16 md:h-20 w-auto mx-auto mb-2"
+          />
           <p className="text-muted-foreground">
             Pickleball Universal Level & Skill Estimator
           </p>
