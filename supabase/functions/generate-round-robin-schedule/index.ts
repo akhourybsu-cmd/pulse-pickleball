@@ -421,7 +421,7 @@ function generateRoundRobinSchedule(
       byePlayers.forEach((playerId) => {
         matches.push({
           round_no: round,
-          court_no: 0,
+          court_no: 1, // Use court 1 for bye matches (court_no must be >= 1)
           a1_player_id: playerId,
           a2_player_id: null,
           b1_player_id: null,
