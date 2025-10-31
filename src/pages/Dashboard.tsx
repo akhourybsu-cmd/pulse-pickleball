@@ -13,7 +13,6 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { Footer } from "@/components/Footer";
 import { OnboardingTutorial } from "@/components/OnboardingTutorial";
 import { UnverifiedMatchesIndicator } from "@/components/UnverifiedMatchesIndicator";
-import { ActiveRoundRobinIndicator } from "@/components/ActiveRoundRobinIndicator";
 import { SmartMatch } from "@/components/court/SmartMatch";
 import { LFGNotifications } from "@/components/court/LFGNotifications";
 import { MFAPrompt } from "@/components/auth/MFAPrompt";
@@ -325,7 +324,6 @@ const Dashboard = () => {
           </Link>
           <div className="flex items-center gap-3">
             <UnverifiedMatchesIndicator />
-            <ActiveRoundRobinIndicator />
             <Button 
               variant="outline" 
               size="icon" 

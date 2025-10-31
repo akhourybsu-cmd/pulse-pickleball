@@ -40,6 +40,7 @@ import RoundRobinHub from "./pages/RoundRobinHub";
 import CreateRoundRobin from "./pages/CreateRoundRobin";
 import RoundRobinDetail from "./pages/RoundRobinDetail";
 import RoundRobinKiosk from "./pages/RoundRobinKiosk";
+import { RoundRobinBanner } from "@/components/RoundRobinBanner";
 
 const queryClient = new QueryClient();
 
@@ -51,6 +52,7 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
+            <RoundRobinBanner />
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
