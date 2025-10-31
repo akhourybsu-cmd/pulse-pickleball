@@ -113,22 +113,17 @@ export default function RoundRobinKiosk() {
 
   const fetchEventData = async () => {
     if (!eventId) {
-      console.log("No eventId provided");
       setLoading(false);
       return;
     }
 
-    console.log("Fetching event data for:", eventId);
-
     try {
-      // Fetch event
+      // Fetch event details
       const { data: eventData, error: eventError } = await supabase
         .from("round_robin_events")
         .select("*")
         .eq("id", eventId)
         .single();
-      
-      console.log("Event data:", eventData, "Error:", eventError);
 
       if (eventError) throw eventError;
       if (!eventData) {
@@ -147,140 +142,59 @@ export default function RoundRobinKiosk() {
 
       const currentRound = eventData.current_round || 1;
 
-      // Fetch current round matches WITHOUT profile joins first
+      // Fetch current round schedule with profile joins
       const { data: currentMatches, error: currentError } = await supabase
         .from("round_robin_schedule")
-        .select("*")
+        .select(`
+          *,
+          a1_profile:profiles!round_robin_schedule_a1_player_id_fkey(id, display_name, full_name),
+          a2_profile:profiles!round_robin_schedule_a2_player_id_fkey(id, display_name, full_name),
+          b1_profile:profiles!round_robin_schedule_b1_player_id_fkey(id, display_name, full_name),
+          b2_profile:profiles!round_robin_schedule_b2_player_id_fkey(id, display_name, full_name)
+        `)
         .eq("event_id", eventId)
         .eq("round_no", currentRound)
         .eq("is_bye", false)
         .order("court_no");
 
-      if (currentError) {
-        console.error("Error loading current matches:", currentError);
-        throw currentError;
-      }
+      if (currentError) throw currentError;
+      setCurrentRoundMatches(currentMatches || []);
 
-      console.log("Current matches fetched:", currentMatches?.length);
-
-      // Fetch all unique player IDs from current matches
-      const currentPlayerIds = new Set<string>();
-      currentMatches?.forEach(m => {
-        if (m.a1_player_id) currentPlayerIds.add(m.a1_player_id);
-        if (m.a2_player_id) currentPlayerIds.add(m.a2_player_id);
-        if (m.b1_player_id) currentPlayerIds.add(m.b1_player_id);
-        if (m.b2_player_id) currentPlayerIds.add(m.b2_player_id);
-      });
-
-      console.log("Player IDs to fetch:", Array.from(currentPlayerIds));
-
-      // Fetch profiles separately - only if there are player IDs
-      let currentProfiles = [];
-      if (currentPlayerIds.size > 0) {
-        const { data: profiles, error: profileError } = await supabase
-          .from("profiles")
-          .select("id, display_name, full_name")
-          .in("id", Array.from(currentPlayerIds));
-
-        if (profileError) {
-          console.error("Error loading profiles:", profileError);
-          // Don't throw - continue with empty profiles
-        } else {
-          currentProfiles = profiles || [];
-        }
-      }
-
-      console.log("Profiles fetched:", currentProfiles?.length);
-
-      // Create a profile lookup map
-      const profileMap = new Map();
-      currentProfiles?.forEach(p => {
-        profileMap.set(p.id, p);
-      });
-
-      // Manually attach profiles to matches
-      const matchesWithProfiles = currentMatches?.map(m => ({
-        ...m,
-        a1_profile: m.a1_player_id ? profileMap.get(m.a1_player_id) : null,
-        a2_profile: m.a2_player_id ? profileMap.get(m.a2_player_id) : null,
-        b1_profile: m.b1_player_id ? profileMap.get(m.b1_player_id) : null,
-        b2_profile: m.b2_player_id ? profileMap.get(m.b2_player_id) : null,
-      }));
-
-      console.log("=== KIOSK DEBUG ===");
-      console.log("Matches with profiles:", matchesWithProfiles);
-      setCurrentRoundMatches(matchesWithProfiles || []);
-
-      // Fetch next round matches if not last round
+      // Fetch next round if not last round
       if (currentRound < eventData.num_rounds) {
         const { data: nextMatches, error: nextError } = await supabase
           .from("round_robin_schedule")
-          .select("*")
+          .select(`
+            *,
+            a1_profile:profiles!round_robin_schedule_a1_player_id_fkey(id, display_name, full_name),
+            a2_profile:profiles!round_robin_schedule_a2_player_id_fkey(id, display_name, full_name),
+            b1_profile:profiles!round_robin_schedule_b1_player_id_fkey(id, display_name, full_name),
+            b2_profile:profiles!round_robin_schedule_b2_player_id_fkey(id, display_name, full_name)
+          `)
           .eq("event_id", eventId)
           .eq("round_no", currentRound + 1)
           .eq("is_bye", false)
           .order("court_no");
 
         if (nextError) {
-          console.error("Error loading next matches:", nextError);
-          // Don't throw - just skip next round
+          console.error("Error loading next round:", nextError);
         } else {
-          // Fetch profiles for next round
-          const nextPlayerIds = new Set<string>();
-          nextMatches?.forEach(m => {
-            if (m.a1_player_id) nextPlayerIds.add(m.a1_player_id);
-            if (m.a2_player_id) nextPlayerIds.add(m.a2_player_id);
-            if (m.b1_player_id) nextPlayerIds.add(m.b1_player_id);
-            if (m.b2_player_id) nextPlayerIds.add(m.b2_player_id);
-          });
-
-          let nextProfiles = [];
-          if (nextPlayerIds.size > 0) {
-            const { data: profiles, error: nextProfileError } = await supabase
-              .from("profiles")
-              .select("id, display_name, full_name")
-              .in("id", Array.from(nextPlayerIds));
-
-            if (nextProfileError) {
-              console.error("Error loading next profiles:", nextProfileError);
-            } else {
-              nextProfiles = profiles || [];
-            }
-          }
-
-          const nextProfileMap = new Map();
-          nextProfiles?.forEach(p => {
-            nextProfileMap.set(p.id, p);
-          });
-
-          const nextMatchesWithProfiles = nextMatches?.map(m => ({
-            ...m,
-            a1_profile: m.a1_player_id ? nextProfileMap.get(m.a1_player_id) : null,
-            a2_profile: m.a2_player_id ? nextProfileMap.get(m.a2_player_id) : null,
-            b1_profile: m.b1_player_id ? nextProfileMap.get(m.b1_player_id) : null,
-            b2_profile: m.b2_player_id ? nextProfileMap.get(m.b2_player_id) : null,
-          }));
-
-          console.log("Loaded next round matches:", nextMatchesWithProfiles);
-          setNextRoundMatches(nextMatchesWithProfiles || []);
+          setNextRoundMatches(nextMatches || []);
         }
       } else {
         setNextRoundMatches([]);
       }
-      
-      console.log("Fetch complete, setting loading to false");
     } catch (error: any) {
       console.error("Error fetching event data:", error);
       toast.error("Failed to load event data");
     } finally {
-      console.log("Finally block - setting loading to false");
       setLoading(false);
     }
   };
 
   const getPlayerName = (profile: any) => {
     if (!profile) return "TBD";
-    return profile.display_name || profile.full_name || "Unknown";
+    return profile.display_name || profile.full_name || "TBD";
   };
 
   const handleEnterScore = (match: ScheduleMatch) => {
@@ -427,12 +341,12 @@ export default function RoundRobinKiosk() {
                   key={`${match.id}-${match.court_no}`}
                   courtNumber={match.court_no}
                   teamA={[
-                    match.a1_profile?.display_name || match.a1_profile?.full_name || "TBD",
-                    match.a2_profile?.display_name || match.a2_profile?.full_name || "TBD",
+                    getPlayerName(match.a1_profile),
+                    getPlayerName(match.a2_profile),
                   ]}
                   teamB={[
-                    match.b1_profile?.display_name || match.b1_profile?.full_name || "TBD",
-                    match.b2_profile?.display_name || match.b2_profile?.full_name || "TBD",
+                    getPlayerName(match.b1_profile),
+                    getPlayerName(match.b2_profile),
                   ]}
                   status={match.team1_score !== null ? "final" : "in-progress"}
                   scoreA={match.team1_score || undefined}
