@@ -351,24 +351,28 @@ export default function RoundRobinKiosk() {
           <div className="lg:col-span-2 space-y-6">
             <h2 className="text-3xl font-bold">Current Round</h2>
             <div className="grid gap-4">
-              {currentRoundMatches.map((match) => (
-                <CourtCard
-                  key={match.id}
-                  courtNumber={match.court_no}
-                  teamA={[
-                    getPlayerName(match.a1_profile),
-                    getPlayerName(match.a2_profile),
-                  ]}
-                  teamB={[
-                    getPlayerName(match.b1_profile),
-                    getPlayerName(match.b2_profile),
-                  ]}
-                  status={match.team1_score !== null ? "final" : "in-progress"}
-                  scoreA={match.team1_score || undefined}
-                  scoreB={match.team2_score || undefined}
-                  onEnterScore={() => handleEnterScore(match)}
-                />
-              ))}
+              {currentRoundMatches.length === 0 && <div className="text-white">No matches loaded</div>}
+              {currentRoundMatches.map((match) => {
+                console.log("Rendering match:", match.court_no, "a1_profile:", match.a1_profile);
+                return (
+                  <CourtCard
+                    key={match.id}
+                    courtNumber={match.court_no}
+                    teamA={[
+                      getPlayerName(match.a1_profile),
+                      getPlayerName(match.a2_profile),
+                    ]}
+                    teamB={[
+                      getPlayerName(match.b1_profile),
+                      getPlayerName(match.b2_profile),
+                    ]}
+                    status={match.team1_score !== null ? "final" : "in-progress"}
+                    scoreA={match.team1_score || undefined}
+                    scoreB={match.team2_score || undefined}
+                    onEnterScore={() => handleEnterScore(match)}
+                  />
+                );
+              })}
             </div>
           </div>
 
