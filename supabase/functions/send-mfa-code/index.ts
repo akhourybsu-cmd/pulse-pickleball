@@ -51,7 +51,7 @@ const sendEmail = async (to: string, code: string): Promise<void> => {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: "PULSE Security <onboarding@resend.dev>",
+      from: "PULSE <onboarding@resend.dev>",
       to: [to],
       subject: "Your PULSE Verification Code",
       html: `
