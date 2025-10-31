@@ -4,8 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Send } from "lucide-react";
-import { formatDateEST } from "@/lib/utils";
+import { Send, Loader2 } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
 
 interface Message {
   id: number;
@@ -28,7 +28,9 @@ export function CourtChannel({ courtId, userId }: CourtChannelProps) {
   const [newMessage, setNewMessage] = useState("");
   const [channelId, setChannelId] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  const [loading, setLoading] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchOrCreateChannel();
@@ -70,6 +72,7 @@ export function CourtChannel({ courtId, userId }: CourtChannelProps) {
   };
 
   const fetchMessages = async () => {
+    setLoading(true);
     const { data } = await (supabase as any)
       .from("channel_messages")
       .select(`
@@ -82,11 +85,12 @@ export function CourtChannel({ courtId, userId }: CourtChannelProps) {
       .eq("channel_id", channelId)
       .is("thread_id", null)
       .order("created_at", { ascending: true })
-      .limit(50);
+      .limit(100);
 
     if (data) {
       setMessages(data as any);
     }
+    setLoading(false);
   };
 
   const subscribeToMessages = () => {
@@ -128,13 +132,23 @@ export function CourtChannel({ courtId, userId }: CourtChannelProps) {
 
     if (!error) {
       setNewMessage("");
+      inputRef.current?.focus();
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
     }
   };
 
   const scrollToBottom = () => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
+    setTimeout(() => {
+      if (scrollRef.current) {
+        scrollRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      }
+    }, 100);
   };
 
   const getDisplayName = (msg: Message) => {
@@ -147,49 +161,111 @@ export function CourtChannel({ courtId, userId }: CourtChannelProps) {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
 
+  const getTimeAgo = (date: string) => {
+    return formatDistanceToNow(new Date(date), { addSuffix: true });
+  };
+
+  const isOwnMessage = (msg: Message) => msg.user_id === userId;
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-[500px]">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-4">
-      <ScrollArea className="h-[400px] pr-4" ref={scrollRef as any}>
-        <div className="space-y-4">
-          {messages.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">
-              No messages yet. Start the conversation!
-            </p>
-          ) : (
-            messages.map((msg) => (
-              <div key={msg.id} className="flex gap-3">
-                <Avatar className="w-8 h-8">
-                  <AvatarFallback className="text-xs">
-                    {getInitials(msg)}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 space-y-1">
-                  <div className="flex items-baseline gap-2">
-                    <span className="font-semibold text-sm">{getDisplayName(msg)}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {formatDateEST(new Date(msg.created_at), "h:mm a")}
-                    </span>
-                  </div>
-                  <p className="text-sm">{msg.body}</p>
+    <div className="flex flex-col h-[500px] border rounded-lg bg-card">
+      <div className="flex-1 overflow-hidden">
+        <ScrollArea className="h-full">
+          <div className="p-4 space-y-4">
+            {messages.length === 0 ? (
+              <div className="flex items-center justify-center h-full min-h-[400px]">
+                <div className="text-center space-y-2">
+                  <p className="text-muted-foreground">No messages yet</p>
+                  <p className="text-sm text-muted-foreground">Start the conversation!</p>
                 </div>
               </div>
-            ))
-          )}
-        </div>
-      </ScrollArea>
+            ) : (
+              <>
+                {messages.map((msg, index) => {
+                  const isOwn = isOwnMessage(msg);
+                  const showAvatar = index === 0 || messages[index - 1].user_id !== msg.user_id;
+                  
+                  return (
+                    <div
+                      key={msg.id}
+                      className={`flex gap-3 ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}
+                    >
+                      {showAvatar ? (
+                        <Avatar className="w-8 h-8 flex-shrink-0">
+                          <AvatarFallback className="text-xs bg-primary/10">
+                            {getInitials(msg)}
+                          </AvatarFallback>
+                        </Avatar>
+                      ) : (
+                        <div className="w-8 flex-shrink-0" />
+                      )}
+                      
+                      <div className={`flex-1 max-w-[70%] ${isOwn ? 'items-end' : 'items-start'} flex flex-col`}>
+                        {showAvatar && (
+                          <div className={`flex items-baseline gap-2 mb-1 ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}>
+                            <span className="font-semibold text-sm">{getDisplayName(msg)}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {getTimeAgo(msg.created_at)}
+                            </span>
+                          </div>
+                        )}
+                        <div
+                          className={`rounded-lg px-4 py-2 ${
+                            isOwn
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-muted'
+                          }`}
+                        >
+                          <p className="text-sm whitespace-pre-wrap break-words">{msg.body}</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                <div ref={scrollRef} />
+              </>
+            )}
+          </div>
+        </ScrollArea>
+      </div>
 
-      {userId && (
-        <div className="flex gap-2">
-          <Input
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-            placeholder="Type a message..."
-            disabled={sending}
-          />
-          <Button onClick={handleSend} disabled={sending || !newMessage.trim()} size="icon">
-            <Send className="w-4 h-4" />
-          </Button>
+      {userId ? (
+        <div className="p-4 border-t bg-background">
+          <div className="flex gap-2">
+            <Input
+              ref={inputRef}
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Type a message..."
+              disabled={sending}
+              className="flex-1"
+            />
+            <Button 
+              onClick={handleSend} 
+              disabled={sending || !newMessage.trim()} 
+              size="icon"
+              className="flex-shrink-0"
+            >
+              {sending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Send className="w-4 h-4" />
+              )}
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="p-4 border-t bg-muted text-center text-sm text-muted-foreground">
+          Sign in to join the conversation
         </div>
       )}
     </div>
