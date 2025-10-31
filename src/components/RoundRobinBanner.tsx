@@ -63,15 +63,15 @@ export function RoundRobinBanner() {
         `)
         .eq("player_id", user.id)
         .eq("round_robin_events.status", "live")
-        .limit(1)
-        .single();
+        .limit(1);
 
       if (error) {
+        console.error("Error fetching live event:", error);
         setLiveEvent(null);
         return;
       }
 
-      const event = playerEvents?.round_robin_events;
+      const event = playerEvents?.[0]?.round_robin_events;
       setLiveEvent(event || null);
     } catch (error) {
       console.error("Error fetching live event:", error);
