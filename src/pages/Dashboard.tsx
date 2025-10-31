@@ -414,7 +414,24 @@ const Dashboard = () => {
                 <span className="text-5xl md:text-6xl lg:text-7xl font-bold text-primary pulse-score-number">
                   {profile?.current_rating?.toFixed(2) || '3.00'}
                 </span>
-                <div className="pulse-score-line"></div>
+                <svg 
+                  className="ecg-pulse flex-shrink-0" 
+                  width="60" 
+                  height="20" 
+                  viewBox="0 0 80 24" 
+                  fill="none" 
+                  xmlns="http://www.w3.org/2000/svg"
+                  aria-hidden="true"
+                >
+                  <path 
+                    d="M0 12 L20 12 L25 4 L30 20 L35 12 L80 12" 
+                    stroke="rgb(163, 230, 53)" 
+                    strokeWidth="2.5" 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round"
+                    pathLength="100"
+                  />
+                </svg>
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
