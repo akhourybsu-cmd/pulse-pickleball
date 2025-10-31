@@ -348,9 +348,6 @@ export default function CourtConnector() {
                 {showHidden ? 'Hide' : 'Show'} Hidden ({hiddenCount})
               </Button>
             )}
-            <Button onClick={() => navigate("/court/history")} variant="outline" size="sm">
-              Court Activity
-            </Button>
           </div>
         </div>
 
