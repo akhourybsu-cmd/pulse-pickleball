@@ -343,7 +343,7 @@ const Dashboard = () => {
         </div>
       </nav>
 
-      <div className="container mx-auto px-4 py-6 md:py-8 md:py-12">
+      <div className="container mx-auto px-4 py-3 md:py-4 md:py-6">
         {/* MFA Prompt */}
         <div className="mb-6">
           <MFAPrompt />
