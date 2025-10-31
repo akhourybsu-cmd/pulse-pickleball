@@ -168,6 +168,7 @@ export default function RoundRobinKiosk() {
       }
       
       console.log("Loaded current round matches:", currentMatches);
+      console.log("First match profiles:", currentMatches?.[0]?.a1_profile, currentMatches?.[0]?.a2_profile);
       setCurrentRoundMatches(currentMatches || []);
 
       // Fetch next round matches if not last round
@@ -207,8 +208,11 @@ export default function RoundRobinKiosk() {
   };
 
   const getPlayerName = (profile: any) => {
+    console.log("getPlayerName called with:", profile);
     if (!profile) return "TBD";
-    return profile.display_name || profile.full_name || "Unknown";
+    const name = profile.display_name || profile.full_name || "Unknown";
+    console.log("Returning name:", name);
+    return name;
   };
 
   const handleEnterScore = (match: ScheduleMatch) => {
