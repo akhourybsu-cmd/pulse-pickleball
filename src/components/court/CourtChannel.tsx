@@ -89,22 +89,43 @@ export function CourtChannel({ courtId, userId }: CourtChannelProps) {
     if (!channelId) return;
     
     setLoading(true);
-    const { data } = await (supabase as any)
+    const { data, error } = await (supabase as any)
       .from("channel_messages")
       .select(`
         id,
         body,
         created_at,
-        user_id,
-        profiles:user_id (full_name, display_name)
+        user_id
       `)
       .eq("channel_id", channelId)
       .is("thread_id", null)
       .order("created_at", { ascending: true })
       .limit(100);
 
-    if (data) {
-      setMessages(data as any);
+    if (error) {
+      console.error('Fetch messages error:', error);
+      setMessages([]);
+      setLoading(false);
+      return;
+    }
+
+    if (data && data.length > 0) {
+      // Fetch profile data for all unique user IDs
+      const userIds = [...new Set(data.map((msg: any) => msg.user_id))] as string[];
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, full_name, display_name')
+        .in('id', userIds);
+
+      // Map profiles to messages
+      const messagesWithProfiles = data.map((msg: any) => ({
+        ...msg,
+        profiles: profiles?.find(p => p.id === msg.user_id)
+      }));
+
+      setMessages(messagesWithProfiles as any);
+    } else {
+      setMessages([]);
     }
     setLoading(false);
   };
