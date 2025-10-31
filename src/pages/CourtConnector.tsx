@@ -122,13 +122,19 @@ export default function CourtConnector() {
 
     const { error } = await (supabase as any)
       .from("user_court_prefs")
-      .upsert({
-        user_id: currentUserId,
-        court_id: courtId,
-        hidden_until: hiddenUntil,
-      });
+      .upsert(
+        {
+          user_id: currentUserId,
+          court_id: courtId,
+          hidden_until: hiddenUntil,
+        },
+        {
+          onConflict: 'user_id,court_id'
+        }
+      );
 
     if (error) {
+      console.error('Hide error:', error);
       toast({
         title: "Error",
         description: "Failed to hide court",
@@ -149,13 +155,19 @@ export default function CourtConnector() {
 
     const { error } = await (supabase as any)
       .from("user_court_prefs")
-      .upsert({
-        user_id: currentUserId,
-        court_id: courtId,
-        hidden_until: null,
-      });
+      .upsert(
+        {
+          user_id: currentUserId,
+          court_id: courtId,
+          hidden_until: null,
+        },
+        {
+          onConflict: 'user_id,court_id'
+        }
+      );
 
     if (error) {
+      console.error('Unhide error:', error);
       toast({
         title: "Error",
         description: "Failed to unhide court",
