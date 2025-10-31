@@ -81,44 +81,44 @@ const DemoTour = () => {
       </nav>
 
       <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
+        <div className="mb-6 md:mb-8">
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              <h2 className="text-3xl font-bold mb-2">Welcome back, {demoProfile.display_name}!</h2>
-              <p className="text-muted-foreground mb-4">Track your pickleball journey</p>
+              <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-2">Welcome back, {demoProfile.display_name}!</h2>
+              <p className="text-muted-foreground mb-4 md:text-lg">Track your pickleball journey</p>
               
               <div className="space-y-3 w-full md:w-auto">
                 <Button 
                   size="lg" 
-                  className="shadow-[var(--shadow-glow)] w-full md:w-auto cursor-default"
+                  className="shadow-[var(--shadow-glow)] w-full md:w-auto md:text-lg md:py-6 cursor-default"
                 >
-                  <Plus className="w-5 h-5 mr-2" />
+                  <Plus className="w-5 h-5 md:w-6 md:h-6 mr-2" />
                   Record New Match
                 </Button>
                 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-3 md:gap-6">
                   <Button 
                     size="lg" 
                     variant="outline"
-                    className="flex flex-col items-start py-3 h-auto cursor-default"
+                    className="flex flex-col items-start py-3 h-auto md:text-lg md:py-6 cursor-default [&:hover_span.text-muted-foreground]:text-foreground"
                   >
                     <div className="flex items-center w-full">
-                      <MessageSquare className="w-5 h-5 mr-2 flex-shrink-0" />
-                      <span className="font-semibold text-sm">Court Connector</span>
+                      <MessageSquare className="w-5 h-5 md:w-6 md:h-6 mr-2 flex-shrink-0" />
+                      <span className="font-semibold text-sm md:text-base">Court Connector</span>
                     </div>
-                    <span className="text-xs text-muted-foreground mt-1">Find a group near you</span>
+                    <span className="text-xs md:text-sm text-muted-foreground mt-1">Find a group near you</span>
                   </Button>
 
                   <Button 
                     size="lg" 
                     variant="outline"
-                    className="flex flex-col items-start py-3 h-auto cursor-default"
+                    className="flex flex-col items-start py-3 h-auto md:text-lg md:py-6 cursor-default [&:hover_span.text-muted-foreground]:text-foreground"
                   >
                     <div className="flex items-center w-full">
-                      <Calendar className="w-5 h-5 mr-2 flex-shrink-0" />
-                      <span className="font-semibold text-sm">Match History</span>
+                      <Calendar className="w-5 h-5 md:w-6 md:h-6 mr-2 flex-shrink-0" />
+                      <span className="font-semibold text-sm md:text-base">Match History</span>
                     </div>
-                    <span className="text-xs text-muted-foreground mt-1">View your matches</span>
+                    <span className="text-xs md:text-sm text-muted-foreground mt-1">View your matches</span>
                   </Button>
                 </div>
               </div>
