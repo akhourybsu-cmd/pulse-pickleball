@@ -46,28 +46,7 @@ const Dashboard = () => {
 
   // Notification state
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>([
-    {
-      id: "1",
-      type: "match",
-      title: "Match vs John / Alex",
-      message: "Awaiting your confirmation",
-      time: "5m ago",
-      cta: "Review Match →",
-      link: "/pending-matches",
-      unread: true,
-    },
-    {
-      id: "2",
-      type: "lfg",
-      title: "Attleboro YMCA LFG",
-      message: "\"Hey I'm free at 5 PM — want to run games?\"",
-      time: "12m ago",
-      cta: "View Conversation →",
-      link: "/court-connector",
-      unread: true,
-    },
-  ]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
 
   const unreadCount = notifications.filter(n => n.unread).length;
 
