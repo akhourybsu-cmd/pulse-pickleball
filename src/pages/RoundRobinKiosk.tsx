@@ -44,7 +44,8 @@ interface ScheduleMatch {
 }
 
 export default function RoundRobinKiosk() {
-  const { eventId } = useParams<{ eventId: string }>();
+  const { id } = useParams<{ id: string }>();
+  const eventId = id;
   const navigate = useNavigate();
   
   const [event, setEvent] = useState<Event | null>(null);
