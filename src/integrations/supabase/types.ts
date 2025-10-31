@@ -1370,6 +1370,7 @@ export type Database = {
           num_courts: number
           num_rounds: number
           organizer_id: string
+          organizer_pin: string | null
           rating_eligible: boolean
           rating_type: Database["public"]["Enums"]["rating_type"]
           status: Database["public"]["Enums"]["round_robin_status"]
@@ -1392,6 +1393,7 @@ export type Database = {
           num_courts: number
           num_rounds: number
           organizer_id: string
+          organizer_pin?: string | null
           rating_eligible?: boolean
           rating_type?: Database["public"]["Enums"]["rating_type"]
           status?: Database["public"]["Enums"]["round_robin_status"]
@@ -1414,6 +1416,7 @@ export type Database = {
           num_courts?: number
           num_rounds?: number
           organizer_id?: string
+          organizer_pin?: string | null
           rating_eligible?: boolean
           rating_type?: Database["public"]["Enums"]["rating_type"]
           status?: Database["public"]["Enums"]["round_robin_status"]

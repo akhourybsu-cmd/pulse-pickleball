@@ -40,6 +40,7 @@ import DemoTour from "./pages/DemoTour";
 import RoundRobinHub from "./pages/RoundRobinHub";
 import CreateRoundRobin from "./pages/CreateRoundRobin";
 import RoundRobinDetail from "./pages/RoundRobinDetail";
+import RoundRobinKiosk from "./pages/RoundRobinKiosk";
 
 const queryClient = new QueryClient();
 
@@ -89,6 +90,7 @@ const App = () => (
               <Route path="/round-robin" element={<RoundRobinHub />} />
               <Route path="/round-robin/create" element={<CreateRoundRobin />} />
               <Route path="/round-robin/:id" element={<RoundRobinDetail />} />
+              <Route path="/round-robin/:id/kiosk" element={<RoundRobinKiosk />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

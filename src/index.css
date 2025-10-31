@@ -155,11 +155,43 @@ body {
   animation: banner-glow 2s ease-in-out infinite;
 }
 
+/* Kiosk Mode Animations */
+@keyframes pulse-border {
+  0%, 100% {
+    box-shadow: 0 0 0 0 hsl(var(--accent) / 0.4);
+  }
+  50% {
+    box-shadow: 0 0 20px 4px hsl(var(--accent) / 0.6);
+  }
+}
+
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  10%, 30%, 50%, 70%, 90% {
+    transform: translateX(-10px);
+  }
+  20%, 40%, 60%, 80% {
+    transform: translateX(10px);
+  }
+}
+
+.animate-pulse-border {
+  animation: pulse-border 2s ease-in-out infinite;
+}
+
+.animate-shake {
+  animation: shake 0.5s ease-in-out;
+}
+
 /* Respect prefers-reduced-motion */
 @media (prefers-reduced-motion: reduce) {
   .ecg-pulse path,
   .pulse-score-number,
-  .animate-pulse-glow {
+  .animate-pulse-glow,
+  .animate-pulse-border,
+  .animate-shake {
     animation: none;
   }
 }

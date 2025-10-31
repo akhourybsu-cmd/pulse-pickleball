@@ -24,7 +24,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Play, Trophy, AlertCircle, Settings, Trash2, Ban, CheckCircle, Edit, Edit3, Bell } from "lucide-react";
+import { Play, Trophy, AlertCircle, Settings, Trash2, Ban, CheckCircle, Edit, Edit3, Bell, Monitor, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { BackToDashboard } from "@/components/BackToDashboard";
 import { EditEventDialog } from "@/components/round-robin/EditEventDialog";
@@ -1305,6 +1305,20 @@ export default function RoundRobinDetail() {
             <div className="flex items-center gap-2">
               {isOrganizer && !event.voided && (
                 <>
+                  {event.status === 'live' && (
+                    <Button 
+                      variant="default" 
+                      size="sm"
+                      onClick={() => {
+                        const kioskUrl = `/round-robin/${event.id}/kiosk`;
+                        window.open(kioskUrl, '_blank', 'width=1920,height=1080');
+                      }}
+                      className="hidden sm:flex bg-[hsl(var(--accent))] hover:bg-[hsl(var(--accent))]/90"
+                    >
+                      <Monitor className="h-4 w-4 mr-2" />
+                      Open Kiosk Mode
+                    </Button>
+                  )}
                   <Button 
                     variant="outline" 
                     size="sm"
@@ -1333,6 +1347,30 @@ export default function RoundRobinDetail() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      {event.status === 'live' && (
+                        <>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              const kioskUrl = `/round-robin/${event.id}/kiosk`;
+                              window.open(kioskUrl, '_blank', 'width=1920,height=1080');
+                            }}
+                          >
+                            <Monitor className="h-4 w-4 mr-2" />
+                            Open Kiosk Mode
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              const kioskUrl = `${window.location.origin}/round-robin/${event.id}/kiosk`;
+                              navigator.clipboard.writeText(kioskUrl);
+                              toast.success("Kiosk link copied!");
+                            }}
+                          >
+                            <ExternalLink className="h-4 w-4 mr-2" />
+                            Copy Kiosk Link
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                        </>
+                      )}
                       <DropdownMenuItem
                         onClick={() => setEditDialogOpen(true)}
                         className="sm:hidden"
