@@ -14,15 +14,15 @@ if ('serviceWorker' in navigator) {
           registration.update();
         }, 60000);
 
-        // Listen for updates but let user control reload
+        // Listen for updates and auto-reload
         registration.addEventListener('updatefound', () => {
           const newWorker = registration.installing;
           if (newWorker) {
             newWorker.addEventListener('statechange', () => {
               if (newWorker.state === 'activated' && navigator.serviceWorker.controller) {
-                // New version available - log but don't auto-reload
-                console.log('New version available. Reload page to update.');
-                // You can show a toast here if needed
+                // New version available - auto-reload to update
+                console.log('New version available. Auto-reloading...');
+                window.location.reload();
               }
             });
           }

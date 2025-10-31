@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Trophy, TrendingUp, Calendar, Plus, MapPin, BarChart3, MessageSquare, CalendarDays, Award, UserIcon } from "lucide-react";
 import logo from "@/assets/pulse-logo-new.png";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { FlippableBadge } from "@/components/FlippableBadge";
 import firstGameBadge from "@/assets/badges/first_game.png";
 import dailyGrinder1Badge from "@/assets/badges/daily_grinder_1.png";
@@ -64,7 +64,9 @@ const DemoTour = () => {
     <div className="min-h-screen bg-background">
       <nav className="border-b bg-secondary">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <img src={logo} alt="PULSE Logo" className="h-16 w-auto" />
+          <Link to="/dashboard">
+            <img src={logo} alt="PULSE Logo" className="h-16 w-auto cursor-pointer hover:opacity-80 transition-opacity" />
+          </Link>
           <div className="flex items-center gap-3">
             <Button 
               variant="outline" 

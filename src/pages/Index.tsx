@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Trophy, TrendingUp, Users, Zap, MapPin, Award } from "lucide-react";
@@ -14,7 +14,9 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <nav className="sticky top-0 z-50 border-b bg-secondary/95 backdrop-blur-sm">
         <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4 flex items-center justify-between">
-          <img src={logo} alt="PULSE Logo" className="h-12 sm:h-16 w-auto" />
+          <Link to="/dashboard">
+            <img src={logo} alt="PULSE Logo" className="h-12 sm:h-16 w-auto cursor-pointer hover:opacity-80 transition-opacity" />
+          </Link>
           <div className="flex items-center gap-1.5 sm:gap-2">
             <ThemeToggle />
             <Button 
