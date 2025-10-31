@@ -1288,51 +1288,42 @@ export default function RoundRobinDetail() {
 
   return (
     <div className="min-h-screen bg-background pb-20">
+      {/* Compact header banner */}
       <header className="sticky top-0 z-10 bg-secondary border-b">
-        <div className="container mx-auto px-4 py-3 sm:py-4">
-          <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4">
-            <BackToDashboard />
-            <div className="flex-1 min-w-0">
+        <div className="container mx-auto px-4 py-2">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <BackToDashboard />
               <div className="flex items-center gap-2">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="text-xl sm:text-2xl font-bold whitespace-nowrap">Round Robin by</h1>
-                  <img src={logo} alt="PULSE" className="h-8 sm:h-10 w-auto" />
-                </div>
+                <h1 className="text-base sm:text-lg font-semibold text-white whitespace-nowrap">Round Robin by</h1>
+                <img src={logo} alt="PULSE" className="h-6 sm:h-7 w-auto" />
               </div>
-              <div className="flex items-center gap-2 mt-1 flex-wrap">
-                <h2 className="text-base sm:text-lg font-semibold truncate">{event.name}</h2>
-                {event.voided && <Badge variant="destructive">Voided</Badge>}
-              </div>
-              <p className="text-xs sm:text-sm text-muted-foreground truncate">
-                {new Date(event.date).toLocaleDateString()}
-                {event.location && ` • ${event.location}`}
-              </p>
             </div>
-            <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className="flex items-center gap-2">
               <Badge variant={event.status === 'live' ? 'default' : 'outline'} className="whitespace-nowrap">{event.status.toUpperCase()}</Badge>
               {isOrganizer && !event.voided && (
                 <>
-                  <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setEditDialogOpen(true)}
+                    disabled={isEditMode}
+                    className="hidden sm:flex"
+                  >
+                    <Settings className="h-4 w-4 mr-2" />
+                    Settings
+                  </Button>
+                  {event.status !== 'completed' && (
                     <Button 
                       variant="outline" 
                       size="sm"
-                      onClick={() => setEditDialogOpen(true)}
-                      disabled={isEditMode}
+                      onClick={() => setCourtsRoundsOpen(true)}
+                      className="hidden sm:flex"
                     >
-                      <Settings className="h-4 w-4 mr-2" />
-                      Settings
+                      <Edit className="h-4 w-4 mr-2" />
+                      Courts & Rounds
                     </Button>
-                    {event.status !== 'completed' && (
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => setCourtsRoundsOpen(true)}
-                      >
-                        <Edit className="h-4 w-4 mr-2" />
-                        Courts & Rounds
-                      </Button>
-                    )}
-                  </div>
+                  )}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="outline" size="icon">
@@ -1340,6 +1331,23 @@ export default function RoundRobinDetail() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={() => setEditDialogOpen(true)}
+                        className="sm:hidden"
+                      >
+                        <Settings className="h-4 w-4 mr-2" />
+                        Settings
+                      </DropdownMenuItem>
+                      {event.status !== 'completed' && (
+                        <DropdownMenuItem
+                          onClick={() => setCourtsRoundsOpen(true)}
+                          className="sm:hidden"
+                        >
+                          <Edit className="h-4 w-4 mr-2" />
+                          Courts & Rounds
+                        </DropdownMenuItem>
+                      )}
+                      {event.status !== 'completed' && <DropdownMenuSeparator className="sm:hidden" />}
                       <DropdownMenuItem
                         onClick={() => {
                           setDeleteMode('void');
@@ -1373,6 +1381,20 @@ export default function RoundRobinDetail() {
           </div>
         </div>
       </header>
+
+      {/* Event details section below header */}
+      <div className="bg-background border-b">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center gap-2 flex-wrap mb-1">
+            <h2 className="text-xl sm:text-2xl font-bold text-foreground">{event.name}</h2>
+            {event.voided && <Badge variant="destructive">Voided</Badge>}
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {new Date(event.date).toLocaleDateString()}
+            {event.location && ` • ${event.location}`}
+          </p>
+        </div>
+      </div>
 
       <main className="container mx-auto px-4 py-6">
         {isOrganizer && isEditMode && (
