@@ -8,7 +8,6 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Calendar, Users, Trophy } from "lucide-react";
 import { toast } from "sonner";
 import { BackToDashboard } from "@/components/BackToDashboard";
-import { RoundRobinGuidedTour } from "@/components/RoundRobinGuidedTour";
 import logo from "@/assets/pulse-logo-new.png";
 
 interface RoundRobinEvent {
@@ -137,10 +136,7 @@ export default function RoundRobinHub() {
               <h1 className="text-xl sm:text-2xl font-bold whitespace-nowrap text-white">Round Robin by</h1>
               <img src={logo} alt="PULSE" className="h-[67px] w-auto" />
             </div>
-            <div className="flex items-center gap-2">
-              <RoundRobinGuidedTour />
-              <BackToDashboard className="text-white hover:text-white/80" />
-            </div>
+            <BackToDashboard className="text-white hover:text-white/80" />
           </div>
         </div>
       </header>
