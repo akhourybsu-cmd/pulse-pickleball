@@ -167,8 +167,13 @@ export default function RoundRobinKiosk() {
         throw currentError;
       }
       
-      console.log("Loaded current round matches:", currentMatches);
-      console.log("First match data:", JSON.stringify(currentMatches?.[0], null, 2));
+      console.log("=== KIOSK DEBUG ===");
+      console.log("Raw currentMatches data:", JSON.stringify(currentMatches, null, 2));
+      console.log("Number of matches:", currentMatches?.length);
+      if (currentMatches && currentMatches.length > 0) {
+        console.log("First match a1_profile:", currentMatches[0].a1_profile);
+        console.log("First match structure:", Object.keys(currentMatches[0]));
+      }
       setCurrentRoundMatches(currentMatches || []);
 
       // Fetch next round matches if not last round
