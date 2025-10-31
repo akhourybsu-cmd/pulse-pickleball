@@ -372,6 +372,7 @@ const Dashboard = () => {
                     variant="outline"
                     onClick={() => navigate("/court/connector")}
                     className="relative flex flex-col items-start py-3 h-auto md:text-lg md:py-6"
+                    data-tour="court-connector"
                   >
                     <div className="flex items-center w-full">
                       <MessageSquare className="w-5 h-5 md:w-6 md:h-6 mr-2 flex-shrink-0" />
@@ -500,7 +501,7 @@ const Dashboard = () => {
           </div>
         </div>
 
-        <div className="mb-8 space-y-6">
+        <div className="mb-8 space-y-6" data-tour="court-stats">
           <SmartMatch userId={user?.id || null} />
           <LFGNotifications />
           {user && <CourtStats userId={user.id} />}

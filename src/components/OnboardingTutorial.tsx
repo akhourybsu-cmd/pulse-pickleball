@@ -65,28 +65,28 @@ export const OnboardingTutorial = ({ userId, onComplete }: OnboardingTutorialPro
       target: '[data-tour="match-history"]',
       content: (
         <div>
+          <h3 className="font-bold mb-2">Match History</h3>
+          <p>View all your past matches, see who you played with, and track your performance over time.</p>
+        </div>
+      ),
+      placement: 'bottom',
+    },
+    {
+      target: '[data-tour="court-connector"]',
+      content: (
+        <div>
           <h3 className="font-bold mb-2">Court Connector</h3>
-          <p>Post when you're looking for players or see who else is looking to play. Organize pickup games easily!</p>
+          <p>Find players near you who are looking for a game. Post when you need partners and connect with your local pickleball community.</p>
         </div>
       ),
-      placement: 'top',
+      placement: 'bottom',
     },
     {
-      target: '[data-tour="events"]',
+      target: '[data-tour="court-stats"]',
       content: (
         <div>
-          <h3 className="font-bold mb-2">Events</h3>
-          <p>Create and manage pickleball events like round robins, tournaments, or open play sessions. Track all matches for a specific event.</p>
-        </div>
-      ),
-      placement: 'top',
-    },
-    {
-      target: '[data-tour="leaderboard"]',
-      content: (
-        <div>
-          <h3 className="font-bold mb-2">Court History</h3>
-          <p>View match history by court location and see player rankings for each venue in your community.</p>
+          <h3 className="font-bold mb-2">Stats by Court</h3>
+          <p>See how you perform at different venues. Track your ratings and records at each court you play.</p>
         </div>
       ),
       placement: 'top',
@@ -96,7 +96,17 @@ export const OnboardingTutorial = ({ userId, onComplete }: OnboardingTutorialPro
       content: (
         <div>
           <h3 className="font-bold mb-2">Your Badges</h3>
-          <p>Earn badges for achievements like winning streaks, playing at different times, or reaching milestones. Collect them all!</p>
+          <p>Earn badges for achievements like winning streaks, playing consistently, or reaching milestones. Check back to collect them all!</p>
+        </div>
+      ),
+      placement: 'top',
+    },
+    {
+      target: '[data-tour="leaderboard"]',
+      content: (
+        <div>
+          <h3 className="font-bold mb-2">Court History</h3>
+          <p>View past activity at each court, see who's been playing there, and check venue-specific leaderboards.</p>
         </div>
       ),
       placement: 'top',

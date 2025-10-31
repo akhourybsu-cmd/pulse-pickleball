@@ -82,8 +82,8 @@ export default function CourtHistory() {
         </div>
 
         <div className="space-y-2">
-          <h1 className="text-4xl font-bold">Court Activity</h1>
-          <p className="text-muted-foreground">Recent activity across all courts</p>
+          <h1 className="text-4xl font-bold">Court History</h1>
+          <p className="text-muted-foreground">Past games and top performers at each court</p>
         </div>
 
         {loading ? (

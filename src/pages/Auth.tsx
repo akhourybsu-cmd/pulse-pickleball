@@ -21,7 +21,9 @@ const Auth = () => {
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
+  const [confirmEmail, setConfirmEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [showMFAChallenge, setShowMFAChallenge] = useState(false);
   const [showEmailMFA, setShowEmailMFA] = useState(false);
@@ -88,6 +90,18 @@ const Auth = () => {
           }, 100);
         }
       } else {
+        // Sign-up validation: check email and password match
+        if (email !== confirmEmail) {
+          toast.error("Email addresses do not match");
+          setLoading(false);
+          return;
+        }
+        if (password !== confirmPassword) {
+          toast.error("Passwords do not match");
+          setLoading(false);
+          return;
+        }
+
         const { error } = await supabase.auth.signUp({
           email: validationResult.data.email,
           password: validationResult.data.password,
@@ -99,8 +113,13 @@ const Auth = () => {
           },
         });
         if (error) throw error;
-        toast.success("Account created! Redirecting to dashboard...");
-        navigate("/dashboard");
+        toast.success("Account created! Please check your email to verify your account.");
+        setIsLogin(true);
+        setEmail("");
+        setConfirmEmail("");
+        setPassword("");
+        setConfirmPassword("");
+        setFullName("");
       }
     } catch (error: any) {
       toast.error(error.message || "An error occurred");
@@ -239,6 +258,24 @@ const Auth = () => {
                   />
                 </div>
 
+                {!isLogin && (
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmEmail">Confirm Email</Label>
+                    <Input
+                      id="confirmEmail"
+                      type="email"
+                      value={confirmEmail}
+                      onChange={(e) => setConfirmEmail(e.target.value)}
+                      required
+                      placeholder="your@email.com"
+                      className={confirmEmail && email !== confirmEmail ? "border-red-500" : ""}
+                    />
+                    {confirmEmail && email !== confirmEmail && (
+                      <p className="text-xs text-red-500">Email addresses must match</p>
+                    )}
+                  </div>
+                )}
+
                 <div className="space-y-2">
                   <Label htmlFor="password">Password</Label>
                   <Input
@@ -251,6 +288,25 @@ const Auth = () => {
                     minLength={6}
                   />
                 </div>
+
+                {!isLogin && (
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPassword">Confirm Password</Label>
+                    <Input
+                      id="confirmPassword"
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      required
+                      placeholder="••••••••"
+                      minLength={6}
+                      className={confirmPassword && password !== confirmPassword ? "border-red-500" : ""}
+                    />
+                    {confirmPassword && password !== confirmPassword && (
+                      <p className="text-xs text-red-500">Passwords must match</p>
+                    )}
+                  </div>
+                )}
 
                 {isLogin && (
                   <div className="text-right text-sm">

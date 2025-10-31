@@ -122,7 +122,7 @@ const ViewProfile = () => {
           <img src={logo} alt="PULSE Logo" className="h-16 w-auto" />
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            <Button variant="ghost" onClick={() => navigate("/dashboard")}>
+            <Button variant="ghost" onClick={() => navigate("/dashboard")} className="text-white hover:text-white/90">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Dashboard
             </Button>
