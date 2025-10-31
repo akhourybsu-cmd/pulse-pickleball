@@ -1676,6 +1676,41 @@ export type Database = {
         }
         Relationships: []
       }
+      user_court_prefs: {
+        Row: {
+          court_id: string
+          created_at: string
+          hidden_until: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          court_id: string
+          created_at?: string
+          hidden_until?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          court_id?: string
+          created_at?: string
+          hidden_until?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_court_prefs_court_id_fkey"
+            columns: ["court_id"]
+            isOneToOne: false
+            referencedRelation: "courts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string | null
