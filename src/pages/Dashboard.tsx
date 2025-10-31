@@ -12,7 +12,6 @@ import { CourtStats } from "@/components/CourtStats";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Footer } from "@/components/Footer";
 import { OnboardingTutorial } from "@/components/OnboardingTutorial";
-import { ActiveRoundRobinIndicator } from "@/components/ActiveRoundRobinIndicator";
 import { UnverifiedMatchesIndicator } from "@/components/UnverifiedMatchesIndicator";
 import { SmartMatch } from "@/components/court/SmartMatch";
 import { LFGNotifications } from "@/components/court/LFGNotifications";
@@ -322,7 +321,6 @@ const Dashboard = () => {
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <img src={logo} alt="PULSE Logo" className="h-16 w-auto" />
           <div className="flex items-center gap-3">
-            <ActiveRoundRobinIndicator />
             <UnverifiedMatchesIndicator />
             <Button 
               variant="outline" 
