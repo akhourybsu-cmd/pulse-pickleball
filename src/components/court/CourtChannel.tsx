@@ -104,9 +104,22 @@ export function CourtChannel({ courtId, userId }: CourtChannelProps) {
           table: 'channel_messages',
           filter: `channel_id=eq.${channelId}`,
         },
-        (payload) => {
+        async (payload) => {
           const newMsg = payload.new as Message;
-          setMessages((prev) => [...prev, newMsg]);
+          
+          // Fetch profile data for the sender
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('full_name, display_name')
+            .eq('id', newMsg.user_id)
+            .single();
+          
+          const enrichedMsg = {
+            ...newMsg,
+            profiles: profile || undefined
+          };
+          
+          setMessages((prev) => [...prev, enrichedMsg]);
         }
       )
       .subscribe();
