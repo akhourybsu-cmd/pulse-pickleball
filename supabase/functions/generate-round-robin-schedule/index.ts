@@ -418,10 +418,12 @@ function generateRoundRobinSchedule(
     // Assign byes
     if (resting.length > 0) {
       const byePlayers = assignByes(resting, metrics.byesPerRound, stats, rng);
-      byePlayers.forEach((playerId) => {
+      byePlayers.forEach((playerId, byeIndex) => {
+        // Use courts beyond the actual courts for bye matches to avoid conflicts
+        const byeCourtNo = metrics.totalCourts + byeIndex + 1;
         matches.push({
           round_no: round,
-          court_no: 1, // Use court 1 for bye matches (court_no must be >= 1)
+          court_no: byeCourtNo,
           a1_player_id: playerId,
           a2_player_id: null,
           b1_player_id: null,
