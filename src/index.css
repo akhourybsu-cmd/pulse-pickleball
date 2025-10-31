@@ -157,6 +157,15 @@ body {
   100% { box-shadow: 0 0 0 20px rgba(169, 207, 70, 0); }
 }
 
+@keyframes pulseScoreGlow {
+  0%, 100% { 
+    box-shadow: 0 0 30px rgba(169, 207, 70, 0.15), 0 0 60px rgba(169, 207, 70, 0.1);
+  }
+  50% { 
+    box-shadow: 0 0 40px rgba(169, 207, 70, 0.25), 0 0 80px rgba(169, 207, 70, 0.15);
+  }
+}
+
 .ecg-pulse path {
   stroke-dasharray: 100;
   animation: ecg-sweep 2.5s ease-in-out infinite;
@@ -187,6 +196,10 @@ body {
   height: 2px;
   background: #A9CF46;
   animation: pulseGlow 1.8s ease-in-out infinite;
+}
+
+.pulse-score-focal {
+  animation: pulseScoreGlow 3s ease-in-out infinite;
 }
 
 /* Kiosk Mode Animations */

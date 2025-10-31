@@ -407,7 +407,7 @@ const Dashboard = () => {
         </div>
 
         <div className="grid gap-4 md:gap-6 mb-6 md:mb-8">
-          <Card className="border-2 border-primary shadow-[var(--shadow-glow)] pulse-glow" data-tour="pulse-score">
+          <Card className="border-2 border-primary pulse-score-focal" data-tour="pulse-score">
             <CardHeader className="pb-3 md:pb-4">
               <CardDescription className="md:text-base">Live Pulse Score</CardDescription>
               <CardTitle className="flex items-center gap-3">
