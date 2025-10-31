@@ -175,13 +175,13 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/30 via-primary/10 to-secondary/30 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-secondary p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <img 
             src={pulseLogo} 
             alt="PULSE" 
-            className="h-16 md:h-20 w-auto mx-auto mb-2"
+            className="h-24 md:h-32 w-auto mx-auto mb-2"
           />
           <p className="text-muted-foreground">
             Pickleball Universal Level & Skill Estimator
