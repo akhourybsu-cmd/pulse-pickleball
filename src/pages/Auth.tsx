@@ -181,7 +181,7 @@ const Auth = () => {
           <img 
             src={pulseLogo} 
             alt="PULSE" 
-            className="h-32 md:h-40 w-auto mx-auto"
+            className="h-48 md:h-60 w-auto mx-auto"
           />
         </div>
 
