@@ -15,7 +15,7 @@ const Index = () => {
       <nav className="sticky top-0 z-50 border-b bg-secondary/95 backdrop-blur-sm">
         <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4 flex items-center justify-between">
           <Link to="/dashboard">
-            <img src={logo} alt="PULSE Logo" className="h-12 sm:h-16 w-auto cursor-pointer hover:opacity-80 transition-opacity" />
+            <img src={logo} alt="PULSE Logo" className="h-[67px] sm:h-[90px] w-auto cursor-pointer hover:opacity-80 transition-opacity" />
           </Link>
           <div className="flex items-center gap-1.5 sm:gap-2">
             <ThemeToggle />
