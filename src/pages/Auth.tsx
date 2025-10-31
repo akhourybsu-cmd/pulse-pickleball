@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -178,11 +178,13 @@ const Auth = () => {
     <div className="min-h-screen flex items-start md:items-center justify-center bg-secondary p-4 pt-8 md:py-12">
       <div className="w-full max-w-md">
         <div className="text-center mb-4 md:mb-8">
-          <img 
-            src={pulseLogo} 
-            alt="PULSE" 
-            className="h-48 md:h-60 w-auto mx-auto"
-          />
+          <Link to="/">
+            <img 
+              src={pulseLogo} 
+              alt="PULSE" 
+              className="h-48 md:h-60 w-auto mx-auto cursor-pointer hover:opacity-80 transition-opacity"
+            />
+          </Link>
         </div>
 
         <Card>
