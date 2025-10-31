@@ -258,7 +258,7 @@ const DemoTour = () => {
 
         </div>
 
-        <div className="grid gap-4 md:gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
+        <div className="grid gap-4 md:gap-6 mb-8">
           <Button 
             size="lg" 
             variant="outline"
@@ -268,25 +268,25 @@ const DemoTour = () => {
             Organize a Round Robin Event
           </Button>
 
+          <div className="grid gap-4 md:gap-6 md:grid-cols-2">
+            <Button 
+              size="lg" 
+              variant="outline"
+              className="md:text-lg md:py-6 cursor-default"
+            >
+              <UserIcon className="w-5 h-5 md:w-6 md:h-6 mr-2" />
+              Edit Profile
+            </Button>
 
-          <Button 
-            size="lg" 
-            variant="outline"
-            className="md:text-lg md:py-6 cursor-default"
-          >
-            <MessageSquare className="w-5 h-5 md:w-6 md:h-6 mr-2" />
-            Court Connector
-          </Button>
-
-          <Button 
-            size="lg" 
-            variant="outline"
-            className="md:text-lg md:py-6 cursor-default"
-          >
-            <UserIcon className="w-5 h-5 md:w-6 md:h-6 mr-2" />
-            Edit Profile
-          </Button>
-
+            <Button 
+              size="lg" 
+              variant="outline"
+              className="md:text-lg md:py-6 cursor-default"
+            >
+              <MessageSquare className="w-5 h-5 md:w-6 md:h-6 mr-2" />
+              Court Connector
+            </Button>
+          </div>
         </div>
 
         <Card className="bg-primary/5 border-primary">
