@@ -102,11 +102,17 @@ export default function RoundRobinKiosk() {
         console.log('Kiosk: Schedule channel status', status);
       });
 
+    // Auto-refresh every 5 seconds for immediate score updates
+    const refreshInterval = setInterval(() => {
+      fetchEventData();
+    }, 5000);
+
     return () => {
       supabase.removeChannel(eventsChannel);
       supabase.removeChannel(scheduleChannel);
+      clearInterval(refreshInterval);
     };
-  }, [eventId]); // Changed dependency to eventId
+  }, [eventId]);
 
   const fetchEventData = async () => {
     if (!eventId) {

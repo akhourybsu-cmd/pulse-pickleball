@@ -190,10 +190,10 @@ export default function Kiosk() {
 
     const channel = setupChannel();
 
-    // Auto-refresh every 60 seconds as fallback
+    // Auto-refresh every 5 seconds for immediate score updates
     const refreshInterval = setInterval(() => {
       fetchSessionData();
-    }, 60000);
+    }, 5000);
 
     return () => {
       supabase.removeChannel(channel);
