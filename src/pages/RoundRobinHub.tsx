@@ -134,7 +134,7 @@ export default function RoundRobinHub() {
           <div className="flex items-center justify-between gap-2 sm:gap-4">
             <div className="flex items-center gap-2">
               <h1 className="text-xl sm:text-2xl font-bold whitespace-nowrap text-white">Round Robin by</h1>
-              <img src={logo} alt="PULSE" className="h-[56px] w-auto" />
+              <img src={logo} alt="PULSE" className="h-[67px] w-auto" />
             </div>
             <BackToDashboard className="text-white hover:text-white/80" />
           </div>
