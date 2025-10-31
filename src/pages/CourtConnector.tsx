@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Users, EyeOff, Eye, MapPin, Plus, Trash2 } from "lucide-react";
+import { Users, EyeOff, Eye, MapPin, Plus, Trash2, LogOut, User as UserIcon } from "lucide-react";
+import logo from "@/assets/pulse-logo-new.png";
 import {
   Dialog,
   DialogContent,
@@ -247,25 +248,43 @@ export default function CourtConnector() {
      court.state.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    navigate("/");
+  };
+
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8">
-      <div className="max-w-7xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
-          <Button
-            variant="ghost"
-            onClick={() => navigate("/dashboard")}
-            className="gap-2"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Dashboard
-          </Button>
-          <ThemeToggle />
+    <div className="min-h-screen bg-background">
+      <nav className="border-b bg-secondary">
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+          <Link to="/dashboard">
+            <img src={logo} alt="PULSE Logo" className="h-[90px] w-auto cursor-pointer hover:opacity-80 transition-opacity" />
+          </Link>
+          <div className="flex items-center gap-3">
+            <Button 
+              variant="outline" 
+              size="icon" 
+              onClick={() => navigate(`/profile/${currentUserId}`)} 
+              className="rounded-full"
+            >
+              <UserIcon className="h-[1.2rem] w-[1.2rem]" />
+              <span className="sr-only">View Profile</span>
+            </Button>
+            <ThemeToggle />
+            <Button variant="secondary" size="sm" onClick={handleSignOut}>
+              <LogOut className="w-4 h-4 mr-2" />
+              Sign Out
+            </Button>
+          </div>
         </div>
+      </nav>
+
+      <div className="container mx-auto px-4 py-6 space-y-6">
 
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="space-y-2">
-            <h1 className="text-4xl font-bold">Court Connector</h1>
-            <p className="text-muted-foreground">Select a court to view games and connect with players</p>
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold">Court Connector</h1>
+            <p className="text-muted-foreground md:text-lg">Select a court to view games and connect with players</p>
           </div>
           <div className="flex gap-2">
             <Dialog open={addCourtDialogOpen} onOpenChange={setAddCourtDialogOpen}>
