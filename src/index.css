@@ -55,48 +55,48 @@ All colors MUST be HSL.
   }
 
   .dark {
-    --background: 194 55% 30%;
-    --foreground: 74 60% 85%;
+    --background: 184 75% 11%;
+    --foreground: 0 0% 100%;
 
-    --card: 194 55% 25%;
-    --card-foreground: 74 60% 85%;
+    --card: 184 70% 16%;
+    --card-foreground: 0 0% 100%;
 
-    --popover: 194 55% 25%;
-    --popover-foreground: 74 60% 85%;
+    --popover: 184 70% 16%;
+    --popover-foreground: 0 0% 100%;
 
-    --primary: 74 65% 52%;
-    --primary-foreground: 194 60% 15%;
+    --primary: 74 65% 58%;
+    --primary-foreground: 184 60% 12%;
 
-    --secondary: 194 50% 20%;
-    --secondary-foreground: 74 60% 85%;
+    --secondary: 184 66% 13%;
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 194 40% 35%;
-    --muted-foreground: 74 30% 70%;
+    --muted: 184 40% 35%;
+    --muted-foreground: 180 30% 72%;
 
-    --accent: 74 65% 52%;
-    --accent-foreground: 194 60% 15%;
+    --accent: 74 65% 58%;
+    --accent-foreground: 184 60% 12%;
 
     --destructive: 0 62.8% 50%;
-    --destructive-foreground: 74 60% 85%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 194 40% 40%;
-    --input: 194 40% 40%;
-    --ring: 74 65% 52%;
+    --border: 74 65% 58% / 0.3;
+    --input: 184 40% 40%;
+    --ring: 74 65% 58%;
 
-    --gradient-hero: linear-gradient(135deg, hsl(194 60% 20%), hsl(74 65% 52%));
-    --gradient-card: linear-gradient(180deg, hsl(194 55% 25%), hsl(194 55% 22%));
+    --gradient-hero: linear-gradient(180deg, hsl(184 66% 13%), hsl(184 75% 11%));
+    --gradient-card: linear-gradient(180deg, hsl(184 70% 16%), hsl(184 70% 14%));
     
-    --shadow-glow: 0 0 40px hsl(74 65% 52% / 0.5);
-    --shadow-card: 0 4px 20px hsl(194 60% 10% / 0.6);
+    --shadow-glow: 0 0 14px hsl(74 65% 58% / 0.6);
+    --shadow-card: 0 4px 20px hsl(184 60% 10% / 0.6);
 
-    --sidebar-background: 194 55% 30%;
-    --sidebar-foreground: 74 60% 85%;
-    --sidebar-primary: 74 65% 52%;
-    --sidebar-primary-foreground: 194 60% 15%;
-    --sidebar-accent: 194 50% 35%;
-    --sidebar-accent-foreground: 74 60% 85%;
-    --sidebar-border: 194 40% 40%;
-    --sidebar-ring: 74 65% 52%;
+    --sidebar-background: 184 75% 11%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 74 65% 58%;
+    --sidebar-primary-foreground: 184 60% 12%;
+    --sidebar-accent: 184 70% 16%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 74 65% 58% / 0.3;
+    --sidebar-ring: 74 65% 58%;
   }
 }
 
@@ -142,6 +142,56 @@ body {
   }
 }
 
+@keyframes pulseGlow {
+  0%, 100% { 
+    box-shadow: 0 0 0 rgba(169, 207, 70, 0);
+  }
+  50% { 
+    box-shadow: 0 0 14px rgba(169, 207, 70, 0.6);
+  }
+}
+
+@keyframes pulseBlink {
+  0%, 90%, 100% { 
+    opacity: 1;
+  }
+  95% { 
+    opacity: 0.7;
+  }
+}
+
+@keyframes pulseRipple {
+  0% { 
+    box-shadow: 0 0 0 0 rgba(169, 207, 70, 0.3);
+  }
+  100% { 
+    box-shadow: 0 0 0 20px rgba(169, 207, 70, 0);
+  }
+}
+
+@keyframes underlinePulse {
+  0% { 
+    width: 0;
+    opacity: 0;
+  }
+  40% { 
+    width: 100%;
+    opacity: 1;
+  }
+  100% { 
+    opacity: 0;
+  }
+}
+
+@keyframes moveWave {
+  from { 
+    background-position-x: 0;
+  }
+  to { 
+    background-position-x: 1200px;
+  }
+}
+
 .ecg-pulse path {
   stroke-dasharray: 100;
   animation: ecg-sweep 2.5s ease-in-out infinite;
@@ -153,6 +203,46 @@ body {
 
 .animate-pulse-glow {
   animation: banner-glow 2s ease-in-out infinite;
+}
+
+.pulse-glow-button {
+  animation: pulseGlow 2.5s ease-in-out infinite;
+}
+
+.logo-pulse {
+  animation: pulseBlink 15s linear infinite;
+}
+
+.button-ripple:hover {
+  animation: pulseRipple 1s ease-out;
+}
+
+.headline-underline {
+  display: block;
+  height: 2px;
+  background: hsl(var(--primary));
+  animation: underlinePulse 1.2s ease-out;
+}
+
+.pulse-wave {
+  background: url('data:image/svg+xml,<svg width="1200" height="100" xmlns="http://www.w3.org/2000/svg"><path d="M 0 50 Q 150 20 300 50 T 600 50 T 900 50 T 1200 50" stroke="rgba(169,207,70,0.1)" stroke-width="2" fill="none"/></svg>') repeat-x;
+  background-size: 1200px auto;
+  animation: moveWave 25s linear infinite;
+  opacity: 0.05;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.pulse-score-line {
+  width: 20px;
+  height: 2px;
+  background: hsl(var(--primary));
+  animation: pulseGlow 1.8s ease-in-out infinite;
 }
 
 /* Kiosk Mode Animations */
