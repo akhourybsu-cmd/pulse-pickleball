@@ -65,6 +65,7 @@ interface Event {
   updated_at: string;
   completed_at: string | null;
   voided: boolean;
+  organizer_pin: string | null;
 }
 
 interface Player {
@@ -1429,10 +1430,17 @@ export default function RoundRobinDetail() {
             <h2 className="text-xl sm:text-2xl font-bold text-foreground">{event.name}</h2>
             {event.voided && <Badge variant="destructive">Voided</Badge>}
           </div>
-          <p className="text-sm text-muted-foreground">
-            {new Date(event.date).toLocaleDateString()}
-            {event.location && ` • ${event.location}`}
-          </p>
+          <div className="flex items-center gap-3 flex-wrap">
+            <p className="text-sm text-muted-foreground">
+              {new Date(event.date).toLocaleDateString()}
+              {event.location && ` • ${event.location}`}
+            </p>
+            {isOrganizer && event.organizer_pin && (
+              <Badge variant="secondary" className="text-sm font-mono">
+                PIN: {event.organizer_pin}
+              </Badge>
+            )}
+          </div>
         </div>
       </div>
 
