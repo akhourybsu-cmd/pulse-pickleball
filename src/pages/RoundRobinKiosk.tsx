@@ -270,6 +270,18 @@ export default function RoundRobinKiosk() {
     );
   }
 
+  if (event.status === "draft") {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[hsl(var(--primary))] to-[hsl(var(--primary))]/80 flex items-center justify-center">
+        <div className="text-center text-white">
+          <h1 className="text-4xl font-bold mb-4">{event.name}</h1>
+          <p className="text-2xl">Event has not started yet</p>
+          <p className="text-xl mt-2 opacity-80">Please wait for the organizer to start the event</p>
+        </div>
+      </div>
+    );
+  }
+
   const currentRound = event.current_round || 1;
   const allFinal = currentRoundMatches.every(m => m.team1_score !== null && m.team2_score !== null);
   const isLastRound = currentRound >= event.num_rounds;
