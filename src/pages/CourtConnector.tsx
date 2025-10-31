@@ -5,14 +5,17 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Users, EyeOff, Eye, MapPin } from "lucide-react";
+import { ArrowLeft, Users, EyeOff, Eye, MapPin, Plus, Trash2 } from "lucide-react";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 
 interface Court {
   id: string;
@@ -22,21 +25,27 @@ interface Court {
 }
 
 interface CourtPref {
-  hidden_until: string | null;
+  id: string;
+  court_id: string;
+  hidden: boolean;
 }
 
 interface CourtWithLFGCount extends Court {
   lfgCount: number;
   isHidden: boolean;
+  isAdded: boolean;
 }
 
 export default function CourtConnector() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [courts, setCourts] = useState<CourtWithLFGCount[]>([]);
+  const [allCourts, setAllCourts] = useState<Court[]>([]);
   const [showHidden, setShowHidden] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [addCourtDialogOpen, setAddCourtDialogOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     checkUser();
@@ -72,8 +81,10 @@ export default function CourtConnector() {
       return;
     }
 
+    setAllCourts(courtsData || []);
+
     // Fetch user preferences
-    const { data: prefsData } = await (supabase as any)
+    const { data: prefsData } = await supabase
       .from("user_court_prefs")
       .select("*")
       .eq("user_id", currentUserId!);
@@ -81,7 +92,9 @@ export default function CourtConnector() {
     const prefsMap = new Map<string, CourtPref>();
     prefsData?.forEach((pref: any) => {
       prefsMap.set(pref.court_id, {
-        hidden_until: pref.hidden_until,
+        id: pref.id,
+        court_id: pref.court_id,
+        hidden: pref.hidden_until !== null,
       });
     });
 
@@ -96,42 +109,62 @@ export default function CourtConnector() {
       lfgCountMap.set(lfg.court_id, (lfgCountMap.get(lfg.court_id) || 0) + 1);
     });
 
-    // Build courts with LFG count and hidden status
-    const courtsWithData: CourtWithLFGCount[] = courtsData?.map((court) => {
-      const pref = prefsMap.get(court.id);
-      const isHidden = pref?.hidden_until ? new Date(pref.hidden_until) > new Date() : false;
-      
-      return {
-        ...court,
-        lfgCount: lfgCountMap.get(court.id) || 0,
-        isHidden,
-      };
-    }) || [];
+    // Build courts with LFG count and status - only show courts that user has added
+    const courtsWithData: CourtWithLFGCount[] = courtsData
+      ?.filter((court) => prefsMap.has(court.id))
+      .map((court) => {
+        const pref = prefsMap.get(court.id)!;
+        
+        return {
+          ...court,
+          lfgCount: lfgCountMap.get(court.id) || 0,
+          isHidden: pref.hidden,
+          isAdded: true,
+        };
+      }) || [];
 
     setCourts(courtsWithData);
     setLoading(false);
   };
 
-  const handleHideCourt = async (courtId: string, duration: '7' | '30' | '90') => {
+  const handleAddCourt = async (courtId: string) => {
     if (!currentUserId) return;
 
-    const days = parseInt(duration);
-    const date = new Date();
-    date.setDate(date.getDate() + days);
-    const hiddenUntil = date.toISOString();
-
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from("user_court_prefs")
-      .upsert(
-        {
-          user_id: currentUserId,
-          court_id: courtId,
-          hidden_until: hiddenUntil,
-        },
-        {
-          onConflict: 'user_id,court_id'
-        }
-      );
+      .insert({
+        user_id: currentUserId,
+        court_id: courtId,
+        hidden_until: null,
+      });
+
+    if (error) {
+      console.error('Add court error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add court",
+        variant: "destructive",
+      });
+    } else {
+      const courtName = allCourts.find(c => c.id === courtId)?.name;
+      toast({
+        title: "Court Added",
+        description: `${courtName} has been added to your courts`,
+      });
+      setAddCourtDialogOpen(false);
+      setSearchQuery("");
+      fetchCourtsWithLFGCount();
+    }
+  };
+
+  const handleHideCourt = async (courtId: string) => {
+    if (!currentUserId) return;
+
+    const { error } = await supabase
+      .from("user_court_prefs")
+      .update({ hidden_until: new Date().toISOString() })
+      .eq("user_id", currentUserId)
+      .eq("court_id", courtId);
 
     if (error) {
       console.error('Hide error:', error);
@@ -144,7 +177,7 @@ export default function CourtConnector() {
       const courtName = courts.find(c => c.id === courtId)?.name;
       toast({
         title: "Court Hidden",
-        description: `${courtName} will be hidden for ${duration} days`,
+        description: `${courtName} has been hidden`,
       });
       fetchCourtsWithLFGCount();
     }
@@ -153,18 +186,11 @@ export default function CourtConnector() {
   const handleUnhideCourt = async (courtId: string) => {
     if (!currentUserId) return;
 
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from("user_court_prefs")
-      .upsert(
-        {
-          user_id: currentUserId,
-          court_id: courtId,
-          hidden_until: null,
-        },
-        {
-          onConflict: 'user_id,court_id'
-        }
-      );
+      .update({ hidden_until: null })
+      .eq("user_id", currentUserId)
+      .eq("court_id", courtId);
 
     if (error) {
       console.error('Unhide error:', error);
@@ -182,8 +208,44 @@ export default function CourtConnector() {
     }
   };
 
+  const handleRemoveCourt = async (courtId: string) => {
+    if (!currentUserId) return;
+
+    const { error } = await supabase
+      .from("user_court_prefs")
+      .delete()
+      .eq("user_id", currentUserId)
+      .eq("court_id", courtId);
+
+    if (error) {
+      console.error('Remove court error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to remove court",
+        variant: "destructive",
+      });
+    } else {
+      const courtName = courts.find(c => c.id === courtId)?.name;
+      toast({
+        title: "Court Removed",
+        description: `${courtName} has been removed from your courts`,
+      });
+      fetchCourtsWithLFGCount();
+    }
+  };
+
   const visibleCourts = showHidden ? courts : courts.filter(c => !c.isHidden);
   const hiddenCount = courts.filter(c => c.isHidden).length;
+
+  // Filter available courts (not yet added)
+  const addedCourtIds = new Set(courts.map(c => c.id));
+  const availableCourts = allCourts.filter(court => 
+    !addedCourtIds.has(court.id) &&
+    (searchQuery === "" || 
+     court.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+     court.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
+     court.state.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
@@ -206,6 +268,56 @@ export default function CourtConnector() {
             <p className="text-muted-foreground">Select a court to view games and connect with players</p>
           </div>
           <div className="flex gap-2">
+            <Dialog open={addCourtDialogOpen} onOpenChange={setAddCourtDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="gap-2">
+                  <Plus className="w-4 h-4" />
+                  Add Court
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto bg-background z-50">
+                <DialogHeader>
+                  <DialogTitle>Add a Court</DialogTitle>
+                  <DialogDescription>
+                    Search and add courts to your list
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <Input
+                    placeholder="Search courts by name, city, or state..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                  <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+                    {availableCourts.length > 0 ? (
+                      availableCourts.map((court) => (
+                        <Card key={court.id} className="cursor-pointer hover:bg-accent/50 transition-colors">
+                          <CardHeader className="p-4" onClick={() => handleAddCourt(court.id)}>
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <CardTitle className="text-lg">{court.name}</CardTitle>
+                                <CardDescription className="flex items-center gap-1 mt-1">
+                                  <MapPin className="w-3 h-3" />
+                                  {court.city}, {court.state}
+                                </CardDescription>
+                              </div>
+                              <Button size="sm" variant="outline" className="gap-2">
+                                <Plus className="w-4 h-4" />
+                                Add
+                              </Button>
+                            </div>
+                          </CardHeader>
+                        </Card>
+                      ))
+                    ) : (
+                      <p className="text-center text-muted-foreground py-8">
+                        {searchQuery ? "No courts found matching your search" : "All courts have been added"}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
             {hiddenCount > 0 && (
               <Button 
                 onClick={() => setShowHidden(!showHidden)} 
@@ -241,36 +353,50 @@ export default function CourtConnector() {
                         {court.city}, {court.state}
                       </CardDescription>
                     </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                    <Dialog>
+                      <DialogTrigger asChild onClick={(e) => e.stopPropagation()}>
                         <Button variant="ghost" size="icon" className="h-8 w-8">
                           <EyeOff className="w-4 h-4" />
                         </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        {court.isHidden ? (
-                          <DropdownMenuItem onClick={() => handleUnhideCourt(court.id)}>
-                            <Eye className="w-4 h-4 mr-2" />
-                            Unhide Court
-                          </DropdownMenuItem>
-                        ) : (
-                          <>
-                            <DropdownMenuItem onClick={() => handleHideCourt(court.id, '7')}>
-                              <EyeOff className="w-4 h-4 mr-2" />
-                              Hide for 7 days
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleHideCourt(court.id, '30')}>
-                              <EyeOff className="w-4 h-4 mr-2" />
-                              Hide for 30 days
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleHideCourt(court.id, '90')}>
-                              <EyeOff className="w-4 h-4 mr-2" />
-                              Hide for 90 days
-                            </DropdownMenuItem>
-                          </>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                      </DialogTrigger>
+                      <DialogContent className="bg-background z-50">
+                        <DialogHeader>
+                          <DialogTitle>Court Actions</DialogTitle>
+                          <DialogDescription>
+                            Manage {court.name}
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-2">
+                          {court.isHidden ? (
+                            <Button 
+                              onClick={() => handleUnhideCourt(court.id)} 
+                              variant="outline" 
+                              className="w-full justify-start gap-2"
+                            >
+                              <Eye className="w-4 h-4" />
+                              Unhide Court
+                            </Button>
+                          ) : (
+                            <Button 
+                              onClick={() => handleHideCourt(court.id)} 
+                              variant="outline" 
+                              className="w-full justify-start gap-2"
+                            >
+                              <EyeOff className="w-4 h-4" />
+                              Hide Court
+                            </Button>
+                          )}
+                          <Button 
+                            onClick={() => handleRemoveCourt(court.id)} 
+                            variant="destructive" 
+                            className="w-full justify-start gap-2"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            Remove Court
+                          </Button>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
                   </div>
                 </CardHeader>
                 <CardContent onClick={() => navigate(`/court/board/${court.id}`)}>
@@ -292,10 +418,14 @@ export default function CourtConnector() {
           </div>
         ) : (
           <Card>
-            <CardContent className="text-center py-12">
+            <CardContent className="text-center py-12 space-y-4">
               <p className="text-muted-foreground">
-                {showHidden ? 'All courts are hidden' : 'No courts available'}
+                {showHidden ? 'All courts are hidden' : 'No courts added yet'}
               </p>
+              <Button onClick={() => setAddCourtDialogOpen(true)} className="gap-2">
+                <Plus className="w-4 h-4" />
+                Add Your First Court
+              </Button>
             </CardContent>
           </Card>
         )}
