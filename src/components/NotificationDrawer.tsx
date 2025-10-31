@@ -56,7 +56,7 @@ export function NotificationDrawer({
       {/* Drawer */}
       <div
         className={cn(
-          "fixed top-0 right-0 h-full w-[80vw] max-w-md bg-[hsl(var(--sidebar))] z-50 transition-transform duration-300 shadow-2xl",
+          "fixed top-0 right-0 h-full w-[80vw] max-w-md bg-slate-900 z-50 transition-transform duration-300 shadow-2xl",
           isOpen ? "translate-x-0" : "translate-x-full"
         )}
       >

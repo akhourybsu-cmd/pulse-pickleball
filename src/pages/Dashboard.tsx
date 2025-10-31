@@ -301,9 +301,17 @@ const Dashboard = () => {
   };
 
   const handleSelectNotification = (id: string) => {
-    setNotifications(prev => 
-      prev.map(n => n.id === id ? { ...n, unread: false } : n)
-    );
+    const notification = notifications.find(n => n.id === id);
+    if (notification) {
+      // Mark as read
+      setNotifications(prev => 
+        prev.map(n => n.id === id ? { ...n, unread: false } : n)
+      );
+      // Close drawer
+      setIsDrawerOpen(false);
+      // Navigate to the link
+      navigate(notification.link);
+    }
   };
 
   const handleShare = async () => {
