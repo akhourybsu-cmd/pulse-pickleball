@@ -47,6 +47,48 @@ export type Database = {
         }
         Relationships: []
       }
+      channel_messages: {
+        Row: {
+          body: string
+          channel_id: string
+          created_at: string
+          id: number
+          thread_id: number | null
+          user_id: string
+        }
+        Insert: {
+          body: string
+          channel_id: string
+          created_at?: string
+          id?: number
+          thread_id?: number | null
+          user_id: string
+        }
+        Update: {
+          body?: string
+          channel_id?: string
+          created_at?: string
+          id?: number
+          thread_id?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channel_messages_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "court_channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "channel_messages_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "channel_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       check_ins: {
         Row: {
           checked_in_at: string | null
@@ -161,6 +203,32 @@ export type Database = {
             columns: ["resolved_by"]
             isOneToOne: false
             referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      court_channels: {
+        Row: {
+          court_id: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          court_id: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          court_id?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "court_channels_court_id_fkey"
+            columns: ["court_id"]
+            isOneToOne: true
+            referencedRelation: "courts"
             referencedColumns: ["id"]
           },
         ]
