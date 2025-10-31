@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Calendar, Users, Trophy } from "lucide-react";
 import { toast } from "sonner";
 import { BackToDashboard } from "@/components/BackToDashboard";
-import { RoundRobinTutorial } from "@/components/RoundRobinTutorial";
+import { RoundRobinGuidedTour } from "@/components/RoundRobinGuidedTour";
 import logo from "@/assets/pulse-logo-new.png";
 
 interface RoundRobinEvent {
@@ -138,7 +138,7 @@ export default function RoundRobinHub() {
               <img src={logo} alt="PULSE" className="h-[67px] w-auto" />
             </div>
             <div className="flex items-center gap-2">
-              <RoundRobinTutorial />
+              <RoundRobinGuidedTour />
               <BackToDashboard className="text-white hover:text-white/80" />
             </div>
           </div>
@@ -158,16 +158,18 @@ export default function RoundRobinHub() {
                 <CardContent className="flex flex-col items-center justify-center py-12">
                   <Trophy className="h-12 w-12 text-muted-foreground mb-4" />
                   <p className="text-muted-foreground mb-4">No events yet</p>
-                  <Button onClick={() => navigate("/round-robin/create")}>
+                  <Button onClick={() => navigate("/round-robin/create")} data-tour="create-event-btn">
                     <Plus className="h-4 w-4 mr-2" />
                     Create Your First Event
                   </Button>
                 </CardContent>
               </Card>
             ) : (
-              myEvents.map((event) => (
-                <EventCard key={event.id} event={event} isOrganizer={true} />
-              ))
+              <div data-tour="upcoming-events">
+                {myEvents.map((event) => (
+                  <EventCard key={event.id} event={event} isOrganizer={true} />
+                ))}
+              </div>
             )}
           </TabsContent>
 
@@ -180,9 +182,11 @@ export default function RoundRobinHub() {
                 </CardContent>
               </Card>
             ) : (
-              participatingEvents.map((event) => (
-                <EventCard key={event.id} event={event} isOrganizer={false} />
-              ))
+              <div data-tour="past-events">
+                {participatingEvents.map((event) => (
+                  <EventCard key={event.id} event={event} isOrganizer={false} />
+                ))}
+              </div>
             )}
           </TabsContent>
         </Tabs>
