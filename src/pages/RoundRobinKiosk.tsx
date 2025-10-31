@@ -74,11 +74,14 @@ export default function RoundRobinKiosk() {
           table: 'round_robin_events',
           filter: `id=eq.${eventId}`,
         },
-        () => {
+        (payload) => {
+          console.log('Kiosk: Event changed', payload);
           fetchEventData();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Kiosk: Events channel status', status);
+      });
 
     const scheduleChannel = supabase
       .channel(`kiosk-schedule-${eventId}`)
@@ -90,11 +93,14 @@ export default function RoundRobinKiosk() {
           table: 'round_robin_schedule',
           filter: `event_id=eq.${eventId}`,
         },
-        () => {
+        (payload) => {
+          console.log('Kiosk: Schedule changed', payload);
           fetchEventData();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Kiosk: Schedule channel status', status);
+      });
 
     return () => {
       supabase.removeChannel(eventsChannel);
