@@ -16,6 +16,8 @@ import { UnverifiedMatchesIndicator } from "@/components/UnverifiedMatchesIndica
 import { SmartMatch } from "@/components/court/SmartMatch";
 import { LFGNotifications } from "@/components/court/LFGNotifications";
 import { MFAPrompt } from "@/components/auth/MFAPrompt";
+import { NotificationBell } from "@/components/NotificationBell";
+import { NotificationDrawer, Notification } from "@/components/NotificationDrawer";
 
 interface Profile {
   id: string;
@@ -41,6 +43,33 @@ const Dashboard = () => {
   const [hasNewParticipants, setHasNewParticipants] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const navigate = useNavigate();
+
+  // Notification state
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([
+    {
+      id: "1",
+      type: "match",
+      title: "Match vs John / Alex",
+      message: "Awaiting your confirmation",
+      time: "5m ago",
+      cta: "Review Match →",
+      link: "/pending-matches",
+      unread: true,
+    },
+    {
+      id: "2",
+      type: "lfg",
+      title: "Attleboro YMCA LFG",
+      message: "\"Hey I'm free at 5 PM — want to run games?\"",
+      time: "12m ago",
+      cta: "View Conversation →",
+      link: "/court-connector",
+      unread: true,
+    },
+  ]);
+
+  const unreadCount = notifications.filter(n => n.unread).length;
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -263,6 +292,19 @@ const Dashboard = () => {
     navigate("/");
   };
 
+  const handleClearAll = () => {
+    setNotifications([]);
+  };
+
+  const handleClearOne = (id: string) => {
+    setNotifications(prev => prev.filter(n => n.id !== id));
+  };
+
+  const handleSelectNotification = (id: string) => {
+    setNotifications(prev => 
+      prev.map(n => n.id === id ? { ...n, unread: false } : n)
+    );
+  };
 
   const handleShare = async () => {
     const shareData = {
@@ -335,6 +377,10 @@ const Dashboard = () => {
               <span className="sr-only">View Profile</span>
             </Button>
             <ThemeToggle />
+            <NotificationBell 
+              unreadCount={unreadCount}
+              onOpen={() => setIsDrawerOpen(true)}
+            />
             <Button variant="secondary" size="sm" onClick={handleSignOut}>
               <LogOut className="w-4 h-4 mr-2" />
               Sign Out
@@ -608,6 +654,15 @@ const Dashboard = () => {
           </div>
         )}
       </div>
+
+      <NotificationDrawer
+        isOpen={isDrawerOpen}
+        notifications={notifications}
+        onClose={() => setIsDrawerOpen(false)}
+        onClearAll={handleClearAll}
+        onClearOne={handleClearOne}
+        onSelectNotification={handleSelectNotification}
+      />
 
       <Footer />
     </div>
