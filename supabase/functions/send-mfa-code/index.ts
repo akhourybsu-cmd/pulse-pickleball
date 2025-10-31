@@ -70,8 +70,11 @@ const sendEmail = async (to: string, code: string): Promise<void> => {
 
   if (!response.ok) {
     const error = await response.text();
+    console.error("Resend API error:", error);
     throw new Error(`Failed to send email: ${error}`);
   }
+  
+  console.log("Email sent successfully via Resend");
 };
 
 const handler = async (req: Request): Promise<Response> => {
@@ -202,8 +205,9 @@ const handler = async (req: Request): Promise<Response> => {
       try {
         await sendEmail(email, code);
       } catch (emailError: any) {
+        console.error("Failed to send verification email:", emailError.message);
         return new Response(
-          JSON.stringify({ error: "Failed to send verification email" }),
+          JSON.stringify({ error: `Failed to send verification email: ${emailError.message}` }),
           {
             status: 500,
             headers: { "Content-Type": "application/json", ...corsHeaders },
