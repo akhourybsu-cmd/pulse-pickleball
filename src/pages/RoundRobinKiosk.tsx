@@ -3,14 +3,11 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CourtCard } from "@/components/kiosk/CourtCard";
-import { ScoreEntryModal } from "@/components/kiosk/ScoreEntryModal";
-import { OrganizerPinModal } from "@/components/kiosk/OrganizerPinModal";
-import { NextRoundPanel } from "@/components/kiosk/NextRoundPanel";
-import { BottomStatusRibbon } from "@/components/kiosk/BottomStatusRibbon";
+import { Card } from "@/components/ui/card";
 import { FullscreenToggleButton } from "@/components/kiosk/FullscreenToggleButton";
 import { toast } from "sonner";
-import { Radio, Lock } from "lucide-react";
+import { Radio, Lock, Clock } from "lucide-react";
+import pulseLogo from "@/assets/pulse-logo-new.png";
 
 interface Event {
   id: string;
@@ -53,13 +50,7 @@ export default function RoundRobinKiosk() {
   const [nextRoundMatches, setNextRoundMatches] = useState<ScheduleMatch[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
-  
-  // Modal states
-  const [scoreModalOpen, setScoreModalOpen] = useState(false);
-  const [selectedMatch, setSelectedMatch] = useState<ScheduleMatch | null>(null);
   const [pinModalOpen, setPinModalOpen] = useState(false);
-  const [pinAction, setPinAction] = useState<'score' | 'advance' | 'exit'>('score');
-  const [pendingScore, setPendingScore] = useState<{ scoreA: number; scoreB: number } | null>(null);
 
   // Update time every second
   useEffect(() => {
@@ -242,70 +233,13 @@ export default function RoundRobinKiosk() {
     return profile.display_name || profile.full_name || "TBD";
   };
 
-  const handleEnterScore = (match: ScheduleMatch) => {
-    setSelectedMatch(match);
-    setScoreModalOpen(true);
-  };
-
-  const handleScoreSubmit = (scoreA: number, scoreB: number) => {
-    setPendingScore({ scoreA, scoreB });
-    setScoreModalOpen(false);
-    setPinAction('score');
+  const handleExitKiosk = () => {
     setPinModalOpen(true);
   };
 
   const handlePinSuccess = async () => {
     setPinModalOpen(false);
-
-    if (pinAction === 'score' && selectedMatch && pendingScore) {
-      // Save score
-      const { error } = await supabase
-        .from("round_robin_schedule")
-        .update({
-          team1_score: pendingScore.scoreA,
-          team2_score: pendingScore.scoreB,
-        })
-        .eq("id", selectedMatch.id);
-
-      if (error) {
-        toast.error("Failed to save score");
-        console.error(error);
-      } else {
-        toast.success("Score saved successfully");
-      }
-
-      setPendingScore(null);
-      setSelectedMatch(null);
-    } else if (pinAction === 'advance') {
-      // Advance to next round
-      if (!event) return;
-      
-      const nextRound = (event.current_round || 1) + 1;
-      const { error } = await supabase
-        .from("round_robin_events")
-        .update({ current_round: nextRound })
-        .eq("id", event.id);
-
-      if (error) {
-        toast.error("Failed to advance round");
-        console.error(error);
-      } else {
-        toast.success(`Round ${nextRound} started!`);
-      }
-    } else if (pinAction === 'exit') {
-      // Exit kiosk mode
-      navigate(`/roundrobin/${eventId}`);
-    }
-  };
-
-  const handleStartNextRound = () => {
-    setPinAction('advance');
-    setPinModalOpen(true);
-  };
-
-  const handleExitKiosk = () => {
-    setPinAction('exit');
-    setPinModalOpen(true);
+    navigate(`/roundrobin/${eventId}`);
   };
 
   if (loading) {
@@ -341,25 +275,32 @@ export default function RoundRobinKiosk() {
   const isLastRound = currentRound >= event.num_rounds;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[hsl(var(--primary))] to-[hsl(var(--primary))]/80 text-white pb-24">
-      {/* Top Bar */}
+    <div className="min-h-screen bg-gradient-to-br from-[hsl(var(--primary))] to-[hsl(var(--primary))]/80 pb-24">
+      {/* Top Header Bar */}
       <div className="sticky top-0 z-40 bg-background/95 backdrop-blur shadow-lg border-b">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <h1 className="text-2xl font-bold text-foreground">{event.name}</h1>
-            <Badge variant="default" className="text-base px-3 py-1">
-              Round {currentRound} of {event.num_rounds}
+        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
+          {/* Pulse Branding */}
+          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#0B3F45] border border-white/10">
+            <img src={pulseLogo} alt="Pulse" className="h-6 w-6" />
+            <span className="text-white text-sm font-semibold whitespace-nowrap">Round Robin by Pulse</span>
+          </div>
+
+          {/* Event Name & Round */}
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <h1 className="text-xl font-bold text-foreground truncate">{event.name}</h1>
+            <Badge className="bg-[#0B3F45] text-white border border-white/20 whitespace-nowrap">
+              Current Round: {currentRound} / {event.num_rounds}
             </Badge>
           </div>
-          
-          <div className="flex items-center gap-4">
-            <Badge variant="secondary" className="text-base px-3 py-1 bg-[hsl(var(--accent))]/20">
-              <Radio className="w-4 h-4 mr-2 animate-pulse" />
-              LIVE
-            </Badge>
-            <span className="text-sm text-muted-foreground">
-              {currentTime.toLocaleTimeString()}
-            </span>
+
+          {/* LIVE Indicator */}
+          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#0B3F45] border border-[#A9CF46]/50">
+            <div className="w-2 h-2 rounded-full bg-[#A9CF46] animate-pulse-glow" />
+            <span className="text-white text-sm font-bold">LIVE</span>
+          </div>
+
+          {/* Controls */}
+          <div className="flex items-center gap-2">
             <FullscreenToggleButton />
             <Button
               onClick={handleExitKiosk}
@@ -378,98 +319,164 @@ export default function RoundRobinKiosk() {
       <div className="max-w-7xl mx-auto px-6 py-8">
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Left Panel: Current Round Courts */}
-          <div className="lg:col-span-2 space-y-6">
-            <h2 className="text-3xl font-bold">Current Round</h2>
+          <div className="lg:col-span-2 space-y-4">
+            <div className="flex items-center gap-3">
+              <h2 className="text-3xl font-bold text-white">Current Round</h2>
+              <Badge className="bg-[#0B3F45] text-white border border-white/20 text-base px-3 py-1">
+                Round {currentRound} of {event.num_rounds}
+              </Badge>
+            </div>
+            
             <div className="grid gap-4">
               {currentRoundMatches.map((match) => (
-                <CourtCard
-                  key={`${match.id}-${match.court_no}`}
-                  courtNumber={match.court_no}
-                  teamA={[
-                    getPlayerName(match.a1_profile),
-                    getPlayerName(match.a2_profile),
-                  ]}
-                  teamB={[
-                    getPlayerName(match.b1_profile),
-                    getPlayerName(match.b2_profile),
-                  ]}
-                  status={match.team1_score !== null ? "final" : "in-progress"}
-                  scoreA={match.team1_score || undefined}
-                  scoreB={match.team2_score || undefined}
-                  onEnterScore={() => handleEnterScore(match)}
-                />
+                <Card key={`${match.id}-${match.court_no}`} className="bg-white/95 backdrop-blur border-0 shadow-lg">
+                  <div className="p-6">
+                    <h3 className="text-2xl font-bold text-[#083A40] mb-4">Court {match.court_no}</h3>
+                    
+                    <div className="flex items-center justify-between gap-4">
+                      {/* Team A */}
+                      <div className="flex-1">
+                        <div className="text-lg font-semibold text-[#083A40]">
+                          {getPlayerName(match.a1_profile)}
+                        </div>
+                        <div className="text-lg font-semibold text-[#083A40]">
+                          {getPlayerName(match.a2_profile)}
+                        </div>
+                      </div>
+
+                      {/* VS / Score */}
+                      <div className="text-center min-w-[120px]">
+                        {match.team1_score !== null && match.team2_score !== null ? (
+                          <div>
+                            <div className="text-sm font-medium text-[#083A40]/60 mb-1">Final</div>
+                            <div className="text-3xl font-bold text-[#083A40]">
+                              {match.team1_score} – {match.team2_score}
+                            </div>
+                          </div>
+                        ) : (
+                          <div>
+                            <div className="text-2xl font-bold text-[#0B3F45]">VS</div>
+                            <div className="text-sm font-medium text-[#0B3F45] mt-1">In Progress</div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Team B */}
+                      <div className="flex-1 text-right">
+                        <div className="text-lg font-semibold text-[#083A40]">
+                          {getPlayerName(match.b1_profile)}
+                        </div>
+                        <div className="text-lg font-semibold text-[#083A40]">
+                          {getPlayerName(match.b2_profile)}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
               ))}
             </div>
           </div>
 
-          {/* Right Panel: Next Round Preview + Control */}
-          <div className="space-y-6">
-            <NextRoundPanel
-              nextRoundMatches={nextRoundMatches.map(m => ({
-                courtNumber: m.court_no,
-                teamA: [
-                  getPlayerName(m.a1_profile),
-                  getPlayerName(m.a2_profile),
-                ],
-                teamB: [
-                  getPlayerName(m.b1_profile),
-                  getPlayerName(m.b2_profile),
-                ],
-              }))}
-              allFinalThisRound={allFinal}
-              currentRound={currentRound}
-              totalRounds={event.num_rounds}
-              onStartNextRound={handleStartNextRound}
-              isLastRound={isLastRound}
-            />
+          {/* Right Panel: Next Round Preview + Status */}
+          <div className="space-y-4">
+            {/* Next Round Preview */}
+            {!isLastRound && nextRoundMatches.length > 0 && (
+              <Card className="bg-white/95 backdrop-blur border-0 shadow-lg">
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-xl font-bold text-[#083A40]">Round {currentRound + 1} Preview</h3>
+                    <div className="flex items-center gap-2 text-[#083A40]/60">
+                      <Clock className="w-4 h-4" />
+                      <span className="text-sm font-medium">{currentTime.toLocaleTimeString()}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    {nextRoundMatches.map((match) => (
+                      <div key={`next-${match.id}`} className="p-3 bg-[#F8FFF0] rounded-lg border border-[#0B3F45]/10">
+                        <div className="text-xs font-bold text-[#0B3F45] mb-1">C{match.court_no}</div>
+                        <div className="text-sm text-[#083A40]">
+                          {getPlayerName(match.a1_profile)} / {getPlayerName(match.a2_profile)}
+                          <span className="text-[#0B3F45] mx-2">vs</span>
+                          {getPlayerName(match.b1_profile)} / {getPlayerName(match.b2_profile)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </Card>
+            )}
+
+            {/* Round Status */}
+            <Card className="bg-white/95 backdrop-blur border-0 shadow-lg">
+              <div className="p-6">
+                <h3 className="text-xl font-bold text-[#083A40] mb-4">Round Status</h3>
+                {allFinal ? (
+                  <div className="text-center py-4">
+                    <div className="text-lg font-semibold text-[#0B3F45] mb-2">✓ All scores received</div>
+                    {!isLastRound && (
+                      <div className="text-sm text-[#083A40]/60">
+                        Organizer will advance to Round {currentRound + 1}
+                      </div>
+                    )}
+                    {isLastRound && (
+                      <div className="text-sm text-[#083A40]/60">
+                        Event Complete!
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-4">
+                    <div className="flex justify-center mb-3">
+                      <div className="w-8 h-8 border-4 border-[#0B3F45]/20 border-t-[#0B3F45] rounded-full animate-spin" />
+                    </div>
+                    <div className="text-sm text-[#083A40]/60">
+                      Waiting for all scores from Round {currentRound}...
+                    </div>
+                  </div>
+                )}
+              </div>
+            </Card>
           </div>
         </div>
       </div>
 
       {/* Bottom Status Ribbon */}
-      <BottomStatusRibbon
-        currentRound={currentRound}
-        totalRounds={event.num_rounds}
-        numCourts={event.num_courts}
-        allFinal={allFinal}
-      />
+      <div className="fixed bottom-0 left-0 right-0 bg-[#083A40]/90 backdrop-blur border-t border-white/10">
+        <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#0B3F45] border border-[#A9CF46]/50">
+              <div className="w-2 h-2 rounded-full bg-[#A9CF46] animate-pulse-glow" />
+              <span className="text-white text-sm font-bold">LIVE</span>
+            </div>
+            <span className="text-white text-sm">
+              Round {currentRound} currently live on {event.num_courts === 1 ? 'Court 1' : `Courts 1–${event.num_courts}`}
+            </span>
+          </div>
+          
+          <Badge className="bg-[#0B3F45] text-white border border-white/20">
+            Round {currentRound} of {event.num_rounds}
+          </Badge>
+        </div>
+      </div>
 
-      {/* Modals */}
-      {selectedMatch && (
-        <ScoreEntryModal
-          isOpen={scoreModalOpen}
-          onClose={() => {
-            setScoreModalOpen(false);
-            setSelectedMatch(null);
-          }}
-          onSubmit={handleScoreSubmit}
-          courtNumber={selectedMatch.court_no}
-          roundNumber={selectedMatch.round_no}
-          teamA={[
-            getPlayerName(selectedMatch.a1_profile),
-            getPlayerName(selectedMatch.a2_profile),
-          ]}
-          teamB={[
-            getPlayerName(selectedMatch.b1_profile),
-            getPlayerName(selectedMatch.b2_profile),
-          ]}
-        />
+      {/* Exit PIN Modal */}
+      {pinModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <Card className="bg-white p-6 max-w-sm mx-4">
+            <h3 className="text-xl font-bold text-[#083A40] mb-2">Exit Kiosk Mode</h3>
+            <p className="text-sm text-[#083A40]/60 mb-4">Enter organizer PIN to continue</p>
+            <div className="flex gap-2">
+              <Button onClick={() => setPinModalOpen(false)} variant="outline" className="flex-1">
+                Cancel
+              </Button>
+              <Button onClick={handlePinSuccess} className="flex-1">
+                Confirm
+              </Button>
+            </div>
+          </Card>
+        </div>
       )}
-
-      <OrganizerPinModal
-        isOpen={pinModalOpen}
-        onClose={() => setPinModalOpen(false)}
-        onSuccess={handlePinSuccess}
-        title={
-          pinAction === 'score'
-            ? "Confirm Final Score"
-            : pinAction === 'advance'
-            ? `Start Round ${currentRound + 1}`
-            : "Exit Kiosk Mode"
-        }
-        description="Enter organizer PIN to continue"
-        correctPin={event.organizer_pin}
-      />
     </div>
   );
 }
