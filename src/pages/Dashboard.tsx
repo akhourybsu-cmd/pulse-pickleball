@@ -320,7 +320,7 @@ const Dashboard = () => {
       <nav className="border-b bg-secondary">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <Link to="/dashboard">
-            <img src={logo} alt="PULSE Logo" className="h-16 w-auto cursor-pointer hover:opacity-80 transition-opacity" />
+            <img src={logo} alt="PULSE Logo" className="h-16 w-auto cursor-pointer hover:opacity-80 transition-opacity logo-pulse" />
           </Link>
           <div className="flex items-center gap-3">
             <UnverifiedMatchesIndicator />
@@ -359,7 +359,7 @@ const Dashboard = () => {
                 <Button 
                   size="lg" 
                   onClick={() => navigate("/match/new")}
-                  className="shadow-[var(--shadow-glow)] w-full md:w-auto md:text-lg md:py-6"
+                  className="shadow-[var(--shadow-glow)] w-full md:w-auto md:text-lg md:py-6 pulse-glow button-ripple"
                   data-tour="record-match"
                 >
                   <Plus className="w-5 h-5 md:w-6 md:h-6 mr-2" />
@@ -407,31 +407,14 @@ const Dashboard = () => {
         </div>
 
         <div className="grid gap-4 md:gap-6 mb-6 md:mb-8">
-          <Card className="border-2 border-primary shadow-[var(--shadow-glow)]" data-tour="pulse-score">
+          <Card className="border-2 border-primary shadow-[var(--shadow-glow)] pulse-glow" data-tour="pulse-score">
             <CardHeader className="pb-3 md:pb-4">
               <CardDescription className="md:text-base">Live Pulse Score</CardDescription>
               <CardTitle className="flex items-center gap-3">
                 <span className="text-5xl md:text-6xl lg:text-7xl font-bold text-primary pulse-score-number">
                   {profile?.current_rating?.toFixed(2) || '3.00'}
                 </span>
-                <svg 
-                  className="ecg-pulse flex-shrink-0" 
-                  width="60" 
-                  height="20" 
-                  viewBox="0 0 80 24" 
-                  fill="none" 
-                  xmlns="http://www.w3.org/2000/svg"
-                  aria-hidden="true"
-                >
-                  <path 
-                    d="M0 12 L20 12 L25 4 L30 20 L35 12 L80 12" 
-                    stroke="rgb(163, 230, 53)" 
-                    strokeWidth="2.5" 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round"
-                    pathLength="100"
-                  />
-                </svg>
+                <div className="pulse-score-line"></div>
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-0">

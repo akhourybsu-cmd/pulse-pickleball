@@ -98,7 +98,7 @@ export function RoundRobinBanner() {
   return (
     <div
       onClick={handleBannerClick}
-      className="w-full h-12 bg-gradient-to-r from-[#01333f] to-[#01555f] flex items-center justify-center cursor-pointer relative animate-pulse-glow group hover:brightness-110 transition-all"
+      className="w-full h-12 bg-gradient-to-r from-[#01333f] to-[#01555f] flex items-center justify-center cursor-pointer relative animate-pulse-glow pulse-glow group hover:brightness-110 transition-all"
     >
       <p className="text-white font-bold text-sm md:text-base">
         🟢 Round Robin Match In Progress — Click to View Games
