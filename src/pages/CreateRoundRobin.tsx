@@ -147,10 +147,10 @@ export default function CreateRoundRobin() {
     <div className="min-h-screen bg-background pb-20">
       <header className="sticky top-0 z-10 bg-secondary border-b">
         <div className="container mx-auto px-4 py-3 sm:py-4">
-          <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex items-center justify-between gap-2 sm:gap-4">
             <BackToDashboard />
             <div className="flex items-center gap-2">
-              <h1 className="text-xl sm:text-2xl font-bold whitespace-nowrap">Round Robin by</h1>
+              <h1 className="text-xl sm:text-2xl font-bold whitespace-nowrap text-white">Round Robin by</h1>
               <img src={logo} alt="PULSE" className="h-8 sm:h-10 w-auto" />
             </div>
           </div>
