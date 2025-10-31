@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,7 +13,8 @@ import { LFGList } from "@/components/court/LFGList";
 import { CourtChannel } from "@/components/court/CourtChannel";
 import { CreateLFGDialog } from "@/components/court/CreateLFGDialog";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, MapPin, Users, Calendar, MessageSquare, Activity } from "lucide-react";
+import { MapPin, Users, MessageSquare, Activity, LogOut, User as UserIcon } from "lucide-react";
+import logo from "@/assets/pulse-logo-new.png";
 
 interface Court {
   id: string;
@@ -88,25 +89,43 @@ export default function CourtBoard() {
 
   if (!court) return null;
 
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    navigate("/");
+  };
+
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8">
-      <div className="max-w-7xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
-          <Button
-            variant="ghost"
-            onClick={() => navigate("/court/connector")}
-            className="gap-2"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back
-          </Button>
-          <ThemeToggle />
+    <div className="min-h-screen bg-background">
+      <nav className="border-b bg-secondary">
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+          <Link to="/dashboard">
+            <img src={logo} alt="PULSE Logo" className="h-[90px] w-auto cursor-pointer hover:opacity-80 transition-opacity" />
+          </Link>
+          <div className="flex items-center gap-3">
+            <Button 
+              variant="outline" 
+              size="icon" 
+              onClick={() => navigate(`/profile/${currentUserId}`)} 
+              className="rounded-full"
+            >
+              <UserIcon className="h-[1.2rem] w-[1.2rem]" />
+              <span className="sr-only">View Profile</span>
+            </Button>
+            <ThemeToggle />
+            <Button variant="secondary" size="sm" onClick={handleSignOut}>
+              <LogOut className="w-4 h-4 mr-2" />
+              Sign Out
+            </Button>
+          </div>
         </div>
+      </nav>
+
+      <div className="container mx-auto px-4 py-6 space-y-6">
 
         <div className="flex flex-col gap-4">
           <div className="flex items-start justify-between">
             <div className="space-y-2">
-              <h1 className="text-4xl font-bold">{court.name}</h1>
+              <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold">{court.name}</h1>
               <div className="flex items-center gap-2 text-muted-foreground">
                 <MapPin className="w-4 h-4" />
                 <span>{court.city}, {court.state}</span>
