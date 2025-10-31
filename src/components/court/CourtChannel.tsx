@@ -39,7 +39,8 @@ export function CourtChannel({ courtId, userId }: CourtChannelProps) {
   useEffect(() => {
     if (channelId) {
       fetchMessages();
-      subscribeToMessages();
+      const cleanup = subscribeToMessages();
+      return cleanup;
     }
   }, [channelId]);
 
