@@ -109,7 +109,7 @@ export default function RoundRobinKiosk() {
       supabase.removeChannel(eventsChannel);
       supabase.removeChannel(scheduleChannel);
     };
-  }, [eventId]);
+  }, [eventId]); // Changed dependency to eventId
 
   const fetchEventData = async () => {
     if (!eventId) {
