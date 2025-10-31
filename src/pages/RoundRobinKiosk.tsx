@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { FullscreenToggleButton } from "@/components/kiosk/FullscreenToggleButton";
 import { toast } from "sonner";
-import { Radio, Lock, Clock } from "lucide-react";
+import { Radio, Lock, Clock, Trophy } from "lucide-react";
 import pulseLogo from "@/assets/pulse-logo-new.png";
 
 interface Event {
@@ -40,6 +40,16 @@ interface ScheduleMatch {
   b2_profile?: { display_name: string | null; full_name: string };
 }
 
+interface StandingsRow {
+  player_id: string;
+  player_name: string;
+  wins: number;
+  losses: number;
+  points_for: number;
+  points_against: number;
+  point_diff: number;
+}
+
 export default function RoundRobinKiosk() {
   const { id } = useParams<{ id: string }>();
   const eventId = id;
@@ -51,6 +61,8 @@ export default function RoundRobinKiosk() {
   const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [pinModalOpen, setPinModalOpen] = useState(false);
+  const [standings, setStandings] = useState<StandingsRow[]>([]);
+  const [allSchedule, setAllSchedule] = useState<ScheduleMatch[]>([]);
 
   // Update time every second
   useEffect(() => {
@@ -114,6 +126,86 @@ export default function RoundRobinKiosk() {
     };
   }, [eventId]);
 
+  const calculateStandings = (schedule: ScheduleMatch[]) => {
+    const playerStats = new Map<string, StandingsRow>();
+
+    schedule
+      .filter(m => !m.is_bye && m.team1_score !== null && m.team2_score !== null)
+      .forEach((match) => {
+        const team1 = [match.a1_player_id, match.a2_player_id].filter((id): id is string => id !== null);
+        const team2 = [match.b1_player_id, match.b2_player_id].filter((id): id is string => id !== null);
+
+        const t1score = match.team1_score!;
+        const t2score = match.team2_score!;
+        const team1Won = t1score > t2score;
+
+        [...team1, ...team2].forEach((playerId) => {
+          if (!playerId) return;
+          if (!playerStats.has(playerId)) {
+            const playerName = getPlayerIdName(playerId, schedule);
+            playerStats.set(playerId, {
+              player_id: playerId,
+              player_name: playerName,
+              wins: 0,
+              losses: 0,
+              points_for: 0,
+              points_against: 0,
+              point_diff: 0
+            });
+          }
+        });
+
+        team1.forEach((playerId) => {
+          if (!playerId) return;
+          const stats = playerStats.get(playerId)!;
+          stats.points_for += t1score;
+          stats.points_against += t2score;
+          if (team1Won) stats.wins++;
+          else stats.losses++;
+        });
+
+        team2.forEach((playerId) => {
+          if (!playerId) return;
+          const stats = playerStats.get(playerId)!;
+          stats.points_for += t2score;
+          stats.points_against += t1score;
+          if (!team1Won) stats.wins++;
+          else stats.losses++;
+        });
+      });
+
+    const result = Array.from(playerStats.values())
+      .map((row) => ({
+        ...row,
+        point_diff: row.points_for - row.points_against
+      }))
+      .sort((a, b) => {
+        if (b.wins !== a.wins) return b.wins - a.wins;
+        if (b.point_diff !== a.point_diff) return b.point_diff - a.point_diff;
+        return b.points_for - a.points_for;
+      });
+
+    return result;
+  };
+
+  const getPlayerIdName = (playerId: string, schedule: ScheduleMatch[]): string => {
+    for (const match of schedule) {
+      if (match.a1_player_id === playerId && match.a1_profile) {
+        return match.a1_profile.display_name || match.a1_profile.full_name;
+      }
+      if (match.a2_player_id === playerId && match.a2_profile) {
+        return match.a2_profile.display_name || match.a2_profile.full_name;
+      }
+      if (match.b1_player_id === playerId && match.b1_profile) {
+        return match.b1_profile.display_name || match.b1_profile.full_name;
+      }
+      if (match.b2_player_id === playerId && match.b2_profile) {
+        return match.b2_profile.display_name || match.b2_profile.full_name;
+      }
+    }
+    return "Unknown";
+  };
+
   const fetchEventData = async () => {
     if (!eventId) {
       setLoading(false);
@@ -145,7 +237,17 @@ export default function RoundRobinKiosk() {
 
       const currentRound = eventData.current_round || 1;
 
-      // Fetch current round schedule - first get matches
+      // Fetch ALL schedule with profiles for standings calculation
+      const { data: fullSchedule, error: fullScheduleError } = await supabase
+        .from("round_robin_schedule")
+        .select("*")
+        .eq("event_id", eventId)
+        .order("round_no")
+        .order("court_no");
+
+      if (fullScheduleError) throw fullScheduleError;
+
+      // Fetch current round schedule
       const { data: currentSchedule, error: currentError } = await supabase
         .from("round_robin_schedule")
         .select("*")
@@ -156,20 +258,20 @@ export default function RoundRobinKiosk() {
 
       if (currentError) throw currentError;
 
-      // Get all unique player IDs
-      const playerIds = new Set<string>();
-      currentSchedule?.forEach(match => {
-        if (match.a1_player_id) playerIds.add(match.a1_player_id);
-        if (match.a2_player_id) playerIds.add(match.a2_player_id);
-        if (match.b1_player_id) playerIds.add(match.b1_player_id);
-        if (match.b2_player_id) playerIds.add(match.b2_player_id);
+      // Get all unique player IDs from full schedule
+      const allPlayerIds = new Set<string>();
+      fullSchedule?.forEach(match => {
+        if (match.a1_player_id) allPlayerIds.add(match.a1_player_id);
+        if (match.a2_player_id) allPlayerIds.add(match.a2_player_id);
+        if (match.b1_player_id) allPlayerIds.add(match.b1_player_id);
+        if (match.b2_player_id) allPlayerIds.add(match.b2_player_id);
       });
 
       // Fetch all profiles at once
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
         .select("id, display_name, full_name")
-        .in("id", Array.from(playerIds));
+        .in("id", Array.from(allPlayerIds));
 
       if (profilesError) {
         console.error("Profiles error:", profilesError);
@@ -178,7 +280,19 @@ export default function RoundRobinKiosk() {
       // Create profile map
       const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
 
-      // Attach profiles to matches
+      // Attach profiles to full schedule for standings
+      const fullScheduleWithProfiles = fullSchedule?.map(match => ({
+        ...match,
+        a1_profile: match.a1_player_id ? profileMap.get(match.a1_player_id) : null,
+        a2_profile: match.a2_player_id ? profileMap.get(match.a2_player_id) : null,
+        b1_profile: match.b1_player_id ? profileMap.get(match.b1_player_id) : null,
+        b2_profile: match.b2_player_id ? profileMap.get(match.b2_player_id) : null,
+      })) || [];
+
+      setAllSchedule(fullScheduleWithProfiles);
+      setStandings(calculateStandings(fullScheduleWithProfiles));
+
+      // Attach profiles to current round matches
       const currentWithProfiles = currentSchedule?.map(match => ({
         ...match,
         a1_profile: match.a1_player_id ? profileMap.get(match.a1_player_id) : null,
@@ -202,29 +316,12 @@ export default function RoundRobinKiosk() {
         if (nextError) {
           console.error("Error loading next round:", nextError);
         } else {
-          // Get player IDs for next round
-          const nextPlayerIds = new Set<string>();
-          nextSchedule?.forEach(match => {
-            if (match.a1_player_id) nextPlayerIds.add(match.a1_player_id);
-            if (match.a2_player_id) nextPlayerIds.add(match.a2_player_id);
-            if (match.b1_player_id) nextPlayerIds.add(match.b1_player_id);
-            if (match.b2_player_id) nextPlayerIds.add(match.b2_player_id);
-          });
-
-          // Fetch profiles for next round
-          const { data: nextProfiles } = await supabase
-            .from("profiles")
-            .select("id, display_name, full_name")
-            .in("id", Array.from(nextPlayerIds));
-
-          const nextProfileMap = new Map(nextProfiles?.map(p => [p.id, p]) || []);
-
           const nextWithProfiles = nextSchedule?.map(match => ({
             ...match,
-            a1_profile: match.a1_player_id ? nextProfileMap.get(match.a1_player_id) : null,
-            a2_profile: match.a2_player_id ? nextProfileMap.get(match.a2_player_id) : null,
-            b1_profile: match.b1_player_id ? nextProfileMap.get(match.b1_player_id) : null,
-            b2_profile: match.b2_player_id ? nextProfileMap.get(match.b2_player_id) : null,
+            a1_profile: match.a1_player_id ? profileMap.get(match.a1_player_id) : null,
+            a2_profile: match.a2_player_id ? profileMap.get(match.a2_player_id) : null,
+            b1_profile: match.b1_player_id ? profileMap.get(match.b1_player_id) : null,
+            b2_profile: match.b2_player_id ? profileMap.get(match.b2_player_id) : null,
           })) || [];
 
           setNextRoundMatches(nextWithProfiles);
@@ -389,8 +486,60 @@ export default function RoundRobinKiosk() {
             </div>
           </div>
 
-          {/* Right Panel: Next Round Preview + Status */}
+          {/* Right Panel: Top 3 Leaderboard + Next Round + Status */}
           <div className="space-y-4">
+            {/* Top 3 Leaderboard */}
+            {standings.length >= 3 && (
+              <Card className="bg-white/95 backdrop-blur border-0 shadow-lg overflow-hidden">
+                <div className="bg-gradient-to-br from-amber-500 to-amber-600 p-4">
+                  <div className="flex items-center gap-2 text-white">
+                    <Trophy className="w-5 h-5" />
+                    <h3 className="text-lg font-bold">Top 3 Leaders</h3>
+                  </div>
+                </div>
+                <div className="p-4">
+                  <div className="space-y-3">
+                    {standings.slice(0, 3).map((row, idx) => (
+                      <div 
+                        key={row.player_id} 
+                        className={`p-3 rounded-lg border-2 ${
+                          idx === 0 
+                            ? 'bg-amber-50 border-amber-400' 
+                            : idx === 1
+                            ? 'bg-slate-50 border-slate-400'
+                            : 'bg-orange-50 border-orange-400'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`text-2xl ${
+                            idx === 0 
+                              ? 'text-amber-600' 
+                              : idx === 1
+                              ? 'text-slate-600'
+                              : 'text-orange-600'
+                          }`}>
+                            {idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉'}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-semibold text-sm truncate text-[#083A40]">
+                              {row.player_name}
+                            </div>
+                            <div className="flex gap-3 text-xs mt-1">
+                              <span className="text-green-600 font-bold">{row.wins}W</span>
+                              <span className="text-muted-foreground">{row.losses}L</span>
+                              <span className={`font-bold ${row.point_diff > 0 ? 'text-green-600' : row.point_diff < 0 ? 'text-red-600' : 'text-muted-foreground'}`}>
+                                {row.point_diff > 0 ? '+' : ''}{row.point_diff}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </Card>
+            )}
+
             {/* Next Round Preview */}
             {!isLastRound && nextRoundMatches.length > 0 && (
               <Card className="bg-white/95 backdrop-blur border-0 shadow-lg">
