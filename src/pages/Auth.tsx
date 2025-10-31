@@ -175,9 +175,9 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-secondary p-4">
+    <div className="min-h-screen flex items-center justify-center bg-secondary p-4 py-6 md:py-12">
       <div className="w-full max-w-md">
-        <div className="text-center mb-8 mt-12">
+        <div className="text-center mb-4 md:mb-8">
           <img 
             src={pulseLogo} 
             alt="PULSE" 
