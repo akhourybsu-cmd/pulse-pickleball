@@ -142,35 +142,55 @@ export default function RoundRobinKiosk() {
 
       const currentRound = eventData.current_round || 1;
 
-      // Fetch current round schedule with profile joins
-      const { data: currentMatches, error: currentError } = await supabase
+      // Fetch current round schedule - first get matches
+      const { data: currentSchedule, error: currentError } = await supabase
         .from("round_robin_schedule")
-        .select(`
-          *,
-          a1_profile:profiles!round_robin_schedule_a1_player_id_fkey(id, display_name, full_name),
-          a2_profile:profiles!round_robin_schedule_a2_player_id_fkey(id, display_name, full_name),
-          b1_profile:profiles!round_robin_schedule_b1_player_id_fkey(id, display_name, full_name),
-          b2_profile:profiles!round_robin_schedule_b2_player_id_fkey(id, display_name, full_name)
-        `)
+        .select("*")
         .eq("event_id", eventId)
         .eq("round_no", currentRound)
         .eq("is_bye", false)
         .order("court_no");
 
       if (currentError) throw currentError;
-      setCurrentRoundMatches(currentMatches || []);
+
+      // Get all unique player IDs
+      const playerIds = new Set<string>();
+      currentSchedule?.forEach(match => {
+        if (match.a1_player_id) playerIds.add(match.a1_player_id);
+        if (match.a2_player_id) playerIds.add(match.a2_player_id);
+        if (match.b1_player_id) playerIds.add(match.b1_player_id);
+        if (match.b2_player_id) playerIds.add(match.b2_player_id);
+      });
+
+      // Fetch all profiles at once
+      const { data: profiles, error: profilesError } = await supabase
+        .from("profiles")
+        .select("id, display_name, full_name")
+        .in("id", Array.from(playerIds));
+
+      if (profilesError) {
+        console.error("Profiles error:", profilesError);
+      }
+
+      // Create profile map
+      const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
+
+      // Attach profiles to matches
+      const currentWithProfiles = currentSchedule?.map(match => ({
+        ...match,
+        a1_profile: match.a1_player_id ? profileMap.get(match.a1_player_id) : null,
+        a2_profile: match.a2_player_id ? profileMap.get(match.a2_player_id) : null,
+        b1_profile: match.b1_player_id ? profileMap.get(match.b1_player_id) : null,
+        b2_profile: match.b2_player_id ? profileMap.get(match.b2_player_id) : null,
+      })) || [];
+
+      setCurrentRoundMatches(currentWithProfiles);
 
       // Fetch next round if not last round
       if (currentRound < eventData.num_rounds) {
-        const { data: nextMatches, error: nextError } = await supabase
+        const { data: nextSchedule, error: nextError } = await supabase
           .from("round_robin_schedule")
-          .select(`
-            *,
-            a1_profile:profiles!round_robin_schedule_a1_player_id_fkey(id, display_name, full_name),
-            a2_profile:profiles!round_robin_schedule_a2_player_id_fkey(id, display_name, full_name),
-            b1_profile:profiles!round_robin_schedule_b1_player_id_fkey(id, display_name, full_name),
-            b2_profile:profiles!round_robin_schedule_b2_player_id_fkey(id, display_name, full_name)
-          `)
+          .select("*")
           .eq("event_id", eventId)
           .eq("round_no", currentRound + 1)
           .eq("is_bye", false)
@@ -179,7 +199,32 @@ export default function RoundRobinKiosk() {
         if (nextError) {
           console.error("Error loading next round:", nextError);
         } else {
-          setNextRoundMatches(nextMatches || []);
+          // Get player IDs for next round
+          const nextPlayerIds = new Set<string>();
+          nextSchedule?.forEach(match => {
+            if (match.a1_player_id) nextPlayerIds.add(match.a1_player_id);
+            if (match.a2_player_id) nextPlayerIds.add(match.a2_player_id);
+            if (match.b1_player_id) nextPlayerIds.add(match.b1_player_id);
+            if (match.b2_player_id) nextPlayerIds.add(match.b2_player_id);
+          });
+
+          // Fetch profiles for next round
+          const { data: nextProfiles } = await supabase
+            .from("profiles")
+            .select("id, display_name, full_name")
+            .in("id", Array.from(nextPlayerIds));
+
+          const nextProfileMap = new Map(nextProfiles?.map(p => [p.id, p]) || []);
+
+          const nextWithProfiles = nextSchedule?.map(match => ({
+            ...match,
+            a1_profile: match.a1_player_id ? nextProfileMap.get(match.a1_player_id) : null,
+            a2_profile: match.a2_player_id ? nextProfileMap.get(match.a2_player_id) : null,
+            b1_profile: match.b1_player_id ? nextProfileMap.get(match.b1_player_id) : null,
+            b2_profile: match.b2_player_id ? nextProfileMap.get(match.b2_player_id) : null,
+          })) || [];
+
+          setNextRoundMatches(nextWithProfiles);
         }
       } else {
         setNextRoundMatches([]);
