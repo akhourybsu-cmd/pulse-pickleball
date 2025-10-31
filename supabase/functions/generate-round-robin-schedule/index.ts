@@ -10,7 +10,8 @@ interface ScheduleRequest {
   event_id: string;
   player_ids: string[];
   num_courts: number;
-  num_rounds: number;
+  num_rounds: number; // Calculated rounds
+  games_per_player: number; // Target games each player should play
   regenerate_from_round?: number;
 }
 
@@ -61,12 +62,18 @@ class SeededRandom {
   }
 }
 
-// Calculate metrics
-function calculateMetrics(players: number, courts: number, rounds: number) {
+// Calculate metrics based on games per player
+function calculateMetrics(players: number, courts: number, gamesPerPlayer: number) {
   const matchesPerRound = Math.min(courts, Math.floor(players / 4));
   const onCourtPerRound = 4 * matchesPerRound;
   const byesPerRound = Math.max(0, players - onCourtPerRound);
-  const targetGames = Math.floor((rounds * onCourtPerRound) / players);
+  
+  // Calculate how many rounds needed for each player to play gamesPerPlayer games
+  const totalSlots = players * gamesPerPlayer;
+  const capacity = courts * 4;
+  const rounds = Math.ceil(totalSlots / capacity);
+  
+  const targetGames = gamesPerPlayer;
   const totalByes = rounds * byesPerRound;
   const targetByes = totalByes > 0 ? Math.round(totalByes / players) : 0;
 
@@ -77,6 +84,7 @@ function calculateMetrics(players: number, courts: number, rounds: number) {
     targetGames,
     targetByes,
     totalCourts: courts,
+    rounds,
   };
 }
 
@@ -391,7 +399,7 @@ function generateRoundRobinSchedule(
   eventId: string,
   playerIds: string[],
   numCourts: number,
-  numRounds: number,
+  gamesPerPlayer: number,
   completedMatches: ScheduleMatch[] = [],
   startFromRound: number = 1
 ): ScheduleMatch[] {
@@ -399,12 +407,12 @@ function generateRoundRobinSchedule(
     throw new Error('Need at least 4 players for doubles round robin');
   }
 
-  const metrics = calculateMetrics(playerIds.length, numCourts, numRounds);
+  const metrics = calculateMetrics(playerIds.length, numCourts, gamesPerPlayer);
   const stats = initializePlayerStats(playerIds, completedMatches);
   const rng = new SeededRandom(eventId + startFromRound);
   const schedule: ScheduleMatch[] = [...completedMatches];
 
-  for (let round = startFromRound; round <= numRounds; round++) {
+  for (let round = startFromRound; round <= metrics.rounds; round++) {
     const { playing, resting } = selectPlayersForRound(
       round,
       playerIds,
@@ -490,7 +498,8 @@ serve(async (req) => {
       event_id, 
       player_ids, 
       num_courts, 
-      num_rounds,
+      num_rounds, // Now calculated, but kept for backwards compatibility
+      games_per_player,
       regenerate_from_round 
     }: ScheduleRequest = await req.json();
 
@@ -538,12 +547,12 @@ serve(async (req) => {
         .eq('event_id', event_id);
     }
 
-    // Generate schedule
+    // Generate schedule using games per player
     const schedule = generateRoundRobinSchedule(
       event_id,
       player_ids,
       num_courts,
-      num_rounds,
+      games_per_player || num_rounds, // Fallback to num_rounds for backwards compat
       completedMatches,
       startFromRound
     );

@@ -56,6 +56,7 @@ interface Event {
   organizer_id: string;
   num_courts: number;
   num_rounds: number;
+  games_per_player?: number;
   current_round: number | null;
   status: "draft" | "live" | "completed";
   rating_eligible: boolean;
@@ -318,6 +319,7 @@ export default function RoundRobinDetail() {
           player_ids: activePlayers.map((p) => p.player_id),
           num_courts: event.num_courts,
           num_rounds: event.num_rounds,
+          games_per_player: event.games_per_player || 3,
         },
       });
 
@@ -728,6 +730,7 @@ export default function RoundRobinDetail() {
           player_ids: activePlayers.map(p => p.player_id),
           num_courts: event.num_courts,
           num_rounds: event.num_rounds,
+          games_per_player: event.games_per_player || 3,
         },
       });
 
