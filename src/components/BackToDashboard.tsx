@@ -18,7 +18,7 @@ export function BackToDashboard({ onNavigate, className }: BackToDashboardProps)
   };
 
   return (
-    <Button variant="ghost" size="sm" onClick={handleClick} className={className}>
+    <Button variant="ghost" size="sm" onClick={handleClick} className={`text-white hover:text-white hover:bg-white/10 ${className}`}>
       <ArrowLeft className="w-4 h-4 mr-2" />
       Back to Dashboard
     </Button>
