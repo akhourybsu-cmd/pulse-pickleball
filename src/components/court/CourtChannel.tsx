@@ -187,9 +187,10 @@ export function CourtChannel({ courtId, userId }: CourtChannelProps) {
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
+      e.stopPropagation();
       handleSend();
     }
   };
@@ -290,18 +291,25 @@ export function CourtChannel({ courtId, userId }: CourtChannelProps) {
 
       {userId ? (
         <div className="p-2 sm:p-4 border-t bg-background">
-          <div className="flex gap-2">
+          <form 
+            onSubmit={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleSend();
+            }}
+            className="flex gap-2"
+          >
             <Input
               ref={inputRef}
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
-              onKeyPress={handleKeyPress}
+              onKeyDown={handleKeyDown}
               placeholder="Type a message..."
               disabled={sending}
               className="flex-1 text-sm sm:text-base h-9 sm:h-10"
             />
             <Button 
-              onClick={handleSend} 
+              type="submit"
               disabled={sending || !newMessage.trim()} 
               size="icon"
               className="flex-shrink-0 h-9 w-9 sm:h-10 sm:w-10"
@@ -312,7 +320,7 @@ export function CourtChannel({ courtId, userId }: CourtChannelProps) {
                 <Send className="w-3 h-3 sm:w-4 sm:h-4" />
               )}
             </Button>
-          </div>
+          </form>
         </div>
       ) : (
         <div className="p-4 border-t bg-muted text-center text-sm text-muted-foreground">
