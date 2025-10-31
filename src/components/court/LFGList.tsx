@@ -183,6 +183,7 @@ export function LFGList({ courtId, userId }: LFGListProps) {
                   </p>
                   <div className="flex items-center gap-2">
                     <Badge variant="outline" className="capitalize">{post.intensity}</Badge>
+                    <Badge variant="outline">{post.format}</Badge>
                     <p className="text-xs text-muted-foreground">
                       by {post.profiles?.display_name || post.profiles?.full_name || "Unknown"}
                       {post.profiles?.current_rating && (
@@ -197,10 +198,6 @@ export function LFGList({ courtId, userId }: LFGListProps) {
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                <Users className="w-4 h-4" />
-                {post.format}
-              </div>
 
               {post.notes && (
                 <p className="text-sm text-muted-foreground">{post.notes}</p>
