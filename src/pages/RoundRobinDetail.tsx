@@ -1477,10 +1477,12 @@ export default function RoundRobinDetail() {
 
                 <div className="space-y-8">
                   {Array.from({ length: event.num_rounds }, (_, i) => i + 1).map((roundNo) => {
-                    const matches = getRoundMatches(roundNo);
+                    const allMatches = getRoundMatches(roundNo);
+                    const courtMatches = allMatches.filter(m => !m.is_bye);
+                    const byeMatches = allMatches.filter(m => m.is_bye);
                     const isCurrentRound = roundNo === currentRound;
                     const isFutureRound = roundNo > currentRound;
-                    const allRoundScored = matches.filter(m => !m.is_bye).every(m => m.team1_score !== null && m.team2_score !== null);
+                    const allRoundScored = courtMatches.every(m => m.team1_score !== null && m.team2_score !== null);
                     
                     return (
                       <div key={roundNo} className={`space-y-4 ${isFutureRound ? 'opacity-50' : ''}`}>
@@ -1502,7 +1504,7 @@ export default function RoundRobinDetail() {
                         </div>
                         
                         <div className="grid gap-4 md:grid-cols-2">
-                          {matches.map((match) => (
+                          {courtMatches.map((match) => (
                             <Card key={match.id} className={`overflow-hidden ${isFutureRound ? 'pointer-events-none' : ''}`}>
                               <CardContent className="p-4 space-y-3">
                                 <div className="flex items-center justify-between">
@@ -1512,70 +1514,82 @@ export default function RoundRobinDetail() {
                                   )}
                                 </div>
                                 
-                                {match.is_bye ? (
-                                  <p className="text-center text-muted-foreground py-4">— Bye —</p>
-                                ) : (
-                                  <>
-                                    <div className="space-y-2">
-                                    <div className={`flex items-center justify-between p-3 rounded-lg ${match.team1_score !== null && match.team1_score > (match.team2_score || 0) ? 'bg-primary/10 font-semibold' : 'bg-muted/50'}`}>
-                                        <div className="text-sm">
-                                          {getPlayerName(match.a1_player_id, match)} / {getPlayerName(match.a2_player_id, match)}
-                                        </div>
-                                        {match.team1_score !== null ? (
-                                          <div className="text-lg font-bold">{match.team1_score}</div>
-                                        ) : isOrganizer && event.status === "live" && isCurrentRound ? (
-                                          <Input
-                                            type="number"
-                                            min="0"
-                                            max="99"
-                                            className="w-16 h-8 text-center"
-                                            placeholder="0"
-                                            value={scores[match.id]?.team1_score ?? ''}
-                                            onChange={(e) => handleScoreChange(match.id, 'team1', e.target.value)}
-                                          />
-                                        ) : (
-                                          <div className="text-muted-foreground">—</div>
-                                        )}
-                                      </div>
-                                      
-                                      <div className={`flex items-center justify-between p-3 rounded-lg ${match.team2_score !== null && match.team2_score > (match.team1_score || 0) ? 'bg-primary/10 font-semibold' : 'bg-muted/50'}`}>
-                                        <div className="text-sm">
-                                          {getPlayerName(match.b1_player_id, match)} / {getPlayerName(match.b2_player_id, match)}
-                                        </div>
-                                        {match.team2_score !== null ? (
-                                          <div className="text-lg font-bold">{match.team2_score}</div>
-                                        ) : isOrganizer && event.status === "live" && isCurrentRound ? (
-                                          <Input
-                                            type="number"
-                                            min="0"
-                                            max="99"
-                                            className="w-16 h-8 text-center"
-                                            placeholder="0"
-                                            value={scores[match.id]?.team2_score ?? ''}
-                                            onChange={(e) => handleScoreChange(match.id, 'team2', e.target.value)}
-                                          />
-                                        ) : (
-                                          <div className="text-muted-foreground">—</div>
-                                        )}
-                                      </div>
+                                <div className="space-y-2">
+                                  <div className={`flex items-center justify-between p-3 rounded-lg ${match.team1_score !== null && match.team1_score > (match.team2_score || 0) ? 'bg-primary/10 font-semibold' : 'bg-muted/50'}`}>
+                                    <div className="text-sm">
+                                      {getPlayerName(match.a1_player_id, match)} / {getPlayerName(match.a2_player_id, match)}
                                     </div>
-                                    
-                                    {isOrganizer && event.status === "live" && isCurrentRound && match.team1_score === null && (
-                                      <Button
-                                        onClick={() => handleSaveScore(match)}
-                                        disabled={savingScore === match.id}
-                                        size="sm"
-                                        className="w-full"
-                                      >
-                                        {savingScore === match.id ? "Saving..." : "Save Score"}
-                                      </Button>
+                                    {match.team1_score !== null ? (
+                                      <div className="text-lg font-bold">{match.team1_score}</div>
+                                    ) : isOrganizer && event.status === "live" && isCurrentRound ? (
+                                      <Input
+                                        type="number"
+                                        min="0"
+                                        max="99"
+                                        className="w-16 h-8 text-center"
+                                        placeholder="0"
+                                        value={scores[match.id]?.team1_score ?? ''}
+                                        onChange={(e) => handleScoreChange(match.id, 'team1', e.target.value)}
+                                      />
+                                    ) : (
+                                      <div className="text-muted-foreground">—</div>
                                     )}
-                                  </>
+                                  </div>
+                                  
+                                  <div className={`flex items-center justify-between p-3 rounded-lg ${match.team2_score !== null && match.team2_score > (match.team1_score || 0) ? 'bg-primary/10 font-semibold' : 'bg-muted/50'}`}>
+                                    <div className="text-sm">
+                                      {getPlayerName(match.b1_player_id, match)} / {getPlayerName(match.b2_player_id, match)}
+                                    </div>
+                                    {match.team2_score !== null ? (
+                                      <div className="text-lg font-bold">{match.team2_score}</div>
+                                    ) : isOrganizer && event.status === "live" && isCurrentRound ? (
+                                      <Input
+                                        type="number"
+                                        min="0"
+                                        max="99"
+                                        className="w-16 h-8 text-center"
+                                        placeholder="0"
+                                        value={scores[match.id]?.team2_score ?? ''}
+                                        onChange={(e) => handleScoreChange(match.id, 'team2', e.target.value)}
+                                      />
+                                    ) : (
+                                      <div className="text-muted-foreground">—</div>
+                                    )}
+                                  </div>
+                                </div>
+                                
+                                {isOrganizer && event.status === "live" && isCurrentRound && match.team1_score === null && (
+                                  <Button
+                                    onClick={() => handleSaveScore(match)}
+                                    disabled={savingScore === match.id}
+                                    size="sm"
+                                    className="w-full"
+                                  >
+                                    {savingScore === match.id ? "Saving..." : "Save Score"}
+                                  </Button>
                                 )}
                               </CardContent>
                             </Card>
                           ))}
                         </div>
+
+                        {byeMatches.length > 0 && (
+                          <Card className="mt-4 bg-muted/30">
+                            <CardContent className="p-4">
+                              <div className="flex items-center gap-2 mb-3">
+                                <Badge variant="outline" className="font-mono">BYE</Badge>
+                                <span className="text-sm text-muted-foreground">Players resting this round</span>
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                {byeMatches.map((match) => (
+                                  <Badge key={match.id} variant="secondary" className="text-sm">
+                                    {getPlayerName(match.a1_player_id, match)}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )}
                       </div>
                     );
                   })}
