@@ -256,24 +256,6 @@ const DemoTour = () => {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Award className="w-5 h-5" />
-                Your Badges
-              </CardTitle>
-              <CardDescription>Achievements earned through your pickleball journey</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4">
-                {demoBadges.map((badge) => (
-                  <div key={badge.id} className="flex flex-col items-center">
-                    <FlippableBadge badge={badge} />
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
         </div>
 
         <div className="grid gap-4 md:gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
@@ -286,14 +268,6 @@ const DemoTour = () => {
             Organize a Round Robin Event
           </Button>
 
-          <Button 
-            size="lg" 
-            variant="outline"
-            className="md:text-lg md:py-6 cursor-default"
-          >
-            <MapPin className="w-5 h-5 md:w-6 md:h-6 mr-2" />
-            Court History
-          </Button>
 
           <Button 
             size="lg" 
@@ -313,14 +287,6 @@ const DemoTour = () => {
             Edit Profile
           </Button>
 
-          <Button 
-            size="lg" 
-            variant="outline"
-            className="md:text-lg md:py-6 cursor-default"
-          >
-            <Award className="w-5 h-5 md:w-6 md:h-6 mr-2" />
-            Check for New Badges
-          </Button>
         </div>
 
         <Card className="bg-primary/5 border-primary">
