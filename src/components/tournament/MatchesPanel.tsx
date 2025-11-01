@@ -4,7 +4,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, Play, Trophy, MapPin } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Loader2, Play, Trophy, MapPin, Edit, FileText } from "lucide-react";
 import { ScoreEntryDialog } from "./ScoreEntryDialog";
 import { CourtAssignmentDialog } from "./CourtAssignmentDialog";
 
@@ -18,6 +19,11 @@ interface Match {
   team1_id: string;
   team2_id: string;
   division_id: string;
+  started_at: string | null;
+  completed_at: string | null;
+  actual_duration_minutes: number | null;
+  notes: string | null;
+  score_edited_at: string | null;
   team1: { team_name: string };
   team2: { team_name: string };
   court: { court_number: number; court_name: string | null } | null;
@@ -116,6 +122,11 @@ export function MatchesPanel({ divisionId, refreshKey }: MatchesPanelProps) {
     setIsCourtDialogOpen(true);
   };
 
+  const handleChangeCourt = (match: Match) => {
+    setSelectedMatch(match);
+    setIsCourtDialogOpen(true);
+  };
+
   const getStatusBadge = (status: string) => {
     const variants: Record<string, "default" | "secondary" | "outline"> = {
       scheduled: "outline",
@@ -168,13 +179,33 @@ export function MatchesPanel({ divisionId, refreshKey }: MatchesPanelProps) {
                       </Badge>
                     )}
                     {getStatusBadge(match.status)}
+                    {match.notes && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <FileText className="h-4 w-4 text-muted-foreground cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="max-w-xs">{match.notes}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
                   </div>
                   <div className="font-medium">
                     {match.team1.team_name} vs {match.team2.team_name}
                   </div>
                   {match.team1_score !== null && match.team2_score !== null && (
-                    <div className="text-sm text-muted-foreground mt-1">
-                      Score: {match.team1_score} - {match.team2_score}
+                    <div className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
+                      <span>Score: {match.team1_score} - {match.team2_score}</span>
+                      {match.score_edited_at && (
+                        <span className="text-xs">(edited)</span>
+                      )}
+                      {match.actual_duration_minutes && (
+                        <span className="text-xs">
+                          • {match.actual_duration_minutes} min
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>
@@ -190,23 +221,53 @@ export function MatchesPanel({ divisionId, refreshKey }: MatchesPanelProps) {
                     </Button>
                   )}
                   {match.status === "scheduled" && match.court && (
-                    <Button
-                      variant="default"
-                      size="sm"
-                      onClick={() => handleStartMatch(match)}
-                    >
-                      <Play className="h-4 w-4 mr-1" />
-                      Start
-                    </Button>
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleChangeCourt(match)}
+                      >
+                        <MapPin className="h-4 w-4 mr-1" />
+                        Change Court
+                      </Button>
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => handleStartMatch(match)}
+                      >
+                        <Play className="h-4 w-4 mr-1" />
+                        Start
+                      </Button>
+                    </>
                   )}
                   {match.status === "in_progress" && (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleChangeCourt(match)}
+                      >
+                        <MapPin className="h-4 w-4 mr-1" />
+                        Change Court
+                      </Button>
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => handleEnterScore(match)}
+                      >
+                        <Trophy className="h-4 w-4 mr-1" />
+                        Enter Score
+                      </Button>
+                    </>
+                  )}
+                  {match.status === "completed" && (
                     <Button
-                      variant="default"
+                      variant="outline"
                       size="sm"
                       onClick={() => handleEnterScore(match)}
                     >
-                      <Trophy className="h-4 w-4 mr-1" />
-                      Enter Score
+                      <Edit className="h-4 w-4 mr-1" />
+                      Edit Score
                     </Button>
                   )}
                 </div>

@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
 
 interface Match {
@@ -17,6 +18,10 @@ interface Match {
   division_id: string;
   team1: { team_name: string };
   team2: { team_name: string };
+  team1_score?: number | null;
+  team2_score?: number | null;
+  notes?: string | null;
+  status: string;
   tournaments_divisions: {
     tournaments_scoring_rulesets: {
       games_to: number;
@@ -53,6 +58,7 @@ export function ScoreEntryDialog({ open, onOpenChange, match, onSuccess }: Score
         .int("Score must be a whole number")
         .min(0, "Score cannot be negative")
         .max(99, "Score must be less than 100"),
+      notes: z.string().optional(),
     }).refine((data) => {
       // Scores cannot be tied
       if (data.team1_score === data.team2_score) {
@@ -100,16 +106,18 @@ export function ScoreEntryDialog({ open, onOpenChange, match, onSuccess }: Score
   const form = useForm<ScoreFormData>({
     resolver: zodResolver(createScoreSchema()),
     defaultValues: {
-      team1_score: 0,
-      team2_score: 0,
+      team1_score: match?.team1_score || 0,
+      team2_score: match?.team2_score || 0,
+      notes: match?.notes || "",
     },
   });
 
   useEffect(() => {
     if (open && match) {
       form.reset({
-        team1_score: 0,
-        team2_score: 0,
+        team1_score: match.team1_score || 0,
+        team2_score: match.team2_score || 0,
+        notes: match.notes || "",
       });
     }
   }, [open, match]);
@@ -119,15 +127,49 @@ export function ScoreEntryDialog({ open, onOpenChange, match, onSuccess }: Score
 
     setLoading(true);
 
-    // Update match with scores and mark as completed
+    const { data: { user } } = await supabase.auth.getUser();
+    const isEdit = match.status === "completed";
+
+    // Calculate duration if this is the initial completion
+    let durationMinutes = null;
+    if (!isEdit && match.status === "in_progress") {
+      const { data: matchData } = await supabase
+        .from("tournaments_matches")
+        .select("started_at")
+        .eq("id", match.id)
+        .single();
+
+      if (matchData?.started_at) {
+        const startTime = new Date(matchData.started_at);
+        const endTime = new Date();
+        durationMinutes = Math.round((endTime.getTime() - startTime.getTime()) / 60000);
+      }
+    }
+
+    const updateData: any = {
+      team1_score: data.team1_score,
+      team2_score: data.team2_score,
+      notes: data.notes || null,
+      status: "completed",
+    };
+
+    // Only set completed_at if this is the first completion
+    if (!isEdit) {
+      updateData.completed_at = new Date().toISOString();
+    }
+
+    if (durationMinutes !== null) {
+      updateData.actual_duration_minutes = durationMinutes;
+    }
+
+    if (isEdit && user) {
+      updateData.score_edited_by = user.id;
+      updateData.score_edited_at = new Date().toISOString();
+    }
+
     const { error } = await supabase
       .from("tournaments_matches")
-      .update({
-        team1_score: data.team1_score,
-        team2_score: data.team2_score,
-        status: "completed",
-        completed_at: new Date().toISOString(),
-      })
+      .update(updateData)
       .eq("id", match.id);
 
     if (error) {
@@ -138,7 +180,7 @@ export function ScoreEntryDialog({ open, onOpenChange, match, onSuccess }: Score
       });
     } else {
       toast({
-        title: "Score saved",
+        title: isEdit ? "Score updated" : "Score saved",
         description: `${match.team1.team_name} ${data.team1_score} - ${data.team2_score} ${match.team2.team_name}`,
       });
       onSuccess();
@@ -151,12 +193,13 @@ export function ScoreEntryDialog({ open, onOpenChange, match, onSuccess }: Score
 
   const gamesTo = ruleset?.games_to || 11;
   const winBy2 = ruleset?.win_by_2 ?? true;
+  const isEdit = match.status === "completed";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Enter Score</DialogTitle>
+          <DialogTitle>{isEdit ? "Edit Score" : "Enter Score"}</DialogTitle>
           <DialogDescription>
             {match.team1.team_name} vs {match.team2.team_name}
           </DialogDescription>
@@ -213,6 +256,24 @@ export function ScoreEntryDialog({ open, onOpenChange, match, onSuccess }: Score
               )}
             />
 
+            <FormField
+              control={form.control}
+              name="notes"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Match Notes (optional)</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Any notes about this match..."
+                      rows={3}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <FormDescription>
               Enter the final score for this match
             </FormDescription>
@@ -223,7 +284,7 @@ export function ScoreEntryDialog({ open, onOpenChange, match, onSuccess }: Score
               </Button>
               <Button type="submit" disabled={loading}>
                 {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Save Score
+                {isEdit ? "Update Score" : "Save Score"}
               </Button>
             </DialogFooter>
           </form>

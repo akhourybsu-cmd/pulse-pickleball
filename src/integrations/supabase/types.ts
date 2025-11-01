@@ -1762,6 +1762,7 @@ export type Database = {
           max_teams: number | null
           name: string
           scoring_ruleset_id: string | null
+          status: Database["public"]["Enums"]["division_status"]
           updated_at: string
         }
         Insert: {
@@ -1773,6 +1774,7 @@ export type Database = {
           max_teams?: number | null
           name: string
           scoring_ruleset_id?: string | null
+          status?: Database["public"]["Enums"]["division_status"]
           updated_at?: string
         }
         Update: {
@@ -1784,6 +1786,7 @@ export type Database = {
           max_teams?: number | null
           name?: string
           scoring_ruleset_id?: string | null
+          status?: Database["public"]["Enums"]["division_status"]
           updated_at?: string
         }
         Relationships: [
@@ -1844,13 +1847,17 @@ export type Database = {
       }
       tournaments_matches: {
         Row: {
+          actual_duration_minutes: number | null
           completed_at: string | null
           court_id: string | null
           created_at: string
           division_id: string
           id: string
           match_number: number
+          notes: string | null
           round_number: number
+          score_edited_at: string | null
+          score_edited_by: string | null
           started_at: string | null
           status: string
           team1_id: string
@@ -1860,13 +1867,17 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          actual_duration_minutes?: number | null
           completed_at?: string | null
           court_id?: string | null
           created_at?: string
           division_id: string
           id?: string
           match_number: number
+          notes?: string | null
           round_number: number
+          score_edited_at?: string | null
+          score_edited_by?: string | null
           started_at?: string | null
           status?: string
           team1_id: string
@@ -1876,13 +1887,17 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          actual_duration_minutes?: number | null
           completed_at?: string | null
           court_id?: string | null
           created_at?: string
           division_id?: string
           id?: string
           match_number?: number
+          notes?: string | null
           round_number?: number
+          score_edited_at?: string | null
+          score_edited_by?: string | null
           started_at?: string | null
           status?: string
           team1_id?: string
@@ -2320,6 +2335,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
+      division_status: "draft" | "active" | "completed"
       rating_type: "ladder" | "league" | "playoffs" | "casual"
       round_robin_status: "draft" | "live" | "completed"
       tournament_status:
@@ -2456,6 +2472,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
+      division_status: ["draft", "active", "completed"],
       rating_type: ["ladder", "league", "playoffs", "casual"],
       round_robin_status: ["draft", "live", "completed"],
       tournament_status: [

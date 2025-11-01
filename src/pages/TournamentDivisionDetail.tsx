@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Plus, Loader2, Shuffle } from "lucide-react";
+import { ArrowLeft, Plus, Loader2, Shuffle, Edit, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { CreateTeamDialog } from "@/components/tournament/CreateTeamDialog";
+import { EditDivisionDialog } from "@/components/tournament/EditDivisionDialog";
 import { TeamsPanel } from "@/components/tournament/TeamsPanel";
 import { MatchesPanel } from "@/components/tournament/MatchesPanel";
 import { StandingsPanel } from "@/components/tournament/StandingsPanel";
@@ -19,6 +21,7 @@ interface Division {
   format: string;
   scoring_ruleset_id: string | null;
   max_teams: number | null;
+  status: string;
   tournaments_events: {
     name: string;
   };
@@ -31,6 +34,7 @@ export default function TournamentDivisionDetail() {
   const [loading, setLoading] = useState(true);
   const [division, setDivision] = useState<Division | null>(null);
   const [isCreateTeamOpen, setIsCreateTeamOpen] = useState(false);
+  const [isEditDivisionOpen, setIsEditDivisionOpen] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -64,8 +68,72 @@ export default function TournamentDivisionDetail() {
     setLoading(false);
   };
 
+  const handleUpdateDivision = async (updates: any) => {
+    const { error } = await supabase
+      .from("tournaments_divisions")
+      .update(updates)
+      .eq("id", divisionId);
+
+    if (error) {
+      toast({
+        title: "Error updating division",
+        description: error.message,
+        variant: "destructive",
+      });
+      throw error;
+    }
+
+    toast({ title: "Division updated successfully" });
+    fetchDivision();
+  };
+
+  const handleDeleteDivision = async () => {
+    // Check if any matches are completed
+    const { data: completedMatches } = await supabase
+      .from("tournaments_matches")
+      .select("id")
+      .eq("division_id", divisionId)
+      .eq("status", "completed")
+      .limit(1);
+
+    if (completedMatches && completedMatches.length > 0) {
+      toast({
+        title: "Cannot delete division",
+        description: "Division has completed matches and cannot be deleted",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const { error } = await supabase
+      .from("tournaments_divisions")
+      .delete()
+      .eq("id", divisionId);
+
+    if (error) {
+      toast({
+        title: "Error deleting division",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    toast({ title: "Division deleted successfully" });
+    navigate(`/tournament-admin/event/${division?.event_id}`);
+  };
+
   const handleGenerateMatches = async () => {
-    if (!divisionId) return;
+    if (!divisionId || !division) return;
+
+    if (division.status !== "active") {
+      toast({
+        title: "Cannot generate matches",
+        description: "Division must be in 'active' status to generate matches",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setGenerating(true);
 
@@ -142,6 +210,20 @@ export default function TournamentDivisionDetail() {
     setGenerating(false);
   };
 
+  const getStatusBadge = (status: string) => {
+    const variants: Record<string, "default" | "secondary" | "outline"> = {
+      draft: "outline",
+      active: "default",
+      completed: "secondary",
+    };
+    
+    return (
+      <Badge variant={variants[status] || "outline"}>
+        {status}
+      </Badge>
+    );
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -166,24 +248,55 @@ export default function TournamentDivisionDetail() {
 
         <div className="flex items-start justify-between mb-6">
           <div>
-            <h1 className="text-4xl font-bold">{division.name}</h1>
+            <div className="flex items-center gap-3 mb-2">
+              <h1 className="text-4xl font-bold">{division.name}</h1>
+              {getStatusBadge(division.status)}
+            </div>
             {division.description && (
               <p className="text-muted-foreground mt-2">{division.description}</p>
             )}
           </div>
           <div className="flex gap-2">
+            <Button onClick={() => setIsEditDivisionOpen(true)} variant="outline">
+              <Edit className="mr-2 h-4 w-4" />
+              Edit
+            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive">
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete Division?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure? This cannot be undone. Divisions with completed matches cannot be deleted.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDeleteDivision} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    Delete Division
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
             <Button onClick={() => setIsCreateTeamOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
               Add Team
             </Button>
-            <Button onClick={handleGenerateMatches} disabled={generating} variant="secondary">
-              {generating ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Shuffle className="mr-2 h-4 w-4" />
-              )}
-              Generate Matches
-            </Button>
+            {division.status === "active" && (
+              <Button onClick={handleGenerateMatches} disabled={generating} variant="secondary">
+                {generating ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Shuffle className="mr-2 h-4 w-4" />
+                )}
+                Generate Matches
+              </Button>
+            )}
           </div>
         </div>
 
@@ -214,6 +327,15 @@ export default function TournamentDivisionDetail() {
         divisionId={divisionId!}
         onSuccess={() => setRefreshKey((prev) => prev + 1)}
       />
+
+      {division && (
+        <EditDivisionDialog
+          open={isEditDivisionOpen}
+          onOpenChange={setIsEditDivisionOpen}
+          division={division}
+          onSave={handleUpdateDivision}
+        />
+      )}
     </div>
   );
 }
