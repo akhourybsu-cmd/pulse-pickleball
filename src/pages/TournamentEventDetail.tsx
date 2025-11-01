@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { EditTournamentDialog } from "@/components/tournament/EditTournamentDialog";
 import { CreateDivisionDialog } from "@/components/tournament/CreateDivisionDialog";
 import { CourtManagementPanel } from "@/components/tournament/CourtManagementPanel";
+import { RegistrationsPanel } from "@/components/tournament/RegistrationsPanel";
 import { format } from "date-fns";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import logo from "@/assets/pulse-logo-new.png";
@@ -274,6 +275,7 @@ export default function TournamentEventDetail() {
         <Tabs defaultValue="divisions" className="w-full">
           <TabsList>
             <TabsTrigger value="divisions">Divisions</TabsTrigger>
+            <TabsTrigger value="registrations">Registrations</TabsTrigger>
             <TabsTrigger value="courts">Courts</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
@@ -351,6 +353,10 @@ export default function TournamentEventDetail() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="registrations" className="mt-6">
+            <RegistrationsPanel eventId={eventId!} divisions={divisions} />
           </TabsContent>
 
           <TabsContent value="courts" className="mt-6">
