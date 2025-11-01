@@ -54,18 +54,23 @@ export function CreateDivisionDialog({ open, onOpenChange, eventId, onSuccess }:
   });
 
   const loadRulesets = async () => {
+    console.log("Loading scoring rulesets...");
     const { data, error } = await supabase
       .from("tournaments_scoring_rulesets")
       .select("*")
       .order("name");
 
+    console.log("Rulesets response:", { data, error });
+
     if (error) {
+      console.error("Ruleset error:", error);
       toast({
         title: "Error loading scoring rulesets",
         description: error.message,
         variant: "destructive",
       });
     } else {
+      console.log("Setting rulesets:", data);
       setRulesets(data || []);
     }
   };
