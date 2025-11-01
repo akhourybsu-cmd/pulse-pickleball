@@ -9,6 +9,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Loader2, Play, Trophy, MapPin, Edit, FileText, Trash2, AlertCircle, CheckCircle2, PlayCircle, Zap } from "lucide-react";
 import { ScoreEntryDialog } from "./ScoreEntryDialog";
 import { CourtAssignmentDialog } from "./CourtAssignmentDialog";
+import { BulkOperationsDialog } from "./BulkOperationsDialog";
 
 // Component to show score edit tooltip with editor info
 function ScoreEditedTooltip({ scoreEditedBy, scoreEditedAt }: { scoreEditedBy: string | null, scoreEditedAt: string }) {
@@ -92,6 +93,7 @@ export function MatchesPanel({ divisionId, refreshKey }: MatchesPanelProps) {
   const [isCourtDialogOpen, setIsCourtDialogOpen] = useState(false);
   const [eventId, setEventId] = useState<string>("");
   const [autoAssigning, setAutoAssigning] = useState(false);
+  const [isBulkDialogOpen, setIsBulkDialogOpen] = useState(false);
 
   useEffect(() => {
     fetchMatches();
@@ -333,6 +335,15 @@ export function MatchesPanel({ divisionId, refreshKey }: MatchesPanelProps) {
                 )}
                 Auto-Assign Courts
               </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsBulkDialogOpen(true)}
+                disabled={matches.length === 0}
+              >
+                <PlayCircle className="h-4 w-4 mr-1" />
+                Bulk Score Entry
+              </Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="ghost" size="sm" disabled={matches.length === 0}>
@@ -565,6 +576,13 @@ export function MatchesPanel({ divisionId, refreshKey }: MatchesPanelProps) {
         onOpenChange={setIsCourtDialogOpen}
         matchId={selectedMatch?.id || null}
         eventId={eventId}
+        onSuccess={fetchMatches}
+      />
+
+      <BulkOperationsDialog
+        open={isBulkDialogOpen}
+        onOpenChange={setIsBulkDialogOpen}
+        matches={matches}
         onSuccess={fetchMatches}
       />
     </>

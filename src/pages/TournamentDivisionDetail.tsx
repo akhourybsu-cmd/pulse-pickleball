@@ -14,6 +14,9 @@ import { BracketGenerationDialog } from "@/components/tournament/BracketGenerati
 import { TeamsPanel } from "@/components/tournament/TeamsPanel";
 import { MatchesPanel } from "@/components/tournament/MatchesPanel";
 import { StandingsPanel } from "@/components/tournament/StandingsPanel";
+import { ExportMenu } from "@/components/tournament/ExportMenu";
+import { BracketView } from "@/components/tournament/BracketView";
+import { ScoreEntryDialog } from "@/components/tournament/ScoreEntryDialog";
 
 interface Division {
   id: string;
@@ -41,12 +44,31 @@ export default function TournamentDivisionDetail() {
   const [generating, setGenerating] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [teamCount, setTeamCount] = useState(0);
+  const [matches, setMatches] = useState<any[]>([]);
+  const [selectedMatch, setSelectedMatch] = useState<any>(null);
+  const [isScoreEntryOpen, setIsScoreEntryOpen] = useState(false);
 
   useEffect(() => {
     if (divisionId) {
       fetchDivision();
+      fetchMatches();
     }
-  }, [divisionId]);
+  }, [divisionId, refreshKey]);
+
+  const fetchMatches = async () => {
+    const { data } = await supabase
+      .from("tournaments_matches")
+      .select(`
+        *,
+        team1:tournaments_teams!tournaments_matches_team1_id_fkey(team_name),
+        team2:tournaments_teams!tournaments_matches_team2_id_fkey(team_name)
+      `)
+      .eq("division_id", divisionId)
+      .order("round_number")
+      .order("match_number");
+
+    if (data) setMatches(data);
+  };
 
   const fetchDivision = async () => {
     setLoading(true);
@@ -348,6 +370,10 @@ export default function TournamentDivisionDetail() {
                 Complete Division
               </Button>
             )}
+            <ExportMenu 
+              divisionId={divisionId!} 
+              divisionName={division.name} 
+            />
             <Button onClick={() => setIsCreateTeamOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
               Add Team
@@ -378,6 +404,9 @@ export default function TournamentDivisionDetail() {
             <TabsTrigger value="teams">Teams</TabsTrigger>
             <TabsTrigger value="matches">Matches</TabsTrigger>
             <TabsTrigger value="standings">Standings</TabsTrigger>
+            {(division.format === "single_elimination" || division.format === "double_elimination") && (
+              <TabsTrigger value="bracket">Bracket</TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="teams" className="mt-6">
@@ -391,6 +420,19 @@ export default function TournamentDivisionDetail() {
           <TabsContent value="standings" className="mt-6">
             <StandingsPanel divisionId={divisionId!} refreshKey={refreshKey} />
           </TabsContent>
+
+          {(division.format === "single_elimination" || division.format === "double_elimination") && (
+            <TabsContent value="bracket" className="mt-6">
+              <BracketView
+                matches={matches}
+                format={division.format as "single_elimination" | "double_elimination"}
+                onMatchClick={(match) => {
+                  setSelectedMatch(match);
+                  setIsScoreEntryOpen(true);
+                }}
+              />
+            </TabsContent>
+          )}
         </Tabs>
       </div>
 
@@ -420,6 +462,18 @@ export default function TournamentDivisionDetail() {
           setRefreshKey((prev) => prev + 1);
         }}
       />
+
+      {selectedMatch && (
+        <ScoreEntryDialog
+          open={isScoreEntryOpen}
+          onOpenChange={setIsScoreEntryOpen}
+          match={selectedMatch}
+          onSuccess={() => {
+            fetchMatches();
+            setIsScoreEntryOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }
