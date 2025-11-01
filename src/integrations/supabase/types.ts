@@ -1717,6 +1717,132 @@ export type Database = {
           },
         ]
       }
+      tournament_registration_notifications: {
+        Row: {
+          id: string
+          notification_type: string
+          payload: Json | null
+          registration_id: string
+          sent_at: string
+          to_email: string
+        }
+        Insert: {
+          id?: string
+          notification_type: string
+          payload?: Json | null
+          registration_id: string
+          sent_at?: string
+          to_email: string
+        }
+        Update: {
+          id?: string
+          notification_type?: string
+          payload?: Json | null
+          registration_id?: string
+          sent_at?: string
+          to_email?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournament_registration_notifications_registration_id_fkey"
+            columns: ["registration_id"]
+            isOneToOne: false
+            referencedRelation: "tournament_registrations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tournament_registrations: {
+        Row: {
+          additional_info: Json | null
+          captain_user_id: string
+          created_at: string
+          division_id: string
+          event_id: string
+          id: string
+          notes: string | null
+          partner_user_id: string | null
+          payment_status: Database["public"]["Enums"]["payment_status"]
+          registration_date: string
+          status: Database["public"]["Enums"]["registration_status"]
+          team_name: string
+          updated_at: string
+        }
+        Insert: {
+          additional_info?: Json | null
+          captain_user_id: string
+          created_at?: string
+          division_id: string
+          event_id: string
+          id?: string
+          notes?: string | null
+          partner_user_id?: string | null
+          payment_status?: Database["public"]["Enums"]["payment_status"]
+          registration_date?: string
+          status?: Database["public"]["Enums"]["registration_status"]
+          team_name: string
+          updated_at?: string
+        }
+        Update: {
+          additional_info?: Json | null
+          captain_user_id?: string
+          created_at?: string
+          division_id?: string
+          event_id?: string
+          id?: string
+          notes?: string | null
+          partner_user_id?: string | null
+          payment_status?: Database["public"]["Enums"]["payment_status"]
+          registration_date?: string
+          status?: Database["public"]["Enums"]["registration_status"]
+          team_name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournament_registrations_captain_user_id_fkey"
+            columns: ["captain_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_registrations_captain_user_id_fkey"
+            columns: ["captain_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_registrations_division_id_fkey"
+            columns: ["division_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments_divisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_registrations_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_registrations_partner_user_id_fkey"
+            columns: ["partner_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_registrations_partner_user_id_fkey"
+            columns: ["partner_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tournaments_courts: {
         Row: {
           available: boolean
@@ -1816,9 +1942,14 @@ export type Database = {
           location: string | null
           name: string
           public_view_enabled: boolean
+          registration_close_date: string | null
+          registration_enabled: boolean | null
+          registration_fee: number | null
+          registration_open_date: string | null
           start_date: string
           status: Database["public"]["Enums"]["tournament_status"]
           updated_at: string
+          waitlist_enabled: boolean | null
         }
         Insert: {
           created_at?: string
@@ -1829,9 +1960,14 @@ export type Database = {
           location?: string | null
           name: string
           public_view_enabled?: boolean
+          registration_close_date?: string | null
+          registration_enabled?: boolean | null
+          registration_fee?: number | null
+          registration_open_date?: string | null
           start_date: string
           status?: Database["public"]["Enums"]["tournament_status"]
           updated_at?: string
+          waitlist_enabled?: boolean | null
         }
         Update: {
           created_at?: string
@@ -1842,9 +1978,14 @@ export type Database = {
           location?: string | null
           name?: string
           public_view_enabled?: boolean
+          registration_close_date?: string | null
+          registration_enabled?: boolean | null
+          registration_fee?: number | null
+          registration_open_date?: string | null
           start_date?: string
           status?: Database["public"]["Enums"]["tournament_status"]
           updated_at?: string
+          waitlist_enabled?: boolean | null
         }
         Relationships: []
       }
@@ -2339,7 +2480,9 @@ export type Database = {
     Enums: {
       app_role: "admin" | "user"
       division_status: "draft" | "active" | "completed"
+      payment_status: "unpaid" | "paid" | "refunded"
       rating_type: "ladder" | "league" | "playoffs" | "casual"
+      registration_status: "pending" | "confirmed" | "waitlisted" | "cancelled"
       round_robin_status: "draft" | "live" | "completed"
       tournament_status:
         | "draft"
@@ -2476,7 +2619,9 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "user"],
       division_status: ["draft", "active", "completed"],
+      payment_status: ["unpaid", "paid", "refunded"],
       rating_type: ["ladder", "league", "playoffs", "casual"],
+      registration_status: ["pending", "confirmed", "waitlisted", "cancelled"],
       round_robin_status: ["draft", "live", "completed"],
       tournament_status: [
         "draft",
