@@ -1815,6 +1815,7 @@ export type Database = {
           id: string
           location: string | null
           name: string
+          public_view_enabled: boolean
           start_date: string
           status: Database["public"]["Enums"]["tournament_status"]
           updated_at: string
@@ -1827,6 +1828,7 @@ export type Database = {
           id?: string
           location?: string | null
           name: string
+          public_view_enabled?: boolean
           start_date: string
           status?: Database["public"]["Enums"]["tournament_status"]
           updated_at?: string
@@ -1839,6 +1841,7 @@ export type Database = {
           id?: string
           location?: string | null
           name?: string
+          public_view_enabled?: boolean
           start_date?: string
           status?: Database["public"]["Enums"]["tournament_status"]
           updated_at?: string

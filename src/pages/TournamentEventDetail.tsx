@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Edit, Trash2, Plus, ChevronRight } from "lucide-react";
+import { ArrowLeft, Edit, Trash2, Plus, ChevronRight, ExternalLink, Copy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { EditTournamentDialog } from "@/components/tournament/EditTournamentDialog";
 import { CreateDivisionDialog } from "@/components/tournament/CreateDivisionDialog";
 import { CourtManagementPanel } from "@/components/tournament/CourtManagementPanel";
@@ -22,6 +24,7 @@ interface TournamentEvent {
   end_date: string;
   status: "draft" | "upcoming" | "live" | "completed" | "cancelled";
   created_at: string;
+  public_view_enabled: boolean;
 }
 
 interface Division {
@@ -146,6 +149,38 @@ export default function TournamentEventDetail() {
       });
       navigate("/tournament-admin");
     }
+  };
+
+  const handleTogglePublicView = async (enabled: boolean) => {
+    const { error } = await supabase
+      .from("tournaments_events")
+      .update({ public_view_enabled: enabled })
+      .eq("id", eventId);
+
+    if (error) {
+      toast({
+        title: "Error updating public view",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: enabled ? "Public view enabled" : "Public view disabled",
+        description: enabled 
+          ? "Anyone with the link can now view live scores" 
+          : "Public viewing has been disabled",
+      });
+      fetchEvent();
+    }
+  };
+
+  const copyPublicUrl = () => {
+    const url = `${window.location.origin}/tournament/${eventId}/live`;
+    navigator.clipboard.writeText(url);
+    toast({
+      title: "Link copied",
+      description: "Public view URL copied to clipboard",
+    });
   };
 
   const getStatusBadge = (status: TournamentEvent["status"]) => {
@@ -316,26 +351,78 @@ export default function TournamentEventDetail() {
           </TabsContent>
 
           <TabsContent value="settings" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Event Settings</CardTitle>
-                <CardDescription>
-                  Configure tournament parameters and rules
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <p className="text-sm font-medium">Status</p>
-                  <p className="text-sm text-muted-foreground capitalize">{event.status}</p>
-                </div>
-                <div>
-                  <p className="text-sm font-medium">Created</p>
-                  <p className="text-sm text-muted-foreground">
-                    {format(new Date(event.created_at), "MMM d, yyyy 'at' h:mm a")}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Public View</CardTitle>
+                  <CardDescription>
+                    Allow anyone with the link to view live scores and standings
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <Label htmlFor="public-view">Enable Public View</Label>
+                      <p className="text-sm text-muted-foreground">
+                        When enabled, anyone can view live match scores and team standings
+                      </p>
+                    </div>
+                    <Switch
+                      id="public-view"
+                      checked={event.public_view_enabled}
+                      onCheckedChange={handleTogglePublicView}
+                    />
+                  </div>
+                  
+                  {event.public_view_enabled && (
+                    <div className="pt-4 border-t space-y-3">
+                      <div>
+                        <p className="text-sm font-medium mb-2">Public Live View URL</p>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            readOnly
+                            value={`${window.location.origin}/tournament/${eventId}/live`}
+                            className="flex-1 px-3 py-2 text-sm bg-muted rounded-md"
+                          />
+                          <Button variant="outline" size="sm" onClick={copyPublicUrl}>
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => window.open(`/tournament/${eventId}/live`, '_blank')}
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Event Settings</CardTitle>
+                  <CardDescription>
+                    Configure tournament parameters and rules
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <p className="text-sm font-medium">Status</p>
+                    <p className="text-sm text-muted-foreground capitalize">{event.status}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Created</p>
+                    <p className="text-sm text-muted-foreground">
+                      {format(new Date(event.created_at), "MMM d, yyyy 'at' h:mm a")}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
         </Tabs>
       </div>
