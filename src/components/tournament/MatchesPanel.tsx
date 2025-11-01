@@ -114,6 +114,7 @@ export function MatchesPanel({ divisionId, refreshKey }: MatchesPanelProps) {
         )
       `)
       .eq("division_id", divisionId)
+      .order("round_number")
       .order("match_number");
 
     if (!error && data && data.length > 0) {
@@ -374,12 +375,26 @@ export function MatchesPanel({ divisionId, refreshKey }: MatchesPanelProps) {
             No matches generated yet. Click "Generate Matches" to create round robin schedule.
           </p>
         ) : (
-          <div className="space-y-3">
-            {matches.map((match) => (
-              <div
-                key={match.id}
-                className={`flex items-center justify-between p-4 border rounded-lg gap-4 border-l-4 ${getMatchBorderColor(match)}`}
-              >
+          <div className="space-y-6">
+            {/* Group matches by round */}
+            {Array.from(new Set(matches.map(m => m.round_number))).sort((a, b) => a - b).map(roundNum => {
+              const roundMatches = matches.filter(m => m.round_number === roundNum);
+              return (
+                <div key={roundNum} className="space-y-3">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Badge variant="default" className="text-base px-3 py-1">
+                      Round {roundNum}
+                    </Badge>
+                    <span className="text-sm text-muted-foreground">
+                      {roundMatches.length} {roundMatches.length === 1 ? 'match' : 'matches'}
+                    </span>
+                  </div>
+                  <div className="space-y-3 pl-4 border-l-2 border-primary/20">
+                    {roundMatches.map((match) => (
+                      <div
+                        key={match.id}
+                        className={`flex items-center justify-between p-4 border rounded-lg gap-4 border-l-4 ${getMatchBorderColor(match)}`}
+                      >
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
                     <TooltipProvider>
@@ -559,6 +574,10 @@ export function MatchesPanel({ divisionId, refreshKey }: MatchesPanelProps) {
                 </div>
               </div>
             ))}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
         </CardContent>
