@@ -1,15 +1,17 @@
-import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2 } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Card } from "@/components/ui/card";
+import { Loader2, CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { useState, useEffect } from "react";
 
 interface Match {
   id: string;
@@ -22,6 +24,8 @@ interface Match {
   team2_score?: number | null;
   notes?: string | null;
   status: string;
+  score_edited_by?: string | null;
+  score_edited_at?: string | null;
   tournaments_divisions: {
     tournaments_scoring_rulesets: {
       games_to: number;
@@ -40,7 +44,12 @@ interface ScoreEntryDialogProps {
 
 export function ScoreEntryDialog({ open, onOpenChange, match, onSuccess }: ScoreEntryDialogProps) {
   const { toast } = useToast();
-  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [editHistory, setEditHistory] = useState<{
+    editor_name: string;
+    edited_at: string;
+    original_score?: string;
+  } | null>(null);
 
   const ruleset = match?.tournaments_divisions?.tournaments_scoring_rulesets;
 
@@ -112,20 +121,10 @@ export function ScoreEntryDialog({ open, onOpenChange, match, onSuccess }: Score
     },
   });
 
-  useEffect(() => {
-    if (open && match) {
-      form.reset({
-        team1_score: match.team1_score || 0,
-        team2_score: match.team2_score || 0,
-        notes: match.notes || "",
-      });
-    }
-  }, [open, match]);
-
   const onSubmit = async (data: ScoreFormData) => {
     if (!match) return;
 
-    setLoading(true);
+    setSubmitting(true);
 
     const { data: { user } } = await supabase.auth.getUser();
     const isEdit = match.status === "completed";
@@ -186,109 +185,204 @@ export function ScoreEntryDialog({ open, onOpenChange, match, onSuccess }: Score
       onSuccess();
       onOpenChange(false);
     }
-    setLoading(false);
+    setSubmitting(false);
   };
+
+  // Fetch edit history when dialog opens
+  useEffect(() => {
+    const fetchEditHistory = async () => {
+      if (open && match?.score_edited_at && match?.score_edited_by) {
+        const { data: editorData } = await supabase
+          .from("profiles")
+          .select("display_name, full_name")
+          .eq("id", match.score_edited_by)
+          .single();
+        
+        if (editorData) {
+          setEditHistory({
+            editor_name: editorData.display_name || editorData.full_name,
+            edited_at: match.score_edited_at,
+          });
+        }
+      } else {
+        setEditHistory(null);
+      }
+    };
+
+    fetchEditHistory();
+  }, [open, match?.score_edited_at, match?.score_edited_by]);
+
+  // Reset form when dialog opens with new match
+  useEffect(() => {
+    if (open && match) {
+      form.reset({
+        team1_score: match.team1_score || 0,
+        team2_score: match.team2_score || 0,
+        notes: match.notes || "",
+      });
+    }
+  }, [open, match]);
 
   if (!match) return null;
 
-  const gamesTo = ruleset?.games_to || 11;
-  const winBy2 = ruleset?.win_by_2 ?? true;
-  const isEdit = match.status === "completed";
+  // Get form values to show validation preview
+  const team1Score = form.watch("team1_score");
+  const team2Score = form.watch("team2_score");
+  
+  // Real-time validation preview
+  const getValidationPreview = () => {
+    if (!ruleset || team1Score === undefined || team2Score === undefined) return null;
+    
+    const maxScore = Math.max(team1Score, team2Score);
+    const minScore = Math.min(team1Score, team2Score);
+    const scoreDiff = Math.abs(team1Score - team2Score);
+    
+    // Check if someone reached winning score
+    if (maxScore < ruleset.games_to) {
+      return { valid: false, icon: XCircle, color: "text-red-600", message: `Must reach ${ruleset.games_to}` };
+    }
+    
+    // Check win-by-2 if required
+    if (ruleset.win_by_2 && scoreDiff < 2) {
+      return { valid: false, icon: AlertCircle, color: "text-yellow-600", message: "Must win by 2" };
+    }
+    
+    // Check no ties
+    if (team1Score === team2Score) {
+      return { valid: false, icon: XCircle, color: "text-red-600", message: "Scores cannot be tied" };
+    }
+    
+    return { valid: true, icon: CheckCircle, color: "text-green-600", message: "Valid score" };
+  };
+  
+  const validationPreview = getValidationPreview();
+  
+  const getExampleScores = () => {
+    if (!ruleset) return "";
+    const base = ruleset.games_to;
+    if (ruleset.win_by_2) {
+      return `${base}-${base-2}, ${base+1}-${base-1}, ${base+2}-${base}`;
+    }
+    return `${base}-${base-1}, ${base}-${base-2}, ${base+1}-${base-1}`;
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Edit Score" : "Enter Score"}</DialogTitle>
-          <DialogDescription>
-            {match.team1.team_name} vs {match.team2.team_name}
-          </DialogDescription>
+          <DialogTitle>Enter Match Score</DialogTitle>
         </DialogHeader>
+        
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <div className="text-lg font-semibold">
+              {match.team1.team_name} vs {match.team2.team_name}
+            </div>
+            {ruleset && (
+              <Alert className="bg-primary/10 border-primary/20">
+                <AlertDescription className="text-base font-medium">
+                  <strong>Scoring Rules:</strong> First to {ruleset.games_to}
+                  {ruleset.win_by_2 && ", win by 2"}
+                  {ruleset.best_of > 1 && `, best of ${ruleset.best_of}`}
+                </AlertDescription>
+              </Alert>
+            )}
+          </div>
+          
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="team1_score"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{match.team1.team_name} Score</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        {...field}
+                        onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                      />
+                    </FormControl>
+                    <p className="text-sm text-muted-foreground">Valid range: 0-99</p>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="team2_score"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{match.team2.team_name} Score</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        {...field}
+                        onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                      />
+                    </FormControl>
+                    <p className="text-sm text-muted-foreground">Valid range: 0-99</p>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              {/* Validation Preview */}
+              {validationPreview && (
+                <Card className={`p-3 ${validationPreview.valid ? 'bg-green-50 dark:bg-green-950/20' : 'bg-red-50 dark:bg-red-950/20'}`}>
+                  <div className="flex items-center gap-2">
+                    <validationPreview.icon className={`h-5 w-5 ${validationPreview.color}`} />
+                    <span className={`font-medium ${validationPreview.color}`}>
+                      {validationPreview.message}
+                    </span>
+                  </div>
+                </Card>
+              )}
+              
+              {/* Example Valid Scores */}
+              {ruleset && (
+                <div className="text-sm text-muted-foreground">
+                  <strong>Example valid scores:</strong> {getExampleScores()}
+                </div>
+              )}
 
-        <div className="mb-4 p-3 bg-muted rounded-lg text-sm">
-          <p className="font-medium mb-1">Scoring Rules</p>
-          <p className="text-muted-foreground">
-            First to {gamesTo}{winBy2 ? ", win by 2" : ""}
-          </p>
+              <FormField
+                control={form.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Match Notes (Optional)</FormLabel>
+                    <FormControl>
+                      <Textarea {...field} placeholder="Add any notes about this match..." />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              {/* Edit History */}
+              {editHistory && (
+                <Alert>
+                  <AlertDescription className="text-sm">
+                    <strong>Edit History:</strong> Score was updated by {editHistory.editor_name} on{" "}
+                    {new Date(editHistory.edited_at).toLocaleString()}
+                  </AlertDescription>
+                </Alert>
+              )}
+            </form>
+          </Form>
+          
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button onClick={form.handleSubmit(onSubmit)} disabled={submitting}>
+              {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save Score
+            </Button>
+          </div>
         </div>
-
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="team1_score"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{match.team1.team_name} Score</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      min={0}
-                      max={99}
-                      {...field}
-                      onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : 0)}
-                      value={field.value}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="team2_score"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{match.team2.team_name} Score</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      min={0}
-                      max={99}
-                      {...field}
-                      onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : 0)}
-                      value={field.value}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="notes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Match Notes (optional)</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Any notes about this match..."
-                      rows={3}
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormDescription>
-              Enter the final score for this match
-            </FormDescription>
-
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={loading}>
-                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isEdit ? "Update Score" : "Save Score"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
       </DialogContent>
     </Dialog>
   );

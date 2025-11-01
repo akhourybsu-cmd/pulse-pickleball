@@ -1,11 +1,11 @@
 export const LiveIndicator = () => {
   return (
-    <div className="fixed top-4 right-4 flex items-center gap-2 bg-background/80 backdrop-blur-sm px-3 py-2 rounded-full border border-border z-50">
+    <div className="fixed top-4 right-4 flex items-center gap-3 bg-green-600/90 backdrop-blur-sm px-4 py-2.5 rounded-full border-2 border-green-400 z-50 shadow-lg">
       <div className="relative">
-        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-        <div className="absolute inset-0 w-2 h-2 bg-green-500 rounded-full animate-ping" />
+        <div className="w-4 h-4 bg-white rounded-full animate-pulse" />
+        <div className="absolute inset-0 w-4 h-4 bg-white rounded-full animate-ping" />
       </div>
-      <span className="text-sm font-medium text-foreground">Live Updating</span>
+      <span className="text-base font-bold text-white tracking-wide">LIVE</span>
     </div>
   );
 };

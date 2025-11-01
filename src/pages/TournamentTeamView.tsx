@@ -3,9 +3,11 @@ import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
 import { useTournamentRealtime } from '@/hooks/useTournamentRealtime';
 import { LiveIndicator } from '@/components/tournament/LiveIndicator';
-import { AlertCircle, Trophy, Users } from 'lucide-react';
+import { AlertCircle, Trophy, Users, Link2 } from 'lucide-react';
 
 interface Team {
   id: string;
@@ -42,15 +44,28 @@ interface Match {
     court_number: number;
   } | null;
   opponent: {
+    id: string;
     team_name: string;
   };
 }
 
+interface Standing {
+  team_id: string;
+  team_name: string;
+  wins: number;
+  losses: number;
+  points_for: number;
+  points_against: number;
+  point_diff: number;
+}
+
 const TournamentTeamView = () => {
   const { eventId, teamId } = useParams();
+  const { toast } = useToast();
   const [team, setTeam] = useState<Team | null>(null);
   const [upcomingMatches, setUpcomingMatches] = useState<Match[]>([]);
   const [completedMatches, setCompletedMatches] = useState<Match[]>([]);
+  const [standings, setStandings] = useState<Standing[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -86,7 +101,7 @@ const TournamentTeamView = () => {
 
       setTeam(teamData);
 
-      // Fetch all matches for this team
+      // Fetch all matches for this team and division
       const { data: matchesData, error: matchesError } = await supabase
         .from('tournaments_matches')
         .select(`
@@ -99,14 +114,89 @@ const TournamentTeamView = () => {
           team2_score,
           completed_at,
           actual_duration_minutes,
+          division_id,
           court:tournaments_courts(court_name, court_number),
-          team1:tournaments_teams!tournaments_matches_team1_id_fkey(team_name),
-          team2:tournaments_teams!tournaments_matches_team2_id_fkey(team_name)
+          team1:tournaments_teams!tournaments_matches_team1_id_fkey(id, team_name),
+          team2:tournaments_teams!tournaments_matches_team2_id_fkey(id, team_name)
         `)
         .or(`team1_id.eq.${teamId},team2_id.eq.${teamId}`)
         .order('match_number');
 
       if (matchesError) throw matchesError;
+
+      // Get division ID from first match
+      const divisionId = matchesData?.[0]?.division_id;
+
+      // Fetch all matches in division for standings
+      if (divisionId) {
+        const { data: allDivisionMatches } = await supabase
+          .from('tournaments_matches')
+          .select(`
+            team1_id,
+            team2_id,
+            team1_score,
+            team2_score,
+            status,
+            team1:tournaments_teams!tournaments_matches_team1_id_fkey(id, team_name),
+            team2:tournaments_teams!tournaments_matches_team2_id_fkey(id, team_name)
+          `)
+          .eq('division_id', divisionId)
+          .eq('status', 'completed');
+
+        // Calculate standings
+        const teamStats: Record<string, Standing> = {};
+        (allDivisionMatches || []).forEach((match) => {
+          if (!match.team1_score || !match.team2_score) return;
+
+          const team1Won = match.team1_score > match.team2_score;
+
+          // Team 1
+          if (!teamStats[match.team1_id]) {
+            teamStats[match.team1_id] = {
+              team_id: match.team1_id,
+              team_name: match.team1.team_name,
+              wins: 0,
+              losses: 0,
+              points_for: 0,
+              points_against: 0,
+              point_diff: 0,
+            };
+          }
+          teamStats[match.team1_id].wins += team1Won ? 1 : 0;
+          teamStats[match.team1_id].losses += team1Won ? 0 : 1;
+          teamStats[match.team1_id].points_for += match.team1_score;
+          teamStats[match.team1_id].points_against += match.team2_score;
+
+          // Team 2
+          if (!teamStats[match.team2_id]) {
+            teamStats[match.team2_id] = {
+              team_id: match.team2_id,
+              team_name: match.team2.team_name,
+              wins: 0,
+              losses: 0,
+              points_for: 0,
+              points_against: 0,
+              point_diff: 0,
+            };
+          }
+          teamStats[match.team2_id].wins += team1Won ? 0 : 1;
+          teamStats[match.team2_id].losses += team1Won ? 1 : 0;
+          teamStats[match.team2_id].points_for += match.team2_score;
+          teamStats[match.team2_id].points_against += match.team1_score;
+        });
+
+        const calculatedStandings = Object.values(teamStats).map((team) => ({
+          ...team,
+          point_diff: team.points_for - team.points_against,
+        }));
+
+        calculatedStandings.sort((a, b) => {
+          if (b.wins !== a.wins) return b.wins - a.wins;
+          return b.point_diff - a.point_diff;
+        });
+
+        setStandings(calculatedStandings);
+      }
 
       // Process matches to determine opponent
       const processedMatches = (matchesData || []).map(match => {
@@ -166,6 +256,20 @@ const TournamentTeamView = () => {
       : match.team2_score > match.team1_score;
     return won;
   };
+  
+  const handleShare = () => {
+    navigator.clipboard.writeText(window.location.href);
+    toast({
+      title: "Link copied",
+      description: "Share link copied to clipboard",
+    });
+  };
+  
+  const getOpponentRecord = (opponentId: string) => {
+    const opponentStats = standings.find(s => s.team_id === opponentId);
+    if (!opponentStats) return null;
+    return `${opponentStats.wins}-${opponentStats.losses}`;
+  };
 
   if (loading) {
     return (
@@ -207,16 +311,22 @@ const TournamentTeamView = () => {
           <CardHeader>
             <div className="space-y-4">
               <div className="flex items-start justify-between">
-                <div>
+                <div className="flex-1">
                   <CardTitle className="text-3xl mb-2">{team.team_name}</CardTitle>
                   <p className="text-lg text-muted-foreground">{team.division.name}</p>
                   <p className="text-sm text-muted-foreground">{team.division.event.name}</p>
                 </div>
-                <div className="text-right">
-                  <div className="text-sm text-muted-foreground mb-1">Record</div>
-                  <div className="text-2xl font-bold">
-                    {record.wins} - {record.losses}
+                <div className="flex gap-3">
+                  <div className="text-right">
+                    <div className="text-sm text-muted-foreground mb-1">Record</div>
+                    <div className="text-2xl font-bold">
+                      {record.wins} - {record.losses}
+                    </div>
                   </div>
+                  <Button variant="outline" size="sm" onClick={handleShare}>
+                    <Link2 className="h-4 w-4 mr-1" />
+                    Share
+                  </Button>
                 </div>
               </div>
 
@@ -229,6 +339,48 @@ const TournamentTeamView = () => {
             </div>
           </CardHeader>
         </Card>
+        
+        {/* Division Standings */}
+        {standings.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Division Standings</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left pb-2 font-semibold">Rank</th>
+                      <th className="text-left pb-2 font-semibold">Team</th>
+                      <th className="text-center pb-2 font-semibold">W</th>
+                      <th className="text-center pb-2 font-semibold">L</th>
+                      <th className="text-center pb-2 font-semibold">Diff</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {standings.map((standing, index) => (
+                      <tr 
+                        key={standing.team_id} 
+                        className={`border-b ${standing.team_id === teamId ? 'bg-yellow-100 dark:bg-yellow-900/20 font-semibold' : ''}`}
+                      >
+                        <td className="py-2">{index + 1}</td>
+                        <td className="py-2">{standing.team_name}</td>
+                        <td className="py-2 text-center">{standing.wins}</td>
+                        <td className="py-2 text-center">{standing.losses}</td>
+                        <td className="py-2 text-center">
+                          <span className={standing.point_diff > 0 ? 'text-green-600' : standing.point_diff < 0 ? 'text-red-600' : ''}>
+                            {standing.point_diff > 0 ? '+' : ''}{standing.point_diff}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Upcoming Matches */}
         <Card>
@@ -245,21 +397,43 @@ const TournamentTeamView = () => {
               <p className="text-muted-foreground">No upcoming matches</p>
             ) : (
               <div className="space-y-3">
-                {upcomingMatches.map(match => (
-                  <div key={match.id} className="flex items-center justify-between p-4 rounded-lg border">
-                    <div className="flex-1">
-                      <div className="font-medium">vs {match.opponent.team_name}</div>
-                      {match.court && (
-                        <div className="text-sm text-muted-foreground mt-1">
-                          {match.court.court_name || `Court ${match.court.court_number}`}
+                {upcomingMatches.map((match, index) => {
+                  const opponentRecord = getOpponentRecord(match.opponent.id);
+                  const isNextMatch = index === 0;
+                  
+                  return (
+                    <div 
+                      key={match.id} 
+                      className={`p-4 rounded-lg border ${isNextMatch ? 'border-primary bg-primary/5' : ''}`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <div className="font-medium">vs {match.opponent.team_name}</div>
+                            {opponentRecord && (
+                              <Badge variant="outline" className="text-xs">
+                                {opponentRecord}
+                              </Badge>
+                            )}
+                          </div>
+                          {match.court && (
+                            <div className="text-sm text-muted-foreground mt-1">
+                              {match.court.court_name || `Court ${match.court.court_number}`}
+                            </div>
+                          )}
+                          {isNextMatch && (
+                            <div className="text-sm text-primary font-semibold mt-1">
+                              Next Match
+                            </div>
+                          )}
                         </div>
-                      )}
+                        <Badge variant={match.status === 'in_progress' ? 'default' : 'outline'}>
+                          {match.status === 'in_progress' ? 'In Progress' : 'Scheduled'}
+                        </Badge>
+                      </div>
                     </div>
-                    <Badge variant={match.status === 'in_progress' ? 'default' : 'outline'}>
-                      {match.status === 'in_progress' ? 'In Progress' : 'Scheduled'}
-                    </Badge>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </CardContent>

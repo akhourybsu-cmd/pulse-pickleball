@@ -10,6 +10,44 @@ import { Loader2, Play, Trophy, MapPin, Edit, FileText, Trash2, AlertCircle, Che
 import { ScoreEntryDialog } from "./ScoreEntryDialog";
 import { CourtAssignmentDialog } from "./CourtAssignmentDialog";
 
+// Component to show score edit tooltip with editor info
+function ScoreEditedTooltip({ scoreEditedBy, scoreEditedAt }: { scoreEditedBy: string | null, scoreEditedAt: string }) {
+  const [editorName, setEditorName] = useState<string | null>(null);
+  
+  useEffect(() => {
+    const fetchEditor = async () => {
+      if (scoreEditedBy) {
+        const { data } = await supabase
+          .from("profiles")
+          .select("display_name, full_name")
+          .eq("id", scoreEditedBy)
+          .single();
+        
+        if (data) {
+          setEditorName(data.display_name || data.full_name);
+        }
+      }
+    };
+    fetchEditor();
+  }, [scoreEditedBy]);
+  
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="text-xs cursor-help text-amber-600">(edited)</span>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>
+            {editorName ? `Edited by ${editorName} on ` : 'Edited on '}
+            {new Date(scoreEditedAt).toLocaleString()}
+          </p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
 interface Match {
   id: string;
   round_number: number;
@@ -25,9 +63,11 @@ interface Match {
   actual_duration_minutes: number | null;
   notes: string | null;
   score_edited_at: string | null;
+  score_edited_by: string | null;
   team1: { team_name: string };
   team2: { team_name: string };
   court: { court_number: number; court_name: string | null } | null;
+  
   tournaments_divisions: {
     event_id: string;
     tournaments_scoring_rulesets: {
@@ -374,7 +414,10 @@ export function MatchesPanel({ divisionId, refreshKey }: MatchesPanelProps) {
                     <div className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
                       <span>Score: {match.team1_score} - {match.team2_score}</span>
                       {match.score_edited_at && (
-                        <span className="text-xs">(edited)</span>
+                        <ScoreEditedTooltip 
+                          scoreEditedBy={match.score_edited_by} 
+                          scoreEditedAt={match.score_edited_at} 
+                        />
                       )}
                       {match.actual_duration_minutes && (
                         <span className="text-xs">
