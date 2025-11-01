@@ -23,6 +23,13 @@ const lfgSchema = z.object({
     return end > start;
   },
   { message: "End time must be after start time", path: ["endTime"] }
+).refine(
+  (data) => {
+    const start = new Date(`${data.date}T${data.startTime}`);
+    const now = new Date();
+    return start > now;
+  },
+  { message: "Start time must be in the future", path: ["startTime"] }
 );
 
 interface CreateLFGDialogProps {

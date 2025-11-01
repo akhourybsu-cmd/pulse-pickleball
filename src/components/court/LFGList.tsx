@@ -63,7 +63,7 @@ export function LFGList({ courtId, userId }: LFGListProps) {
       `)
       .eq("court_id", courtId)
       .eq("status", "open")
-      .gte("starts_at", new Date().toISOString())
+      .gte("ends_at", new Date().toISOString())
       .order("starts_at", { ascending: true });
 
     if (data) {
