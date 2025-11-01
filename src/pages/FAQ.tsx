@@ -1,7 +1,5 @@
-import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
@@ -9,27 +7,24 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import logo from "@/assets/pulse-logo-new.png";
 
 const FAQ = () => {
-  const navigate = useNavigate();
-
   return (
     <div className="min-h-screen bg-background">
-      <nav className="border-b bg-card">
+      <nav className="border-b bg-secondary">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Button variant="ghost" onClick={() => navigate("/dashboard")}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Dashboard
-          </Button>
+          <Link to="/dashboard">
+            <img src={logo} alt="PULSE Logo" className="h-[90px] w-auto cursor-pointer hover:opacity-80 transition-opacity" />
+          </Link>
           <ThemeToggle />
         </div>
       </nav>
 
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
-        <h1 className="text-3xl font-bold mb-2">Frequently Asked Questions</h1>
-        <p className="text-muted-foreground mb-8">
-          Everything you need to know about the rating system
-        </p>
+      <div className="container mx-auto px-4 py-6 space-y-6">
+        <div className="space-y-2">
+          <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold">Frequently Asked Questions</h1>
+        </div>
 
         <Accordion type="single" collapsible className="space-y-4">
           <AccordionItem value="simple-breakdown">
