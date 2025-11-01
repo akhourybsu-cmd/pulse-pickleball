@@ -5,8 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Loader2, Trash2, Users, Edit } from "lucide-react";
+import { Loader2, Trash2, Users, Edit, Edit2 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { EditTeamDialog } from "./EditTeamDialog";
 
 interface Team {
   id: string;
@@ -29,6 +30,8 @@ export function TeamsPanel({ divisionId, refreshKey }: TeamsPanelProps) {
   const [loading, setLoading] = useState(true);
   const [editingSeed, setEditingSeed] = useState<string | null>(null);
   const [seedValue, setSeedValue] = useState("");
+  const [editingTeam, setEditingTeam] = useState<Team | null>(null);
+  const [isEditTeamDialogOpen, setIsEditTeamDialogOpen] = useState(false);
 
   useEffect(() => {
     fetchTeams();
@@ -188,9 +191,9 @@ export function TeamsPanel({ divisionId, refreshKey }: TeamsPanelProps) {
                           </Button>
                         )}
                       </>
-                    )}
+                     )}
                   </div>
-                  <div>
+                  <div className="flex-1">
                     <div className="font-medium flex items-center gap-2">
                       <Users className="h-4 w-4" />
                       {team.team_name}
@@ -209,7 +212,18 @@ export function TeamsPanel({ divisionId, refreshKey }: TeamsPanelProps) {
                     </div>
                   </div>
                 </div>
-                <AlertDialog>
+                <div className="flex gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      setEditingTeam(team);
+                      setIsEditTeamDialogOpen(true);
+                    }}
+                  >
+                    <Edit2 className="h-4 w-4" />
+                  </Button>
+                  <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button variant="ghost" size="icon">
                       <Trash2 className="h-4 w-4" />
@@ -234,11 +248,24 @@ export function TeamsPanel({ divisionId, refreshKey }: TeamsPanelProps) {
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
+                </div>
               </div>
             ))}
           </div>
         )}
       </CardContent>
+
+      {editingTeam && (
+        <EditTeamDialog
+          open={isEditTeamDialogOpen}
+          onOpenChange={setIsEditTeamDialogOpen}
+          team={editingTeam}
+          onSuccess={() => {
+            setIsEditTeamDialogOpen(false);
+            fetchTeams();
+          }}
+        />
+      )}
     </Card>
   );
 }

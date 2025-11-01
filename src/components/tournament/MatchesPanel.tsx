@@ -5,7 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Loader2, Play, Trophy, MapPin, Edit, FileText } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Loader2, Play, Trophy, MapPin, Edit, FileText, Trash2 } from "lucide-react";
 import { ScoreEntryDialog } from "./ScoreEntryDialog";
 import { CourtAssignmentDialog } from "./CourtAssignmentDialog";
 
@@ -125,6 +126,27 @@ export function MatchesPanel({ divisionId, refreshKey }: MatchesPanelProps) {
   const handleChangeCourt = (match: Match) => {
     setSelectedMatch(match);
     setIsCourtDialogOpen(true);
+  };
+
+  const handleDeleteMatch = async (match: Match) => {
+    const { error } = await supabase
+      .from("tournaments_matches")
+      .delete()
+      .eq("id", match.id);
+
+    if (error) {
+      toast({
+        title: "Error deleting match",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Match deleted",
+        description: `Match #${match.match_number} has been removed`,
+      });
+      fetchMatches();
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -261,14 +283,71 @@ export function MatchesPanel({ divisionId, refreshKey }: MatchesPanelProps) {
                     </>
                   )}
                   {match.status === "completed" && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEnterScore(match)}
-                    >
-                      <Edit className="h-4 w-4 mr-1" />
-                      Edit Score
-                    </Button>
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEnterScore(match)}
+                      >
+                        <Edit className="h-4 w-4 mr-1" />
+                        Edit Score
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="sm">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Match?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will permanently delete Match #{match.match_number} ({match.team1.team_name} vs {match.team2.team_name}).
+                              {match.team1_score !== null && match.team2_score !== null && (
+                                <span className="block mt-2 font-semibold text-amber-600">
+                                  Warning: This match has scores recorded ({match.team1_score} - {match.team2_score})
+                                </span>
+                              )}
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDeleteMatch(match)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Delete Match
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </>
+                  )}
+                  {match.status !== "completed" && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="sm">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete Match?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will permanently delete Match #{match.match_number} ({match.team1.team_name} vs {match.team2.team_name}). This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleDeleteMatch(match)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Delete Match
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   )}
                 </div>
               </div>

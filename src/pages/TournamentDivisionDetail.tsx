@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { CreateTeamDialog } from "@/components/tournament/CreateTeamDialog";
 import { EditDivisionDialog } from "@/components/tournament/EditDivisionDialog";
+import { BracketGenerationDialog } from "@/components/tournament/BracketGenerationDialog";
 import { TeamsPanel } from "@/components/tournament/TeamsPanel";
 import { MatchesPanel } from "@/components/tournament/MatchesPanel";
 import { StandingsPanel } from "@/components/tournament/StandingsPanel";
@@ -35,8 +36,10 @@ export default function TournamentDivisionDetail() {
   const [division, setDivision] = useState<Division | null>(null);
   const [isCreateTeamOpen, setIsCreateTeamOpen] = useState(false);
   const [isEditDivisionOpen, setIsEditDivisionOpen] = useState(false);
+  const [isBracketDialogOpen, setIsBracketDialogOpen] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [teamCount, setTeamCount] = useState(0);
 
   useEffect(() => {
     if (divisionId) {
@@ -64,6 +67,13 @@ export default function TournamentDivisionDetail() {
       navigate(-1);
     } else {
       setDivision(data);
+      
+      // Fetch team count
+      const { count } = await supabase
+        .from("tournaments_teams")
+        .select("*", { count: "exact", head: true })
+        .eq("division_id", divisionId);
+      setTeamCount(count || 0);
     }
     setLoading(false);
   };
@@ -132,6 +142,12 @@ export default function TournamentDivisionDetail() {
         description: "Division must be in 'active' status to generate matches",
         variant: "destructive",
       });
+      return;
+    }
+
+    // Handle bracket generation for elimination formats
+    if (division.format === "single_elimination" || division.format === "double_elimination") {
+      setIsBracketDialogOpen(true);
       return;
     }
 
@@ -294,7 +310,7 @@ export default function TournamentDivisionDetail() {
                 ) : (
                   <Shuffle className="mr-2 h-4 w-4" />
                 )}
-                Generate Matches
+                {division.format === "round_robin" ? "Generate Matches" : "Generate Bracket"}
               </Button>
             )}
           </div>
@@ -336,6 +352,17 @@ export default function TournamentDivisionDetail() {
           onSave={handleUpdateDivision}
         />
       )}
+
+      <BracketGenerationDialog
+        open={isBracketDialogOpen}
+        onOpenChange={setIsBracketDialogOpen}
+        divisionId={divisionId!}
+        teamCount={teamCount}
+        onSuccess={() => {
+          setIsBracketDialogOpen(false);
+          setRefreshKey((prev) => prev + 1);
+        }}
+      />
     </div>
   );
 }
