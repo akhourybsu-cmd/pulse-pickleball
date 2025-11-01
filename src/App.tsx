@@ -40,6 +40,8 @@ import RoundRobinHub from "./pages/RoundRobinHub";
 import CreateRoundRobin from "./pages/CreateRoundRobin";
 import RoundRobinDetail from "./pages/RoundRobinDetail";
 import RoundRobinKiosk from "./pages/RoundRobinKiosk";
+import TournamentAdmin from "./pages/TournamentAdmin";
+import TournamentEventDetail from "./pages/TournamentEventDetail";
 import { RoundRobinBanner } from "@/components/RoundRobinBanner";
 
 const queryClient = new QueryClient();
@@ -91,6 +93,8 @@ const App = () => (
               <Route path="/round-robin/create" element={<CreateRoundRobin />} />
               <Route path="/round-robin/:id" element={<RoundRobinDetail />} />
               <Route path="/round-robin/:id/kiosk" element={<RoundRobinKiosk />} />
+              <Route path="/tournament-admin" element={<TournamentAdmin />} />
+              <Route path="/tournament-admin/event/:eventId" element={<TournamentEventDetail />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

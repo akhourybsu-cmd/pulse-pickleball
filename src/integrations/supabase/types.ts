@@ -1717,6 +1717,80 @@ export type Database = {
           },
         ]
       }
+      tournaments_courts: {
+        Row: {
+          available: boolean
+          court_name: string | null
+          court_number: number
+          created_at: string
+          event_id: string
+          id: string
+        }
+        Insert: {
+          available?: boolean
+          court_name?: string | null
+          court_number: number
+          created_at?: string
+          event_id: string
+          id?: string
+        }
+        Update: {
+          available?: boolean
+          court_name?: string | null
+          court_number?: number
+          created_at?: string
+          event_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournaments_courts_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tournaments_events: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          end_date: string
+          id: string
+          location: string | null
+          name: string
+          start_date: string
+          status: Database["public"]["Enums"]["tournament_status"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          end_date: string
+          id?: string
+          location?: string | null
+          name: string
+          start_date: string
+          status?: Database["public"]["Enums"]["tournament_status"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          end_date?: string
+          id?: string
+          location?: string | null
+          name?: string
+          start_date?: string
+          status?: Database["public"]["Enums"]["tournament_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_availability: {
         Row: {
           created_at: string | null
@@ -2018,6 +2092,12 @@ export type Database = {
       app_role: "admin" | "user"
       rating_type: "ladder" | "league" | "playoffs" | "casual"
       round_robin_status: "draft" | "live" | "completed"
+      tournament_status:
+        | "draft"
+        | "upcoming"
+        | "live"
+        | "completed"
+        | "cancelled"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2148,6 +2228,13 @@ export const Constants = {
       app_role: ["admin", "user"],
       rating_type: ["ladder", "league", "playoffs", "casual"],
       round_robin_status: ["draft", "live", "completed"],
+      tournament_status: [
+        "draft",
+        "upcoming",
+        "live",
+        "completed",
+        "cancelled",
+      ],
     },
   },
 } as const

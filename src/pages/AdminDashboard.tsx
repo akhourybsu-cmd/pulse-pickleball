@@ -16,7 +16,8 @@ import {
   LayoutDashboard,
   Download,
   UserPlus,
-  FileText
+  FileText,
+  Swords
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import logo from "@/assets/pulse-logo-new.png";
@@ -263,6 +264,23 @@ const AdminDashboard = () => {
             <CardContent>
               <Button className="w-full" variant="secondary">
                 Open Kiosk
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate("/tournament-admin")}>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <Swords className="w-10 h-10 text-primary" />
+              </div>
+              <CardTitle className="mt-4">Tournament Portal</CardTitle>
+              <CardDescription>
+                Manage tournaments, divisions, and round-robin play
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button className="w-full" variant="secondary">
+                Manage Tournaments
               </Button>
             </CardContent>
           </Card>
