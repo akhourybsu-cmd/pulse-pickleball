@@ -228,11 +228,49 @@ export function MatchesPanel({ divisionId, refreshKey }: MatchesPanelProps) {
       return;
     }
 
-    // Assign courts in round-robin fashion
-    const updates = matchesWithoutCourts.map((match, index) => ({
-      id: match.id,
-      court_id: courts[index % courts.length].id,
-    }));
+    // Group matches by round and assign courts to prevent conflicts within same round
+    const matchesByRound = new Map<number, typeof matchesWithoutCourts>();
+    matchesWithoutCourts.forEach((match) => {
+      if (!matchesByRound.has(match.round_number)) {
+        matchesByRound.set(match.round_number, []);
+      }
+      matchesByRound.get(match.round_number)!.push(match);
+    });
+
+    // Assign courts round by round to prevent double-booking
+    const updates: { id: string; court_id: string }[] = [];
+    for (const [roundNum, roundMatches] of matchesByRound.entries()) {
+      roundMatches.forEach((match, index) => {
+        // Each match in a round gets a unique court
+        const courtIndex = index % courts.length;
+        updates.push({
+          id: match.id,
+          court_id: courts[courtIndex].id,
+        });
+      });
+    }
+
+    // Validate: Check no court is used twice in same round
+    const validation = new Map<number, Set<string>>();
+    updates.forEach((update) => {
+      const match = matchesWithoutCourts.find((m) => m.id === update.id);
+      if (match) {
+        if (!validation.has(match.round_number)) {
+          validation.set(match.round_number, new Set());
+        }
+        const roundCourts = validation.get(match.round_number)!;
+        if (roundCourts.has(update.court_id)) {
+          toast({
+            title: "Court assignment error",
+            description: "Cannot assign same court twice in one round",
+            variant: "destructive",
+          });
+          setAutoAssigning(false);
+          return;
+        }
+        roundCourts.add(update.court_id);
+      }
+    });
 
     // Update all matches
     for (const update of updates) {
@@ -244,7 +282,7 @@ export function MatchesPanel({ divisionId, refreshKey }: MatchesPanelProps) {
 
     toast({
       title: "Courts assigned",
-      description: `Assigned ${updates.length} matches to ${courts.length} court(s)`,
+      description: `Assigned ${updates.length} matches across ${matchesByRound.size} round(s)`,
     });
 
     fetchMatches();
@@ -252,10 +290,12 @@ export function MatchesPanel({ divisionId, refreshKey }: MatchesPanelProps) {
   };
 
   const handleClearCourts = async () => {
+    // Only clear courts from scheduled matches (not in-progress or completed)
     const { error } = await supabase
       .from("tournaments_matches")
       .update({ court_id: null })
-      .eq("division_id", divisionId);
+      .eq("division_id", divisionId)
+      .eq("status", "scheduled");
 
     if (error) {
       toast({
@@ -266,7 +306,7 @@ export function MatchesPanel({ divisionId, refreshKey }: MatchesPanelProps) {
     } else {
       toast({
         title: "Courts cleared",
-        description: "All court assignments removed",
+        description: "Court assignments removed from scheduled matches",
       });
       fetchMatches();
     }
@@ -393,7 +433,9 @@ export function MatchesPanel({ divisionId, refreshKey }: MatchesPanelProps) {
                     {roundMatches.map((match) => (
                       <div
                         key={match.id}
-                        className={`flex items-center justify-between p-4 border rounded-lg gap-4 border-l-4 ${getMatchBorderColor(match)}`}
+                        className={`flex items-center justify-between p-4 border rounded-lg gap-4 border-l-4 ${getMatchBorderColor(match)} ${
+                          match.status === "completed" ? "bg-muted/30" : ""
+                        }`}
                       >
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
@@ -447,9 +489,14 @@ export function MatchesPanel({ divisionId, refreshKey }: MatchesPanelProps) {
                       )}
                       {match.actual_duration_minutes && (
                         <span className="text-xs">
-                          • {match.actual_duration_minutes} min
+                          • Duration: {match.actual_duration_minutes} min
                         </span>
                       )}
+                    </div>
+                  )}
+                  {match.status === "completed" && match.completed_at && !match.actual_duration_minutes && (
+                    <div className="text-sm text-muted-foreground mt-1">
+                      Completed {new Date(match.completed_at).toLocaleTimeString()}
                     </div>
                   )}
                 </div>
@@ -478,6 +525,7 @@ export function MatchesPanel({ divisionId, refreshKey }: MatchesPanelProps) {
                         variant="default"
                         size="sm"
                         onClick={() => handleStartMatch(match)}
+                        className="bg-green-600 hover:bg-green-700"
                       >
                         <Play className="h-4 w-4 mr-1" />
                         Start
@@ -485,65 +533,24 @@ export function MatchesPanel({ divisionId, refreshKey }: MatchesPanelProps) {
                     </>
                   )}
                   {match.status === "in_progress" && (
-                    <>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleChangeCourt(match)}
-                      >
-                        <MapPin className="h-4 w-4 mr-1" />
-                        Change Court
-                      </Button>
-                      <Button
-                        variant="default"
-                        size="sm"
-                        onClick={() => handleEnterScore(match)}
-                      >
-                        <Trophy className="h-4 w-4 mr-1" />
-                        Enter Score
-                      </Button>
-                    </>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => handleEnterScore(match)}
+                    >
+                      <Trophy className="h-4 w-4 mr-1" />
+                      Enter Score
+                    </Button>
                   )}
                   {match.status === "completed" && (
-                    <>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEnterScore(match)}
-                      >
-                        <Edit className="h-4 w-4 mr-1" />
-                        Edit Score
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete Match?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This will permanently delete Match #{match.match_number} ({match.team1.team_name} vs {match.team2.team_name}).
-                              {match.team1_score !== null && match.team2_score !== null && (
-                                <span className="block mt-2 font-semibold text-amber-600">
-                                  Warning: This match has scores recorded ({match.team1_score} - {match.team2_score})
-                                </span>
-                              )}
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => handleDeleteMatch(match)}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            >
-                              Delete Match
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEnterScore(match)}
+                    >
+                      <Edit className="h-4 w-4 mr-1" />
+                      Edit Score
+                    </Button>
                   )}
                   {match.status !== "completed" && (
                     <AlertDialog>

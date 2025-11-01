@@ -23,6 +23,14 @@ interface Court {
   available: boolean;
 }
 
+interface Match {
+  id: string;
+  round_number: number;
+  division_id: string;
+  court_id: string | null;
+  status: string;
+}
+
 interface CourtAssignmentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -41,6 +49,8 @@ export function CourtAssignmentDialog({
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [courts, setCourts] = useState<Court[]>([]);
+  const [currentMatch, setCurrentMatch] = useState<Match | null>(null);
+  const [usedCourtIds, setUsedCourtIds] = useState<Set<string>>(new Set());
 
   const form = useForm<AssignmentFormData>({
     resolver: zodResolver(assignmentSchema),
@@ -50,11 +60,49 @@ export function CourtAssignmentDialog({
   });
 
   useEffect(() => {
-    if (open) {
-      loadCourts();
+    if (open && matchId) {
+      loadMatchAndCourts();
       form.reset();
     }
-  }, [open]);
+  }, [open, matchId]);
+
+  const loadMatchAndCourts = async () => {
+    if (!matchId) return;
+
+    // Load the current match to get its round number and division
+    const { data: match, error: matchError } = await supabase
+      .from("tournaments_matches")
+      .select("id, round_number, division_id, court_id, status")
+      .eq("id", matchId)
+      .single();
+
+    if (matchError || !match) {
+      toast({
+        title: "Error loading match",
+        description: matchError?.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setCurrentMatch(match);
+
+    // Get all matches in the same round of the same division to find used courts
+    const { data: sameRoundMatches } = await supabase
+      .from("tournaments_matches")
+      .select("court_id")
+      .eq("division_id", match.division_id)
+      .eq("round_number", match.round_number)
+      .neq("id", matchId)
+      .not("court_id", "is", null);
+
+    const usedCourts = new Set<string>(
+      sameRoundMatches?.map((m) => m.court_id).filter(Boolean) as string[]
+    );
+    setUsedCourtIds(usedCourts);
+
+    loadCourts();
+  };
 
   const loadCourts = async () => {
     const { data, error } = await supabase
@@ -76,7 +124,18 @@ export function CourtAssignmentDialog({
   };
 
   const onSubmit = async (data: AssignmentFormData) => {
-    if (!matchId) return;
+    if (!matchId || !currentMatch) return;
+
+    // Validate court is not already used in this round
+    if (usedCourtIds.has(data.court_id)) {
+      toast({
+        title: "Court conflict",
+        description: "This court is already assigned to another match in this round",
+        variant: "destructive",
+      });
+      setLoading(false);
+      return;
+    }
 
     setLoading(true);
     const { error } = await supabase
@@ -131,12 +190,20 @@ export function CourtAssignmentDialog({
                           No available courts
                         </div>
                       ) : (
-                        courts.map((court) => (
-                          <SelectItem key={court.id} value={court.id}>
-                            Court {court.court_number}
-                            {court.court_name && ` (${court.court_name})`}
-                          </SelectItem>
-                        ))
+                        courts.map((court) => {
+                          const isUsedInRound = usedCourtIds.has(court.id);
+                          return (
+                            <SelectItem 
+                              key={court.id} 
+                              value={court.id}
+                              disabled={isUsedInRound}
+                            >
+                              Court {court.court_number}
+                              {court.court_name && ` (${court.court_name})`}
+                              {isUsedInRound && " (In use this round)"}
+                            </SelectItem>
+                          );
+                        })
                       )}
                     </SelectContent>
                   </Select>

@@ -285,6 +285,34 @@ export default function TournamentDivisionDetail() {
       participants.splice(0, participants.length, ...rotated);
     }
 
+    // Validation: Ensure each team appears only once per round
+    const validationErrors: string[] = [];
+    for (let round = 1; round <= numRounds; round++) {
+      const roundMatches = matches.filter((m) => m.round_number === round);
+      const teamsInRound = new Set<string>();
+      
+      roundMatches.forEach((match) => {
+        if (teamsInRound.has(match.team1_id)) {
+          validationErrors.push(`Team appears twice in Round ${round}`);
+        }
+        if (teamsInRound.has(match.team2_id)) {
+          validationErrors.push(`Team appears twice in Round ${round}`);
+        }
+        teamsInRound.add(match.team1_id);
+        teamsInRound.add(match.team2_id);
+      });
+    }
+
+    if (validationErrors.length > 0) {
+      toast({
+        title: "Validation error",
+        description: validationErrors[0],
+        variant: "destructive",
+      });
+      setGenerating(false);
+      return;
+    }
+
     // Insert matches
     const { error: insertError } = await supabase
       .from("tournaments_matches")
@@ -299,7 +327,7 @@ export default function TournamentDivisionDetail() {
     } else {
       toast({
         title: "Matches generated",
-        description: `${matches.length} matches created for round robin`,
+        description: `${matches.length} matches created across ${numRounds} rounds`,
       });
       setRefreshKey((prev) => prev + 1);
     }
