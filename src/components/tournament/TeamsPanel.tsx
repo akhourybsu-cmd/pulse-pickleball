@@ -22,9 +22,10 @@ interface Team {
 interface TeamsPanelProps {
   divisionId: string;
   refreshKey?: number;
+  divisionStatus?: string;
 }
 
-export function TeamsPanel({ divisionId, refreshKey }: TeamsPanelProps) {
+export function TeamsPanel({ divisionId, refreshKey, divisionStatus }: TeamsPanelProps) {
   const { toast } = useToast();
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
@@ -212,43 +213,45 @@ export function TeamsPanel({ divisionId, refreshKey }: TeamsPanelProps) {
                     </div>
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => {
-                      setEditingTeam(team);
-                      setIsEditTeamDialogOpen(true);
-                    }}
-                  >
-                    <Edit2 className="h-4 w-4" />
-                  </Button>
-                  <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <Trash2 className="h-4 w-4" />
+                {divisionStatus !== "completed" && (
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        setEditingTeam(team);
+                        setIsEditTeamDialogOpen(true);
+                      }}
+                    >
+                      <Edit2 className="h-4 w-4" />
                     </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Delete Team?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This will permanently delete "{team.team_name}" and remove them from all matches.
-                        This action cannot be undone.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={() => handleDeleteTeam(team.id, team.team_name)}
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                      >
-                        Delete Team
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-                </div>
+                    <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Team?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will permanently delete "{team.team_name}" and remove them from all matches.
+                          This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction 
+                          onClick={() => handleDeleteTeam(team.id, team.team_name)}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Delete Team
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                  </div>
+                )}
               </div>
             ))}
           </div>

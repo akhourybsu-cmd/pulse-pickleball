@@ -382,32 +382,36 @@ export default function TournamentDivisionDetail() {
             )}
           </div>
           <div className="flex gap-2">
-            <Button onClick={() => setIsEditDivisionOpen(true)} variant="outline">
-              <Edit className="mr-2 h-4 w-4" />
-              Edit
-            </Button>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive">
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete
+            {division.status !== "completed" && (
+              <>
+                <Button onClick={() => setIsEditDivisionOpen(true)} variant="outline">
+                  <Edit className="mr-2 h-4 w-4" />
+                  Edit
                 </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete Division?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Are you sure? This cannot be undone. Divisions with completed matches cannot be deleted.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleDeleteDivision} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                    Delete Division
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive">
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete Division?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure? This cannot be undone. Divisions with completed matches cannot be deleted.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleDeleteDivision} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        Delete Division
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </>
+            )}
             {division.status === "draft" && (
               <Button onClick={handleActivateDivision} disabled={teamCount < 2} variant="default">
                 <CheckCircle2 className="mr-2 h-4 w-4" />
@@ -424,10 +428,12 @@ export default function TournamentDivisionDetail() {
               divisionId={divisionId!} 
               divisionName={division.name} 
             />
-            <Button onClick={() => setIsCreateTeamOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Team
-            </Button>
+            {division.status !== "completed" && (
+              <Button onClick={() => setIsCreateTeamOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Team
+              </Button>
+            )}
             {division.status === "active" && (
               <Button onClick={handleGenerateMatches} disabled={generating} variant="secondary">
                 {generating ? (
@@ -460,11 +466,19 @@ export default function TournamentDivisionDetail() {
           </TabsList>
 
           <TabsContent value="teams" className="mt-6">
-            <TeamsPanel divisionId={divisionId!} refreshKey={refreshKey} />
+            <TeamsPanel 
+              divisionId={divisionId!} 
+              refreshKey={refreshKey} 
+              divisionStatus={division.status}
+            />
           </TabsContent>
 
           <TabsContent value="matches" className="mt-6">
-            <MatchesPanel divisionId={divisionId!} refreshKey={refreshKey} />
+            <MatchesPanel 
+              divisionId={divisionId!} 
+              refreshKey={refreshKey}
+              divisionStatus={division.status}
+            />
           </TabsContent>
 
           <TabsContent value="standings" className="mt-6">

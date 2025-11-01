@@ -82,9 +82,10 @@ interface Match {
 interface MatchesPanelProps {
   divisionId: string;
   refreshKey?: number;
+  divisionStatus?: string;
 }
 
-export function MatchesPanel({ divisionId, refreshKey }: MatchesPanelProps) {
+export function MatchesPanel({ divisionId, refreshKey, divisionStatus }: MatchesPanelProps) {
   const { toast } = useToast();
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
@@ -552,7 +553,7 @@ export function MatchesPanel({ divisionId, refreshKey }: MatchesPanelProps) {
                       Edit Score
                     </Button>
                   )}
-                  {match.status !== "completed" && (
+                  {match.status !== "completed" && divisionStatus !== "completed" && (
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button variant="ghost" size="sm">
