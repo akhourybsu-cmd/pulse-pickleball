@@ -380,15 +380,8 @@ const MatchHistory = () => {
       </nav>
 
       <div className="container mx-auto px-4 py-6 space-y-6">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="space-y-2">
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold">Match History</h1>
-            <p className="text-muted-foreground md:text-lg">{playerName}</p>
-          </div>
-          <Button variant="outline" onClick={() => navigate("/dashboard")}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Dashboard
-          </Button>
+        <div className="space-y-2">
+          <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold">Match History - {playerName}</h1>
         </div>
 
         {matches.length === 0 ? (
