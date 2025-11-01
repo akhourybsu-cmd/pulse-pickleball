@@ -245,22 +245,44 @@ export default function TournamentDivisionDetail() {
       .delete()
       .eq("division_id", divisionId);
 
-    // Generate round robin pairings
+    // Generate round robin pairings with proper round scheduling
     const matches: any[] = [];
     let matchNumber = 1;
-
-    // Round robin algorithm: each team plays every other team once
-    for (let i = 0; i < teams.length; i++) {
-      for (let j = i + 1; j < teams.length; j++) {
-        matches.push({
-          division_id: divisionId,
-          round_number: 1,
-          match_number: matchNumber++,
-          team1_id: teams[i].id,
-          team2_id: teams[j].id,
-          status: "scheduled",
-        });
+    
+    // Use round robin algorithm that ensures each team plays once per round
+    const numTeams = teams.length;
+    const numRounds = numTeams % 2 === 0 ? numTeams - 1 : numTeams;
+    const matchesPerRound = Math.floor(numTeams / 2);
+    
+    // Create a working array - if odd number of teams, add a bye
+    const participants: (typeof teams[0] | { id: null; team_name: string; seed_number: null })[] = [...teams];
+    if (numTeams % 2 === 1) {
+      participants.push({ id: null, team_name: "BYE", seed_number: null }); // Bye placeholder
+    }
+    
+    // Round robin rotation algorithm
+    for (let round = 0; round < numRounds; round++) {
+      for (let match = 0; match < matchesPerRound; match++) {
+        const home = match === 0 ? 0 : match;
+        const away = participants.length - 1 - match;
+        
+        // Skip if either team is a bye
+        if (participants[home].id && participants[away].id) {
+          matches.push({
+            division_id: divisionId,
+            round_number: round + 1,
+            match_number: matchNumber++,
+            team1_id: participants[home].id,
+            team2_id: participants[away].id,
+            status: "scheduled",
+          });
+        }
       }
+      
+      // Rotate all teams except the first one (fixed position)
+      const fixed = participants[0];
+      const rotated = [fixed, participants[participants.length - 1], ...participants.slice(1, participants.length - 1)];
+      participants.splice(0, participants.length, ...rotated);
     }
 
     // Insert matches
