@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Plus, Loader2, Shuffle, Edit, Trash2 } from "lucide-react";
+import { ArrowLeft, Plus, Loader2, Shuffle, Edit, Trash2, CheckCircle2, Award } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { CreateTeamDialog } from "@/components/tournament/CreateTeamDialog";
@@ -131,6 +132,42 @@ export default function TournamentDivisionDetail() {
 
     toast({ title: "Division deleted successfully" });
     navigate(`/tournament-admin/event/${division?.event_id}`);
+  };
+
+  const handleActivateDivision = async () => {
+    if (teamCount < 2) {
+      toast({
+        title: "Cannot activate division",
+        description: "You need at least 2 teams to activate a division",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    await handleUpdateDivision({ status: "active" });
+    toast({ title: "Division activated", description: "You can now generate matches" });
+  };
+
+  const handleCompleteDivision = async () => {
+    // Check if all matches are completed
+    const { data: incompleteMatches } = await supabase
+      .from("tournaments_matches")
+      .select("id")
+      .eq("division_id", divisionId)
+      .neq("status", "completed")
+      .limit(1);
+
+    if (incompleteMatches && incompleteMatches.length > 0) {
+      toast({
+        title: "Cannot complete division",
+        description: "All matches must be completed before completing the division",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    await handleUpdateDivision({ status: "completed" });
+    toast({ title: "Division completed", description: "Congratulations on completing this division!" });
   };
 
   const handleGenerateMatches = async () => {
@@ -299,6 +336,18 @@ export default function TournamentDivisionDetail() {
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
+            {division.status === "draft" && (
+              <Button onClick={handleActivateDivision} disabled={teamCount < 2} variant="default">
+                <CheckCircle2 className="mr-2 h-4 w-4" />
+                Activate Division
+              </Button>
+            )}
+            {division.status === "active" && (
+              <Button onClick={handleCompleteDivision} variant="default">
+                <Award className="mr-2 h-4 w-4" />
+                Complete Division
+              </Button>
+            )}
             <Button onClick={() => setIsCreateTeamOpen(true)}>
               <Plus className="mr-2 h-4 w-4" />
               Add Team
@@ -315,6 +364,14 @@ export default function TournamentDivisionDetail() {
             )}
           </div>
         </div>
+
+        {division.status === "draft" && (
+          <Alert className="mb-6">
+            <AlertDescription>
+              This division is in draft mode. Activate it to generate matches. You need at least 2 teams to activate.
+            </AlertDescription>
+          </Alert>
+        )}
 
         <Tabs defaultValue="teams" className="w-full">
           <TabsList>

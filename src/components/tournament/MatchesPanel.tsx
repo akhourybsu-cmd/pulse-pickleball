@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Loader2, Play, Trophy, MapPin, Edit, FileText, Trash2 } from "lucide-react";
+import { Loader2, Play, Trophy, MapPin, Edit, FileText, Trash2, AlertCircle, CheckCircle2, PlayCircle, Zap } from "lucide-react";
 import { ScoreEntryDialog } from "./ScoreEntryDialog";
 import { CourtAssignmentDialog } from "./CourtAssignmentDialog";
 
@@ -51,6 +51,7 @@ export function MatchesPanel({ divisionId, refreshKey }: MatchesPanelProps) {
   const [isScoreDialogOpen, setIsScoreDialogOpen] = useState(false);
   const [isCourtDialogOpen, setIsCourtDialogOpen] = useState(false);
   const [eventId, setEventId] = useState<string>("");
+  const [autoAssigning, setAutoAssigning] = useState(false);
 
   useEffect(() => {
     fetchMatches();
@@ -149,6 +150,105 @@ export function MatchesPanel({ divisionId, refreshKey }: MatchesPanelProps) {
     }
   };
 
+  const handleAutoAssignCourts = async () => {
+    if (!eventId) return;
+
+    setAutoAssigning(true);
+
+    // Get matches without courts
+    const matchesWithoutCourts = matches.filter((m) => m.status === "scheduled" && !m.court);
+
+    if (matchesWithoutCourts.length === 0) {
+      toast({
+        title: "No matches to assign",
+        description: "All scheduled matches already have courts assigned",
+      });
+      setAutoAssigning(false);
+      return;
+    }
+
+    // Get available courts
+    const { data: courts, error: courtsError } = await supabase
+      .from("tournaments_courts")
+      .select("id, court_number")
+      .eq("event_id", eventId)
+      .eq("available", true)
+      .order("court_number");
+
+    if (courtsError || !courts || courts.length === 0) {
+      toast({
+        title: "No courts available",
+        description: "Add courts to this event before auto-assigning",
+        variant: "destructive",
+      });
+      setAutoAssigning(false);
+      return;
+    }
+
+    // Assign courts in round-robin fashion
+    const updates = matchesWithoutCourts.map((match, index) => ({
+      id: match.id,
+      court_id: courts[index % courts.length].id,
+    }));
+
+    // Update all matches
+    for (const update of updates) {
+      await supabase
+        .from("tournaments_matches")
+        .update({ court_id: update.court_id })
+        .eq("id", update.id);
+    }
+
+    toast({
+      title: "Courts assigned",
+      description: `Assigned ${updates.length} matches to ${courts.length} court(s)`,
+    });
+
+    fetchMatches();
+    setAutoAssigning(false);
+  };
+
+  const handleClearCourts = async () => {
+    const { error } = await supabase
+      .from("tournaments_matches")
+      .update({ court_id: null })
+      .eq("division_id", divisionId);
+
+    if (error) {
+      toast({
+        title: "Error clearing courts",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Courts cleared",
+        description: "All court assignments removed",
+      });
+      fetchMatches();
+    }
+  };
+
+  const getMatchStatusIcon = (match: Match) => {
+    if (match.status === "completed") {
+      return <Trophy className="h-4 w-4 text-green-600" />;
+    }
+    if (match.status === "in_progress") {
+      return <PlayCircle className="h-4 w-4 text-blue-600" />;
+    }
+    if (match.status === "scheduled" && match.court) {
+      return <CheckCircle2 className="h-4 w-4 text-yellow-600" />;
+    }
+    return <AlertCircle className="h-4 w-4 text-red-600" />;
+  };
+
+  const getMatchBorderColor = (match: Match) => {
+    if (match.status === "completed") return "border-l-green-500";
+    if (match.status === "in_progress") return "border-l-blue-500";
+    if (match.status === "scheduled" && match.court) return "border-l-yellow-500";
+    return "border-l-red-500";
+  };
+
   const getStatusBadge = (status: string) => {
     const variants: Record<string, "default" | "secondary" | "outline"> = {
       scheduled: "outline",
@@ -174,8 +274,48 @@ export function MatchesPanel({ divisionId, refreshKey }: MatchesPanelProps) {
     <>
       <Card>
         <CardHeader>
-          <CardTitle>Matches ({matches.length})</CardTitle>
-          <CardDescription>Round robin match schedule</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Matches ({matches.length})</CardTitle>
+              <CardDescription>Round robin match schedule</CardDescription>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleAutoAssignCourts}
+                disabled={autoAssigning || matches.length === 0}
+              >
+                {autoAssigning ? (
+                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                ) : (
+                  <Zap className="h-4 w-4 mr-1" />
+                )}
+                Auto-Assign Courts
+              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" size="sm" disabled={matches.length === 0}>
+                    Clear All Courts
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Clear All Court Assignments?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will remove all court assignments from all matches. You can reassign them later.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleClearCourts}>
+                      Clear Courts
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
         {matches.length === 0 ? (
@@ -187,10 +327,23 @@ export function MatchesPanel({ divisionId, refreshKey }: MatchesPanelProps) {
             {matches.map((match) => (
               <div
                 key={match.id}
-                className="flex items-center justify-between p-4 border rounded-lg gap-4"
+                className={`flex items-center justify-between p-4 border rounded-lg gap-4 border-l-4 ${getMatchBorderColor(match)}`}
               >
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger>
+                          {getMatchStatusIcon(match)}
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {match.status === "completed" && "Completed"}
+                          {match.status === "in_progress" && "In Progress"}
+                          {match.status === "scheduled" && match.court && "Ready to Play"}
+                          {match.status === "scheduled" && !match.court && "No Court Assigned"}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                     <Badge variant="outline" className="font-mono">
                       Match {match.match_number}
                     </Badge>
