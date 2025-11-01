@@ -30,6 +30,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import AdminPlayers from "./pages/AdminPlayers";
 import AdminBadges from "./pages/AdminBadges";
 import AdminMatches from "./pages/AdminMatches";
+import AdminMarketing from "./pages/AdminMarketing";
 import Changelog from "./pages/Changelog";
 import Events from "./pages/Events";
 import NewEvent from "./pages/NewEvent";
@@ -83,6 +84,7 @@ const App = () => (
               <Route path="/admin/players" element={<AdminPlayers />} />
               <Route path="/admin/badges" element={<AdminBadges />} />
               <Route path="/admin/matches" element={<AdminMatches />} />
+              <Route path="/admin/marketing" element={<AdminMarketing />} />
               <Route path="/admin/manage/:sessionId" element={<AdminManage />} />
               <Route path="/match/ticket/:ticketId" element={<MatchTicket />} />
               <Route path="/qr-checkin" element={<QRCheckIn />} />
