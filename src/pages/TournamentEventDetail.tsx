@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Edit, Trash2 } from "lucide-react";
+import { ArrowLeft, Edit, Trash2, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { EditTournamentDialog } from "@/components/tournament/EditTournamentDialog";
+import { CreateDivisionDialog } from "@/components/tournament/CreateDivisionDialog";
+import { CourtManagementPanel } from "@/components/tournament/CourtManagementPanel";
 import { format } from "date-fns";
 
 interface TournamentEvent {
@@ -22,17 +24,38 @@ interface TournamentEvent {
   created_at: string;
 }
 
+interface Division {
+  id: string;
+  event_id: string;
+  name: string;
+  description: string | null;
+  format: string;
+  scoring_ruleset_id: string | null;
+  max_teams: number | null;
+  created_at: string;
+  updated_at: string;
+  tournaments_scoring_rulesets?: {
+    name: string;
+    games_to: number;
+    win_by_2: boolean;
+    best_of: number;
+  };
+}
+
 export default function TournamentEventDetail() {
   const { eventId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [event, setEvent] = useState<TournamentEvent | null>(null);
+  const [divisions, setDivisions] = useState<Division[]>([]);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isCreateDivisionOpen, setIsCreateDivisionOpen] = useState(false);
 
   useEffect(() => {
     if (eventId) {
       fetchEvent();
+      fetchDivisions();
     }
   }, [eventId]);
 
@@ -55,6 +78,32 @@ export default function TournamentEventDetail() {
       setEvent(data);
     }
     setLoading(false);
+  };
+
+  const fetchDivisions = async () => {
+    const { data, error } = await supabase
+      .from("tournaments_divisions")
+      .select(`
+        *,
+        tournaments_scoring_rulesets (
+          name,
+          games_to,
+          win_by_2,
+          best_of
+        )
+      `)
+      .eq("event_id", eventId)
+      .order("name");
+
+    if (error) {
+      toast({
+        title: "Error loading divisions",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      setDivisions(data || []);
+    }
   };
 
   const handleUpdateEvent = async (updates: Partial<TournamentEvent>) => {
@@ -189,34 +238,74 @@ export default function TournamentEventDetail() {
 
           <TabsContent value="divisions" className="mt-6">
             <Card>
-              <CardHeader>
-                <CardTitle>Divisions</CardTitle>
-                <CardDescription>
-                  Coming in Phase 2: Manage tournament divisions and round-robin groups
-                </CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Divisions ({divisions.length})</CardTitle>
+                  <CardDescription>
+                    Manage tournament divisions and round-robin groups
+                  </CardDescription>
+                </div>
+                <Button onClick={() => setIsCreateDivisionOpen(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create Division
+                </Button>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  Division management will be available in the next update
-                </p>
+                {divisions.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground mb-4">
+                      No divisions created yet
+                    </p>
+                    <Button onClick={() => setIsCreateDivisionOpen(true)} variant="outline">
+                      <Plus className="mr-2 h-4 w-4" />
+                      Create Your First Division
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {divisions.map((division) => (
+                      <Card key={division.id}>
+                        <CardHeader>
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <CardTitle className="text-xl">{division.name}</CardTitle>
+                              {division.description && (
+                                <CardDescription className="mt-2">
+                                  {division.description}
+                                </CardDescription>
+                              )}
+                            </div>
+                            <Badge variant="secondary" className="capitalize">
+                              {division.format.replace("_", " ")}
+                            </Badge>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                              <p className="font-medium">Scoring</p>
+                              <p className="text-muted-foreground">
+                                {division.tournaments_scoring_rulesets?.name || "Not set"}
+                              </p>
+                            </div>
+                            {division.max_teams && (
+                              <div>
+                                <p className="font-medium">Max Teams</p>
+                                <p className="text-muted-foreground">{division.max_teams}</p>
+                              </div>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
 
           <TabsContent value="courts" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Courts</CardTitle>
-                <CardDescription>
-                  Coming in Phase 2: Add and manage courts for this event
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  Court management will be available in the next update
-                </p>
-              </CardContent>
-            </Card>
+            <CourtManagementPanel eventId={eventId!} />
           </TabsContent>
 
           <TabsContent value="settings" className="mt-6">
@@ -245,12 +334,20 @@ export default function TournamentEventDetail() {
       </div>
 
       {event && (
-        <EditTournamentDialog
-          open={isEditDialogOpen}
-          onOpenChange={setIsEditDialogOpen}
-          event={event}
-          onSave={handleUpdateEvent}
-        />
+        <>
+          <EditTournamentDialog
+            open={isEditDialogOpen}
+            onOpenChange={setIsEditDialogOpen}
+            event={event}
+            onSave={handleUpdateEvent}
+          />
+          <CreateDivisionDialog
+            open={isCreateDivisionOpen}
+            onOpenChange={setIsCreateDivisionOpen}
+            eventId={event.id}
+            onSuccess={fetchDivisions}
+          />
+        </>
       )}
     </div>
   );

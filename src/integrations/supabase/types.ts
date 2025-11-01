@@ -1752,6 +1752,57 @@ export type Database = {
           },
         ]
       }
+      tournaments_divisions: {
+        Row: {
+          created_at: string
+          description: string | null
+          event_id: string
+          format: string
+          id: string
+          max_teams: number | null
+          name: string
+          scoring_ruleset_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          event_id: string
+          format?: string
+          id?: string
+          max_teams?: number | null
+          name: string
+          scoring_ruleset_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          event_id?: string
+          format?: string
+          id?: string
+          max_teams?: number | null
+          name?: string
+          scoring_ruleset_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournaments_divisions_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournaments_divisions_scoring_ruleset_id_fkey"
+            columns: ["scoring_ruleset_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments_scoring_rulesets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tournaments_events: {
         Row: {
           created_at: string
@@ -1788,6 +1839,36 @@ export type Database = {
           start_date?: string
           status?: Database["public"]["Enums"]["tournament_status"]
           updated_at?: string
+        }
+        Relationships: []
+      }
+      tournaments_scoring_rulesets: {
+        Row: {
+          best_of: number
+          created_at: string
+          description: string | null
+          games_to: number
+          id: string
+          name: string
+          win_by_2: boolean
+        }
+        Insert: {
+          best_of?: number
+          created_at?: string
+          description?: string | null
+          games_to?: number
+          id?: string
+          name: string
+          win_by_2?: boolean
+        }
+        Update: {
+          best_of?: number
+          created_at?: string
+          description?: string | null
+          games_to?: number
+          id?: string
+          name?: string
+          win_by_2?: boolean
         }
         Relationships: []
       }
