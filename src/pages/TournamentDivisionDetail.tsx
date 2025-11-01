@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Plus, Loader2, Shuffle, Edit, Trash2, CheckCircle2, Award } from "lucide-react";
+import { useNavigate, useParams, Link } from "react-router-dom";
+import { Plus, Loader2, Shuffle, Edit, Trash2, CheckCircle2, Award } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,8 @@ import { StandingsPanel } from "@/components/tournament/StandingsPanel";
 import { ExportMenu } from "@/components/tournament/ExportMenu";
 import { BracketView } from "@/components/tournament/BracketView";
 import { ScoreEntryDialog } from "@/components/tournament/ScoreEntryDialog";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import logo from "@/assets/pulse-logo-new.png";
 
 interface Division {
   id: string;
@@ -360,27 +362,29 @@ export default function TournamentDivisionDetail() {
   if (!division) return null;
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-7xl mx-auto">
-        <Button
-          variant="ghost"
-          onClick={() => navigate(`/tournament-admin/event/${division.event_id}`)}
-          className="mb-4"
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to {division.tournaments_events.name}
-        </Button>
+    <div className="min-h-screen bg-background">
+      <nav className="border-b bg-secondary">
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+          <Link to={`/tournament-admin/event/${division.event_id}`}>
+            <img src={logo} alt="PULSE Logo" className="h-[90px] w-auto cursor-pointer hover:opacity-80 transition-opacity" />
+          </Link>
+          <ThemeToggle />
+        </div>
+      </nav>
 
-        <div className="flex items-start justify-between mb-6">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-4xl font-bold">{division.name}</h1>
-              {getStatusBadge(division.status)}
-            </div>
-            {division.description && (
-              <p className="text-muted-foreground mt-2">{division.description}</p>
-            )}
+      <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
+        <div className="space-y-2">
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold">{division.name}</h1>
+            {getStatusBadge(division.status)}
           </div>
+          {division.description && (
+            <p className="text-lg text-muted-foreground">{division.description}</p>
+          )}
+          <p className="text-sm text-muted-foreground">{division.tournaments_events.name}</p>
+        </div>
+
+        <div className="flex items-start justify-between">
           <div className="flex gap-2">
             {division.status !== "completed" && (
               <>

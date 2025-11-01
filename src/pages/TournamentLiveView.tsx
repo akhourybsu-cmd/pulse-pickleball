@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +8,8 @@ import { useTournamentRealtime } from '@/hooks/useTournamentRealtime';
 import { LiveIndicator } from '@/components/tournament/LiveIndicator';
 import { AlertCircle, RefreshCw } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import logo from '@/assets/pulse-logo-new.png';
 
 interface TournamentEvent {
   id: string;
@@ -235,33 +237,42 @@ const TournamentLiveView = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white p-4 md:p-8">
+    <div className="min-h-screen bg-slate-950 text-white">
+      <nav className="border-b border-slate-800 bg-slate-900">
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+          <Link to={`/tournament/${eventId}/live`}>
+            <img src={logo} alt="PULSE Logo" className="h-[90px] w-auto cursor-pointer hover:opacity-80 transition-opacity" />
+          </Link>
+          <ThemeToggle />
+        </div>
+      </nav>
+
       <LiveIndicator />
       
-      {/* Event Header */}
-      <div className="mb-8 text-center">
-        <h1 className="text-5xl font-bold mb-4">{event.name}</h1>
-        {event.location && (
-          <p className="text-2xl text-slate-300 mb-2">{event.location}</p>
-        )}
-        <p className="text-xl text-slate-400 mb-3">
-          {new Date(event.start_date).toLocaleDateString()} - {new Date(event.end_date).toLocaleDateString()}
-        </p>
-        <div className="flex items-center justify-center gap-3 text-sm text-slate-500">
-          <span>Last updated {formatDistanceToNow(lastUpdated, { addSuffix: true })}</span>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={handleManualRefresh}
-            disabled={refreshing}
-          >
-            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-          </Button>
+      <div className="container mx-auto px-4 md:px-8 py-6 space-y-6">
+        <div className="space-y-2 text-center">
+          <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold">{event.name}</h1>
+          {event.location && (
+            <p className="text-xl text-slate-300">{event.location}</p>
+          )}
+          <p className="text-lg text-slate-400">
+            {new Date(event.start_date).toLocaleDateString()} - {new Date(event.end_date).toLocaleDateString()}
+          </p>
+          <div className="flex items-center justify-center gap-3 text-sm text-slate-500">
+            <span>Last updated {formatDistanceToNow(lastUpdated, { addSuffix: true })}</span>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={handleManualRefresh}
+              disabled={refreshing}
+            >
+              <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+            </Button>
+          </div>
         </div>
-      </div>
 
-      {/* Divisions */}
-      {divisions.length === 0 ? (
+        {/* Divisions */}
+        {divisions.length === 0 ? (
         <Card className="bg-slate-900 border-slate-800 p-12">
           <div className="text-center">
             <AlertCircle className="h-16 w-16 text-slate-600 mx-auto mb-4" />
@@ -381,9 +392,10 @@ const TournamentLiveView = () => {
               </Card>
             </div>
           );
-        })}
+          })}
         </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +8,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useTournamentRealtime } from '@/hooks/useTournamentRealtime';
 import { LiveIndicator } from '@/components/tournament/LiveIndicator';
 import { AlertCircle, Trophy, Users, Link2 } from 'lucide-react';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import logo from '@/assets/pulse-logo-new.png';
 
 interface Team {
   id: string;
@@ -302,39 +304,45 @@ const TournamentTeamView = () => {
   const record = getRecord();
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8">
+    <div className="min-h-screen bg-background">
+      <nav className="border-b bg-secondary">
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+          <Link to={`/tournament/${eventId}/live`}>
+            <img src={logo} alt="PULSE Logo" className="h-[90px] w-auto cursor-pointer hover:opacity-80 transition-opacity" />
+          </Link>
+          <ThemeToggle />
+        </div>
+      </nav>
+
       <LiveIndicator />
       
-      <div className="max-w-4xl mx-auto space-y-6">
-        {/* Team Header */}
+      <div className="max-w-4xl mx-auto px-4 md:px-6 py-6 space-y-6">
+        <div className="space-y-2">
+          <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold">{team.team_name}</h1>
+          <p className="text-lg text-muted-foreground">{team.division.name}</p>
+          <p className="text-sm text-muted-foreground">{team.division.event.name}</p>
+        </div>
+
         <Card>
           <CardHeader>
-            <div className="space-y-4">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <CardTitle className="text-3xl mb-2">{team.team_name}</CardTitle>
-                  <p className="text-lg text-muted-foreground">{team.division.name}</p>
-                  <p className="text-sm text-muted-foreground">{team.division.event.name}</p>
-                </div>
-                <div className="flex gap-3">
-                  <div className="text-right">
-                    <div className="text-sm text-muted-foreground mb-1">Record</div>
-                    <div className="text-2xl font-bold">
-                      {record.wins} - {record.losses}
-                    </div>
-                  </div>
-                  <Button variant="outline" size="sm" onClick={handleShare}>
-                    <Link2 className="h-4 w-4 mr-1" />
-                    Share
-                  </Button>
-                </div>
-              </div>
-
+            <div className="flex items-start justify-between">
               <div className="flex items-center gap-2 text-lg">
                 <Users className="w-5 h-5 text-muted-foreground" />
                 <span>{team.player1?.display_name || team.player1?.full_name || 'TBD'}</span>
                 <span className="text-muted-foreground">&</span>
                 <span>{team.player2?.display_name || team.player2?.full_name || 'TBD'}</span>
+              </div>
+              <div className="flex gap-3">
+                <div className="text-right">
+                  <div className="text-sm text-muted-foreground mb-1">Record</div>
+                  <div className="text-2xl font-bold">
+                    {record.wins} - {record.losses}
+                  </div>
+                </div>
+                <Button variant="outline" size="sm" onClick={handleShare}>
+                  <Link2 className="h-4 w-4 mr-1" />
+                  Share
+                </Button>
               </div>
             </div>
           </CardHeader>

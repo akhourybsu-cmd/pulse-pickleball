@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -8,6 +8,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { CreateTournamentDialog } from "@/components/tournament/CreateTournamentDialog";
 import { format } from "date-fns";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { Footer } from "@/components/Footer";
+import logo from "@/assets/pulse-logo-new.png";
 
 interface TournamentEvent {
   id: string;
@@ -133,13 +136,23 @@ export default function TournamentAdmin() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-4xl font-bold">Tournament Portal</h1>
-            <p className="text-muted-foreground mt-2">Manage pickleball tournaments</p>
-          </div>
+    <div className="min-h-screen bg-background">
+      <nav className="border-b bg-secondary">
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+          <Link to="/admin-dashboard">
+            <img src={logo} alt="PULSE Logo" className="h-[90px] w-auto cursor-pointer hover:opacity-80 transition-opacity" />
+          </Link>
+          <ThemeToggle />
+        </div>
+      </nav>
+
+      <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
+        <div className="space-y-2">
+          <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold">Tournament Portal</h1>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold">Tournament Events</h2>
           <Button onClick={() => setIsCreateDialogOpen(true)} size="lg">
             <Plus className="mr-2 h-5 w-5" />
             Create Event
@@ -192,13 +205,15 @@ export default function TournamentAdmin() {
             ))}
           </div>
         )}
+
+        <CreateTournamentDialog
+          open={isCreateDialogOpen}
+          onOpenChange={setIsCreateDialogOpen}
+          onSubmit={handleCreateEvent}
+        />
       </div>
 
-      <CreateTournamentDialog
-        open={isCreateDialogOpen}
-        onOpenChange={setIsCreateDialogOpen}
-        onSubmit={handleCreateEvent}
-      />
+      <Footer />
     </div>
   );
 }

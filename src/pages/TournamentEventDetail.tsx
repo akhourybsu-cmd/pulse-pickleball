@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Edit, Trash2, Plus, ChevronRight, ExternalLink, Copy } from "lucide-react";
+import { useNavigate, useParams, Link } from "react-router-dom";
+import { Edit, Trash2, Plus, ChevronRight, ExternalLink, Copy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,8 @@ import { EditTournamentDialog } from "@/components/tournament/EditTournamentDial
 import { CreateDivisionDialog } from "@/components/tournament/CreateDivisionDialog";
 import { CourtManagementPanel } from "@/components/tournament/CourtManagementPanel";
 import { format } from "date-fns";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import logo from "@/assets/pulse-logo-new.png";
 
 interface TournamentEvent {
   id: string;
@@ -205,24 +207,29 @@ export default function TournamentEventDetail() {
   if (!event) return null;
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-7xl mx-auto">
-        <Button variant="ghost" onClick={() => navigate("/tournament-admin")} className="mb-4">
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Events
-        </Button>
+    <div className="min-h-screen bg-background">
+      <nav className="border-b bg-secondary">
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+          <Link to="/tournament-admin">
+            <img src={logo} alt="PULSE Logo" className="h-[90px] w-auto cursor-pointer hover:opacity-80 transition-opacity" />
+          </Link>
+          <ThemeToggle />
+        </div>
+      </nav>
 
-        <div className="flex items-start justify-between mb-6">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-4xl font-bold">{event.name}</h1>
-              {getStatusBadge(event.status)}
-            </div>
-            <p className="text-muted-foreground">
-              {event.location && <span>{event.location} • </span>}
-              {format(new Date(event.start_date), "MMM d")} - {format(new Date(event.end_date), "MMM d, yyyy")}
-            </p>
+      <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
+        <div className="space-y-2">
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold">{event.name}</h1>
+            {getStatusBadge(event.status)}
           </div>
+          <p className="text-lg text-muted-foreground">
+            {event.location && <span>{event.location} • </span>}
+            {format(new Date(event.start_date), "MMM d")} - {format(new Date(event.end_date), "MMM d, yyyy")}
+          </p>
+        </div>
+
+        <div className="flex items-start justify-between">
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => setIsEditDialogOpen(true)}>
               <Edit className="mr-2 h-4 w-4" />
