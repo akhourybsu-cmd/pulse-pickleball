@@ -248,20 +248,14 @@ const EditProfile = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
-      <nav className="border-b bg-secondary">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Link to="/dashboard">
-            <img src={logo} alt="PULSE Logo" className="h-[90px] w-auto cursor-pointer hover:opacity-80 transition-opacity" />
-          </Link>
-          <div className="flex items-center gap-2">
+        <nav className="border-b bg-secondary">
+          <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+            <Link to="/dashboard">
+              <img src={logo} alt="PULSE Logo" className="h-[90px] w-auto cursor-pointer hover:opacity-80 transition-opacity" />
+            </Link>
             <ThemeToggle />
-            <Button variant="outline" onClick={() => navigate("/dashboard")}>
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Dashboard
-            </Button>
           </div>
-        </div>
-      </nav>
+        </nav>
         <div className="min-h-screen flex items-center justify-center">
           <p className="text-muted-foreground">Loading...</p>
         </div>
@@ -274,25 +268,15 @@ const EditProfile = () => {
       <nav className="border-b bg-secondary">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <Link to="/dashboard">
-            <img src={logo} alt="PULSE Logo" className="h-16 w-auto cursor-pointer hover:opacity-80 transition-opacity" />
+            <img src={logo} alt="PULSE Logo" className="h-[90px] w-auto cursor-pointer hover:opacity-80 transition-opacity" />
           </Link>
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-            <Button variant="outline" onClick={() => navigate("/dashboard")}>
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Dashboard
-            </Button>
-          </div>
+          <ThemeToggle />
         </div>
       </nav>
 
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2 flex items-center gap-2">
-            <UserCog className="w-8 h-8" />
-            Edit Profile
-          </h1>
-          <p className="text-muted-foreground">Manage your personal information and preferences</p>
+      <div className="container mx-auto px-4 py-6 space-y-6">
+        <div className="space-y-2">
+          <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold">Edit Profile - {formData.display_name || formData.first_name || 'User'}</h1>
         </div>
 
         <div className="space-y-6">
