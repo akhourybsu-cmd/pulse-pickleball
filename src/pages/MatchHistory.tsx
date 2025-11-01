@@ -365,31 +365,31 @@ const MatchHistory = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <nav className="border-b bg-card sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <img 
-                src={logo} 
-                alt="Pulse Logo" 
-                className="h-10 w-10 cursor-pointer" 
-                onClick={() => navigate("/dashboard")}
-              />
-              <h1 className="text-xl font-bold hidden sm:block">Match History</h1>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard")}>
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Dashboard
-              </Button>
-              <ThemeToggle />
-            </div>
+      <nav className="border-b bg-secondary">
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+          <img 
+            src={logo} 
+            alt="PULSE Logo" 
+            className="h-[90px] w-auto cursor-pointer hover:opacity-80 transition-opacity" 
+            onClick={() => navigate("/dashboard")}
+          />
+          <div className="flex items-center gap-3">
+            <ThemeToggle />
           </div>
         </div>
       </nav>
 
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
-        <h2 className="text-3xl font-bold mb-6">{playerName}</h2>
+      <div className="container mx-auto px-4 py-6 space-y-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="space-y-2">
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold">Match History</h1>
+            <p className="text-muted-foreground md:text-lg">{playerName}</p>
+          </div>
+          <Button variant="outline" onClick={() => navigate("/dashboard")}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Dashboard
+          </Button>
+        </div>
 
         {matches.length === 0 ? (
           <Card>
