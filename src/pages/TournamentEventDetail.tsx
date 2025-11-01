@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Edit, Trash2, Plus } from "lucide-react";
+import { ArrowLeft, Edit, Trash2, Plus, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -264,11 +264,18 @@ export default function TournamentEventDetail() {
                 ) : (
                   <div className="space-y-4">
                     {divisions.map((division) => (
-                      <Card key={division.id}>
+                      <Card 
+                        key={division.id}
+                        className="cursor-pointer hover:border-primary transition-colors"
+                        onClick={() => navigate(`/tournament-admin/division/${division.id}`)}
+                      >
                         <CardHeader>
                           <div className="flex items-start justify-between">
-                            <div>
-                              <CardTitle className="text-xl">{division.name}</CardTitle>
+                            <div className="flex-1">
+                              <CardTitle className="text-xl flex items-center gap-2">
+                                {division.name}
+                                <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                              </CardTitle>
                               {division.description && (
                                 <CardDescription className="mt-2">
                                   {division.description}
