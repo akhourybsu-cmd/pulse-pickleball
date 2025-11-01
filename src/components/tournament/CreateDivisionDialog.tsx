@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -75,13 +75,16 @@ export function CreateDivisionDialog({ open, onOpenChange, eventId, onSuccess }:
     }
   };
 
-  const handleOpenChange = (newOpen: boolean) => {
-    console.log("Dialog open change:", newOpen);
-    if (newOpen) {
-      console.log("Dialog opening, loading rulesets...");
+  useEffect(() => {
+    if (open) {
+      console.log("Dialog opened via useEffect, loading rulesets...");
       loadRulesets();
       form.reset();
     }
+  }, [open]);
+
+  const handleOpenChange = (newOpen: boolean) => {
+    console.log("Dialog open change:", newOpen);
     onOpenChange(newOpen);
   };
 
