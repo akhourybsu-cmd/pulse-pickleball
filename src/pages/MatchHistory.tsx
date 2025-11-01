@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, AlertTriangle, CheckCircle2, Flag } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import logo from "@/assets/pulse-logo-new.png";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -364,18 +365,31 @@ const MatchHistory = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <nav className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Button variant="ghost" onClick={() => navigate("/dashboard")}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Dashboard
-          </Button>
-          <ThemeToggle />
+      <nav className="border-b bg-card sticky top-0 z-50">
+        <div className="container mx-auto px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <img 
+                src={logo} 
+                alt="Pulse Logo" 
+                className="h-10 w-10 cursor-pointer" 
+                onClick={() => navigate("/dashboard")}
+              />
+              <h1 className="text-xl font-bold hidden sm:block">Match History</h1>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard")}>
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Dashboard
+              </Button>
+              <ThemeToggle />
+            </div>
+          </div>
         </div>
       </nav>
 
       <div className="container mx-auto px-4 py-8 max-w-4xl">
-        <h1 className="text-3xl font-bold mb-6">Match History - {playerName}</h1>
+        <h2 className="text-3xl font-bold mb-6">{playerName}</h2>
 
         {matches.length === 0 ? (
           <Card>
