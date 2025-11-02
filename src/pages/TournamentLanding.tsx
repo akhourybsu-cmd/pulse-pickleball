@@ -506,7 +506,7 @@ export default function TournamentLanding() {
                         y: -4,
                         boxShadow: "0 8px 24px rgba(197,232,108,0.35)"
                       }}
-                      className="group relative bg-background rounded-2xl p-6 border-2 border-border hover:border-primary/40 transition-all duration-300 flex flex-col items-center justify-center text-center min-h-[180px] cursor-pointer shadow-md hover:shadow-lg"
+                      className={`group relative bg-background rounded-2xl p-6 border-2 border-border hover:border-primary/40 transition-all duration-300 flex flex-col items-center justify-center text-center min-h-[180px] shadow-md hover:shadow-lg ${sponsor.link ? 'cursor-pointer' : ''}`}
                     >
                       <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary/5 to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                       
