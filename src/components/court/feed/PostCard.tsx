@@ -40,7 +40,7 @@ interface PostCardProps {
       display_name: string;
       avatar_url: string | null;
       current_rating?: number;
-    };
+    } | null;
     participants?: Array<{
       id: string;
       user_id: string;
@@ -184,13 +184,13 @@ export const PostCard = ({ post, onCommentClick, onReactionClick, currentUserId,
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-start gap-3 flex-1 min-w-0">
               <Avatar className="h-10 w-10 flex-shrink-0">
-                <AvatarImage src={post.user.avatar_url || undefined} />
-                <AvatarFallback>{post.user.display_name?.[0] || "?"}</AvatarFallback>
+                <AvatarImage src={post.user?.avatar_url || undefined} />
+                <AvatarFallback>{post.user?.display_name?.[0] || "?"}</AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <p className="font-semibold text-sm truncate">{post.user.display_name || "Anonymous"}</p>
-                  {post.user.current_rating && (
+                  <p className="font-semibold text-sm truncate">{post.user?.display_name || "Anonymous"}</p>
+                  {post.user?.current_rating && (
                     <Badge variant="outline" className="text-xs">
                       {post.user.current_rating.toFixed(2)}
                     </Badge>
