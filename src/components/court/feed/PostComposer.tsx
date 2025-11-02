@@ -42,16 +42,17 @@ export const PostComposer = ({ courtId, open, onOpenChange, onPostCreated }: Pos
         status: "open",
       };
 
-      // Add LFG-specific fields (indicates this is an LFG post)
+      // Add LFG-specific fields or provide defaults
       if (type === "lfg") {
         postData.session_date = sessionDate;
         postData.session_time = sessionTime;
         postData.max_players = parseInt(maxPlayers);
       } else {
-        // For non-LFG posts, leave session fields null
-        postData.session_date = null;
-        postData.session_time = null;
-        postData.max_players = null;
+        // For non-LFG posts, use current date/time as placeholders
+        const now = new Date();
+        postData.session_date = now.toISOString().split('T')[0];
+        postData.session_time = now.toTimeString().split(' ')[0].substring(0, 5);
+        postData.max_players = 0; // 0 indicates non-LFG post
       }
 
       const { error } = await supabase

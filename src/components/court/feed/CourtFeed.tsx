@@ -65,7 +65,8 @@ export const CourtFeed = ({ courtId }: CourtFeedProps) => {
       // Map posts and infer type from existing data
       let mappedPosts = (data || []).map((post: any) => {
         // Determine post type based on existing data
-        const hasSessionInfo = post.session_date && post.session_time;
+        // max_players of 0 or null indicates non-LFG post
+        const hasSessionInfo = post.session_date && post.session_time && post.max_players > 0;
         const inferredType = hasSessionInfo ? 'lfg' : 'general';
         
         return {
