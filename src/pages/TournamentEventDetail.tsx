@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { Edit, Trash2, Plus, ChevronRight, ExternalLink, Copy } from "lucide-react";
+import { Edit, Trash2, Plus, ChevronRight, ExternalLink, Copy, Palette } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -282,6 +282,7 @@ export default function TournamentEventDetail() {
             <TabsTrigger value="divisions">Divisions</TabsTrigger>
             <TabsTrigger value="registrations">Registrations</TabsTrigger>
             <TabsTrigger value="courts">Courts</TabsTrigger>
+            <TabsTrigger value="customize">Customize Page</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
@@ -366,6 +367,51 @@ export default function TournamentEventDetail() {
 
           <TabsContent value="courts" className="mt-6">
             <CourtManagementPanel eventId={eventId!} />
+          </TabsContent>
+
+          <TabsContent value="customize" className="mt-6">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Palette className="h-5 w-5 text-primary" />
+                  <CardTitle>Customize Public Landing Page</CardTitle>
+                </div>
+                <CardDescription>
+                  Design a custom landing page for players to learn about your tournament before registering
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">
+                    Create a beautiful, branded landing page featuring:
+                  </p>
+                  <ul className="text-sm text-muted-foreground space-y-1 ml-4 list-disc">
+                    <li>Custom hero banner and tagline</li>
+                    <li>Event description with rich text and images</li>
+                    <li>Venue information and map</li>
+                    <li>Sponsor logos and partner links</li>
+                    <li>Tournament policies and contact details</li>
+                  </ul>
+                </div>
+                <div className="pt-4 flex gap-3">
+                  <Button 
+                    onClick={() => navigate(`/tournament-admin/${eventId}/customize`)}
+                    size="lg"
+                  >
+                    <Palette className="mr-2 h-4 w-4" />
+                    Open Customization Panel
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    size="lg"
+                    onClick={() => window.open(`/tournament/${eventId}`, '_blank')}
+                  >
+                    <ExternalLink className="mr-2 h-4 w-4" />
+                    Preview Landing Page
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="settings" className="mt-6">
