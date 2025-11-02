@@ -29,7 +29,72 @@ const Auth = () => {
   const [showMFAChallenge, setShowMFAChallenge] = useState(false);
   const [showEmailMFA, setShowEmailMFA] = useState(false);
   const [mfaMethod, setMfaMethod] = useState<"authenticator" | "email" | "none">("none");
+  const [checkingLocation, setCheckingLocation] = useState(false);
   const navigate = useNavigate();
+
+  const checkLocationAccess = async (): Promise<boolean> => {
+    return new Promise((resolve) => {
+      if (!navigator.geolocation) {
+        toast.error("Geolocation is not supported by your browser");
+        resolve(false);
+        return;
+      }
+
+      setCheckingLocation(true);
+      
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const { latitude, longitude } = position.coords;
+          
+          try {
+            // Use OpenStreetMap Nominatim for reverse geocoding
+            const response = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1`,
+              {
+                headers: {
+                  'User-Agent': 'PULSE Pickleball App'
+                }
+              }
+            );
+            
+            const data = await response.json();
+            const state = data.address?.state || '';
+            
+            setCheckingLocation(false);
+            
+            if (state === 'Massachusetts' || state === 'Rhode Island') {
+              resolve(true);
+            } else {
+              toast.error(`Account creation is only available for Massachusetts and Rhode Island residents. Detected location: ${state || 'Unknown'}`);
+              resolve(false);
+            }
+          } catch (error) {
+            setCheckingLocation(false);
+            toast.error("Unable to verify your location. Please try again.");
+            resolve(false);
+          }
+        },
+        (error) => {
+          setCheckingLocation(false);
+          
+          if (error.code === error.PERMISSION_DENIED) {
+            toast.error("Location permission denied. You must allow location access to create an account.");
+          } else if (error.code === error.POSITION_UNAVAILABLE) {
+            toast.error("Location information unavailable. Please enable location services.");
+          } else {
+            toast.error("Unable to retrieve your location. Please try again.");
+          }
+          
+          resolve(false);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
+        }
+      );
+    });
+  };
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,6 +164,13 @@ const Auth = () => {
         }
         if (password !== confirmPassword) {
           toast.error("Passwords do not match");
+          setLoading(false);
+          return;
+        }
+
+        // Check location before allowing signup
+        const locationAllowed = await checkLocationAccess();
+        if (!locationAllowed) {
           setLoading(false);
           return;
         }
@@ -322,9 +394,15 @@ const Auth = () => {
                   </div>
                 )}
 
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Loading..." : isLogin ? "Sign In" : "Sign Up"}
+                <Button type="submit" className="w-full" disabled={loading || checkingLocation}>
+                  {checkingLocation ? "Checking location..." : loading ? "Loading..." : isLogin ? "Sign In" : "Sign Up"}
                 </Button>
+                
+                {!isLogin && (
+                  <p className="text-xs text-muted-foreground text-center">
+                    Account creation requires location access to verify MA/RI residency
+                  </p>
+                )}
 
                 <div className="text-center text-sm">
                   <button
