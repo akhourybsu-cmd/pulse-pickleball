@@ -17,6 +17,7 @@ import CourtHistory from "./pages/CourtHistory";
 import CourtBoard from "./pages/CourtBoard";
 import CourtConnector from "./pages/CourtConnector";
 import CourtSettings from "./pages/CourtSettings";
+import PostDetail from "./pages/PostDetail";
 import FAQ from "./pages/FAQ";
 import NotFound from "./pages/NotFound";
 import SessionQueue from "./pages/SessionQueue";
@@ -78,6 +79,7 @@ const App = () => (
               <Route path="/court/board" element={<CourtBoard />} />
             <Route path="/court/connector" element={<CourtConnector />} />
             <Route path="/court/board/:courtId" element={<CourtBoard />} />
+            <Route path="/court/feed/:postId" element={<PostDetail />} />
             <Route path="/court/history" element={<CourtHistory />} />
             <Route path="/settings/courts" element={<CourtSettings />} />
               <Route path="/faq" element={<FAQ />} />
