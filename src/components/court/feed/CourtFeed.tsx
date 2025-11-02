@@ -16,12 +16,19 @@ export const CourtFeed = ({ courtId }: CourtFeedProps) => {
   const [loading, setLoading] = useState(true);
   const [composerOpen, setComposerOpen] = useState(false);
   const [filter, setFilter] = useState<string>("all");
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
+    getCurrentUser();
     fetchPosts();
     const cleanup = subscribeToChanges();
     return cleanup;
   }, [courtId, filter]);
+
+  const getCurrentUser = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    setCurrentUserId(user?.id || null);
+  };
 
   const fetchPosts = async () => {
     try {
@@ -166,10 +173,12 @@ export const CourtFeed = ({ courtId }: CourtFeedProps) => {
                 _count: { comments: 0, reactions: 0 },
                 reactions: [],
               }}
+              currentUserId={currentUserId || undefined}
               onCommentClick={() => {
                 toast.info("Comments coming soon!");
               }}
               onReactionClick={(emoji) => handleReaction(post.id, emoji)}
+              onDelete={fetchPosts}
             />
           ))
         )}
