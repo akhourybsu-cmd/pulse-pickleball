@@ -41,6 +41,14 @@ interface ProfileData {
   play_side: string | null;
   paddle_brand: string | null;
   paddle_model: string | null;
+  phone_number: string | null;
+  date_of_birth: string | null;
+  gender: string | null;
+  shirt_size: string | null;
+  emergency_contact_name: string | null;
+  emergency_contact_phone: string | null;
+  dupr_rating: number | null;
+  skill_level_self: string | null;
 }
 
 const EditProfile = () => {
@@ -69,6 +77,14 @@ const EditProfile = () => {
     play_side: null,
     paddle_brand: null,
     paddle_model: null,
+    phone_number: null,
+    date_of_birth: null,
+    gender: null,
+    shirt_size: null,
+    emergency_contact_name: null,
+    emergency_contact_phone: null,
+    dupr_rating: null,
+    skill_level_self: null,
   });
 
   useEffect(() => {
@@ -112,6 +128,14 @@ const EditProfile = () => {
         play_side: profileData.play_side,
         paddle_brand: profileData.paddle_brand,
         paddle_model: profileData.paddle_model,
+        phone_number: profileData.phone_number,
+        date_of_birth: profileData.date_of_birth,
+        gender: profileData.gender,
+        shirt_size: profileData.shirt_size,
+        emergency_contact_name: profileData.emergency_contact_name,
+        emergency_contact_phone: profileData.emergency_contact_phone,
+        dupr_rating: profileData.dupr_rating,
+        skill_level_self: profileData.skill_level_self,
       });
 
       // Fetch courts
@@ -472,15 +496,145 @@ const EditProfile = () => {
                 <p className="text-xs text-muted-foreground">How you want to be shown on leaderboards</p>
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="phonetic_name">Phonetic Name (optional)</Label>
+                <Input
+                  id="phonetic_name"
+                  value={formData.phonetic_name || ""}
+                  onChange={(e) => setFormData({ ...formData, phonetic_name: e.target.value })}
+                  placeholder="AL-ex"
+                />
+              </div>
+
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="phonetic_name">Phonetic Name (optional)</Label>
+                  <Label htmlFor="phone_number">Phone Number</Label>
                   <Input
-                    id="phonetic_name"
-                    value={formData.phonetic_name || ""}
-                    onChange={(e) => setFormData({ ...formData, phonetic_name: e.target.value })}
-                    placeholder="AL-ex"
+                    id="phone_number"
+                    type="tel"
+                    value={formData.phone_number || ""}
+                    onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
+                    placeholder="(555) 123-4567"
                   />
+                  <p className="text-xs text-muted-foreground">Used for tournament communications</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="date_of_birth">Date of Birth (optional)</Label>
+                  <Input
+                    id="date_of_birth"
+                    type="date"
+                    value={formData.date_of_birth || ""}
+                    onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })}
+                  />
+                  <p className="text-xs text-muted-foreground">For age-based tournament divisions</p>
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="gender">Gender (optional)</Label>
+                  <Select
+                    value={formData.gender || ""}
+                    onValueChange={(value) => setFormData({ ...formData, gender: value })}
+                  >
+                    <SelectTrigger id="gender">
+                      <SelectValue placeholder="Select..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="male">Male</SelectItem>
+                      <SelectItem value="female">Female</SelectItem>
+                      <SelectItem value="non_binary">Non-Binary</SelectItem>
+                      <SelectItem value="prefer_not_to_say">Prefer Not to Say</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">For gender-specific divisions</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="shirt_size">Shirt Size (optional)</Label>
+                  <Select
+                    value={formData.shirt_size || ""}
+                    onValueChange={(value) => setFormData({ ...formData, shirt_size: value })}
+                  >
+                    <SelectTrigger id="shirt_size">
+                      <SelectValue placeholder="Select..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="XS">XS</SelectItem>
+                      <SelectItem value="S">S</SelectItem>
+                      <SelectItem value="M">M</SelectItem>
+                      <SelectItem value="L">L</SelectItem>
+                      <SelectItem value="XL">XL</SelectItem>
+                      <SelectItem value="XXL">XXL</SelectItem>
+                      <SelectItem value="2XL">2XL</SelectItem>
+                      <SelectItem value="3XL">3XL</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">For tournament merchandise</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Tournament Information */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Tournament Information</CardTitle>
+              <CardDescription>Optional information for tournament registration</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="emergency_contact_name">Emergency Contact Name</Label>
+                  <Input
+                    id="emergency_contact_name"
+                    value={formData.emergency_contact_name || ""}
+                    onChange={(e) => setFormData({ ...formData, emergency_contact_name: e.target.value })}
+                    placeholder="Full name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="emergency_contact_phone">Emergency Contact Phone</Label>
+                  <Input
+                    id="emergency_contact_phone"
+                    type="tel"
+                    value={formData.emergency_contact_phone || ""}
+                    onChange={(e) => setFormData({ ...formData, emergency_contact_phone: e.target.value })}
+                    placeholder="(555) 123-4567"
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="dupr_rating">DUPR Rating (optional)</Label>
+                  <Input
+                    id="dupr_rating"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="8"
+                    value={formData.dupr_rating || ""}
+                    onChange={(e) => setFormData({ ...formData, dupr_rating: e.target.value ? parseFloat(e.target.value) : null })}
+                    placeholder="0.00 - 8.00"
+                  />
+                  <p className="text-xs text-muted-foreground">Official DUPR rating if you have one</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="skill_level_self">Self-Assessed Skill Level</Label>
+                  <Select
+                    value={formData.skill_level_self || ""}
+                    onValueChange={(value) => setFormData({ ...formData, skill_level_self: value })}
+                  >
+                    <SelectTrigger id="skill_level_self">
+                      <SelectValue placeholder="Select..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="beginner">Beginner</SelectItem>
+                      <SelectItem value="intermediate">Intermediate</SelectItem>
+                      <SelectItem value="advanced">Advanced</SelectItem>
+                      <SelectItem value="expert">Expert</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </CardContent>

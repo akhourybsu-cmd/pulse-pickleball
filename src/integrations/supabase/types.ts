@@ -1235,10 +1235,15 @@ export type Database = {
           avg_opponent_rating: number | null
           created_at: string | null
           current_rating: number | null
+          date_of_birth: string | null
           display_name: string | null
+          dupr_rating: number | null
           email: string
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
           first_name: string | null
           full_name: string
+          gender: string | null
           handedness: string | null
           home_court_id: string | null
           id: string
@@ -1260,6 +1265,8 @@ export type Database = {
           phonetic_name: string | null
           play_side: string | null
           pronouns: string | null
+          shirt_size: string | null
+          skill_level_self: string | null
           total_matches: number | null
           total_points_against: number | null
           total_points_for: number | null
@@ -1275,10 +1282,15 @@ export type Database = {
           avg_opponent_rating?: number | null
           created_at?: string | null
           current_rating?: number | null
+          date_of_birth?: string | null
           display_name?: string | null
+          dupr_rating?: number | null
           email: string
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
           first_name?: string | null
           full_name: string
+          gender?: string | null
           handedness?: string | null
           home_court_id?: string | null
           id: string
@@ -1300,6 +1312,8 @@ export type Database = {
           phonetic_name?: string | null
           play_side?: string | null
           pronouns?: string | null
+          shirt_size?: string | null
+          skill_level_self?: string | null
           total_matches?: number | null
           total_points_against?: number | null
           total_points_for?: number | null
@@ -1315,10 +1329,15 @@ export type Database = {
           avg_opponent_rating?: number | null
           created_at?: string | null
           current_rating?: number | null
+          date_of_birth?: string | null
           display_name?: string | null
+          dupr_rating?: number | null
           email?: string
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
           first_name?: string | null
           full_name?: string
+          gender?: string | null
           handedness?: string | null
           home_court_id?: string | null
           id?: string
@@ -1340,6 +1359,8 @@ export type Database = {
           phonetic_name?: string | null
           play_side?: string | null
           pronouns?: string | null
+          shirt_size?: string | null
+          skill_level_self?: string | null
           total_matches?: number | null
           total_points_against?: number | null
           total_points_for?: number | null
