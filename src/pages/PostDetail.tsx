@@ -127,12 +127,12 @@ export default function PostDetail() {
 
     setSubmitting(true);
     try {
-      const { error }: any = await (supabase as any)
+      const { error } = await supabase
         .from("court_post_comments")
         .insert({
           post_id: postId,
           author_user_id: currentUserId,
-          body: newComment.trim(),
+          content: newComment.trim(),
         });
 
       if (error) throw error;
@@ -147,8 +147,44 @@ export default function PostDetail() {
     }
   };
 
-  const handleReaction = (emoji: string) => {
-    toast.info("Reactions coming soon!");
+  const handleReaction = async (emoji: string) => {
+    try {
+      if (!currentUserId) {
+        toast.error("Please sign in to react");
+        return;
+      }
+
+      // Check if user already reacted with this emoji
+      const { data: existing } = await supabase
+        .from("court_post_reactions")
+        .select("id")
+        .eq("post_id", postId)
+        .eq("user_id", currentUserId)
+        .eq("emoji", emoji)
+        .maybeSingle();
+
+      if (existing) {
+        // Remove reaction
+        await supabase
+          .from("court_post_reactions")
+          .delete()
+          .eq("id", existing.id);
+        toast.success("Reaction removed");
+      } else {
+        // Add reaction
+        await supabase
+          .from("court_post_reactions")
+          .insert({
+            post_id: postId,
+            user_id: currentUserId,
+            emoji,
+          });
+        toast.success("Reaction added!");
+      }
+    } catch (error: any) {
+      console.error("Error toggling reaction:", error);
+      toast.error("Failed to react");
+    }
   };
 
   const handleSignOut = async () => {
@@ -244,7 +280,7 @@ export default function PostDetail() {
 
             {/* Title & Body */}
             <h1 className="text-2xl font-bold mb-4">{post.title}</h1>
-            <div className="text-base whitespace-pre-wrap mb-4">{post.body}</div>
+            <div className="text-base whitespace-pre-wrap mb-4">{post.content}</div>
 
             {/* LFG Metadata */}
             {post.type === "lfg" && post.metadata && (
@@ -312,7 +348,7 @@ export default function PostDetail() {
                         <p className="font-semibold text-sm mb-1">
                           {comment.author?.display_name || "Unknown User"}
                         </p>
-                        <p className="text-sm">{comment.body}</p>
+                        <p className="text-sm">{comment.content}</p>
                       </div>
                       <p className="text-xs text-muted-foreground mt-1 ml-3">
                         {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
