@@ -31,6 +31,7 @@ export default function PostDetail() {
   const navigate = useNavigate();
   const [post, setPost] = useState<any>(null);
   const [comments, setComments] = useState<any[]>([]);
+  const [reactions, setReactions] = useState<any[]>([]);
   const [newComment, setNewComment] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -41,6 +42,7 @@ export default function PostDetail() {
     if (postId) {
       fetchPost();
       fetchComments();
+      fetchReactions();
       subscribeToChanges();
     }
   }, [postId]);
@@ -99,9 +101,23 @@ export default function PostDetail() {
     }
   };
 
+  const fetchReactions = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("court_post_reactions")
+        .select("emoji, user_id")
+        .eq("post_id", postId);
+
+      if (error) throw error;
+      setReactions(data || []);
+    } catch (error: any) {
+      console.error("Error fetching reactions:", error);
+    }
+  };
+
   const subscribeToChanges = () => {
-    const channel = supabase
-      .channel(`post_detail_${postId}`)
+    const commentsChannel = supabase
+      .channel(`post_comments_${postId}`)
       .on(
         "postgres_changes" as any,
         {
@@ -116,8 +132,25 @@ export default function PostDetail() {
       )
       .subscribe();
 
+    const reactionsChannel = supabase
+      .channel(`post_reactions_${postId}`)
+      .on(
+        "postgres_changes" as any,
+        {
+          event: "*",
+          schema: "public",
+          table: "court_post_reactions",
+          filter: `post_id=eq.${postId}`,
+        } as any,
+        () => {
+          fetchReactions();
+        }
+      )
+      .subscribe();
+
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(commentsChannel);
+      supabase.removeChannel(reactionsChannel);
     };
   };
 
@@ -181,6 +214,8 @@ export default function PostDetail() {
           });
         toast.success("Reaction added!");
       }
+      
+      fetchReactions(); // Refresh reactions
     } catch (error: any) {
       console.error("Error toggling reaction:", error);
       toast.error("Failed to react");
@@ -211,6 +246,12 @@ export default function PostDetail() {
     { emoji: "😂", icon: Laugh },
     { emoji: "❤️", icon: Heart },
   ];
+
+  // Group reactions by emoji and count them
+  const reactionCounts = reactions.reduce((acc: any, reaction: any) => {
+    acc[reaction.emoji] = (acc[reaction.emoji] || 0) + 1;
+    return acc;
+  }, {});
 
   return (
     <div className="min-h-screen bg-background">
@@ -304,18 +345,33 @@ export default function PostDetail() {
             )}
 
             {/* Reactions */}
-            <div className="flex items-center gap-2 pt-4 border-t">
-              {reactionEmojis.map(({ emoji, icon: Icon }) => (
-                <Button
-                  key={emoji}
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleReaction(emoji)}
-                >
-                  <Icon className="w-4 h-4 mr-1" />
-                  {emoji}
-                </Button>
-              ))}
+            <div className="pt-4 border-t">
+              {/* Reaction Counts */}
+              {Object.keys(reactionCounts).length > 0 && (
+                <div className="flex items-center gap-3 mb-3 flex-wrap">
+                  {Object.entries(reactionCounts).map(([emoji, count]: [string, any]) => (
+                    <div key={emoji} className="flex items-center gap-1 text-sm text-muted-foreground">
+                      <span className="font-semibold">{count}</span>
+                      <span>{emoji}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              {/* Reaction Buttons */}
+              <div className="flex items-center gap-2">
+                {reactionEmojis.map(({ emoji, icon: Icon }) => (
+                  <Button
+                    key={emoji}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleReaction(emoji)}
+                  >
+                    <Icon className="w-4 h-4 mr-1" />
+                    {emoji}
+                  </Button>
+                ))}
+              </div>
             </div>
           </CardContent>
         </Card>
