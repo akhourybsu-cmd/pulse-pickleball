@@ -511,7 +511,7 @@ const Dashboard = () => {
                   className="text-5xl md:text-6xl lg:text-7xl font-bold text-primary pulse-score-number"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  transition={{ duration: 0.8, ease: "easeOut" }}
+                  transition={{ duration: 0.8, delay: 0.75, ease: "easeOut" }}
                 >
                   {profile?.current_rating?.toFixed(2) || '3.00'}
                 </motion.span>
@@ -525,7 +525,7 @@ const Dashboard = () => {
                   aria-hidden="true"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  transition={{ duration: 0.3, delay: 0.8 }}
+                  transition={{ duration: 0.3, delay: 1.55 }}
                 >
                   <path 
                     d="M0 12 L20 12 L25 4 L30 20 L35 12 L80 12" 
