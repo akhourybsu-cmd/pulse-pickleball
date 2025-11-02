@@ -37,16 +37,23 @@ export const PostComposer = ({ courtId, open, onOpenChange, onPostCreated }: Pos
       const postData: any = {
         court_id: courtId,
         user_id: user.id,
+        type, // Save the post type
         title,
         content: body, // Map body to content for existing schema
+        body, // Also save as body for new schema
         status: "open",
       };
 
-      // Add LFG-specific fields
+      // Add LFG-specific fields and metadata
       if (type === "lfg") {
         postData.session_date = sessionDate;
         postData.session_time = sessionTime;
         postData.max_players = parseInt(maxPlayers);
+        postData.metadata = {
+          session_date: sessionDate,
+          session_time: sessionTime,
+          max_players: parseInt(maxPlayers),
+        };
       }
 
       const { error } = await supabase

@@ -25,29 +25,30 @@ export const CourtFeed = ({ courtId }: CourtFeedProps) => {
 
   const fetchPosts = async () => {
     try {
-      // Use raw query to bypass schema cache issues
-      let queryStr = `
-        court_id,
-        user_id,
-        title,
-        content,
-        status,
-        session_date,
-        session_time,
-        max_players,
-        created_at,
-        updated_at,
-        viewed_participants_count,
-        user:profiles!court_posts_user_id_fkey (
-          id,
-          display_name,
-          avatar_url
-        )
-      `;
-
+      // Fetch all posts first
       const { data, error } = await supabase
         .from("court_posts")
-        .select(queryStr)
+        .select(`
+          id,
+          court_id,
+          user_id,
+          type,
+          title,
+          content,
+          body,
+          status,
+          session_date,
+          session_time,
+          max_players,
+          created_at,
+          updated_at,
+          viewed_participants_count,
+          user:profiles!court_posts_user_id_fkey (
+            id,
+            display_name,
+            avatar_url
+          )
+        `)
         .eq("court_id", courtId)
         .order("created_at", { ascending: false });
 
@@ -56,18 +57,22 @@ export const CourtFeed = ({ courtId }: CourtFeedProps) => {
         throw error;
       }
 
-      // Map old LFG posts to new format
-      const mappedPosts = (data || []).map((post: any) => ({
+      // Map posts to ensure consistent format
+      let mappedPosts = (data || []).map((post: any) => ({
         ...post,
-        id: post.id || crypto.randomUUID(),
-        type: 'lfg', // All existing posts are LFG type
-        body: post.content || '',
+        type: post.type || 'lfg', // Default to lfg if not set
+        body: post.body || post.content || '',
         metadata: post.session_date ? {
           session_date: post.session_date,
           session_time: post.session_time,
           max_players: post.max_players,
         } : {},
       }));
+
+      // Apply client-side filter if needed
+      if (filter !== "all") {
+        mappedPosts = mappedPosts.filter(post => post.type === filter);
+      }
 
       setPosts(mappedPosts);
     } catch (error: any) {
