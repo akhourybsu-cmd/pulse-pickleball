@@ -8,9 +8,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { ExternalLink, Upload, X, Plus } from "lucide-react";
+import { ExternalLink, Upload, X, Plus, Save, HelpCircle, Eye, CheckCircle2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { motion } from "framer-motion";
 
 interface Sponsor {
   logo_url: string;
@@ -53,6 +55,8 @@ export default function TournamentCustomize() {
   const [themeAccent, setThemeAccent] = useState("lime");
   const [venueDetails, setVenueDetails] = useState<VenueDetail[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   useEffect(() => {
     const getUser = async () => {
@@ -212,6 +216,7 @@ export default function TournamentCustomize() {
         if (data) setCustomizationId(data.id);
       }
 
+      setHasUnsavedChanges(false);
       toast.success("Changes saved successfully");
     } catch (error) {
       console.error("Save error:", error);
@@ -219,6 +224,11 @@ export default function TournamentCustomize() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleSaveAndPreview = async () => {
+    await handleSave();
+    window.open(publicUrl, '_blank');
   };
 
   const handlePublishToggle = async () => {
@@ -231,9 +241,20 @@ export default function TournamentCustomize() {
         .update({ is_published: newPublishedState })
         .eq("id", customizationId);
       
-      toast.success(newPublishedState ? "Page published!" : "Page unpublished");
+      const message = newPublishedState 
+        ? `Your page is now live — view it at ${publicUrl}` 
+        : "Page unpublished";
+      toast.success(message);
+      setHasUnsavedChanges(false);
     }
   };
+
+  // Track changes
+  useEffect(() => {
+    setHasUnsavedChanges(true);
+  }, [heroImageUrl, heroOverlayColor, tagline, aboutMarkdown, aboutImageUrl, 
+      mapEmbed, venuePhotoUrl, sponsors, policiesText, organizerContactName, 
+      organizerContactEmail, organizerSocialLinks, themeAccent, venueDetails]);
 
   const addSponsor = () => {
     if (sponsors.length >= 4) {
@@ -297,33 +318,83 @@ export default function TournamentCustomize() {
       
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2">Customize Public Tournament Page</h1>
-          <p className="text-lg text-muted-foreground mb-4">
-            Your changes control what players see before they register.
-          </p>
-          <div className="flex flex-wrap gap-4">
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <h1 className="text-4xl font-bold mb-2">Customize Public Tournament Page</h1>
+              <p className="text-lg text-muted-foreground">
+                Design a beautiful landing page that drives registration
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowHelp(!showHelp)}
+              className="gap-2"
+            >
+              <HelpCircle className="h-4 w-4" />
+              {showHelp ? "Hide" : "Show"} Tips
+            </Button>
+          </div>
+          
+          <div className="flex flex-wrap items-center gap-4">
+            <Badge 
+              variant={isPublished ? "default" : "secondary"}
+              className="text-sm px-3 py-1.5"
+            >
+              {isPublished ? (
+                <><CheckCircle2 className="h-3 w-3 mr-1.5" /> Published</>
+              ) : (
+                "Draft"
+              )}
+            </Badge>
+
+            <Button
+              onClick={handleSaveAndPreview}
+              disabled={saving}
+              size="lg"
+              className={hasUnsavedChanges ? "animate-pulse shadow-lg shadow-primary/20" : ""}
+            >
+              <Save className="h-4 w-4 mr-2" />
+              {saving ? "Saving..." : isPublished ? "Save & Update Live Page" : "Save Draft"}
+            </Button>
+
             <Button
               variant="outline"
               onClick={() => window.open(publicUrl, '_blank')}
+              size="lg"
             >
-              <ExternalLink className="h-4 w-4 mr-2" />
-              Preview Public Page
+              <Eye className="h-4 w-4 mr-2" />
+              Preview
             </Button>
-            <div className="flex items-center gap-2">
+
+            <div className="flex items-center gap-2 ml-auto">
+              <Label className="text-sm text-muted-foreground">Publish Status:</Label>
               <Switch
                 checked={isPublished}
                 onCheckedChange={handlePublishToggle}
               />
-              <Label>{isPublished ? "Published" : "Unpublished"}</Label>
             </div>
-            <Button onClick={handleSave} disabled={saving}>
-              {saving ? "Saving..." : "Save Changes"}
-            </Button>
           </div>
+          
           {isPublished && (
-            <p className="mt-4 text-sm text-muted-foreground">
-              Public URL: <a href={publicUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{publicUrl}</a>
-            </p>
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-4 p-3 bg-primary/10 rounded-lg border border-primary/20"
+            >
+              <p className="text-sm">
+                <span className="font-medium">Public URL:</span>{" "}
+                <a 
+                  href={publicUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="text-primary hover:underline font-mono"
+                >
+                  {publicUrl}
+                </a>
+                <span className="text-muted-foreground ml-2">— Share this with players</span>
+              </p>
+            </motion.div>
           )}
         </div>
 
@@ -337,92 +408,255 @@ export default function TournamentCustomize() {
             <TabsTrigger value="contact">Contact</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="hero" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Hero & Branding</CardTitle>
-                <CardDescription>Customize the hero banner and main visual</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label>Hero Banner Image</Label>
-                  <div className="flex gap-4 items-start mt-2">
-                    {heroImageUrl && (
-                      <img src={heroImageUrl} alt="Hero" className="w-32 h-20 object-cover rounded" />
+          <TabsContent value="hero" className="space-y-6">
+            <div className="grid lg:grid-cols-2 gap-6">
+              {/* Left: Controls */}
+              <div className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Hero Banner Image</CardTitle>
+                    {showHelp && (
+                      <CardDescription className="text-sm">
+                        This image fills the top section of your public event page. Recommended: 1600×600 px
+                      </CardDescription>
                     )}
-                    <div className="flex-1">
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => handleFileUpload(e, setHeroImageUrl)}
-                        disabled={uploading}
-                      />
-                      {heroImageUrl && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setHeroImageUrl("")}
-                          className="mt-2"
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {heroImageUrl ? (
+                      <div className="space-y-3">
+                        <img 
+                          src={heroImageUrl} 
+                          alt="Hero preview" 
+                          className="w-full h-40 object-cover rounded-lg border-2 border-border" 
+                        />
+                        <div className="flex gap-2">
+                          <Input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleFileUpload(e, setHeroImageUrl)}
+                            disabled={uploading}
+                            className="flex-1"
+                          />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setHeroImageUrl("")}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <div className="border-2 border-dashed border-border rounded-lg p-8 text-center mb-3">
+                          <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                          <p className="text-sm text-muted-foreground">Preview will appear here</p>
+                        </div>
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handleFileUpload(e, setHeroImageUrl)}
+                          disabled={uploading}
+                        />
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Tagline</CardTitle>
+                    {showHelp && (
+                      <CardDescription className="text-sm">
+                        A one-line statement that introduces your tournament to players
+                      </CardDescription>
+                    )}
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <Input
+                      id="tagline"
+                      value={tagline}
+                      onChange={(e) => setTagline(e.target.value)}
+                      placeholder="Example: A weekend of competition and community at the Attleboro YMCA!"
+                    />
+                    {tagline && (
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="p-3 bg-muted rounded-lg"
+                      >
+                        <p className="text-sm text-muted-foreground mb-1">Live Preview:</p>
+                        <p className="font-medium">{eventName} — {tagline}</p>
+                      </motion.div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Hero Overlay</CardTitle>
+                    {showHelp && (
+                      <CardDescription className="text-sm">
+                        Choose a color mood for your banner and highlights
+                      </CardDescription>
+                    )}
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 gap-4">
+                      {[
+                        { 
+                          value: "none", 
+                          label: "Pulse Energy", 
+                          description: "Bright & Vibrant",
+                          bg: "bg-gradient-to-br from-primary to-accent" 
+                        },
+                        { 
+                          value: "lime", 
+                          label: "Lime Glow", 
+                          description: "Fresh & Modern",
+                          bg: "bg-gradient-to-br from-lime-400 to-lime-600" 
+                        },
+                        { 
+                          value: "teal", 
+                          label: "Teal Calm", 
+                          description: "Professional",
+                          bg: "bg-gradient-to-br from-teal-600 to-teal-800" 
+                        },
+                        { 
+                          value: "dark-teal-overlay", 
+                          label: "Dark Focus", 
+                          description: "Focused on Photo",
+                          bg: "bg-gradient-to-b from-gray-900/40 to-gray-900/80" 
+                        },
+                      ].map((option) => (
+                        <motion.button
+                          key={option.value}
+                          onClick={() => setHeroOverlayColor(option.value)}
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          className={`p-4 rounded-lg border-2 transition-all text-left ${
+                            heroOverlayColor === option.value 
+                              ? "border-primary shadow-lg shadow-primary/20" 
+                              : "border-border hover:border-primary/50"
+                          }`}
                         >
-                          <X className="h-4 w-4 mr-2" />
-                          Remove Image
-                        </Button>
-                      )}
+                          <div className={`w-full h-16 rounded ${option.bg} mb-3 relative overflow-hidden`}>
+                            {heroOverlayColor === option.value && (
+                              <div className="absolute top-2 right-2">
+                                <CheckCircle2 className="h-4 w-4 text-white" />
+                              </div>
+                            )}
+                          </div>
+                          <p className="text-sm font-semibold mb-1">{option.label}</p>
+                          <p className="text-xs text-muted-foreground">{option.description}</p>
+                        </motion.button>
+                      ))}
                     </div>
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
 
-                <div>
-                  <Label htmlFor="tagline">Tagline</Label>
-                  <Input
-                    id="tagline"
-                    value={tagline}
-                    onChange={(e) => setTagline(e.target.value)}
-                    placeholder="Short tagline for your event"
-                  />
-                </div>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Theme Accent</CardTitle>
+                    {showHelp && (
+                      <CardDescription className="text-sm">
+                        Select your overall color style. These are Pulse-approved palettes.
+                      </CardDescription>
+                    )}
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 gap-3">
+                      {[
+                        { value: "lime", label: "Pulse Lime", description: "Bright & Modern" },
+                        { value: "teal", label: "Deep Teal", description: "Sleek & Professional" },
+                        { value: "dark-teal", label: "Dark Teal", description: "Contrast & Focus" },
+                        { value: "light-card", label: "Light", description: "Airy & Minimal" },
+                      ].map((accent) => (
+                        <motion.button
+                          key={accent.value}
+                          onClick={() => setThemeAccent(accent.value)}
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          className={`px-4 py-3 rounded-lg border-2 transition-all text-left ${
+                            themeAccent === accent.value 
+                              ? "border-primary bg-primary/5" 
+                              : "border-border hover:border-primary/50"
+                          }`}
+                        >
+                          <p className="text-sm font-semibold mb-1">{accent.label}</p>
+                          <p className="text-xs text-muted-foreground">{accent.description}</p>
+                          {themeAccent === accent.value && (
+                            <CheckCircle2 className="h-3 w-3 text-primary mt-1" />
+                          )}
+                        </motion.button>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
 
-                <div>
-                  <Label>Accent / Overlay</Label>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
-                    {[
-                      { value: "none", label: "None", bg: "bg-gradient-to-br from-primary to-accent" },
-                      { value: "lime", label: "Lime", bg: "bg-gradient-to-br from-lime-400 to-lime-600" },
-                      { value: "teal", label: "Teal", bg: "bg-gradient-to-br from-teal-600 to-teal-800" },
-                      { value: "dark-teal-overlay", label: "Dark Overlay", bg: "bg-gradient-to-b from-gray-900/20 to-gray-900/60" },
-                    ].map((option) => (
-                      <button
-                        key={option.value}
-                        onClick={() => setHeroOverlayColor(option.value)}
-                        className={`p-4 rounded-lg border-2 transition-all ${
-                          heroOverlayColor === option.value ? "border-primary" : "border-border"
-                        }`}
-                      >
-                        <div className={`w-full h-12 rounded ${option.bg} mb-2`} />
-                        <p className="text-sm font-medium">{option.label}</p>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <Label>Theme Accent</Label>
-                  <div className="flex gap-4 mt-2">
-                    {["lime", "teal", "dark-teal", "light-card"].map((accent) => (
-                      <button
-                        key={accent}
-                        onClick={() => setThemeAccent(accent)}
-                        className={`px-4 py-2 rounded border-2 transition-all ${
-                          themeAccent === accent ? "border-primary" : "border-border"
-                        }`}
-                      >
-                        {accent}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+              {/* Right: Live Preview */}
+              <div className="lg:sticky lg:top-8 h-fit">
+                <Card className="border-2">
+                  <CardHeader>
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Eye className="h-4 w-4" />
+                      Live Hero Preview
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <motion.div 
+                      key={`${heroOverlayColor}-${themeAccent}`}
+                      initial={{ opacity: 0.7 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.3 }}
+                      className="rounded-lg overflow-hidden border-2 border-border"
+                    >
+                      <div className="relative h-64">
+                        {heroImageUrl ? (
+                          <img 
+                            src={heroImageUrl} 
+                            alt="Hero" 
+                            className="w-full h-full object-cover" 
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-primary to-accent" />
+                        )}
+                        <div 
+                          className={`absolute inset-0 ${
+                            heroOverlayColor === "lime" ? "bg-gradient-to-b from-lime-500/30 to-lime-700/50" :
+                            heroOverlayColor === "teal" ? "bg-gradient-to-b from-teal-600/40 to-teal-800/60" :
+                            heroOverlayColor === "dark-teal-overlay" ? "bg-gradient-to-b from-gray-900/20 to-gray-900/60" :
+                            ""
+                          }`}
+                        />
+                        <div className="absolute inset-0 p-8 flex flex-col justify-end">
+                          <div className="bg-white/95 backdrop-blur p-4 rounded-lg shadow-lg max-w-md">
+                            <h2 className="text-2xl font-bold mb-1">{eventName || "Tournament Name"}</h2>
+                            {tagline && (
+                              <p className="text-sm text-muted-foreground">{tagline}</p>
+                            )}
+                            <div className="mt-3 flex gap-2">
+                              <div className={`px-3 py-1 rounded text-xs font-medium ${
+                                themeAccent === "lime" ? "bg-primary text-primary-foreground" :
+                                themeAccent === "teal" ? "bg-teal-600 text-white" :
+                                themeAccent === "dark-teal" ? "bg-gray-900 text-white" :
+                                "bg-gray-100 text-gray-900"
+                              }`}>
+                                Sample Button
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                    <p className="text-xs text-muted-foreground mt-3 text-center">
+                      This preview updates as you make changes
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
           </TabsContent>
 
           <TabsContent value="about" className="space-y-4">
