@@ -440,18 +440,25 @@ const MatchHistory = () => {
       <div className="container mx-auto px-4 py-6 space-y-6">
 
         {matches.length === 0 ? (
-          <Card>
+          <Card className="rounded-2xl border-2 border-border shadow-lg">
             <CardContent className="p-6 text-center text-muted-foreground">
               No match history yet
             </CardContent>
           </Card>
         ) : (
           <div className="space-y-4">
-            {matches.map((match) => {
+            {matches.map((match, index) => {
               const { verifiedCount, totalPlayers, isCurrentUserVerified } = getVerificationStatus(match);
               
               return (
-                <Card key={match.match_id}>
+                <motion.div
+                  key={match.match_id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: index * 0.05 }}
+                  whileHover={{ y: -4, transition: { duration: 0.2 } }}
+                >
+                  <Card className="rounded-2xl border-2 border-border shadow-lg hover:shadow-[0_2px_6px_rgba(0,0,0,0.05),0_4px_12px_rgba(169,220,61,0.15)] transition-all duration-300 bg-card">
                   <CardHeader>
                     <div className="flex justify-between items-start">
                       <div>
@@ -595,8 +602,9 @@ const MatchHistory = () => {
                         </Button>
                       )}
                     </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                </motion.div>
               );
             })}
           </div>
