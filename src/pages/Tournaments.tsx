@@ -4,8 +4,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, MapPin, Users, ChevronDown } from "lucide-react";
+import { Calendar, MapPin, Users, ChevronDown, Trophy, Bell, MessageCircle } from "lucide-react";
 import { format } from "date-fns";
+import { motion } from "framer-motion";
+import CountUp from "react-countup";
+import { PageHeader } from "@/components/PageHeader";
 
 interface TournamentEvent {
   id: string;
@@ -31,6 +34,15 @@ export default function Tournaments() {
   const navigate = useNavigate();
   const [events, setEvents] = useState<TournamentEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userId, setUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUserId(user?.id || null);
+    };
+    getUser();
+  }, []);
 
   useEffect(() => {
     fetchOpenTournaments();
@@ -77,22 +89,29 @@ export default function Tournaments() {
 
   return (
     <div className="min-h-screen bg-background">
+      <PageHeader userId={userId} />
+      
       {/* Hero Section */}
       <section className="relative min-h-[600px] flex items-center justify-center overflow-hidden bg-gradient-to-br from-primary via-primary/80 to-accent">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(197,232,108,0.2),transparent_50%)] animate-pulse" />
+        <div className="absolute inset-0 bg-gradient-to-r from-primary/20 via-accent/20 to-primary/20 animate-[gradient_8s_ease_infinite] bg-[length:200%_100%]" />
         
-        <div className="container mx-auto px-4 text-center relative z-10">
-          <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 animate-fade-in">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="container mx-auto px-4 text-center relative z-10"
+        >
+          <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 drop-shadow-lg">
             Find Your Next Pickleball Tournament
           </h1>
-          <p className="text-xl md:text-2xl text-white/90 mb-8 max-w-2xl mx-auto">
+          <p className="text-xl md:text-2xl text-white/90 mb-8 max-w-2xl mx-auto drop-shadow">
             From local showdowns to major brackets — powered by Pulse
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Button 
               size="lg" 
-              className="bg-white text-primary hover:bg-white/90 text-lg px-8"
+              className="bg-white text-primary hover:bg-white/90 hover:shadow-[0_0_20px_rgba(197,232,108,0.5)] transition-all duration-300 text-lg px-8"
               onClick={() => navigate("/auth?redirect=/profile/edit")}
             >
               Sign Up for Pulse
@@ -100,20 +119,28 @@ export default function Tournaments() {
             <Button 
               size="lg" 
               variant="outline" 
-              className="bg-transparent border-white text-white hover:bg-white/10 text-lg px-8"
+              className="bg-transparent border-2 border-white text-white hover:bg-white hover:text-primary transition-all duration-300 text-lg px-8"
               onClick={scrollToTournaments}
             >
               View Tournaments
               <ChevronDown className="ml-2 h-5 w-5" />
             </Button>
           </div>
-        </div>
+        </motion.div>
       </section>
 
       {/* Tournaments Section */}
       <section id="tournaments-section" className="py-16 px-4">
         <div className="container mx-auto">
-          <h2 className="text-4xl font-bold text-center mb-12">Open Tournaments</h2>
+          <motion.h2 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.4 }}
+            className="text-4xl font-bold text-center mb-12"
+          >
+            Open Tournaments
+          </motion.h2>
           
           {loading ? (
             <div className="text-center py-12">Loading tournaments...</div>
@@ -128,10 +155,15 @@ export default function Tournaments() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {events.map((event) => (
-                <Card 
-                  key={event.id} 
-                  className="hover:shadow-lg transition-all duration-300 hover:scale-105 hover:border-primary/50 cursor-pointer group"
+              {events.map((event, index) => (
+                <motion.div
+                  key={event.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.4, delay: index * 0.1 }}
+                >
+                  <Card className="hover:shadow-lg hover:shadow-primary/20 transition-all duration-300 hover:scale-105 hover:border-primary cursor-pointer group h-full"
                 >
                   <CardHeader>
                     <div className="flex items-start justify-between mb-2">
@@ -166,7 +198,7 @@ export default function Tournaments() {
                     
                     <div className="flex gap-2">
                       <Button 
-                        className="flex-1"
+                        className="flex-1 hover:shadow-[0_0_15px_rgba(197,232,108,0.4)] transition-all"
                         onClick={() => navigate(`/tournament/${event.id}/register`)}
                       >
                         Register Team
@@ -180,6 +212,7 @@ export default function Tournaments() {
                     </div>
                   </CardContent>
                 </Card>
+                </motion.div>
               ))}
             </div>
           )}
@@ -189,91 +222,125 @@ export default function Tournaments() {
       {/* Why Pulse Section */}
       <section className="py-16 px-4 bg-secondary">
         <div className="container mx-auto">
-          <div className="grid md:grid-cols-2 gap-12 items-center">
+          <motion.div 
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            className="grid md:grid-cols-2 gap-12 items-center"
+          >
             <div className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-card p-6 rounded-lg text-center">
-                  <div className="text-4xl font-bold text-primary mb-2">30,000+</div>
+              <div className="grid grid-cols-3 gap-4">
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.1 }}
+                  className="bg-card p-6 rounded-lg text-center shadow-sm"
+                >
+                  <div className="text-4xl font-bold text-primary mb-2">
+                    <CountUp end={30000} duration={2.5} suffix="+" separator="," enableScrollSpy scrollSpyOnce />
+                  </div>
                   <div className="text-sm text-muted-foreground">Matches Hosted</div>
-                </div>
-                <div className="bg-card p-6 rounded-lg text-center">
-                  <div className="text-4xl font-bold text-primary mb-2">40+</div>
+                </motion.div>
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.2 }}
+                  className="bg-card p-6 rounded-lg text-center shadow-sm"
+                >
+                  <div className="text-4xl font-bold text-primary mb-2">
+                    <CountUp end={40} duration={2.5} suffix="+" enableScrollSpy scrollSpyOnce />
+                  </div>
                   <div className="text-sm text-muted-foreground">States Represented</div>
-                </div>
-                <div className="bg-card p-6 rounded-lg text-center col-span-2">
-                  <div className="text-4xl font-bold text-primary mb-2">100%</div>
+                </motion.div>
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.3 }}
+                  className="bg-card p-6 rounded-lg text-center shadow-sm"
+                >
+                  <div className="text-4xl font-bold text-primary mb-2">
+                    <CountUp end={100} duration={2.5} suffix="%" enableScrollSpy scrollSpyOnce />
+                  </div>
                   <div className="text-sm text-muted-foreground">Transparent Brackets</div>
-                </div>
+                </motion.div>
               </div>
             </div>
             
-            <div className="space-y-6">
+            <motion.div 
+              initial={{ opacity: 0, x: 20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              className="space-y-6"
+            >
               <h2 className="text-4xl font-bold">Why Join Pulse?</h2>
               <ul className="space-y-4">
-                <li className="flex items-start gap-3">
-                  <span className="text-2xl">📱</span>
-                  <div>
-                    <div className="font-semibold">Track your tournament history</div>
-                    <div className="text-sm text-muted-foreground">All your matches in one place</div>
-                  </div>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="text-2xl">🏆</span>
-                  <div>
-                    <div className="font-semibold">Join regional & national leaderboards</div>
-                    <div className="text-sm text-muted-foreground">See how you stack up</div>
-                  </div>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="text-2xl">🔔</span>
-                  <div>
-                    <div className="font-semibold">Get real-time updates</div>
-                    <div className="text-sm text-muted-foreground">Never miss a match time</div>
-                  </div>
-                </li>
-                <li className="flex items-start gap-3">
-                  <span className="text-2xl">💬</span>
-                  <div>
-                    <div className="font-semibold">Connect with players near you</div>
-                    <div className="text-sm text-muted-foreground">Build your pickleball network</div>
-                  </div>
-                </li>
+                {[
+                  { icon: Users, title: "Track your tournament history", desc: "All your matches in one place" },
+                  { icon: Trophy, title: "Join regional & national leaderboards", desc: "See how you stack up" },
+                  { icon: Bell, title: "Get real-time updates", desc: "Never miss a match time" },
+                  { icon: MessageCircle, title: "Connect with players near you", desc: "Build your pickleball network" }
+                ].map((item, i) => (
+                  <motion.li 
+                    key={i}
+                    initial={{ opacity: 0, x: -20 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.1 * i }}
+                    className="flex items-start gap-3"
+                  >
+                    <item.icon className="h-6 w-6 text-primary mt-1" />
+                    <div>
+                      <div className="font-semibold">{item.title}</div>
+                      <div className="text-sm text-muted-foreground">{item.desc}</div>
+                    </div>
+                  </motion.li>
+                ))}
               </ul>
-              <Button size="lg" onClick={() => navigate("/auth")}>
-                Create My Free Player Profile
+              <Button 
+                size="lg" 
+                className="hover:shadow-[0_0_20px_rgba(197,232,108,0.4)] transition-all"
+                onClick={() => navigate("/auth")}
+              >
+                Create My Player Profile
               </Button>
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
         </div>
       </section>
 
-      {/* Testimonials */}
-      <section className="py-12 bg-primary/10 overflow-hidden">
-        <div className="animate-[scroll_30s_linear_infinite] flex gap-8 whitespace-nowrap">
-          {[
-            { quote: "Pulse made my first tournament so smooth!", author: "Sarah, MA" },
-            { quote: "Finally, a system that feels built for players.", author: "James, CT" },
-            { quote: "Brackets updated live between games — amazing.", author: "Priya, FL" },
-            { quote: "Pulse made my first tournament so smooth!", author: "Sarah, MA" },
-            { quote: "Finally, a system that feels built for players.", author: "James, CT" },
-          ].map((testimonial, i) => (
-            <div key={i} className="inline-flex items-center gap-2 px-6 py-3 bg-card rounded-full">
-              <span className="font-medium">"{testimonial.quote}"</span>
-              <span className="text-muted-foreground">– {testimonial.author}</span>
-            </div>
-          ))}
-        </div>
+      {/* Community Strip */}
+      <section className="py-16 bg-primary/10 overflow-hidden relative">
+        <div className="absolute inset-0 bg-gradient-to-r from-background via-transparent to-background z-10 pointer-events-none" />
+        <motion.div 
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          className="text-center mb-8"
+        >
+          <p className="text-2xl font-semibold text-foreground px-4">
+            Join tournaments across the nation — from local rec centers to regional championships.
+          </p>
+        </motion.div>
       </section>
 
       {/* CTA Footer */}
-      <section className="py-16 px-4 bg-gradient-to-r from-primary via-accent to-primary text-white text-center">
-        <div className="container mx-auto max-w-2xl space-y-6">
-          <h2 className="text-5xl font-bold">Ready to Rally?</h2>
-          <p className="text-xl text-white/90">Join thousands of players competing on Pulse</p>
+      <section className="py-16 px-4 bg-gradient-to-r from-primary via-accent to-primary text-white text-center relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-primary/20 via-accent/20 to-primary/20 animate-[gradient_8s_ease_infinite] bg-[length:200%_100%]" />
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="container mx-auto max-w-2xl space-y-6 relative z-10"
+        >
+          <h2 className="text-5xl font-bold drop-shadow-lg">Ready to Rally?</h2>
+          <p className="text-xl text-white/90">One platform. Every court. All in Pulse.</p>
           <div className="space-y-4">
             <Button 
               size="lg" 
-              className="bg-white text-primary hover:bg-white/90 text-lg px-12"
+              className="bg-white text-primary hover:bg-white/90 hover:shadow-[0_0_30px_rgba(255,255,255,0.5)] hover:scale-105 transition-all duration-300 text-lg px-12 animate-[pulse_3s_ease-in-out_infinite]"
               onClick={() => navigate("/auth")}
             >
               Join Pulse
@@ -281,13 +348,13 @@ export default function Tournaments() {
             <div>
               <button 
                 onClick={() => navigate("/auth")}
-                className="text-white/90 hover:text-white underline"
+                className="text-white/90 hover:text-white underline transition-colors"
               >
                 Already have an account? Sign in.
               </button>
             </div>
           </div>
-        </div>
+        </motion.div>
       </section>
     </div>
   );
