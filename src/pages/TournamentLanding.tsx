@@ -468,6 +468,93 @@ export default function TournamentLanding() {
         </section>
       )}
 
+      {/* SECTION 4.5: POLICIES */}
+      {customization && (
+        (customization as any).refund_policy ||
+        (customization as any).weather_policy ||
+        (customization as any).conduct_policy ||
+        (customization as any).liability_policy ||
+        (customization as any).extra_notes
+      ) && (
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.7 }}
+          className="relative py-20"
+        >
+          <div className="absolute inset-0 bg-gradient-to-br from-background via-muted/20 to-background" />
+          <div className="relative max-w-4xl mx-auto px-6">
+            <div className="text-center space-y-3 mb-12">
+              <h2 className="text-3xl md:text-4xl font-bold text-foreground">
+                Policies & Player Agreement
+              </h2>
+              <p className="text-muted-foreground max-w-2xl mx-auto">
+                Please review these policies before registering
+              </p>
+            </div>
+
+            <Card className="rounded-2xl border-2 border-border shadow-lg">
+              <CardContent className="p-8 space-y-8">
+                {(customization as any).refund_policy && (
+                  <div className="space-y-3">
+                    <h3 className="text-xl font-semibold text-primary flex items-center gap-2">
+                      Refund Policy
+                    </h3>
+                    <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                      {(customization as any).refund_policy}
+                    </p>
+                  </div>
+                )}
+
+                {(customization as any).weather_policy && (
+                  <div className="space-y-3">
+                    <h3 className="text-xl font-semibold text-primary flex items-center gap-2">
+                      Weather / Cancellation
+                    </h3>
+                    <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                      {(customization as any).weather_policy}
+                    </p>
+                  </div>
+                )}
+
+                {(customization as any).conduct_policy && (
+                  <div className="space-y-3">
+                    <h3 className="text-xl font-semibold text-primary flex items-center gap-2">
+                      Player Conduct & Sportsmanship
+                    </h3>
+                    <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                      {(customization as any).conduct_policy}
+                    </p>
+                  </div>
+                )}
+
+                {(customization as any).liability_policy && (
+                  <div className="space-y-3">
+                    <h3 className="text-xl font-semibold text-primary flex items-center gap-2">
+                      Liability & Waiver
+                    </h3>
+                    <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                      {(customization as any).liability_policy}
+                    </p>
+                  </div>
+                )}
+
+                {(customization as any).extra_notes && (
+                  <div className="space-y-3">
+                    <h3 className="text-xl font-semibold text-primary flex items-center gap-2">
+                      Additional Notes
+                    </h3>
+                    <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                      {(customization as any).extra_notes}
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </motion.section>
+      )}
+
       {/* SECTION 5: SPONSORS */}
       {customization.sponsors && Array.isArray(customization.sponsors) && customization.sponsors.filter(s => s.logo_url || s.name).length > 0 && (
         <section className="py-16 px-4 bg-gradient-to-br from-background via-muted/10 to-background">

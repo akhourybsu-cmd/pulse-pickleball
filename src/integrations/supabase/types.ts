@@ -1721,68 +1721,83 @@ export type Database = {
         Row: {
           about_image_url: string | null
           about_markdown: string | null
+          conduct_policy: string | null
           created_at: string
           event_id: string
+          extra_notes: string | null
           hero_image_url: string | null
           hero_overlay_color: string | null
           id: string
           is_published: boolean
           last_updated_by: string | null
+          liability_policy: string | null
           map_embed: string | null
           organizer_contact_email: string | null
           organizer_contact_name: string | null
           organizer_social_links: Json | null
           policies_text: string | null
+          refund_policy: string | null
           sponsors: Json | null
           tagline: string | null
           theme_accent: string | null
           updated_at: string
           venue_details: Json | null
           venue_photo_url: string | null
+          weather_policy: string | null
         }
         Insert: {
           about_image_url?: string | null
           about_markdown?: string | null
+          conduct_policy?: string | null
           created_at?: string
           event_id: string
+          extra_notes?: string | null
           hero_image_url?: string | null
           hero_overlay_color?: string | null
           id?: string
           is_published?: boolean
           last_updated_by?: string | null
+          liability_policy?: string | null
           map_embed?: string | null
           organizer_contact_email?: string | null
           organizer_contact_name?: string | null
           organizer_social_links?: Json | null
           policies_text?: string | null
+          refund_policy?: string | null
           sponsors?: Json | null
           tagline?: string | null
           theme_accent?: string | null
           updated_at?: string
           venue_details?: Json | null
           venue_photo_url?: string | null
+          weather_policy?: string | null
         }
         Update: {
           about_image_url?: string | null
           about_markdown?: string | null
+          conduct_policy?: string | null
           created_at?: string
           event_id?: string
+          extra_notes?: string | null
           hero_image_url?: string | null
           hero_overlay_color?: string | null
           id?: string
           is_published?: boolean
           last_updated_by?: string | null
+          liability_policy?: string | null
           map_embed?: string | null
           organizer_contact_email?: string | null
           organizer_contact_name?: string | null
           organizer_social_links?: Json | null
           policies_text?: string | null
+          refund_policy?: string | null
           sponsors?: Json | null
           tagline?: string | null
           theme_accent?: string | null
           updated_at?: string
           venue_details?: Json | null
           venue_photo_url?: string | null
+          weather_policy?: string | null
         }
         Relationships: [
           {

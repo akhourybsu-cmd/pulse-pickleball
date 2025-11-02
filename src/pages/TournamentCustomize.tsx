@@ -65,6 +65,11 @@ export default function TournamentCustomize() {
   const [venuePhotoUrl, setVenuePhotoUrl] = useState("");
   const [sponsors, setSponsors] = useState<Sponsor[]>([]);
   const [policiesText, setPoliciesText] = useState("");
+  const [refundPolicy, setRefundPolicy] = useState("");
+  const [weatherPolicy, setWeatherPolicy] = useState("");
+  const [conductPolicy, setConductPolicy] = useState("");
+  const [liabilityPolicy, setLiabilityPolicy] = useState("");
+  const [extraNotes, setExtraNotes] = useState("");
   const [organizerContactName, setOrganizerContactName] = useState("");
   const [organizerContactEmail, setOrganizerContactEmail] = useState("");
   const [organizerSocialLinks, setOrganizerSocialLinks] = useState<SocialLink[]>([]);
@@ -150,6 +155,11 @@ export default function TournamentCustomize() {
       setOrganizerSocialLinks(Array.isArray(customData.organizer_social_links) ? customData.organizer_social_links as unknown as SocialLink[] : []);
       setThemeAccent(customData.theme_accent || "lime");
       setVenueDetails(Array.isArray(customData.venue_details) ? customData.venue_details as unknown as VenueDetail[] : []);
+      setRefundPolicy((customData as any).refund_policy || "");
+      setWeatherPolicy((customData as any).weather_policy || "");
+      setConductPolicy((customData as any).conduct_policy || "");
+      setLiabilityPolicy((customData as any).liability_policy || "");
+      setExtraNotes((customData as any).extra_notes || "");
     }
 
     setLoading(false);
@@ -209,6 +219,11 @@ export default function TournamentCustomize() {
         venue_photo_url: venuePhotoUrl || null,
         sponsors: sponsors.length > 0 ? JSON.parse(JSON.stringify(sponsors)) : null,
         policies_text: policiesText || null,
+        refund_policy: refundPolicy || null,
+        weather_policy: weatherPolicy || null,
+        conduct_policy: conductPolicy || null,
+        liability_policy: liabilityPolicy || null,
+        extra_notes: extraNotes || null,
         organizer_contact_name: organizerContactName || null,
         organizer_contact_email: organizerContactEmail || null,
         organizer_social_links: organizerSocialLinks.length > 0 ? JSON.parse(JSON.stringify(organizerSocialLinks)) : null,
@@ -272,7 +287,8 @@ export default function TournamentCustomize() {
   useEffect(() => {
     setHasUnsavedChanges(true);
   }, [heroImageUrl, heroOverlayColor, tagline, aboutMarkdown, aboutImageUrl, 
-      mapEmbed, venuePhotoUrl, sponsors, policiesText, organizerContactName, 
+      mapEmbed, venuePhotoUrl, sponsors, policiesText, refundPolicy, weatherPolicy,
+      conductPolicy, liabilityPolicy, extraNotes, organizerContactName, 
       organizerContactEmail, organizerSocialLinks, themeAccent, venueDetails]);
 
   const addSponsor = () => {
@@ -1318,21 +1334,192 @@ Your participation helps us give back. Let's rally together for a great cause!`
             </div>
           </TabsContent>
 
-          <TabsContent value="policies" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Policies & Legal</CardTitle>
-                <CardDescription>This text will be shown publicly and included in confirmation emails</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Textarea
-                  value={policiesText}
-                  onChange={(e) => setPoliciesText(e.target.value)}
-                  placeholder="Refund policy, cancellation terms, code of conduct, liability waiver..."
-                  rows={10}
-                />
-              </CardContent>
-            </Card>
+          <TabsContent value="policies" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Left: Policy Editor */}
+              <div className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Policies & Legal</CardTitle>
+                    <CardDescription>
+                      This will be shown publicly, added to your registration confirmation email, and saved for audit.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {/* Refund Policy */}
+                    <div className="space-y-2">
+                      <Label htmlFor="refundPolicy" className="text-base font-semibold">
+                        Refund Policy
+                      </Label>
+                      {showGuidance && (
+                        <p className="text-sm text-muted-foreground">
+                          If a player backs out, do they get a refund? Until when? Are weather cancellations refunded?
+                        </p>
+                      )}
+                      <Textarea
+                        id="refundPolicy"
+                        placeholder="Full refunds available until 48 hours before event start. After that, no refunds."
+                        value={refundPolicy}
+                        onChange={(e) => setRefundPolicy(e.target.value)}
+                        rows={3}
+                        className="resize-none"
+                      />
+                    </div>
+
+                    {/* Weather / Cancellation */}
+                    <div className="space-y-2">
+                      <Label htmlFor="weatherPolicy" className="text-base font-semibold">
+                        Weather / Cancellation
+                      </Label>
+                      {showGuidance && (
+                        <p className="text-sm text-muted-foreground">
+                          What happens if play stops due to rain or unsafe courts?
+                        </p>
+                      )}
+                      <Textarea
+                        id="weatherPolicy"
+                        placeholder="Outdoor play is weather-dependent. In case of unsafe conditions, matches may be delayed, relocated, or rescheduled. No cash refunds due to weather, but we will offer credit toward future events."
+                        value={weatherPolicy}
+                        onChange={(e) => setWeatherPolicy(e.target.value)}
+                        rows={4}
+                        className="resize-none"
+                      />
+                    </div>
+
+                    {/* Player Conduct */}
+                    <div className="space-y-2">
+                      <Label htmlFor="conductPolicy" className="text-base font-semibold">
+                        Player Conduct & Sportsmanship
+                      </Label>
+                      {showGuidance && (
+                        <p className="text-sm text-muted-foreground">
+                          How should players/spectators behave? Consequences?
+                        </p>
+                      )}
+                      <Textarea
+                        id="conductPolicy"
+                        placeholder="All players are expected to show respect to officials, opponents, and facility staff. Harassment, intimidation, or abusive language may result in removal from the event without refund."
+                        value={conductPolicy}
+                        onChange={(e) => setConductPolicy(e.target.value)}
+                        rows={4}
+                        className="resize-none"
+                      />
+                    </div>
+
+                    {/* Liability & Waiver */}
+                    <div className="space-y-2">
+                      <Label htmlFor="liabilityPolicy" className="text-base font-semibold flex items-center gap-2">
+                        Liability & Waiver
+                        <span className="text-destructive">*</span>
+                      </Label>
+                      {showGuidance && (
+                        <p className="text-sm text-muted-foreground">
+                          Your "play at your own risk" waiver. This will always be shown publicly and emailed.
+                        </p>
+                      )}
+                      <Textarea
+                        id="liabilityPolicy"
+                        placeholder="By registering, you acknowledge the inherent risk of sport participation and agree that the event organizers, facility, and sponsors are not responsible for injury, loss, or damage."
+                        value={liabilityPolicy}
+                        onChange={(e) => setLiabilityPolicy(e.target.value)}
+                        rows={4}
+                        className="resize-none border-primary/40"
+                      />
+                    </div>
+
+                    {/* Additional Notes */}
+                    <div className="space-y-2">
+                      <Label htmlFor="extraNotes" className="text-base font-semibold">
+                        Additional Notes <span className="text-muted-foreground font-normal">(optional)</span>
+                      </Label>
+                      {showGuidance && (
+                        <p className="text-sm text-muted-foreground">
+                          Parking, what door to check in at, paddle rules, ID requirements, etc.
+                        </p>
+                      )}
+                      <Textarea
+                        id="extraNotes"
+                        placeholder="Please arrive 20 minutes early to check in at Court 3. Parking is free in the north lot. USA Pickleball-approved paddles only."
+                        value={extraNotes}
+                        onChange={(e) => setExtraNotes(e.target.value)}
+                        rows={3}
+                        className="resize-none"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Right: Live Preview */}
+              <div className="space-y-4">
+                <Card className="sticky top-4">
+                  <CardHeader>
+                    <CardTitle className="text-lg">Public Policy Preview</CardTitle>
+                    <CardDescription>How this will appear to players</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-6 p-6 rounded-xl bg-gradient-to-br from-background to-muted/20 border-2 border-border">
+                      <div className="text-center space-y-2 pb-4 border-b">
+                        <h3 className="text-xl font-bold text-foreground">
+                          Policies & Player Agreement
+                        </h3>
+                      </div>
+
+                      {refundPolicy && (
+                        <div className="space-y-2">
+                          <h4 className="font-semibold text-primary">Refund Policy</h4>
+                          <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                            {refundPolicy}
+                          </p>
+                        </div>
+                      )}
+
+                      {weatherPolicy && (
+                        <div className="space-y-2">
+                          <h4 className="font-semibold text-primary">Weather / Cancellation</h4>
+                          <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                            {weatherPolicy}
+                          </p>
+                        </div>
+                      )}
+
+                      {conductPolicy && (
+                        <div className="space-y-2">
+                          <h4 className="font-semibold text-primary">Player Conduct & Sportsmanship</h4>
+                          <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                            {conductPolicy}
+                          </p>
+                        </div>
+                      )}
+
+                      {liabilityPolicy && (
+                        <div className="space-y-2">
+                          <h4 className="font-semibold text-primary">Liability & Waiver</h4>
+                          <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                            {liabilityPolicy}
+                          </p>
+                        </div>
+                      )}
+
+                      {extraNotes && (
+                        <div className="space-y-2">
+                          <h4 className="font-semibold text-primary">Additional Notes</h4>
+                          <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                            {extraNotes}
+                          </p>
+                        </div>
+                      )}
+
+                      {!refundPolicy && !weatherPolicy && !conductPolicy && !liabilityPolicy && !extraNotes && (
+                        <p className="text-sm text-muted-foreground text-center py-8">
+                          No policies added yet. Fill in the fields on the left to see your preview.
+                        </p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
           </TabsContent>
 
           <TabsContent value="contact" className="space-y-4">

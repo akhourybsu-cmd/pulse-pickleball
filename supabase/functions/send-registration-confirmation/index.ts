@@ -32,6 +32,56 @@ serve(async (req) => {
 
     if (regError) throw regError;
 
+    // Fetch customization for policies
+    const { data: customization } = await supabase
+      .from("tournament_customization")
+      .select("refund_policy, weather_policy, conduct_policy, liability_policy, extra_notes")
+      .eq("event_id", registration.event.id)
+      .single();
+
+    // Compile policy text for email and storage
+    const policyBlocks = [];
+    if (customization?.refund_policy) {
+      policyBlocks.push(`<strong>Refund Policy:</strong> ${customization.refund_policy}`);
+    }
+    if (customization?.weather_policy) {
+      policyBlocks.push(`<strong>Weather / Cancellation:</strong> ${customization.weather_policy}`);
+    }
+    if (customization?.conduct_policy) {
+      policyBlocks.push(`<strong>Player Conduct & Sportsmanship:</strong> ${customization.conduct_policy}`);
+    }
+    if (customization?.liability_policy) {
+      policyBlocks.push(`<strong>Liability & Waiver:</strong> ${customization.liability_policy}`);
+    }
+    if (customization?.extra_notes) {
+      policyBlocks.push(`<strong>Additional Notes:</strong> ${customization.extra_notes}`);
+    }
+
+    const policyHtml = policyBlocks.length > 0
+      ? `<hr style="margin: 20px 0; border: none; border-top: 1px solid #ddd;" />
+         <h2>Tournament Policies You Agreed To</h2>
+         <div style="background: #f5f5f5; padding: 15px; border-left: 4px solid #333;">
+           ${policyBlocks.map(block => `<p style="margin: 8px 0;">${block}</p>`).join('')}
+         </div>
+         <p style="font-size: 12px; color: #666; margin-top: 10px;">
+           Policies accepted on: ${new Date().toLocaleString()}
+         </p>`
+      : '';
+
+    // Store policy snapshot in registration
+    if (policyBlocks.length > 0) {
+      await supabase
+        .from("tournament_registrations")
+        .update({
+          additional_info: {
+            ...registration.additional_info,
+            policy_accepted: policyBlocks.join('\n\n'),
+            policy_timestamp: new Date().toISOString()
+          }
+        })
+        .eq("id", registrationId);
+    }
+
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
     if (!resendApiKey) throw new Error("RESEND_API_KEY not configured");
 
@@ -43,17 +93,7 @@ serve(async (req) => {
       <p><strong>Division:</strong> ${registration.division.name}</p>
       <p><strong>Status:</strong> Pending approval</p>
       <p>We'll notify you once the tournament director reviews your registration.</p>
-      
-      ${registration.additional_info?.policy_text ? `
-        <hr style="margin: 20px 0; border: none; border-top: 1px solid #ddd;" />
-        <h2>Tournament Policies You Agreed To</h2>
-        <div style="background: #f5f5f5; padding: 15px; border-left: 4px solid #333; white-space: pre-wrap;">
-          ${registration.additional_info.policy_text}
-        </div>
-        <p style="font-size: 12px; color: #666; margin-top: 10px;">
-          Policy accepted on: ${new Date(registration.additional_info.policy_timestamp).toLocaleString()}
-        </p>
-      ` : ''}
+      ${policyHtml}
     `;
 
     const emailResponse = await fetch("https://api.resend.com/emails", {
