@@ -469,39 +469,77 @@ export default function TournamentLanding() {
       )}
 
       {/* SECTION 5: SPONSORS */}
-      {customization.sponsors && Array.isArray(customization.sponsors) && customization.sponsors.length > 0 && (
-        <section className="py-16 px-4">
+      {customization.sponsors && Array.isArray(customization.sponsors) && customization.sponsors.filter(s => s.logo_url || s.name).length > 0 && (
+        <section className="py-16 px-4 bg-gradient-to-br from-background via-muted/10 to-background">
           <div className="container mx-auto">
-            <motion.h2
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              className="text-3xl font-bold text-center mb-12"
+              className="text-center mb-12"
             >
-              Our Sponsors
-            </motion.h2>
-            <div className="flex flex-wrap justify-center gap-6">
-              {customization.sponsors.map((sponsor, index) => (
-                <motion.a
-                  key={index}
-                  href={sponsor.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
-                  whileHover={{ scale: 1.03, boxShadow: "0 0 20px rgba(197,232,108,0.4)" }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.3 }}
-                  className="bg-white p-4 rounded-lg shadow-md border border-border flex items-center justify-center"
-                  style={{ width: '200px', height: '100px' }}
-                >
-                  <img 
-                    src={sponsor.logo_url}
-                    alt="Sponsor"
-                    className="max-h-[60px] max-w-full object-contain"
-                  />
-                </motion.a>
-              ))}
+              <h2 className="text-4xl font-bold mb-3">Proudly Supported By</h2>
+              <p className="text-muted-foreground text-lg">These partners help bring this event to life.</p>
+            </motion.div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
+              {customization.sponsors
+                .filter(sponsor => sponsor.logo_url || sponsor.name)
+                .map((sponsor, index) => {
+                  const Component = sponsor.link ? motion.a : motion.div;
+                  const linkProps = sponsor.link ? {
+                    href: sponsor.link,
+                    target: "_blank",
+                    rel: "noopener noreferrer",
+                    "aria-label": `Visit ${sponsor.name || 'sponsor'}`
+                  } : {};
+
+                  return (
+                    <Component
+                      key={index}
+                      {...linkProps}
+                      initial={{ opacity: 0, y: 20 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 0.4, delay: index * 0.1 }}
+                      whileHover={{ 
+                        y: -4,
+                        boxShadow: "0 8px 24px rgba(197,232,108,0.35)"
+                      }}
+                      className="group relative bg-background rounded-2xl p-6 border-2 border-border hover:border-primary/40 transition-all duration-300 flex flex-col items-center justify-center text-center min-h-[180px] cursor-pointer shadow-md hover:shadow-lg"
+                    >
+                      <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary/5 to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                      
+                      {sponsor.logo_url && (
+                        <div className="relative z-10 mb-4 flex items-center justify-center h-20">
+                          <img 
+                            src={sponsor.logo_url}
+                            alt={sponsor.name || "Sponsor logo"}
+                            className="max-h-full max-w-[160px] object-contain"
+                          />
+                        </div>
+                      )}
+                      
+                      {sponsor.name && (
+                        <p className="relative z-10 font-bold text-sm text-foreground mb-1">
+                          {sponsor.name}
+                        </p>
+                      )}
+                      
+                      {sponsor.tagline && (
+                        <p className="relative z-10 text-xs text-muted-foreground">
+                          {sponsor.tagline}
+                        </p>
+                      )}
+                      
+                      {sponsor.link && (
+                        <p className="relative z-10 text-xs text-primary mt-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center gap-1">
+                          Visit site <ExternalLink className="h-3 w-3" />
+                        </p>
+                      )}
+                    </Component>
+                  );
+                })}
             </div>
           </div>
         </section>

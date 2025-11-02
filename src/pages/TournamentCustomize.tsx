@@ -31,6 +31,8 @@ import {
 interface Sponsor {
   logo_url: string;
   link?: string;
+  name?: string;
+  tagline?: string;
 }
 
 interface SocialLink {
@@ -1117,62 +1119,203 @@ Your participation helps us give back. Let's rally together for a great cause!`
             </Card>
           </TabsContent>
 
-          <TabsContent value="sponsors" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Sponsors & Partners</CardTitle>
-                <CardDescription>Up to 4 sponsors (logos will auto-scale)</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
+          {/* Sponsors Tab */}
+          <TabsContent value="sponsors" className="space-y-6">
+            <div>
+              <h3 className="text-xl font-semibold mb-2">Sponsors & Partners</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Show appreciation for your event supporters. Add their logos, websites, and taglines. Your sponsors will appear in a clean, scrollable grid on your public page.
+              </p>
+            </div>
+
+            <div className="grid lg:grid-cols-2 gap-8">
+              {/* Left: Sponsor Editor */}
+              <div className="space-y-4">
                 {sponsors.map((sponsor, index) => (
-                  <div key={index} className="border rounded-lg p-4 space-y-2">
-                    <div className="flex items-center justify-between mb-2">
-                      <Label>Sponsor {index + 1}</Label>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeSponsor(index)}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    {sponsor.logo_url && (
-                      <img src={sponsor.logo_url} alt="Sponsor" className="w-32 h-16 object-contain bg-white rounded border" />
-                    )}
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          setUploading(true);
-                          try {
-                            const url = await uploadFile(file, 'sponsors');
-                            updateSponsor(index, "logo_url", url);
-                          } catch (error) {
-                            toast.error("Failed to upload logo");
-                          } finally {
-                            setUploading(false);
-                          }
-                        }
-                      }}
-                      disabled={uploading}
-                    />
-                    <Input
-                      placeholder="Website URL (optional)"
-                      value={sponsor.link || ""}
-                      onChange={(e) => updateSponsor(index, "link", e.target.value)}
-                    />
-                  </div>
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                  >
+                    <Card className="hover:shadow-[0_0_12px_rgba(197,232,108,0.25)] transition-all duration-200 border-l-4 border-l-primary/30">
+                      <CardContent className="pt-6">
+                        <div className="space-y-4">
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <Label className="text-sm font-medium">Logo Upload</Label>
+                              <div className="mt-2 border-2 border-dashed border-muted-foreground/30 rounded-xl p-4 hover:border-primary/50 transition-colors">
+                                {sponsor.logo_url ? (
+                                  <div className="space-y-2">
+                                    <img 
+                                      src={sponsor.logo_url} 
+                                      alt={sponsor.name || "Sponsor"}
+                                      className="mx-auto max-h-20 max-w-[200px] object-contain"
+                                    />
+                                    <div className="flex gap-2 justify-center">
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => updateSponsor(index, "logo_url", "")}
+                                      >
+                                        <X className="h-3 w-3 mr-1" />
+                                        Remove
+                                      </Button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="text-center">
+                                    <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                                    <Input
+                                      type="file"
+                                      accept="image/*"
+                                      onChange={async (e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                          setUploading(true);
+                                          try {
+                                            const url = await uploadFile(file, 'sponsors');
+                                            updateSponsor(index, "logo_url", url);
+                                            toast.success("Logo added");
+                                          } catch (error) {
+                                            toast.error("Failed to upload logo");
+                                          } finally {
+                                            setUploading(false);
+                                          }
+                                        }
+                                      }}
+                                      disabled={uploading}
+                                      className="mt-2"
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                removeSponsor(index);
+                                toast.success("Sponsor removed");
+                              }}
+                              className="ml-2"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+
+                          <div>
+                            <Label className="text-sm font-medium">Sponsor Name</Label>
+                            <Input
+                              value={sponsor.name || ""}
+                              onChange={(e) => updateSponsor(index, "name", e.target.value)}
+                              placeholder="Acme Pickleball Co."
+                              className="mt-1.5"
+                            />
+                          </div>
+
+                          <div>
+                            <Label className="text-sm font-medium">Website URL (optional)</Label>
+                            <Input
+                              value={sponsor.link || ""}
+                              onChange={(e) => updateSponsor(index, "link", e.target.value)}
+                              placeholder="https://sponsor-website.com"
+                              className="mt-1.5"
+                            />
+                          </div>
+
+                          <div>
+                            <Label className="text-sm font-medium">Tagline (optional)</Label>
+                            <Input
+                              value={sponsor.tagline || ""}
+                              onChange={(e) => updateSponsor(index, "tagline", e.target.value)}
+                              placeholder="Official Court Partner"
+                              className="mt-1.5"
+                            />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
                 ))}
-                {sponsors.length < 4 && (
-                  <Button onClick={addSponsor} variant="outline">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Sponsor
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
+
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    if (sponsors.length >= 4) {
+                      toast.error("Maximum 4 sponsors allowed");
+                      return;
+                    }
+                    addSponsor();
+                  }}
+                  className="w-full border-2 border-dashed hover:border-primary hover:bg-primary/5"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Sponsor {sponsors.length > 0 && `(${sponsors.length}/4)`}
+                </Button>
+              </div>
+
+              {/* Right: Live Preview */}
+              <div className="lg:sticky lg:top-8 h-fit">
+                <div className="rounded-xl border-2 border-primary/20 bg-gradient-to-br from-background to-muted/20 p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Eye className="h-4 w-4 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">Preview (how it appears on your public page)</p>
+                  </div>
+                  
+                  {sponsors.length === 0 ? (
+                    <div className="text-center py-12 text-muted-foreground">
+                      <p className="text-sm">No sponsors added yet</p>
+                      <p className="text-xs mt-1">Add sponsors to see preview</p>
+                    </div>
+                  ) : (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="space-y-6"
+                    >
+                      <div className="text-center">
+                        <h3 className="text-2xl font-bold mb-2">Proudly Supported By</h3>
+                        <p className="text-sm text-muted-foreground">These partners help bring this event to life.</p>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        {sponsors.filter(s => s.logo_url || s.name).map((sponsor, index) => (
+                          <motion.div
+                            key={index}
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: index * 0.1 }}
+                            className="group"
+                          >
+                            <Card className="p-4 text-center hover:shadow-[0_4px_12px_rgba(197,232,108,0.3)] hover:-translate-y-1 transition-all duration-300 cursor-pointer">
+                              {sponsor.logo_url && (
+                                <img 
+                                  src={sponsor.logo_url}
+                                  alt={sponsor.name || "Sponsor"}
+                                  className="mx-auto max-h-16 max-w-[140px] object-contain mb-3"
+                                />
+                              )}
+                              {sponsor.name && (
+                                <p className="font-semibold text-sm">{sponsor.name}</p>
+                              )}
+                              {sponsor.tagline && (
+                                <p className="text-xs text-muted-foreground mt-1">{sponsor.tagline}</p>
+                              )}
+                              {sponsor.link && (
+                                <p className="text-xs text-primary mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  Visit site →
+                                </p>
+                              )}
+                            </Card>
+                          </motion.div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </div>
+              </div>
+            </div>
           </TabsContent>
 
           <TabsContent value="policies" className="space-y-4">
