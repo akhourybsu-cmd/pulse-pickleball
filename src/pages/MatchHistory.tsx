@@ -380,18 +380,18 @@ const MatchHistory = () => {
         </div>
       </nav>
 
-      {/* Pulse-Branded Header Section */}
+      {/* Pulse-Branded Header Section - Full Width */}
       <motion.div 
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="relative py-6 px-4 border-b-2"
+        className="relative border-b-2"
         style={{
           background: 'linear-gradient(180deg, #E8FBD5 0%, #FFFFFF 80%)',
           borderBottomColor: 'rgba(169, 220, 61, 0.15)',
         }}
       >
-        <div className="container mx-auto">
+        <div className="container mx-auto py-6 px-4 md:py-8">
           <div className="space-y-2">
             {/* Title & Subtitle */}
             <motion.div 

@@ -121,21 +121,18 @@ export default function CourtBoard() {
         </div>
       </nav>
 
-      <div className="container mx-auto px-4 py-6 space-y-6">
-
-        {/* Pulse Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="mb-8 md:mb-12"
-          style={{
-            background: 'linear-gradient(180deg, #E8FBD5 0%, #FFFFFF 80%)',
-            borderBottom: '1px solid rgba(169, 220, 61, 0.15)',
-            borderRadius: '16px',
-            padding: '24px 20px',
-          }}
-        >
+      {/* Pulse Header - Full Width */}
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="mb-8 md:mb-12"
+        style={{
+          background: 'linear-gradient(180deg, #E8FBD5 0%, #FFFFFF 80%)',
+          borderBottom: '1px solid rgba(169, 220, 61, 0.15)',
+        }}
+      >
+        <div className="container mx-auto px-4 py-6 md:py-8">
           <div className="flex items-start gap-3 md:gap-6">
             <motion.div
               initial={{ scale: 0.8, opacity: 0 }}
@@ -189,8 +186,10 @@ export default function CourtBoard() {
               <CourtCheckIn courtId={court.id} userId={currentUserId} />
             </div>
           </div>
-        </motion.div>
+        </div>
+      </motion.div>
 
+      <div className="container mx-auto px-4 py-6 space-y-6">
         <div className="flex flex-col gap-3 sm:gap-4">
           {channelId && (
             <Card>
