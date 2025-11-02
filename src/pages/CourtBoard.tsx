@@ -14,6 +14,7 @@ import { CourtChannel } from "@/components/court/CourtChannel";
 import { CreateLFGDialog } from "@/components/court/CreateLFGDialog";
 import { useToast } from "@/hooks/use-toast";
 import { MapPin, Users, MessageSquare, Activity, LogOut, User as UserIcon } from "lucide-react";
+import { motion } from "framer-motion";
 import logo from "@/assets/pulse-logo-new.png";
 
 interface Court {
@@ -122,23 +123,75 @@ export default function CourtBoard() {
 
       <div className="container mx-auto px-4 py-6 space-y-6">
 
-        <div className="flex flex-col gap-3 sm:gap-4">
-          <div className="flex flex-col sm:flex-row items-start sm:items-start justify-between gap-3">
-            <div className="space-y-1 sm:space-y-2 flex-1">
-              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold break-words">{court.name}</h1>
-              <div className="flex items-center gap-1 sm:gap-2 text-muted-foreground text-sm sm:text-base">
-                <MapPin className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
-                <span className="break-words">{court.city}, {court.state}</span>
-              </div>
-              {court.location && (
-                <p className="text-xs sm:text-sm text-muted-foreground break-words">{court.location}</p>
-              )}
+        {/* Pulse Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="mb-8 md:mb-12"
+          style={{
+            background: 'linear-gradient(180deg, #E8FBD5 0%, #FFFFFF 80%)',
+            borderBottom: '1px solid rgba(169, 220, 61, 0.15)',
+            borderRadius: '16px',
+            padding: '24px 20px',
+          }}
+        >
+          <div className="flex items-start gap-3 md:gap-6">
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              className="flex-shrink-0"
+            >
+              <MapPin 
+                className="w-8 h-8 md:w-12 md:h-12"
+                style={{ 
+                  color: '#A9DC3D',
+                  filter: 'drop-shadow(0px 2px 4px rgba(169, 220, 61, 0.3))'
+                }} 
+              />
+            </motion.div>
+            <div className="flex-1 min-w-0">
+              <motion.h1
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+                className="text-2xl md:text-4xl lg:text-5xl font-bold mb-2 md:mb-4 relative inline-block pb-2 break-words"
+                style={{
+                  color: '#0E4C58',
+                  letterSpacing: '0.02em',
+                  textShadow: '0px 1px 2px rgba(14, 76, 88, 0.1)',
+                  borderLeft: '3px solid #A9DC3D',
+                  paddingLeft: '12px',
+                }}
+              >
+                {court.name}
+                <motion.span
+                  className="absolute bottom-0 left-3 h-0.5 bg-gradient-to-r from-[#A9DC3D] to-transparent"
+                  initial={{ width: 0 }}
+                  animate={{ width: '100%' }}
+                  transition={{ duration: 0.8, delay: 0.5 }}
+                  style={{ display: 'block' }}
+                />
+              </motion.h1>
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5, delay: 0.3 }}
+                className="text-sm md:text-lg leading-relaxed break-words"
+                style={{ color: '#0E4C58', opacity: 0.8 }}
+              >
+                {court.city}, {court.state}
+                {court.location && ` • ${court.location}`}
+              </motion.p>
             </div>
-            <div className="w-full sm:w-auto">
+            <div className="flex-shrink-0">
               <CourtCheckIn courtId={court.id} userId={currentUserId} />
             </div>
           </div>
+        </motion.div>
 
+        <div className="flex flex-col gap-3 sm:gap-4">
           {channelId && (
             <Card>
               <CardContent className="pt-4 sm:pt-6">

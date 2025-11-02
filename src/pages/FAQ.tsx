@@ -1,4 +1,6 @@
 import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
+import { HelpCircle } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Accordion,
@@ -22,9 +24,69 @@ const FAQ = () => {
       </nav>
 
       <div className="container mx-auto px-4 py-6 space-y-6">
-        <div className="space-y-2">
-          <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold">Frequently Asked Questions</h1>
-        </div>
+        {/* Pulse Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="mb-8 md:mb-12"
+          style={{
+            background: 'linear-gradient(180deg, #E8FBD5 0%, #FFFFFF 80%)',
+            borderBottom: '1px solid rgba(169, 220, 61, 0.15)',
+            borderRadius: '16px',
+            padding: '24px 20px',
+          }}
+        >
+          <div className="flex items-start gap-3 md:gap-6">
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              className="flex-shrink-0"
+            >
+              <HelpCircle 
+                className="w-8 h-8 md:w-12 md:h-12"
+                style={{ 
+                  color: '#A9DC3D',
+                  filter: 'drop-shadow(0px 2px 4px rgba(169, 220, 61, 0.3))'
+                }} 
+              />
+            </motion.div>
+            <div className="flex-1 min-w-0">
+              <motion.h1
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+                className="text-2xl md:text-4xl lg:text-5xl font-bold mb-2 md:mb-4 relative inline-block pb-2"
+                style={{
+                  color: '#0E4C58',
+                  letterSpacing: '0.02em',
+                  textShadow: '0px 1px 2px rgba(14, 76, 88, 0.1)',
+                  borderLeft: '3px solid #A9DC3D',
+                  paddingLeft: '12px',
+                }}
+              >
+                Frequently Asked Questions
+                <motion.span
+                  className="absolute bottom-0 left-3 h-0.5 bg-gradient-to-r from-[#A9DC3D] to-transparent"
+                  initial={{ width: 0 }}
+                  animate={{ width: '100%' }}
+                  transition={{ duration: 0.8, delay: 0.5 }}
+                  style={{ display: 'block' }}
+                />
+              </motion.h1>
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5, delay: 0.3 }}
+                className="text-sm md:text-lg leading-relaxed"
+                style={{ color: '#0E4C58', opacity: 0.8 }}
+              >
+                Everything you need to know about PULSE ratings and how they work
+              </motion.p>
+            </div>
+          </div>
+        </motion.div>
 
         <Accordion type="single" collapsible className="space-y-4">
           <AccordionItem value="simple-breakdown">
