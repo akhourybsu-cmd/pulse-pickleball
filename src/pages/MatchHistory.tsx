@@ -347,11 +347,11 @@ const MatchHistory = () => {
 
   const getVerificationStatus = (match: Match) => {
     const allPlayerIds = [
-      currentUserId,
+      playerId || currentUserId,
       match.partner_id,
       match.opponent1_id,
       match.opponent2_id,
-    ].filter(id => id);
+    ].filter(id => id && id.trim() !== "");
 
     const verifiedCount = match.verified_by.length;
     const totalPlayers = allPlayerIds.length;
