@@ -1060,89 +1060,253 @@ Your participation helps us give back. Let's rally together for a great cause!`
             </div>
           </TabsContent>
 
-          <TabsContent value="venue" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Venue Information</CardTitle>
-                <CardDescription>Map, photos, and details</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="mapEmbed">Map Embed Code</Label>
-                  <Textarea
-                    id="mapEmbed"
-                    value={mapEmbed}
-                    onChange={(e) => setMapEmbed(e.target.value)}
-                    placeholder="Paste Google Maps embed code or iframe..."
-                    rows={4}
-                  />
-                </div>
-
-                <div>
-                  <Label>Venue Photo</Label>
-                  <div className="flex gap-4 items-start mt-2">
-                    {venuePhotoUrl && (
-                      <img src={venuePhotoUrl} alt="Venue" className="w-32 h-20 object-cover rounded" />
-                    )}
-                    <div className="flex-1">
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => handleFileUpload(e, setVenuePhotoUrl)}
-                        disabled={uploading}
-                      />
-                      {venuePhotoUrl && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setVenuePhotoUrl("")}
-                          className="mt-2"
-                        >
-                          <X className="h-4 w-4 mr-2" />
-                          Remove Photo
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <Label>Venue Details</Label>
-                  <div className="space-y-2 mt-2">
-                    {venueDetails.map((detail, index) => (
-                      <div key={index} className="flex gap-2">
-                        <Input
-                          placeholder="Icon (emoji)"
-                          value={detail.icon}
-                          onChange={(e) => updateVenueDetail(index, "icon", e.target.value)}
-                          className="w-20"
-                        />
-                        <Input
-                          placeholder="Detail text"
-                          value={detail.text}
-                          onChange={(e) => updateVenueDetail(index, "text", e.target.value)}
-                        />
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeVenueDetail(index)}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={addVenueDetail}
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Detail
-                    </Button>
-                  </div>
-                </div>
+          <TabsContent value="venue" className="space-y-6">
+            {/* Top Helper Box */}
+            <Card className="border-primary/20 bg-primary/5">
+              <CardContent className="pt-4">
+                <p className="text-sm text-muted-foreground">
+                  💡 Help players know exactly where they're going. Add your map, venue photo, and a few quick details (like parking or surface type).
+                </p>
               </CardContent>
             </Card>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Left: Venue Editor */}
+              <div className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Venue Information</CardTitle>
+                    <CardDescription>Map, photos, and facility details</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {/* Google Map */}
+                    <div className="space-y-2">
+                      <Label htmlFor="mapEmbed">Google Map (optional)</Label>
+                      {showGuidance && (
+                        <p className="text-xs text-muted-foreground">
+                          You can paste a full Google Maps embed code or just a location URL — we'll format it automatically.
+                        </p>
+                      )}
+                      <div className="relative">
+                        <Textarea
+                          id="mapEmbed"
+                          value={mapEmbed}
+                          onChange={(e) => setMapEmbed(e.target.value)}
+                          placeholder="Paste Google Maps embed code or location link..."
+                          rows={4}
+                          className="font-mono text-xs"
+                        />
+                        {validatingMap && (
+                          <div className="absolute top-2 right-2">
+                            <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />
+                          </div>
+                        )}
+                        {mapEmbedValid !== null && (
+                          <div className="absolute top-2 right-2">
+                            {mapEmbedValid ? (
+                              <CheckCircle2 className="h-4 w-4 text-green-500" />
+                            ) : (
+                              <AlertCircle className="h-4 w-4 text-destructive" />
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      {mapEmbedValid === false && (
+                        <p className="text-xs text-destructive">
+                          This doesn't look like a valid map link — please check your URL.
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Venue Photo */}
+                    <div className="space-y-2">
+                      <Label>Venue Photo (optional)</Label>
+                      {showGuidance && (
+                        <p className="text-xs text-muted-foreground">
+                          A photo of your courts, gym, or outdoor area — shown on your public page.
+                        </p>
+                      )}
+                      <div className="border-2 border-dashed border-muted-foreground/30 rounded-xl p-4 hover:border-primary/50 transition-colors">
+                        {venuePhotoUrl ? (
+                          <div className="space-y-3">
+                            <img 
+                              src={venuePhotoUrl} 
+                              alt="Venue" 
+                              className="w-full max-w-md mx-auto rounded-lg object-cover"
+                            />
+                            <div className="flex gap-2 justify-center">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  const input = document.createElement('input');
+                                  input.type = 'file';
+                                  input.accept = 'image/*';
+                                  input.onchange = (e: any) => handleFileUpload(e, setVenuePhotoUrl);
+                                  input.click();
+                                }}
+                                disabled={uploading}
+                              >
+                                Replace
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setVenuePhotoUrl("")}
+                              >
+                                <X className="h-4 w-4 mr-1" />
+                                Remove
+                              </Button>
+                            </div>
+                            <p className="text-xs text-center text-muted-foreground">
+                              Tip: Landscape (16:9) looks best on desktop and mobile
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="text-center py-4">
+                            <Upload className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+                            <p className="text-sm text-muted-foreground mb-3">Add a photo of your facility or event area</p>
+                            <Input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => handleFileUpload(e, setVenuePhotoUrl)}
+                              disabled={uploading}
+                              className="max-w-xs mx-auto"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Quick Facts (Venue Details) */}
+                    <div className="space-y-2">
+                      <Label>Quick Facts</Label>
+                      {showGuidance && (
+                        <p className="text-xs text-muted-foreground">
+                          Add short bullet points about amenities, parking, or surfaces.
+                        </p>
+                      )}
+                      <div className="space-y-2">
+                        {venueDetails.map((detail, index) => (
+                          <div key={index} className="flex gap-2 items-center p-2 rounded-lg border bg-card hover:border-primary/40 transition-colors">
+                            <Select
+                              value={detail.icon}
+                              onValueChange={(value) => updateVenueDetail(index, "icon", value)}
+                            >
+                              <SelectTrigger className="w-[60px]">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {venueIconOptions.map((option) => (
+                                  <SelectItem key={option.value} value={option.value}>
+                                    {option.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Input
+                              placeholder="Detail text"
+                              value={detail.text}
+                              onChange={(e) => updateVenueDetail(index, "text", e.target.value)}
+                              className="flex-1"
+                            />
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeVenueDetail(index)}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                        {venueDetails.length === 0 && (
+                          <p className="text-sm text-muted-foreground text-center py-4">
+                            Add 2–5 quick details to help players prepare
+                          </p>
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={addVenueDetail}
+                          className="w-full"
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add another detail
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Right: Venue Preview */}
+              <div className="space-y-4">
+                <Card className="sticky top-4">
+                  <CardHeader>
+                    <CardTitle className="text-lg">Venue Preview</CardTitle>
+                    <CardDescription>Your venue section will look like this</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4 p-4 rounded-xl bg-gradient-to-br from-background to-muted/20 border-2 border-border">
+                      {/* Map Preview */}
+                      {mapEmbed && mapEmbedValid && (
+                        <motion.div
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          className="rounded-lg overflow-hidden border-2 border-border"
+                        >
+                          <div
+                            className="w-full h-48"
+                            dangerouslySetInnerHTML={{
+                              __html: mapEmbed.includes('<iframe')
+                                ? mapEmbed
+                                : `<iframe src="${mapEmbed}" width="100%" height="100%" style="border:0;" allowfullscreen="" loading="lazy"></iframe>`
+                            }}
+                          />
+                        </motion.div>
+                      )}
+
+                      {/* Venue Photo Preview */}
+                      {venuePhotoUrl && (
+                        <motion.div
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          className="rounded-lg overflow-hidden border-2 border-border"
+                        >
+                          <img
+                            src={venuePhotoUrl}
+                            alt="Venue"
+                            className="w-full h-48 object-cover"
+                          />
+                        </motion.div>
+                      )}
+
+                      {/* Details Preview */}
+                      {venueDetails.length > 0 && (
+                        <motion.div
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          className="space-y-2"
+                        >
+                          {venueDetails.map((detail, i) => (
+                            <div key={i} className="flex items-center gap-3 p-2 rounded bg-background/50">
+                              <span className="text-xl">{detail.icon}</span>
+                              <span className="text-sm text-muted-foreground">{detail.text}</span>
+                            </div>
+                          ))}
+                        </motion.div>
+                      )}
+
+                      {!mapEmbed && !venuePhotoUrl && venueDetails.length === 0 && (
+                        <p className="text-sm text-muted-foreground text-center py-8">
+                          No venue information added yet. Fill in the fields on the left to see your preview.
+                        </p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
           </TabsContent>
 
           {/* Sponsors Tab */}
