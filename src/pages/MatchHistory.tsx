@@ -3,7 +3,8 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, AlertTriangle, CheckCircle2, Flag } from "lucide-react";
+import { ArrowLeft, AlertTriangle, CheckCircle2, Flag, History } from "lucide-react";
+import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import logo from "@/assets/pulse-logo-new.png";
@@ -379,10 +380,92 @@ const MatchHistory = () => {
         </div>
       </nav>
 
-      <div className="container mx-auto px-4 py-6 space-y-6">
-        <div className="space-y-2">
-          <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold">Match History - {playerName}</h1>
+      {/* Pulse-Branded Header Section */}
+      <motion.div 
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="relative py-6 px-4 border-b-2"
+        style={{
+          background: 'linear-gradient(180deg, #E8FBD5 0%, #FFFFFF 80%)',
+          borderBottomColor: 'rgba(169, 220, 61, 0.15)',
+        }}
+      >
+        <div className="container mx-auto">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+            {/* Title & Subtitle */}
+            <div className="space-y-2 flex-1">
+              <motion.div 
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6, delay: 0.1 }}
+                className="flex items-center gap-3"
+              >
+                <History className="w-5 h-5 text-primary" style={{ color: '#A9DC3D' }} />
+                <h1 
+                  className="text-3xl md:text-4xl lg:text-5xl font-bold border-l-4 pl-3"
+                  style={{
+                    color: '#0E4C58',
+                    letterSpacing: '0.02em',
+                    textShadow: '0px 1px 2px rgba(169, 220, 61, 0.25)',
+                    borderLeftColor: '#A9DC3D',
+                  }}
+                >
+                  Match History - {playerName}
+                  {/* Accent line animation */}
+                  <motion.div
+                    initial={{ scaleX: 0, opacity: 0 }}
+                    animate={{ scaleX: 1, opacity: 0.3 }}
+                    transition={{ duration: 1.5, ease: "easeInOut" }}
+                    className="h-0.5 mt-1 origin-left"
+                    style={{ backgroundColor: '#A9DC3D' }}
+                  />
+                </h1>
+              </motion.div>
+              <motion.p 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+                className="text-base md:text-lg mt-2"
+                style={{ 
+                  color: '#53797E',
+                  fontWeight: 400,
+                }}
+              >
+                Track your progress, review past matches, and celebrate victories.
+              </motion.p>
+            </div>
+
+            {/* Back Button Card */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+              className="rounded-xl p-3 shadow-sm"
+              style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.6)',
+                backdropFilter: 'blur(8px)',
+              }}
+            >
+              <Button 
+                onClick={() => navigate(-1)} 
+                variant="ghost"
+                className="gap-2 border transition-transform hover:scale-105"
+                style={{
+                  borderColor: '#0E4C58',
+                  color: '#0E4C58',
+                  backgroundColor: '#FFFFFF',
+                }}
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Back
+              </Button>
+            </motion.div>
+          </div>
         </div>
+      </motion.div>
+
+      <div className="container mx-auto px-4 py-6 space-y-6">
 
         {matches.length === 0 ? (
           <Card>
