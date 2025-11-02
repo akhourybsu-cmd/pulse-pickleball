@@ -651,6 +651,20 @@ const Dashboard = () => {
         onSelectNotification={handleSelectNotification}
       />
 
+      {/* Special button for alexanderskhoury@gmail.com */}
+      {user?.email === "alexanderskhoury@gmail.com" && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50">
+          <Button
+            size="lg"
+            onClick={() => navigate("/tournaments")}
+            className="shadow-lg"
+          >
+            <Trophy className="w-5 h-5 mr-2" />
+            Browse Tournaments
+          </Button>
+        </div>
+      )}
+
       <Footer />
     </div>
   );
