@@ -10,9 +10,10 @@ import { formatDistanceToNow } from "date-fns";
 interface PostCardProps {
   post: {
     id: string;
-    type: string;
+    type?: string;
     title: string;
     body: string;
+    content?: string;
     status: string;
     created_at: string;
     user: {
@@ -51,12 +52,15 @@ export const PostCard = ({ post, onCommentClick, onReactionClick }: PostCardProp
   const navigate = useNavigate();
   const [showFullBody, setShowFullBody] = useState(false);
 
-  const typeInfo = POST_TYPE_LABELS[post.type] || POST_TYPE_LABELS.general;
+  const postType = post.type || 'lfg';
+  const postBody = post.body || post.content || '';
+  
+  const typeInfo = POST_TYPE_LABELS[postType] || POST_TYPE_LABELS.general;
   const statusInfo = STATUS_LABELS[post.status] || STATUS_LABELS.open;
 
-  const truncatedBody = post.body?.length > 150 
-    ? post.body.substring(0, 150) + "..." 
-    : post.body;
+  const truncatedBody = postBody?.length > 150 
+    ? postBody.substring(0, 150) + "..." 
+    : postBody;
 
   const reactionEmojis = [
     { emoji: "👍", icon: ThumbsUp },
@@ -102,8 +106,8 @@ export const PostCard = ({ post, onCommentClick, onReactionClick }: PostCardProp
 
       {/* Body */}
       <div className="text-sm text-muted-foreground mb-3">
-        {showFullBody ? post.body : truncatedBody}
-        {post.body?.length > 150 && (
+        {showFullBody ? postBody : truncatedBody}
+        {postBody?.length > 150 && (
           <button
             onClick={(e) => {
               e.stopPropagation();

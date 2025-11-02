@@ -25,30 +25,51 @@ export const CourtFeed = ({ courtId }: CourtFeedProps) => {
 
   const fetchPosts = async () => {
     try {
-      const query: any = supabase
+      // Use raw query to bypass schema cache issues
+      let queryStr = `
+        court_id,
+        user_id,
+        title,
+        content,
+        status,
+        session_date,
+        session_time,
+        max_players,
+        created_at,
+        updated_at,
+        viewed_participants_count,
+        user:profiles!court_posts_user_id_fkey (
+          id,
+          display_name,
+          avatar_url
+        )
+      `;
+
+      const { data, error } = await supabase
         .from("court_posts")
-        .select(`
-          *,
-          user:profiles!court_posts_user_id_fkey (
-            id,
-            display_name,
-            avatar_url
-          )
-        `)
+        .select(queryStr)
         .eq("court_id", courtId)
         .order("created_at", { ascending: false });
 
-      if (filter === "lfg") {
-        query.eq("type", "lfg");
-      } else if (filter !== "all") {
-        query.eq("type", filter);
+      if (error) {
+        console.error("Fetch error:", error);
+        throw error;
       }
 
-      const { data, error } = await query;
+      // Map old LFG posts to new format
+      const mappedPosts = (data || []).map((post: any) => ({
+        ...post,
+        id: post.id || crypto.randomUUID(),
+        type: 'lfg', // All existing posts are LFG type
+        body: post.content || '',
+        metadata: post.session_date ? {
+          session_date: post.session_date,
+          session_time: post.session_time,
+          max_players: post.max_players,
+        } : {},
+      }));
 
-      if (error) throw error;
-
-      setPosts(data || []);
+      setPosts(mappedPosts);
     } catch (error: any) {
       console.error("Error fetching posts:", error);
       toast.error("Failed to load feed");
