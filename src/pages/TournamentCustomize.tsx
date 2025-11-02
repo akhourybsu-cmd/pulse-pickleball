@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { ExternalLink, Upload, X, Plus, Save, HelpCircle, Eye, CheckCircle2, Bold, Italic, Heading, Link2, List, Lightbulb, Wand2 } from "lucide-react";
+import { ExternalLink, Upload, X, Plus, Save, HelpCircle, Eye, CheckCircle2, Bold, Italic, Heading, Link2, List, Lightbulb, Wand2, MapPin, Droplet, Building2, AlertCircle } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { motion } from "framer-motion";
 import ReactMarkdown from "react-markdown";
@@ -20,6 +20,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface Sponsor {
   logo_url: string;
@@ -65,6 +72,8 @@ export default function TournamentCustomize() {
   const [showHelp, setShowHelp] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showGuidance, setShowGuidance] = useState(true);
+  const [mapEmbedValid, setMapEmbedValid] = useState<boolean | null>(null);
+  const [validatingMap, setValidatingMap] = useState(false);
 
   useEffect(() => {
     const getUser = async () => {
@@ -381,6 +390,43 @@ Your participation helps us give back. Let's rally together for a great cause!`
     setAboutMarkdown(newText);
     setTimeout(() => textarea.focus(), 0);
   };
+
+  const venueIconOptions = [
+    { value: "parking", label: "🅿️ Parking", icon: "🅿️" },
+    { value: "water", label: "💧 Water", icon: "💧" },
+    { value: "indoor", label: "🏟️ Indoor", icon: "🏟️" },
+    { value: "outdoor", label: "☀️ Outdoor", icon: "☀️" },
+    { value: "food", label: "🍔 Food", icon: "🍔" },
+    { value: "wifi", label: "📶 WiFi", icon: "📶" },
+    { value: "restroom", label: "🚻 Restrooms", icon: "🚻" },
+    { value: "accessible", label: "♿ Accessible", icon: "♿" },
+  ];
+
+  // Debounced map validation
+  useEffect(() => {
+    if (!mapEmbed) {
+      setMapEmbedValid(null);
+      return;
+    }
+
+    setValidatingMap(true);
+    const timer = setTimeout(() => {
+      const isIframe = mapEmbed.includes('<iframe') || mapEmbed.includes('iframe');
+      const isGoogleMaps = mapEmbed.includes('google.com/maps') || mapEmbed.includes('maps.google.com');
+      const valid = isIframe || isGoogleMaps;
+      
+      setMapEmbedValid(valid);
+      setValidatingMap(false);
+      
+      if (!valid) {
+        toast.error("This doesn't look like a map link — please check your URL.");
+      } else {
+        toast.success("Map added successfully");
+      }
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, [mapEmbed]);
 
   if (loading) {
     return (
