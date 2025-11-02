@@ -47,7 +47,6 @@ interface ProfileData {
   shirt_size: string | null;
   emergency_contact_name: string | null;
   emergency_contact_phone: string | null;
-  dupr_rating: number | null;
   skill_level_self: string | null;
 }
 
@@ -83,7 +82,6 @@ const EditProfile = () => {
     shirt_size: null,
     emergency_contact_name: null,
     emergency_contact_phone: null,
-    dupr_rating: null,
     skill_level_self: null,
   });
 
@@ -134,7 +132,6 @@ const EditProfile = () => {
         shirt_size: profileData.shirt_size,
         emergency_contact_name: profileData.emergency_contact_name,
         emergency_contact_phone: profileData.emergency_contact_phone,
-        dupr_rating: profileData.dupr_rating,
         skill_level_self: profileData.skill_level_self,
       });
 
@@ -604,38 +601,24 @@ const EditProfile = () => {
                 </div>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="dupr_rating">DUPR Rating (optional)</Label>
-                  <Input
-                    id="dupr_rating"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    max="8"
-                    value={formData.dupr_rating || ""}
-                    onChange={(e) => setFormData({ ...formData, dupr_rating: e.target.value ? parseFloat(e.target.value) : null })}
-                    placeholder="0.00 - 8.00"
-                  />
-                  <p className="text-xs text-muted-foreground">Official DUPR rating if you have one</p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="skill_level_self">Self-Assessed Skill Level</Label>
-                  <Select
-                    value={formData.skill_level_self || ""}
-                    onValueChange={(value) => setFormData({ ...formData, skill_level_self: value })}
-                  >
-                    <SelectTrigger id="skill_level_self">
-                      <SelectValue placeholder="Select..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="beginner">Beginner</SelectItem>
-                      <SelectItem value="intermediate">Intermediate</SelectItem>
-                      <SelectItem value="advanced">Advanced</SelectItem>
-                      <SelectItem value="expert">Expert</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="skill_level_self">Self-Assessed Skill Level</Label>
+                <Select
+                  value={formData.skill_level_self || ""}
+                  onValueChange={(value) => setFormData({ ...formData, skill_level_self: value })}
+                >
+                  <SelectTrigger id="skill_level_self">
+                    <SelectValue placeholder="Select your skill level..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="beginner">Beginner</SelectItem>
+                    <SelectItem value="intermediate">Intermediate</SelectItem>
+                    <SelectItem value="advanced">Advanced</SelectItem>
+                    <SelectItem value="semi_pro">Semi-Pro</SelectItem>
+                    <SelectItem value="pro">Pro</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">Your honest assessment helps with fair tournament matchmaking</p>
               </div>
             </CardContent>
           </Card>
