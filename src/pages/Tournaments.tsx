@@ -229,7 +229,7 @@ export default function Tournaments() {
             className="grid md:grid-cols-2 gap-12 items-center"
           >
             <div className="space-y-6">
-              <h3 className="text-2xl font-bold mb-6">What Makes Pulse Different</h3>
+              <h3 className="text-2xl font-bold mb-6 text-foreground">What Makes Pulse Different</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <motion.div 
                   initial={{ opacity: 0, y: 20 }}
@@ -239,8 +239,8 @@ export default function Tournaments() {
                   className="bg-card p-6 rounded-lg shadow-sm"
                 >
                   <Users className="h-8 w-8 text-primary mb-3" />
-                  <div className="font-semibold mb-2">Quick Match Recording</div>
-                  <div className="text-sm text-muted-foreground">Record your matches played at local courts in seconds</div>
+                  <div className="font-semibold mb-2 text-foreground">Quick Match Recording</div>
+                  <div className="text-sm text-foreground/70">Record your matches played at local courts in seconds</div>
                 </motion.div>
                 <motion.div 
                   initial={{ opacity: 0, y: 20 }}
@@ -250,8 +250,8 @@ export default function Tournaments() {
                   className="bg-card p-6 rounded-lg shadow-sm"
                 >
                   <MessageCircle className="h-8 w-8 text-primary mb-3" />
-                  <div className="font-semibold mb-2">Court Connector</div>
-                  <div className="text-sm text-muted-foreground">Connect with players in your area and find games near you</div>
+                  <div className="font-semibold mb-2 text-foreground">Court Connector</div>
+                  <div className="text-sm text-foreground/70">Connect with players in your area and find games near you</div>
                 </motion.div>
                 <motion.div 
                   initial={{ opacity: 0, y: 20 }}
@@ -261,8 +261,8 @@ export default function Tournaments() {
                   className="bg-card p-6 rounded-lg shadow-sm"
                 >
                   <Trophy className="h-8 w-8 text-primary mb-3" />
-                  <div className="font-semibold mb-2">Easy Round Robins</div>
-                  <div className="text-sm text-muted-foreground">Start your own Round Robin event with easy to use and set up features</div>
+                  <div className="font-semibold mb-2 text-foreground">Easy Round Robins</div>
+                  <div className="text-sm text-foreground/70">Start your own Round Robin event with easy to use and set up features</div>
                 </motion.div>
               </div>
             </div>
@@ -273,7 +273,7 @@ export default function Tournaments() {
               viewport={{ once: true }}
               className="space-y-6"
             >
-              <h2 className="text-4xl font-bold">Why Join Pulse?</h2>
+              <h2 className="text-4xl font-bold text-foreground">Why Join Pulse?</h2>
               <ul className="space-y-4">
                 {[
                   { icon: Users, title: "Track your tournament history", desc: "All your matches in one place" },
@@ -291,8 +291,8 @@ export default function Tournaments() {
                   >
                     <item.icon className="h-6 w-6 text-primary mt-1" />
                     <div>
-                      <div className="font-semibold">{item.title}</div>
-                      <div className="text-sm text-muted-foreground">{item.desc}</div>
+                      <div className="font-semibold text-foreground">{item.title}</div>
+                      <div className="text-sm text-foreground/70">{item.desc}</div>
                     </div>
                   </motion.li>
                 ))}
