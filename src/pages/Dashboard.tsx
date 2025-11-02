@@ -507,10 +507,15 @@ const Dashboard = () => {
             <CardHeader className="pb-3 md:pb-4">
               <CardDescription className="md:text-base">Live Pulse Score</CardDescription>
               <CardTitle className="flex items-center gap-3">
-                <span className="text-5xl md:text-6xl lg:text-7xl font-bold text-primary pulse-score-number">
+                <motion.span 
+                  className="text-5xl md:text-6xl lg:text-7xl font-bold text-primary pulse-score-number"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.8, ease: "easeOut" }}
+                >
                   {profile?.current_rating?.toFixed(2) || '3.00'}
-                </span>
-                <svg 
+                </motion.span>
+                <motion.svg 
                   className="ecg-pulse flex-shrink-0" 
                   width="60" 
                   height="20" 
@@ -518,6 +523,9 @@ const Dashboard = () => {
                   fill="none" 
                   xmlns="http://www.w3.org/2000/svg"
                   aria-hidden="true"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.3, delay: 0.8 }}
                 >
                   <path 
                     d="M0 12 L20 12 L25 4 L30 20 L35 12 L80 12" 
@@ -527,7 +535,7 @@ const Dashboard = () => {
                     strokeLinejoin="round"
                     pathLength="100"
                   />
-                </svg>
+                </motion.svg>
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
