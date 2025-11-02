@@ -1734,6 +1734,9 @@ export type Database = {
           map_embed: string | null
           organizer_contact_email: string | null
           organizer_contact_name: string | null
+          organizer_message: string | null
+          organizer_phone: string | null
+          organizer_preferred_contact: string | null
           organizer_social_links: Json | null
           policies_text: string | null
           refund_policy: string | null
@@ -1761,6 +1764,9 @@ export type Database = {
           map_embed?: string | null
           organizer_contact_email?: string | null
           organizer_contact_name?: string | null
+          organizer_message?: string | null
+          organizer_phone?: string | null
+          organizer_preferred_contact?: string | null
           organizer_social_links?: Json | null
           policies_text?: string | null
           refund_policy?: string | null
@@ -1788,6 +1794,9 @@ export type Database = {
           map_embed?: string | null
           organizer_contact_email?: string | null
           organizer_contact_name?: string | null
+          organizer_message?: string | null
+          organizer_phone?: string | null
+          organizer_preferred_contact?: string | null
           organizer_social_links?: Json | null
           policies_text?: string | null
           refund_policy?: string | null

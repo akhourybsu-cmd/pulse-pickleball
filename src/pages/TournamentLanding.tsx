@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, MapPin, Users, Share2, DollarSign, Clock, Trophy, ExternalLink } from "lucide-react";
+import { Calendar, MapPin, Users, Share2, DollarSign, Clock, Trophy, ExternalLink, Mail, Phone, MessageCircle } from "lucide-react";
 import { format } from "date-fns";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
@@ -632,7 +632,120 @@ export default function TournamentLanding() {
         </section>
       )}
 
-      {/* SECTION 6: POLICIES & CONTACT */}
+      {/* SECTION 6: CONTACT */}
+      {customization && (customization.organizer_contact_name || customization.organizer_contact_email || (customization as any).organizer_phone) && (
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.9 }}
+          className="relative py-20"
+        >
+          <div className="absolute inset-0 bg-gradient-to-br from-background via-muted/10 to-background" />
+          <div className="relative max-w-3xl mx-auto px-6">
+            <div className="text-center space-y-3 mb-12">
+              <h2 className="text-3xl md:text-4xl font-bold text-foreground">
+                Contact the Organizer
+              </h2>
+              <p className="text-muted-foreground max-w-2xl mx-auto">
+                Have questions about registration, scheduling, or venue details? Reach out below.
+              </p>
+            </div>
+
+            <Card className="rounded-2xl border-2 border-primary/20 shadow-xl hover:shadow-2xl transition-shadow duration-300">
+              <CardContent className="p-8 space-y-6">
+                {customization.organizer_contact_name && (
+                  <div className="text-center">
+                    <p className="text-2xl font-bold text-foreground">{customization.organizer_contact_name}</p>
+                  </div>
+                )}
+
+                <div className="flex flex-col gap-4">
+                  {customization.organizer_contact_email && (
+                    <a
+                      href={`mailto:${customization.organizer_contact_email}`}
+                      className={`flex items-center gap-3 p-4 rounded-lg border-2 transition-all duration-200 group ${
+                        (customization as any).organizer_preferred_contact === 'email'
+                          ? 'border-primary bg-primary/5 hover:bg-primary/10'
+                          : 'border-border hover:border-primary/40 hover:bg-muted/50'
+                      }`}
+                      aria-label={`Send email to ${customization.organizer_contact_name || 'organizer'}`}
+                    >
+                      <Mail className={`h-5 w-5 ${
+                        (customization as any).organizer_preferred_contact === 'email' ? 'text-primary' : 'text-muted-foreground'
+                      } group-hover:text-primary transition-colors`} />
+                      <div className="flex-1 text-left">
+                        <p className="text-sm font-medium text-foreground">{customization.organizer_contact_email}</p>
+                        {(customization as any).organizer_preferred_contact === 'email' && (
+                          <p className="text-xs text-primary font-semibold">Preferred contact method</p>
+                        )}
+                      </div>
+                      <ExternalLink className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                    </a>
+                  )}
+
+                  {(customization as any).organizer_phone && (
+                    <a
+                      href={`tel:${(customization as any).organizer_phone}`}
+                      className={`flex items-center gap-3 p-4 rounded-lg border-2 transition-all duration-200 group ${
+                        (customization as any).organizer_preferred_contact === 'phone'
+                          ? 'border-primary bg-primary/5 hover:bg-primary/10'
+                          : 'border-border hover:border-primary/40 hover:bg-muted/50'
+                      }`}
+                      aria-label={`Call ${customization.organizer_contact_name || 'organizer'}`}
+                    >
+                      <Phone className={`h-5 w-5 ${
+                        (customization as any).organizer_preferred_contact === 'phone' ? 'text-primary' : 'text-muted-foreground'
+                      } group-hover:text-primary transition-colors`} />
+                      <div className="flex-1 text-left">
+                        <p className="text-sm font-medium text-foreground">{(customization as any).organizer_phone}</p>
+                        {(customization as any).organizer_preferred_contact === 'phone' && (
+                          <p className="text-xs text-primary font-semibold">Preferred contact method</p>
+                        )}
+                      </div>
+                      <ExternalLink className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                    </a>
+                  )}
+                </div>
+
+                {(customization as any).organizer_message && (
+                  <div className="pt-4 border-t">
+                    <div className="flex items-start gap-3">
+                      <MessageCircle className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+                      <p className="text-sm italic text-muted-foreground leading-relaxed">
+                        "{(customization as any).organizer_message}"
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {Array.isArray(customization.organizer_social_links) && customization.organizer_social_links.length > 0 && (
+                  <div className="pt-6 border-t">
+                    <p className="text-sm font-semibold mb-4 text-center">Follow us</p>
+                    <div className="flex flex-wrap justify-center gap-3">
+                      {customization.organizer_social_links.map((link, i) => (
+                        <motion.a
+                          key={i}
+                          href={link.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          whileHover={{ scale: 1.05, y: -2 }}
+                          className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-all duration-200 shadow-sm hover:shadow-md"
+                          aria-label={`Open ${link.label}`}
+                        >
+                          <span className="font-medium text-sm">{link.label}</span>
+                          <ExternalLink className="h-3.5 w-3.5" />
+                        </motion.a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </motion.section>
+      )}
+
+      {/* OLD POLICIES & CONTACT SECTION - Remove this */}
       <section className="py-16 px-4 bg-secondary/20">
         <div className="container mx-auto max-w-4xl space-y-12">
           {customization.policies_text && (
@@ -647,56 +760,6 @@ export default function TournamentLanding() {
                   <div className="prose prose-lg max-w-none whitespace-pre-wrap">
                     {customization.policies_text}
                   </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
-
-          {(customization.organizer_contact_name || customization.organizer_contact_email || (Array.isArray(customization.organizer_social_links) && customization.organizer_social_links.length > 0)) && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-            >
-              <h2 className="text-3xl font-bold mb-6">Contact</h2>
-              <Card>
-                <CardContent className="pt-6 space-y-4">
-                  {customization.organizer_contact_name && (
-                    <div>
-                      <p className="font-semibold">Tournament Director</p>
-                      <p className="text-muted-foreground">{customization.organizer_contact_name}</p>
-                    </div>
-                  )}
-                  {customization.organizer_contact_email && (
-                    <div>
-                      <p className="font-semibold">Email</p>
-                      <a 
-                        href={`mailto:${customization.organizer_contact_email}`}
-                        className="text-primary hover:underline"
-                      >
-                        {customization.organizer_contact_email}
-                      </a>
-                    </div>
-                  )}
-                  {Array.isArray(customization.organizer_social_links) && customization.organizer_social_links.length > 0 && (
-                    <div>
-                      <p className="font-semibold mb-2">Follow Us</p>
-                      <div className="flex flex-wrap gap-2">
-                        {customization.organizer_social_links.map((link, i) => (
-                          <a
-                            key={i}
-                            href={link.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-secondary text-secondary-foreground hover:bg-primary hover:text-primary-foreground transition-colors"
-                          >
-                            {link.label}
-                            <ExternalLink className="h-3 w-3" />
-                          </a>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                 </CardContent>
               </Card>
             </motion.div>

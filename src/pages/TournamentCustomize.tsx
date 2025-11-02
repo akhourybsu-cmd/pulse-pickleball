@@ -72,6 +72,9 @@ export default function TournamentCustomize() {
   const [extraNotes, setExtraNotes] = useState("");
   const [organizerContactName, setOrganizerContactName] = useState("");
   const [organizerContactEmail, setOrganizerContactEmail] = useState("");
+  const [organizerPhone, setOrganizerPhone] = useState("");
+  const [organizerPreferredContact, setOrganizerPreferredContact] = useState("email");
+  const [organizerMessage, setOrganizerMessage] = useState("");
   const [organizerSocialLinks, setOrganizerSocialLinks] = useState<SocialLink[]>([]);
   const [themeAccent, setThemeAccent] = useState("lime");
   const [venueDetails, setVenueDetails] = useState<VenueDetail[]>([]);
@@ -152,6 +155,9 @@ export default function TournamentCustomize() {
       setPoliciesText(customData.policies_text || "");
       setOrganizerContactName(customData.organizer_contact_name || "");
       setOrganizerContactEmail(customData.organizer_contact_email || "");
+      setOrganizerPhone((customData as any).organizer_phone || "");
+      setOrganizerPreferredContact((customData as any).organizer_preferred_contact || "email");
+      setOrganizerMessage((customData as any).organizer_message || "");
       setOrganizerSocialLinks(Array.isArray(customData.organizer_social_links) ? customData.organizer_social_links as unknown as SocialLink[] : []);
       setThemeAccent(customData.theme_accent || "lime");
       setVenueDetails(Array.isArray(customData.venue_details) ? customData.venue_details as unknown as VenueDetail[] : []);
@@ -226,6 +232,9 @@ export default function TournamentCustomize() {
         extra_notes: extraNotes || null,
         organizer_contact_name: organizerContactName || null,
         organizer_contact_email: organizerContactEmail || null,
+        organizer_phone: organizerPhone || null,
+        organizer_preferred_contact: organizerPreferredContact || 'email',
+        organizer_message: organizerMessage || null,
         organizer_social_links: organizerSocialLinks.length > 0 ? JSON.parse(JSON.stringify(organizerSocialLinks)) : null,
         theme_accent: themeAccent,
         venue_details: venueDetails.length > 0 ? JSON.parse(JSON.stringify(venueDetails)) : null,
@@ -289,7 +298,8 @@ export default function TournamentCustomize() {
   }, [heroImageUrl, heroOverlayColor, tagline, aboutMarkdown, aboutImageUrl, 
       mapEmbed, venuePhotoUrl, sponsors, policiesText, refundPolicy, weatherPolicy,
       conductPolicy, liabilityPolicy, extraNotes, organizerContactName, 
-      organizerContactEmail, organizerSocialLinks, themeAccent, venueDetails]);
+      organizerContactEmail, organizerPhone, organizerPreferredContact, organizerMessage,
+      organizerSocialLinks, themeAccent, venueDetails]);
 
   const addSponsor = () => {
     if (sponsors.length >= 4) {
@@ -1522,72 +1532,211 @@ Your participation helps us give back. Let's rally together for a great cause!`
             </div>
           </TabsContent>
 
-          <TabsContent value="contact" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Organizer Contact</CardTitle>
-                <CardDescription>How players can reach you</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="contactName">Contact Name</Label>
-                  <Input
-                    id="contactName"
-                    value={organizerContactName}
-                    onChange={(e) => setOrganizerContactName(e.target.value)}
-                    placeholder="Tournament Director Name"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="contactEmail">Contact Email</Label>
-                  <Input
-                    id="contactEmail"
-                    type="email"
-                    value={organizerContactEmail}
-                    onChange={(e) => setOrganizerContactEmail(e.target.value)}
-                    placeholder="contact@example.com"
-                  />
-                </div>
-
-                <div>
-                  <Label>Social Links</Label>
-                  <div className="space-y-2 mt-2">
-                    {organizerSocialLinks.map((link, index) => (
-                      <div key={index} className="flex gap-2">
-                        <Input
-                          placeholder="Platform (e.g. Instagram)"
-                          value={link.label}
-                          onChange={(e) => updateSocialLink(index, "label", e.target.value)}
-                          className="flex-1"
-                        />
-                        <Input
-                          placeholder="URL"
-                          value={link.url}
-                          onChange={(e) => updateSocialLink(index, "url", e.target.value)}
-                          className="flex-1"
-                        />
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => removeSocialLink(index)}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={addSocialLink}
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Social Link
-                    </Button>
-                  </div>
-                </div>
+          <TabsContent value="contact" className="space-y-6">
+            <Card className="mb-4 border-primary/20 bg-primary/5">
+              <CardContent className="pt-4">
+                <p className="text-sm text-muted-foreground">
+                  💡 This information will appear publicly on your tournament landing page and in confirmation emails.
+                </p>
               </CardContent>
             </Card>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Left: Contact Form */}
+              <div className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Organizer Contact</CardTitle>
+                    <CardDescription>How players can reach you for questions or updates</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="contactName">Organizer Name</Label>
+                      {showGuidance && (
+                        <p className="text-xs text-muted-foreground">Displayed as the main point of contact for this event</p>
+                      )}
+                      <Input
+                        id="contactName"
+                        value={organizerContactName}
+                        onChange={(e) => setOrganizerContactName(e.target.value)}
+                        placeholder="Alex Khoury"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="contactEmail">Contact Email</Label>
+                      {showGuidance && (
+                        <p className="text-xs text-muted-foreground">Replies will go to this address. Players may contact you for registration questions</p>
+                      )}
+                      <Input
+                        id="contactEmail"
+                        type="email"
+                        value={organizerContactEmail}
+                        onChange={(e) => setOrganizerContactEmail(e.target.value)}
+                        placeholder="support@pulsepb.com"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="contactPhone">Phone Number (optional)</Label>
+                      {showGuidance && (
+                        <p className="text-xs text-muted-foreground">Include if you want players to call or text for urgent questions</p>
+                      )}
+                      <Input
+                        id="contactPhone"
+                        type="tel"
+                        value={organizerPhone}
+                        onChange={(e) => setOrganizerPhone(e.target.value)}
+                        placeholder="(508) 555-1234"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="preferredContact">Preferred Contact Method</Label>
+                      <Select value={organizerPreferredContact} onValueChange={setOrganizerPreferredContact}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="email">Email</SelectItem>
+                          <SelectItem value="phone">Phone</SelectItem>
+                          <SelectItem value="either">Either</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="organizerMessage">Organizer Message (optional)</Label>
+                      {showGuidance && (
+                        <p className="text-xs text-muted-foreground">Add a friendly message for your players</p>
+                      )}
+                      <Textarea
+                        id="organizerMessage"
+                        value={organizerMessage}
+                        onChange={(e) => setOrganizerMessage(e.target.value)}
+                        placeholder="Can't wait to see everyone at the Fall Classic! Email me if you need to update your registration."
+                        rows={3}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Social Links (max 3)</Label>
+                      <div className="space-y-2 mt-2">
+                        {organizerSocialLinks.map((link, index) => (
+                          <div key={index} className="flex gap-2">
+                            <Select
+                              value={link.label}
+                              onValueChange={(value) => updateSocialLink(index, "label", value)}
+                            >
+                              <SelectTrigger className="w-[140px]">
+                                <SelectValue placeholder="Platform" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Facebook">Facebook</SelectItem>
+                                <SelectItem value="Instagram">Instagram</SelectItem>
+                                <SelectItem value="X (Twitter)">X (Twitter)</SelectItem>
+                                <SelectItem value="YouTube">YouTube</SelectItem>
+                                <SelectItem value="TikTok">TikTok</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <Input
+                              placeholder="URL"
+                              value={link.url}
+                              onChange={(e) => updateSocialLink(index, "url", e.target.value)}
+                              className="flex-1"
+                            />
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeSocialLink(index)}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={addSocialLink}
+                          disabled={organizerSocialLinks.length >= 3}
+                        >
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Social Link {organizerSocialLinks.length > 0 && `(${organizerSocialLinks.length}/3)`}
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Right: Live Preview */}
+              <div className="space-y-4">
+                <Card className="sticky top-4">
+                  <CardHeader>
+                    <CardTitle className="text-lg">Contact Preview</CardTitle>
+                    <CardDescription>How this will appear to players</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="p-6 rounded-xl bg-gradient-to-br from-background to-muted/20 border-2 border-primary/20">
+                      <h3 className="text-xl font-bold text-center mb-6">Contact the Organizer</h3>
+                      
+                      {(organizerContactName || organizerContactEmail || organizerPhone) ? (
+                        <div className="space-y-4">
+                          {organizerContactName && (
+                            <div>
+                              <p className="text-lg font-semibold text-foreground">{organizerContactName}</p>
+                            </div>
+                          )}
+                          
+                          {organizerContactEmail && (
+                            <div className="flex items-center gap-2 text-primary">
+                              <span className="text-xl">📧</span>
+                              <span className="text-sm">{organizerContactEmail}</span>
+                            </div>
+                          )}
+                          
+                          {organizerPhone && (
+                            <div className="flex items-center gap-2 text-primary">
+                              <span className="text-xl">📞</span>
+                              <span className="text-sm">{organizerPhone}</span>
+                            </div>
+                          )}
+                          
+                          {organizerPreferredContact && (
+                            <p className="text-xs text-muted-foreground">
+                              Preferred: {organizerPreferredContact === 'email' ? 'Email' : organizerPreferredContact === 'phone' ? 'Phone' : 'Either'}
+                            </p>
+                          )}
+                          
+                          {organizerMessage && (
+                            <p className="text-sm italic text-muted-foreground border-l-2 border-primary pl-3 mt-4">
+                              "{organizerMessage}"
+                            </p>
+                          )}
+                          
+                          {organizerSocialLinks.length > 0 && (
+                            <div className="pt-4 border-t">
+                              <p className="text-xs font-semibold mb-2">Follow us:</p>
+                              <div className="flex flex-wrap gap-2">
+                                {organizerSocialLinks.map((link, i) => link.label && (
+                                  <span key={i} className="text-xs px-2 py-1 rounded bg-primary/10 text-primary">
+                                    {link.label}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground text-center py-8">
+                          No contact information added yet. Fill in the fields on the left to see your preview.
+                        </p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
           </TabsContent>
         </Tabs>
       </div>

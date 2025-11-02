@@ -32,10 +32,10 @@ serve(async (req) => {
 
     if (regError) throw regError;
 
-    // Fetch customization for policies
+    // Fetch customization for policies and contact info
     const { data: customization } = await supabase
       .from("tournament_customization")
-      .select("refund_policy, weather_policy, conduct_policy, liability_policy, extra_notes")
+      .select("refund_policy, weather_policy, conduct_policy, liability_policy, extra_notes, organizer_contact_name, organizer_contact_email, organizer_phone, organizer_preferred_contact")
       .eq("event_id", registration.event.id)
       .single();
 
@@ -85,6 +85,17 @@ serve(async (req) => {
     const resendApiKey = Deno.env.get("RESEND_API_KEY");
     if (!resendApiKey) throw new Error("RESEND_API_KEY not configured");
 
+    // Create contact section for email
+    const contactHtml = (customization?.organizer_contact_name || customization?.organizer_contact_email || customization?.organizer_phone)
+      ? `<hr style="margin: 20px 0; border: none; border-top: 1px solid #ddd;" />
+         <h2>Questions?</h2>
+         <p>Contact your tournament organizer:</p>
+         <p><strong>${customization.organizer_contact_name || 'Tournament Organizer'}</strong></p>
+         ${customization.organizer_contact_email ? `<p>Email: <a href="mailto:${customization.organizer_contact_email}">${customization.organizer_contact_email}</a></p>` : ''}
+         ${customization.organizer_phone ? `<p>Phone: ${customization.organizer_phone}</p>` : ''}
+         ${customization.organizer_preferred_contact ? `<p style="font-size: 12px; color: #666;">Preferred contact: ${customization.organizer_preferred_contact === 'email' ? 'Email' : customization.organizer_preferred_contact === 'phone' ? 'Phone' : 'Either'}</p>` : ''}`
+      : '';
+
     const emailHtml = `
       <h1>Tournament Registration Confirmation</h1>
       <p>Thank you for registering for ${registration.event.name}!</p>
@@ -94,6 +105,7 @@ serve(async (req) => {
       <p><strong>Status:</strong> Pending approval</p>
       <p>We'll notify you once the tournament director reviews your registration.</p>
       ${policyHtml}
+      ${contactHtml}
     `;
 
     const emailResponse = await fetch("https://api.resend.com/emails", {
