@@ -28,6 +28,11 @@ interface TournamentEvent {
   status: "draft" | "upcoming" | "live" | "completed" | "cancelled";
   created_at: string;
   public_view_enabled: boolean;
+  registration_enabled: boolean;
+  registration_open_date: string | null;
+  registration_close_date: string | null;
+  registration_fee: number;
+  waitlist_enabled: boolean;
 }
 
 interface Division {
