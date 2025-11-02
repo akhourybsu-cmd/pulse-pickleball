@@ -87,13 +87,30 @@ export function RegistrationsPanel({ eventId, divisions }: RegistrationsPanelPro
         description: error.message,
         variant: "destructive",
       });
-    } else {
-      toast({
-        title: "Status updated",
-        description: `Registration ${newStatus}`,
-      });
-      fetchRegistrations();
+      return;
     }
+
+    // Send email notification for approved/waitlisted
+    try {
+      if (newStatus === 'confirmed') {
+        await supabase.functions.invoke('send-registration-approved', {
+          body: { registrationId }
+        });
+      } else if (newStatus === 'waitlisted') {
+        await supabase.functions.invoke('send-registration-waitlisted', {
+          body: { registrationId }
+        });
+      }
+    } catch (emailError) {
+      console.error("Email notification error:", emailError);
+      // Don't fail the whole operation if email fails
+    }
+
+    toast({
+      title: "Status updated",
+      description: `Registration ${newStatus} and notification sent`,
+    });
+    fetchRegistrations();
   };
 
   const handleBulkApprove = async (divisionId: string) => {
@@ -128,6 +145,16 @@ export function RegistrationsPanel({ eventId, divisions }: RegistrationsPanelPro
       return;
     }
 
+    // Capacity warning if we would exceed limit
+    if (maxTeams && (toApprove.length + confirmedCount > maxTeams)) {
+      toast({
+        title: "Capacity Warning",
+        description: `⚠️ Approving ${toApprove.length} registrations will exceed capacity for ${division?.name} (max ${maxTeams} teams). Currently ${confirmedCount} confirmed.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     const { error } = await supabase
       .from("tournament_registrations")
       .update({ status: 'confirmed' })
@@ -139,13 +166,26 @@ export function RegistrationsPanel({ eventId, divisions }: RegistrationsPanelPro
         description: error.message,
         variant: "destructive",
       });
-    } else {
-      toast({
-        title: "Registrations approved",
-        description: `${toApprove.length} team(s) confirmed`,
-      });
-      fetchRegistrations();
+      return;
     }
+
+    // Send approval emails
+    try {
+      for (const reg of toApprove) {
+        await supabase.functions.invoke('send-registration-approved', {
+          body: { registrationId: reg.id }
+        });
+      }
+    } catch (emailError) {
+      console.error("Email notification error:", emailError);
+      // Don't fail the whole operation if email fails
+    }
+
+    toast({
+      title: "Registrations approved",
+      description: `${toApprove.length} team(s) confirmed and notifications sent`,
+    });
+    fetchRegistrations();
   };
 
   const handleGenerateTeams = async () => {

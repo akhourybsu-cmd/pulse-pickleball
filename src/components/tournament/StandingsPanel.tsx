@@ -13,6 +13,7 @@ interface Standing {
   points_for: number;
   points_against: number;
   point_diff: number;
+  head_to_head?: number; // For tie-breaking display
 }
 
 interface StandingsPanelProps {
@@ -105,14 +106,52 @@ export function StandingsPanel({ divisionId, refreshKey }: StandingsPanelProps) 
       }
     });
 
-    // Sort by wins (desc), then point diff (desc)
+    // Sort with proper tie-breaking: wins → head-to-head → point differential
     const sortedStandings = Array.from(standingsMap.values()).sort((a, b) => {
+      // 1. Sort by wins (descending)
       if (b.wins !== a.wins) return b.wins - a.wins;
+
+      // 2. If tied in wins, check head-to-head
+      const h2hResult = calculateHeadToHead(a.team_id, b.team_id, matches || []);
+      if (h2hResult !== 0) return h2hResult;
+
+      // 3. If still tied, use point differential
       return b.point_diff - a.point_diff;
     });
 
     setStandings(sortedStandings);
     setLoading(false);
+  };
+
+  // Calculate head-to-head record between two teams
+  // Returns: -1 if team A should rank higher, 1 if team B, 0 if tied
+  const calculateHeadToHead = (teamAId: string, teamBId: string, matches: any[]): number => {
+    let teamAWins = 0;
+    let teamBWins = 0;
+
+    matches.forEach(match => {
+      const isTeamAvsB = 
+        (match.team1_id === teamAId && match.team2_id === teamBId) ||
+        (match.team1_id === teamBId && match.team2_id === teamAId);
+
+      if (!isTeamAvsB) return;
+
+      // Determine winner
+      if (match.team1_id === teamAId && match.team1_score > match.team2_score) {
+        teamAWins++;
+      } else if (match.team1_id === teamBId && match.team1_score > match.team2_score) {
+        teamBWins++;
+      } else if (match.team2_id === teamAId && match.team2_score > match.team1_score) {
+        teamAWins++;
+      } else if (match.team2_id === teamBId && match.team2_score > match.team1_score) {
+        teamBWins++;
+      }
+    });
+
+    // Return -1 if A should rank higher, 1 if B should rank higher
+    if (teamAWins > teamBWins) return -1;
+    if (teamBWins > teamAWins) return 1;
+    return 0;
   };
 
   if (loading) {
