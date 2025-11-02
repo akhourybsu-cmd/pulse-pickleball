@@ -938,10 +938,22 @@ Your participation helps us give back. Let's rally together for a great cause!`
                       initial={{ opacity: 0.8 }}
                       animate={{ opacity: 1 }}
                       transition={{ duration: 0.2 }}
-                      className="prose prose-sm max-w-none"
+                      className="prose prose-sm max-w-none prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-strong:font-bold prose-em:text-foreground prose-em:italic prose-ul:text-foreground prose-li:text-foreground"
                     >
                       {aboutMarkdown ? (
-                        <ReactMarkdown>{aboutMarkdown}</ReactMarkdown>
+                        <ReactMarkdown
+                          components={{
+                            strong: ({ children }) => <strong className="font-bold text-foreground">{children}</strong>,
+                            em: ({ children }) => <em className="italic text-foreground">{children}</em>,
+                            h2: ({ children }) => <h2 className="text-2xl font-bold text-foreground mt-6 mb-3">{children}</h2>,
+                            h3: ({ children }) => <h3 className="text-xl font-bold text-foreground mt-4 mb-2">{children}</h3>,
+                            p: ({ children }) => <p className="text-foreground mb-3 leading-relaxed">{children}</p>,
+                            ul: ({ children }) => <ul className="list-disc ml-6 mb-3 space-y-1">{children}</ul>,
+                            li: ({ children }) => <li className="text-foreground">{children}</li>,
+                          }}
+                        >
+                          {aboutMarkdown}
+                        </ReactMarkdown>
                       ) : (
                         <p className="text-muted-foreground italic">
                           Your event description will appear here...
