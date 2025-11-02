@@ -1717,6 +1717,97 @@ export type Database = {
           },
         ]
       }
+      tournament_customization: {
+        Row: {
+          about_image_url: string | null
+          about_markdown: string | null
+          created_at: string
+          event_id: string
+          hero_image_url: string | null
+          hero_overlay_color: string | null
+          id: string
+          is_published: boolean
+          last_updated_by: string | null
+          map_embed: string | null
+          organizer_contact_email: string | null
+          organizer_contact_name: string | null
+          organizer_social_links: Json | null
+          policies_text: string | null
+          sponsors: Json | null
+          tagline: string | null
+          theme_accent: string | null
+          updated_at: string
+          venue_details: Json | null
+          venue_photo_url: string | null
+        }
+        Insert: {
+          about_image_url?: string | null
+          about_markdown?: string | null
+          created_at?: string
+          event_id: string
+          hero_image_url?: string | null
+          hero_overlay_color?: string | null
+          id?: string
+          is_published?: boolean
+          last_updated_by?: string | null
+          map_embed?: string | null
+          organizer_contact_email?: string | null
+          organizer_contact_name?: string | null
+          organizer_social_links?: Json | null
+          policies_text?: string | null
+          sponsors?: Json | null
+          tagline?: string | null
+          theme_accent?: string | null
+          updated_at?: string
+          venue_details?: Json | null
+          venue_photo_url?: string | null
+        }
+        Update: {
+          about_image_url?: string | null
+          about_markdown?: string | null
+          created_at?: string
+          event_id?: string
+          hero_image_url?: string | null
+          hero_overlay_color?: string | null
+          id?: string
+          is_published?: boolean
+          last_updated_by?: string | null
+          map_embed?: string | null
+          organizer_contact_email?: string | null
+          organizer_contact_name?: string | null
+          organizer_social_links?: Json | null
+          policies_text?: string | null
+          sponsors?: Json | null
+          tagline?: string | null
+          theme_accent?: string | null
+          updated_at?: string
+          venue_details?: Json | null
+          venue_photo_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournament_customization_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: true
+            referencedRelation: "tournaments_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_customization_last_updated_by_fkey"
+            columns: ["last_updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournament_customization_last_updated_by_fkey"
+            columns: ["last_updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tournament_registration_notifications: {
         Row: {
           id: string

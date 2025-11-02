@@ -49,6 +49,8 @@ import TournamentTeamView from "./pages/TournamentTeamView";
 import Tournaments from "./pages/Tournaments";
 import TournamentRegister from "./pages/TournamentRegister";
 import MyRegistrations from "./pages/MyRegistrations";
+import TournamentLanding from "./pages/TournamentLanding";
+import TournamentCustomize from "./pages/TournamentCustomize";
 import { RoundRobinBanner } from "@/components/RoundRobinBanner";
 
 const queryClient = new QueryClient();
@@ -102,11 +104,13 @@ const App = () => (
               <Route path="/round-robin/:id" element={<RoundRobinDetail />} />
               <Route path="/round-robin/:id/kiosk" element={<RoundRobinKiosk />} />
               <Route path="/tournaments" element={<Tournaments />} />
+              <Route path="/tournament/:slug" element={<TournamentLanding />} />
               <Route path="/tournament/:eventId/register" element={<TournamentRegister />} />
               <Route path="/my-registrations" element={<MyRegistrations />} />
               <Route path="/tournament/:eventId/live" element={<TournamentLiveView />} />
               <Route path="/tournament/:eventId/team/:teamId" element={<TournamentTeamView />} />
               <Route path="/tournament-admin" element={<TournamentAdmin />} />
+              <Route path="/tournament-admin/:eventId/customize" element={<TournamentCustomize />} />
               <Route path="/tournament-admin/event/:eventId" element={<TournamentEventDetail />} />
               <Route path="/tournament-admin/division/:divisionId" element={<TournamentDivisionDetail />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
