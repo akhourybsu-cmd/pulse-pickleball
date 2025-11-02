@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -12,6 +13,7 @@ interface CourtFeedProps {
 }
 
 export const CourtFeed = ({ courtId }: CourtFeedProps) => {
+  const navigate = useNavigate();
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [composerOpen, setComposerOpen] = useState(false);
@@ -32,7 +34,7 @@ export const CourtFeed = ({ courtId }: CourtFeedProps) => {
 
   const fetchPosts = async () => {
     try {
-      // Fetch posts using current schema with participants
+      // Fetch posts using current schema with participants and reactions
       const { data, error } = await supabase
         .from("court_posts")
         .select(`
@@ -74,12 +76,33 @@ export const CourtFeed = ({ courtId }: CourtFeedProps) => {
         throw error;
       }
 
+      // Fetch reactions and comments count separately
+      const postIds = (data || []).map((p: any) => p.id);
+      
+      const [reactionsData, commentsData] = await Promise.all([
+        supabase
+          .from("court_post_reactions")
+          .select("post_id, emoji, user_id")
+          .in("post_id", postIds),
+        supabase
+          .from("court_post_comments")
+          .select("post_id, id")
+          .in("post_id", postIds)
+          .is("parent_comment_id", null)
+      ]);
+
       // Map posts and infer type from existing data
       let mappedPosts = (data || []).map((post: any) => {
         // Determine post type based on existing data
         // max_players of 0 or null indicates non-LFG post
         const hasSessionInfo = post.session_date && post.session_time && post.max_players > 0;
         const inferredType = hasSessionInfo ? 'lfg' : 'general';
+        
+        // Count comments for this post
+        const commentCount = commentsData.data?.filter((c: any) => c.post_id === post.id).length || 0;
+        
+        // Get reactions for this post
+        const postReactions = reactionsData.data?.filter((r: any) => r.post_id === post.id) || [];
         
         return {
           ...post,
@@ -90,6 +113,11 @@ export const CourtFeed = ({ courtId }: CourtFeedProps) => {
             session_time: post.session_time,
             max_players: post.max_players,
           } : {},
+          _count: {
+            comments: commentCount,
+            reactions: postReactions.length,
+          },
+          reactions: postReactions,
         };
       });
 
@@ -134,7 +162,35 @@ export const CourtFeed = ({ courtId }: CourtFeedProps) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      toast.info("Reactions coming soon!");
+      // Check if user already reacted with this emoji
+      const { data: existing } = await supabase
+        .from("court_post_reactions")
+        .select("id")
+        .eq("post_id", postId)
+        .eq("user_id", user.id)
+        .eq("emoji", emoji)
+        .maybeSingle();
+
+      if (existing) {
+        // Remove reaction
+        await supabase
+          .from("court_post_reactions")
+          .delete()
+          .eq("id", existing.id);
+        toast.success("Reaction removed");
+      } else {
+        // Add reaction
+        await supabase
+          .from("court_post_reactions")
+          .insert({
+            post_id: postId,
+            user_id: user.id,
+            emoji,
+          });
+        toast.success("Reaction added!");
+      }
+      
+      fetchPosts(); // Refresh to show updated reactions
     } catch (error: any) {
       console.error("Error toggling reaction:", error);
       toast.error("Failed to react to post");
@@ -181,14 +237,10 @@ export const CourtFeed = ({ courtId }: CourtFeedProps) => {
           posts.map((post) => (
             <PostCard
               key={post.id}
-              post={{
-                ...post,
-                _count: { comments: 0, reactions: 0 },
-                reactions: [],
-              }}
+              post={post}
               currentUserId={currentUserId || undefined}
               onCommentClick={() => {
-                toast.info("Comments coming soon!");
+                navigate(`/court/feed/${post.id}`);
               }}
               onReactionClick={(emoji) => handleReaction(post.id, emoji)}
               onDelete={fetchPosts}
