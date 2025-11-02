@@ -508,18 +508,18 @@ const Dashboard = () => {
               <CardDescription className="md:text-base">Live Pulse Score</CardDescription>
               <CardTitle className="flex items-center gap-3">
                 <motion.span 
-                  className="text-5xl md:text-6xl lg:text-7xl font-bold text-primary pulse-score-number"
+                  className="text-5xl md:text-6xl lg:text-7xl font-bold text-primary pulse-score-number opacity-0"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ duration: 0.8, delay: 0.75, ease: "easeOut" }}
                 >
-                  {profile?.current_rating?.toFixed(2) || '3.00'}
+                  {profile?.current_rating?.toFixed(2) || "3.00"}
                 </motion.span>
                 <motion.svg 
-                  className="ecg-pulse flex-shrink-0" 
+                  className="ecg-pulse flex-shrink-0 opacity-0" 
                   width="60" 
                   height="20" 
-                  viewBox="0 0 80 24" 
+                  viewBox="0 0 80 24"
                   fill="none" 
                   xmlns="http://www.w3.org/2000/svg"
                   aria-hidden="true"
