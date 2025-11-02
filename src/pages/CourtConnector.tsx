@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useToast } from "@/hooks/use-toast";
-import { Users, EyeOff, Eye, MapPin, Plus, Trash2, LogOut, User as UserIcon, Dumbbell } from "lucide-react";
+import { Users, EyeOff, Eye, MapPin, Plus, Trash2, LogOut, User as UserIcon, Navigation } from "lucide-react";
 import { motion } from "framer-motion";
 import logo from "@/assets/pulse-logo-new.png";
 import {
@@ -318,7 +318,7 @@ export default function CourtConnector() {
                 transition={{ duration: 0.6, delay: 0.1 }}
                 className="flex items-center gap-3"
               >
-                <Dumbbell className="w-5 h-5 text-primary" style={{ color: '#A9DC3D' }} />
+                <Navigation className="w-5 h-5 text-primary" style={{ color: '#A9DC3D' }} />
                 <h1 
                   className="text-3xl md:text-4xl lg:text-5xl font-bold border-l-4 pl-3"
                   style={{
