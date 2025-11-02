@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Trophy, TrendingUp, Calendar, LogOut, Plus, MapPin, BarChart3, RefreshCw, HelpCircle, MessageSquare, Trash2, Award, UserCog, User as UserIcon, Settings, Share2, CalendarDays, Activity } from "lucide-react";
+import { Trophy, TrendingUp, Calendar, LogOut, Plus, MapPin, BarChart3, RefreshCw, HelpCircle, MessageSquare, Trash2, Award, UserCog, User as UserIcon, Settings, Share2, CalendarDays, Activity, Zap } from "lucide-react";
+import { motion } from "framer-motion";
 import type { User } from "@supabase/supabase-js";
 import logo from "@/assets/pulse-logo-new.png";
 import { CourtStats } from "@/components/CourtStats";
@@ -382,11 +383,72 @@ const Dashboard = () => {
           <MFAPrompt />
         </div>
 
+        {/* Pulse Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="mb-8 md:mb-10"
+          style={{
+            background: 'linear-gradient(180deg, #E8FBD5 0%, #FFFFFF 80%)',
+            borderBottom: '1px solid rgba(169, 220, 61, 0.15)',
+            borderRadius: '16px',
+            padding: '32px 24px',
+          }}
+        >
+          <div className="flex items-start gap-4">
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+            >
+              <Zap 
+                size={48} 
+                style={{ 
+                  color: '#A9DC3D',
+                  filter: 'drop-shadow(0px 2px 4px rgba(169, 220, 61, 0.3))'
+                }} 
+              />
+            </motion.div>
+            <div className="flex-1">
+              <motion.h1
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+                className="text-3xl md:text-4xl lg:text-5xl font-bold mb-3 relative inline-block pb-2"
+                style={{
+                  color: '#0E4C58',
+                  letterSpacing: '0.02em',
+                  textShadow: '0px 1px 2px rgba(14, 76, 88, 0.1)',
+                  borderLeft: '4px solid #A9DC3D',
+                  paddingLeft: '16px',
+                }}
+              >
+                Welcome back, {profile?.display_name || profile?.full_name}!
+                <motion.span
+                  className="absolute bottom-0 left-4 h-0.5 bg-gradient-to-r from-[#A9DC3D] to-transparent"
+                  initial={{ width: 0 }}
+                  animate={{ width: '100%' }}
+                  transition={{ duration: 0.8, delay: 0.5 }}
+                  style={{ display: 'block' }}
+                />
+              </motion.h1>
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5, delay: 0.3 }}
+                className="text-base md:text-lg"
+                style={{ color: '#0E4C58', opacity: 0.8 }}
+              >
+                Track your pickleball journey, analyze your performance, and compete with your community
+              </motion.p>
+            </div>
+          </div>
+        </motion.div>
+
         <div className="mb-6 md:mb-8">
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-2">Welcome back, {profile?.display_name || profile?.full_name}!</h2>
-              <p className="text-muted-foreground mb-4 md:text-lg">Track your pickleball journey</p>
               
               <div className="space-y-3 w-full md:w-auto">
                 <Button 
