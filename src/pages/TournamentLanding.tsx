@@ -574,11 +574,18 @@ export default function TournamentLanding() {
                 .filter(sponsor => sponsor.logo_url || sponsor.name)
                 .map((sponsor, index) => {
                   const Component = sponsor.link ? motion.a : motion.div;
+                  
+                  // Ensure URL has proper protocol
+                  let sponsorUrl = sponsor.link || '';
+                  if (sponsorUrl && !sponsorUrl.match(/^https?:\/\//i)) {
+                    sponsorUrl = 'https://' + sponsorUrl;
+                  }
+                  
                   const linkProps = sponsor.link ? {
-                    href: sponsor.link,
+                    href: sponsorUrl,
                     target: "_blank",
                     rel: "noopener noreferrer",
-                    "aria-label": `Visit ${sponsor.name || 'sponsor'}`
+                    "aria-label": `Visit ${sponsor.name || 'sponsor'} website`
                   } : {};
 
                   return (

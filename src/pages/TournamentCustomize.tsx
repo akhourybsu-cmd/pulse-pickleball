@@ -1445,6 +1445,18 @@ Your participation helps us give back. Let's rally together for a great cause!`
                               placeholder="https://sponsor-website.com"
                               className="mt-1.5"
                             />
+                            {sponsor.link && !sponsor.link.match(/^https?:\/\//i) && (
+                              <p className="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                                <AlertCircle className="h-3 w-3" />
+                                URL will auto-add "https://" if missing
+                              </p>
+                            )}
+                            {sponsor.link && sponsor.link.match(/^https?:\/\//i) && (
+                              <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                                <CheckCircle2 className="h-3 w-3" />
+                                Valid URL - clicking sponsor will open this link
+                              </p>
+                            )}
                           </div>
 
                           <div>
