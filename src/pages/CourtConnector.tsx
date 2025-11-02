@@ -60,11 +60,27 @@ export default function CourtConnector() {
   }, [currentUserId, showHidden]);
 
   const checkUser = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    setCurrentUserId(user?.id || null);
+    const { data: { user }, error } = await supabase.auth.getUser();
+    
+    if (error || !user) {
+      toast({
+        title: "Session Expired",
+        description: "Please sign in again to continue",
+        variant: "destructive",
+      });
+      navigate("/auth");
+      return;
+    }
+    
+    setCurrentUserId(user.id);
   };
 
   const fetchCourtsWithLFGCount = async () => {
+    if (!currentUserId) {
+      setLoading(false);
+      return;
+    }
+    
     setLoading(true);
 
     // Fetch all courts
@@ -74,9 +90,10 @@ export default function CourtConnector() {
       .order("name");
 
     if (courtsError) {
+      console.error("Courts fetch error:", courtsError);
       toast({
         title: "Error",
-        description: "Failed to load courts",
+        description: "Failed to load courts. Please try refreshing the page.",
         variant: "destructive",
       });
       setLoading(false);
