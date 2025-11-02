@@ -112,9 +112,9 @@ export default function Tournaments() {
             <Button 
               size="lg" 
               className="bg-white text-primary hover:bg-white/90 hover:shadow-[0_0_20px_rgba(197,232,108,0.5)] transition-all duration-300 text-lg px-8"
-              onClick={() => navigate("/auth?redirect=/profile/edit")}
+              onClick={() => navigate(userId ? "/dashboard" : "/auth?redirect=/profile/edit")}
             >
-              Sign Up for Pulse
+              {userId ? "Go to Dashboard" : "Sign Up for Pulse"}
             </Button>
             <Button 
               size="lg" 
@@ -292,9 +292,9 @@ export default function Tournaments() {
               <Button 
                 size="lg" 
                 className="hover:shadow-[0_0_20px_rgba(197,232,108,0.4)] transition-all"
-                onClick={() => navigate("/auth")}
+                onClick={() => navigate(userId ? "/dashboard" : "/auth")}
               >
-                Create My Player Profile
+                {userId ? "Go to Dashboard" : "Create My Player Profile"}
               </Button>
             </motion.div>
           </motion.div>
@@ -331,18 +331,20 @@ export default function Tournaments() {
             <Button 
               size="lg" 
               className="bg-white text-primary hover:bg-white/90 hover:shadow-[0_0_30px_rgba(255,255,255,0.5)] hover:scale-105 transition-all duration-300 text-lg px-12 animate-[pulse_3s_ease-in-out_infinite]"
-              onClick={() => navigate("/auth")}
+              onClick={() => navigate(userId ? "/dashboard" : "/auth")}
             >
-              Join Pulse
+              {userId ? "Go to Dashboard" : "Join Pulse"}
             </Button>
-            <div>
-              <button 
-                onClick={() => navigate("/auth")}
-                className="text-white/90 hover:text-white underline transition-colors"
-              >
-                Already have an account? Sign in.
-              </button>
-            </div>
+            {!userId && (
+              <div>
+                <button 
+                  onClick={() => navigate("/auth")}
+                  className="text-white/90 hover:text-white underline transition-colors"
+                >
+                  Already have an account? Sign in.
+                </button>
+              </div>
+            )}
           </div>
         </motion.div>
       </section>
