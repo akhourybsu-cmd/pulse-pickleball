@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Player {
   id: string;
@@ -61,6 +62,7 @@ export function PlayerManagementDialog({
   const [substituteNew, setSubstituteNew] = useState<string>("");
   const [substituteScope, setSubstituteScope] = useState<'global' | number>('global');
   const [loading, setLoading] = useState(false);
+  const [substituteNewName, setSubstituteNewName] = useState<string>("");
 
   const activePlayers = players.filter(p => p.active);
   const inactivePlayers = players.filter(p => !p.active);
@@ -112,9 +114,20 @@ export function PlayerManagementDialog({
     onOpenChange(false);
   };
 
-  const getPlayerName = (playerId: string) => {
+  const getPlayerName = async (playerId: string) => {
     const player = players.find(p => p.player_id === playerId);
-    return player?.profiles.display_name || player?.profiles.full_name || "Unknown";
+    if (player) {
+      return player.profiles.display_name || player.profiles.full_name || "Unknown";
+    }
+    
+    // If not in players list, fetch from database (for new substitutes)
+    const { data } = await supabase
+      .from('profiles')
+      .select('display_name, full_name')
+      .eq('id', playerId)
+      .single();
+    
+    return data?.display_name || data?.full_name || "Unknown";
   };
 
   return (
@@ -270,7 +283,7 @@ export function PlayerManagementDialog({
               </Select>
               {substituteOriginal && (
                 <div className="text-sm text-muted-foreground mt-1">
-                  Selected: <strong>{getPlayerName(substituteOriginal)}</strong>
+                  Selected: <strong>{activePlayers.find(p => p.player_id === substituteOriginal)?.profiles.display_name || activePlayers.find(p => p.player_id === substituteOriginal)?.profiles.full_name}</strong>
                 </div>
               )}
             </div>
@@ -279,13 +292,21 @@ export function PlayerManagementDialog({
               <Label>New Player (substitute)</Label>
               <PlayerSelector
                 value={substituteNew}
-                onValueChange={setSubstituteNew}
+                onValueChange={async (value) => {
+                  setSubstituteNew(value);
+                  if (value) {
+                    const name = await getPlayerName(value);
+                    setSubstituteNewName(name);
+                  } else {
+                    setSubstituteNewName("");
+                  }
+                }}
                 placeholder="Search for replacement player..."
                 excludePlayerIds={players.map(p => p.player_id).filter(id => id !== substituteOriginal)}
               />
-              {substituteNew && (
+              {substituteNew && substituteNewName && (
                 <div className="text-sm text-muted-foreground mt-1">
-                  Selected: <strong>{getPlayerName(substituteNew)}</strong>
+                  Selected: <strong>{substituteNewName}</strong>
                 </div>
               )}
             </div>

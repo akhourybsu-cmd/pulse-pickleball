@@ -348,7 +348,7 @@ export default function RoundRobinKiosk() {
 
   const handlePinSuccess = async () => {
     setPinModalOpen(false);
-    navigate(`/roundrobin/${eventId}`);
+    navigate(`/round-robin/${eventId}`);
   };
 
   if (loading) {
