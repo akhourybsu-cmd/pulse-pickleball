@@ -10,9 +10,16 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { ExternalLink, Upload, X, Plus, Save, HelpCircle, Eye, CheckCircle2 } from "lucide-react";
+import { ExternalLink, Upload, X, Plus, Save, HelpCircle, Eye, CheckCircle2, Bold, Italic, Heading, Link2, List, Lightbulb, Wand2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { motion } from "framer-motion";
+import ReactMarkdown from "react-markdown";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface Sponsor {
   logo_url: string;
@@ -57,6 +64,7 @@ export default function TournamentCustomize() {
   const [uploading, setUploading] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [showGuidance, setShowGuidance] = useState(true);
 
   useEffect(() => {
     const getUser = async () => {
@@ -300,6 +308,78 @@ export default function TournamentCustomize() {
     const updated = [...venueDetails];
     updated[index] = { ...updated[index], [field]: value };
     setVenueDetails(updated);
+  };
+
+  const markdownTemplates = {
+    competitive: `## Welcome to ${eventName || "Our Tournament"}!
+
+Join us for an exciting weekend of competitive pickleball. Players from across the region will compete for prizes and bragging rights.
+
+**What to Expect:**
+- High-level competition across multiple divisions
+- Professional officiating and scoring
+- Prizes for division winners
+- All-day tournament action
+
+Whether you're aiming for the podium or testing your skills against top players, this tournament delivers the competitive experience you're looking for.`,
+    
+    social: `## Join Us for ${eventName || "Our Tournament"}!
+
+Looking for a fun weekend of pickleball and community? This is the event for you!
+
+**Event Highlights:**
+- Friendly competition for all skill levels
+- Great music and food throughout the day
+- Meet new playing partners
+- Raffles and giveaways
+- Family-friendly atmosphere
+
+Come for the games, stay for the connections. Everyone's welcome!`,
+    
+    charity: `## Play with Purpose at ${eventName || "Our Tournament"}
+
+Join us for a special tournament benefiting [Your Cause/Organization]. Every game you play helps make a difference in our community.
+
+**Event Details:**
+- 100% of proceeds support [Cause Name]
+- Competitive and recreational divisions
+- Silent auction and raffle prizes
+- Food, drinks, and entertainment
+- Special guest appearances
+
+Your participation helps us give back. Let's rally together for a great cause!`
+  };
+
+  const insertMarkdownSyntax = (syntax: string, placeholder: string = "") => {
+    const textarea = document.getElementById("aboutMarkdown") as HTMLTextAreaElement;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = aboutMarkdown.substring(start, end);
+    const replacement = selectedText || placeholder;
+    
+    let newText = "";
+    switch(syntax) {
+      case "bold":
+        newText = aboutMarkdown.substring(0, start) + `**${replacement}**` + aboutMarkdown.substring(end);
+        break;
+      case "italic":
+        newText = aboutMarkdown.substring(0, start) + `*${replacement}*` + aboutMarkdown.substring(end);
+        break;
+      case "heading":
+        newText = aboutMarkdown.substring(0, start) + `## ${replacement}` + aboutMarkdown.substring(end);
+        break;
+      case "link":
+        newText = aboutMarkdown.substring(0, start) + `[${replacement || "link text"}](url)` + aboutMarkdown.substring(end);
+        break;
+      case "list":
+        newText = aboutMarkdown.substring(0, start) + `- ${replacement || "list item"}` + aboutMarkdown.substring(end);
+        break;
+    }
+    
+    setAboutMarkdown(newText);
+    setTimeout(() => textarea.focus(), 0);
   };
 
   if (loading) {
@@ -660,52 +740,238 @@ export default function TournamentCustomize() {
           </TabsContent>
 
           <TabsContent value="about" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>About the Event</CardTitle>
-                <CardDescription>Write a compelling description</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="aboutMarkdown">About Text (Markdown supported)</Label>
-                  <Textarea
-                    id="aboutMarkdown"
-                    value={aboutMarkdown}
-                    onChange={(e) => setAboutMarkdown(e.target.value)}
-                    placeholder="Tell players about your tournament..."
-                    rows={10}
-                  />
-                </div>
-
-                <div>
-                  <Label>About Image (optional)</Label>
-                  <div className="flex gap-4 items-start mt-2">
-                    {aboutImageUrl && (
-                      <img src={aboutImageUrl} alt="About" className="w-32 h-20 object-cover rounded" />
-                    )}
-                    <div className="flex-1">
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => handleFileUpload(e, setAboutImageUrl)}
-                        disabled={uploading}
-                      />
-                      {aboutImageUrl && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setAboutImageUrl("")}
-                          className="mt-2"
-                        >
-                          <X className="h-4 w-4 mr-2" />
-                          Remove Image
-                        </Button>
-                      )}
+            {showGuidance && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-primary/5 border border-primary/20 rounded-lg p-4"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Lightbulb className="h-4 w-4 text-primary" />
+                      <p className="font-semibold text-sm">Need ideas? Try including:</p>
                     </div>
+                    <ul className="text-sm text-muted-foreground space-y-1 ml-6 list-disc">
+                      <li>What makes this tournament special</li>
+                      <li>Who should join (skill levels or divisions)</li>
+                      <li>Any prizes, raffles, or fun extras</li>
+                      <li>What last year&apos;s turnout was like</li>
+                    </ul>
                   </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowGuidance(false)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
                 </div>
-              </CardContent>
-            </Card>
+              </motion.div>
+            )}
+
+            <div className="grid lg:grid-cols-2 gap-6">
+              {/* Left: Editor */}
+              <div className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle>Event Story</CardTitle>
+                        <CardDescription>
+                          Tell players why they should join
+                        </CardDescription>
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="sm" className="gap-2">
+                            <Wand2 className="h-4 w-4" />
+                            Use Template
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-56">
+                          <DropdownMenuItem onClick={() => setAboutMarkdown(markdownTemplates.competitive)}>
+                            <span className="font-medium">Competitive Event</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setAboutMarkdown(markdownTemplates.social)}>
+                            <span className="font-medium">Community Mixer</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setAboutMarkdown(markdownTemplates.charity)}>
+                            <span className="font-medium">Charity / Fundraiser</span>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {/* Markdown Toolbar */}
+                    <div className="flex items-center gap-1 p-2 bg-muted rounded-md border">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => insertMarkdownSyntax("bold", "bold text")}
+                        title="Bold"
+                      >
+                        <Bold className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => insertMarkdownSyntax("italic", "italic text")}
+                        title="Italic"
+                      >
+                        <Italic className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => insertMarkdownSyntax("heading", "Heading")}
+                        title="Heading"
+                      >
+                        <Heading className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => insertMarkdownSyntax("link")}
+                        title="Add Link"
+                      >
+                        <Link2 className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => insertMarkdownSyntax("list", "list item")}
+                        title="Bullet List"
+                      >
+                        <List className="h-4 w-4" />
+                      </Button>
+                    </div>
+
+                    <Textarea
+                      id="aboutMarkdown"
+                      value={aboutMarkdown}
+                      onChange={(e) => setAboutMarkdown(e.target.value)}
+                      placeholder="Tell your tournament story here... Use the toolbar above for formatting."
+                      rows={16}
+                      className="font-mono text-sm bg-background/50"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Supports Markdown formatting. Changes appear instantly in the preview →
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>About Image</CardTitle>
+                    {showHelp && (
+                      <CardDescription className="text-sm">
+                        This image appears alongside your description. Landscape images (16:9) look best.
+                      </CardDescription>
+                    )}
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {aboutImageUrl ? (
+                      <div className="space-y-3">
+                        <img 
+                          src={aboutImageUrl} 
+                          alt="About preview" 
+                          className="w-full h-48 object-cover rounded-lg border-2 border-border" 
+                        />
+                        <div className="flex gap-2">
+                          <Input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleFileUpload(e, setAboutImageUrl)}
+                            disabled={uploading}
+                            className="flex-1"
+                          />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setAboutImageUrl("")}
+                          >
+                            Remove
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <label 
+                          htmlFor="aboutImageUpload"
+                          className="border-2 border-dashed border-primary/30 rounded-lg p-8 text-center cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all block"
+                        >
+                          <Upload className="h-8 w-8 mx-auto mb-2 text-primary" />
+                          <p className="text-sm font-medium mb-1">Drop image here or click to upload</p>
+                          <p className="text-xs text-muted-foreground">Recommended: 16:9 landscape format</p>
+                        </label>
+                        <Input
+                          id="aboutImageUpload"
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handleFileUpload(e, setAboutImageUrl)}
+                          disabled={uploading}
+                          className="hidden"
+                        />
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Right: Live Preview */}
+              <div className="lg:sticky lg:top-8 h-fit">
+                <Card className="border-2">
+                  <CardHeader className="border-b bg-muted/30">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Eye className="h-4 w-4" />
+                      Live Preview
+                    </CardTitle>
+                    <p className="text-xs text-muted-foreground">
+                      Shows how it will look on your public page
+                    </p>
+                  </CardHeader>
+                  <CardContent className="pt-6">
+                    <motion.div
+                      key={aboutMarkdown}
+                      initial={{ opacity: 0.8 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.2 }}
+                      className="prose prose-sm max-w-none"
+                    >
+                      {aboutMarkdown ? (
+                        <ReactMarkdown>{aboutMarkdown}</ReactMarkdown>
+                      ) : (
+                        <p className="text-muted-foreground italic">
+                          Your event description will appear here...
+                        </p>
+                      )}
+                    </motion.div>
+
+                    {aboutImageUrl && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="mt-6"
+                      >
+                        <img
+                          src={aboutImageUrl}
+                          alt="About"
+                          className="rounded-lg w-full object-cover shadow-md"
+                        />
+                      </motion.div>
+                    )}
+
+                    {!aboutMarkdown && !aboutImageUrl && (
+                      <div className="text-center py-8 text-muted-foreground text-sm">
+                        Start writing or use a template to see your preview
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
           </TabsContent>
 
           <TabsContent value="venue" className="space-y-4">
