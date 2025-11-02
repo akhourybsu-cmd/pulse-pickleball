@@ -32,7 +32,7 @@ export const CourtFeed = ({ courtId }: CourtFeedProps) => {
 
   const fetchPosts = async () => {
     try {
-      // Fetch posts using current schema
+      // Fetch posts using current schema with participants
       const { data, error } = await supabase
         .from("court_posts")
         .select(`
@@ -51,7 +51,19 @@ export const CourtFeed = ({ courtId }: CourtFeedProps) => {
           user:profiles!court_posts_user_id_fkey (
             id,
             display_name,
-            avatar_url
+            avatar_url,
+            current_rating
+          ),
+          participants:court_post_participants(
+            id,
+            user_id,
+            joined_at,
+            user:profiles!court_post_participants_user_id_fkey(
+              id,
+              display_name,
+              avatar_url,
+              current_rating
+            )
           )
         `)
         .eq("court_id", courtId)
@@ -180,6 +192,7 @@ export const CourtFeed = ({ courtId }: CourtFeedProps) => {
               }}
               onReactionClick={(emoji) => handleReaction(post.id, emoji)}
               onDelete={fetchPosts}
+              onJoinSession={fetchPosts}
             />
           ))
         )}

@@ -39,7 +39,19 @@ interface PostCardProps {
       id: string;
       display_name: string;
       avatar_url: string | null;
+      current_rating?: number;
     };
+    participants?: Array<{
+      id: string;
+      user_id: string;
+      joined_at: string;
+      user: {
+        id: string;
+        display_name: string;
+        avatar_url: string | null;
+        current_rating?: number;
+      };
+    }>;
     _count?: {
       comments: number;
       reactions: number;
@@ -58,6 +70,7 @@ interface PostCardProps {
   onReactionClick: (emoji: string) => void;
   currentUserId?: string;
   onDelete?: () => void;
+  onJoinSession?: () => void;
 }
 
 const POST_TYPE_LABELS: Record<string, { label: string; icon: any }> = {
@@ -73,11 +86,12 @@ const STATUS_LABELS: Record<string, { label: string; variant: any }> = {
   closed: { label: "Closed", variant: "outline" },
 };
 
-export const PostCard = ({ post, onCommentClick, onReactionClick, currentUserId, onDelete }: PostCardProps) => {
+export const PostCard = ({ post, onCommentClick, onReactionClick, currentUserId, onDelete, onJoinSession }: PostCardProps) => {
   const navigate = useNavigate();
   const [showFullBody, setShowFullBody] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isJoining, setIsJoining] = useState(false);
 
   const postType = post.type || 'lfg';
   const postBody = post.body || post.content || '';
@@ -90,6 +104,8 @@ export const PostCard = ({ post, onCommentClick, onReactionClick, currentUserId,
     : postBody;
 
   const isAuthor = currentUserId && post.user_id === currentUserId;
+  const hasJoined = post.participants?.some(p => p.user_id === currentUserId);
+  const participantCount = post.participants?.length || 0;
 
   const reactionEmojis = [
     { emoji: "👍", icon: ThumbsUp },
@@ -118,6 +134,46 @@ export const PostCard = ({ post, onCommentClick, onReactionClick, currentUserId,
     }
   };
 
+  const handleJoinSession = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!currentUserId) {
+      toast.error("Please sign in to join sessions");
+      return;
+    }
+
+    setIsJoining(true);
+    try {
+      if (hasJoined) {
+        // Leave session
+        const { error } = await supabase
+          .from("court_post_participants")
+          .delete()
+          .eq("post_id", post.id)
+          .eq("user_id", currentUserId);
+
+        if (error) throw error;
+        toast.success("Left session");
+      } else {
+        // Join session
+        const { error } = await supabase
+          .from("court_post_participants")
+          .insert({
+            post_id: post.id,
+            user_id: currentUserId,
+          });
+
+        if (error) throw error;
+        toast.success("Joined session!");
+      }
+      onJoinSession?.();
+    } catch (error: any) {
+      console.error("Error joining/leaving session:", error);
+      toast.error("Failed to update session");
+    } finally {
+      setIsJoining(false);
+    }
+  };
+
   return (
     <>
       <Card 
@@ -134,6 +190,11 @@ export const PostCard = ({ post, onCommentClick, onReactionClick, currentUserId,
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className="font-semibold text-sm truncate">{post.user.display_name || "Anonymous"}</p>
+                  {post.user.current_rating && (
+                    <Badge variant="outline" className="text-xs">
+                      {post.user.current_rating.toFixed(2)}
+                    </Badge>
+                  )}
                   <span className="text-xs text-muted-foreground">
                     {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
                   </span>
@@ -194,24 +255,67 @@ export const PostCard = ({ post, onCommentClick, onReactionClick, currentUserId,
 
           {/* LFG Session Info */}
           {post.type === 'lfg' && post.metadata && (
-            <div className="flex items-center gap-4 text-xs text-muted-foreground mt-3 p-2 bg-muted/50 rounded-md">
-              {post.metadata.session_date && (
-                <div className="flex items-center gap-1">
-                  <Calendar className="w-3 h-3" />
-                  {post.metadata.session_date}
+            <div className="space-y-3">
+              <div className="flex items-center gap-4 text-xs text-muted-foreground mt-3 p-2 bg-muted/50 rounded-md">
+                {post.metadata.session_date && (
+                  <div className="flex items-center gap-1">
+                    <Calendar className="w-3 h-3" />
+                    {post.metadata.session_date}
+                  </div>
+                )}
+                {post.metadata.session_time && (
+                  <div className="flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    {post.metadata.session_time}
+                  </div>
+                )}
+                {post.metadata.max_players && (
+                  <div className="flex items-center gap-1">
+                    <Users className="w-3 h-3" />
+                    {participantCount}/{post.metadata.max_players} players
+                  </div>
+                )}
+              </div>
+
+              {/* Participants List */}
+              {post.participants && post.participants.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-muted-foreground">Joined Players:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {post.participants.map((participant) => (
+                      <div
+                        key={participant.id}
+                        className="flex items-center gap-2 bg-muted/30 rounded-full pl-1 pr-3 py-1"
+                      >
+                        <Avatar className="h-6 w-6">
+                          <AvatarImage src={participant.user.avatar_url || undefined} />
+                          <AvatarFallback className="text-xs">
+                            {participant.user.display_name?.[0] || "?"}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="text-xs">{participant.user.display_name}</span>
+                        {participant.user.current_rating && (
+                          <Badge variant="secondary" className="text-xs h-5">
+                            {participant.user.current_rating.toFixed(2)}
+                          </Badge>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
-              {post.metadata.session_time && (
-                <div className="flex items-center gap-1">
-                  <Clock className="w-3 h-3" />
-                  {post.metadata.session_time}
-                </div>
-              )}
-              {post.metadata.max_players && (
-                <div className="flex items-center gap-1">
-                  <Users className="w-3 h-3" />
-                  {post.metadata.max_players} players
-                </div>
+
+              {/* Join Session Button */}
+              {!isAuthor && (
+                <Button
+                  onClick={handleJoinSession}
+                  disabled={isJoining}
+                  variant={hasJoined ? "outline" : "default"}
+                  size="sm"
+                  className="w-full"
+                >
+                  {isJoining ? "..." : hasJoined ? "Leave Session" : "Join This Session"}
+                </Button>
               )}
             </div>
           )}
