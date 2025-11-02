@@ -25,17 +25,15 @@ export const CourtFeed = ({ courtId }: CourtFeedProps) => {
 
   const fetchPosts = async () => {
     try {
-      // Fetch all posts first
+      // Fetch posts using current schema
       const { data, error } = await supabase
         .from("court_posts")
         .select(`
           id,
           court_id,
           user_id,
-          type,
           title,
           content,
-          body,
           status,
           session_date,
           session_time,
@@ -57,17 +55,23 @@ export const CourtFeed = ({ courtId }: CourtFeedProps) => {
         throw error;
       }
 
-      // Map posts to ensure consistent format
-      let mappedPosts = (data || []).map((post: any) => ({
-        ...post,
-        type: post.type || 'lfg', // Default to lfg if not set
-        body: post.body || post.content || '',
-        metadata: post.session_date ? {
-          session_date: post.session_date,
-          session_time: post.session_time,
-          max_players: post.max_players,
-        } : {},
-      }));
+      // Map posts and infer type from existing data
+      let mappedPosts = (data || []).map((post: any) => {
+        // Determine post type based on existing data
+        const hasSessionInfo = post.session_date && post.session_time;
+        const inferredType = hasSessionInfo ? 'lfg' : 'general';
+        
+        return {
+          ...post,
+          type: inferredType,
+          body: post.content || '',
+          metadata: hasSessionInfo ? {
+            session_date: post.session_date,
+            session_time: post.session_time,
+            max_players: post.max_players,
+          } : {},
+        };
+      });
 
       // Apply client-side filter if needed
       if (filter !== "all") {

@@ -33,27 +33,25 @@ export const PostComposer = ({ courtId, open, onOpenChange, onPostCreated }: Pos
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      // Use existing court_posts schema for now (backward compatible)
+      // Use existing court_posts schema
       const postData: any = {
         court_id: courtId,
         user_id: user.id,
-        type, // Save the post type
         title,
-        content: body, // Map body to content for existing schema
-        body, // Also save as body for new schema
+        content: body,
         status: "open",
       };
 
-      // Add LFG-specific fields and metadata
+      // Add LFG-specific fields (indicates this is an LFG post)
       if (type === "lfg") {
         postData.session_date = sessionDate;
         postData.session_time = sessionTime;
         postData.max_players = parseInt(maxPlayers);
-        postData.metadata = {
-          session_date: sessionDate,
-          session_time: sessionTime,
-          max_players: parseInt(maxPlayers),
-        };
+      } else {
+        // For non-LFG posts, leave session fields null
+        postData.session_date = null;
+        postData.session_time = null;
+        postData.max_players = null;
       }
 
       const { error } = await supabase
