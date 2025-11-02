@@ -382,7 +382,7 @@ const Dashboard = () => {
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="mb-8 md:mb-12"
+        className="mb-4 md:mb-6"
         style={{
           background: 'linear-gradient(180deg, #E8FBD5 0%, #FFFFFF 80%)',
           borderBottom: '1px solid rgba(169, 220, 61, 0.15)',
