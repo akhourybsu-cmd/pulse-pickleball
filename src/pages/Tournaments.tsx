@@ -274,29 +274,21 @@ export default function Tournaments() {
               className="space-y-6"
             >
               <h2 className="text-4xl font-bold text-white">Why Join Pulse?</h2>
-              <ul className="space-y-4">
-                {[
-                  { icon: Users, title: "Track your tournament history", desc: "All your matches in one place" },
-                  { icon: Trophy, title: "Join regional & national leaderboards", desc: "See how you stack up" },
-                  { icon: Bell, title: "Get real-time updates", desc: "Never miss a match time" },
-                  { icon: MessageCircle, title: "Connect with players near you", desc: "Build your pickleball network" }
-                ].map((item, i) => (
-                  <motion.li 
-                    key={i}
-                    initial={{ opacity: 0, x: -20 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: 0.1 * i }}
-                    className="flex items-start gap-3"
-                  >
-                    <item.icon className="h-6 w-6 text-primary mt-1" />
-                    <div>
-                      <div className="font-semibold text-white">{item.title}</div>
-                      <div className="text-sm text-white/80">{item.desc}</div>
-                    </div>
-                  </motion.li>
-                ))}
-              </ul>
+              <div className="space-y-4 text-white/90 text-lg leading-relaxed">
+                <p>
+                  Pulse isn't just another app—it's your region's pickleball community, all in one place. 
+                  Whether you're looking to find your next doubles partner, join a weekend Round Robin, 
+                  or compete in a local tournament, Pulse connects you to the courts and players that matter most.
+                </p>
+                <p>
+                  Track every match you play, see how you stack up on regional leaderboards, and discover 
+                  games happening at courts near you. From casual pickup games to competitive tournaments, 
+                  Pulse keeps you connected to the heartbeat of pickleball in your area.
+                </p>
+                <p className="text-white font-semibold">
+                  One platform. Your local courts. Your community.
+                </p>
+              </div>
               <Button 
                 size="lg" 
                 className="hover:shadow-[0_0_20px_rgba(197,232,108,0.4)] transition-all"
