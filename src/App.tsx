@@ -47,7 +47,6 @@ import TournamentDivisionDetail from "./pages/TournamentDivisionDetail";
 import TournamentLiveView from "./pages/TournamentLiveView";
 import TournamentTeamView from "./pages/TournamentTeamView";
 import Tournaments from "./pages/Tournaments";
-import TournamentsPublic from "./pages/TournamentsPublic";
 import TournamentRegister from "./pages/TournamentRegister";
 import MyRegistrations from "./pages/MyRegistrations";
 import { RoundRobinBanner } from "@/components/RoundRobinBanner";
@@ -103,7 +102,6 @@ const App = () => (
               <Route path="/round-robin/:id" element={<RoundRobinDetail />} />
               <Route path="/round-robin/:id/kiosk" element={<RoundRobinKiosk />} />
               <Route path="/tournaments" element={<Tournaments />} />
-              <Route path="/tournaments/public" element={<TournamentsPublic />} />
               <Route path="/tournament/:eventId/register" element={<TournamentRegister />} />
               <Route path="/my-registrations" element={<MyRegistrations />} />
               <Route path="/tournament/:eventId/live" element={<TournamentLiveView />} />
