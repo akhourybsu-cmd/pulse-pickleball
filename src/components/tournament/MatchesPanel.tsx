@@ -61,6 +61,7 @@ interface Match {
   division_id: string;
   started_at: string | null;
   completed_at: string | null;
+  scheduled_time: string | null;
   actual_duration_minutes: number | null;
   notes: string | null;
   score_edited_at: string | null;

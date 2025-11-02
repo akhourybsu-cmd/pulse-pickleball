@@ -2000,6 +2000,7 @@ export type Database = {
           match_number: number
           notes: string | null
           round_number: number
+          scheduled_time: string | null
           score_edited_at: string | null
           score_edited_by: string | null
           started_at: string | null
@@ -2020,6 +2021,7 @@ export type Database = {
           match_number: number
           notes?: string | null
           round_number: number
+          scheduled_time?: string | null
           score_edited_at?: string | null
           score_edited_by?: string | null
           started_at?: string | null
@@ -2040,6 +2042,7 @@ export type Database = {
           match_number?: number
           notes?: string | null
           round_number?: number
+          scheduled_time?: string | null
           score_edited_at?: string | null
           score_edited_by?: string | null
           started_at?: string | null

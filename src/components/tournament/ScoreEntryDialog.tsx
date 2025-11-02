@@ -24,6 +24,7 @@ interface Match {
   team2_score?: number | null;
   notes?: string | null;
   status: string;
+  scheduled_time?: string | null;
   score_edited_by?: string | null;
   score_edited_at?: string | null;
   tournaments_divisions: {
@@ -67,6 +68,7 @@ export function ScoreEntryDialog({ open, onOpenChange, match, onSuccess }: Score
         .int("Score must be a whole number")
         .min(0, "Score cannot be negative")
         .max(99, "Score must be less than 100"),
+      scheduled_time: z.string().optional(),
       notes: z.string().optional(),
     }).refine((data) => {
       // Scores cannot be tied
@@ -117,6 +119,7 @@ export function ScoreEntryDialog({ open, onOpenChange, match, onSuccess }: Score
     defaultValues: {
       team1_score: match?.team1_score || 0,
       team2_score: match?.team2_score || 0,
+      scheduled_time: match?.scheduled_time ? new Date(match.scheduled_time).toISOString().slice(0, 16) : "",
       notes: match?.notes || "",
     },
   });
@@ -151,6 +154,11 @@ export function ScoreEntryDialog({ open, onOpenChange, match, onSuccess }: Score
       notes: data.notes || null,
       status: "completed",
     };
+
+    // Update scheduled_time if provided
+    if (data.scheduled_time) {
+      updateData.scheduled_time = new Date(data.scheduled_time).toISOString();
+    }
 
     // Only set completed_at if this is the first completion
     if (!isEdit) {
@@ -218,6 +226,7 @@ export function ScoreEntryDialog({ open, onOpenChange, match, onSuccess }: Score
       form.reset({
         team1_score: match.team1_score || 0,
         team2_score: match.team2_score || 0,
+        scheduled_time: match.scheduled_time ? new Date(match.scheduled_time).toISOString().slice(0, 16) : "",
         notes: match.notes || "",
       });
     }
@@ -346,6 +355,25 @@ export function ScoreEntryDialog({ open, onOpenChange, match, onSuccess }: Score
                   <strong>Example valid scores:</strong> {getExampleScores()}
                 </div>
               )}
+
+              <FormField
+                control={form.control}
+                name="scheduled_time"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Scheduled Time (Optional)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="datetime-local" 
+                        {...field} 
+                        value={field.value || ""}
+                      />
+                    </FormControl>
+                    <p className="text-sm text-muted-foreground">When is this match scheduled to start?</p>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <FormField
                 control={form.control}

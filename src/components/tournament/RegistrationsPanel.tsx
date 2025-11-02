@@ -193,11 +193,20 @@ export function RegistrationsPanel({ eventId, divisions }: RegistrationsPanelPro
     
     const confirmedRegs = registrations.filter(r => r.status === 'confirmed');
     
+    if (confirmedRegs.length === 0) {
+      toast({
+        title: "No confirmed registrations",
+        description: "Approve some registrations first",
+      });
+      setGenerating(false);
+      return;
+    }
+    
     // Check which registrations already have teams
     const { data: existingTeams } = await supabase
       .from("tournaments_teams")
       .select("division_id, player1_id, player2_id")
-      .eq("division_id", confirmedRegs[0]?.division_id);
+      .in("division_id", [...new Set(confirmedRegs.map(r => r.division_id))]);
 
     const newTeams = confirmedRegs.filter(reg => {
       return !existingTeams?.some(team => 
@@ -222,9 +231,10 @@ export function RegistrationsPanel({ eventId, divisions }: RegistrationsPanelPro
       player2_id: reg.partner_user_id,
     }));
 
-    const { error } = await supabase
+    const { data: createdTeams, error } = await supabase
       .from("tournaments_teams")
-      .insert(teamsToInsert);
+      .insert(teamsToInsert)
+      .select();
 
     if (error) {
       toast({
@@ -232,12 +242,26 @@ export function RegistrationsPanel({ eventId, divisions }: RegistrationsPanelPro
         description: error.message,
         variant: "destructive",
       });
-    } else {
-      toast({
-        title: "Teams created",
-        description: `${teamsToInsert.length} team(s) added to divisions`,
-      });
+      setGenerating(false);
+      return;
     }
+
+    // Send team assignment emails
+    if (createdTeams && createdTeams.length > 0) {
+      try {
+        await supabase.functions.invoke('send-team-assignment', {
+          body: { teamIds: createdTeams.map(t => t.id) }
+        });
+      } catch (emailError) {
+        console.error("Email notification error:", emailError);
+        // Don't fail the whole operation if email fails
+      }
+    }
+
+    toast({
+      title: "Teams created",
+      description: `${teamsToInsert.length} team(s) added to divisions and notifications sent`,
+    });
     setGenerating(false);
   };
 

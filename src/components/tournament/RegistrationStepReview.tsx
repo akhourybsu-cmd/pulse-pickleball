@@ -149,12 +149,24 @@ export function RegistrationStepReview({
           </div>
         </div>
 
-        <div className="bg-muted/50 border rounded-lg p-4">
-          <p className="text-sm text-muted-foreground">
-            After submitting, your registration will be marked as <strong>pending</strong>. 
-            You'll receive a confirmation email and the tournament director will review and 
-            approve your registration. You can track the status in "My Registrations".
-          </p>
+        <div className="bg-muted/50 border rounded-lg p-4 space-y-3">
+          <div>
+            <h4 className="font-medium text-sm mb-2">Tournament Policies</h4>
+            <div className="text-xs text-muted-foreground space-y-2">
+              <p><strong>Arrival:</strong> Please arrive 15 minutes early for check-in. Warm-up begins 30 minutes before the first match.</p>
+              <p><strong>Sportsmanship:</strong> All players are expected to maintain respectful conduct. Unsportsmanlike behavior may result in disqualification.</p>
+              <p><strong>Refund Policy:</strong> Cancellations made more than 48 hours before the event receive a 50% refund. No refunds for cancellations within 48 hours of the event.</p>
+              <p><strong>Weather:</strong> In case of inclement weather, the tournament director will notify all registered teams via email.</p>
+            </div>
+          </div>
+          
+          <div className="pt-3 border-t">
+            <p className="text-sm text-muted-foreground">
+              After submitting, your registration will be marked as <strong>pending</strong>. 
+              You'll receive a confirmation email and the tournament director will review and 
+              approve your registration. You can track the status in "My Registrations".
+            </p>
+          </div>
         </div>
       </div>
     </div>
