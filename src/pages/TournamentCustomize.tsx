@@ -1081,10 +1081,43 @@ Your participation helps us give back. Let's rally together for a great cause!`
                   <CardContent className="space-y-6">
                     {/* Google Map */}
                     <div className="space-y-2">
-                      <Label htmlFor="mapEmbed">Google Map (optional)</Label>
-                      {showGuidance && (
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="mapEmbed">Google Map (optional)</Label>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setShowHelp(!showHelp)}
+                          className="h-auto py-1 px-2 text-xs"
+                        >
+                          <HelpCircle className="h-3 w-3 mr-1" />
+                          {showHelp ? 'Hide' : 'How to get map code'}
+                        </Button>
+                      </div>
+                      
+                      {showHelp && (
+                        <Card className="border-primary/20 bg-primary/5">
+                          <CardContent className="pt-4 pb-4">
+                            <div className="space-y-2 text-xs text-muted-foreground">
+                              <p className="font-semibold text-foreground">How to get your Google Maps embed code:</p>
+                              <ol className="list-decimal list-inside space-y-1.5 ml-2">
+                                <li>Go to <a href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Google Maps</a></li>
+                                <li>Search for your venue location</li>
+                                <li>Click the <strong>"Share"</strong> button</li>
+                                <li>Select the <strong>"Embed a map"</strong> tab</li>
+                                <li>Copy the HTML code shown</li>
+                                <li>Paste it into the field below</li>
+                              </ol>
+                              <p className="pt-2 text-xs italic">
+                                💡 Tip: You can also just paste the Google Maps URL (like maps.google.com/...) and we'll handle it automatically.
+                              </p>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )}
+                      
+                      {showGuidance && !showHelp && (
                         <p className="text-xs text-muted-foreground">
-                          You can paste a full Google Maps embed code or just a location URL — we'll format it automatically.
+                          Paste a Google Maps embed code or location URL — we'll format it automatically.
                         </p>
                       )}
                       <div className="relative">
