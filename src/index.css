@@ -241,6 +241,12 @@ body {
   }
 }
 
+@keyframes pulseFlow {
+  0% { opacity: 0.6; transform: scaleX(0.8); }
+  50% { opacity: 1; transform: scaleX(1.1); }
+  100% { opacity: 0.6; transform: scaleX(0.8); }
+}
+
 /* Respect prefers-reduced-motion */
 @media (prefers-reduced-motion: reduce) {
   .ecg-pulse path,

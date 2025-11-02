@@ -80,7 +80,7 @@ export default function Tournaments() {
     if (closeDate && closeDate < now) {
       return <Badge variant="outline">Closed</Badge>;
     }
-    return <Badge className="bg-green-600 text-white">Open</Badge>;
+    return <Badge className="bg-green-600 text-white shadow-[0_0_6px_rgba(34,197,94,0.6)]">Open</Badge>;
   };
 
   const scrollToTournaments = () => {
@@ -130,7 +130,7 @@ export default function Tournaments() {
       </section>
 
       {/* Tournaments Section */}
-      <section id="tournaments-section" className="py-16 px-4">
+      <section id="tournaments-section" className="py-16 px-4 bg-[radial-gradient(circle_at_top_center,rgba(197,232,108,0.15),#ffffff_70%)]">
         <div className="container mx-auto">
           <motion.h2 
             initial={{ opacity: 0, y: 20 }}
@@ -160,58 +160,64 @@ export default function Tournaments() {
                   key={event.id}
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
+                  whileHover={{ 
+                    y: -4,
+                    boxShadow: "0 6px 20px rgba(0, 0, 0, 0.1), 0 0 18px rgba(197, 232, 108, 0.45)"
+                  }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.4, delay: index * 0.1 }}
+                  className="border border-primary/30 rounded-2xl shadow-[0_4px_10px_rgba(0,0,0,0.05),0_0_12px_rgba(197,232,108,0.25)] bg-card hover:border-primary/50 transition-all duration-300 h-full group"
                 >
-                  <Card className="hover:shadow-lg hover:shadow-primary/20 transition-all duration-300 hover:scale-105 hover:border-primary cursor-pointer group h-full"
-                >
-                  <CardHeader>
-                    <div className="flex items-start justify-between mb-2">
-                      <CardTitle className="text-xl group-hover:text-primary transition-colors">
-                        {event.name}
-                      </CardTitle>
-                      {getRegistrationBadge(event)}
-                    </div>
-                    <CardDescription className="space-y-2">
-                      <div className="flex items-center gap-2 text-sm">
-                        <Calendar className="h-4 w-4" />
-                        {format(new Date(event.start_date), "MMM d")} - {format(new Date(event.end_date), "MMM d, yyyy")}
+                  <Card className="border-0 shadow-none bg-transparent h-full">
+                    <CardHeader>
+                      <div className="flex items-start justify-between mb-2">
+                        <CardTitle className="text-xl group-hover:text-primary transition-colors relative pb-3">
+                          {event.name}
+                          <span className="absolute left-0 bottom-0 h-[3px] w-10 bg-gradient-to-r from-primary to-accent rounded-full animate-[pulseFlow_3s_ease-in-out_infinite]" />
+                        </CardTitle>
+                        {getRegistrationBadge(event)}
                       </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <MapPin className="h-4 w-4" />
-                        {event.location}
-                      </div>
-                      {event.divisions && event.divisions.length > 0 && (
-                        <div className="flex items-center gap-2 text-sm">
-                          <Users className="h-4 w-4" />
-                          {event.divisions.length} {event.divisions.length === 1 ? "Division" : "Divisions"}
+                      <CardDescription className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground/80">
+                          <Calendar className="h-4 w-4 text-primary/60" />
+                          {format(new Date(event.start_date), "MMM d")} - {format(new Date(event.end_date), "MMM d, yyyy")}
                         </div>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground/80">
+                          <MapPin className="h-4 w-4 text-primary/60" />
+                          {event.location}
+                        </div>
+                        {event.divisions && event.divisions.length > 0 && (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground/80">
+                            <Users className="h-4 w-4 text-primary/60" />
+                            {event.divisions.length} {event.divisions.length === 1 ? "Division" : "Divisions"}
+                          </div>
+                        )}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {event.description && (
+                        <p className="text-sm text-muted-foreground line-clamp-2">
+                          {event.description}
+                        </p>
                       )}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {event.description && (
-                      <p className="text-sm text-muted-foreground line-clamp-2">
-                        {event.description}
-                      </p>
-                    )}
-                    
-                    <div className="flex gap-2">
-                      <Button 
-                        className="flex-1 hover:shadow-[0_0_15px_rgba(197,232,108,0.4)] transition-all"
-                        onClick={() => navigate(`/tournament/${event.id}/register`)}
-                      >
-                        Register Team
-                      </Button>
-                      <Button 
-                        variant="outline"
-                        onClick={() => navigate(`/tournament/${event.id}`)}
-                      >
-                        Learn More
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                      
+                      <div className="flex gap-2">
+                        <Button 
+                          className="flex-1 hover:shadow-[0_0_15px_rgba(197,232,108,0.5)] hover:scale-[1.02] transition-all duration-200"
+                          onClick={() => navigate(`/tournament/${event.id}/register`)}
+                        >
+                          Register Team
+                        </Button>
+                        <Button 
+                          variant="outline"
+                          className="hover:bg-primary hover:text-primary-foreground transition-all duration-200"
+                          onClick={() => navigate(`/tournament/${event.id}`)}
+                        >
+                          Learn More
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
                 </motion.div>
               ))}
             </div>
