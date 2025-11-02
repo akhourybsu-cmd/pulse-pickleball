@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useToast } from "@/hooks/use-toast";
 import { Users, EyeOff, Eye, MapPin, Plus, Trash2, LogOut, User as UserIcon } from "lucide-react";
+import { motion } from "framer-motion";
 import logo from "@/assets/pulse-logo-new.png";
 import {
   Dialog,
@@ -279,14 +280,15 @@ export default function CourtConnector() {
         </div>
       </nav>
 
-      <div className="container mx-auto px-4 py-6 space-y-6">
-
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="space-y-2">
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold">Court Connector</h1>
-            <p className="text-muted-foreground md:text-lg">Select a court to view games and connect with players</p>
-          </div>
-          <div className="flex gap-2">
+      {/* Hero Section with Gradient Background */}
+      <div className="bg-gradient-to-br from-background via-muted/10 to-background py-12">
+        <div className="container mx-auto px-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="space-y-2">
+              <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold">Court Connector</h1>
+              <p className="text-muted-foreground md:text-lg">Select a court to view games and connect with players</p>
+            </div>
+            <div className="flex gap-2">
             <Dialog open={addCourtDialogOpen} onOpenChange={setAddCourtDialogOpen}>
               <DialogTrigger asChild>
                 <Button className="gap-2">
@@ -348,18 +350,30 @@ export default function CourtConnector() {
                 {showHidden ? 'Hide' : 'Show'} Hidden ({hiddenCount})
               </Button>
             )}
+            </div>
           </div>
         </div>
+      </div>
 
-        {loading ? (
-          <div className="text-center py-12">Loading courts...</div>
-        ) : visibleCourts.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {visibleCourts.map((court) => (
-              <Card 
-                key={court.id} 
-                className={`cursor-pointer hover:shadow-lg transition-all ${court.isHidden ? 'opacity-60' : ''}`}
-              >
+      {/* Courts Grid Section */}
+      <div className="bg-gradient-to-br from-background via-muted/10 to-background py-8">
+        <div className="container mx-auto px-4">
+          {loading ? (
+            <div className="text-center py-12">Loading courts...</div>
+          ) : visibleCourts.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {visibleCourts.map((court, index) => (
+                <motion.div
+                  key={court.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: index * 0.1 }}
+                  whileHover={{ y: -4, transition: { duration: 0.2 } }}
+                  className={court.isHidden ? 'opacity-60' : ''}
+                >
+                  <Card 
+                    className="cursor-pointer rounded-2xl border-2 border-border shadow-lg hover:shadow-[0_2px_6px_rgba(0,0,0,0.05),0_4px_12px_rgba(169,220,61,0.15)] transition-all duration-300 h-full bg-card"
+                  >
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="flex-1" onClick={() => navigate(`/court/board/${court.id}`)}>
@@ -429,22 +443,24 @@ export default function CourtConnector() {
                     </div>
                   )}
                 </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <Card>
-            <CardContent className="text-center py-12 space-y-4">
-              <p className="text-muted-foreground">
-                {showHidden ? 'All courts are hidden' : 'No courts added yet'}
-              </p>
-              <Button onClick={() => setAddCourtDialogOpen(true)} className="gap-2">
-                <Plus className="w-4 h-4" />
-                Add Your First Court
-              </Button>
-            </CardContent>
-          </Card>
-        )}
+                  </Card>
+                </motion.div>
+              ))}
+            </div>
+          ) : (
+            <Card className="rounded-2xl border-2 border-border shadow-lg">
+              <CardContent className="text-center py-12 space-y-4">
+                <p className="text-muted-foreground">
+                  {showHidden ? 'All courts are hidden' : 'No courts added yet'}
+                </p>
+                <Button onClick={() => setAddCourtDialogOpen(true)} className="gap-2">
+                  <Plus className="w-4 h-4" />
+                  Add Your First Court
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </div>
     </div>
   );
