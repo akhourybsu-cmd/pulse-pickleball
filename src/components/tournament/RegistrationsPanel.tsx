@@ -417,10 +417,15 @@ export function RegistrationsPanel({ eventId, divisions }: RegistrationsPanelPro
                 className="flex items-start justify-between p-4 border rounded-lg"
               >
                 <div className="flex-1 space-y-2">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 flex-wrap">
                     <h4 className="font-medium">{reg.team_name}</h4>
                     {getStatusBadge(reg.status)}
                     <Badge variant="outline">{reg.division?.name}</Badge>
+                    {reg.additional_info?.policy_accepted && (
+                      <Badge variant="default" className="bg-green-600">
+                        ✓ Policy Accepted
+                      </Badge>
+                    )}
                   </div>
                   <div className="text-sm space-y-1">
                     <p>
@@ -442,7 +447,22 @@ export function RegistrationsPanel({ eventId, divisions }: RegistrationsPanelPro
                     <p className="text-xs text-muted-foreground">
                       Registered: {format(new Date(reg.registration_date), "MMM d, yyyy 'at' h:mm a")}
                     </p>
+                    {reg.additional_info?.policy_timestamp && (
+                      <p className="text-xs text-muted-foreground">
+                        Policy accepted: {format(new Date(reg.additional_info.policy_timestamp), "MMM d, yyyy 'at' h:mm a")}
+                      </p>
+                    )}
                   </div>
+                  {reg.additional_info?.policy_text && (
+                    <details className="text-xs">
+                      <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+                        View accepted policy
+                      </summary>
+                      <pre className="mt-2 p-2 bg-muted rounded text-xs whitespace-pre-wrap">
+                        {reg.additional_info.policy_text}
+                      </pre>
+                    </details>
+                  )}
                   {reg.notes && (
                     <p className="text-sm text-muted-foreground italic">
                       Note: {reg.notes}

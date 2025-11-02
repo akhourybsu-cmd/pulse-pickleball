@@ -43,6 +43,17 @@ serve(async (req) => {
       <p><strong>Division:</strong> ${registration.division.name}</p>
       <p><strong>Status:</strong> Pending approval</p>
       <p>We'll notify you once the tournament director reviews your registration.</p>
+      
+      ${registration.additional_info?.policy_text ? `
+        <hr style="margin: 20px 0; border: none; border-top: 1px solid #ddd;" />
+        <h2>Tournament Policies You Agreed To</h2>
+        <div style="background: #f5f5f5; padding: 15px; border-left: 4px solid #333; white-space: pre-wrap;">
+          ${registration.additional_info.policy_text}
+        </div>
+        <p style="font-size: 12px; color: #666; margin-top: 10px;">
+          Policy accepted on: ${new Date(registration.additional_info.policy_timestamp).toLocaleString()}
+        </p>
+      ` : ''}
     `;
 
     const emailResponse = await fetch("https://api.resend.com/emails", {

@@ -163,6 +163,17 @@ export default function TournamentRegister() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
+      // Capture the full policy text from the review step
+      const policyText = `
+        ARRIVAL: Please arrive 15 minutes early for check-in. Warm-up begins 30 minutes before the first match.
+        
+        SPORTSMANSHIP: All players are expected to maintain respectful conduct. Unsportsmanlike behavior may result in disqualification.
+        
+        REFUND POLICY: Cancellations made more than 48 hours before the event receive a 50% refund. No refunds for cancellations within 48 hours of the event.
+        
+        WEATHER: In case of inclement weather, the tournament director will notify all registered teams via email.
+      `.trim();
+
       const { data: registration, error: regError } = await supabase
         .from("tournament_registrations")
         .insert({
@@ -183,6 +194,9 @@ export default function TournamentRegister() {
               phone: formData.emergencyPhone,
             },
             waiver_accepted: formData.waiverAccepted,
+            policy_text: policyText,
+            policy_accepted: true,
+            policy_timestamp: new Date().toISOString(),
           },
         })
         .select()

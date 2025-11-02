@@ -6,10 +6,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Loader2, Play, Trophy, MapPin, Edit, FileText, Trash2, AlertCircle, CheckCircle2, PlayCircle, Zap } from "lucide-react";
+import { Loader2, Play, Trophy, MapPin, Edit, FileText, Trash2, AlertCircle, CheckCircle2, PlayCircle, Zap, Calendar, Clock } from "lucide-react";
 import { ScoreEntryDialog } from "./ScoreEntryDialog";
 import { CourtAssignmentDialog } from "./CourtAssignmentDialog";
 import { BulkOperationsDialog } from "./BulkOperationsDialog";
+import { BulkSchedulerDialog } from "./BulkSchedulerDialog";
 
 // Component to show score edit tooltip with editor info
 function ScoreEditedTooltip({ scoreEditedBy, scoreEditedAt }: { scoreEditedBy: string | null, scoreEditedAt: string }) {
@@ -96,10 +97,26 @@ export function MatchesPanel({ divisionId, refreshKey, divisionStatus }: Matches
   const [eventId, setEventId] = useState<string>("");
   const [autoAssigning, setAutoAssigning] = useState(false);
   const [isBulkDialogOpen, setIsBulkDialogOpen] = useState(false);
+  const [isSchedulerDialogOpen, setIsSchedulerDialogOpen] = useState(false);
+  const [courts, setCourts] = useState<any[]>([]);
+
 
   useEffect(() => {
     fetchMatches();
+    fetchCourts();
   }, [divisionId, refreshKey]);
+
+  const fetchCourts = async () => {
+    if (!eventId) return;
+    
+    const { data } = await supabase
+      .from("tournaments_courts")
+      .select("*")
+      .eq("event_id", eventId)
+      .order("court_number");
+    
+    if (data) setCourts(data);
+  };
 
   const fetchMatches = async () => {
     setLoading(true);
@@ -121,6 +138,16 @@ export function MatchesPanel({ divisionId, refreshKey, divisionStatus }: Matches
 
     if (!error && data && data.length > 0) {
       setEventId(data[0].tournaments_divisions.event_id);
+      // Fetch courts after we have event ID
+      if (data[0].tournaments_divisions.event_id) {
+        const { data: courtsData } = await supabase
+          .from("tournaments_courts")
+          .select("*")
+          .eq("event_id", data[0].tournaments_divisions.event_id)
+          .order("court_number");
+        
+        if (courtsData) setCourts(courtsData);
+      }
     }
 
     if (error) {
@@ -368,6 +395,15 @@ export function MatchesPanel({ divisionId, refreshKey, divisionStatus }: Matches
               <Button
                 variant="outline"
                 size="sm"
+                onClick={() => setIsSchedulerDialogOpen(true)}
+                disabled={matches.length === 0}
+              >
+                <Calendar className="h-4 w-4 mr-1" />
+                Schedule Times
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={handleAutoAssignCourts}
                 disabled={autoAssigning || matches.length === 0}
               >
@@ -461,6 +497,15 @@ export function MatchesPanel({ divisionId, refreshKey, divisionStatus }: Matches
                       <Badge variant="secondary">
                         Court {match.court.court_number}
                         {match.court.court_name && ` (${match.court.court_name})`}
+                      </Badge>
+                    )}
+                    {match.scheduled_time && (
+                      <Badge variant="outline" className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {new Date(match.scheduled_time).toLocaleTimeString([], { 
+                          hour: 'numeric', 
+                          minute: '2-digit' 
+                        })}
                       </Badge>
                     )}
                     {getStatusBadge(match.status)}
@@ -611,6 +656,15 @@ export function MatchesPanel({ divisionId, refreshKey, divisionStatus }: Matches
         open={isBulkDialogOpen}
         onOpenChange={setIsBulkDialogOpen}
         matches={matches}
+        onSuccess={fetchMatches}
+      />
+
+      <BulkSchedulerDialog
+        open={isSchedulerDialogOpen}
+        onOpenChange={setIsSchedulerDialogOpen}
+        divisionId={divisionId}
+        matches={matches}
+        courts={courts}
         onSuccess={fetchMatches}
       />
     </>

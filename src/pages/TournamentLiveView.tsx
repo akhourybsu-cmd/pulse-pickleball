@@ -33,6 +33,7 @@ interface Match {
   team1_score: number | null;
   team2_score: number | null;
   division_id: string;
+  scheduled_time: string | null;
   court: {
     court_name: string | null;
     court_number: number;
@@ -107,6 +108,7 @@ const TournamentLiveView = () => {
             team1_score,
             team2_score,
             division_id,
+            scheduled_time,
             court:tournaments_courts(court_name, court_number),
             team1:tournaments_teams!tournaments_matches_team1_id_fkey(team_name),
             team2:tournaments_teams!tournaments_matches_team2_id_fkey(team_name)
@@ -306,8 +308,11 @@ const TournamentLiveView = () => {
                     <div className="space-y-4">
                       {liveMatches.map(match => (
                         <div key={match.id} className="bg-slate-800 rounded-lg p-4">
-                          <div className="text-sm text-slate-400 mb-2">
-                            {match.court?.court_name || `Court ${match.court?.court_number}`}
+                          <div className="text-sm text-slate-400 mb-2 flex items-center gap-2">
+                            <span>{match.court?.court_name || `Court ${match.court?.court_number}`}</span>
+                            {match.scheduled_time && (
+                              <span>• {new Date(match.scheduled_time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
+                            )}
                           </div>
                           <div className="flex items-center justify-between">
                             <span className="text-xl font-medium">{match.team1.team_name}</span>
@@ -337,8 +342,11 @@ const TournamentLiveView = () => {
                     <div className="space-y-4">
                       {nextMatches.slice(0, 5).map(match => (
                         <div key={match.id} className="bg-slate-800 rounded-lg p-4">
-                          <div className="text-sm text-slate-400 mb-2">
-                            {match.court?.court_name || `Court ${match.court?.court_number}`}
+                          <div className="text-sm text-slate-400 mb-2 flex items-center gap-2">
+                            <span>{match.court?.court_name || `Court ${match.court?.court_number}` || 'Court TBD'}</span>
+                            {match.scheduled_time && (
+                              <span>• {new Date(match.scheduled_time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
+                            )}
                           </div>
                           <div className="text-xl font-medium">{match.team1.team_name}</div>
                           <div className="text-slate-500 text-sm my-1">vs</div>
