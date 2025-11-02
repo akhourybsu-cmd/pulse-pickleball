@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useToast } from "@/hooks/use-toast";
-import { Users, EyeOff, Eye, MapPin, Plus, Trash2, LogOut, User as UserIcon } from "lucide-react";
+import { Users, EyeOff, Eye, MapPin, Plus, Trash2, LogOut, User as UserIcon, Dumbbell } from "lucide-react";
 import { motion } from "framer-motion";
 import logo from "@/assets/pulse-logo-new.png";
 import {
@@ -297,80 +297,154 @@ export default function CourtConnector() {
         </div>
       </nav>
 
-      {/* Hero Section with Gradient Background */}
-      <div className="bg-gradient-to-br from-background via-muted/10 to-background py-12">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="space-y-2">
-              <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold">Court Connector</h1>
-              <p className="text-muted-foreground md:text-lg">Select a court to view games and connect with players</p>
-            </div>
-            <div className="flex gap-2">
-            <Dialog open={addCourtDialogOpen} onOpenChange={setAddCourtDialogOpen}>
-              <DialogTrigger asChild>
-                <Button className="gap-2">
-                  <Plus className="w-4 h-4" />
-                  Add Court
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto bg-background z-50">
-                <DialogHeader>
-                  <DialogTitle>Add a Court</DialogTitle>
-                  <DialogDescription>
-                    Search and add courts to your list
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <Input
-                    placeholder="Search courts by name, city, or state..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                  <div className="space-y-2 max-h-[50vh] overflow-y-auto">
-                    {availableCourts.length > 0 ? (
-                      availableCourts.map((court) => (
-                        <Card key={court.id} className="cursor-pointer hover:bg-accent/50 transition-colors">
-                          <CardHeader className="p-4" onClick={() => handleAddCourt(court.id)}>
-                            <div className="flex items-start justify-between">
-                              <div>
-                                <CardTitle className="text-lg">{court.name}</CardTitle>
-                                <CardDescription className="flex items-center gap-1 mt-1">
-                                  <MapPin className="w-3 h-3" />
-                                  {court.city}, {court.state}
-                                </CardDescription>
-                              </div>
-                              <Button size="sm" variant="outline" className="gap-2">
-                                <Plus className="w-4 h-4" />
-                                Add
-                              </Button>
-                            </div>
-                          </CardHeader>
-                        </Card>
-                      ))
-                    ) : (
-                      <p className="text-center text-muted-foreground py-8">
-                        {searchQuery ? "No courts found matching your search" : "All courts have been added"}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
-            {hiddenCount > 0 && (
-              <Button 
-                onClick={() => setShowHidden(!showHidden)} 
-                variant="outline" 
-                size="sm"
-                className="gap-2"
+      {/* Pulse-Branded Header Section */}
+      <motion.div 
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="relative py-6 px-4 border-b-2"
+        style={{
+          background: 'linear-gradient(180deg, #E8FBD5 0%, #FFFFFF 80%)',
+          borderBottomColor: 'rgba(169, 220, 61, 0.15)',
+        }}
+      >
+        <div className="container mx-auto">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+            {/* Title & Subtitle */}
+            <div className="space-y-2 flex-1">
+              <motion.div 
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6, delay: 0.1 }}
+                className="flex items-center gap-3"
               >
-                {showHidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                {showHidden ? 'Hide' : 'Show'} Hidden ({hiddenCount})
-              </Button>
-            )}
+                <Dumbbell className="w-5 h-5 text-primary" style={{ color: '#A9DC3D' }} />
+                <h1 
+                  className="text-3xl md:text-4xl lg:text-5xl font-bold border-l-4 pl-3"
+                  style={{
+                    color: '#0E4C58',
+                    letterSpacing: '0.02em',
+                    textShadow: '0px 1px 2px rgba(169, 220, 61, 0.25)',
+                    borderLeftColor: '#A9DC3D',
+                  }}
+                >
+                  Court Connector
+                  {/* Accent line animation */}
+                  <motion.div
+                    initial={{ scaleX: 0, opacity: 0 }}
+                    animate={{ scaleX: 1, opacity: 0.3 }}
+                    transition={{ duration: 1.5, ease: "easeInOut" }}
+                    className="h-0.5 mt-1 origin-left"
+                    style={{ backgroundColor: '#A9DC3D' }}
+                  />
+                </h1>
+              </motion.div>
+              <motion.p 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+                className="text-base md:text-lg mt-2"
+                style={{ 
+                  color: '#53797E',
+                  fontWeight: 400,
+                }}
+              >
+                Find local courts, connect with players, and rally your next match.
+              </motion.p>
             </div>
+
+            {/* Buttons Card */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+              className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto rounded-xl p-3 shadow-sm"
+              style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.6)',
+                backdropFilter: 'blur(8px)',
+              }}
+            >
+              <Dialog open={addCourtDialogOpen} onOpenChange={setAddCourtDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button 
+                    className="gap-2 transition-transform hover:scale-105"
+                    style={{
+                      backgroundColor: '#B9E43B',
+                      color: '#0E4C58',
+                    }}
+                  >
+                    <motion.div
+                      whileHover={{ rotate: 45 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <Plus className="w-4 h-4" />
+                    </motion.div>
+                    Add Court
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto bg-background z-50">
+                  <DialogHeader>
+                    <DialogTitle>Add a Court</DialogTitle>
+                    <DialogDescription>
+                      Search and add courts to your list
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <Input
+                      placeholder="Search courts by name, city, or state..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                    <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+                      {availableCourts.length > 0 ? (
+                        availableCourts.map((court) => (
+                          <Card key={court.id} className="cursor-pointer hover:bg-accent/50 transition-colors">
+                            <CardHeader className="p-4" onClick={() => handleAddCourt(court.id)}>
+                              <div className="flex items-start justify-between">
+                                <div>
+                                  <CardTitle className="text-lg">{court.name}</CardTitle>
+                                  <CardDescription className="flex items-center gap-1 mt-1">
+                                    <MapPin className="w-3 h-3" />
+                                    {court.city}, {court.state}
+                                  </CardDescription>
+                                </div>
+                                <Button size="sm" variant="outline" className="gap-2">
+                                  <Plus className="w-4 h-4" />
+                                  Add
+                                </Button>
+                              </div>
+                            </CardHeader>
+                          </Card>
+                        ))
+                      ) : (
+                        <p className="text-center text-muted-foreground py-8">
+                          {searchQuery ? "No courts found matching your search" : "All courts have been added"}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+              {hiddenCount > 0 && (
+                <Button 
+                  onClick={() => setShowHidden(!showHidden)} 
+                  variant="ghost"
+                  size="sm"
+                  className="gap-2 border transition-transform hover:scale-105"
+                  style={{
+                    borderColor: '#0E4C58',
+                    color: '#0E4C58',
+                    backgroundColor: '#FFFFFF',
+                  }}
+                >
+                  {showHidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showHidden ? 'Hide' : 'Show'} Hidden ({hiddenCount})
+                </Button>
+              )}
+            </motion.div>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {/* Courts Grid Section */}
       <div className="bg-gradient-to-br from-background via-muted/10 to-background py-8">
