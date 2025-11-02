@@ -268,6 +268,11 @@ export function PlayerManagementDialog({
                   ))}
                 </SelectContent>
               </Select>
+              {substituteOriginal && (
+                <div className="text-sm text-muted-foreground mt-1">
+                  Selected: <strong>{getPlayerName(substituteOriginal)}</strong>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -278,6 +283,11 @@ export function PlayerManagementDialog({
                 placeholder="Search for replacement player..."
                 excludePlayerIds={players.map(p => p.player_id).filter(id => id !== substituteOriginal)}
               />
+              {substituteNew && (
+                <div className="text-sm text-muted-foreground mt-1">
+                  Selected: <strong>{getPlayerName(substituteNew)}</strong>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">
