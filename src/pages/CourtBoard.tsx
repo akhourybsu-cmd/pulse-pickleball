@@ -9,11 +9,9 @@ import { CourtHeatmap } from "@/components/court/CourtHeatmap";
 import { CourtAnalytics } from "@/components/court/CourtAnalytics";
 import { CourtPresence } from "@/components/court/CourtPresence";
 import { CourtCheckIn } from "@/components/court/CourtCheckIn";
-import { LFGList } from "@/components/court/LFGList";
-import { CourtChannel } from "@/components/court/CourtChannel";
-import { CreateLFGDialog } from "@/components/court/CreateLFGDialog";
+import { CourtFeed } from "@/components/court/feed/CourtFeed";
 import { useToast } from "@/hooks/use-toast";
-import { MapPin, Users, MessageSquare, Activity, LogOut, User as UserIcon } from "lucide-react";
+import { MapPin, MessageSquare, Activity, LogOut, User as UserIcon } from "lucide-react";
 import { motion } from "framer-motion";
 import logo from "@/assets/pulse-logo-new.png";
 
@@ -33,7 +31,6 @@ export default function CourtBoard() {
   const [channelId, setChannelId] = useState<string>("");
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showCreateLFG, setShowCreateLFG] = useState(false);
 
   useEffect(() => {
     checkUser();
@@ -200,17 +197,12 @@ export default function CourtBoard() {
           )}
         </div>
 
-        <Tabs defaultValue="lfg" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 h-auto">
-            <TabsTrigger value="lfg" className="gap-1 flex-col py-2 px-2 text-xs sm:flex-row sm:gap-2 sm:text-sm">
-              <Users className="w-3 h-3 sm:w-4 sm:h-4" />
-              <span className="hidden sm:inline">Looking for Game</span>
-              <span className="sm:hidden">LFG</span>
-            </TabsTrigger>
-            <TabsTrigger value="chat" className="gap-1 flex-col py-2 px-2 text-xs sm:flex-row sm:gap-2 sm:text-sm">
+        <Tabs defaultValue="feed" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 h-auto">
+            <TabsTrigger value="feed" className="gap-1 flex-col py-2 px-2 text-xs sm:flex-row sm:gap-2 sm:text-sm">
               <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4" />
-              <span className="hidden sm:inline">Court Chat</span>
-              <span className="sm:hidden">Chat</span>
+              <span className="hidden sm:inline">Court Feed</span>
+              <span className="sm:hidden">Feed</span>
             </TabsTrigger>
             <TabsTrigger value="stats" className="gap-1 flex-col py-2 px-2 text-xs sm:flex-row sm:gap-2 sm:text-sm">
               <Activity className="w-3 h-3 sm:w-4 sm:h-4" />
@@ -219,23 +211,10 @@ export default function CourtBoard() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="lfg" className="space-y-3 sm:space-y-4">
-            <div className="flex justify-end">
-              <Button onClick={() => setShowCreateLFG(true)} className="w-full sm:w-auto">
-                Post LFG
-              </Button>
-            </div>
+          <TabsContent value="feed">
             <Card>
-              <CardContent className="pt-4 sm:pt-6 px-3 sm:px-6">
-                <LFGList courtId={court.id} userId={currentUserId} />
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="chat">
-            <Card>
-              <CardContent className="pt-4 sm:pt-6 px-0 sm:px-6">
-                <CourtChannel courtId={court.id} userId={currentUserId} />
+              <CardContent className="pt-4 sm:pt-6">
+                <CourtFeed courtId={court.id} />
               </CardContent>
             </Card>
           </TabsContent>
@@ -245,21 +224,6 @@ export default function CourtBoard() {
             <CourtHeatmap courtId={court.id} />
           </TabsContent>
         </Tabs>
-
-        {showCreateLFG && (
-          <CreateLFGDialog
-            courtId={court.id}
-            userId={currentUserId}
-            onClose={() => setShowCreateLFG(false)}
-            onSuccess={() => {
-              setShowCreateLFG(false);
-              toast({
-                title: "LFG Posted",
-                description: "Your looking for game post has been created",
-              });
-            }}
-          />
-        )}
       </div>
     </div>
   );
