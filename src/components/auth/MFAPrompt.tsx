@@ -16,11 +16,17 @@ export const MFAPrompt = () => {
 
   const checkIfShouldPrompt = async () => {
     try {
-      // Check if user already dismissed the prompt in this session
-      const sessionDismissed = sessionStorage.getItem("mfa-prompt-dismissed");
-      if (sessionDismissed === "true") {
-        setDismissed(true);
-        return;
+      // Check if user already dismissed the prompt recently
+      const dismissedUntil = localStorage.getItem("mfa-prompt-dismissed-until");
+      if (dismissedUntil) {
+        const dismissedTime = new Date(dismissedUntil).getTime();
+        if (Date.now() < dismissedTime) {
+          setDismissed(true);
+          return;
+        } else {
+          // Clear expired dismissal
+          localStorage.removeItem("mfa-prompt-dismissed-until");
+        }
       }
 
       const { data, error } = await supabase.auth.mfa.listFactors();
@@ -38,10 +44,12 @@ export const MFAPrompt = () => {
   const handleDismiss = () => {
     setShowPrompt(false);
     setDismissed(true);
-    sessionStorage.setItem("mfa-prompt-dismissed", "true");
   };
 
   const handleSetupLater = () => {
+    // Set dismissal for 24 hours
+    const dismissUntil = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    localStorage.setItem("mfa-prompt-dismissed-until", dismissUntil.toISOString());
     handleDismiss();
   };
 
