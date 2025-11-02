@@ -92,7 +92,7 @@ export default function Tournaments() {
       <PageHeader userId={userId} />
       
       {/* Hero Section */}
-      <section className="relative min-h-[600px] flex items-center justify-center overflow-hidden bg-gradient-to-br from-primary via-primary/80 to-accent">
+      <section className="relative min-h-[300px] flex items-center justify-center overflow-hidden bg-gradient-to-br from-primary via-primary/80 to-accent">
         <div className="absolute inset-0 bg-gradient-to-r from-primary/20 via-accent/20 to-primary/20 animate-[gradient_8s_ease_infinite] bg-[length:200%_100%]" />
         
         <motion.div 
@@ -229,42 +229,40 @@ export default function Tournaments() {
             className="grid md:grid-cols-2 gap-12 items-center"
           >
             <div className="space-y-6">
-              <div className="grid grid-cols-3 gap-4">
+              <h3 className="text-2xl font-bold mb-6">What Makes Pulse Different</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <motion.div 
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: 0.1 }}
-                  className="bg-card p-6 rounded-lg text-center shadow-sm"
+                  className="bg-card p-6 rounded-lg shadow-sm"
                 >
-                  <div className="text-4xl font-bold text-primary mb-2">
-                    <CountUp end={30000} duration={2.5} suffix="+" separator="," enableScrollSpy scrollSpyOnce />
-                  </div>
-                  <div className="text-sm text-muted-foreground">Matches Hosted</div>
+                  <Users className="h-8 w-8 text-primary mb-3" />
+                  <div className="font-semibold mb-2">Quick Match Recording</div>
+                  <div className="text-sm text-muted-foreground">Record your matches played at local courts in seconds</div>
                 </motion.div>
                 <motion.div 
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: 0.2 }}
-                  className="bg-card p-6 rounded-lg text-center shadow-sm"
+                  className="bg-card p-6 rounded-lg shadow-sm"
                 >
-                  <div className="text-4xl font-bold text-primary mb-2">
-                    <CountUp end={40} duration={2.5} suffix="+" enableScrollSpy scrollSpyOnce />
-                  </div>
-                  <div className="text-sm text-muted-foreground">States Represented</div>
+                  <MessageCircle className="h-8 w-8 text-primary mb-3" />
+                  <div className="font-semibold mb-2">Court Connector</div>
+                  <div className="text-sm text-muted-foreground">Connect with players in your area and find games near you</div>
                 </motion.div>
                 <motion.div 
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: 0.3 }}
-                  className="bg-card p-6 rounded-lg text-center shadow-sm"
+                  className="bg-card p-6 rounded-lg shadow-sm"
                 >
-                  <div className="text-4xl font-bold text-primary mb-2">
-                    <CountUp end={100} duration={2.5} suffix="%" enableScrollSpy scrollSpyOnce />
-                  </div>
-                  <div className="text-sm text-muted-foreground">Transparent Brackets</div>
+                  <Trophy className="h-8 w-8 text-primary mb-3" />
+                  <div className="font-semibold mb-2">Easy Round Robins</div>
+                  <div className="text-sm text-muted-foreground">Start your own Round Robin event with easy to use and set up features</div>
                 </motion.div>
               </div>
             </div>
@@ -321,7 +319,7 @@ export default function Tournaments() {
           className="text-center mb-8"
         >
           <p className="text-2xl font-semibold text-foreground px-4">
-            Join tournaments across the nation — from local rec centers to regional championships.
+            Join tournaments in your region — from local rec centers to regional championships.
           </p>
         </motion.div>
       </section>
