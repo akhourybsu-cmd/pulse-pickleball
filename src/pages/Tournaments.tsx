@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar, MapPin, Users, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
-import { BackToDashboard } from "@/components/BackToDashboard";
+import { PageHeader } from "@/components/PageHeader";
 
 interface TournamentEvent {
   id: string;
@@ -33,10 +33,16 @@ interface TournamentEvent {
 export default function Tournaments() {
   const [events, setEvents] = useState<TournamentEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userId, setUserId] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
+    const checkUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUserId(user?.id || null);
+    };
+    checkUser();
     fetchOpenTournaments();
   }, []);
 
@@ -138,24 +144,27 @@ export default function Tournaments() {
 
   if (loading) {
     return (
-      <div className="container max-w-6xl py-8">
-        <BackToDashboard />
-        <div className="flex items-center justify-center py-12">
-          <p className="text-muted-foreground">Loading tournaments...</p>
+      <div className="min-h-screen bg-background">
+        <PageHeader userId={userId} />
+        <div className="container max-w-6xl py-8">
+          <div className="flex items-center justify-center py-12">
+            <p className="text-muted-foreground">Loading tournaments...</p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="container max-w-6xl py-8">
-      <BackToDashboard />
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold mb-2">Open Tournaments</h1>
-        <p className="text-muted-foreground">
-          Register your team for upcoming tournaments
-        </p>
-      </div>
+    <div className="min-h-screen bg-background">
+      <PageHeader userId={userId} />
+      <div className="container max-w-6xl py-8">
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold mb-2">Open Tournaments</h1>
+          <p className="text-muted-foreground">
+            Register your team for upcoming tournaments
+          </p>
+        </div>
 
       {events.length === 0 ? (
         <Card>
@@ -249,6 +258,7 @@ export default function Tournaments() {
           })}
         </div>
       )}
+      </div>
     </div>
   );
 }
