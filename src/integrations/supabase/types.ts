@@ -138,6 +138,106 @@ export type Database = {
           },
         ]
       }
+      citi_event_attendees: {
+        Row: {
+          checkin_timestamp: string | null
+          event_id: string
+          id: string
+          joined_at: string
+          promoted_at: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          checkin_timestamp?: string | null
+          event_id: string
+          id?: string
+          joined_at?: string
+          promoted_at?: string | null
+          status: string
+          user_id: string
+        }
+        Update: {
+          checkin_timestamp?: string | null
+          event_id?: string
+          id?: string
+          joined_at?: string
+          promoted_at?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "citi_event_attendees_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "citi_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      citi_events: {
+        Row: {
+          court_id: string
+          created_at: string
+          created_by: string
+          description: string | null
+          end_time: string
+          id: string
+          is_published: boolean
+          max_players: number
+          price_label: string | null
+          skill_tag: string | null
+          start_time: string
+          title: string
+          updated_at: string
+          waitlist_enabled: boolean
+          waitlist_max: number | null
+        }
+        Insert: {
+          court_id: string
+          created_at?: string
+          created_by: string
+          description?: string | null
+          end_time: string
+          id?: string
+          is_published?: boolean
+          max_players: number
+          price_label?: string | null
+          skill_tag?: string | null
+          start_time: string
+          title: string
+          updated_at?: string
+          waitlist_enabled?: boolean
+          waitlist_max?: number | null
+        }
+        Update: {
+          court_id?: string
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          end_time?: string
+          id?: string
+          is_published?: boolean
+          max_players?: number
+          price_label?: string | null
+          skill_tag?: string | null
+          start_time?: string
+          title?: string
+          updated_at?: string
+          waitlist_enabled?: boolean
+          waitlist_max?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "citi_events_court_id_fkey"
+            columns: ["court_id"]
+            isOneToOne: false
+            referencedRelation: "courts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contested_matches: {
         Row: {
           contested_at: string
@@ -502,6 +602,7 @@ export type Database = {
       }
       courts: {
         Row: {
+          citi_admins: string[] | null
           city: string
           created_at: string
           id: string
@@ -511,6 +612,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          citi_admins?: string[] | null
           city: string
           created_at?: string
           id?: string
@@ -520,6 +622,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          citi_admins?: string[] | null
           city?: string
           created_at?: string
           id?: string

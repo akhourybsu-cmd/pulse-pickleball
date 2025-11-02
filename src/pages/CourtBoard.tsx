@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { MapPin, MessageSquare, Activity, LogOut, User as UserIcon } from "lucide-react";
 import { motion } from "framer-motion";
 import logo from "@/assets/pulse-logo-new.png";
+import { UpcomingEvents } from "@/components/citi-events/UpcomingEvents";
 
 interface Court {
   id: string;
@@ -31,6 +32,9 @@ export default function CourtBoard() {
   const [channelId, setChannelId] = useState<string>("");
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  const PICKLEBALL_CITI_ID = "836003fb-fbd7-429c-8973-67ac6766a511";
 
   useEffect(() => {
     checkUser();
@@ -43,6 +47,19 @@ export default function CourtBoard() {
   const checkUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     setCurrentUserId(user?.id || null);
+    
+    // Check if user is a Pickleball Citi admin
+    if (user && courtId === PICKLEBALL_CITI_ID) {
+      const { data: courtData } = await supabase
+        .from("courts")
+        .select("citi_admins")
+        .eq("id", PICKLEBALL_CITI_ID)
+        .single();
+      
+      if (courtData?.citi_admins?.includes(user.id)) {
+        setIsAdmin(true);
+      }
+    }
   };
 
   const fetchCourt = async () => {
@@ -187,6 +204,10 @@ export default function CourtBoard() {
       </motion.div>
 
       <div className="container mx-auto px-4 py-6 space-y-6">
+        {courtId === PICKLEBALL_CITI_ID && (
+          <UpcomingEvents courtId={courtId} isAdmin={isAdmin} />
+        )}
+
         <div className="flex flex-col gap-3 sm:gap-4">
           {channelId && (
             <Card>
