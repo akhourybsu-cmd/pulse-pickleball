@@ -68,13 +68,15 @@ export const CourtStats = ({ userId }: CourtStatsProps) => {
       }
     }
 
-    // Fetch matches for this user
+    // Fetch matches for this user with all participants in one query
     const { data: matchesData } = await supabase
       .from("match_participants")
       .select(`
         match_id,
         rating_change,
         rating_before,
+        team,
+        player_id,
         matches!inner(
           id,
           court_id,
@@ -117,13 +119,8 @@ export const CourtStats = ({ userId }: CourtStatsProps) => {
           stat.losses++;
         }
 
-        // Calculate which team this player was on
-        const { data: allParticipants } = await supabase
-          .from("match_participants")
-          .select("player_id, team")
-          .eq("match_id", mp.match_id);
-
-        const playerTeam = allParticipants?.find((p: any) => p.player_id === userId)?.team;
+        // Use the team info already in the participant data
+        const playerTeam = mp.team;
         
         if (playerTeam === 1) {
           stat.points_for += mp.matches.team1_score;
