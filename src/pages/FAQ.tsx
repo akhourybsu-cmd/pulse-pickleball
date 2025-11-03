@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { HelpCircle } from "lucide-react";
+import { HelpCircle, TrendingUp, CalendarDays, Users, MapPin, ArrowRight } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Accordion,
@@ -109,11 +109,14 @@ const FAQ = () => {
 
           <Accordion type="single" collapsible className="space-y-4">
             <AccordionItem value="simple-breakdown">
-            <Card>
+            <Card className="border-l-4 border-l-primary/50 hover:shadow-md transition-shadow">
               <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                <CardTitle className="text-lg text-left">
-                  How is my score calculated? (Simple Version)
-                </CardTitle>
+                <div className="flex items-center gap-3">
+                  <TrendingUp className="h-5 w-5 text-primary" />
+                  <CardTitle className="text-lg text-left">
+                    How is my score calculated? (Simple Version)
+                  </CardTitle>
+                </div>
               </AccordionTrigger>
               <AccordionContent>
                 <CardContent className="space-y-4 text-sm">
@@ -137,11 +140,14 @@ const FAQ = () => {
           </AccordionItem>
 
           <AccordionItem value="how-ratings-work">
-            <Card>
+            <Card className="border-l-4 border-l-primary/50 hover:shadow-md transition-shadow">
               <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                <CardTitle className="text-lg text-left">
-                  How do ratings work?
-                </CardTitle>
+                <div className="flex items-center gap-3">
+                  <TrendingUp className="h-5 w-5 text-primary" />
+                  <CardTitle className="text-lg text-left">
+                    How do ratings work?
+                  </CardTitle>
+                </div>
               </AccordionTrigger>
               <AccordionContent>
                 <CardContent className="space-y-4 text-sm">
@@ -171,11 +177,14 @@ const FAQ = () => {
           </AccordionItem>
 
           <AccordionItem value="when-calculated">
-            <Card>
+            <Card className="border-l-4 border-l-primary/50 hover:shadow-md transition-shadow">
               <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                <CardTitle className="text-lg text-left">
-                  When are ratings calculated?
-                </CardTitle>
+                <div className="flex items-center gap-3">
+                  <CalendarDays className="h-5 w-5 text-primary" />
+                  <CardTitle className="text-lg text-left">
+                    When are ratings calculated?
+                  </CardTitle>
+                </div>
               </AccordionTrigger>
               <AccordionContent>
                 <CardContent className="space-y-4 text-sm">
@@ -206,11 +215,14 @@ const FAQ = () => {
           </AccordionItem>
 
           <AccordionItem value="calculation-formula">
-            <Card>
+            <Card className="border-l-4 border-l-primary/50 hover:shadow-md transition-shadow">
               <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                <CardTitle className="text-lg text-left">
-                  How is the rating change calculated? (Simple Steps)
-                </CardTitle>
+                <div className="flex items-center gap-3">
+                  <TrendingUp className="h-5 w-5 text-primary" />
+                  <CardTitle className="text-lg text-left">
+                    How is the rating change calculated? (Simple Steps)
+                  </CardTitle>
+                </div>
               </AccordionTrigger>
               <AccordionContent>
                 <CardContent className="space-y-4 text-sm">
@@ -280,11 +292,14 @@ const FAQ = () => {
           </AccordionItem>
 
           <AccordionItem value="example">
-            <Card>
+            <Card className="border-l-4 border-l-primary/50 hover:shadow-md transition-shadow">
               <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                <CardTitle className="text-lg text-left">
-                  Can you show me an example?
-                </CardTitle>
+                <div className="flex items-center gap-3">
+                  <TrendingUp className="h-5 w-5 text-primary" />
+                  <CardTitle className="text-lg text-left">
+                    Can you show me an example?
+                  </CardTitle>
+                </div>
               </AccordionTrigger>
               <AccordionContent>
                 <CardContent className="space-y-4 text-sm">
@@ -344,11 +359,14 @@ const FAQ = () => {
 
           <Accordion type="single" collapsible className="space-y-4">
             <AccordionItem value="provisional">
-            <Card>
+            <Card className="border-l-4 border-l-primary/50 hover:shadow-md transition-shadow">
               <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                <CardTitle className="text-lg text-left">
-                  What does "Provisional" mean?
-                </CardTitle>
+                <div className="flex items-center gap-3">
+                  <TrendingUp className="h-5 w-5 text-primary" />
+                  <CardTitle className="text-lg text-left">
+                    What does "Provisional" mean?
+                  </CardTitle>
+                </div>
               </AccordionTrigger>
               <AccordionContent>
                 <CardContent className="space-y-3 text-sm">
@@ -372,11 +390,14 @@ const FAQ = () => {
           </AccordionItem>
 
           <AccordionItem value="contest">
-            <Card>
+            <Card className="border-l-4 border-l-primary/50 hover:shadow-md transition-shadow">
               <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                <CardTitle className="text-lg text-left">
-                  How do I contest a match result?
-                </CardTitle>
+                <div className="flex items-center gap-3">
+                  <HelpCircle className="h-5 w-5 text-primary" />
+                  <CardTitle className="text-lg text-left">
+                    How do I contest a match result?
+                  </CardTitle>
+                </div>
               </AccordionTrigger>
               <AccordionContent>
                 <CardContent className="space-y-3 text-sm">
@@ -384,7 +405,7 @@ const FAQ = () => {
                     If you believe a match result was recorded incorrectly:
                   </p>
                   <ol className="list-decimal list-inside ml-4 space-y-2">
-                    <li>Go to your Match History page</li>
+                    <li>Go to your <Link to="/match-history" className="text-primary hover:underline inline-flex items-center gap-1">Match History page <ArrowRight className="h-3 w-3" /></Link></li>
                     <li>Find the match you want to contest</li>
                     <li>Click the "Contest Result" button</li>
                     <li>Provide a clear explanation of the issue</li>
@@ -399,11 +420,14 @@ const FAQ = () => {
           </AccordionItem>
 
           <AccordionItem value="record-match">
-            <Card>
+            <Card className="border-l-4 border-l-primary/50 hover:shadow-md transition-shadow">
               <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                <CardTitle className="text-lg text-left">
-                  How do I record a match?
-                </CardTitle>
+                <div className="flex items-center gap-3">
+                  <CalendarDays className="h-5 w-5 text-primary" />
+                  <CardTitle className="text-lg text-left">
+                    How do I record a match?
+                  </CardTitle>
+                </div>
               </AccordionTrigger>
               <AccordionContent>
                 <CardContent className="space-y-3 text-sm">
@@ -411,7 +435,7 @@ const FAQ = () => {
                     To record a match result:
                   </p>
                   <ol className="list-decimal list-inside ml-4 space-y-2">
-                    <li>Click "New Match" from the dashboard</li>
+                    <li>Click <Link to="/new-match" className="text-primary hover:underline inline-flex items-center gap-1">"New Match" <ArrowRight className="h-3 w-3" /></Link> from the dashboard</li>
                     <li>Select all four players (your team and opposing team)</li>
                     <li>Enter the final score</li>
                     <li>Choose the match type (Casual, Ladder, League, or Playoffs)</li>
@@ -426,11 +450,14 @@ const FAQ = () => {
           </AccordionItem>
 
           <AccordionItem value="match-history">
-            <Card>
+            <Card className="border-l-4 border-l-primary/50 hover:shadow-md transition-shadow">
               <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                <CardTitle className="text-lg text-left">
-                  Where can I see my match history?
-                </CardTitle>
+                <div className="flex items-center gap-3">
+                  <CalendarDays className="h-5 w-5 text-primary" />
+                  <CardTitle className="text-lg text-left">
+                    Where can I see my match history?
+                  </CardTitle>
+                </div>
               </AccordionTrigger>
               <AccordionContent>
                 <CardContent className="space-y-3 text-sm">
@@ -438,7 +465,7 @@ const FAQ = () => {
                     Your complete match history is available in multiple places:
                   </p>
                   <ul className="list-disc list-inside ml-4 space-y-1">
-                    <li><strong>Match History page:</strong> Access from the dashboard to see all your matches with detailed stats</li>
+                    <li><strong>Match History page:</strong> Access from the <Link to="/dashboard" className="text-primary hover:underline inline-flex items-center gap-1">dashboard <ArrowRight className="h-3 w-3" /></Link> to see all your matches with detailed stats</li>
                     <li><strong>Your Profile:</strong> View your recent matches and performance trends</li>
                     <li><strong>Player Profiles:</strong> See head-to-head records when viewing other players</li>
                   </ul>
@@ -470,11 +497,14 @@ const FAQ = () => {
 
           <Accordion type="single" collapsible className="space-y-4">
             <AccordionItem value="rr-create">
-              <Card>
+              <Card className="border-l-4 border-l-primary/50 hover:shadow-md transition-shadow">
                 <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                  <CardTitle className="text-lg text-left">
-                    How do I create a round robin event?
-                  </CardTitle>
+                  <div className="flex items-center gap-3">
+                    <CalendarDays className="h-5 w-5 text-primary" />
+                    <CardTitle className="text-lg text-left">
+                      How do I create a round robin event?
+                    </CardTitle>
+                  </div>
                 </AccordionTrigger>
                 <AccordionContent>
                   <CardContent className="space-y-3 text-sm">
@@ -482,7 +512,7 @@ const FAQ = () => {
                       To create a round robin event:
                     </p>
                     <ol className="list-decimal list-inside ml-4 space-y-2">
-                      <li>Navigate to "Round Robin" from the main menu</li>
+                      <li>Navigate to <Link to="/events" className="text-primary hover:underline inline-flex items-center gap-1">"Round Robin" <ArrowRight className="h-3 w-3" /></Link> from the main menu</li>
                       <li>Click "Create New Event"</li>
                       <li>Enter event details (name, date, time, location)</li>
                       <li>Set the number of courts available</li>
@@ -498,11 +528,14 @@ const FAQ = () => {
             </AccordionItem>
 
             <AccordionItem value="rr-scheduling">
-              <Card>
+              <Card className="border-l-4 border-l-primary/50 hover:shadow-md transition-shadow">
                 <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                  <CardTitle className="text-lg text-left">
-                    How does round robin scheduling work?
-                  </CardTitle>
+                  <div className="flex items-center gap-3">
+                    <Users className="h-5 w-5 text-primary" />
+                    <CardTitle className="text-lg text-left">
+                      How does round robin scheduling work?
+                    </CardTitle>
+                  </div>
                 </AccordionTrigger>
                 <AccordionContent>
                   <CardContent className="space-y-3 text-sm">
@@ -524,11 +557,14 @@ const FAQ = () => {
             </AccordionItem>
 
             <AccordionItem value="rr-kiosk">
-              <Card>
+              <Card className="border-l-4 border-l-primary/50 hover:shadow-md transition-shadow">
                 <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                  <CardTitle className="text-lg text-left">
-                    What is Kiosk Mode?
-                  </CardTitle>
+                  <div className="flex items-center gap-3">
+                    <TrendingUp className="h-5 w-5 text-primary" />
+                    <CardTitle className="text-lg text-left">
+                      What is Kiosk Mode?
+                    </CardTitle>
+                  </div>
                 </AccordionTrigger>
                 <AccordionContent>
                   <CardContent className="space-y-3 text-sm">
@@ -570,11 +606,14 @@ const FAQ = () => {
 
           <Accordion type="single" collapsible className="space-y-4">
             <AccordionItem value="cc-what">
-              <Card>
+              <Card className="border-l-4 border-l-primary/50 hover:shadow-md transition-shadow">
                 <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                  <CardTitle className="text-lg text-left">
-                    What is Court Connector?
-                  </CardTitle>
+                  <div className="flex items-center gap-3">
+                    <MapPin className="h-5 w-5 text-primary" />
+                    <CardTitle className="text-lg text-left">
+                      What is Court Connector?
+                    </CardTitle>
+                  </div>
                 </AccordionTrigger>
                 <AccordionContent>
                   <CardContent className="space-y-3 text-sm">
@@ -589,7 +628,7 @@ const FAQ = () => {
                       <li><strong>Smart Matching:</strong> Get matched with players of similar skill levels</li>
                     </ul>
                     <p className="text-muted-foreground">
-                      Access Court Connector from the main menu to start connecting with your local pickleball community.
+                      Access <Link to="/court-connector" className="text-primary hover:underline inline-flex items-center gap-1">Court Connector <ArrowRight className="h-3 w-3" /></Link> from the main menu to start connecting with your local pickleball community.
                     </p>
                   </CardContent>
                 </AccordionContent>
@@ -597,11 +636,14 @@ const FAQ = () => {
             </AccordionItem>
 
             <AccordionItem value="cc-checkin">
-              <Card>
+              <Card className="border-l-4 border-l-primary/50 hover:shadow-md transition-shadow">
                 <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                  <CardTitle className="text-lg text-left">
-                    How do check-ins work?
-                  </CardTitle>
+                  <div className="flex items-center gap-3">
+                    <MapPin className="h-5 w-5 text-primary" />
+                    <CardTitle className="text-lg text-left">
+                      How do check-ins work?
+                    </CardTitle>
+                  </div>
                 </AccordionTrigger>
                 <AccordionContent>
                   <CardContent className="space-y-3 text-sm">
@@ -623,11 +665,14 @@ const FAQ = () => {
             </AccordionItem>
 
             <AccordionItem value="cc-lfg">
-              <Card>
+              <Card className="border-l-4 border-l-primary/50 hover:shadow-md transition-shadow">
                 <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                  <CardTitle className="text-lg text-left">
-                    How do I use the Looking for Game (LFG) feature?
-                  </CardTitle>
+                  <div className="flex items-center gap-3">
+                    <Users className="h-5 w-5 text-primary" />
+                    <CardTitle className="text-lg text-left">
+                      How do I use the Looking for Game (LFG) feature?
+                    </CardTitle>
+                  </div>
                 </AccordionTrigger>
                 <AccordionContent>
                   <CardContent className="space-y-3 text-sm">
