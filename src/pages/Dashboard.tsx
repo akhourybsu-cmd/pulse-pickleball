@@ -52,63 +52,33 @@ const Dashboard = () => {
   const unreadCount = notifications.filter(n => n.unread).length;
 
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
-    
     const fetchUser = async () => {
       try {
-        console.log("[Dashboard] Starting to fetch user data...");
-        
-        // Set a timeout to catch hanging requests
-        timeoutId = setTimeout(() => {
-          console.error("[Dashboard] Loading timeout - still loading after 10 seconds");
-          toast.error("Loading is taking longer than expected. Please refresh the page.");
-          setLoading(false);
-        }, 10000);
-
         // Check for existing session first
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
-        if (sessionError) {
-          console.error("[Dashboard] Session error:", sessionError);
-          clearTimeout(timeoutId);
-          navigate("/auth");
-          return;
-        }
-        
-        if (!session?.user) {
-          console.log("[Dashboard] No valid session, redirecting to auth");
-          clearTimeout(timeoutId);
+        if (sessionError || !session?.user) {
+          console.log("No valid session, redirecting to auth");
           navigate("/auth");
           return;
         }
 
         const user = session.user;
-        console.log("[Dashboard] User authenticated:", user.id);
         setUser(user);
 
-        const { data: profileData, error: profileError } = await supabase
+        const { data: profileData, error } = await supabase
           .from("profiles")
           .select("*")
           .eq("id", user.id)
-          .maybeSingle();
+          .single();
 
-        if (profileError) {
-          console.error("[Dashboard] Profile fetch error:", profileError);
+        if (error) {
+          console.error("Profile fetch error:", error);
           toast.error("Failed to load profile");
-          clearTimeout(timeoutId);
           setLoading(false);
           return;
         }
 
-        if (!profileData) {
-          console.error("[Dashboard] No profile found for user");
-          toast.error("Profile not found");
-          clearTimeout(timeoutId);
-          setLoading(false);
-          return;
-        }
-
-        console.log("[Dashboard] Profile loaded successfully");
         setProfile(profileData);
 
         // Check if user is admin
@@ -123,14 +93,10 @@ const Dashboard = () => {
           setIsAdmin(true);
         }
 
-        console.log("[Dashboard] All data loaded successfully");
-        clearTimeout(timeoutId);
         setLoading(false);
       } catch (error) {
-        console.error("[Dashboard] Unexpected error:", error);
+        console.error("Dashboard load error:", error);
         toast.error("Failed to load dashboard");
-        clearTimeout(timeoutId);
-        setLoading(false);
         navigate("/auth");
       }
     };
@@ -139,20 +105,42 @@ const Dashboard = () => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log("[Dashboard] Auth state change:", event);
         if (event === "SIGNED_OUT") {
           navigate("/auth");
         }
       }
     );
 
-    return () => {
-      if (timeoutId) clearTimeout(timeoutId);
-      subscription.unsubscribe();
-    };
+    return () => subscription.unsubscribe();
   }, [navigate]);
 
-  // Check for new participants once on mount
+  // Real-time updates for profile changes
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const channel = supabase
+      .channel('profile-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${user.id}`
+        },
+        (payload) => {
+          setProfile(payload.new as Profile);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
+
+
+  // Check for new participants in user's posts
   useEffect(() => {
     if (!user?.id) return;
 
@@ -178,6 +166,26 @@ const Dashboard = () => {
     };
 
     checkNewParticipants();
+
+    // Listen for new participants
+    const channel = supabase
+      .channel('participant-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'court_post_participants'
+        },
+        () => {
+          checkNewParticipants();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user?.id]);
 
   const handleRefreshStats = async () => {

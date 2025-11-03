@@ -1,4 +1,4 @@
-import { useEffect, useState, memo } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -21,53 +21,70 @@ interface LiveEvent {
   num_rounds: number;
 }
 
-export const ActiveRoundRobinIndicator = memo(function ActiveRoundRobinIndicator() {
+export function ActiveRoundRobinIndicator() {
   const [liveEvents, setLiveEvents] = useState<LiveEvent[]>([]);
+  const [userId, setUserId] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    let mounted = true;
-
-    const fetchLiveEvents = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user || !mounted) return;
-
-        const { data: playerEvents, error } = await supabase
-          .from("round_robin_players")
-          .select(`
-            event_id,
-            round_robin_events!inner (
-              id,
-              name,
-              date,
-              status,
-              current_round,
-              num_rounds
-            )
-          `)
-          .eq("player_id", user.id)
-          .eq("round_robin_events.status", "live");
-
-        if (error) throw error;
-
-        const events = playerEvents
-          ?.map((pe: any) => pe.round_robin_events)
-          .filter(Boolean) || [];
-        
-        if (mounted) setLiveEvents(events);
-      } catch (error) {
-        console.error("Error fetching live events:", error);
-      }
-    };
-
     fetchLiveEvents();
+    
+    const channel = supabase
+      .channel('round-robin-status-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'round_robin_events',
+          filter: `status=eq.live`
+        },
+        () => {
+          fetchLiveEvents();
+        }
+      )
+      .subscribe();
 
     return () => {
-      mounted = false;
+      supabase.removeChannel(channel);
     };
   }, []);
 
+  const fetchLiveEvents = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      
+      setUserId(user.id);
+
+      // Get events where user is a participant and status is live
+      const { data: playerEvents, error } = await supabase
+        .from("round_robin_players")
+        .select(`
+          event_id,
+          round_robin_events!inner (
+            id,
+            name,
+            date,
+            status,
+            current_round,
+            num_rounds
+          )
+        `)
+        .eq("player_id", user.id)
+        .eq("round_robin_events.status", "live");
+
+      if (error) throw error;
+
+      const events = playerEvents
+        ?.map((pe: any) => pe.round_robin_events)
+        .filter(Boolean) || [];
+      
+      setLiveEvents(events);
+    } catch (error) {
+      console.error("Error fetching live events:", error);
+    }
+  };
 
   const handleEventClick = (eventId: string) => {
     navigate(`/round-robin/${eventId}`);
@@ -132,4 +149,4 @@ export const ActiveRoundRobinIndicator = memo(function ActiveRoundRobinIndicator
       </SheetContent>
     </Sheet>
   );
-});
+}
