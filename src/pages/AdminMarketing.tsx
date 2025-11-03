@@ -17,6 +17,7 @@ import {
   Download
 } from "lucide-react";
 import logo from "@/assets/pulse-logo-new.png";
+import leagueFlyer from "@/assets/league-flyer-nov-2025.png";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Footer } from "@/components/Footer";
 import { Separator } from "@/components/ui/separator";
@@ -238,6 +239,54 @@ const AdminMarketing = () => {
                 Upcoming additions include enhanced analytics, mobile app improvements, 
                 advanced tournament formats, and integration with popular court management systems.
               </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Separator className="my-8" />
+
+        {/* Event Flyers Section */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="text-2xl">Event Flyers</CardTitle>
+            <CardDescription>
+              Ready-to-use promotional materials for upcoming events
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              <div className="border rounded-lg p-6 bg-card">
+                <h4 className="font-semibold text-lg mb-3">Advanced Mixed League - November 2025</h4>
+                <div className="grid md:grid-cols-2 gap-6 items-start">
+                  <div className="space-y-2 text-sm">
+                    <p><strong>Event:</strong> 8-Week Round Robin + Playoffs</p>
+                    <p><strong>Start Date:</strong> Saturday, November 22nd</p>
+                    <p><strong>Time:</strong> 6:00-8:00 PM</p>
+                    <p><strong>Location:</strong> Pickleball City, Cranston</p>
+                    <p><strong>Players:</strong> 12 Advanced Mixed</p>
+                    <p className="pt-2 text-muted-foreground">
+                      Download this flyer to share on social media, print for your facility, or include in email newsletters.
+                    </p>
+                  </div>
+                  <div className="flex flex-col items-center gap-3">
+                    <img 
+                      src={leagueFlyer} 
+                      alt="Advanced Mixed League Flyer" 
+                      className="w-full max-w-[300px] rounded-lg shadow-lg border"
+                    />
+                    <a 
+                      href={leagueFlyer} 
+                      download="pulse-advanced-league-nov-2025.png"
+                      className="inline-flex items-center gap-2"
+                    >
+                      <Button variant="outline" size="sm">
+                        <Download className="w-4 h-4 mr-2" />
+                        Download Flyer
+                      </Button>
+                    </a>
+                  </div>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
