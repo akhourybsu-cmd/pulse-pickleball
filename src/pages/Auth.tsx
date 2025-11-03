@@ -123,37 +123,47 @@ const Auth = () => {
         
         if (error) throw error;
         
-        // Check user's MFA preference from profile
+        // Check user's MFA preference from profile (with timeout)
         if (data.session) {
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("mfa_method")
-            .eq("id", data.user?.id)
-            .single();
+          try {
+            // Add timeout to prevent hanging on slow profile queries
+            const profilePromise = supabase
+              .from("profiles")
+              .select("mfa_method")
+              .eq("id", data.user?.id)
+              .maybeSingle();
 
-          const userMFAMethod = profile?.mfa_method || "none";
-          setMfaMethod(userMFAMethod as "authenticator" | "email" | "none");
+            const timeoutPromise = new Promise((_, reject) => 
+              setTimeout(() => reject(new Error("Profile query timeout")), 3000)
+            );
 
-          if (userMFAMethod === "authenticator") {
-            const { data: factors } = await supabase.auth.mfa.listFactors();
-            const hasMFA = factors?.totp?.some((factor) => factor.status === "verified");
-            
-            if (hasMFA) {
-              setShowMFAChallenge(true);
+            const { data: profile } = await Promise.race([profilePromise, timeoutPromise]) as any;
+
+            const userMFAMethod = profile?.mfa_method || "none";
+            setMfaMethod(userMFAMethod as "authenticator" | "email" | "none");
+
+            if (userMFAMethod === "authenticator") {
+              const { data: factors } = await supabase.auth.mfa.listFactors();
+              const hasMFA = factors?.totp?.some((factor) => factor.status === "verified");
+              
+              if (hasMFA) {
+                setShowMFAChallenge(true);
+                setLoading(false);
+                return;
+              }
+            } else if (userMFAMethod === "email") {
+              setShowEmailMFA(true);
               setLoading(false);
               return;
             }
-          } else if (userMFAMethod === "email") {
-            setShowEmailMFA(true);
-            setLoading(false);
-            return;
+          } catch (err) {
+            // If profile query fails or times out, skip MFA check and proceed
+            console.warn("MFA check skipped due to error:", err);
           }
           
-          // No MFA enabled, proceed to dashboard
+          // No MFA enabled or MFA check failed, proceed to dashboard
           toast.success("Logged in successfully!");
-          setTimeout(() => {
-            navigate("/dashboard");
-          }, 100);
+          navigate("/dashboard");
         }
       } else {
         // Sign-up validation: check email and password match
