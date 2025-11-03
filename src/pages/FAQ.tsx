@@ -306,34 +306,6 @@ const FAQ = () => {
             </Card>
           </AccordionItem>
 
-          <AccordionItem value="refresh-stats">
-            <Card>
-              <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                <CardTitle className="text-lg text-left">
-                  What does "Refresh Stats" do?
-                </CardTitle>
-              </AccordionTrigger>
-              <AccordionContent>
-                <CardContent className="space-y-3 text-sm">
-                  <p>
-                    The <strong>Refresh Stats</strong> button on the dashboard recalculates all ratings from scratch using the current rating system.
-                  </p>
-                  <div className="space-y-2">
-                    <p className="font-semibold">When to use it:</p>
-                    <ul className="list-disc list-inside ml-4 space-y-1">
-                      <li>After matches have been added or updated</li>
-                      <li>If you notice ratings don't look correct</li>
-                      <li>After any system updates to the rating algorithm</li>
-                    </ul>
-                  </div>
-                  <p className="text-muted-foreground">
-                    The refresh processes all matches in chronological order and updates everyone's statistics to ensure accuracy.
-                  </p>
-                </CardContent>
-              </AccordionContent>
-            </Card>
-          </AccordionItem>
-
           <AccordionItem value="provisional">
             <Card>
               <AccordionTrigger className="px-6 py-4 hover:no-underline">
