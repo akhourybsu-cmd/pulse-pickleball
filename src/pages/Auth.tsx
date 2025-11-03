@@ -47,29 +47,29 @@ const Auth = () => {
           const { latitude, longitude } = position.coords;
           
           try {
-            // Use OpenStreetMap Nominatim for reverse geocoding
-            const response = await fetch(
-              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1`,
-              {
-                headers: {
-                  'User-Agent': 'PULSE Pickleball App'
-                }
-              }
-            );
-            
-            const data = await response.json();
-            const state = data.address?.state || '';
-            
+            // Call server-side validation edge function
+            const { data, error } = await supabase.functions.invoke('validate-signup-location', {
+              body: { latitude, longitude }
+            });
+
             setCheckingLocation(false);
-            
-            if (state === 'Massachusetts' || state === 'Rhode Island') {
+
+            if (error) {
+              console.error("Location validation error:", error);
+              toast.error("Unable to verify your location. Please try again.");
+              resolve(false);
+              return;
+            }
+
+            if (data.allowed) {
               resolve(true);
             } else {
-              toast.error(`Account creation is only available for Massachusetts and Rhode Island residents. Detected location: ${state || 'Unknown'}`);
+              toast.error(data.message || "Account creation is only available for Massachusetts and Rhode Island residents.");
               resolve(false);
             }
           } catch (error) {
             setCheckingLocation(false);
+            console.error("Location validation error:", error);
             toast.error("Unable to verify your location. Please try again.");
             resolve(false);
           }

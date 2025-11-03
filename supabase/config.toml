@@ -24,3 +24,6 @@ verify_jwt = true
 
 [functions.verify-mfa-code]
 verify_jwt = false
+
+[functions.validate-signup-location]
+verify_jwt = false
