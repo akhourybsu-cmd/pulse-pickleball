@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -27,6 +27,7 @@ interface CreateEventDialogProps {
   onOpenChange: (open: boolean) => void;
   courtId: string;
   eventId?: string | null;
+  duplicateEventId?: string | null;
   onSuccess: () => void;
 }
 
@@ -35,6 +36,7 @@ export function CreateEventDialog({
   onOpenChange,
   courtId,
   eventId,
+  duplicateEventId,
   onSuccess,
 }: CreateEventDialogProps) {
   const [loading, setLoading] = useState(false);
@@ -50,6 +52,56 @@ export function CreateEventDialog({
     price_label: "",
     is_published: false,
   });
+
+  useEffect(() => {
+    if (open && (eventId || duplicateEventId)) {
+      loadEventData(eventId || duplicateEventId);
+    } else if (!open) {
+      resetForm();
+    }
+  }, [open, eventId, duplicateEventId]);
+
+  const loadEventData = async (id: string | null) => {
+    if (!id) return;
+
+    try {
+      const { data, error } = await supabase
+        .from("citi_events")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      if (error) throw error;
+
+      const startDate = new Date(data.start_time);
+      const endDate = new Date(data.end_time);
+      
+      const formatDateTime = (date: Date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        return `${year}-${month}-${day}T${hours}:${minutes}`;
+      };
+
+      setFormData({
+        title: duplicateEventId ? `${data.title} (Copy)` : data.title,
+        description: data.description || "",
+        start_time: formatDateTime(startDate),
+        end_time: formatDateTime(endDate),
+        max_players: String(data.max_players),
+        waitlist_enabled: data.waitlist_enabled,
+        waitlist_max: data.waitlist_max ? String(data.waitlist_max) : "",
+        skill_tag: data.skill_tag || "",
+        price_label: data.price_label || "",
+        is_published: duplicateEventId ? false : data.is_published,
+      });
+    } catch (error: any) {
+      console.error("Error loading event:", error);
+      toast.error("Failed to load event data");
+    }
+  };
 
   const handleSubmit = async () => {
     if (!formData.title || !formData.start_time || !formData.end_time) {
@@ -147,10 +199,12 @@ export function CreateEventDialog({
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {eventId ? "Edit Event" : "Create New Event"}
+            {eventId ? "Edit Event" : duplicateEventId ? "Duplicate Event" : "Create New Event"}
           </DialogTitle>
           <DialogDescription>
-            Create an exclusive event for Pickleball Citi
+            {duplicateEventId 
+              ? "Create a new event based on an existing one" 
+              : "Create an exclusive event for Pickleball Citi"}
           </DialogDescription>
         </DialogHeader>
 

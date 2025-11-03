@@ -19,6 +19,7 @@ export function UpcomingEvents({ courtId, isAdmin }: UpcomingEventsProps) {
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editEventId, setEditEventId] = useState<string | null>(null);
+  const [duplicateEventId, setDuplicateEventId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchEvents();
@@ -250,6 +251,13 @@ export function UpcomingEvents({ courtId, isAdmin }: UpcomingEventsProps) {
         isAdmin={isAdmin}
         onEdit={(id) => {
           setEditEventId(id);
+          setDuplicateEventId(null);
+          setSelectedEventId(null);
+          setCreateDialogOpen(true);
+        }}
+        onDuplicate={(id) => {
+          setDuplicateEventId(id);
+          setEditEventId(null);
           setSelectedEventId(null);
           setCreateDialogOpen(true);
         }}
@@ -261,6 +269,7 @@ export function UpcomingEvents({ courtId, isAdmin }: UpcomingEventsProps) {
         onOpenChange={setCreateDialogOpen}
         courtId={courtId}
         eventId={editEventId}
+        duplicateEventId={duplicateEventId}
         onSuccess={fetchEvents}
       />
     </>

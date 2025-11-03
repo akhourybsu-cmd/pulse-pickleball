@@ -13,7 +13,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
-import { Calendar, Clock, Users, MapPin, Edit, CheckCircle } from "lucide-react";
+import { Calendar, Clock, Users, MapPin, Edit, CheckCircle, Copy } from "lucide-react";
 import { toast } from "sonner";
 
 interface Attendee {
@@ -33,6 +33,7 @@ interface EventDetailDialogProps {
   onOpenChange: (open: boolean) => void;
   isAdmin: boolean;
   onEdit?: (eventId: string) => void;
+  onDuplicate?: (eventId: string) => void;
   onRefresh: () => void;
 }
 
@@ -42,6 +43,7 @@ export function EventDetailDialog({
   onOpenChange,
   isAdmin,
   onEdit,
+  onDuplicate,
   onRefresh,
 }: EventDetailDialogProps) {
   const [event, setEvent] = useState<any>(null);
@@ -249,15 +251,29 @@ export function EventDetailDialog({
               <DialogTitle className="text-2xl">{event.title}</DialogTitle>
               <DialogDescription>Hosted by Pickleball Citi</DialogDescription>
             </div>
-            {isAdmin && onEdit && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onEdit(event.id)}
-              >
-                <Edit className="w-4 h-4 mr-2" />
-                Edit
-              </Button>
+            {isAdmin && (
+              <div className="flex gap-2">
+                {onDuplicate && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onDuplicate(event.id)}
+                  >
+                    <Copy className="w-4 h-4 mr-2" />
+                    Duplicate
+                  </Button>
+                )}
+                {onEdit && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onEdit(event.id)}
+                  >
+                    <Edit className="w-4 h-4 mr-2" />
+                    Edit
+                  </Button>
+                )}
+              </div>
             )}
           </div>
         </DialogHeader>
