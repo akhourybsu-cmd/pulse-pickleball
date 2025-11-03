@@ -38,9 +38,10 @@ export const EmailMFAChallenge = ({ open, email, onSuccess, onCancel }: EmailMFA
 
       if (error) throw error;
       toast.success("Verification code sent to your email");
-    } catch (error: any) {
+    } catch (error) {
       logger.error("Error sending code:", error);
-      toast.error(error.message || "Failed to send verification code");
+      const errorMessage = error instanceof Error ? error.message : "Failed to send verification code";
+      toast.error(errorMessage);
     } finally {
       setSending(false);
     }
@@ -67,9 +68,10 @@ export const EmailMFAChallenge = ({ open, email, onSuccess, onCancel }: EmailMFA
       } else {
         throw new Error(data.error || "Verification failed");
       }
-    } catch (error: any) {
+    } catch (error) {
       logger.error("Email MFA verification error:", error);
-      toast.error(error.message || "Invalid verification code");
+      const errorMessage = error instanceof Error ? error.message : "Invalid verification code";
+      toast.error(errorMessage);
       setCode("");
     } finally {
       setLoading(false);
@@ -77,11 +79,16 @@ export const EmailMFAChallenge = ({ open, email, onSuccess, onCancel }: EmailMFA
   };
 
   // Send code when dialog opens
-  useState(() => {
-    if (open && email) {
-      sendCode();
-    }
-  });
+  const [hasSentInitialCode, setHasSentInitialCode] = useState(false);
+  
+  if (open && email && !hasSentInitialCode) {
+    setHasSentInitialCode(true);
+    sendCode();
+  }
+  
+  if (!open && hasSentInitialCode) {
+    setHasSentInitialCode(false);
+  }
 
   return (
     <Dialog open={open} onOpenChange={(open) => !open && onCancel()}>

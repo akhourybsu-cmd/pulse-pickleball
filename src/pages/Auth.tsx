@@ -194,8 +194,9 @@ const Auth = () => {
         setConfirmPassword("");
         setFullName("");
       }
-    } catch (error: any) {
-      toast.error(error.message || "An error occurred");
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "An error occurred";
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -223,8 +224,9 @@ const Auth = () => {
       toast.success("Password reset email sent! Check your inbox.");
       setIsForgotPassword(false);
       setEmail("");
-    } catch (error: any) {
-      toast.error(error.message || "An error occurred");
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "An error occurred";
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }

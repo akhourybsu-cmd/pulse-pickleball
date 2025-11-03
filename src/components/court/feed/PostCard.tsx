@@ -126,8 +126,7 @@ export const PostCard = ({ post, onCommentClick, onReactionClick, currentUserId,
       toast.success("Post deleted successfully");
       setShowDeleteDialog(false);
       onDelete?.();
-    } catch (error: any) {
-      console.error("Error deleting post:", error);
+    } catch (error) {
       toast.error("Failed to delete post");
     } finally {
       setIsDeleting(false);
@@ -166,8 +165,7 @@ export const PostCard = ({ post, onCommentClick, onReactionClick, currentUserId,
         toast.success("Joined session!");
       }
       onJoinSession?.();
-    } catch (error: any) {
-      console.error("Error joining/leaving session:", error);
+    } catch (error) {
       toast.error("Failed to update session");
     } finally {
       setIsJoining(false);
