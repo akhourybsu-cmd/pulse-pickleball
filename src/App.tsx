@@ -16,6 +16,7 @@ import MatchHistory from "./pages/MatchHistory";
 import CourtHistory from "./pages/CourtHistory";
 import CourtBoard from "./pages/CourtBoard";
 import CourtConnector from "./pages/CourtConnector";
+import PickleballCiti from "./pages/PickleballCiti";
 import CourtSettings from "./pages/CourtSettings";
 import PostDetail from "./pages/PostDetail";
 import FAQ from "./pages/FAQ";
@@ -78,7 +79,7 @@ const App = () => (
               <Route path="/court/history" element={<CourtHistory />} />
               <Route path="/court/board" element={<CourtBoard />} />
             <Route path="/court/connector" element={<CourtConnector />} />
-            <Route path="/pickleballciti" element={<CourtConnector />} />
+            <Route path="/pickleballciti" element={<PickleballCiti />} />
             <Route path="/court/board/:courtId" element={<CourtBoard />} />
             <Route path="/court/feed/:postId" element={<PostDetail />} />
             <Route path="/court/history" element={<CourtHistory />} />
