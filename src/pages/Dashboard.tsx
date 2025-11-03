@@ -66,31 +66,35 @@ const Dashboard = () => {
         const user = session.user;
         setUser(user);
 
-        const { data: profileData, error } = await supabase
-          .from("profiles")
-          .select("*")
-          .eq("id", user.id)
-          .single();
+        // Fetch all data in parallel for faster loading
+        const [profileResult, roleResult, postsResult] = await Promise.all([
+          supabase.from("profiles").select("*").eq("id", user.id).single(),
+          supabase.from('user_roles').select('role').eq('user_id', user.id).eq('role', 'admin').maybeSingle(),
+          supabase.from("court_posts").select(`
+            id,
+            viewed_participants_count,
+            court_post_participants(count)
+          `).eq("user_id", user.id).eq("status", "open")
+        ]);
 
-        if (error) {
-          console.error("Profile fetch error:", error);
+        if (profileResult.error) {
+          console.error("Profile fetch error:", profileResult.error);
           toast.error("Failed to load profile");
           setLoading(false);
           return;
         }
 
-        setProfile(profileData);
+        setProfile(profileResult.data);
+        setIsAdmin(!!roleResult.data);
 
-        // Check if user is admin
-        const { data: roleData } = await supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', user.id)
-          .eq('role', 'admin')
-          .maybeSingle();
-
-        if (roleData) {
-          setIsAdmin(true);
+        // Check for new participants
+        if (postsResult.data) {
+          const hasNew = postsResult.data.some((post: any) => {
+            const currentCount = post.court_post_participants[0]?.count || 0;
+            const viewedCount = post.viewed_participants_count || 0;
+            return currentCount > viewedCount;
+          });
+          setHasNewParticipants(hasNew);
         }
 
         setLoading(false);
@@ -116,34 +120,7 @@ const Dashboard = () => {
 
   // Profile updates will be fetched after match recording or refresh
 
-
-  // Check for new participants in user's posts - only on mount
-  useEffect(() => {
-    if (!user?.id) return;
-
-    const checkNewParticipants = async () => {
-      const { data: posts } = await supabase
-        .from("court_posts")
-        .select(`
-          id,
-          viewed_participants_count,
-          court_post_participants(count)
-        `)
-        .eq("user_id", user.id)
-        .eq("status", "open");
-
-      if (posts) {
-        const hasNew = posts.some((post: any) => {
-          const currentCount = post.court_post_participants[0]?.count || 0;
-          const viewedCount = post.viewed_participants_count || 0;
-          return currentCount > viewedCount;
-        });
-        setHasNewParticipants(hasNew);
-      }
-    };
-
-    checkNewParticipants();
-  }, [user?.id]);
+  // Participant check already handled in initial load
 
   const handleRefreshStats = async () => {
     if (!user?.id) return;
