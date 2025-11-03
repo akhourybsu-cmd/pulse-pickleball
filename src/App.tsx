@@ -53,6 +53,7 @@ import MyRegistrations from "./pages/MyRegistrations";
 import TournamentLanding from "./pages/TournamentLanding";
 import TournamentCustomize from "./pages/TournamentCustomize";
 import { RoundRobinBanner } from "@/components/RoundRobinBanner";
+import { NotificationPrompt } from "@/components/NotificationPrompt";
 
 const queryClient = new QueryClient();
 
@@ -65,6 +66,7 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <RoundRobinBanner />
+            <NotificationPrompt />
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
