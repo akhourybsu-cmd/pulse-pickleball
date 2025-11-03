@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, memo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -21,41 +21,18 @@ interface LiveEvent {
   num_rounds: number;
 }
 
-export function ActiveRoundRobinIndicator() {
+export const ActiveRoundRobinIndicator = memo(() => {
   const [liveEvents, setLiveEvents] = useState<LiveEvent[]>([]);
-  const [userId, setUserId] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchLiveEvents();
-    
-    const channel = supabase
-      .channel('round-robin-status-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'round_robin_events',
-          filter: `status=eq.live`
-        },
-        () => {
-          fetchLiveEvents();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   }, []);
 
   const fetchLiveEvents = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      
-      setUserId(user.id);
 
       // Get events where user is a participant and status is live
       const { data: playerEvents, error } = await supabase
@@ -149,4 +126,6 @@ export function ActiveRoundRobinIndicator() {
       </SheetContent>
     </Sheet>
   );
-}
+});
+
+ActiveRoundRobinIndicator.displayName = 'ActiveRoundRobinIndicator';

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, memo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate, useLocation } from "react-router-dom";
 import { X } from "lucide-react";
@@ -11,56 +11,14 @@ interface LiveEvent {
   num_rounds: number;
 }
 
-export function RoundRobinBanner() {
+export const RoundRobinBanner = memo(() => {
   const [liveEvent, setLiveEvent] = useState<LiveEvent | null>(null);
   const [isDismissed, setIsDismissed] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
-    // Check authentication status
-    const checkAuth = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setIsAuthenticated(!!user);
-      if (user) {
-        fetchLiveEvent();
-      }
-    };
-
-    checkAuth();
-    
-    // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setIsAuthenticated(!!session);
-      if (session) {
-        fetchLiveEvent();
-      } else {
-        setLiveEvent(null);
-      }
-    });
-    
-    const channel = supabase
-      .channel('round-robin-banner-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'round_robin_events',
-          filter: `status=eq.live`
-        },
-        () => {
-          fetchLiveEvent();
-          setIsDismissed(false); // Reset dismiss state when event changes
-        }
-      )
-      .subscribe();
-
-    return () => {
-      subscription.unsubscribe();
-      supabase.removeChannel(channel);
-    };
+    fetchLiveEvent();
   }, []);
 
   const fetchLiveEvent = async () => {
@@ -111,8 +69,8 @@ export function RoundRobinBanner() {
     setIsDismissed(true);
   };
 
-  // Don't show if not authenticated, no live event, dismissed, or already on the round robin detail page
-  if (!isAuthenticated || !liveEvent || isDismissed || location.pathname.includes(`/round-robin/${liveEvent.id}`)) {
+  // Don't show if no live event, dismissed, or already on the round robin detail page
+  if (!liveEvent || isDismissed || location.pathname.includes(`/round-robin/${liveEvent.id}`)) {
     return null;
   }
 
@@ -133,4 +91,6 @@ export function RoundRobinBanner() {
       </button>
     </div>
   );
-}
+});
+
+RoundRobinBanner.displayName = 'RoundRobinBanner';
