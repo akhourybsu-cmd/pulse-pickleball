@@ -10,6 +10,7 @@ import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
 import ReactMarkdown from "react-markdown";
+import { sanitizeMapEmbed } from "@/lib/mapEmbedSanitizer";
 
 interface TournamentCustomization {
   id: string;
@@ -424,19 +425,23 @@ export default function TournamentLanding() {
               <span className="border-b-4 border-primary pb-2">Venue Information</span>
             </motion.h2>
             <div className="grid md:grid-cols-2 gap-12">
-              {customization.map_embed && (
-                <motion.div
-                  initial={{ opacity: 0, x: -20 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true }}
-                  className="rounded-lg overflow-hidden shadow-lg"
-                >
-                  <div 
-                    dangerouslySetInnerHTML={{ __html: customization.map_embed }}
-                    className="w-full h-[400px]"
-                  />
-                </motion.div>
-              )}
+              {customization.map_embed && (() => {
+                const sanitizedEmbed = sanitizeMapEmbed(customization.map_embed);
+                if (!sanitizedEmbed) return null;
+                return (
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    className="rounded-lg overflow-hidden shadow-lg"
+                  >
+                    <div 
+                      dangerouslySetInnerHTML={{ __html: sanitizedEmbed }}
+                      className="w-full h-[400px]"
+                    />
+                  </motion.div>
+                );
+              })()}
               {(customization.venue_photo_url || customization.venue_details) && (
                 <motion.div
                   initial={{ opacity: 0, x: 20 }}

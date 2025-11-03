@@ -14,6 +14,7 @@ import { ExternalLink, Upload, X, Plus, Save, HelpCircle, Eye, CheckCircle2, Bol
 import { PageHeader } from "@/components/PageHeader";
 import { motion } from "framer-motion";
 import ReactMarkdown from "react-markdown";
+import { sanitizeMapEmbed } from "@/lib/mapEmbedSanitizer";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -1282,22 +1283,28 @@ Your participation helps us give back. Let's rally together for a great cause!`
                   <CardContent>
                     <div className="space-y-4 p-4 rounded-xl bg-gradient-to-br from-background to-muted/20 border-2 border-border">
                       {/* Map Preview */}
-                      {mapEmbed && mapEmbedValid && (
-                        <motion.div
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          className="rounded-lg overflow-hidden border-2 border-border"
-                        >
-                          <div
-                            className="w-full h-48"
-                            dangerouslySetInnerHTML={{
-                              __html: mapEmbed.includes('<iframe')
-                                ? mapEmbed
-                                : `<iframe src="${mapEmbed}" width="100%" height="100%" style="border:0;" allowfullscreen="" loading="lazy"></iframe>`
-                            }}
-                          />
-                        </motion.div>
-                      )}
+                      {mapEmbed && mapEmbedValid && (() => {
+                        const sanitizedEmbed = sanitizeMapEmbed(mapEmbed);
+                        if (!sanitizedEmbed) {
+                          return (
+                            <div className="p-4 rounded-lg bg-destructive/10 border border-destructive text-destructive text-sm">
+                              Invalid map embed. Please use a URL from Google Maps, OpenStreetMap, or other trusted map providers.
+                            </div>
+                          );
+                        }
+                        return (
+                          <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="rounded-lg overflow-hidden border-2 border-border"
+                          >
+                            <div
+                              className="w-full h-48"
+                              dangerouslySetInnerHTML={{ __html: sanitizedEmbed }}
+                            />
+                          </motion.div>
+                        );
+                      })()}
 
                       {/* Venue Photo Preview */}
                       {venuePhotoUrl && (
