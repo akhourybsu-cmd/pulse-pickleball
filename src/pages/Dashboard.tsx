@@ -114,33 +114,7 @@ const Dashboard = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  // Real-time updates for profile changes
-  useEffect(() => {
-    if (!user?.id) return;
-
-    const channel = supabase
-      .channel('profile-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'profiles',
-          filter: `id=eq.${user.id}`
-        },
-        (payload) => {
-          setProfile(payload.new as Profile);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [user?.id]);
-
-
-  // Check for new participants in user's posts
+  // Check for new participants once on mount
   useEffect(() => {
     if (!user?.id) return;
 
@@ -166,26 +140,6 @@ const Dashboard = () => {
     };
 
     checkNewParticipants();
-
-    // Listen for new participants
-    const channel = supabase
-      .channel('participant-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'court_post_participants'
-        },
-        () => {
-          checkNewParticipants();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   }, [user?.id]);
 
   const handleRefreshStats = async () => {
