@@ -91,14 +91,21 @@ const FAQ = () => {
 
         {/* Section 1: Pulse Score */}
         <div className="space-y-4">
-          <div className="border-l-4 border-primary pl-6 py-3 bg-muted/50 rounded-r-lg">
-            <h2 className="text-2xl font-bold mb-2">What's a Pulse Score?</h2>
-            <p className="text-sm text-muted-foreground">
-              Your Pulse Score is a community-focused rating system designed to track your skill level and progress within your local pickleball community. 
-              Unlike national ranking systems like DUPR, Pulse Scores are about celebrating your growth, understanding your performance trends, and finding balanced matches with players in your area. 
-              It's not about where you rank nationally—it's about your journey and your community.
-            </p>
-          </div>
+          <motion.div 
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5 }}
+            className="relative overflow-hidden rounded-lg bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-l-4 border-primary"
+          >
+            <div className="pl-6 pr-4 py-6">
+              <h2 className="text-3xl font-bold mb-3 text-foreground">What's a Pulse Score?</h2>
+              <p className="text-base text-muted-foreground leading-relaxed">
+                Your Pulse Score is a community-focused rating system designed to track your skill level and progress within your local pickleball community. 
+                Unlike national ranking systems like DUPR, Pulse Scores are about celebrating your growth, understanding your performance trends, and finding balanced matches with players in your area. 
+                It's not about where you rank nationally—it's about your journey and your community.
+              </p>
+            </div>
+          </motion.div>
 
           <Accordion type="single" collapsible className="space-y-4">
             <AccordionItem value="simple-breakdown">
@@ -321,12 +328,19 @@ const FAQ = () => {
 
         {/* Section 2: Recording Matches */}
         <div className="space-y-4">
-          <div className="border-l-4 border-primary pl-6 py-3 bg-muted/50 rounded-r-lg">
-            <h2 className="text-2xl font-bold mb-2">Recording Matches & Match History</h2>
-            <p className="text-sm text-muted-foreground">
-              Everything you need to know about recording match results, viewing your history, and managing disputed scores.
-            </p>
-          </div>
+          <motion.div 
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="relative overflow-hidden rounded-lg bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-l-4 border-primary"
+          >
+            <div className="pl-6 pr-4 py-6">
+              <h2 className="text-3xl font-bold mb-3 text-foreground">Recording Matches & Match History</h2>
+              <p className="text-base text-muted-foreground leading-relaxed">
+                Everything you need to know about recording match results, viewing your history, and managing disputed scores.
+              </p>
+            </div>
+          </motion.div>
 
           <Accordion type="single" collapsible className="space-y-4">
             <AccordionItem value="provisional">
@@ -440,12 +454,19 @@ const FAQ = () => {
 
         {/* Section 3: Round Robin Events */}
         <div className="space-y-4">
-          <div className="border-l-4 border-primary pl-6 py-3 bg-muted/50 rounded-r-lg">
-            <h2 className="text-2xl font-bold mb-2">Organizing Round Robin Events</h2>
-            <p className="text-sm text-muted-foreground">
-              Learn how to create and manage round robin events, from player registration to score tracking.
-            </p>
-          </div>
+          <motion.div 
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="relative overflow-hidden rounded-lg bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-l-4 border-primary"
+          >
+            <div className="pl-6 pr-4 py-6">
+              <h2 className="text-3xl font-bold mb-3 text-foreground">Organizing Round Robin Events</h2>
+              <p className="text-base text-muted-foreground leading-relaxed">
+                Learn how to create and manage round robin events, from player registration to score tracking.
+              </p>
+            </div>
+          </motion.div>
 
           <Accordion type="single" collapsible className="space-y-4">
             <AccordionItem value="rr-create">
@@ -533,12 +554,19 @@ const FAQ = () => {
 
         {/* Section 4: Court Connector */}
         <div className="space-y-4">
-          <div className="border-l-4 border-primary pl-6 py-3 bg-muted/50 rounded-r-lg">
-            <h2 className="text-2xl font-bold mb-2">Court Connector</h2>
-            <p className="text-sm text-muted-foreground">
-              Connect with players at your favorite courts, find games, and stay updated with court activity.
-            </p>
-          </div>
+          <motion.div 
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+            className="relative overflow-hidden rounded-lg bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border-l-4 border-primary"
+          >
+            <div className="pl-6 pr-4 py-6">
+              <h2 className="text-3xl font-bold mb-3 text-foreground">Court Connector</h2>
+              <p className="text-base text-muted-foreground leading-relaxed">
+                Connect with players at your favorite courts, find games, and stay updated with court activity.
+              </p>
+            </div>
+          </motion.div>
 
           <Accordion type="single" collapsible className="space-y-4">
             <AccordionItem value="cc-what">
