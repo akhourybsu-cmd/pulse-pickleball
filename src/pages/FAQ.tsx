@@ -87,10 +87,21 @@ const FAQ = () => {
         </div>
       </motion.div>
 
-      <div className="container mx-auto px-4 py-6 space-y-6">
+      <div className="container mx-auto px-4 py-6 space-y-8">
 
-        <Accordion type="single" collapsible className="space-y-4">
-          <AccordionItem value="simple-breakdown">
+        {/* Section 1: Pulse Score */}
+        <div className="space-y-4">
+          <div className="border-l-4 border-primary pl-6 py-3 bg-muted/50 rounded-r-lg">
+            <h2 className="text-2xl font-bold mb-2">What's a Pulse Score?</h2>
+            <p className="text-sm text-muted-foreground">
+              Your Pulse Score is a community-focused rating system designed to track your skill level and progress within your local pickleball community. 
+              Unlike national ranking systems like DUPR, Pulse Scores are about celebrating your growth, understanding your performance trends, and finding balanced matches with players in your area. 
+              It's not about where you rank nationally—it's about your journey and your community.
+            </p>
+          </div>
+
+          <Accordion type="single" collapsible className="space-y-4">
+            <AccordionItem value="simple-breakdown">
             <Card>
               <AccordionTrigger className="px-6 py-4 hover:no-underline">
                 <CardTitle className="text-lg text-left">
@@ -305,8 +316,20 @@ const FAQ = () => {
               </AccordionContent>
             </Card>
           </AccordionItem>
+          </Accordion>
+        </div>
 
-          <AccordionItem value="provisional">
+        {/* Section 2: Recording Matches */}
+        <div className="space-y-4">
+          <div className="border-l-4 border-primary pl-6 py-3 bg-muted/50 rounded-r-lg">
+            <h2 className="text-2xl font-bold mb-2">Recording Matches & Match History</h2>
+            <p className="text-sm text-muted-foreground">
+              Everything you need to know about recording match results, viewing your history, and managing disputed scores.
+            </p>
+          </div>
+
+          <Accordion type="single" collapsible className="space-y-4">
+            <AccordionItem value="provisional">
             <Card>
               <AccordionTrigger className="px-6 py-4 hover:no-underline">
                 <CardTitle className="text-lg text-left">
@@ -360,7 +383,245 @@ const FAQ = () => {
               </AccordionContent>
             </Card>
           </AccordionItem>
-        </Accordion>
+
+          <AccordionItem value="record-match">
+            <Card>
+              <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                <CardTitle className="text-lg text-left">
+                  How do I record a match?
+                </CardTitle>
+              </AccordionTrigger>
+              <AccordionContent>
+                <CardContent className="space-y-3 text-sm">
+                  <p>
+                    To record a match result:
+                  </p>
+                  <ol className="list-decimal list-inside ml-4 space-y-2">
+                    <li>Click "New Match" from the dashboard</li>
+                    <li>Select all four players (your team and opposing team)</li>
+                    <li>Enter the final score</li>
+                    <li>Choose the match type (Casual, Ladder, League, or Playoffs)</li>
+                    <li>Submit the match</li>
+                  </ol>
+                  <p className="text-muted-foreground">
+                    The match will appear in everyone's match history and ratings will be updated accordingly at the start of the next week.
+                  </p>
+                </CardContent>
+              </AccordionContent>
+            </Card>
+          </AccordionItem>
+
+          <AccordionItem value="match-history">
+            <Card>
+              <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                <CardTitle className="text-lg text-left">
+                  Where can I see my match history?
+                </CardTitle>
+              </AccordionTrigger>
+              <AccordionContent>
+                <CardContent className="space-y-3 text-sm">
+                  <p>
+                    Your complete match history is available in multiple places:
+                  </p>
+                  <ul className="list-disc list-inside ml-4 space-y-1">
+                    <li><strong>Match History page:</strong> Access from the dashboard to see all your matches with detailed stats</li>
+                    <li><strong>Your Profile:</strong> View your recent matches and performance trends</li>
+                    <li><strong>Player Profiles:</strong> See head-to-head records when viewing other players</li>
+                  </ul>
+                  <p className="text-muted-foreground">
+                    Each match shows the date, players, score, match type, and how it affected your rating.
+                  </p>
+                </CardContent>
+              </AccordionContent>
+            </Card>
+          </AccordionItem>
+          </Accordion>
+        </div>
+
+        {/* Section 3: Round Robin Events */}
+        <div className="space-y-4">
+          <div className="border-l-4 border-primary pl-6 py-3 bg-muted/50 rounded-r-lg">
+            <h2 className="text-2xl font-bold mb-2">Organizing Round Robin Events</h2>
+            <p className="text-sm text-muted-foreground">
+              Learn how to create and manage round robin events, from player registration to score tracking.
+            </p>
+          </div>
+
+          <Accordion type="single" collapsible className="space-y-4">
+            <AccordionItem value="rr-create">
+              <Card>
+                <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                  <CardTitle className="text-lg text-left">
+                    How do I create a round robin event?
+                  </CardTitle>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <CardContent className="space-y-3 text-sm">
+                    <p>
+                      To create a round robin event:
+                    </p>
+                    <ol className="list-decimal list-inside ml-4 space-y-2">
+                      <li>Navigate to "Round Robin" from the main menu</li>
+                      <li>Click "Create New Event"</li>
+                      <li>Enter event details (name, date, time, location)</li>
+                      <li>Set the number of courts available</li>
+                      <li>Configure player limits and registration settings</li>
+                      <li>Choose whether to allow self-registration or manual player management</li>
+                    </ol>
+                    <p className="text-muted-foreground">
+                      Once created, you can share the event link with players for registration or add players manually.
+                    </p>
+                  </CardContent>
+                </AccordionContent>
+              </Card>
+            </AccordionItem>
+
+            <AccordionItem value="rr-scheduling">
+              <Card>
+                <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                  <CardTitle className="text-lg text-left">
+                    How does round robin scheduling work?
+                  </CardTitle>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <CardContent className="space-y-3 text-sm">
+                    <p>
+                      The system automatically generates fair round robin schedules:
+                    </p>
+                    <ul className="list-disc list-inside ml-4 space-y-1">
+                      <li><strong>Partner Rotation:</strong> Players are paired with different partners each round</li>
+                      <li><strong>Opponent Variety:</strong> Everyone plays against different opponents</li>
+                      <li><strong>Court Optimization:</strong> Matches are distributed across available courts</li>
+                      <li><strong>Fairness Algorithm:</strong> Ensures balanced matchups based on skill levels</li>
+                    </ul>
+                    <p className="text-muted-foreground">
+                      You can regenerate schedules or manually adjust pairings in the event management interface.
+                    </p>
+                  </CardContent>
+                </AccordionContent>
+              </Card>
+            </AccordionItem>
+
+            <AccordionItem value="rr-kiosk">
+              <Card>
+                <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                  <CardTitle className="text-lg text-left">
+                    What is Kiosk Mode?
+                  </CardTitle>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <CardContent className="space-y-3 text-sm">
+                    <p>
+                      Kiosk Mode provides a full-screen display perfect for tablets or TVs at your event:
+                    </p>
+                    <ul className="list-disc list-inside ml-4 space-y-1">
+                      <li><strong>Live Schedule:</strong> Shows current and upcoming matches</li>
+                      <li><strong>Court Assignments:</strong> Displays which players are on which courts</li>
+                      <li><strong>Score Entry:</strong> Allows quick score input with organizer PIN protection</li>
+                      <li><strong>Real-time Updates:</strong> Automatically refreshes as matches complete</li>
+                      <li><strong>Standings Board:</strong> Shows current rankings and player performance</li>
+                    </ul>
+                    <p className="text-muted-foreground">
+                      Access Kiosk Mode from any round robin event detail page to provide players with live tournament information.
+                    </p>
+                  </CardContent>
+                </AccordionContent>
+              </Card>
+            </AccordionItem>
+          </Accordion>
+        </div>
+
+        {/* Section 4: Court Connector */}
+        <div className="space-y-4">
+          <div className="border-l-4 border-primary pl-6 py-3 bg-muted/50 rounded-r-lg">
+            <h2 className="text-2xl font-bold mb-2">Court Connector</h2>
+            <p className="text-sm text-muted-foreground">
+              Connect with players at your favorite courts, find games, and stay updated with court activity.
+            </p>
+          </div>
+
+          <Accordion type="single" collapsible className="space-y-4">
+            <AccordionItem value="cc-what">
+              <Card>
+                <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                  <CardTitle className="text-lg text-left">
+                    What is Court Connector?
+                  </CardTitle>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <CardContent className="space-y-3 text-sm">
+                    <p>
+                      Court Connector helps you find and connect with players at specific courts:
+                    </p>
+                    <ul className="list-disc list-inside ml-4 space-y-1">
+                      <li><strong>Court Feed:</strong> See posts, updates, and activity from your favorite courts</li>
+                      <li><strong>Check-ins:</strong> Let others know when you're heading to a court</li>
+                      <li><strong>Looking for Game (LFG):</strong> Post when you need players or find others looking for games</li>
+                      <li><strong>Court Analytics:</strong> View peak times and typical player counts</li>
+                      <li><strong>Smart Matching:</strong> Get matched with players of similar skill levels</li>
+                    </ul>
+                    <p className="text-muted-foreground">
+                      Access Court Connector from the main menu to start connecting with your local pickleball community.
+                    </p>
+                  </CardContent>
+                </AccordionContent>
+              </Card>
+            </AccordionItem>
+
+            <AccordionItem value="cc-checkin">
+              <Card>
+                <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                  <CardTitle className="text-lg text-left">
+                    How do check-ins work?
+                  </CardTitle>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <CardContent className="space-y-3 text-sm">
+                    <p>
+                      Check-ins let you announce your presence at a court:
+                    </p>
+                    <ol className="list-decimal list-inside ml-4 space-y-2">
+                      <li>Navigate to the court's page in Court Connector</li>
+                      <li>Click "Check In"</li>
+                      <li>Optionally add details like how long you'll be there or what you're looking for</li>
+                      <li>Your check-in appears in the court feed for others to see</li>
+                    </ol>
+                    <p className="text-muted-foreground">
+                      Check-ins help coordinate games and let others know when the courts are active. You can also set your availability preferences to automatically notify others.
+                    </p>
+                  </CardContent>
+                </AccordionContent>
+              </Card>
+            </AccordionItem>
+
+            <AccordionItem value="cc-lfg">
+              <Card>
+                <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                  <CardTitle className="text-lg text-left">
+                    How do I use the Looking for Game (LFG) feature?
+                  </CardTitle>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <CardContent className="space-y-3 text-sm">
+                    <p>
+                      The LFG feature helps you find players when you need them:
+                    </p>
+                    <ol className="list-decimal list-inside ml-4 space-y-2">
+                      <li>Go to the court where you want to play</li>
+                      <li>Click "Create LFG Post"</li>
+                      <li>Specify what you need (1 player, 2 players, etc.)</li>
+                      <li>Set when you want to play (now or scheduled time)</li>
+                      <li>Wait for others to respond or join</li>
+                    </ol>
+                    <p className="text-muted-foreground">
+                      You'll receive notifications when players respond to your LFG post. You can also browse active LFG posts to join games others have created.
+                    </p>
+                  </CardContent>
+                </AccordionContent>
+              </Card>
+            </AccordionItem>
+          </Accordion>
+        </div>
       </div>
     </div>
   );
