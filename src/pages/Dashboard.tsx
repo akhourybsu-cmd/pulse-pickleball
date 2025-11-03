@@ -52,33 +52,63 @@ const Dashboard = () => {
   const unreadCount = notifications.filter(n => n.unread).length;
 
   useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    
     const fetchUser = async () => {
       try {
+        console.log("[Dashboard] Starting to fetch user data...");
+        
+        // Set a timeout to catch hanging requests
+        timeoutId = setTimeout(() => {
+          console.error("[Dashboard] Loading timeout - still loading after 10 seconds");
+          toast.error("Loading is taking longer than expected. Please refresh the page.");
+          setLoading(false);
+        }, 10000);
+
         // Check for existing session first
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
-        if (sessionError || !session?.user) {
-          console.log("No valid session, redirecting to auth");
+        if (sessionError) {
+          console.error("[Dashboard] Session error:", sessionError);
+          clearTimeout(timeoutId);
+          navigate("/auth");
+          return;
+        }
+        
+        if (!session?.user) {
+          console.log("[Dashboard] No valid session, redirecting to auth");
+          clearTimeout(timeoutId);
           navigate("/auth");
           return;
         }
 
         const user = session.user;
+        console.log("[Dashboard] User authenticated:", user.id);
         setUser(user);
 
-        const { data: profileData, error } = await supabase
+        const { data: profileData, error: profileError } = await supabase
           .from("profiles")
           .select("*")
           .eq("id", user.id)
-          .single();
+          .maybeSingle();
 
-        if (error) {
-          console.error("Profile fetch error:", error);
+        if (profileError) {
+          console.error("[Dashboard] Profile fetch error:", profileError);
           toast.error("Failed to load profile");
+          clearTimeout(timeoutId);
           setLoading(false);
           return;
         }
 
+        if (!profileData) {
+          console.error("[Dashboard] No profile found for user");
+          toast.error("Profile not found");
+          clearTimeout(timeoutId);
+          setLoading(false);
+          return;
+        }
+
+        console.log("[Dashboard] Profile loaded successfully");
         setProfile(profileData);
 
         // Check if user is admin
@@ -93,10 +123,14 @@ const Dashboard = () => {
           setIsAdmin(true);
         }
 
+        console.log("[Dashboard] All data loaded successfully");
+        clearTimeout(timeoutId);
         setLoading(false);
       } catch (error) {
-        console.error("Dashboard load error:", error);
+        console.error("[Dashboard] Unexpected error:", error);
         toast.error("Failed to load dashboard");
+        clearTimeout(timeoutId);
+        setLoading(false);
         navigate("/auth");
       }
     };
@@ -105,13 +139,17 @@ const Dashboard = () => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log("[Dashboard] Auth state change:", event);
         if (event === "SIGNED_OUT") {
           navigate("/auth");
         }
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      subscription.unsubscribe();
+    };
   }, [navigate]);
 
   // Check for new participants once on mount
