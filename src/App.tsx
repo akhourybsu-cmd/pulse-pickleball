@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Index from "./pages/Index";
@@ -16,7 +16,6 @@ import MatchHistory from "./pages/MatchHistory";
 import CourtHistory from "./pages/CourtHistory";
 import CourtBoard from "./pages/CourtBoard";
 import CourtConnector from "./pages/CourtConnector";
-import PickleballCiti from "./pages/PickleballCiti";
 import CourtSettings from "./pages/CourtSettings";
 import PostDetail from "./pages/PostDetail";
 import FAQ from "./pages/FAQ";
@@ -79,7 +78,7 @@ const App = () => (
               <Route path="/court/history" element={<CourtHistory />} />
               <Route path="/court/board" element={<CourtBoard />} />
             <Route path="/court/connector" element={<CourtConnector />} />
-            <Route path="/pickleballciti" element={<PickleballCiti />} />
+            <Route path="/pickleballciti" element={<Navigate to="/court/board/836003fb-fbd7-429c-8973-67ac6766a511" replace />} />
             <Route path="/court/board/:courtId" element={<CourtBoard />} />
             <Route path="/court/feed/:postId" element={<PostDetail />} />
             <Route path="/court/history" element={<CourtHistory />} />
