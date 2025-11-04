@@ -15,7 +15,7 @@ import { MapPin, MessageSquare, Activity, LogOut, User as UserIcon, ExternalLink
 import { motion } from "framer-motion";
 import logo from "@/assets/pulse-logo-new.png";
 import pickleballCitiLogo from "@/assets/pickleball-citi-logo.png";
-import { UpcomingEvents } from "@/components/citi-events/UpcomingEvents";
+import { JoinableCalendarEvents } from "@/components/citi-events/JoinableCalendarEvents";
 import VenueInfoCard from "@/components/VenueInfoCard";
 
 interface Court {
@@ -301,7 +301,7 @@ export default function CourtBoard() {
       <div className="container mx-auto px-4 py-6 space-y-6">
         {courtId === PICKLEBALL_CITI_ID && (
           <div style={{ borderTop: '1px solid rgba(14, 76, 88, 0.15)', paddingTop: '1.5rem' }}>
-            <UpcomingEvents courtId={courtId} isAdmin={isAdmin} currentUserId={currentUserId} />
+            <JoinableCalendarEvents courtId={courtId} />
           </div>
         )}
 
