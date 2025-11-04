@@ -52,6 +52,7 @@ import TournamentRegister from "./pages/TournamentRegister";
 import MyRegistrations from "./pages/MyRegistrations";
 import TournamentLanding from "./pages/TournamentLanding";
 import TournamentCustomize from "./pages/TournamentCustomize";
+import Reservations from "./pages/Reservations";
 import { RoundRobinBanner } from "@/components/RoundRobinBanner";
 
 const queryClient = new QueryClient();
@@ -98,6 +99,7 @@ const App = () => (
               <Route path="/qr-checkin" element={<QRCheckIn />} />
               <Route path="/kiosk" element={<Kiosk />} />
               <Route path="/changelog" element={<Changelog />} />
+              <Route path="/reservations" element={<Reservations />} />
               <Route path="/events" element={<Events />} />
               <Route path="/events/new" element={<NewEvent />} />
               <Route path="/events/:eventId" element={<EventDetail />} />
