@@ -18,6 +18,7 @@ interface Profile {
   id: string;
   full_name: string;
   display_name: string | null;
+  gender?: string | null;
 }
 
 interface Court {
@@ -40,7 +41,15 @@ export default function CreateRoundRobin() {
   const [gamesPerPlayer, setGamesPerPlayer] = useState("3");
   const [ratingEligible, setRatingEligible] = useState(true);
   const [ratingType, setRatingType] = useState<"ladder" | "league" | "playoffs" | "casual">("league");
+  const [format, setFormat] = useState<"open" | "mixed" | "male" | "female">("open");
   
+  // Get gender counts
+  const getGenderCounts = () => {
+    const males = selectedPlayers.filter(p => p.gender === 'male').length;
+    const females = selectedPlayers.filter(p => p.gender === 'female').length;
+    return { males, females };
+  };
+
   // Calculate metrics automatically
   const calculateScheduleMetrics = () => {
     const P = selectedPlayers.length;
@@ -92,6 +101,21 @@ export default function CreateRoundRobin() {
       return;
     }
 
+    // Validate format requirements
+    const { males, females } = getGenderCounts();
+    if (format === "mixed" && (males < 2 || females < 2)) {
+      toast.error("Mixed format requires at least 2 male and 2 female players");
+      return;
+    }
+    if (format === "male" && males < 4) {
+      toast.error("Men's format requires at least 4 male players");
+      return;
+    }
+    if (format === "female" && females < 4) {
+      toast.error("Women's format requires at least 4 female players");
+      return;
+    }
+
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -113,6 +137,7 @@ export default function CreateRoundRobin() {
           games_per_player: parseInt(gamesPerPlayer),
           rating_eligible: ratingEligible,
           rating_type: ratingType,
+          format: format,
         })
         .select()
         .single();
@@ -211,14 +236,55 @@ export default function CreateRoundRobin() {
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="format">Format *</Label>
+              <Select value={format} onValueChange={(v: any) => setFormat(v)}>
+                <SelectTrigger id="format">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="open">Open (no gender requirement)</SelectItem>
+                  <SelectItem value="mixed">Mixed (1 male + 1 female per team)</SelectItem>
+                  <SelectItem value="male">Men's (male only)</SelectItem>
+                  <SelectItem value="female">Women's (female only)</SelectItem>
+                </SelectContent>
+              </Select>
+              {format === "mixed" && (
+                <p className="text-sm text-muted-foreground">
+                  ℹ️ Mixed format makes teams of 1 male and 1 female. We recommend having an even number of male and female players.
+                </p>
+              )}
+              {format !== "open" && (
+                <p className="text-xs text-amber-600 dark:text-amber-400">
+                  ⚠ This event requires players to have their gender set in their profile.
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
               <Label>1. How many players are playing? *</Label>
               <MultiPlayerCombobox
                 selectedPlayers={selectedPlayers}
                 onPlayersChange={setSelectedPlayers}
+                genderFilter={format === "male" ? "male" : format === "female" ? "female" : undefined}
               />
-              <p className="text-sm text-muted-foreground">
-                {selectedPlayers.length} {selectedPlayers.length === 1 ? "player" : "players"} selected (minimum 4)
-              </p>
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">
+                  {selectedPlayers.length} {selectedPlayers.length === 1 ? "player" : "players"} selected (minimum 4)
+                </p>
+                {format === "mixed" && (() => {
+                  const { males, females } = getGenderCounts();
+                  return (
+                    <div className="text-xs text-muted-foreground space-y-0.5">
+                      <p>• Males selected: {males}</p>
+                      <p>• Females selected: {females}</p>
+                      <p>• Courts: {numCourts} → needs {parseInt(numCourts) * 2} males and {parseInt(numCourts) * 2} females per round</p>
+                      {Math.abs(males - females) > 2 && males > 0 && females > 0 && (
+                        <p className="text-amber-600 dark:text-amber-400">⚠ Schedule will include sit-out rotations to balance male/female counts</p>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">

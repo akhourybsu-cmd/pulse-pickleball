@@ -31,6 +31,8 @@ export interface ScheduleInput {
   numRounds: number;
   completedMatches?: ScheduleMatch[];
   startFromRound?: number; // For regeneration
+  format?: 'open' | 'mixed' | 'male' | 'female';
+  playerGenders?: Map<string, string>;
 }
 
 /**
@@ -44,6 +46,8 @@ export function generateRoundRobinSchedule(input: ScheduleInput): ScheduleMatch[
     numRounds,
     completedMatches = [],
     startFromRound = 1,
+    format = 'open',
+    playerGenders = new Map(),
   } = input;
 
   if (playerIds.length < 4) {
@@ -57,13 +61,69 @@ export function generateRoundRobinSchedule(input: ScheduleInput): ScheduleMatch[
 
   // Generate each round
   for (let round = startFromRound; round <= numRounds; round++) {
-    const roundMatches = generateRound(
-      round,
-      playerIds,
-      metrics,
-      stats,
-      rng
-    );
+    let roundMatches: ScheduleMatch[] = [];
+
+    if (format === 'mixed') {
+      // Mixed format: separate males and females
+      const males = playerIds.filter(id => playerGenders.get(id) === 'male');
+      const females = playerIds.filter(id => playerGenders.get(id) === 'female');
+
+      // Select players for round (balanced by gender)
+      const malesNeeded = Math.min(males.length, metrics.totalCourts * 2);
+      const femalesNeeded = Math.min(females.length, metrics.totalCourts * 2);
+
+      const { playing: playingMales } = selectPlayersForRound(
+        round,
+        males,
+        metrics,
+        stats,
+        rng
+      );
+
+      const { playing: playingFemales } = selectPlayersForRound(
+        round,
+        females,
+        metrics,
+        stats,
+        rng
+      );
+
+      // Slice to needed count
+      const selectedMales = playingMales.slice(0, malesNeeded);
+      const selectedFemales = playingFemales.slice(0, femalesNeeded);
+
+      // Form mixed teams (1 male + 1 female)
+      const teams = formTeamsMixed(selectedMales, selectedFemales, stats, rng);
+
+      // Pair opponents
+      const pairings = pairOpponents(teams, stats, rng);
+
+      // Assign courts
+      const courtMatches = assignCourts(pairings, round, metrics, stats, rng);
+      roundMatches.push(...courtMatches);
+
+      // Add byes for remaining players
+      const allPlayingIds = new Set([...selectedMales, ...selectedFemales]);
+      const restingMales = males.filter(id => !allPlayingIds.has(id));
+      const restingFemales = females.filter(id => !allPlayingIds.has(id));
+
+      [...restingMales, ...restingFemales].forEach((playerId) => {
+        roundMatches.push({
+          round_no: round,
+          court_no: 0,
+          a1_player_id: playerId,
+          a2_player_id: null,
+          b1_player_id: null,
+          b2_player_id: null,
+          is_bye: true,
+        });
+      });
+    } else {
+      // Open/Male/Female format: use standard logic
+      const roundData = generateRound(round, playerIds, metrics, stats, rng);
+      roundMatches = roundData;
+    }
+
     schedule.push(...roundMatches);
 
     // Update stats with this round's matches
@@ -197,6 +257,45 @@ function assignByes(
   });
 
   return sorted.slice(0, byesNeeded);
+}
+
+/**
+ * Form teams for Mixed format (1 male + 1 female)
+ */
+function formTeamsMixed(
+  males: string[],
+  females: string[],
+  stats: Map<string, PlayerStats>,
+  rng: SeededRandom
+): Array<[string, string]> {
+  const availableMales = new Set(males);
+  const availableFemales = new Set(females);
+  const teams: Array<[string, string]> = [];
+
+  while (availableMales.size >= 1 && availableFemales.size >= 1) {
+    const male = Array.from(availableMales)[0];
+    availableMales.delete(male);
+
+    let bestPartner: string | null = null;
+    let bestPenalty = Infinity;
+
+    Array.from(availableFemales).forEach((female) => {
+      const penalty = calculatePairPenalty(stats.get(male)!, stats.get(female)!, female);
+      if (penalty < bestPenalty) {
+        bestPenalty = penalty;
+        bestPartner = female;
+      } else if (penalty === bestPenalty && rng.next() < 0.5) {
+        bestPartner = female;
+      }
+    });
+
+    if (bestPartner) {
+      availableFemales.delete(bestPartner);
+      teams.push([male, bestPartner]);
+    }
+  }
+
+  return teams;
 }
 
 /**

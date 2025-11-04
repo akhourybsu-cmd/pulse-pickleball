@@ -1793,6 +1793,7 @@ export type Database = {
           created_at: string
           current_round: number | null
           date: string
+          format: string
           games_per_player: number | null
           id: string
           location: string | null
@@ -1816,6 +1817,7 @@ export type Database = {
           created_at?: string
           current_round?: number | null
           date?: string
+          format?: string
           games_per_player?: number | null
           id?: string
           location?: string | null
@@ -1839,6 +1841,7 @@ export type Database = {
           created_at?: string
           current_round?: number | null
           date?: string
+          format?: string
           games_per_player?: number | null
           id?: string
           location?: string | null

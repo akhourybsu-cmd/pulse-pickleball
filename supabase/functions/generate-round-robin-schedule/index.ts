@@ -13,6 +13,7 @@ interface ScheduleRequest {
   num_rounds: number; // Calculated rounds
   games_per_player: number; // Target games each player should play
   regenerate_from_round?: number;
+  format?: 'open' | 'mixed' | 'male' | 'female';
 }
 
 interface PlayerStats {
@@ -265,6 +266,43 @@ function assignByes(
   return sorted.slice(0, byesNeeded);
 }
 
+// Form teams for Mixed format (1 male + 1 female)
+function formTeamsMixed(
+  males: string[],
+  females: string[],
+  stats: Map<string, PlayerStats>,
+  rng: SeededRandom
+): Array<[string, string]> {
+  const availableMales = new Set(males);
+  const availableFemales = new Set(females);
+  const teams: Array<[string, string]> = [];
+
+  while (availableMales.size >= 1 && availableFemales.size >= 1) {
+    const male = Array.from(availableMales)[0];
+    availableMales.delete(male);
+
+    let bestPartner: string | null = null;
+    let bestPenalty = Infinity;
+
+    Array.from(availableFemales).forEach((female) => {
+      const penalty = calculatePairPenalty(stats.get(male)!, stats.get(female)!, female);
+      if (penalty < bestPenalty) {
+        bestPenalty = penalty;
+        bestPartner = female;
+      } else if (penalty === bestPenalty && rng.next() < 0.5) {
+        bestPartner = female;
+      }
+    });
+
+    if (bestPartner) {
+      availableFemales.delete(bestPartner);
+      teams.push([male, bestPartner]);
+    }
+  }
+
+  return teams;
+}
+
 // Form teams
 function formTeams(
   players: string[],
@@ -401,7 +439,9 @@ function generateRoundRobinSchedule(
   numCourts: number,
   gamesPerPlayer: number,
   completedMatches: ScheduleMatch[] = [],
-  startFromRound: number = 1
+  startFromRound: number = 1,
+  format: string = 'open',
+  playerGenders: Map<string, string> = new Map()
 ): ScheduleMatch[] {
   if (playerIds.length < 4) {
     throw new Error('Need at least 4 players for doubles round robin');
@@ -413,53 +453,137 @@ function generateRoundRobinSchedule(
   const schedule: ScheduleMatch[] = [...completedMatches];
 
   for (let round = startFromRound; round <= metrics.rounds; round++) {
-    const { playing, resting } = selectPlayersForRound(
-      round,
-      playerIds,
-      metrics.onCourtPerRound,
-      stats,
-      rng
-    );
+    let matches: ScheduleMatch[] = [];
 
-    const matches: ScheduleMatch[] = [];
+    if (format === 'mixed') {
+      // Mixed format: separate males and females
+      const males = playerIds.filter(id => playerGenders.get(id) === 'male');
+      const females = playerIds.filter(id => playerGenders.get(id) === 'female');
 
-    // Assign byes
-    if (resting.length > 0) {
-      const byePlayers = assignByes(resting, metrics.byesPerRound, stats, rng);
-      byePlayers.forEach((playerId, byeIndex) => {
-        // Use courts beyond the actual courts for bye matches to avoid conflicts
-        const byeCourtNo = metrics.totalCourts + byeIndex + 1;
+      // Select players for round (balanced by gender)
+      const malesNeeded = Math.min(males.length, metrics.totalCourts * 2);
+      const femalesNeeded = Math.min(females.length, metrics.totalCourts * 2);
+
+      const { playing: playingMales } = selectPlayersForRound(
+        round,
+        males,
+        malesNeeded,
+        stats,
+        rng
+      );
+
+      const { playing: playingFemales } = selectPlayersForRound(
+        round,
+        females,
+        femalesNeeded,
+        stats,
+        rng
+      );
+
+      // Form mixed teams (1 male + 1 female)
+      const teams = formTeamsMixed(playingMales, playingFemales, stats, rng);
+
+      // Pair opponents
+      const pairings = pairOpponents(teams, stats, rng);
+
+      // Assign courts
+      pairings.forEach((pairing, index) => {
+        const courtNo = (index % metrics.totalCourts) + 1;
         matches.push({
           round_no: round,
-          court_no: byeCourtNo,
-          a1_player_id: playerId,
-          a2_player_id: null,
-          b1_player_id: null,
-          b2_player_id: null,
-          is_bye: true,
+          court_no: courtNo,
+          a1_player_id: pairing.teamA[0],
+          a2_player_id: pairing.teamA[1],
+          b1_player_id: pairing.teamB[0],
+          b2_player_id: pairing.teamB[1],
+          is_bye: false,
+        });
+      });
+
+      // Add byes for any remaining players
+      const allPlayingIds = new Set([...playingMales, ...playingFemales]);
+      const restingMales = males.filter(id => !allPlayingIds.has(id));
+      const restingFemales = females.filter(id => !allPlayingIds.has(id));
+      
+      const maleByesNeeded = Math.min(restingMales.length, Math.floor(restingMales.length / 2));
+      const femaleByesNeeded = Math.min(restingFemales.length, Math.floor(restingFemales.length / 2));
+
+      if (maleByesNeeded > 0) {
+        const maleByePlayers = assignByes(restingMales, maleByesNeeded, stats, rng);
+        maleByePlayers.forEach((playerId, index) => {
+          matches.push({
+            round_no: round,
+            court_no: metrics.totalCourts + matches.filter(m => m.is_bye).length + 1,
+            a1_player_id: playerId,
+            a2_player_id: null,
+            b1_player_id: null,
+            b2_player_id: null,
+            is_bye: true,
+          });
+        });
+      }
+
+      if (femaleByesNeeded > 0) {
+        const femaleByePlayers = assignByes(restingFemales, femaleByesNeeded, stats, rng);
+        femaleByePlayers.forEach((playerId, index) => {
+          matches.push({
+            round_no: round,
+            court_no: metrics.totalCourts + matches.filter(m => m.is_bye).length + 1,
+            a1_player_id: playerId,
+            a2_player_id: null,
+            b1_player_id: null,
+            b2_player_id: null,
+            is_bye: true,
+          });
+        });
+      }
+    } else {
+      // Open/Male/Female format: use standard logic
+      const { playing, resting } = selectPlayersForRound(
+        round,
+        playerIds,
+        metrics.onCourtPerRound,
+        stats,
+        rng
+      );
+
+      // Assign byes
+      if (resting.length > 0) {
+        const byePlayers = assignByes(resting, metrics.byesPerRound, stats, rng);
+        byePlayers.forEach((playerId, byeIndex) => {
+          const byeCourtNo = metrics.totalCourts + byeIndex + 1;
+          matches.push({
+            round_no: round,
+            court_no: byeCourtNo,
+            a1_player_id: playerId,
+            a2_player_id: null,
+            b1_player_id: null,
+            b2_player_id: null,
+            is_bye: true,
+          });
+        });
+      }
+
+      // Form teams
+      const teams = formTeams(playing, stats, rng);
+
+      // Pair opponents
+      const pairings = pairOpponents(teams, stats, rng);
+
+      // Assign courts
+      pairings.forEach((pairing, index) => {
+        const courtNo = (index % metrics.totalCourts) + 1;
+        matches.push({
+          round_no: round,
+          court_no: courtNo,
+          a1_player_id: pairing.teamA[0],
+          a2_player_id: pairing.teamA[1],
+          b1_player_id: pairing.teamB[0],
+          b2_player_id: pairing.teamB[1],
+          is_bye: false,
         });
       });
     }
-
-    // Form teams
-    const teams = formTeams(playing, stats, rng);
-
-    // Pair opponents
-    const pairings = pairOpponents(teams, stats, rng);
-
-    // Assign courts
-    pairings.forEach((pairing, index) => {
-      const courtNo = (index % metrics.totalCourts) + 1;
-      matches.push({
-        round_no: round,
-        court_no: courtNo,
-        a1_player_id: pairing.teamA[0],
-        a2_player_id: pairing.teamA[1],
-        b1_player_id: pairing.teamB[0],
-        b2_player_id: pairing.teamB[1],
-        is_bye: false,
-      });
-    });
 
     schedule.push(...matches);
 
@@ -500,13 +624,14 @@ serve(async (req) => {
       num_courts, 
       num_rounds, // Now calculated, but kept for backwards compatibility
       games_per_player,
-      regenerate_from_round 
+      regenerate_from_round,
+      format 
     }: ScheduleRequest = await req.json();
 
-    // Verify user is organizer
+    // Verify user is organizer and get event format
     const { data: event, error: eventError } = await supabase
       .from('round_robin_events')
-      .select('organizer_id')
+      .select('organizer_id, format')
       .eq('id', event_id)
       .single();
 
@@ -515,6 +640,25 @@ serve(async (req) => {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+
+    const eventFormat = format || event.format || 'open';
+
+    // Fetch player genders if format requires it
+    const playerGenders = new Map<string, string>();
+    if (eventFormat === 'mixed' || eventFormat === 'male' || eventFormat === 'female') {
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, gender')
+        .in('id', player_ids);
+
+      if (profiles) {
+        profiles.forEach(p => {
+          if (p.gender) {
+            playerGenders.set(p.id, p.gender);
+          }
+        });
+      }
     }
 
     let completedMatches: ScheduleMatch[] = [];
@@ -554,7 +698,9 @@ serve(async (req) => {
       num_courts,
       games_per_player || num_rounds, // Fallback to num_rounds for backwards compat
       completedMatches,
-      startFromRound
+      startFromRound,
+      eventFormat,
+      playerGenders
     );
 
     // Insert new rounds only

@@ -22,16 +22,19 @@ interface Player {
   id: string;
   full_name: string;
   display_name: string | null;
+  gender?: string | null;
 }
 
 interface MultiPlayerComboboxProps {
   selectedPlayers: Player[];
   onPlayersChange: (players: Player[]) => void;
+  genderFilter?: "male" | "female";
 }
 
 export function MultiPlayerCombobox({
   selectedPlayers,
   onPlayersChange,
+  genderFilter,
 }: MultiPlayerComboboxProps) {
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -39,16 +42,27 @@ export function MultiPlayerCombobox({
 
   useEffect(() => {
     fetchPlayers();
-  }, []);
+  }, [genderFilter]);
 
   const fetchPlayers = async () => {
-    const { data } = await supabase
+    let queryBuilder = supabase
       .from("profiles")
-      .select("id, full_name, display_name")
+      .select("id, full_name, display_name, gender")
       .order("full_name");
+
+    // Apply gender filter if provided
+    if (genderFilter) {
+      queryBuilder = queryBuilder.eq("gender", genderFilter);
+    }
+
+    const { data } = await queryBuilder;
     
     if (data) {
-      setAllPlayers(data);
+      // Filter out players without gender if gender filter is active
+      const filteredData = genderFilter 
+        ? data.filter(p => p.gender === genderFilter)
+        : data;
+      setAllPlayers(filteredData);
     }
   };
 
