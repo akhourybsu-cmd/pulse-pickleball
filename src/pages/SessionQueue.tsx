@@ -19,6 +19,7 @@ interface Session {
   num_courts: number;
   status: string;
   match_type: string;
+  qr_join_url: string | null;
   courts: {
     name: string;
   };
@@ -569,122 +570,6 @@ export default function SessionQueue() {
           currentUserId={userId}
         />
       </div>
-      <Footer />
-
-        {/* Match Tickets - On Court / On Deck */}
-        {matchTickets.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Clock className="h-5 w-5" />
-                Courts
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {matchTickets.map((ticket) => {
-                const isMyMatch = userId && [
-                  ticket.team1_player1_id,
-                  ticket.team1_player2_id,
-                  ticket.team2_player1_id,
-                  ticket.team2_player2_id,
-                ].includes(userId);
-
-                return (
-                  <div key={ticket.id} className="border rounded-lg p-4 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <p className="font-semibold">Court {ticket.court_number}</p>
-                      <Badge variant={ticket.status === "live" ? "default" : "secondary"}>
-                        {ticket.status === "live" ? "On Court" : "On Deck"}
-                      </Badge>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <p className="font-medium">Team 1</p>
-                        <p>{ticket.team1_player1.display_name || ticket.team1_player1.full_name}</p>
-                        <p>{ticket.team1_player2.display_name || ticket.team1_player2.full_name}</p>
-                      </div>
-                      <div>
-                        <p className="font-medium">Team 2</p>
-                        <p>{ticket.team2_player1.display_name || ticket.team2_player1.full_name}</p>
-                        <p>{ticket.team2_player2.display_name || ticket.team2_player2.full_name}</p>
-                      </div>
-                    </div>
-                    {isMyMatch && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full mt-2"
-                        onClick={() => navigate(`/match/ticket/${ticket.id}`)}
-                      >
-                        Submit Score
-                      </Button>
-                    )}
-                  </div>
-                );
-              })}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Queue */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Queue ({queueEntries.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {queueEntries.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No players in queue</p>
-            ) : (
-              <div className="space-y-2">
-                {queueEntries.map((entry, index) => (
-                  <div key={entry.id} className="flex items-center justify-between p-2 border rounded">
-                    <div className="flex items-center gap-3">
-                      <span className="font-semibold text-muted-foreground">#{index + 1}</span>
-                      <div>
-                        <p className="font-medium">
-                          {entry.profiles.display_name || entry.profiles.full_name}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Rating: {entry.profiles.current_rating?.toFixed(2) ?? '3.00'} • Games: {entry.games_played}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Checked In Players */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Checked In ({checkIns.length})</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {checkIns.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No players checked in</p>
-            ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                {checkIns.map((checkIn) => (
-                  <div key={checkIn.id} className="p-2 border rounded text-sm">
-                    <p className="font-medium">
-                      {checkIn.profiles.display_name || checkIn.profiles.full_name}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {checkIn.profiles.current_rating?.toFixed(2) ?? '3.00'}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
       <Footer />
     </div>
   );

@@ -1,5 +1,5 @@
-import { useEffect, useRef } from "react";
-import QRCode from "qrcode.react";
+import { useRef } from "react";
+import { QRCodeSVG } from "qrcode.react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { QrCode, Download } from "lucide-react";
@@ -13,14 +13,20 @@ export function SessionQRCode({ joinUrl, sessionName }: SessionQRCodeProps) {
   const qrRef = useRef<HTMLDivElement>(null);
 
   const downloadQR = () => {
-    const canvas = qrRef.current?.querySelector('canvas');
-    if (!canvas) return;
+    const svg = qrRef.current?.querySelector('svg');
+    if (!svg) return;
 
-    const url = canvas.toDataURL("image/png");
+    // Convert SVG to data URL
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(svgBlob);
+    
     const link = document.createElement('a');
-    link.download = `session-qr-${sessionName.replace(/\s+/g, '-').toLowerCase()}.png`;
+    link.download = `session-qr-${sessionName.replace(/\s+/g, '-').toLowerCase()}.svg`;
     link.href = url;
     link.click();
+    
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -33,7 +39,7 @@ export function SessionQRCode({ joinUrl, sessionName }: SessionQRCodeProps) {
       </CardHeader>
       <CardContent className="space-y-4">
         <div ref={qrRef} className="bg-white p-4 rounded-lg inline-block">
-          <QRCode 
+          <QRCodeSVG 
             value={joinUrl} 
             size={200}
             level="H"
