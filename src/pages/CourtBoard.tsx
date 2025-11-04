@@ -167,34 +167,22 @@ export default function CourtBoard() {
       >
         <div className="container mx-auto px-4 py-6 md:py-8">
           {courtId === PICKLEBALL_CITI_ID ? (
-            <div className="flex flex-col items-center gap-4 md:gap-6">
+            <div className="flex items-center justify-between gap-3 md:gap-6">
               <motion.div
                 initial={{ scale: 0.8, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ duration: 0.5, delay: 0.1 }}
-                className="flex-shrink-0"
+                className="flex-1 flex items-center justify-center"
               >
                 <img 
                   src={pickleballCitiLogo} 
-                  alt="Pickleball Citi Logo" 
-                  className="h-24 md:h-32 w-auto object-contain"
+                  alt="Pickleball Citi" 
+                  className="h-24 md:h-32 lg:h-40 w-auto object-contain"
                   style={{
-                    filter: 'drop-shadow(0px 4px 8px rgba(14, 76, 88, 0.15))'
+                    filter: 'drop-shadow(0px 4px 12px rgba(14, 76, 88, 0.2))'
                   }}
                 />
               </motion.div>
-              <div className="text-center">
-                <motion.p
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.5, delay: 0.3 }}
-                  className="text-sm md:text-lg leading-relaxed"
-                  style={{ color: '#0E4C58', opacity: 0.8 }}
-                >
-                  {court.city}, {court.state}
-                  {court.location && ` • ${court.location}`}
-                </motion.p>
-              </div>
               {currentUserId && (
                 <div className="flex-shrink-0">
                   <CourtCheckIn courtId={court.id} userId={currentUserId} />
