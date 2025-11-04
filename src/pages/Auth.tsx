@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -33,7 +34,23 @@ const Auth = () => {
   const [showEmailMFA, setShowEmailMFA] = useState(false);
   const [mfaMethod, setMfaMethod] = useState<"authenticator" | "email" | "none">("none");
   const [checkingLocation, setCheckingLocation] = useState(false);
+  const [staySignedIn, setStaySignedIn] = useState(true);
   const navigate = useNavigate();
+
+  // Check session persistence on mount
+  useEffect(() => {
+    const checkSessionPersistence = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const sessionFlag = sessionStorage.getItem('pulse_stay_signed_in');
+      
+      // If we have a session but no sessionStorage flag, user didn't want to stay signed in
+      if (session && !sessionFlag) {
+        await supabase.auth.signOut();
+      }
+    };
+    
+    checkSessionPersistence();
+  }, []);
 
   const checkLocationAccess = async (): Promise<boolean> => {
     return new Promise((resolve) => {
@@ -125,6 +142,22 @@ const Auth = () => {
         });
         
         if (error) throw error;
+
+        // Handle session persistence based on checkbox
+        if (staySignedIn) {
+          // Set flag in sessionStorage so we know user wants to stay signed in
+          sessionStorage.setItem('pulse_stay_signed_in', 'true');
+        } else {
+          // Don't set the flag - session will be cleared on browser close
+          sessionStorage.setItem('pulse_stay_signed_in', 'false');
+          
+          // Set up listener to clear session when tab/window closes
+          const handleBeforeUnload = () => {
+            sessionStorage.removeItem('pulse_stay_signed_in');
+          };
+          
+          window.addEventListener('beforeunload', handleBeforeUnload);
+        }
         
         // Check user's MFA preference from profile (with timeout)
         if (data.session) {
@@ -398,15 +431,30 @@ const Auth = () => {
                 )}
 
                 {isLogin && (
-                  <div className="text-right text-sm">
-                    <button
-                      type="button"
-                      onClick={() => setIsForgotPassword(true)}
-                      className="text-primary hover:underline"
-                    >
-                      Forgot password?
-                    </button>
-                  </div>
+                  <>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox 
+                        id="staySignedIn" 
+                        checked={staySignedIn}
+                        onCheckedChange={(checked) => setStaySignedIn(checked as boolean)}
+                      />
+                      <Label 
+                        htmlFor="staySignedIn" 
+                        className="text-sm font-normal cursor-pointer"
+                      >
+                        Stay signed in
+                      </Label>
+                    </div>
+                    <div className="text-right text-sm">
+                      <button
+                        type="button"
+                        onClick={() => setIsForgotPassword(true)}
+                        className="text-primary hover:underline"
+                      >
+                        Forgot password?
+                      </button>
+                    </div>
+                  </>
                 )}
 
                 <Button type="submit" className="w-full" disabled={loading || checkingLocation}>
