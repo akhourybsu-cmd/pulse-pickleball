@@ -10,6 +10,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { Footer } from "@/components/Footer";
 import { WhosUpBoard } from "@/components/court/WhosUpBoard";
 import { SessionQRCode } from "@/components/court/SessionQRCode";
+import { QueueBoxSystem } from "@/components/court/QueueBoxSystem";
 
 interface Session {
   id: string;
@@ -42,6 +43,7 @@ interface QueueEntry {
   player_id: string;
   joined_at: string;
   games_played: number;
+  box_number: number | null;
   profiles: {
     display_name: string | null;
     full_name: string;
@@ -389,7 +391,7 @@ export default function SessionQueue() {
     }
   };
 
-  const handleJoinQueue = async () => {
+  const handleJoinBox = async (boxNumber: number) => {
     if (!userId || !session) return;
 
     try {
@@ -399,13 +401,41 @@ export default function SessionQueue() {
           session_id: session.id,
           player_id: userId,
           status: "waiting",
+          box_number: boxNumber,
         });
 
       if (error) throw error;
 
       toast({
-        title: "Joined Queue!",
-        description: "You're now in the queue",
+        title: "Joined Box!",
+        description: `You're now in Box ${boxNumber}`,
+      });
+
+      await fetchSessionData(session.id);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleLeaveBox = async () => {
+    if (!userId || !session) return;
+
+    try {
+      const { error } = await supabase
+        .from("queue_entries")
+        .delete()
+        .eq("session_id", session.id)
+        .eq("player_id", userId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Left Box",
+        description: "You've been removed from the box",
       });
 
       await fetchSessionData(session.id);
@@ -500,25 +530,15 @@ export default function SessionQueue() {
                 </div>
               </div>
               
-              {!isCheckedIn && (
+              {!isCheckedIn ? (
                 <Button onClick={handleCheckIn} className="w-full">
                   Check In
                 </Button>
-              )}
-              {isCheckedIn && !isInQueue && (
-                <Button onClick={handleJoinQueue} className="w-full">
-                  <Play className="w-4 h-4 mr-2" />
-                  Join Queue
-                </Button>
-              )}
-              {isInQueue && userQueuePosition && (
-                <div className="bg-blue-50 dark:bg-blue-950/30 p-4 rounded-lg text-center">
-                  <p className="text-sm text-muted-foreground">You're in the queue</p>
-                  <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-                    #{userQueuePosition}
-                  </p>
+              ) : (
+                <div className="bg-primary/10 p-4 rounded-lg text-center">
+                  <p className="text-sm font-medium text-primary">✓ Checked In</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {userQueuePosition <= 4 ? "You're up next!" : `${Math.ceil((userQueuePosition - 4) / 4)} groups ahead`}
+                    Join a box below to get in queue
                   </p>
                 </div>
               )}
@@ -562,13 +582,27 @@ export default function SessionQueue() {
               },
             ]
           }))}
-          waitingPlayers={queueEntries.map(entry => ({
-            id: entry.player_id,
-            ...entry.profiles
-          }))}
+          waitingPlayers={queueEntries
+            .filter(entry => entry.box_number === null)
+            .map(entry => ({
+              id: entry.player_id,
+              ...entry.profiles
+            }))}
           totalCourts={session.num_courts}
           currentUserId={userId}
         />
+
+        {/* Box System - Only show if checked in */}
+        {isCheckedIn && (
+          <QueueBoxSystem
+            sessionId={session.id}
+            userId={userId}
+            boxEntries={queueEntries.filter(entry => entry.box_number !== null) as any}
+            onJoinBox={handleJoinBox}
+            onLeaveBox={handleLeaveBox}
+            numBoxes={12}
+          />
+        )}
       </div>
       <Footer />
     </div>

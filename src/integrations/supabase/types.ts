@@ -1616,6 +1616,7 @@ export type Database = {
       }
       queue_entries: {
         Row: {
+          box_number: number | null
           games_played: number | null
           id: string
           joined_at: string | null
@@ -1625,6 +1626,7 @@ export type Database = {
           status: string
         }
         Insert: {
+          box_number?: number | null
           games_played?: number | null
           id?: string
           joined_at?: string | null
@@ -1634,6 +1636,7 @@ export type Database = {
           status?: string
         }
         Update: {
+          box_number?: number | null
           games_played?: number | null
           id?: string
           joined_at?: string | null
