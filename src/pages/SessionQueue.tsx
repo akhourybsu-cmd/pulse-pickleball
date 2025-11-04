@@ -237,6 +237,13 @@ export default function SessionQueue() {
     };
   }, [session, userId]);
 
+  // Refetch session data when userId becomes available
+  useEffect(() => {
+    if (session?.id && userId) {
+      fetchSessionData(session.id);
+    }
+  }, [session?.id, userId]);
+
   // Track user check-in and queue status whenever data changes
   useEffect(() => {
     if (!session || !userId) return;
