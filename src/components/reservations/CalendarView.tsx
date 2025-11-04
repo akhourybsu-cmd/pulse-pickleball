@@ -70,6 +70,7 @@ export function CalendarView({ facilityId, currentUserId }: CalendarViewProps) {
         ...event,
         event_type: event.event_type as "league" | "open_play" | "private" | "lesson",
         skill_level: event.skill_level as "all" | "beginner" | "intermediate" | "advanced" | undefined,
+        rental_status: event.rental_status as "available" | "reserved" | undefined,
       }));
     },
   });
