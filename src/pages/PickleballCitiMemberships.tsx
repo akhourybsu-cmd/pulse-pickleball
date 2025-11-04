@@ -84,7 +84,7 @@ export default function PickleballCitiMemberships() {
         </div>
       </nav>
 
-      <div className="container mx-auto px-4 pt-3 pb-16">
+      <div className="container mx-auto px-4 pt-1.5 pb-16">
         <Button
           variant="outline"
           onClick={() => navigate(-1)}
