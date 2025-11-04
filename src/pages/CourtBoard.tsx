@@ -10,8 +10,9 @@ import { CourtAnalytics } from "@/components/court/CourtAnalytics";
 import { CourtPresence } from "@/components/court/CourtPresence";
 import { CourtCheckIn } from "@/components/court/CourtCheckIn";
 import { CourtFeed } from "@/components/court/feed/CourtFeed";
+import { ActivateSessionDialog } from "@/components/court/ActivateSessionDialog";
 import { useToast } from "@/hooks/use-toast";
-import { MapPin, MessageSquare, Activity, LogOut, User as UserIcon, ExternalLink, Calendar } from "lucide-react";
+import { MapPin, MessageSquare, Activity, LogOut, User as UserIcon, ExternalLink, Calendar, Play, Users } from "lucide-react";
 import { motion } from "framer-motion";
 import logo from "@/assets/pulse-logo-new.png";
 import pickleballCitiLogo from "@/assets/pickleball-citi-logo.png";
@@ -35,6 +36,8 @@ export default function CourtBoard() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [activateDialogOpen, setActivateDialogOpen] = useState(false);
 
   const PICKLEBALL_CITI_ID = "836003fb-fbd7-429c-8973-67ac6766a511";
 
@@ -43,6 +46,7 @@ export default function CourtBoard() {
     if (courtId) {
       fetchCourt();
       fetchChannel();
+      fetchActiveSession();
     }
   }, [courtId]);
 
@@ -93,6 +97,21 @@ export default function CourtBoard() {
 
     if (data) {
       setChannelId(data.id);
+    }
+  };
+
+  const fetchActiveSession = async () => {
+    if (!courtId) return;
+    
+    const { data } = await supabase
+      .from("sessions")
+      .select("id")
+      .eq("court_id", courtId)
+      .eq("status", "active")
+      .maybeSingle();
+    
+    if (data) {
+      setActiveSessionId(data.id);
     }
   };
 
@@ -448,6 +467,51 @@ export default function CourtBoard() {
               </CardContent>
             </Card>
           )}
+          
+          {/* Session Queue Button */}
+          {currentUserId && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+            >
+              <Card className="border-2 border-primary/20">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                        <Users className="w-6 h-6 text-primary" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-lg">Session Queue</h3>
+                        <p className="text-sm text-muted-foreground">
+                          {activeSessionId ? "Join the active session" : "Start a new session"}
+                        </p>
+                      </div>
+                    </div>
+                    {activeSessionId ? (
+                      <Button
+                        onClick={() => navigate(`/session-queue?session=${activeSessionId}`)}
+                        className="gap-2"
+                      >
+                        <Play className="w-4 h-4" />
+                        View Queue
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={() => setActivateDialogOpen(true)}
+                        variant="outline"
+                        className="gap-2"
+                      >
+                        <Play className="w-4 h-4" />
+                        Activate
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
         </div>
 
         <Tabs defaultValue="feed" className="w-full">
@@ -478,6 +542,20 @@ export default function CourtBoard() {
           </TabsContent>
         </Tabs>
       </div>
+      
+      {/* Activate Session Dialog */}
+      {court && (
+        <ActivateSessionDialog
+          open={activateDialogOpen}
+          onOpenChange={setActivateDialogOpen}
+          courtId={court.id}
+          courtName={court.name}
+          onSuccess={(sessionId) => {
+            setActiveSessionId(sessionId);
+            navigate(`/session-queue?session=${sessionId}`);
+          }}
+        />
+      )}
     </div>
   );
 }
