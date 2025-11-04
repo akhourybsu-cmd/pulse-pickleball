@@ -10,6 +10,7 @@ import { format, parseISO } from "date-fns";
 import { CalendarEventTile } from "@/components/reservations/CalendarEventTile";
 import { EventModal } from "@/components/reservations/EventModal";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 
 interface CalendarEventWithCourt {
   id: string;
@@ -25,6 +26,7 @@ interface CalendarEventWithCourt {
   description: string | null;
   skill_level: string | null;
   facility_id: string;
+  series_id: string | null;
   courts: {
     id: string;
     name: string;
@@ -37,6 +39,7 @@ interface CalendarEventWithCourt {
 export default function BrowseEvents() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
+  const [eventTypeFilter, setEventTypeFilter] = useState<string>("all");
 
   const { data: session } = useQuery({
     queryKey: ["session"],
@@ -53,6 +56,7 @@ export default function BrowseEvents() {
         .from("calendar_events")
         .select("*")
         .gte("start_time", new Date().toISOString())
+        .neq("event_type", "private_rental")
         .order("start_time", { ascending: true });
 
       if (eventsError) throw eventsError;
@@ -67,10 +71,28 @@ export default function BrowseEvents() {
       // Map events with their courts
       const courtsMap = new Map(courts?.map((c) => [c.id, c]) || []);
       
-      return (calendarEvents || []).map((event) => ({
+      const eventsWithCourts = (calendarEvents || []).map((event) => ({
         ...event,
         courts: courtsMap.get(event.facility_id) || null,
       })) as CalendarEventWithCourt[];
+
+      // Group league events by series_id, only show first instance
+      const leagueSeriesMap = new Map<string, CalendarEventWithCourt>();
+      const nonLeagueEvents: CalendarEventWithCourt[] = [];
+
+      eventsWithCourts.forEach((event) => {
+        if (event.event_type === "league" && event.series_id) {
+          if (!leagueSeriesMap.has(event.series_id)) {
+            leagueSeriesMap.set(event.series_id, event);
+          }
+        } else {
+          nonLeagueEvents.push(event);
+        }
+      });
+
+      return [...Array.from(leagueSeriesMap.values()), ...nonLeagueEvents].sort(
+        (a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
+      );
     },
   });
 
@@ -87,21 +109,36 @@ export default function BrowseEvents() {
     return acc;
   }, {} as Record<string, { court: any; events: CalendarEventWithCourt[] }>);
 
-  // Filter by search term
-  const filteredCourtGroups = Object.entries(eventsByCourt).filter(
-    ([courtName, group]) => {
+  // Filter by search term and event type
+  const filteredCourtGroups = Object.entries(eventsByCourt)
+    .filter(([courtName, group]) => {
+      // Filter by event type first
+      const typeFilteredEvents = group.events.filter((event) => {
+        if (eventTypeFilter === "all") return true;
+        return event.event_type === eventTypeFilter;
+      });
+
+      if (typeFilteredEvents.length === 0) return false;
+
       if (!searchTerm) return true;
       const searchLower = searchTerm.toLowerCase();
       return (
         courtName.toLowerCase().includes(searchLower) ||
-        group.events.some(
+        typeFilteredEvents.some(
           (event) =>
             event.title.toLowerCase().includes(searchLower) ||
             event.event_type.toLowerCase().includes(searchLower)
         )
       );
-    }
-  );
+    })
+    .map(([courtName, group]) => ({
+      courtName,
+      ...group,
+      events: group.events.filter((event) => {
+        if (eventTypeFilter === "all") return true;
+        return event.event_type === eventTypeFilter;
+      }),
+    }));
 
   const handleRegister = async (eventId: string) => {
     if (!session?.user?.id) {
@@ -147,8 +184,8 @@ export default function BrowseEvents() {
           </p>
         </div>
 
-        {/* Search Bar */}
-        <div className="mb-6">
+        {/* Search Bar and Filters */}
+        <div className="mb-6 space-y-4">
           <div className="relative max-w-md">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
             <Input
@@ -158,6 +195,38 @@ export default function BrowseEvents() {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
             />
+          </div>
+          
+          {/* Event Type Filters */}
+          <div className="flex gap-2 flex-wrap">
+            <Button
+              variant={eventTypeFilter === "all" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setEventTypeFilter("all")}
+            >
+              All Events
+            </Button>
+            <Button
+              variant={eventTypeFilter === "open_play" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setEventTypeFilter("open_play")}
+            >
+              Open Play
+            </Button>
+            <Button
+              variant={eventTypeFilter === "league" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setEventTypeFilter("league")}
+            >
+              League
+            </Button>
+            <Button
+              variant={eventTypeFilter === "lesson" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setEventTypeFilter("lesson")}
+            >
+              Lesson
+            </Button>
           </div>
         </div>
 
@@ -181,15 +250,15 @@ export default function BrowseEvents() {
           </Card>
         ) : (
           <div className="space-y-8">
-            {filteredCourtGroups.map(([courtName, group]) => (
-              <div key={courtName}>
+            {filteredCourtGroups.map((group) => (
+              <div key={group.courtName}>
                 {/* Court Header */}
                 <Card className="mb-4 bg-muted/30">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-3">
                       <MapPin className="w-5 h-5 text-primary" />
                       <div>
-                        <div className="text-xl">{courtName}</div>
+                        <div className="text-xl">{group.courtName}</div>
                         {group.court && (
                           <div className="text-sm font-normal text-muted-foreground mt-1">
                             {group.court.location}, {group.court.city},{" "}

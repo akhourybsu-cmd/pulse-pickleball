@@ -23,6 +23,7 @@ interface EventModalProps {
     instructor?: string;
     description?: string;
     skill_level?: "all" | "beginner" | "intermediate" | "advanced";
+    series_id?: string | null;
   } | null;
   isOpen: boolean;
   onClose: () => void;
@@ -87,6 +88,24 @@ export function EventModal({ event, isOpen, onClose, currentUserId, isAdmin, onR
   // Check if current user is registered
   const userRegistration = registrations.find(r => r.user_id === currentUserId);
   const isRegistered = !!userRegistration;
+
+  // Fetch all series events if this is a league with series_id
+  const { data: seriesEvents } = useQuery({
+    queryKey: ["series-events", event?.series_id],
+    queryFn: async () => {
+      if (!event?.series_id) return [];
+      
+      const { data, error } = await supabase
+        .from("calendar_events")
+        .select("*")
+        .eq("series_id", event.series_id)
+        .order("start_time", { ascending: true });
+
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!event?.series_id && event?.event_type === "league" && isOpen,
+  });
 
   if (!event) return null;
 
@@ -187,15 +206,37 @@ export function EventModal({ event, isOpen, onClose, currentUserId, isAdmin, onR
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="flex items-center gap-2 text-sm">
-            <Calendar className="w-4 h-4 text-muted-foreground" />
-            <span>{format(startTime, "EEEE, MMMM d, yyyy")}</span>
-          </div>
+          {event.event_type === "league" && seriesEvents && seriesEvents.length > 1 ? (
+            <>
+              <div className="flex items-center gap-2 text-sm">
+                <Calendar className="w-4 h-4 text-muted-foreground" />
+                <span>
+                  {format(new Date(seriesEvents[0].start_time), "MMMM d, yyyy")} -{" "}
+                  {format(new Date(seriesEvents[seriesEvents.length - 1].start_time), "MMMM d, yyyy")}
+                </span>
+              </div>
 
-          <div className="flex items-center gap-2 text-sm">
-            <Clock className="w-4 h-4 text-muted-foreground" />
-            <span>{format(startTime, "h:mm a")} - {format(endTime, "h:mm a")}</span>
-          </div>
+              <div className="flex items-center gap-2 text-sm">
+                <Clock className="w-4 h-4 text-muted-foreground" />
+                <span>
+                  {format(startTime, "EEEE")}s at{" "}
+                  {format(startTime, "h:mm a")} - {format(endTime, "h:mm a")} ({seriesEvents.length} sessions)
+                </span>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-2 text-sm">
+                <Calendar className="w-4 h-4 text-muted-foreground" />
+                <span>{format(startTime, "EEEE, MMMM d, yyyy")}</span>
+              </div>
+
+              <div className="flex items-center gap-2 text-sm">
+                <Clock className="w-4 h-4 text-muted-foreground" />
+                <span>{format(startTime, "h:mm a")} - {format(endTime, "h:mm a")}</span>
+              </div>
+            </>
+          )}
 
           <div className="flex items-center gap-2 text-sm">
             <MapPin className="w-4 h-4 text-muted-foreground" />
