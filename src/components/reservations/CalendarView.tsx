@@ -309,7 +309,6 @@ export function CalendarView({ facilityId, currentUserId, pickleballCitiLogo }: 
             className="h-7 object-contain"
             style={{ maxWidth: '110px' }}
           />
-          <span className="text-xs text-muted-foreground/70 italic ml-2">Powered by PULSE</span>
         </div>
 
         <div className="flex items-center gap-2">
