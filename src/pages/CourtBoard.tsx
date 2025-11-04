@@ -300,6 +300,51 @@ export default function CourtBoard() {
 
       <div className="container mx-auto px-4 py-6 space-y-6">
         {courtId === PICKLEBALL_CITI_ID && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="relative overflow-hidden rounded-2xl p-8 md:p-12"
+            style={{
+              background: 'linear-gradient(135deg, #ffffff 0%, #f5fef0 100%)',
+              border: '2px solid rgba(169, 220, 61, 0.2)',
+              boxShadow: '0 10px 40px rgba(14, 76, 88, 0.08)',
+            }}
+          >
+            <div className="max-w-4xl mx-auto space-y-6">
+              <motion.h2
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.3 }}
+                className="text-3xl md:text-4xl font-bold text-center mb-6"
+                style={{ 
+                  color: '#0E4C58',
+                  textShadow: '0px 1px 2px rgba(14, 76, 88, 0.1)'
+                }}
+              >
+                Join Pickleball Citi and Take Your Game to the Next Level
+              </motion.h2>
+              
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5, delay: 0.4 }}
+                className="space-y-4 text-base md:text-lg leading-relaxed"
+                style={{ color: '#0E4C58', opacity: 0.85 }}
+              >
+                <p>
+                  At Pickleball Citi, our mission is to grow the game of pickleball for all ages, skill levels, and abilities by fostering an inclusive environment that promotes health, social connection, good sportsmanship, and fun. We are committed to providing a welcoming atmosphere, supporting recreational enjoyment and competitive excellence through well-organized play, and engaging the community.
+                </p>
+                
+                <p>
+                  We are dedicated to helping athletes of all levels reach their full potential. Our team of expert coaches offers personalized training programs designed to enhance your skills and take your game to the next level. Whether you are a beginner looking to learn the fundamentals or an experienced player looking to fine-tune your technique, we have the expertise and resources to help you achieve your goals. Join us today and take the first step towards becoming a better athlete!
+                </p>
+              </motion.div>
+            </div>
+          </motion.div>
+        )}
+        
+        {courtId === PICKLEBALL_CITI_ID && (
           <div style={{ borderTop: '1px solid rgba(14, 76, 88, 0.15)', paddingTop: '1.5rem' }}>
             <JoinableCalendarEvents courtId={courtId} />
           </div>
