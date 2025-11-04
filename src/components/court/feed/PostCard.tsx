@@ -4,6 +4,7 @@ import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MessageSquare, ThumbsUp, Heart, Laugh, Sparkles, Calendar, Clock, Users, Trash2, MoreVertical } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
@@ -90,6 +91,7 @@ export const PostCard = ({ post, onCommentClick, onReactionClick, currentUserId,
   const navigate = useNavigate();
   const [showFullBody, setShowFullBody] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showSignupDialog, setShowSignupDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
 
@@ -172,11 +174,19 @@ export const PostCard = ({ post, onCommentClick, onReactionClick, currentUserId,
     }
   };
 
+  const handleCardClick = () => {
+    if (!currentUserId) {
+      setShowSignupDialog(true);
+    } else {
+      navigate(`/court/feed/${post.id}`);
+    }
+  };
+
   return (
     <>
       <Card 
         className="hover:shadow-md transition-shadow cursor-pointer"
-        onClick={() => navigate(`/court/feed/${post.id}`)}
+        onClick={handleCardClick}
       >
         <CardHeader className="pb-3">
           <div className="flex items-start justify-between gap-3">
@@ -375,6 +385,37 @@ export const PostCard = ({ post, onCommentClick, onReactionClick, currentUserId,
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Signup Dialog */}
+      <Dialog open={showSignupDialog} onOpenChange={setShowSignupDialog}>
+        <DialogContent className="sm:max-w-md" onClick={(e) => e.stopPropagation()}>
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-center">Join the Community</DialogTitle>
+            <DialogDescription className="text-center text-base pt-2">
+              In order to access this content, please sign up for a completely free PULSE profile.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-3 pt-4">
+            <Button
+              onClick={() => navigate(`/auth?redirect=${encodeURIComponent(window.location.pathname)}`)}
+              className="w-full"
+              style={{
+                backgroundColor: '#B9E43B',
+                color: '#0E4C58',
+              }}
+            >
+              Create Free Account
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setShowSignupDialog(false)}
+              className="w-full"
+            >
+              Maybe Later
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

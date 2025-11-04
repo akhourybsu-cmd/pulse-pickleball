@@ -228,6 +228,43 @@ export default function CourtBoard() {
           <UpcomingEvents courtId={courtId} isAdmin={isAdmin} currentUserId={currentUserId} />
         )}
 
+        {!currentUserId && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="relative overflow-hidden rounded-lg p-8 md:p-12 text-center"
+            style={{
+              background: 'linear-gradient(135deg, #0E4C58 0%, #1a6b7a 100%)',
+              boxShadow: '0 10px 40px rgba(14, 76, 88, 0.2)',
+            }}
+          >
+            <div className="absolute inset-0 opacity-10">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-[#B9E43B] rounded-full blur-3xl" />
+              <div className="absolute bottom-0 left-0 w-64 h-64 bg-[#A9DC3D] rounded-full blur-3xl" />
+            </div>
+            <div className="relative z-10">
+              <h2 className="text-3xl md:text-4xl font-bold mb-4" style={{ color: '#B9E43B' }}>
+                Join the Pickleball Citi Community
+              </h2>
+              <p className="text-lg md:text-xl mb-6 text-white/90 max-w-2xl mx-auto">
+                Connect with fellow players, join exciting events, and stay updated on everything happening at Pickleball Citi. Create your free PULSE profile today!
+              </p>
+              <Button
+                onClick={() => navigate(`/auth?redirect=${encodeURIComponent(window.location.pathname)}`)}
+                size="lg"
+                className="text-lg px-8 py-6"
+                style={{
+                  backgroundColor: '#B9E43B',
+                  color: '#0E4C58',
+                }}
+              >
+                Create Free Account
+              </Button>
+            </div>
+          </motion.div>
+        )}
+
         <div className="flex flex-col gap-3 sm:gap-4">
           {channelId && (
             <Card>
