@@ -491,7 +491,7 @@ export default function CourtBoard() {
                     </div>
                     {activeSessionId ? (
                       <Button
-                        onClick={() => navigate(`/session-queue?session=${activeSessionId}`)}
+                        onClick={() => navigate(`/session/queue?session=${activeSessionId}`)}
                         className="gap-2"
                       >
                         <Play className="w-4 h-4" />
@@ -552,7 +552,7 @@ export default function CourtBoard() {
           courtName={court.name}
           onSuccess={(sessionId) => {
             setActiveSessionId(sessionId);
-            navigate(`/session-queue?session=${sessionId}`);
+            navigate(`/session/queue?session=${sessionId}`);
           }}
         />
       )}
