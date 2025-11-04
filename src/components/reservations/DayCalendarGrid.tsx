@@ -13,6 +13,7 @@ interface CalendarEvent {
   capacity?: number;
   current_registrations?: number;
   skill_level?: "all" | "beginner" | "intermediate" | "advanced";
+  rental_status?: "available" | "reserved";
 }
 
 interface DayCalendarGridProps {
@@ -133,6 +134,16 @@ export function DayCalendarGrid({ currentDate, events, onEventClick, onTimeSlotC
             <div className="text-sm opacity-80 font-medium">
               {isDoubleWide ? "Courts 1 & 2" : `Court ${event.court_number}`}
             </div>
+            {event.event_type === 'private' && event.rental_status && (
+              <span className={cn(
+                "text-xs px-2 py-1 rounded font-bold w-fit",
+                event.rental_status === 'available' 
+                  ? "bg-green-500 text-white" 
+                  : "bg-gray-500 text-white"
+              )}>
+                {event.rental_status === 'available' ? 'Available for Rent' : 'Reserved'}
+              </span>
+            )}
           </div>
           {event.capacity && height > 100 && (
             <div className="text-sm opacity-80 font-medium">
