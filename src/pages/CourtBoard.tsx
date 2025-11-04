@@ -16,6 +16,7 @@ import { motion } from "framer-motion";
 import logo from "@/assets/pulse-logo-new.png";
 import pickleballCitiLogo from "@/assets/pickleball-citi-logo.png";
 import { UpcomingEvents } from "@/components/citi-events/UpcomingEvents";
+import VenueInfoCard from "@/components/VenueInfoCard";
 
 interface Court {
   id: string;
@@ -166,7 +167,7 @@ export default function CourtBoard() {
         }}
       >
         <div className="container mx-auto px-4 py-6 md:py-8">
-          <div className="flex items-start gap-3 md:gap-6">
+          <div className="flex items-start gap-3 md:gap-6 flex-wrap md:flex-nowrap">
             {courtId === PICKLEBALL_CITI_ID ? (
               <>
                 <motion.div
@@ -203,6 +204,14 @@ export default function CourtBoard() {
                       Powered by PULSE
                     </motion.p>
                   </div>
+                </motion.div>
+                <motion.div
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ duration: 0.5, delay: 0.2 }}
+                  className="w-full md:w-auto md:flex-shrink-0"
+                >
+                  <VenueInfoCard />
                 </motion.div>
               </>
             ) : (
