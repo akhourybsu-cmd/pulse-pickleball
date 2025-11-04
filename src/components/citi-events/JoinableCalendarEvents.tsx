@@ -1,11 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { Calendar, Clock, Users, MapPin } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 
 interface JoinableCalendarEventsProps {
   courtId: string;
@@ -24,7 +25,7 @@ export function JoinableCalendarEvents({ courtId }: JoinableCalendarEventsProps)
         .neq("event_type", "private")
         .gte("start_time", now)
         .order("start_time", { ascending: true })
-        .limit(6);
+        .limit(3);
       
       if (error) throw error;
       return data || [];
@@ -58,101 +59,88 @@ export function JoinableCalendarEvents({ courtId }: JoinableCalendarEventsProps)
   };
 
   if (events.length === 0) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="w-5 h-5" />
-            Upcoming Events
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground text-center py-8">
-            No upcoming events available at this time. Check back soon!
-          </p>
-        </CardContent>
-      </Card>
-    );
+    return null;
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="w-5 h-5" />
-            Upcoming Events
-          </CardTitle>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate('/reservations')}
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold flex items-center gap-2" style={{ color: '#0E4C58' }}>
+          <Calendar className="w-6 h-6" style={{ color: '#A9DC3D' }} />
+          Upcoming Events
+        </h2>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => navigate('/reservations')}
+          className="gap-2"
+        >
+          View All
+        </Button>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {events.map((event, index) => (
+          <motion.div
+            key={event.id}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: index * 0.1 }}
+            whileHover={{ y: -4, transition: { duration: 0.2 } }}
           >
-            View All
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {events.map((event) => (
-            <Card key={event.id} className="overflow-hidden hover:shadow-md transition-shadow">
-              <CardContent className="p-4">
-                <div className="space-y-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-semibold text-base line-clamp-1">{event.title}</h3>
-                    <Badge className={getEventColor(event.event_type)}>
-                      {getEventTypeLabel(event.event_type)}
+            <Card className="cursor-pointer rounded-2xl border-2 border-border shadow-lg hover:shadow-[0_2px_6px_rgba(0,0,0,0.05),0_4px_12px_rgba(169,220,61,0.15)] transition-all duration-300 h-full bg-card">
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <CardTitle className="text-xl line-clamp-1">{event.title}</CardTitle>
+                  <Badge className={getEventColor(event.event_type)}>
+                    {getEventTypeLabel(event.event_type)}
+                  </Badge>
+                </div>
+                {event.description && (
+                  <CardDescription className="line-clamp-2 text-sm">
+                    {event.description}
+                  </CardDescription>
+                )}
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Calendar className="w-4 h-4" />
+                  <span>{format(new Date(event.start_time), "MMM d, yyyy")}</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Clock className="w-4 h-4" />
+                  <span>
+                    {format(new Date(event.start_time), "h:mm a")} - {format(new Date(event.end_time), "h:mm a")}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <MapPin className="w-4 h-4" />
+                  <span>Court {event.court_number}</span>
+                </div>
+                {event.capacity && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Users className="w-4 h-4" />
+                    <span>
+                      {event.current_registrations}/{event.capacity} spots
+                    </span>
+                  </div>
+                )}
+                <div className="flex items-center gap-2 pt-2">
+                  {event.skill_level && event.skill_level !== "all" && (
+                    <Badge variant="outline" className="capitalize text-xs">
+                      {event.skill_level}
                     </Badge>
-                  </div>
-
-                  {event.description && (
-                    <p className="text-sm text-muted-foreground line-clamp-2">
-                      {event.description}
-                    </p>
                   )}
-
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Calendar className="w-4 h-4" />
-                      <span>{format(new Date(event.start_time), "MMM d, yyyy")}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Clock className="w-4 h-4" />
-                      <span>
-                        {format(new Date(event.start_time), "h:mm a")} - {format(new Date(event.end_time), "h:mm a")}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <MapPin className="w-4 h-4" />
-                      <span>Court {event.court_number}</span>
-                    </div>
-                    {event.capacity && (
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <Users className="w-4 h-4" />
-                        <span>
-                          {event.current_registrations}/{event.capacity} registered
-                        </span>
-                      </div>
-                    )}
-                    {event.skill_level && event.skill_level !== "all" && (
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="capitalize">
-                          {event.skill_level}
-                        </Badge>
-                      </div>
-                    )}
-                    {event.price > 0 && (
-                      <div className="flex items-center gap-2 font-semibold text-primary">
-                        ${event.price.toFixed(2)}
-                      </div>
-                    )}
-                  </div>
+                  {event.price > 0 && (
+                    <span className="font-semibold text-sm" style={{ color: '#A9DC3D' }}>
+                      ${event.price.toFixed(2)}
+                    </span>
+                  )}
                 </div>
               </CardContent>
             </Card>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
+          </motion.div>
+        ))}
+      </div>
+    </div>
   );
 }
