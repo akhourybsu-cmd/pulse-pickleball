@@ -87,7 +87,7 @@ export default function PickleballCitiMemberships() {
       <div className="container mx-auto px-4 pt-1.5 pb-16">
         <Button
           variant="outline"
-          onClick={() => navigate(-1)}
+          onClick={() => navigate('/court/board/836003fb-fbd7-429c-8973-67ac6766a511')}
           className="mb-6 gap-2"
         >
           <ArrowLeft className="w-4 h-4" />
