@@ -105,7 +105,7 @@ export function WeekCalendarGrid({ currentDate, events, onEventClick, onTimeSlot
                       // Single card spanning both courts - full height
                       <Card
                         key={`${day.toISOString()}-${hour}-both`}
-                        className="overflow-hidden min-h-[130px] cursor-pointer hover:shadow-md transition-shadow border-0"
+                        className="p-0 overflow-hidden min-h-[130px] cursor-pointer hover:shadow-md transition-shadow border-0"
                         onClick={() => {
                           const slotEvents = getEventsForSlot(day, hour, 1);
                           if (slotEvents.length > 0) {
@@ -117,7 +117,7 @@ export function WeekCalendarGrid({ currentDate, events, onEventClick, onTimeSlot
                           <div
                             key={event.id}
                             className={cn(
-                              "h-full p-3 flex flex-col justify-between",
+                              "min-h-[130px] h-full w-full p-3 flex flex-col justify-between",
                               EVENT_COLORS[event.event_type]
                             )}
                           >
@@ -152,7 +152,7 @@ export function WeekCalendarGrid({ currentDate, events, onEventClick, onTimeSlot
                           <Card
                             key={`${day.toISOString()}-${hour}-${court}`}
                             className={cn(
-                              "overflow-hidden min-h-[60px] cursor-pointer hover:shadow-md transition-shadow",
+                              "p-0 overflow-hidden min-h-[60px] cursor-pointer hover:shadow-md transition-shadow",
                               slotEvents.length === 0 && "bg-muted/30 border"
                             )}
                             onClick={() => {
@@ -168,7 +168,7 @@ export function WeekCalendarGrid({ currentDate, events, onEventClick, onTimeSlot
                                 <div
                                   key={event.id}
                                   className={cn(
-                                    "h-full p-2 flex flex-col justify-between",
+                                    "min-h-[60px] h-full w-full p-2 flex flex-col justify-between",
                                     EVENT_COLORS[event.event_type]
                                   )}
                                 >
