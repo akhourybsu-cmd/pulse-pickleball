@@ -137,23 +137,25 @@ export function WeekCalendarGrid({ currentDate, events, onEventClick, onTimeSlot
                 }
                 
                 return (
-                  <div key={`${day.toISOString()}-${hour}`}>
+                  <div 
+                    key={`${day.toISOString()}-${hour}`}
+                    style={bothCourts && getEventsForSlot(day, hour, 1).length > 0 
+                      ? { gridRow: `span ${getEventSpan(getEventsForSlot(day, hour, 1)[0])}` }
+                      : undefined
+                    }
+                  >
                     {bothCourts ? (
                       // Single card spanning both courts
                       (() => {
                         const slotEvents = getEventsForSlot(day, hour, 1);
-                        const span = slotEvents.length > 0 ? getEventSpan(slotEvents[0]) : 1;
-                        const minHeight = span * 130 + (span - 1) * 4; // Account for gap
+                        if (slotEvents.length === 0) return null;
                         
                         return (
                           <Card
                             key={`${day.toISOString()}-${hour}-both`}
-                            className="p-0 overflow-hidden cursor-pointer hover:shadow-md transition-shadow border-0"
-                            style={{ minHeight: `${minHeight}px`, gridRow: `span ${span}` }}
+                            className="p-0 overflow-hidden h-full cursor-pointer hover:shadow-md transition-shadow border-0"
                             onClick={() => {
-                              if (slotEvents.length > 0) {
-                                onEventClick(slotEvents[0]);
-                              }
+                              onEventClick(slotEvents[0]);
                             }}
                           >
                         
@@ -210,7 +212,6 @@ export function WeekCalendarGrid({ currentDate, events, onEventClick, onTimeSlot
                           }
                           
                           const span = slotEvents.length > 0 ? getEventSpan(slotEvents[0]) : 1;
-                          const minHeight = span * 60 + (span - 1) * 4;
                           
                           return (
                             <Card
@@ -219,7 +220,9 @@ export function WeekCalendarGrid({ currentDate, events, onEventClick, onTimeSlot
                                 "p-0 overflow-hidden cursor-pointer hover:shadow-md transition-shadow",
                                 slotEvents.length === 0 && "bg-muted/30 border min-h-[60px]"
                               )}
-                              style={slotEvents.length > 0 ? { minHeight: `${minHeight}px` } : undefined}
+                              style={slotEvents.length > 0 ? { 
+                                minHeight: `calc(${span * 60}px + ${(span - 1) * 4}px)` 
+                              } : undefined}
                               onClick={() => {
                                 if (slotEvents.length > 0) {
                                   onEventClick(slotEvents[0]);

@@ -110,62 +110,76 @@ export function DayCalendarGrid({ currentDate, events, onEventClick, onTimeSlotC
             </div>
             
             {bothCourts ? (
-              <Card
-                className="p-0 overflow-hidden min-h-[100px] cursor-pointer hover:shadow-md transition-shadow border-0"
-                onClick={() => {
-                  const slotEvents = getEventsForSlot(currentDate, hour, 1);
-                  if (slotEvents.length > 0) {
-                    onEventClick(slotEvents[0]);
-                  }
-                }}
-              >
-                {getEventsForSlot(currentDate, hour, 1).map(event => (
-                  <div
-                    key={event.id}
-                    className={cn(
-                      "min-h-[100px] h-full w-full p-4 flex flex-col justify-between",
-                      EVENT_COLORS[event.event_type]
-                    )}
+              (() => {
+                const slotEvents = getEventsForSlot(currentDate, hour, 1);
+                if (slotEvents.length === 0) return null;
+                
+                const span = getEventSpan(slotEvents[0]);
+                const minHeight = 100 * span + (span - 1) * 8;
+                
+                return (
+                  <Card
+                    className="p-0 overflow-hidden cursor-pointer hover:shadow-md transition-shadow border-0"
+                    style={{ minHeight: `${minHeight}px` }}
+                    onClick={() => onEventClick(slotEvents[0])}
                   >
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="truncate flex-1 font-semibold text-base">{event.title}</div>
-                        {event.skill_level && (
-                          <span className={cn(
-                            "text-xs px-2 py-1 rounded text-white font-bold",
-                            SKILL_LEVEL_COLORS[event.skill_level]
-                          )}>
-                            {SKILL_LEVEL_LABELS[event.skill_level]}
-                          </span>
+                    {slotEvents.map(event => (
+                      <div
+                        key={event.id}
+                        className={cn(
+                          "h-full w-full p-4 flex flex-col justify-between",
+                          EVENT_COLORS[event.event_type]
+                        )}
+                      >
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="truncate flex-1 font-semibold text-base">{event.title}</div>
+                            {event.skill_level && (
+                              <span className={cn(
+                                "text-xs px-2 py-1 rounded text-white font-bold",
+                                SKILL_LEVEL_COLORS[event.skill_level]
+                              )}>
+                                {SKILL_LEVEL_LABELS[event.skill_level]}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 text-sm opacity-80">
+                            <Clock className="w-4 h-4" />
+                            <span className="font-medium">
+                              {format(new Date(event.start_time), "h:mm a")} - {format(new Date(event.end_time), "h:mm a")}
+                            </span>
+                          </div>
+                          <div className="text-sm opacity-80 font-medium">Courts 1 & 2</div>
+                        </div>
+                        {event.capacity && (
+                          <div className="text-sm opacity-80 font-medium">
+                            {event.current_registrations || 0}/{event.capacity} registered
+                          </div>
                         )}
                       </div>
-                      <div className="flex items-center gap-2 text-sm opacity-80">
-                        <Clock className="w-4 h-4" />
-                        <span className="font-medium">
-                          {format(new Date(event.start_time), "h:mm a")} - {format(new Date(event.end_time), "h:mm a")}
-                        </span>
-                      </div>
-                      <div className="text-sm opacity-80 font-medium">Courts 1 & 2</div>
-                    </div>
-                    {event.capacity && (
-                      <div className="text-sm opacity-80 font-medium">
-                        {event.current_registrations || 0}/{event.capacity} registered
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </Card>
+                    ))}
+                  </Card>
+                );
+              })()
             ) : (
               <div className="grid grid-cols-2 gap-3">
                 {courts.map(court => {
                   const slotEvents = getEventsForSlot(currentDate, hour, court);
+                  const covered = isHourCovered(currentDate, hour, court);
+                  
+                  if (covered) return null;
+                  
+                  const span = slotEvents.length > 0 ? getEventSpan(slotEvents[0]) : 1;
+                  const minHeight = 100 * span + (span - 1) * 8;
+                  
                   return (
                     <Card
                       key={court}
                       className={cn(
-                        "p-0 overflow-hidden min-h-[100px] cursor-pointer hover:shadow-md transition-shadow",
-                        slotEvents.length === 0 && "bg-muted/30 border"
+                        "p-0 overflow-hidden cursor-pointer hover:shadow-md transition-shadow",
+                        slotEvents.length === 0 && "bg-muted/30 border min-h-[100px]"
                       )}
+                      style={slotEvents.length > 0 ? { minHeight: `${minHeight}px` } : undefined}
                       onClick={() => {
                         if (slotEvents.length > 0) {
                           onEventClick(slotEvents[0]);
@@ -179,7 +193,7 @@ export function DayCalendarGrid({ currentDate, events, onEventClick, onTimeSlotC
                           <div
                             key={event.id}
                             className={cn(
-                              "min-h-[100px] h-full w-full p-3 flex flex-col justify-between",
+                              "h-full w-full p-3 flex flex-col justify-between",
                               EVENT_COLORS[event.event_type]
                             )}
                           >
