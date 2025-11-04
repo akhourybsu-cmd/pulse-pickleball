@@ -370,6 +370,32 @@ export default function CourtBoard() {
             </div>
           </motion.div>
         )}
+
+        {courtId === PICKLEBALL_CITI_ID && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 1.0 }}
+            className="flex justify-center py-8"
+          >
+            <Button
+              onClick={() => navigate('/pickleball-citi-memberships')}
+              size="lg"
+              className="gap-4 px-8 py-6 text-lg rounded-full shadow-lg hover:shadow-xl transition-all"
+              style={{
+                backgroundColor: '#B9E43B',
+                color: '#0E4C58',
+              }}
+            >
+              <img 
+                src={pickleballCitiLogo} 
+                alt="Pickleball Citi" 
+                className="h-12 w-auto"
+              />
+              <span className="font-semibold">Memberships</span>
+            </Button>
+          </motion.div>
+        )}
         
         {courtId === PICKLEBALL_CITI_ID && (
           <div style={{ borderTop: '1px solid rgba(14, 76, 88, 0.15)', paddingTop: '1.5rem' }}>
