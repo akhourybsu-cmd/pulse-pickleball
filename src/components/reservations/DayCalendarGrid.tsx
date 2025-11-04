@@ -14,6 +14,7 @@ interface CalendarEvent {
   current_registrations?: number;
   skill_level?: "all" | "beginner" | "intermediate" | "advanced";
   rental_status?: "available" | "reserved";
+  series_id?: string;
 }
 
 interface DayCalendarGridProps {

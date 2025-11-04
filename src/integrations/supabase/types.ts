@@ -61,6 +61,7 @@ export type Database = {
           instructor: string | null
           price: number | null
           rental_status: string | null
+          series_id: string | null
           skill_level: string | null
           start_time: string
           title: string
@@ -79,6 +80,7 @@ export type Database = {
           instructor?: string | null
           price?: number | null
           rental_status?: string | null
+          series_id?: string | null
           skill_level?: string | null
           start_time: string
           title: string
@@ -97,6 +99,7 @@ export type Database = {
           instructor?: string | null
           price?: number | null
           rental_status?: string | null
+          series_id?: string | null
           skill_level?: string | null
           start_time?: string
           title?: string

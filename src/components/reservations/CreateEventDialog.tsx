@@ -89,6 +89,11 @@ export function CreateEventDialog({
     // Determine which dates to create events for
     let datesToCreate: Date[] = [];
     
+    // Generate a series_id for recurring events
+    const seriesId = (eventType === "league" && (isRecurring || selectedDates.length > 1)) 
+      ? crypto.randomUUID() 
+      : null;
+    
     if (eventType === "league" && isRecurring && selectedDate) {
       // Generate recurring dates
       const weeks = parseInt(recurringWeeks);
@@ -126,6 +131,7 @@ export function CreateEventDialog({
         skill_level: skillLevel,
         current_registrations: 0,
         rental_status: eventType === "private" ? rentalStatus : null,
+        series_id: seriesId,
       };
 
       // If "all courts" is selected, create events for both courts

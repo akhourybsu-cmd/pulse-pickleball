@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { format } from "date-fns";
 
 interface EditEventDialogProps {
@@ -21,9 +22,12 @@ interface EditEventDialogProps {
     price?: number;
     instructor?: string;
     skill_level?: "all" | "beginner" | "intermediate" | "advanced";
+    rental_status?: "available" | "reserved";
+    series_id?: string;
   } | null;
-  onSubmit: (eventId: string, eventData: any) => void;
-  onDelete: (eventId: string) => void;
+  onSubmit: (eventId: string, eventData: any, updateType?: "single" | "series") => void;
+  onDelete: (eventId: string, deleteType?: "single" | "series") => void;
+  seriesCount?: number;
 }
 
 export function EditEventDialog({ 
@@ -31,7 +35,8 @@ export function EditEventDialog({
   onClose, 
   event,
   onSubmit,
-  onDelete
+  onDelete,
+  seriesCount = 0
 }: EditEventDialogProps) {
   const [eventType, setEventType] = useState<"league" | "open_play" | "private" | "lesson">("open_play");
   const [title, setTitle] = useState("");
@@ -40,9 +45,12 @@ export function EditEventDialog({
   const [price, setPrice] = useState("0");
   const [instructor, setInstructor] = useState("");
   const [skillLevel, setSkillLevel] = useState<"all" | "beginner" | "intermediate" | "advanced">("all");
+  const [rentalStatus, setRentalStatus] = useState<"available" | "reserved">("available");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [eventDate, setEventDate] = useState("");
+  const [updateType, setUpdateType] = useState<"single" | "series">("single");
+  const [showSeriesOptions, setShowSeriesOptions] = useState(false);
 
   useEffect(() => {
     if (event) {
@@ -53,6 +61,8 @@ export function EditEventDialog({
       setPrice(event.price?.toString() || "0");
       setInstructor(event.instructor || "");
       setSkillLevel(event.skill_level || "all");
+      setRentalStatus(event.rental_status || "available");
+      setShowSeriesOptions(!!event.series_id && seriesCount > 1);
       
       const start = new Date(event.start_time);
       const end = new Date(event.end_time);
@@ -60,7 +70,7 @@ export function EditEventDialog({
       setStartTime(format(start, "HH:mm"));
       setEndTime(format(end, "HH:mm"));
     }
-  }, [event]);
+  }, [event, seriesCount]);
 
   if (!event) return null;
 
@@ -78,15 +88,20 @@ export function EditEventDialog({
       price: parseFloat(price),
       instructor: eventType === "lesson" ? instructor : null,
       skill_level: skillLevel,
+      rental_status: eventType === "private" ? rentalStatus : null,
     };
 
-    onSubmit(event.id, updatedData);
+    onSubmit(event.id, updatedData, showSeriesOptions ? updateType : undefined);
     onClose();
   };
 
   const handleDelete = () => {
-    if (confirm("Are you sure you want to delete this event?")) {
-      onDelete(event.id);
+    const confirmMessage = showSeriesOptions && updateType === "series"
+      ? `Are you sure you want to delete all ${seriesCount} events in this series?`
+      : "Are you sure you want to delete this event?";
+      
+    if (confirm(confirmMessage)) {
+      onDelete(event.id, showSeriesOptions ? updateType : undefined);
       onClose();
     }
   };
@@ -207,6 +222,21 @@ export function EditEventDialog({
                 onChange={(e) => setInstructor(e.target.value)}
                 placeholder="e.g., Coach Sarah"
               />
+            </div>
+          )}
+
+          {eventType === "private" && (
+            <div>
+              <Label>Rental Status</Label>
+              <Select value={rentalStatus} onValueChange={(v: any) => setRentalStatus(v)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="available">Available for Rent</SelectItem>
+                  <SelectItem value="reserved">Reserved/Booked</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           )}
 

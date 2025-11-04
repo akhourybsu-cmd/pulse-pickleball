@@ -71,6 +71,7 @@ export function CalendarView({ facilityId, currentUserId }: CalendarViewProps) {
         event_type: event.event_type as "league" | "open_play" | "private" | "lesson",
         skill_level: event.skill_level as "all" | "beginner" | "intermediate" | "advanced" | undefined,
         rental_status: event.rental_status as "available" | "reserved" | undefined,
+        series_id: event.series_id || undefined,
       }));
     },
   });
@@ -118,19 +119,35 @@ export function CalendarView({ facilityId, currentUserId }: CalendarViewProps) {
     // TODO: Actually create request
   };
 
-  const handleEditEvent = async (eventId: string, eventData: any) => {
+  const handleEditEvent = async (eventId: string, eventData: any, updateType?: "single" | "series") => {
     try {
-      const { error } = await supabase
-        .from("calendar_events")
-        .update(eventData)
-        .eq("id", eventId);
+      // Find the event to get its series_id
+      const eventToEdit = events.find(e => e.id === eventId);
       
-      if (error) throw error;
+      if (updateType === "series" && eventToEdit?.series_id) {
+        // Update all events in the series
+        const { error } = await supabase
+          .from("calendar_events")
+          .update(eventData)
+          .eq("series_id", eventToEdit.series_id);
+        
+        if (error) throw error;
+      } else {
+        // Update only this event
+        const { error } = await supabase
+          .from("calendar_events")
+          .update(eventData)
+          .eq("id", eventId);
+        
+        if (error) throw error;
+      }
       
       await refetch();
       toast({
         title: "Event updated",
-        description: "The event has been updated successfully",
+        description: updateType === "series" 
+          ? "All events in the series have been updated" 
+          : "The event has been updated successfully",
       });
     } catch (error) {
       toast({
@@ -141,19 +158,35 @@ export function CalendarView({ facilityId, currentUserId }: CalendarViewProps) {
     }
   };
 
-  const handleDeleteEvent = async (eventId: string) => {
+  const handleDeleteEvent = async (eventId: string, deleteType?: "single" | "series") => {
     try {
-      const { error } = await supabase
-        .from("calendar_events")
-        .delete()
-        .eq("id", eventId);
+      // Find the event to get its series_id
+      const eventToDelete = events.find(e => e.id === eventId);
       
-      if (error) throw error;
+      if (deleteType === "series" && eventToDelete?.series_id) {
+        // Delete all events in the series
+        const { error } = await supabase
+          .from("calendar_events")
+          .delete()
+          .eq("series_id", eventToDelete.series_id);
+        
+        if (error) throw error;
+      } else {
+        // Delete only this event
+        const { error } = await supabase
+          .from("calendar_events")
+          .delete()
+          .eq("id", eventId);
+        
+        if (error) throw error;
+      }
       
       await refetch();
       toast({
         title: "Event deleted",
-        description: "The event has been removed from the calendar",
+        description: deleteType === "series"
+          ? "All events in the series have been removed"
+          : "The event has been removed from the calendar",
       });
     } catch (error) {
       toast({
@@ -299,6 +332,10 @@ export function CalendarView({ facilityId, currentUserId }: CalendarViewProps) {
         event={editingEvent}
         onSubmit={handleEditEvent}
         onDelete={handleDeleteEvent}
+        seriesCount={editingEvent?.series_id 
+          ? events.filter(e => e.series_id === editingEvent.series_id).length 
+          : 0
+        }
       />
     </div>
   );
