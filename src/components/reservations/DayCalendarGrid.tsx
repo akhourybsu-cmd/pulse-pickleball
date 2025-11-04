@@ -47,196 +47,175 @@ const SKILL_LEVEL_COLORS = {
 export function DayCalendarGrid({ currentDate, events, onEventClick, onTimeSlotClick, isAdmin }: DayCalendarGridProps) {
   const hours = Array.from({ length: 12 }, (_, i) => i + 8); // 8 AM to 7 PM
   const courts = [1, 2];
-
-  const getEventsForSlot = (date: Date, hour: number, court: number) => {
-    return events.filter(event => {
-      const eventStart = new Date(event.start_time);
-      const eventStartHour = eventStart.getHours();
-      
-      return isSameDay(eventStart, date) && 
-        eventStartHour === hour && 
-        event.court_number === court;
-    });
-  };
   
-  const getEventSpan = (event: CalendarEvent) => {
+  const HOUR_HEIGHT = 120; // pixels per hour (larger for day view)
+  const START_HOUR = 8;
+
+  const getEventPosition = (event: CalendarEvent) => {
     const start = new Date(event.start_time);
     const end = new Date(event.end_time);
-    const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-    return Math.max(1, Math.ceil(hours));
+    
+    const startHour = start.getHours();
+    const startMinutes = start.getMinutes();
+    const endHour = end.getHours();
+    const endMinutes = end.getMinutes();
+    
+    const topOffset = ((startHour - START_HOUR) * 60 + startMinutes) * (HOUR_HEIGHT / 60);
+    const duration = ((endHour - startHour) * 60 + (endMinutes - startMinutes));
+    const height = duration * (HOUR_HEIGHT / 60);
+    
+    return { top: topOffset, height };
   };
-  
-  const isHourCovered = (date: Date, hour: number, court: number) => {
-    return events.some(event => {
+
+  const getEventsForCourt = (court: number) => {
+    return events.filter(event => {
       const eventStart = new Date(event.start_time);
-      const eventEnd = new Date(event.end_time);
-      const eventStartHour = eventStart.getHours();
-      const eventEndHour = eventEnd.getHours();
-      
-      return isSameDay(eventStart, date) && 
-        event.court_number === court &&
-        hour > eventStartHour && 
-        hour < eventEndHour;
+      return isSameDay(eventStart, currentDate) && event.court_number === court;
     });
   };
 
-  const hasEventOnBothCourts = (date: Date, hour: number) => {
-    const court1Events = getEventsForSlot(date, hour, 1);
-    const court2Events = getEventsForSlot(date, hour, 2);
+  const hasMatchingEventOnOtherCourt = (event: CalendarEvent) => {
+    const otherCourt = event.court_number === 1 ? 2 : 1;
+    return events.some(e => 
+      e.id !== event.id &&
+      e.title === event.title &&
+      e.event_type === event.event_type &&
+      e.start_time === event.start_time &&
+      e.court_number === otherCourt &&
+      isSameDay(new Date(e.start_time), currentDate)
+    );
+  };
+
+  const court1Events = getEventsForCourt(1);
+  const court2Events = getEventsForCourt(2);
+  
+  const doubleWideEvents = court1Events.filter(e => hasMatchingEventOnOtherCourt(e));
+  const court1OnlyEvents = court1Events.filter(e => !hasMatchingEventOnOtherCourt(e));
+  const court2OnlyEvents = court2Events.filter(e => !hasMatchingEventOnOtherCourt(e));
+
+  const renderEvent = (event: CalendarEvent, isDoubleWide: boolean = false) => {
+    const { top, height } = getEventPosition(event);
     
-    if (court1Events.length > 0 && court2Events.length > 0) {
-      const event1 = court1Events[0];
-      const event2 = court2Events[0];
-      return event1.title === event2.title && event1.event_type === event2.event_type;
-    }
-    return false;
+    return (
+      <div
+        key={event.id}
+        className={cn(
+          "absolute rounded-lg cursor-pointer hover:shadow-lg hover:z-10 transition-all border-2",
+          EVENT_COLORS[event.event_type],
+          isDoubleWide ? "left-0 right-0" : "left-2 right-2"
+        )}
+        style={{ 
+          top: `${top}px`, 
+          height: `${height}px`,
+          minHeight: '80px'
+        }}
+        onClick={() => onEventClick(event)}
+      >
+        <div className="h-full w-full p-3 flex flex-col justify-between overflow-hidden">
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between gap-2">
+              <div className="truncate flex-1 font-semibold text-base">{event.title}</div>
+              {event.skill_level && (
+                <span className={cn(
+                  "text-xs px-2 py-1 rounded text-white font-bold flex-shrink-0",
+                  SKILL_LEVEL_COLORS[event.skill_level]
+                )}>
+                  {SKILL_LEVEL_LABELS[event.skill_level]}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2 text-sm opacity-80">
+              <Clock className="w-4 h-4 flex-shrink-0" />
+              <span className="font-medium">
+                {format(new Date(event.start_time), "h:mm a")} - {format(new Date(event.end_time), "h:mm a")}
+              </span>
+            </div>
+            <div className="text-sm opacity-80 font-medium">
+              {isDoubleWide ? "Courts 1 & 2" : `Court ${event.court_number}`}
+            </div>
+          </div>
+          {event.capacity && height > 100 && (
+            <div className="text-sm opacity-80 font-medium">
+              {event.current_registrations || 0}/{event.capacity} registered
+            </div>
+          )}
+        </div>
+      </div>
+    );
   };
 
   return (
-    <div className="space-y-2">
-      {hours.map(hour => {
-        const bothCourts = hasEventOnBothCourts(currentDate, hour);
-        const isCovered = isHourCovered(currentDate, hour, 1) || isHourCovered(currentDate, hour, 2);
-        
-        // Skip if covered by multi-hour event
-        if (isCovered && !bothCourts) {
-          return null;
-        }
-        
-        return (
-          <div key={hour} className="grid grid-cols-[100px_1fr] gap-3">
-            <div className="text-sm font-semibold p-3 flex items-center">
-              {format(new Date().setHours(hour, 0), "h:mm a")}
-            </div>
-            
-            {bothCourts ? (
-              (() => {
-                const slotEvents = getEventsForSlot(currentDate, hour, 1);
-                if (slotEvents.length === 0) return null;
-                
-                const span = getEventSpan(slotEvents[0]);
-                const minHeight = 100 * span + (span - 1) * 8;
-                
-                return (
-                  <Card
-                    className="p-0 overflow-hidden cursor-pointer hover:shadow-md transition-shadow border-0"
-                    style={{ minHeight: `${minHeight}px` }}
-                    onClick={() => onEventClick(slotEvents[0])}
-                  >
-                    {slotEvents.map(event => (
-                      <div
-                        key={event.id}
-                        className={cn(
-                          "h-full w-full p-4 flex flex-col justify-between",
-                          EVENT_COLORS[event.event_type]
-                        )}
-                      >
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="truncate flex-1 font-semibold text-base">{event.title}</div>
-                            {event.skill_level && (
-                              <span className={cn(
-                                "text-xs px-2 py-1 rounded text-white font-bold",
-                                SKILL_LEVEL_COLORS[event.skill_level]
-                              )}>
-                                {SKILL_LEVEL_LABELS[event.skill_level]}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2 text-sm opacity-80">
-                            <Clock className="w-4 h-4" />
-                            <span className="font-medium">
-                              {format(new Date(event.start_time), "h:mm a")} - {format(new Date(event.end_time), "h:mm a")}
-                            </span>
-                          </div>
-                          <div className="text-sm opacity-80 font-medium">Courts 1 & 2</div>
-                        </div>
-                        {event.capacity && (
-                          <div className="text-sm opacity-80 font-medium">
-                            {event.current_registrations || 0}/{event.capacity} registered
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </Card>
-                );
-              })()
-            ) : (
-              <div className="grid grid-cols-2 gap-3">
-                {courts.map(court => {
-                  const slotEvents = getEventsForSlot(currentDate, hour, court);
-                  const covered = isHourCovered(currentDate, hour, court);
-                  
-                  if (covered) return null;
-                  
-                  const span = slotEvents.length > 0 ? getEventSpan(slotEvents[0]) : 1;
-                  const minHeight = 100 * span + (span - 1) * 8;
-                  
-                  return (
-                    <Card
-                      key={court}
-                      className={cn(
-                        "p-0 overflow-hidden cursor-pointer hover:shadow-md transition-shadow",
-                        slotEvents.length === 0 && "bg-muted/30 border min-h-[100px]"
-                      )}
-                      style={slotEvents.length > 0 ? { minHeight: `${minHeight}px` } : undefined}
-                      onClick={() => {
-                        if (slotEvents.length > 0) {
-                          onEventClick(slotEvents[0]);
-                        } else if (isAdmin && onTimeSlotClick) {
-                          onTimeSlotClick(currentDate, hour, court);
-                        }
-                      }}
-                    >
-                      {slotEvents.length > 0 ? (
-                        slotEvents.map(event => (
-                          <div
-                            key={event.id}
-                            className={cn(
-                              "h-full w-full p-3 flex flex-col justify-between",
-                              EVENT_COLORS[event.event_type]
-                            )}
-                          >
-                            <div className="space-y-1.5">
-                              <div className="flex items-center justify-between gap-1">
-                                <div className="truncate flex-1 font-semibold text-sm">{event.title}</div>
-                                {event.skill_level && (
-                                  <span className={cn(
-                                    "text-[10px] px-1.5 py-0.5 rounded text-white font-bold",
-                                    SKILL_LEVEL_COLORS[event.skill_level]
-                                  )}>
-                                    {SKILL_LEVEL_LABELS[event.skill_level]}
-                                  </span>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-1 text-xs opacity-80">
-                                <Clock className="w-3 h-3" />
-                                <span className="font-medium">
-                                  {format(new Date(event.start_time), "h:mm a")} - {format(new Date(event.end_time), "h:mm a")}
-                                </span>
-                              </div>
-                              <div className="text-xs opacity-80 font-medium">Court {court}</div>
-                            </div>
-                            {event.capacity && (
-                              <div className="text-xs opacity-80 font-medium">
-                                {event.current_registrations || 0}/{event.capacity}
-                              </div>
-                            )}
-                          </div>
-                        ))
-                      ) : (
-                        <div className="min-h-[100px] flex items-center justify-center text-sm text-muted-foreground opacity-50">
-                          Court {court}
-                        </div>
-                      )}
-                    </Card>
-                  );
-                })}
-              </div>
-            )}
+    <div className="grid grid-cols-[100px_1fr] gap-4">
+      {/* Time labels */}
+      <div className="space-y-0">
+        {hours.map(hour => (
+          <div 
+            key={hour}
+            className="text-sm font-semibold border-b border-border flex items-start pt-2"
+            style={{ height: `${HOUR_HEIGHT}px` }}
+          >
+            {format(new Date().setHours(hour, 0), "h:mm a")}
           </div>
-        );
-      })}
+        ))}
+      </div>
+
+      {/* Courts grid */}
+      <div className="relative">
+        {/* Hour grid lines */}
+        {hours.map(hour => (
+          <div 
+            key={hour}
+            className="border-b border-border"
+            style={{ height: `${HOUR_HEIGHT}px` }}
+          />
+        ))}
+
+        {/* Court columns with click areas */}
+        <div className="absolute inset-0 grid grid-cols-2 gap-3">
+          {courts.map(court => (
+            <div 
+              key={court}
+              className="relative border-r last:border-r-0 border-border hover:bg-muted/20 transition-colors rounded-lg"
+              onClick={(e) => {
+                if (isAdmin && onTimeSlotClick && e.target === e.currentTarget) {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const y = e.clientY - rect.top;
+                  const hour = Math.floor(y / HOUR_HEIGHT) + START_HOUR;
+                  onTimeSlotClick(currentDate, hour, court);
+                }
+              }}
+            >
+              {/* Court label */}
+              {((court === 1 && court1OnlyEvents.length === 0 && doubleWideEvents.length === 0) ||
+                (court === 2 && court2OnlyEvents.length === 0 && doubleWideEvents.length === 0)) && (
+                <div className="absolute top-4 left-4 text-sm text-muted-foreground opacity-50 font-medium">
+                  Court {court}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Events overlay */}
+        <div className="absolute inset-0 grid grid-cols-2 gap-3 pointer-events-none">
+          {/* Court 1 events */}
+          <div className="relative pointer-events-auto">
+            {court1OnlyEvents.map(event => renderEvent(event))}
+          </div>
+
+          {/* Court 2 events */}
+          <div className="relative pointer-events-auto">
+            {court2OnlyEvents.map(event => renderEvent(event))}
+          </div>
+        </div>
+
+        {/* Double-wide events overlay */}
+        {doubleWideEvents.length > 0 && (
+          <div className="absolute inset-0 pointer-events-auto px-1.5">
+            {doubleWideEvents.map(event => renderEvent(event, true))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

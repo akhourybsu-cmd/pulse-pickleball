@@ -49,56 +49,94 @@ export function WeekCalendarGrid({ currentDate, events, onEventClick, onTimeSlot
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   const hours = Array.from({ length: 12 }, (_, i) => i + 8); // 8 AM to 7 PM
   const courts = [1, 2];
-
-  const getEventsForSlot = (date: Date, hour: number, court: number) => {
-    return events.filter(event => {
-      const eventStart = new Date(event.start_time);
-      const eventEnd = new Date(event.end_time);
-      const eventStartHour = eventStart.getHours();
-      const eventEndHour = eventEnd.getHours();
-      const eventEndMinutes = eventEnd.getMinutes();
-      
-      // Include event if this hour falls within its time range
-      const isInTimeRange = isSameDay(eventStart, date) && 
-        eventStartHour === hour && 
-        event.court_number === court;
-      
-      return isInTimeRange;
-    });
-  };
   
-  const getEventSpan = (event: CalendarEvent) => {
+  const HOUR_HEIGHT = 80; // pixels per hour
+  const START_HOUR = 8;
+
+  const getEventPosition = (event: CalendarEvent) => {
     const start = new Date(event.start_time);
     const end = new Date(event.end_time);
-    const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-    return Math.max(1, Math.ceil(hours));
+    
+    const startHour = start.getHours();
+    const startMinutes = start.getMinutes();
+    const endHour = end.getHours();
+    const endMinutes = end.getMinutes();
+    
+    const topOffset = ((startHour - START_HOUR) * 60 + startMinutes) * (HOUR_HEIGHT / 60);
+    const duration = ((endHour - startHour) * 60 + (endMinutes - startMinutes));
+    const height = duration * (HOUR_HEIGHT / 60);
+    
+    return { top: topOffset, height };
   };
-  
-  const isHourCovered = (date: Date, hour: number, court: number) => {
-    return events.some(event => {
+
+  const getEventsForDayAndCourt = (day: Date, court: number) => {
+    return events.filter(event => {
       const eventStart = new Date(event.start_time);
-      const eventEnd = new Date(event.end_time);
-      const eventStartHour = eventStart.getHours();
-      const eventEndHour = eventEnd.getHours();
-      
-      return isSameDay(eventStart, date) && 
-        event.court_number === court &&
-        hour > eventStartHour && 
-        hour < eventEndHour;
+      return isSameDay(eventStart, day) && event.court_number === court;
     });
   };
 
-  const hasEventOnBothCourts = (date: Date, hour: number) => {
-    const court1Events = getEventsForSlot(date, hour, 1);
-    const court2Events = getEventsForSlot(date, hour, 2);
+  const hasMatchingEventOnOtherCourt = (event: CalendarEvent, day: Date) => {
+    const otherCourt = event.court_number === 1 ? 2 : 1;
+    return events.some(e => 
+      e.id !== event.id &&
+      e.title === event.title &&
+      e.event_type === event.event_type &&
+      e.start_time === event.start_time &&
+      e.court_number === otherCourt &&
+      isSameDay(new Date(e.start_time), day)
+    );
+  };
+
+  const renderEvent = (event: CalendarEvent, day: Date, isDoubleWide: boolean = false) => {
+    const { top, height } = getEventPosition(event);
     
-    // Check if there's a matching event on both courts (same title and type)
-    if (court1Events.length > 0 && court2Events.length > 0) {
-      const event1 = court1Events[0];
-      const event2 = court2Events[0];
-      return event1.title === event2.title && event1.event_type === event2.event_type;
-    }
-    return false;
+    return (
+      <div
+        key={event.id}
+        className={cn(
+          "absolute rounded-lg cursor-pointer hover:shadow-lg hover:z-10 transition-all border-2",
+          EVENT_COLORS[event.event_type],
+          isDoubleWide ? "left-0 right-0" : "left-1 right-1"
+        )}
+        style={{ 
+          top: `${top}px`, 
+          height: `${height}px`,
+          minHeight: '60px'
+        }}
+        onClick={() => onEventClick(event)}
+      >
+        <div className="h-full w-full p-2 flex flex-col justify-between overflow-hidden">
+          <div className="space-y-0.5">
+            <div className="flex items-center justify-between gap-1">
+              <div className="truncate flex-1 font-semibold text-xs">{event.title}</div>
+              {event.skill_level && (
+                <span className={cn(
+                  "text-[9px] px-1 py-0.5 rounded text-white font-bold flex-shrink-0",
+                  SKILL_LEVEL_COLORS[event.skill_level]
+                )}>
+                  {SKILL_LEVEL_LABELS[event.skill_level]}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-1 text-[10px] opacity-80">
+              <Clock className="w-2.5 h-2.5 flex-shrink-0" />
+              <span className="font-medium">
+                {format(new Date(event.start_time), "h:mm a")} - {format(new Date(event.end_time), "h:mm a")}
+              </span>
+            </div>
+            <div className="text-[10px] opacity-80 font-medium">
+              {isDoubleWide ? "Courts 1&2" : `Court ${event.court_number}`}
+            </div>
+          </div>
+          {event.capacity && height > 70 && (
+            <div className="text-[10px] opacity-80 font-medium">
+              {event.current_registrations || 0}/{event.capacity}
+            </div>
+          )}
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -120,170 +158,94 @@ export function WeekCalendarGrid({ currentDate, events, onEventClick, onTimeSlot
           ))}
         </div>
 
-        {/* Time slots */}
-        <div className="space-y-1">
-          {hours.map(hour => (
-            <div key={hour} className="grid grid-cols-8 gap-1">
-              <div className="text-xs text-muted-foreground p-2 font-medium">
+        {/* Time grid with events */}
+        <div className="grid grid-cols-8 gap-1">
+          {/* Time labels column */}
+          <div className="space-y-0">
+            {hours.map(hour => (
+              <div 
+                key={hour} 
+                className="text-xs text-muted-foreground p-2 font-medium border-b border-border"
+                style={{ height: `${HOUR_HEIGHT}px` }}
+              >
                 {format(new Date().setHours(hour, 0), "h:mm a")}
               </div>
-              {weekDays.map(day => {
-                const bothCourts = hasEventOnBothCourts(day, hour);
-                const isCovered = isHourCovered(day, hour, 1) || isHourCovered(day, hour, 2);
-                
-                // Skip rendering if this slot is covered by a multi-hour event
-                if (isCovered && !bothCourts) {
-                  return <div key={`${day.toISOString()}-${hour}`} />;
-                }
-                
-                return (
+            ))}
+          </div>
+
+          {/* Day columns */}
+          {weekDays.map(day => {
+            const court1Events = getEventsForDayAndCourt(day, 1);
+            const court2Events = getEventsForDayAndCourt(day, 2);
+            
+            // Find events that span both courts
+            const doubleWideEvents = court1Events.filter(e => hasMatchingEventOnOtherCourt(e, day));
+            const court1OnlyEvents = court1Events.filter(e => !hasMatchingEventOnOtherCourt(e, day));
+            const court2OnlyEvents = court2Events.filter(e => !hasMatchingEventOnOtherCourt(e, day));
+
+            return (
+              <div key={day.toISOString()} className="relative">
+                {/* Hour grid lines */}
+                {hours.map(hour => (
                   <div 
-                    key={`${day.toISOString()}-${hour}`}
-                    style={bothCourts && getEventsForSlot(day, hour, 1).length > 0 
-                      ? { gridRow: `span ${getEventSpan(getEventsForSlot(day, hour, 1)[0])}` }
-                      : undefined
-                    }
-                  >
-                    {bothCourts ? (
-                      // Single card spanning both courts
-                      (() => {
-                        const slotEvents = getEventsForSlot(day, hour, 1);
-                        if (slotEvents.length === 0) return null;
-                        
-                        return (
-                          <Card
-                            key={`${day.toISOString()}-${hour}-both`}
-                            className="p-0 overflow-hidden h-full cursor-pointer hover:shadow-md transition-shadow border-0"
-                            onClick={() => {
-                              onEventClick(slotEvents[0]);
-                            }}
-                          >
-                        
-                            {slotEvents.map(event => (
-                              <div
-                                key={event.id}
-                                className={cn(
-                                  "h-full w-full p-3 flex flex-col justify-between",
-                                  EVENT_COLORS[event.event_type]
-                                )}
-                              >
-                        
-                            <div className="space-y-1.5">
-                              <div className="flex items-center justify-between gap-1">
-                                <div className="truncate flex-1 font-semibold text-sm">{event.title}</div>
-                                {event.skill_level && (
-                                  <span className={cn(
-                                    "text-[9px] px-1.5 py-0.5 rounded text-white font-bold",
-                                    SKILL_LEVEL_COLORS[event.skill_level]
-                                  )}>
-                                    {SKILL_LEVEL_LABELS[event.skill_level]}
-                                  </span>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-1 text-xs opacity-80">
-                                <Clock className="w-3 h-3" />
-                                <span className="font-medium">
-                                  {format(new Date(event.start_time), "h:mm a")} - {format(new Date(event.end_time), "h:mm a")}
-                                </span>
-                              </div>
-                              <div className="text-xs opacity-80 font-medium">Courts 1&2</div>
-                            </div>
-                            {event.capacity && (
-                              <div className="text-xs opacity-80 font-medium">
-                                {event.current_registrations || 0}/{event.capacity} registered
-                              </div>
-                                )}
-                              </div>
-                            ))}
-                          </Card>
-                        );
-                      })()
-                    
-                    ) : (
-                      // Separate cards for each court
-                      <div className="space-y-1">
-                        {courts.map(court => {
-                          const slotEvents = getEventsForSlot(day, hour, court);
-                          const covered = isHourCovered(day, hour, court);
-                          
-                          // Skip if covered by multi-hour event
-                          if (covered) {
-                            return null;
-                          }
-                          
-                          const span = slotEvents.length > 0 ? getEventSpan(slotEvents[0]) : 1;
-                          
-                          return (
-                            <Card
-                              key={`${day.toISOString()}-${hour}-${court}`}
-                              className={cn(
-                                "p-0 overflow-hidden cursor-pointer hover:shadow-md transition-shadow",
-                                slotEvents.length === 0 && "bg-muted/30 border min-h-[60px]"
-                              )}
-                              style={slotEvents.length > 0 ? { 
-                                minHeight: `calc(${span * 60}px + ${(span - 1) * 4}px)` 
-                              } : undefined}
-                              onClick={() => {
-                                if (slotEvents.length > 0) {
-                                  onEventClick(slotEvents[0]);
-                                } else if (isAdmin && onTimeSlotClick) {
-                                  onTimeSlotClick(day, hour, court);
-                                }
-                              }}
-                            >
-                        
-                              {slotEvents.length > 0 ? (
-                                slotEvents.map(event => (
-                                  <div
-                                    key={event.id}
-                                    className={cn(
-                                      "h-full w-full p-2 flex flex-col justify-between",
-                                      EVENT_COLORS[event.event_type]
-                                    )}
-                                  >
-                        
-                                  <div className="space-y-0.5">
-                                    <div className="flex items-center justify-between gap-1">
-                                      <div className="truncate flex-1 font-semibold text-xs">{event.title}</div>
-                                      {event.skill_level && (
-                                        <span className={cn(
-                                          "text-[9px] px-1 py-0.5 rounded text-white font-bold",
-                                          SKILL_LEVEL_COLORS[event.skill_level]
-                                        )}>
-                                          {SKILL_LEVEL_LABELS[event.skill_level]}
-                                        </span>
-                                      )}
-                                    </div>
-                                    <div className="flex items-center gap-1 text-[10px] opacity-80">
-                                      <Clock className="w-2.5 h-2.5" />
-                                      <span className="font-medium">
-                                        {format(new Date(event.start_time), "h:mm a")} - {format(new Date(event.end_time), "h:mm a")}
-                                      </span>
-                                    </div>
-                                    <div className="text-[10px] opacity-80 font-medium">Court {court}</div>
-                                  </div>
-                                  {event.capacity && (
-                                    <div className="text-[10px] opacity-80 font-medium">
-                                      {event.current_registrations || 0}/{event.capacity}
-                                    </div>
-                                  )}
-                                </div>
-                              ))
-                            ) : (
-                              <div className="text-xs text-muted-foreground opacity-50 p-2">
-                                Court {court}
-                              </div>
-                            )}
-                          </Card>
-                        );
-                      })}
-                      </div>
-                    )}
+                    key={hour}
+                    className="border-b border-border"
+                    style={{ height: `${HOUR_HEIGHT}px` }}
+                  />
+                ))}
+
+                {/* Court divider and click areas */}
+                <div className="absolute inset-0 grid grid-cols-2 gap-0.5">
+                  {courts.map(court => (
+                    <div 
+                      key={court}
+                      className="relative hover:bg-muted/20 transition-colors"
+                      onClick={(e) => {
+                        if (isAdmin && onTimeSlotClick && e.target === e.currentTarget) {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          const y = e.clientY - rect.top;
+                          const hour = Math.floor(y / HOUR_HEIGHT) + START_HOUR;
+                          onTimeSlotClick(day, hour, court);
+                        }
+                      }}
+                    >
+                      {/* Court label for empty slots */}
+                      {court === 1 && court1OnlyEvents.length === 0 && doubleWideEvents.length === 0 && (
+                        <div className="absolute top-2 left-2 text-xs text-muted-foreground opacity-50">
+                          Court 1
+                        </div>
+                      )}
+                      {court === 2 && court2OnlyEvents.length === 0 && doubleWideEvents.length === 0 && (
+                        <div className="absolute top-2 left-2 text-xs text-muted-foreground opacity-50">
+                          Court 2
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Events layer */}
+                <div className="absolute inset-0 grid grid-cols-2 gap-0.5 pointer-events-none">
+                  {/* Court 1 events */}
+                  <div className="relative pointer-events-auto">
+                    {court1OnlyEvents.map(event => renderEvent(event, day))}
                   </div>
-                );
-              })}
-            </div>
-          ))}
+
+                  {/* Court 2 events */}
+                  <div className="relative pointer-events-auto">
+                    {court2OnlyEvents.map(event => renderEvent(event, day))}
+                  </div>
+                </div>
+
+                {/* Double-wide events overlay */}
+                {doubleWideEvents.length > 0 && (
+                  <div className="absolute inset-0 pointer-events-auto px-0.5">
+                    {doubleWideEvents.map(event => renderEvent(event, day, true))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
