@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { MapPin, MessageSquare, Activity, LogOut, User as UserIcon } from "lucide-react";
 import { motion } from "framer-motion";
 import logo from "@/assets/pulse-logo-new.png";
+import pickleballCitiLogo from "@/assets/pickleball-citi-logo.png";
 import { UpcomingEvents } from "@/components/citi-events/UpcomingEvents";
 
 interface Court {
@@ -166,54 +167,85 @@ export default function CourtBoard() {
       >
         <div className="container mx-auto px-4 py-6 md:py-8">
           <div className="flex items-start gap-3 md:gap-6">
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-              className="flex-shrink-0"
-            >
-              <MapPin 
-                className="w-8 h-8 md:w-12 md:h-12"
-                style={{ 
-                  color: '#A9DC3D',
-                  filter: 'drop-shadow(0px 2px 4px rgba(169, 220, 61, 0.3))'
-                }} 
-              />
-            </motion.div>
-            <div className="flex-1 min-w-0">
-              <motion.h1
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-                className="text-2xl md:text-4xl lg:text-5xl font-bold mb-2 md:mb-4 relative inline-block pb-2 break-words"
-                style={{
-                  color: '#0E4C58',
-                  letterSpacing: '0.02em',
-                  textShadow: '0px 1px 2px rgba(14, 76, 88, 0.1)',
-                  borderLeft: '3px solid #A9DC3D',
-                  paddingLeft: '12px',
-                }}
-              >
-                {court.name}
-                <motion.span
-                  className="absolute bottom-0 left-3 h-0.5 bg-gradient-to-r from-[#A9DC3D] to-transparent"
-                  initial={{ width: 0 }}
-                  animate={{ width: '100%' }}
-                  transition={{ duration: 0.8, delay: 0.5 }}
-                  style={{ display: 'block' }}
-                />
-              </motion.h1>
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.5, delay: 0.3 }}
-                className="text-sm md:text-lg leading-relaxed break-words"
-                style={{ color: '#0E4C58', opacity: 0.8 }}
-              >
-                {court.city}, {court.state}
-                {court.location && ` • ${court.location}`}
-              </motion.p>
-            </div>
+            {courtId === PICKLEBALL_CITI_ID ? (
+              <>
+                <motion.div
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ duration: 0.5, delay: 0.1 }}
+                  className="flex-1 min-w-0"
+                >
+                  <img 
+                    src={pickleballCitiLogo} 
+                    alt="Pickleball Citi" 
+                    className="h-20 md:h-32 w-auto mb-3"
+                    style={{ 
+                      filter: 'drop-shadow(0px 2px 4px rgba(0, 0, 0, 0.1))'
+                    }}
+                  />
+                  <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.5, delay: 0.3 }}
+                    className="text-sm md:text-lg leading-relaxed break-words"
+                    style={{ color: '#0E4C58', opacity: 0.8 }}
+                  >
+                    Cranston, RI
+                  </motion.p>
+                </motion.div>
+              </>
+            ) : (
+              <>
+                <motion.div
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ duration: 0.5, delay: 0.1 }}
+                  className="flex-shrink-0"
+                >
+                  <MapPin 
+                    className="w-8 h-8 md:w-12 md:h-12"
+                    style={{ 
+                      color: '#A9DC3D',
+                      filter: 'drop-shadow(0px 2px 4px rgba(169, 220, 61, 0.3))'
+                    }} 
+                  />
+                </motion.div>
+                <div className="flex-1 min-w-0">
+                  <motion.h1
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.5, delay: 0.2 }}
+                    className="text-2xl md:text-4xl lg:text-5xl font-bold mb-2 md:mb-4 relative inline-block pb-2 break-words"
+                    style={{
+                      color: '#0E4C58',
+                      letterSpacing: '0.02em',
+                      textShadow: '0px 1px 2px rgba(14, 76, 88, 0.1)',
+                      borderLeft: '3px solid #A9DC3D',
+                      paddingLeft: '12px',
+                    }}
+                  >
+                    {court.name}
+                    <motion.span
+                      className="absolute bottom-0 left-3 h-0.5 bg-gradient-to-r from-[#A9DC3D] to-transparent"
+                      initial={{ width: 0 }}
+                      animate={{ width: '100%' }}
+                      transition={{ duration: 0.8, delay: 0.5 }}
+                      style={{ display: 'block' }}
+                    />
+                  </motion.h1>
+                  <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.5, delay: 0.3 }}
+                    className="text-sm md:text-lg leading-relaxed break-words"
+                    style={{ color: '#0E4C58', opacity: 0.8 }}
+                  >
+                    {court.city}, {court.state}
+                    {court.location && ` • ${court.location}`}
+                  </motion.p>
+                </div>
+              </>
+            )}
             {currentUserId && (
               <div className="flex-shrink-0">
                 <CourtCheckIn courtId={court.id} userId={currentUserId} />
