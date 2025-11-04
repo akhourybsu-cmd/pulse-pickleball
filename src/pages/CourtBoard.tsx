@@ -162,8 +162,8 @@ export default function CourtBoard() {
         transition={{ duration: 0.5 }}
         className="mb-8 md:mb-12"
         style={{
-          background: 'linear-gradient(180deg, #E8FBD5 0%, #FFFFFF 80%)',
-          borderBottom: '1px solid rgba(169, 220, 61, 0.15)',
+          background: 'linear-gradient(180deg, #e9f8dc 0%, #ffffff 100%)',
+          borderBottom: '1px solid rgba(169, 220, 61, 0.2)',
         }}
       >
         <div className="container mx-auto px-4 py-6 md:py-8">
@@ -209,9 +209,12 @@ export default function CourtBoard() {
                   initial={{ scale: 0.8, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ duration: 0.5, delay: 0.2 }}
-                  className="w-full md:w-auto md:flex-shrink-0"
+                  className="w-full md:w-auto md:flex-shrink-0 flex flex-col items-end gap-2"
                 >
                   <VenueInfoCard />
+                  {currentUserId && (
+                    <CourtCheckIn courtId={court.id} userId={currentUserId} />
+                  )}
                 </motion.div>
               </>
             ) : (
@@ -266,18 +269,15 @@ export default function CourtBoard() {
                 </div>
               </>
             )}
-            {currentUserId && (
-              <div className="flex-shrink-0">
-                <CourtCheckIn courtId={court.id} userId={currentUserId} />
-              </div>
-            )}
           </div>
         </div>
       </motion.div>
 
       <div className="container mx-auto px-4 py-6 space-y-6">
         {courtId === PICKLEBALL_CITI_ID && (
-          <UpcomingEvents courtId={courtId} isAdmin={isAdmin} currentUserId={currentUserId} />
+          <div style={{ borderTop: '1px solid rgba(14, 76, 88, 0.15)', paddingTop: '1.5rem' }}>
+            <UpcomingEvents courtId={courtId} isAdmin={isAdmin} currentUserId={currentUserId} />
+          </div>
         )}
 
         {!currentUserId && (

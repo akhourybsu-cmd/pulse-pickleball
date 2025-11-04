@@ -111,12 +111,20 @@ export function CourtCheckIn({ courtId, userId }: CourtCheckInProps) {
   return (
     <>
       {isCheckedIn ? (
-        <Button onClick={handleCheckOut} variant="outline" size="sm" className="gap-2">
+        <Button onClick={handleCheckOut} variant="outline" size="sm" className="gap-2 text-sm px-3 py-1.5 rounded-full">
           <LogOut className="w-4 h-4" />
           Check Out
         </Button>
       ) : (
-        <Button onClick={() => setShowDialog(true)} size="sm" className="gap-2">
+        <Button 
+          onClick={() => setShowDialog(true)} 
+          size="sm" 
+          className="gap-2 text-sm px-3 py-1.5 rounded-full"
+          style={{
+            backgroundColor: '#B9E43B',
+            color: '#0E4C58',
+          }}
+        >
           <MapPin className="w-4 h-4" />
           Check In
         </Button>

@@ -1,4 +1,4 @@
-import { MapPin, Phone } from "lucide-react";
+import { MapPin, Phone, Trophy } from "lucide-react";
 
 interface VenueHours {
   open: string;
@@ -67,22 +67,9 @@ const VenueInfoCard = () => {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border p-4 w-full max-w-sm" style={{ borderColor: '#e5f3d9' }}>
-      <div className="flex items-start justify-between gap-3 mb-3">
-        <div>
-          <h3 className="text-sm font-semibold" style={{ color: '#0E4C58' }}>{venue.name}</h3>
-        </div>
-        <span
-          aria-label="Facility status"
-          className={`text-xs font-medium px-2 py-1 rounded-full whitespace-nowrap ${
-            isOpen ? "text-white" : "text-white"
-          }`}
-          style={{
-            backgroundColor: isOpen ? '#B9E43B' : '#ef4444'
-          }}
-        >
-          {isOpen ? "Open now" : "Closed"}
-        </span>
+    <div className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow border p-4 w-full max-w-sm" style={{ borderColor: '#e5f3d9' }}>
+      <div className="mb-3">
+        <h3 className="text-[15px] font-semibold mb-2" style={{ color: '#0E4C58' }}>{venue.name}</h3>
       </div>
 
       <div className="space-y-2 mb-3">
@@ -99,25 +86,38 @@ const VenueInfoCard = () => {
           <span>{venue.phone}</span>
         </a>
         <p className="text-xs flex gap-2 items-center" style={{ color: '#0E4C58', opacity: 0.8 }}>
-          <span className="text-base">🎾</span>
+          <Trophy className="w-3.5 h-3.5" style={{ color: '#B9E43B' }} />
           <span>{venue.courts.indoor} indoor courts</span>
         </p>
       </div>
 
-      <div className="border-t pt-2" style={{ borderColor: '#e5f3d9' }}>
-        <p className="text-[11px]" style={{ color: '#0E4C58', opacity: 0.7 }}>
-          Today's Hours: {formatTime(todayHours.open)} – {formatTime(todayHours.close)}
-        </p>
-        {isOpen && (
-          <p className="text-[11px] mt-0.5" style={{ color: '#0E4C58', opacity: 0.6 }}>
-            Closes at {formatTime(todayHours.close)}
+      <div className="border-t pt-2 flex items-center justify-between" style={{ borderColor: '#e5f3d9' }}>
+        <div>
+          <p className="text-[11px]" style={{ color: '#0E4C58', opacity: 0.7 }}>
+            Today's Hours: {formatTime(todayHours.open)} – {formatTime(todayHours.close)}
           </p>
-        )}
-        {!isOpen && (
-          <p className="text-[11px] mt-0.5" style={{ color: '#0E4C58', opacity: 0.6 }}>
-            Opens at {formatTime(todayHours.open)}
-          </p>
-        )}
+          {isOpen && (
+            <p className="text-[11px] mt-0.5" style={{ color: '#0E4C58', opacity: 0.6 }}>
+              Closes at {formatTime(todayHours.close)}
+            </p>
+          )}
+          {!isOpen && (
+            <p className="text-[11px] mt-0.5" style={{ color: '#0E4C58', opacity: 0.6 }}>
+              Opens at {formatTime(todayHours.open)}
+            </p>
+          )}
+        </div>
+        <span
+          aria-label="Facility status"
+          className={`text-xs font-medium px-2 py-1 rounded-full whitespace-nowrap ${
+            isOpen ? "text-white" : "text-white"
+          }`}
+          style={{
+            backgroundColor: isOpen ? '#B9E43B' : '#ef4444'
+          }}
+        >
+          {isOpen ? "Open" : "Closed"}
+        </span>
       </div>
     </div>
   );
