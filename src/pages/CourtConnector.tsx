@@ -5,8 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useToast } from "@/hooks/use-toast";
-import { Users, EyeOff, Eye, MapPin, Plus, Trash2, LogOut, User as UserIcon, Navigation, Play } from "lucide-react";
-import { ActivateSessionDialog } from "@/components/court/ActivateSessionDialog";
+import { Users, EyeOff, Eye, MapPin, Plus, Trash2, LogOut, User as UserIcon, Navigation } from "lucide-react";
 import { Footer } from "@/components/Footer";
 import { motion } from "framer-motion";
 import logo from "@/assets/pulse-logo-new.png";
@@ -38,8 +37,6 @@ interface CourtWithLFGCount extends Court {
   lfgCount: number;
   isHidden: boolean;
   isAdded: boolean;
-  hasActiveSession: boolean;
-  activeSessionId?: string;
 }
 
 export default function CourtConnector() {
@@ -52,8 +49,6 @@ export default function CourtConnector() {
   const [loading, setLoading] = useState(true);
   const [addCourtDialogOpen, setAddCourtDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [activateDialogOpen, setActivateDialogOpen] = useState(false);
-  const [selectedCourt, setSelectedCourt] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     checkUser();
@@ -134,31 +129,17 @@ export default function CourtConnector() {
       lfgCountMap.set(lfg.court_id, (lfgCountMap.get(lfg.court_id) || 0) + 1);
     });
 
-    // Fetch active sessions for courts
-    const { data: sessionsData } = await supabase
-      .from("sessions")
-      .select("id, court_id")
-      .eq("status", "active");
-
-    const sessionMap = new Map<string, string>();
-    sessionsData?.forEach((session: any) => {
-      sessionMap.set(session.court_id, session.id);
-    });
-
     // Build courts with LFG count and status - only show courts that user has added
     const courtsWithData: CourtWithLFGCount[] = courtsData
       ?.filter((court) => prefsMap.has(court.id))
       .map((court) => {
         const pref = prefsMap.get(court.id)!;
-        const activeSessionId = sessionMap.get(court.id);
         
         return {
           ...court,
           lfgCount: lfgCountMap.get(court.id) || 0,
           isHidden: pref.hidden,
           isAdded: true,
-          hasActiveSession: !!activeSessionId,
-          activeSessionId,
         };
       }) || [];
 
@@ -484,6 +465,7 @@ export default function CourtConnector() {
                 >
                   <Card 
                     className="cursor-pointer rounded-2xl border-2 border-border shadow-lg hover:shadow-[0_2px_6px_rgba(0,0,0,0.05),0_4px_12px_rgba(169,220,61,0.15)] transition-all duration-300 h-full bg-card"
+                    onClick={() => navigate(`/court/board/${court.id}`)}
                   >
                 <CardHeader>
                   <div className="flex items-start justify-between">
@@ -548,28 +530,6 @@ export default function CourtConnector() {
                       <span className="text-lg font-bold">{court.lfgCount}</span>
                     </div>
                   </div>
-                  
-                  {court.hasActiveSession ? (
-                    <Button
-                      className="w-full"
-                      onClick={() => navigate(`/session-queue?session=${court.activeSessionId}`)}
-                    >
-                      <Play className="w-4 h-4 mr-2" />
-                      View Session Queue
-                    </Button>
-                  ) : (
-                    <Button
-                      className="w-full"
-                      variant="outline"
-                      onClick={() => {
-                        setSelectedCourt({ id: court.id, name: court.name });
-                        setActivateDialogOpen(true);
-                      }}
-                    >
-                      <Play className="w-4 h-4 mr-2" />
-                      Activate Session Queue
-                    </Button>
-                  )}
                 </CardContent>
                   </Card>
                 </motion.div>
@@ -593,19 +553,6 @@ export default function CourtConnector() {
 
       {/* Footer */}
       <Footer />
-
-      {/* Activate Session Dialog */}
-      {selectedCourt && (
-        <ActivateSessionDialog
-          open={activateDialogOpen}
-          onOpenChange={setActivateDialogOpen}
-          courtId={selectedCourt.id}
-          courtName={selectedCourt.name}
-          onSuccess={(sessionId) => {
-            navigate(`/session-queue?session=${sessionId}`);
-          }}
-        />
-      )}
     </div>
   );
 }
