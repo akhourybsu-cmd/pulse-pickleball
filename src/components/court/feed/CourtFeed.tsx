@@ -10,27 +10,21 @@ import { toast } from "sonner";
 
 interface CourtFeedProps {
   courtId: string;
+  currentUserId: string | null;
 }
 
-export const CourtFeed = ({ courtId }: CourtFeedProps) => {
+export const CourtFeed = ({ courtId, currentUserId }: CourtFeedProps) => {
   const navigate = useNavigate();
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [composerOpen, setComposerOpen] = useState(false);
   const [filter, setFilter] = useState<string>("all");
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    getCurrentUser();
     fetchPosts();
     const cleanup = subscribeToChanges();
     return cleanup;
   }, [courtId, filter]);
-
-  const getCurrentUser = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    setCurrentUserId(user?.id || null);
-  };
 
   const fetchPosts = async () => {
     try {
@@ -158,16 +152,23 @@ export const CourtFeed = ({ courtId }: CourtFeedProps) => {
   };
 
   const handleReaction = async (postId: string, emoji: string) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
+    if (!currentUserId) {
+      toast.error("Please sign up to react to posts", {
+        action: {
+          label: "Join Pulse",
+          onClick: () => navigate(`/auth?redirect=${encodeURIComponent(window.location.pathname)}`),
+        },
+      });
+      return;
+    }
 
+    try {
       // Check if user already reacted with this emoji
       const { data: existing } = await supabase
         .from("court_post_reactions")
         .select("id")
         .eq("post_id", postId)
-        .eq("user_id", user.id)
+        .eq("user_id", currentUserId)
         .eq("emoji", emoji)
         .maybeSingle();
 
@@ -184,7 +185,7 @@ export const CourtFeed = ({ courtId }: CourtFeedProps) => {
           .from("court_post_reactions")
           .insert({
             post_id: postId,
-            user_id: user.id,
+            user_id: currentUserId,
             emoji,
           });
         toast.success("Reaction added!");
@@ -209,7 +210,18 @@ export const CourtFeed = ({ courtId }: CourtFeedProps) => {
     <div className="space-y-4">
       {/* Composer Trigger */}
       <Button
-        onClick={() => setComposerOpen(true)}
+        onClick={() => {
+          if (!currentUserId) {
+            toast.error("Please sign up to post to the feed", {
+              action: {
+                label: "Join Pulse",
+                onClick: () => navigate(`/auth?redirect=${encodeURIComponent(window.location.pathname)}`),
+              },
+            });
+            return;
+          }
+          setComposerOpen(true);
+        }}
         className="w-full justify-start text-muted-foreground bg-muted hover:bg-muted/80"
         variant="outline"
       >

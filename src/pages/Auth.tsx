@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,9 @@ const authSchema = z.object({
 });
 
 const Auth = () => {
+  const [searchParams] = useSearchParams();
+  const redirectPath = searchParams.get('redirect') || '/dashboard';
+  
   const [isLogin, setIsLogin] = useState(true);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -161,9 +164,9 @@ const Auth = () => {
             console.warn("MFA check skipped due to error:", err);
           }
           
-          // No MFA enabled or MFA check failed, proceed to dashboard
+          // No MFA enabled or MFA check failed, proceed to redirect path
           toast.success("Logged in successfully!");
-          navigate("/dashboard");
+          navigate(redirectPath);
         }
       } else {
         // Sign-up validation: check email and password match
@@ -192,7 +195,7 @@ const Auth = () => {
             data: {
               full_name: validationResult.data.fullName,
             },
-            emailRedirectTo: `${window.location.origin}/dashboard`,
+            emailRedirectTo: `${window.location.origin}${redirectPath}`,
           },
         });
         if (error) throw error;
@@ -247,7 +250,7 @@ const Auth = () => {
     setShowEmailMFA(false);
     toast.success("Logged in successfully!");
     setTimeout(() => {
-      navigate("/dashboard");
+      navigate(redirectPath);
     }, 100);
   };
 

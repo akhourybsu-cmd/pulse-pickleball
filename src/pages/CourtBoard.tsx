@@ -113,24 +113,42 @@ export default function CourtBoard() {
     <div className="min-h-screen bg-background">
       <nav className="border-b bg-secondary">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Link to="/dashboard">
+          <Link to={currentUserId ? "/dashboard" : "/"}>
             <img src={logo} alt="PULSE Logo" className="h-[90px] w-auto cursor-pointer hover:opacity-80 transition-opacity" />
           </Link>
           <div className="flex items-center gap-3">
-            <Button 
-              variant="outline" 
-              size="icon" 
-              onClick={() => navigate(`/profile/${currentUserId}`)} 
-              className="rounded-full"
-            >
-              <UserIcon className="h-[1.2rem] w-[1.2rem]" />
-              <span className="sr-only">View Profile</span>
-            </Button>
-            <ThemeToggle />
-            <Button variant="secondary" size="sm" onClick={handleSignOut}>
-              <LogOut className="w-4 h-4 mr-2" />
-              Sign Out
-            </Button>
+            {currentUserId ? (
+              <>
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  onClick={() => navigate(`/profile/${currentUserId}`)} 
+                  className="rounded-full"
+                >
+                  <UserIcon className="h-[1.2rem] w-[1.2rem]" />
+                  <span className="sr-only">View Profile</span>
+                </Button>
+                <ThemeToggle />
+                <Button variant="secondary" size="sm" onClick={handleSignOut}>
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Sign Out
+                </Button>
+              </>
+            ) : (
+              <>
+                <ThemeToggle />
+                <Button 
+                  onClick={() => navigate(`/auth?redirect=${encodeURIComponent(window.location.pathname)}`)}
+                  className="gap-2"
+                  style={{
+                    backgroundColor: '#B9E43B',
+                    color: '#0E4C58',
+                  }}
+                >
+                  Join Pulse
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </nav>
@@ -196,16 +214,18 @@ export default function CourtBoard() {
                 {court.location && ` • ${court.location}`}
               </motion.p>
             </div>
-            <div className="flex-shrink-0">
-              <CourtCheckIn courtId={court.id} userId={currentUserId} />
-            </div>
+            {currentUserId && (
+              <div className="flex-shrink-0">
+                <CourtCheckIn courtId={court.id} userId={currentUserId} />
+              </div>
+            )}
           </div>
         </div>
       </motion.div>
 
       <div className="container mx-auto px-4 py-6 space-y-6">
         {courtId === PICKLEBALL_CITI_ID && (
-          <UpcomingEvents courtId={courtId} isAdmin={isAdmin} />
+          <UpcomingEvents courtId={courtId} isAdmin={isAdmin} currentUserId={currentUserId} />
         )}
 
         <div className="flex flex-col gap-3 sm:gap-4">
@@ -235,7 +255,7 @@ export default function CourtBoard() {
           <TabsContent value="feed">
             <Card>
               <CardContent className="pt-4 sm:pt-6">
-                <CourtFeed courtId={court.id} />
+                <CourtFeed courtId={court.id} currentUserId={currentUserId} />
               </CardContent>
             </Card>
           </TabsContent>

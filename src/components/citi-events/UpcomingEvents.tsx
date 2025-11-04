@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -12,9 +13,11 @@ import { toast } from "sonner";
 interface UpcomingEventsProps {
   courtId: string;
   isAdmin: boolean;
+  currentUserId: string | null;
 }
 
-export function UpcomingEvents({ courtId, isAdmin }: UpcomingEventsProps) {
+export function UpcomingEvents({ courtId, isAdmin, currentUserId }: UpcomingEventsProps) {
+  const navigate = useNavigate();
   const [events, setEvents] = useState<any[]>([]);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -59,8 +62,6 @@ export function UpcomingEvents({ courtId, isAdmin }: UpcomingEventsProps) {
 
   const fetchEvents = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
       // Fetch events
       const { data: eventsData, error: eventsError } = await supabase
         .from("citi_events")
@@ -93,8 +94,8 @@ export function UpcomingEvents({ courtId, isAdmin }: UpcomingEventsProps) {
         const waitlisted = eventAttendees.filter(
           (a: any) => a.status === "waitlisted"
         );
-        const userAttendance = user
-          ? eventAttendees.find((a: any) => a.user_id === user.id)
+        const userAttendance = currentUserId
+          ? eventAttendees.find((a: any) => a.user_id === currentUserId)
           : null;
 
         return {
@@ -113,19 +114,23 @@ export function UpcomingEvents({ courtId, isAdmin }: UpcomingEventsProps) {
   };
 
   const handleJoin = async (eventId: string) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast.error("Please sign in to join events");
-        return;
-      }
+    if (!currentUserId) {
+      toast.error("Please sign up to join events", {
+        action: {
+          label: "Join Pulse",
+          onClick: () => navigate(`/auth?redirect=${encodeURIComponent(window.location.pathname)}`),
+        },
+      });
+      return;
+    }
 
+    try {
       const event = events.find((e) => e.id === eventId);
       const isFull = event.attendee_count >= event.max_players;
 
       const { error } = await supabase.from("citi_event_attendees").insert({
         event_id: eventId,
-        user_id: user.id,
+        user_id: currentUserId,
         status: isFull ? "waitlisted" : "attending",
       });
 
@@ -139,15 +144,14 @@ export function UpcomingEvents({ courtId, isAdmin }: UpcomingEventsProps) {
   };
 
   const handleLeave = async (eventId: string) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+    if (!currentUserId) return;
 
+    try {
       const { error } = await supabase
         .from("citi_event_attendees")
         .delete()
         .eq("event_id", eventId)
-        .eq("user_id", user.id);
+        .eq("user_id", currentUserId);
 
       if (error) throw error;
       toast.success("Left event");
@@ -159,16 +163,20 @@ export function UpcomingEvents({ courtId, isAdmin }: UpcomingEventsProps) {
   };
 
   const handleJoinWaitlist = async (eventId: string) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast.error("Please sign in to join waitlist");
-        return;
-      }
+    if (!currentUserId) {
+      toast.error("Please sign up to join waitlist", {
+        action: {
+          label: "Join Pulse",
+          onClick: () => navigate(`/auth?redirect=${encodeURIComponent(window.location.pathname)}`),
+        },
+      });
+      return;
+    }
 
+    try {
       const { error } = await supabase.from("citi_event_attendees").insert({
         event_id: eventId,
-        user_id: user.id,
+        user_id: currentUserId,
         status: "waitlisted",
       });
 
