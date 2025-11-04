@@ -19,6 +19,7 @@ interface EventModalProps {
     price?: number;
     instructor?: string;
     description?: string;
+    skill_level?: "all" | "beginner" | "intermediate" | "advanced";
   } | null;
   isOpen: boolean;
   onClose: () => void;
@@ -39,6 +40,13 @@ const EVENT_TYPE_COLORS = {
   open_play: "bg-green-100 text-green-900 dark:bg-green-950 dark:text-green-100",
   private: "bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-100",
   lesson: "bg-blue-100 text-blue-900 dark:bg-blue-950 dark:text-blue-100",
+};
+
+const SKILL_LEVEL_FULL_LABELS = {
+  all: "All Levels",
+  beginner: "Beginner (2.0-2.5)",
+  intermediate: "Intermediate (3.0-3.5)",
+  advanced: "Advanced (4.0+)",
 };
 
 export function EventModal({ event, isOpen, onClose, currentUserId, onRegister, onRequestPrivate }: EventModalProps) {
@@ -95,6 +103,14 @@ export function EventModal({ event, isOpen, onClose, currentUserId, onRegister, 
             <MapPin className="w-4 h-4 text-muted-foreground" />
             <span>Court {event.court_number}</span>
           </div>
+
+          {event.skill_level && (
+            <div className="flex items-center gap-2">
+              <Badge variant="outline">
+                {SKILL_LEVEL_FULL_LABELS[event.skill_level]}
+              </Badge>
+            </div>
+          )}
 
           {event.capacity && (
             <div className="flex items-center gap-2 text-sm">

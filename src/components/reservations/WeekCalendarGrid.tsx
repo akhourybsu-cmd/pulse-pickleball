@@ -11,6 +11,7 @@ interface CalendarEvent {
   court_number: number;
   capacity?: number;
   current_registrations?: number;
+  skill_level?: "all" | "beginner" | "intermediate" | "advanced";
 }
 
 interface WeekCalendarGridProps {
@@ -26,6 +27,20 @@ const EVENT_COLORS = {
   open_play: "bg-green-100 border-green-400 text-green-900 dark:bg-green-950 dark:text-green-100",
   private: "bg-gray-100 border-gray-400 text-gray-900 dark:bg-gray-800 dark:text-gray-100",
   lesson: "bg-blue-100 border-blue-400 text-blue-900 dark:bg-blue-950 dark:text-blue-100",
+};
+
+const SKILL_LEVEL_LABELS = {
+  all: "All",
+  beginner: "Beg",
+  intermediate: "Int",
+  advanced: "Adv",
+};
+
+const SKILL_LEVEL_COLORS = {
+  all: "bg-gray-500",
+  beginner: "bg-green-500",
+  intermediate: "bg-yellow-500",
+  advanced: "bg-red-500",
 };
 
 export function WeekCalendarGrid({ currentDate, events, onEventClick, onTimeSlotClick, isAdmin }: WeekCalendarGridProps) {
@@ -92,11 +107,21 @@ export function WeekCalendarGrid({ currentDate, events, onEventClick, onTimeSlot
                             <div
                               key={event.id}
                               className={cn(
-                                "p-1 rounded border text-xs font-medium",
+                                "p-1 rounded border text-xs font-medium space-y-0.5",
                                 EVENT_COLORS[event.event_type]
                               )}
                             >
-                              <div className="truncate">{event.title}</div>
+                              <div className="flex items-center justify-between gap-1">
+                                <div className="truncate flex-1">{event.title}</div>
+                                {event.skill_level && (
+                                  <span className={cn(
+                                    "text-[9px] px-1 rounded text-white font-bold",
+                                    SKILL_LEVEL_COLORS[event.skill_level]
+                                  )}>
+                                    {SKILL_LEVEL_LABELS[event.skill_level]}
+                                  </span>
+                                )}
+                              </div>
                               <div className="text-[10px] opacity-70">Court {court}</div>
                               {event.capacity && (
                                 <div className="text-[10px] opacity-70">

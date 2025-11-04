@@ -31,6 +31,7 @@ export function CreateEventDialog({
   const [price, setPrice] = useState("0");
   const [instructor, setInstructor] = useState("");
   const [duration, setDuration] = useState("60");
+  const [skillLevel, setSkillLevel] = useState<"all" | "beginner" | "intermediate" | "advanced">("all");
 
   const handleSubmit = () => {
     const eventData = {
@@ -43,6 +44,7 @@ export function CreateEventDialog({
       capacity: eventType === "private" ? null : parseInt(capacity),
       price: parseFloat(price),
       instructor: eventType === "lesson" ? instructor : null,
+      skill_level: skillLevel,
     };
     onSubmit(eventData);
     onClose();
@@ -121,14 +123,31 @@ export function CreateEventDialog({
           </div>
 
           {eventType !== "private" && (
-            <div>
-              <Label>Capacity</Label>
-              <Input 
-                type="number" 
-                value={capacity} 
-                onChange={(e) => setCapacity(e.target.value)}
-              />
-            </div>
+            <>
+              <div>
+                <Label>Capacity</Label>
+                <Input 
+                  type="number" 
+                  value={capacity} 
+                  onChange={(e) => setCapacity(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <Label>Skill Level</Label>
+                <Select value={skillLevel} onValueChange={(v: any) => setSkillLevel(v)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Levels</SelectItem>
+                    <SelectItem value="beginner">Beginner (2.0-2.5)</SelectItem>
+                    <SelectItem value="intermediate">Intermediate (3.0-3.5)</SelectItem>
+                    <SelectItem value="advanced">Advanced (4.0+)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
           )}
 
           <div>
