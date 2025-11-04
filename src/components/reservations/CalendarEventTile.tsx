@@ -103,12 +103,12 @@ export function CalendarEventTile({
       className="cursor-pointer transition-all hover:shadow-lg group h-full flex flex-col"
       onClick={() => onClick(event.id)}
     >
-      <CardHeader className="pb-3">
+      <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="font-bold text-lg leading-tight flex-1 bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent group-hover:from-primary/90 group-hover:to-primary/60 transition-all">
+          <h3 className="font-bold text-base leading-tight flex-1 bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent group-hover:from-primary/90 group-hover:to-primary/60 transition-all">
             {event.title}
           </h3>
-          <div className="flex flex-col gap-2 items-end">
+          <div className="flex flex-col gap-1.5 items-end">
             <Badge
               className={
                 EVENT_TYPE_COLORS[
@@ -127,8 +127,8 @@ export function CalendarEventTile({
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-4 flex-1 flex flex-col">
-        <div className="space-y-2 text-sm text-muted-foreground flex-1">
+      <CardContent className="space-y-3 flex-1 flex flex-col pt-0">
+        <div className="space-y-1.5 text-sm text-muted-foreground flex-1">
           <div className="flex items-center gap-2">
             <Calendar className="w-4 h-4 flex-shrink-0" />
             <span className="truncate">{dateStr}</span>
@@ -163,11 +163,11 @@ export function CalendarEventTile({
         </div>
 
         {isPickleballCiti && (
-          <div className="flex justify-end mb-2">
+          <div className="flex justify-end mb-1.5">
             <img 
               src={pickleballCitiLogo} 
               alt="Pickleball Citi" 
-              className="h-12 w-auto object-contain opacity-70"
+              className="h-[72px] w-auto object-contain opacity-70"
             />
           </div>
         )}
