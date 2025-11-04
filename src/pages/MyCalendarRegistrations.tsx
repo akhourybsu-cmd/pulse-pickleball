@@ -142,7 +142,7 @@ export default function MyCalendarRegistrations() {
               </p>
               <Button
                 className="mt-4"
-                onClick={() => window.location.href = "/reservations"}
+                onClick={() => window.location.href = "/events/browse"}
               >
                 Browse Events
               </Button>

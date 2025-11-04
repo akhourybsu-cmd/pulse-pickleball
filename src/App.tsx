@@ -54,6 +54,7 @@ import TournamentLanding from "./pages/TournamentLanding";
 import TournamentCustomize from "./pages/TournamentCustomize";
 import Reservations from "./pages/Reservations";
 import MyCalendarRegistrations from "./pages/MyCalendarRegistrations";
+import BrowseEvents from "./pages/BrowseEvents";
 import PickleballCitiMemberships from "./pages/PickleballCitiMemberships";
 import { RoundRobinBanner } from "@/components/RoundRobinBanner";
 
@@ -103,6 +104,7 @@ const App = () => (
               <Route path="/changelog" element={<Changelog />} />
               <Route path="/reservations" element={<Reservations />} />
               <Route path="/events/my-calendar-registrations" element={<MyCalendarRegistrations />} />
+              <Route path="/events/browse" element={<BrowseEvents />} />
               <Route path="/pickleball-citi-memberships" element={<PickleballCitiMemberships />} />
               <Route path="/events" element={<Events />} />
               <Route path="/events/new" element={<NewEvent />} />
