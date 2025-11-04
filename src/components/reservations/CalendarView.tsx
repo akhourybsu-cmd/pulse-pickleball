@@ -306,8 +306,8 @@ export function CalendarView({ facilityId, currentUserId, pickleballCitiLogo }: 
           <img 
             src={pickleballCitiLogo} 
             alt="Pickleball Citi" 
-            className="h-64 object-contain"
-            style={{ maxWidth: '1120px' }}
+            className="h-16 object-contain"
+            style={{ maxWidth: '280px' }}
           />
         </div>
 
