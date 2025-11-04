@@ -2034,6 +2034,7 @@ export type Database = {
           match_type: string
           name: string
           num_courts: number
+          qr_join_url: string | null
           session_date: string
           start_time: string
           status: string
@@ -2048,6 +2049,7 @@ export type Database = {
           match_type?: string
           name: string
           num_courts?: number
+          qr_join_url?: string | null
           session_date?: string
           start_time: string
           status?: string
@@ -2062,6 +2064,7 @@ export type Database = {
           match_type?: string
           name?: string
           num_courts?: number
+          qr_join_url?: string | null
           session_date?: string
           start_time?: string
           status?: string
@@ -2810,6 +2813,10 @@ export type Database = {
       }
     }
     Functions: {
+      assign_players_to_courts: {
+        Args: { p_session_id: string }
+        Returns: undefined
+      }
       calculate_pulse_rating_change: {
         Args: {
           p_match_type?: string

@@ -1,13 +1,15 @@
 import { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Users, Clock, Trophy } from "lucide-react";
+import { ArrowLeft, Trophy, Play } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Footer } from "@/components/Footer";
+import { WhosUpBoard } from "@/components/court/WhosUpBoard";
+import { SessionQRCode } from "@/components/court/SessionQRCode";
 
 interface Session {
   id: string;
@@ -76,6 +78,8 @@ interface MatchTicket {
 
 export default function SessionQueue() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const sessionId = searchParams.get("session");
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
@@ -85,18 +89,27 @@ export default function SessionQueue() {
   const [matchTickets, setMatchTickets] = useState<MatchTicket[]>([]);
   const [isCheckedIn, setIsCheckedIn] = useState(false);
   const [isInQueue, setIsInQueue] = useState(false);
+  const [userQueuePosition, setUserQueuePosition] = useState<number | null>(null);
 
   useEffect(() => {
     checkUser();
-    fetchActiveSession();
+    if (sessionId) {
+      fetchSessionById(sessionId);
+    } else {
+      fetchActiveSession();
+    }
     
     // Auto-refresh every 30 seconds as fallback
     const refreshInterval = setInterval(() => {
-      fetchActiveSession();
+      if (sessionId) {
+        fetchSessionById(sessionId);
+      } else {
+        fetchActiveSession();
+      }
     }, 30000);
 
     return () => clearInterval(refreshInterval);
-  }, []);
+  }, [sessionId]);
 
   // Set up realtime subscriptions with reconnection
   useEffect(() => {
@@ -228,6 +241,36 @@ export default function SessionQueue() {
     setUserId(user.id);
   };
 
+  const fetchSessionById = async (id: string) => {
+    try {
+      const { data: sessionData, error } = await supabase
+        .from("sessions")
+        .select(`
+          *,
+          courts:court_id (name)
+        `)
+        .eq("id", id)
+        .eq("status", "active")
+        .single();
+
+      if (error) throw error;
+
+      if (sessionData) {
+        setSession(sessionData);
+        await fetchSessionData(sessionData.id);
+      }
+    } catch (error: any) {
+      console.error("Error fetching session:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load session",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const fetchActiveSession = async () => {
     try {
       const { data: sessions, error } = await supabase
@@ -289,7 +332,12 @@ export default function SessionQueue() {
 
     if (queueData) {
       setQueueEntries(queueData as any);
-      setIsInQueue(queueData.some((q: any) => q.player_id === userId));
+      const userEntry = queueData.find((q: any) => q.player_id === userId);
+      setIsInQueue(!!userEntry);
+      if (userEntry) {
+        const position = queueData.findIndex((q: any) => q.player_id === userId) + 1;
+        setUserQueuePosition(position);
+      }
     }
 
     // Fetch match tickets
@@ -422,36 +470,106 @@ export default function SessionQueue() {
       </div>
 
       <div className="flex-1 container mx-auto px-4 py-8 space-y-6">
-        {/* Session Info */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Trophy className="h-5 w-5" />
-              {session.name}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <p className="text-sm text-muted-foreground">
-              <strong>Court:</strong> {session.courts.name}
-            </p>
-            <p className="text-sm text-muted-foreground">
-              <strong>Courts:</strong> {session.num_courts}
-            </p>
-            <p className="text-sm text-muted-foreground">
-              <strong>Start Time:</strong> {session.start_time}
-            </p>
-            {!isCheckedIn && (
-              <Button onClick={handleCheckIn} className="w-full mt-4">
-                Check In
-              </Button>
-            )}
-            {isCheckedIn && !isInQueue && (
-              <Button onClick={handleJoinQueue} className="w-full mt-4">
-                Join Queue
-              </Button>
-            )}
-          </CardContent>
-        </Card>
+        {/* Session Header + Actions */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Trophy className="h-5 w-5" />
+                {session.name}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-muted-foreground">Facility</p>
+                  <p className="font-semibold">{session.courts.name}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Courts</p>
+                  <p className="font-semibold">{session.num_courts}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Start Time</p>
+                  <p className="font-semibold">{session.start_time}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Checked In</p>
+                  <p className="font-semibold">{checkIns.length}</p>
+                </div>
+              </div>
+              
+              {!isCheckedIn && (
+                <Button onClick={handleCheckIn} className="w-full">
+                  Check In
+                </Button>
+              )}
+              {isCheckedIn && !isInQueue && (
+                <Button onClick={handleJoinQueue} className="w-full">
+                  <Play className="w-4 h-4 mr-2" />
+                  Join Queue
+                </Button>
+              )}
+              {isInQueue && userQueuePosition && (
+                <div className="bg-blue-50 dark:bg-blue-950/30 p-4 rounded-lg text-center">
+                  <p className="text-sm text-muted-foreground">You're in the queue</p>
+                  <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+                    #{userQueuePosition}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {userQueuePosition <= 4 ? "You're up next!" : `${Math.ceil((userQueuePosition - 4) / 4)} groups ahead`}
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* QR Code */}
+          {session.qr_join_url && (
+            <SessionQRCode 
+              joinUrl={session.qr_join_url} 
+              sessionName={session.name} 
+            />
+          )}
+        </div>
+
+        {/* Who's Up Board */}
+        <WhosUpBoard
+          courtAssignments={matchTickets.map(ticket => ({
+            court_number: ticket.court_number,
+            status: ticket.status === 'live' ? 'live' : 'on-deck',
+            players: [
+              {
+                id: ticket.team1_player1_id,
+                ...ticket.team1_player1,
+                current_rating: 3.0 // Default, would need to fetch if needed
+              },
+              {
+                id: ticket.team1_player2_id,
+                ...ticket.team1_player2,
+                current_rating: 3.0
+              },
+              {
+                id: ticket.team2_player1_id,
+                ...ticket.team2_player1,
+                current_rating: 3.0
+              },
+              {
+                id: ticket.team2_player2_id,
+                ...ticket.team2_player2,
+                current_rating: 3.0
+              },
+            ]
+          }))}
+          waitingPlayers={queueEntries.map(entry => ({
+            id: entry.player_id,
+            ...entry.profiles
+          }))}
+          totalCourts={session.num_courts}
+          currentUserId={userId}
+        />
+      </div>
+      <Footer />
 
         {/* Match Tickets - On Court / On Deck */}
         {matchTickets.length > 0 && (
