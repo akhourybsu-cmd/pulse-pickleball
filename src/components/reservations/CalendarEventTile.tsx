@@ -108,15 +108,22 @@ export function CalendarEventTile({
           <h3 className="font-bold text-lg leading-tight flex-1 bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent group-hover:from-primary/90 group-hover:to-primary/60 transition-all">
             {event.title}
           </h3>
-          <Badge
-            className={
-              EVENT_TYPE_COLORS[
-                event.event_type as keyof typeof EVENT_TYPE_COLORS
-              ]
-            }
-          >
-            {EVENT_TYPE_LABELS[event.event_type as keyof typeof EVENT_TYPE_LABELS]}
-          </Badge>
+          <div className="flex flex-col gap-2 items-end">
+            <Badge
+              className={
+                EVENT_TYPE_COLORS[
+                  event.event_type as keyof typeof EVENT_TYPE_COLORS
+                ]
+              }
+            >
+              {EVENT_TYPE_LABELS[event.event_type as keyof typeof EVENT_TYPE_LABELS]}
+            </Badge>
+            {event.skill_level && (
+              <Badge variant="outline" className="text-xs">
+                {event.skill_level}
+              </Badge>
+            )}
+          </div>
         </div>
       </CardHeader>
 
@@ -155,20 +162,12 @@ export function CalendarEventTile({
           )}
         </div>
 
-        {event.skill_level && (
-          <div className="flex items-center gap-2 flex-wrap">
-            <Badge variant="outline" className="text-xs">
-              {event.skill_level}
-            </Badge>
-          </div>
-        )}
-
         {isPickleballCiti && (
           <div className="flex justify-end mb-2">
             <img 
               src={pickleballCitiLogo} 
               alt="Pickleball Citi" 
-              className="h-8 w-auto object-contain opacity-70"
+              className="h-12 w-auto object-contain opacity-70"
             />
           </div>
         )}
