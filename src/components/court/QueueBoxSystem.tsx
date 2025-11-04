@@ -8,7 +8,7 @@ interface Player {
   id: string;
   display_name: string | null;
   full_name: string;
-  current_rating: number;
+  current_rating: number | null;
 }
 
 interface BoxEntry {
@@ -79,12 +79,12 @@ export function QueueBoxSystem({
           return (
             <Card
               key={boxNum}
-              className={`relative transition-all ${
+              className={`relative transition-all rounded-2xl border-2 shadow-lg h-full ${
                 isFull
-                  ? "border-primary bg-primary/5"
+                  ? "border-primary bg-primary/5 shadow-[0_2px_6px_rgba(0,0,0,0.05),0_4px_12px_rgba(169,220,61,0.15)]"
                   : isUserInBox
-                  ? "border-accent bg-accent/10"
-                  : "hover:shadow-md"
+                  ? "border-blue-500 bg-blue-50 dark:bg-blue-950/30 shadow-[0_2px_6px_rgba(0,0,0,0.05),0_4px_12px_rgba(59,130,246,0.15)]"
+                  : "border-border hover:shadow-[0_2px_6px_rgba(0,0,0,0.05),0_4px_12px_rgba(169,220,61,0.15)] hover:-translate-y-1"
               }`}
             >
               <CardHeader className="pb-3">

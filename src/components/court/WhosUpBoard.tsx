@@ -7,7 +7,7 @@ interface Player {
   id: string;
   display_name: string | null;
   full_name: string;
-  current_rating: number;
+  current_rating: number | null;
 }
 
 interface CourtAssignment {
@@ -66,7 +66,7 @@ export function WhosUpBoard({
             
             if (!court) {
               return (
-                <Card key={courtNum} className="border-2 border-dashed border-muted">
+                <Card key={courtNum} className="rounded-2xl border-2 border-dashed border-muted shadow-lg">
                   <CardContent className="p-4">
                     <div className="flex items-center gap-2 mb-3">
                       <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-lg font-bold text-muted-foreground">
@@ -89,9 +89,9 @@ export function WhosUpBoard({
             return (
               <Card 
                 key={courtNum} 
-                className={`border-2 ${
-                  isLive ? 'border-primary shadow-lg' : 'border-orange-500'
-                } ${userIsPlaying ? 'ring-2 ring-blue-500' : ''}`}
+                className={`rounded-2xl border-2 shadow-lg transition-all ${
+                  isLive ? 'border-primary shadow-[0_2px_6px_rgba(0,0,0,0.05),0_4px_12px_rgba(169,220,61,0.15)]' : 'border-orange-500 shadow-[0_2px_6px_rgba(0,0,0,0.05),0_4px_12px_rgba(249,115,22,0.15)]'
+                } ${userIsPlaying ? 'ring-2 ring-blue-500' : ''} hover:-translate-y-1`}
               >
                 <CardContent className="p-4">
                   <div className="flex items-center gap-2 mb-3">
@@ -129,7 +129,7 @@ export function WhosUpBoard({
                             )}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            {player.current_rating.toFixed(2)}
+                            {player.current_rating?.toFixed(2) || "3.00"}
                           </p>
                         </div>
                         <Badge variant="outline" className="text-xs">
@@ -156,7 +156,7 @@ export function WhosUpBoard({
         </div>
         
         {waitingPlayers.length === 0 ? (
-          <Card className="border-2 border-dashed">
+          <Card className="rounded-2xl border-2 border-dashed shadow-lg">
             <CardContent className="p-8 text-center">
               <p className="text-muted-foreground">
                 No players in queue. Join now to get on a court!
@@ -168,10 +168,10 @@ export function WhosUpBoard({
             {waitingPlayers.map((player, index) => (
               <Card 
                 key={player.id}
-                className={`${
+                className={`rounded-xl transition-all shadow-md ${
                   isCurrentUser(player.id) 
-                    ? 'border-2 border-blue-500 shadow-lg' 
-                    : 'border'
+                    ? 'border-2 border-blue-500 shadow-[0_2px_6px_rgba(0,0,0,0.05),0_4px_12px_rgba(59,130,246,0.15)] hover:-translate-y-1' 
+                    : 'border hover:shadow-lg hover:-translate-y-1'
                 }`}
               >
                 <CardContent className="p-3 text-center">
@@ -195,7 +195,7 @@ export function WhosUpBoard({
                     )}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {player.current_rating.toFixed(2)}
+                    {player.current_rating?.toFixed(2) || "3.00"}
                   </p>
                 </CardContent>
               </Card>

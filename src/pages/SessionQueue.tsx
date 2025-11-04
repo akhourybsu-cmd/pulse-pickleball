@@ -34,7 +34,7 @@ interface CheckIn {
   profiles: {
     display_name: string | null;
     full_name: string;
-    current_rating: number;
+    current_rating: number | null;
   };
 }
 
@@ -47,7 +47,7 @@ interface QueueEntry {
   profiles: {
     display_name: string | null;
     full_name: string;
-    current_rating: number;
+    current_rating: number | null;
   };
 }
 
@@ -556,10 +556,10 @@ export default function SessionQueue() {
       <div className="flex-1 container mx-auto px-4 py-8 space-y-6">
         {/* Session Header + Actions */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card className="lg:col-span-2">
+          <Card className="lg:col-span-2 rounded-2xl border-2 shadow-lg">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Trophy className="h-5 w-5" />
+                <Trophy className="h-5 w-5 text-primary" />
                 {session.name}
               </CardTitle>
             </CardHeader>
