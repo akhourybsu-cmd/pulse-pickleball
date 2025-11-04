@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar, Clock, DollarSign, MapPin, Users } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 
 interface EventModalProps {
   event: {
@@ -42,6 +43,7 @@ const EVENT_TYPE_COLORS = {
 
 export function EventModal({ event, isOpen, onClose, currentUserId, onRegister, onRequestPrivate }: EventModalProps) {
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   if (!event) return null;
 
@@ -54,8 +56,8 @@ export function EventModal({ event, isOpen, onClose, currentUserId, onRegister, 
       toast({
         title: "Sign in required",
         description: "Please sign in to register for events",
-        variant: "destructive",
       });
+      navigate(`/auth?redirect=${encodeURIComponent(window.location.pathname)}`);
       return;
     }
 
@@ -106,6 +108,7 @@ export function EventModal({ event, isOpen, onClose, currentUserId, onRegister, 
             <div className="flex items-center gap-2 text-sm">
               <DollarSign className="w-4 h-4 text-muted-foreground" />
               <span>${event.price.toFixed(2)}</span>
+              <span className="text-xs text-muted-foreground">(No payment required at this time)</span>
             </div>
           )}
 
@@ -126,7 +129,13 @@ export function EventModal({ event, isOpen, onClose, currentUserId, onRegister, 
               <Button 
                 className="flex-1"
                 onClick={handleAction}
-                disabled={!currentUserId || isFull}
+                style={
+                  !isFull ? {
+                    backgroundColor: '#B9E43B',
+                    color: '#0E4C58',
+                  } : undefined
+                }
+                variant={isFull ? "outline" : "default"}
               >
                 {isFull ? "Join Waitlist" : "Register"}
               </Button>
@@ -137,7 +146,6 @@ export function EventModal({ event, isOpen, onClose, currentUserId, onRegister, 
                 className="flex-1"
                 variant="outline"
                 onClick={handleAction}
-                disabled={!currentUserId}
               >
                 Request Rental
               </Button>
@@ -147,9 +155,15 @@ export function EventModal({ event, isOpen, onClose, currentUserId, onRegister, 
               <Button 
                 className="flex-1"
                 onClick={handleAction}
-                disabled={!currentUserId || isFull}
+                style={
+                  !isFull ? {
+                    backgroundColor: '#B9E43B',
+                    color: '#0E4C58',
+                  } : undefined
+                }
+                variant={isFull ? "outline" : "default"}
               >
-                {isFull ? "Waitlist" : "Book Lesson"}
+                {isFull ? "Join Waitlist" : "Book Lesson"}
               </Button>
             )}
 
@@ -163,6 +177,12 @@ export function EventModal({ event, isOpen, onClose, currentUserId, onRegister, 
               Close
             </Button>
           </div>
+
+          {!currentUserId && (
+            <p className="text-xs text-center text-muted-foreground">
+              Sign in to register for this event
+            </p>
+          )}
         </div>
       </DialogContent>
     </Dialog>
