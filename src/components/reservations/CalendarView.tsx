@@ -17,9 +17,10 @@ import { supabase } from "@/integrations/supabase/client";
 interface CalendarViewProps {
   facilityId: string;
   currentUserId: string | null;
+  pickleballCitiLogo: string;
 }
 
-export function CalendarView({ facilityId, currentUserId }: CalendarViewProps) {
+export function CalendarView({ facilityId, currentUserId, pickleballCitiLogo }: CalendarViewProps) {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [view, setView] = useState<"week" | "day">("week");
@@ -301,7 +302,7 @@ export function CalendarView({ facilityId, currentUserId }: CalendarViewProps) {
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button
             variant="outline"
             size="icon"
@@ -309,11 +310,25 @@ export function CalendarView({ facilityId, currentUserId }: CalendarViewProps) {
           >
             <ChevronLeft className="w-4 h-4" />
           </Button>
-          <span className="text-sm font-medium min-w-[200px] text-center">
-            {view === "week" 
-              ? `${format(weekDays[0], "MMM d")} - ${format(weekDays[6], "MMM d, yyyy")}`
-              : format(currentDate, "MMMM d, yyyy")}
-          </span>
+          
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium min-w-[200px] text-center">
+              {view === "week" 
+                ? `${format(weekDays[0], "MMM d")} - ${format(weekDays[6], "MMM d, yyyy")}`
+                : format(currentDate, "MMMM d, yyyy")}
+            </span>
+            
+            <div className="flex items-center gap-2 px-3 py-1" aria-label="Pickleball Citi branding">
+              <img 
+                src={pickleballCitiLogo} 
+                alt="Pickleball Citi" 
+                className="h-6 object-contain"
+                style={{ maxWidth: '100px' }}
+              />
+              <span className="text-xs text-muted-foreground/70 italic hidden sm:inline">Powered by PULSE</span>
+            </div>
+          </div>
+          
           <Button
             variant="outline"
             size="icon"
