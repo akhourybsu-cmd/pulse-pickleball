@@ -11,7 +11,7 @@ import { CourtPresence } from "@/components/court/CourtPresence";
 import { CourtCheckIn } from "@/components/court/CourtCheckIn";
 import { CourtFeed } from "@/components/court/feed/CourtFeed";
 import { useToast } from "@/hooks/use-toast";
-import { MapPin, MessageSquare, Activity, LogOut, User as UserIcon } from "lucide-react";
+import { MapPin, MessageSquare, Activity, LogOut, User as UserIcon, ExternalLink } from "lucide-react";
 import { motion } from "framer-motion";
 import logo from "@/assets/pulse-logo-new.png";
 import pickleballCitiLogo from "@/assets/pickleball-citi-logo.png";
@@ -212,9 +212,22 @@ export default function CourtBoard() {
                   className="w-full md:w-auto md:flex-shrink-0 flex flex-col items-end gap-2"
                 >
                   <VenueInfoCard />
-                  {currentUserId && (
-                    <CourtCheckIn courtId={court.id} userId={currentUserId} />
-                  )}
+                  <div className="flex gap-2">
+                    {currentUserId && (
+                      <CourtCheckIn courtId={court.id} userId={currentUserId} />
+                    )}
+                    <Button
+                      asChild
+                      variant="outline"
+                      size="sm"
+                      className="gap-2 text-sm px-3 py-1.5 rounded-full"
+                    >
+                      <a href="https://pickleballciti.com/" target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="w-4 h-4" />
+                        Visit Official Website
+                      </a>
+                    </Button>
+                  </div>
                 </motion.div>
               </>
             ) : (
