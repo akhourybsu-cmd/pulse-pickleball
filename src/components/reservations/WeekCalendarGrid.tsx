@@ -100,13 +100,13 @@ export function WeekCalendarGrid({ currentDate, events, onEventClick, onTimeSlot
                 const bothCourts = hasEventOnBothCourts(day, hour);
                 
                 return (
-                  <div key={`${day.toISOString()}-${hour}`} className="space-y-1">
+                  <div key={`${day.toISOString()}-${hour}`}>
                     {bothCourts ? (
-                      // Single card spanning both courts
+                      // Single card spanning both courts - full height
                       <Card
                         key={`${day.toISOString()}-${hour}-both`}
                         className={cn(
-                          "p-2 min-h-[60px] cursor-pointer hover:shadow-md transition-shadow"
+                          "p-2 min-h-[130px] cursor-pointer hover:shadow-md transition-shadow"
                         )}
                         onClick={() => {
                           const slotEvents = getEventsForSlot(day, hour, 1);
@@ -145,7 +145,8 @@ export function WeekCalendarGrid({ currentDate, events, onEventClick, onTimeSlot
                       </Card>
                     ) : (
                       // Separate cards for each court
-                      courts.map(court => {
+                      <div className="space-y-1">
+                        {courts.map(court => {
                         const slotEvents = getEventsForSlot(day, hour, court);
                         return (
                           <Card
@@ -197,7 +198,8 @@ export function WeekCalendarGrid({ currentDate, events, onEventClick, onTimeSlot
                             )}
                           </Card>
                         );
-                      })
+                      })}
+                      </div>
                     )}
                   </div>
                 );

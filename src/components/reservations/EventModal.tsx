@@ -24,8 +24,10 @@ interface EventModalProps {
   isOpen: boolean;
   onClose: () => void;
   currentUserId: string | null;
+  isAdmin?: boolean;
   onRegister?: (eventId: string) => void;
   onRequestPrivate?: (eventId: string) => void;
+  onEdit?: (event: any) => void;
 }
 
 const EVENT_TYPE_LABELS = {
@@ -49,7 +51,7 @@ const SKILL_LEVEL_FULL_LABELS = {
   advanced: "Advanced (4.0+)",
 };
 
-export function EventModal({ event, isOpen, onClose, currentUserId, onRegister, onRequestPrivate }: EventModalProps) {
+export function EventModal({ event, isOpen, onClose, currentUserId, isAdmin, onRegister, onRequestPrivate, onEdit }: EventModalProps) {
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -139,65 +141,87 @@ export function EventModal({ event, isOpen, onClose, currentUserId, onRegister, 
             <p className="text-sm text-muted-foreground">{event.description}</p>
           )}
 
-          {/* Action buttons */}
-          <div className="flex gap-2 pt-4">
-            {event.event_type === "open_play" && (
-              <Button 
-                className="flex-1"
-                onClick={handleAction}
-                style={
-                  !isFull ? {
-                    backgroundColor: '#B9E43B',
-                    color: '#0E4C58',
-                  } : undefined
-                }
-                variant={isFull ? "outline" : "default"}
-              >
-                {isFull ? "Join Waitlist" : "Register"}
-              </Button>
-            )}
-
-            {event.event_type === "private" && (
-              <Button 
-                className="flex-1"
-                variant="outline"
-                onClick={handleAction}
-              >
-                Request Rental
-              </Button>
-            )}
-
-            {event.event_type === "lesson" && (
-              <Button 
-                className="flex-1"
-                onClick={handleAction}
-                style={
-                  !isFull ? {
-                    backgroundColor: '#B9E43B',
-                    color: '#0E4C58',
-                  } : undefined
-                }
-                variant={isFull ? "outline" : "default"}
-              >
-                {isFull ? "Join Waitlist" : "Book Lesson"}
-              </Button>
-            )}
-
-            {event.event_type === "league" && (
-              <div className="flex-1 p-3 bg-muted rounded-lg text-sm text-center">
-                League registration managed separately
-              </div>
-            )}
-
-            <Button variant="outline" onClick={onClose}>
-              Close
+          {/* Admin Edit Button */}
+          {isAdmin && onEdit && (
+            <Button 
+              variant="outline" 
+              className="w-full"
+              onClick={() => {
+                onEdit(event);
+                onClose();
+              }}
+            >
+              Edit Event
             </Button>
-          </div>
+          )}
 
-          {!currentUserId && (
+          {/* Action buttons */}
+          {!isAdmin && (
+            <div className="flex gap-2 pt-4">
+              {event.event_type === "open_play" && (
+                <Button 
+                  className="flex-1"
+                  onClick={handleAction}
+                  style={
+                    !isFull ? {
+                      backgroundColor: '#B9E43B',
+                      color: '#0E4C58',
+                    } : undefined
+                  }
+                  variant={isFull ? "outline" : "default"}
+                >
+                  {isFull ? "Join Waitlist" : "Register"}
+                </Button>
+              )}
+
+              {event.event_type === "private" && (
+                <Button 
+                  className="flex-1"
+                  variant="outline"
+                  onClick={handleAction}
+                >
+                  Request Rental
+                </Button>
+              )}
+
+              {event.event_type === "lesson" && (
+                <Button 
+                  className="flex-1"
+                  onClick={handleAction}
+                  style={
+                    !isFull ? {
+                      backgroundColor: '#B9E43B',
+                      color: '#0E4C58',
+                    } : undefined
+                  }
+                  variant={isFull ? "outline" : "default"}
+                >
+                  {isFull ? "Join Waitlist" : "Book Lesson"}
+                </Button>
+              )}
+
+              {event.event_type === "league" && (
+                <div className="flex-1 p-3 bg-muted rounded-lg text-sm text-center">
+                  League registration managed separately
+                </div>
+              )}
+
+              <Button variant="outline" onClick={onClose}>
+                Close
+              </Button>
+            </div>
+          )}
+
+          {!isAdmin && !currentUserId && (
             <p className="text-xs text-center text-muted-foreground">
               Sign in to register for this event
             </p>
+          )}
+
+          {isAdmin && (
+            <Button variant="outline" onClick={onClose} className="w-full">
+              Close
+            </Button>
           )}
         </div>
       </DialogContent>

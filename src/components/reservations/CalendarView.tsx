@@ -7,6 +7,7 @@ import { format, addDays, startOfWeek, addWeeks, subWeeks } from "date-fns";
 import { WeekCalendarGrid } from "./WeekCalendarGrid";
 import { EventModal } from "./EventModal";
 import { CreateEventDialog } from "./CreateEventDialog";
+import { EditEventDialog } from "./EditEventDialog";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,6 +23,8 @@ export function CalendarView({ facilityId, currentUserId }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<any>(null);
   const [createDefaults, setCreateDefaults] = useState<any>({});
 
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 0 });
@@ -100,6 +103,57 @@ export function CalendarView({ facilityId, currentUserId }: CalendarViewProps) {
       description: "Your private rental request has been sent to the admin",
     });
     // TODO: Actually create request
+  };
+
+  const handleEditEvent = async (eventId: string, eventData: any) => {
+    try {
+      const { error } = await supabase
+        .from("calendar_events")
+        .update(eventData)
+        .eq("id", eventId);
+      
+      if (error) throw error;
+      
+      await refetch();
+      toast({
+        title: "Event updated",
+        description: "The event has been updated successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update event",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteEvent = async (eventId: string) => {
+    try {
+      const { error } = await supabase
+        .from("calendar_events")
+        .delete()
+        .eq("id", eventId);
+      
+      if (error) throw error;
+      
+      await refetch();
+      toast({
+        title: "Event deleted",
+        description: "The event has been removed from the calendar",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete event",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const openEditDialog = (event: any) => {
+    setEditingEvent(event);
+    setEditDialogOpen(true);
   };
 
   return (
@@ -192,8 +246,10 @@ export function CalendarView({ facilityId, currentUserId }: CalendarViewProps) {
         isOpen={!!selectedEvent}
         onClose={() => setSelectedEvent(null)}
         currentUserId={currentUserId}
+        isAdmin={isAdmin || false}
         onRegister={handleRegister}
         onRequestPrivate={handleRequestPrivate}
+        onEdit={openEditDialog}
       />
 
       {/* Create Event Dialog */}
@@ -205,6 +261,18 @@ export function CalendarView({ facilityId, currentUserId }: CalendarViewProps) {
         defaultCourt={createDefaults.court}
         onSubmit={handleCreateEvent}
         facilityId={facilityId}
+      />
+
+      {/* Edit Event Dialog */}
+      <EditEventDialog
+        isOpen={editDialogOpen}
+        onClose={() => {
+          setEditDialogOpen(false);
+          setEditingEvent(null);
+        }}
+        event={editingEvent}
+        onSubmit={handleEditEvent}
+        onDelete={handleDeleteEvent}
       />
     </div>
   );
