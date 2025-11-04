@@ -27,6 +27,17 @@ export function CalendarView({ facilityId, currentUserId }: CalendarViewProps) {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<any>(null);
   const [createDefaults, setCreateDefaults] = useState<any>({});
+  
+  const hasMatchingEventOnOtherCourt = (event: any) => {
+    const otherCourt = event.court_number === 1 ? 2 : 1;
+    return events.some(e => 
+      e.id !== event.id &&
+      e.title === event.title &&
+      e.event_type === event.event_type &&
+      e.start_time === event.start_time &&
+      e.court_number === otherCourt
+    );
+  };
 
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 0 });
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
@@ -253,7 +264,10 @@ export function CalendarView({ facilityId, currentUserId }: CalendarViewProps) {
 
       {/* Event Modal */}
       <EventModal
-        event={selectedEvent}
+        event={selectedEvent ? {
+          ...selectedEvent,
+          court_number: hasMatchingEventOnOtherCourt(selectedEvent) ? 0 : selectedEvent.court_number
+        } : null}
         isOpen={!!selectedEvent}
         onClose={() => setSelectedEvent(null)}
         currentUserId={currentUserId}

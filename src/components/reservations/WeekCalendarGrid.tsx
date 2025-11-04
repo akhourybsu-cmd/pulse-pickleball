@@ -52,9 +52,39 @@ export function WeekCalendarGrid({ currentDate, events, onEventClick, onTimeSlot
 
   const getEventsForSlot = (date: Date, hour: number, court: number) => {
     return events.filter(event => {
-      const eventDate = new Date(event.start_time);
-      const eventHour = eventDate.getHours();
-      return isSameDay(eventDate, date) && eventHour === hour && event.court_number === court;
+      const eventStart = new Date(event.start_time);
+      const eventEnd = new Date(event.end_time);
+      const eventStartHour = eventStart.getHours();
+      const eventEndHour = eventEnd.getHours();
+      const eventEndMinutes = eventEnd.getMinutes();
+      
+      // Include event if this hour falls within its time range
+      const isInTimeRange = isSameDay(eventStart, date) && 
+        eventStartHour === hour && 
+        event.court_number === court;
+      
+      return isInTimeRange;
+    });
+  };
+  
+  const getEventSpan = (event: CalendarEvent) => {
+    const start = new Date(event.start_time);
+    const end = new Date(event.end_time);
+    const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+    return Math.max(1, Math.ceil(hours));
+  };
+  
+  const isHourCovered = (date: Date, hour: number, court: number) => {
+    return events.some(event => {
+      const eventStart = new Date(event.start_time);
+      const eventEnd = new Date(event.end_time);
+      const eventStartHour = eventStart.getHours();
+      const eventEndHour = eventEnd.getHours();
+      
+      return isSameDay(eventStart, date) && 
+        event.court_number === court &&
+        hour > eventStartHour && 
+        hour < eventEndHour;
     });
   };
 
@@ -99,29 +129,43 @@ export function WeekCalendarGrid({ currentDate, events, onEventClick, onTimeSlot
               </div>
               {weekDays.map(day => {
                 const bothCourts = hasEventOnBothCourts(day, hour);
+                const isCovered = isHourCovered(day, hour, 1) || isHourCovered(day, hour, 2);
+                
+                // Skip rendering if this slot is covered by a multi-hour event
+                if (isCovered && !bothCourts) {
+                  return <div key={`${day.toISOString()}-${hour}`} />;
+                }
                 
                 return (
                   <div key={`${day.toISOString()}-${hour}`}>
                     {bothCourts ? (
-                      // Single card spanning both courts - full height
-                      <Card
-                        key={`${day.toISOString()}-${hour}-both`}
-                        className="p-0 overflow-hidden min-h-[130px] cursor-pointer hover:shadow-md transition-shadow border-0"
-                        onClick={() => {
-                          const slotEvents = getEventsForSlot(day, hour, 1);
-                          if (slotEvents.length > 0) {
-                            onEventClick(slotEvents[0]);
-                          }
-                        }}
-                      >
-                        {getEventsForSlot(day, hour, 1).map(event => (
-                          <div
-                            key={event.id}
-                            className={cn(
-                              "min-h-[130px] h-full w-full p-3 flex flex-col justify-between",
-                              EVENT_COLORS[event.event_type]
-                            )}
+                      // Single card spanning both courts
+                      (() => {
+                        const slotEvents = getEventsForSlot(day, hour, 1);
+                        const span = slotEvents.length > 0 ? getEventSpan(slotEvents[0]) : 1;
+                        const minHeight = span * 130 + (span - 1) * 4; // Account for gap
+                        
+                        return (
+                          <Card
+                            key={`${day.toISOString()}-${hour}-both`}
+                            className="p-0 overflow-hidden cursor-pointer hover:shadow-md transition-shadow border-0"
+                            style={{ minHeight: `${minHeight}px`, gridRow: `span ${span}` }}
+                            onClick={() => {
+                              if (slotEvents.length > 0) {
+                                onEventClick(slotEvents[0]);
+                              }
+                            }}
                           >
+                        
+                            {slotEvents.map(event => (
+                              <div
+                                key={event.id}
+                                className={cn(
+                                  "h-full w-full p-3 flex flex-col justify-between",
+                                  EVENT_COLORS[event.event_type]
+                                )}
+                              >
+                        
                             <div className="space-y-1.5">
                               <div className="flex items-center justify-between gap-1">
                                 <div className="truncate flex-1 font-semibold text-sm">{event.title}</div>
@@ -146,39 +190,55 @@ export function WeekCalendarGrid({ currentDate, events, onEventClick, onTimeSlot
                               <div className="text-xs opacity-80 font-medium">
                                 {event.current_registrations || 0}/{event.capacity} registered
                               </div>
-                            )}
-                          </div>
-                        ))}
-                      </Card>
+                                )}
+                              </div>
+                            ))}
+                          </Card>
+                        );
+                      })()
+                    
                     ) : (
                       // Separate cards for each court
                       <div className="space-y-1">
                         {courts.map(court => {
-                        const slotEvents = getEventsForSlot(day, hour, court);
-                        return (
-                          <Card
-                            key={`${day.toISOString()}-${hour}-${court}`}
-                            className={cn(
-                              "p-0 overflow-hidden min-h-[60px] cursor-pointer hover:shadow-md transition-shadow",
-                              slotEvents.length === 0 && "bg-muted/30 border"
-                            )}
-                            onClick={() => {
-                              if (slotEvents.length > 0) {
-                                onEventClick(slotEvents[0]);
-                              } else if (isAdmin && onTimeSlotClick) {
-                                onTimeSlotClick(day, hour, court);
-                              }
-                            }}
-                          >
-                            {slotEvents.length > 0 ? (
-                              slotEvents.map(event => (
-                                <div
-                                  key={event.id}
-                                  className={cn(
-                                    "min-h-[60px] h-full w-full p-2 flex flex-col justify-between",
-                                    EVENT_COLORS[event.event_type]
-                                  )}
-                                >
+                          const slotEvents = getEventsForSlot(day, hour, court);
+                          const covered = isHourCovered(day, hour, court);
+                          
+                          // Skip if covered by multi-hour event
+                          if (covered) {
+                            return null;
+                          }
+                          
+                          const span = slotEvents.length > 0 ? getEventSpan(slotEvents[0]) : 1;
+                          const minHeight = span * 60 + (span - 1) * 4;
+                          
+                          return (
+                            <Card
+                              key={`${day.toISOString()}-${hour}-${court}`}
+                              className={cn(
+                                "p-0 overflow-hidden cursor-pointer hover:shadow-md transition-shadow",
+                                slotEvents.length === 0 && "bg-muted/30 border min-h-[60px]"
+                              )}
+                              style={slotEvents.length > 0 ? { minHeight: `${minHeight}px` } : undefined}
+                              onClick={() => {
+                                if (slotEvents.length > 0) {
+                                  onEventClick(slotEvents[0]);
+                                } else if (isAdmin && onTimeSlotClick) {
+                                  onTimeSlotClick(day, hour, court);
+                                }
+                              }}
+                            >
+                        
+                              {slotEvents.length > 0 ? (
+                                slotEvents.map(event => (
+                                  <div
+                                    key={event.id}
+                                    className={cn(
+                                      "h-full w-full p-2 flex flex-col justify-between",
+                                      EVENT_COLORS[event.event_type]
+                                    )}
+                                  >
+                        
                                   <div className="space-y-0.5">
                                     <div className="flex items-center justify-between gap-1">
                                       <div className="truncate flex-1 font-semibold text-xs">{event.title}</div>

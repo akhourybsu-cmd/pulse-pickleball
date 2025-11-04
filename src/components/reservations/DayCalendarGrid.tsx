@@ -50,9 +50,33 @@ export function DayCalendarGrid({ currentDate, events, onEventClick, onTimeSlotC
 
   const getEventsForSlot = (date: Date, hour: number, court: number) => {
     return events.filter(event => {
-      const eventDate = new Date(event.start_time);
-      const eventHour = eventDate.getHours();
-      return isSameDay(eventDate, date) && eventHour === hour && event.court_number === court;
+      const eventStart = new Date(event.start_time);
+      const eventStartHour = eventStart.getHours();
+      
+      return isSameDay(eventStart, date) && 
+        eventStartHour === hour && 
+        event.court_number === court;
+    });
+  };
+  
+  const getEventSpan = (event: CalendarEvent) => {
+    const start = new Date(event.start_time);
+    const end = new Date(event.end_time);
+    const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+    return Math.max(1, Math.ceil(hours));
+  };
+  
+  const isHourCovered = (date: Date, hour: number, court: number) => {
+    return events.some(event => {
+      const eventStart = new Date(event.start_time);
+      const eventEnd = new Date(event.end_time);
+      const eventStartHour = eventStart.getHours();
+      const eventEndHour = eventEnd.getHours();
+      
+      return isSameDay(eventStart, date) && 
+        event.court_number === court &&
+        hour > eventStartHour && 
+        hour < eventEndHour;
     });
   };
 
@@ -72,6 +96,12 @@ export function DayCalendarGrid({ currentDate, events, onEventClick, onTimeSlotC
     <div className="space-y-2">
       {hours.map(hour => {
         const bothCourts = hasEventOnBothCourts(currentDate, hour);
+        const isCovered = isHourCovered(currentDate, hour, 1) || isHourCovered(currentDate, hour, 2);
+        
+        // Skip if covered by multi-hour event
+        if (isCovered && !bothCourts) {
+          return null;
+        }
         
         return (
           <div key={hour} className="grid grid-cols-[100px_1fr] gap-3">

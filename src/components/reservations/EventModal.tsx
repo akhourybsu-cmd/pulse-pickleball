@@ -46,9 +46,9 @@ const EVENT_TYPE_COLORS = {
 
 const SKILL_LEVEL_FULL_LABELS = {
   all: "All Levels",
-  beginner: "Beginner (2.0-2.5)",
-  intermediate: "Intermediate (3.0-3.5)",
-  advanced: "Advanced (4.0+)",
+  beginner: "Beginner",
+  intermediate: "Intermediate",
+  advanced: "Advanced",
 };
 
 export function EventModal({ event, isOpen, onClose, currentUserId, isAdmin, onRegister, onRequestPrivate, onEdit }: EventModalProps) {
@@ -103,7 +103,9 @@ export function EventModal({ event, isOpen, onClose, currentUserId, isAdmin, onR
 
           <div className="flex items-center gap-2 text-sm">
             <MapPin className="w-4 h-4 text-muted-foreground" />
-            <span>Court {event.court_number}</span>
+            <span>
+              {event.court_number === 0 ? "Courts 1 & 2" : `Court ${event.court_number}`}
+            </span>
           </div>
 
           {event.skill_level && (

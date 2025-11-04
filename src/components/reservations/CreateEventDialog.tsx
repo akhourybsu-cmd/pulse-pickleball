@@ -164,9 +164,9 @@ export function CreateEventDialog({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Levels</SelectItem>
-                    <SelectItem value="beginner">Beginner (2.0-2.5)</SelectItem>
-                    <SelectItem value="intermediate">Intermediate (3.0-3.5)</SelectItem>
-                    <SelectItem value="advanced">Advanced (4.0+)</SelectItem>
+                    <SelectItem value="beginner">Beginner</SelectItem>
+                    <SelectItem value="intermediate">Intermediate</SelectItem>
+                    <SelectItem value="advanced">Advanced</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

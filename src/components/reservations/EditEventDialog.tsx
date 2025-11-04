@@ -40,6 +40,9 @@ export function EditEventDialog({
   const [price, setPrice] = useState("0");
   const [instructor, setInstructor] = useState("");
   const [skillLevel, setSkillLevel] = useState<"all" | "beginner" | "intermediate" | "advanced">("all");
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
+  const [eventDate, setEventDate] = useState("");
 
   useEffect(() => {
     if (event) {
@@ -50,16 +53,27 @@ export function EditEventDialog({
       setPrice(event.price?.toString() || "0");
       setInstructor(event.instructor || "");
       setSkillLevel(event.skill_level || "all");
+      
+      const start = new Date(event.start_time);
+      const end = new Date(event.end_time);
+      setEventDate(format(start, "yyyy-MM-dd"));
+      setStartTime(format(start, "HH:mm"));
+      setEndTime(format(end, "HH:mm"));
     }
   }, [event]);
 
   if (!event) return null;
 
   const handleSubmit = () => {
+    const startDateTime = new Date(`${eventDate}T${startTime}`);
+    const endDateTime = new Date(`${eventDate}T${endTime}`);
+    
     const updatedData = {
       event_type: eventType,
       title,
       description,
+      start_time: startDateTime.toISOString(),
+      end_time: endDateTime.toISOString(),
       capacity: eventType === "private" ? null : parseInt(capacity),
       price: parseFloat(price),
       instructor: eventType === "lesson" ? instructor : null,
@@ -76,9 +90,6 @@ export function EditEventDialog({
       onClose();
     }
   };
-
-  const startTime = new Date(event.start_time);
-  const endTime = new Date(event.end_time);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -122,9 +133,32 @@ export function EditEventDialog({
             />
           </div>
 
-          <div className="text-sm text-muted-foreground space-y-1">
-            <div><strong>Date:</strong> {format(startTime, "EEEE, MMMM d, yyyy")}</div>
-            <div><strong>Time:</strong> {format(startTime, "h:mm a")} - {format(endTime, "h:mm a")}</div>
+          <div>
+            <Label>Date</Label>
+            <Input 
+              type="date" 
+              value={eventDate} 
+              onChange={(e) => setEventDate(e.target.value)}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>Start Time</Label>
+              <Input 
+                type="time" 
+                value={startTime} 
+                onChange={(e) => setStartTime(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label>End Time</Label>
+              <Input 
+                type="time" 
+                value={endTime} 
+                onChange={(e) => setEndTime(e.target.value)}
+              />
+            </div>
           </div>
 
           {eventType !== "private" && (
@@ -146,9 +180,9 @@ export function EditEventDialog({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Levels</SelectItem>
-                    <SelectItem value="beginner">Beginner (2.0-2.5)</SelectItem>
-                    <SelectItem value="intermediate">Intermediate (3.0-3.5)</SelectItem>
-                    <SelectItem value="advanced">Advanced (4.0+)</SelectItem>
+                    <SelectItem value="beginner">Beginner</SelectItem>
+                    <SelectItem value="intermediate">Intermediate</SelectItem>
+                    <SelectItem value="advanced">Advanced</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
