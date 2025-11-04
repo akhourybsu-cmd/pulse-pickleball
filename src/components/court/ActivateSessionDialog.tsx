@@ -61,7 +61,7 @@ export function ActivateSessionDialog({
       if (sessionError) throw sessionError;
 
       // Generate QR join URL
-      const joinUrl = `${window.location.origin}/session-queue?session=${session.id}`;
+      const joinUrl = `${window.location.origin}/session/queue?session=${session.id}`;
       
       await supabase
         .from("sessions")

@@ -179,7 +179,7 @@ export default function AdminSession() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { error } = await supabase
+      const { data: newSession, error } = await supabase
         .from("sessions")
         .insert({
           name: sessionName,
@@ -190,7 +190,9 @@ export default function AdminSession() {
           match_type: matchType,
           status: "active",
           created_by: user.id,
-        });
+        })
+        .select()
+        .single();
 
       if (error) {
         if (error.code === '23505') {
@@ -202,6 +204,15 @@ export default function AdminSession() {
           return;
         }
         throw error;
+      }
+
+      // Generate and save QR join URL
+      if (newSession) {
+        const joinUrl = `${window.location.origin}/session/queue?session=${newSession.id}`;
+        await supabase
+          .from("sessions")
+          .update({ qr_join_url: joinUrl })
+          .eq("id", newSession.id);
       }
 
       toast({
