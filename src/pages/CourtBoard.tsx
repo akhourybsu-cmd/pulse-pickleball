@@ -179,7 +179,7 @@ export default function CourtBoard() {
                   <img 
                     src={pickleballCitiLogo} 
                     alt="Pickleball Citi" 
-                    className="h-32 md:h-40 w-auto"
+                    className="h-40 md:h-52 lg:h-56 w-auto"
                     style={{ 
                       filter: 'drop-shadow(0px 2px 4px rgba(0, 0, 0, 0.1))'
                     }}
