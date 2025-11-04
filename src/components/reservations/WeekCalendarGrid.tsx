@@ -57,6 +57,19 @@ export function WeekCalendarGrid({ currentDate, events, onEventClick, onTimeSlot
     });
   };
 
+  const hasEventOnBothCourts = (date: Date, hour: number) => {
+    const court1Events = getEventsForSlot(date, hour, 1);
+    const court2Events = getEventsForSlot(date, hour, 2);
+    
+    // Check if there's a matching event on both courts (same title and type)
+    if (court1Events.length > 0 && court2Events.length > 0) {
+      const event1 = court1Events[0];
+      const event2 = court2Events[0];
+      return event1.title === event2.title && event1.event_type === event2.event_type;
+    }
+    return false;
+  };
+
   return (
     <div className="overflow-x-auto">
       <div className="min-w-[1000px]">
@@ -83,63 +96,112 @@ export function WeekCalendarGrid({ currentDate, events, onEventClick, onTimeSlot
               <div className="text-xs text-muted-foreground p-2 font-medium">
                 {format(new Date().setHours(hour, 0), "h:mm a")}
               </div>
-              {weekDays.map(day => (
-                <div key={`${day.toISOString()}-${hour}`} className="space-y-1">
-                  {courts.map(court => {
-                    const slotEvents = getEventsForSlot(day, hour, court);
-                    return (
+              {weekDays.map(day => {
+                const bothCourts = hasEventOnBothCourts(day, hour);
+                
+                return (
+                  <div key={`${day.toISOString()}-${hour}`} className="space-y-1">
+                    {bothCourts ? (
+                      // Single card spanning both courts
                       <Card
-                        key={`${day.toISOString()}-${hour}-${court}`}
+                        key={`${day.toISOString()}-${hour}-both`}
                         className={cn(
-                          "p-2 min-h-[60px] cursor-pointer hover:shadow-md transition-shadow",
-                          slotEvents.length === 0 && "bg-muted/30"
+                          "p-2 min-h-[60px] cursor-pointer hover:shadow-md transition-shadow"
                         )}
                         onClick={() => {
+                          const slotEvents = getEventsForSlot(day, hour, 1);
                           if (slotEvents.length > 0) {
                             onEventClick(slotEvents[0]);
-                          } else if (isAdmin && onTimeSlotClick) {
-                            onTimeSlotClick(day, hour, court);
                           }
                         }}
                       >
-                        {slotEvents.length > 0 ? (
-                          slotEvents.map(event => (
-                            <div
-                              key={event.id}
-                              className={cn(
-                                "p-1 rounded border text-xs font-medium space-y-0.5",
-                                EVENT_COLORS[event.event_type]
-                              )}
-                            >
-                              <div className="flex items-center justify-between gap-1">
-                                <div className="truncate flex-1">{event.title}</div>
-                                {event.skill_level && (
-                                  <span className={cn(
-                                    "text-[9px] px-1 rounded text-white font-bold",
-                                    SKILL_LEVEL_COLORS[event.skill_level]
-                                  )}>
-                                    {SKILL_LEVEL_LABELS[event.skill_level]}
-                                  </span>
-                                )}
-                              </div>
-                              <div className="text-[10px] opacity-70">Court {court}</div>
-                              {event.capacity && (
-                                <div className="text-[10px] opacity-70">
-                                  {event.current_registrations || 0}/{event.capacity}
-                                </div>
+                        {getEventsForSlot(day, hour, 1).map(event => (
+                          <div
+                            key={event.id}
+                            className={cn(
+                              "p-1 rounded border text-xs font-medium space-y-0.5",
+                              EVENT_COLORS[event.event_type]
+                            )}
+                          >
+                            <div className="flex items-center justify-between gap-1">
+                              <div className="truncate flex-1">{event.title}</div>
+                              {event.skill_level && (
+                                <span className={cn(
+                                  "text-[9px] px-1 rounded text-white font-bold",
+                                  SKILL_LEVEL_COLORS[event.skill_level]
+                                )}>
+                                  {SKILL_LEVEL_LABELS[event.skill_level]}
+                                </span>
                               )}
                             </div>
-                          ))
-                        ) : (
-                          <div className="text-xs text-muted-foreground opacity-50">
-                            Court {court}
+                            <div className="text-[10px] opacity-70">Courts 1&2</div>
+                            {event.capacity && (
+                              <div className="text-[10px] opacity-70">
+                                {event.current_registrations || 0}/{event.capacity}
+                              </div>
+                            )}
                           </div>
-                        )}
+                        ))}
                       </Card>
-                    );
-                  })}
-                </div>
-              ))}
+                    ) : (
+                      // Separate cards for each court
+                      courts.map(court => {
+                        const slotEvents = getEventsForSlot(day, hour, court);
+                        return (
+                          <Card
+                            key={`${day.toISOString()}-${hour}-${court}`}
+                            className={cn(
+                              "p-2 min-h-[60px] cursor-pointer hover:shadow-md transition-shadow",
+                              slotEvents.length === 0 && "bg-muted/30"
+                            )}
+                            onClick={() => {
+                              if (slotEvents.length > 0) {
+                                onEventClick(slotEvents[0]);
+                              } else if (isAdmin && onTimeSlotClick) {
+                                onTimeSlotClick(day, hour, court);
+                              }
+                            }}
+                          >
+                            {slotEvents.length > 0 ? (
+                              slotEvents.map(event => (
+                                <div
+                                  key={event.id}
+                                  className={cn(
+                                    "p-1 rounded border text-xs font-medium space-y-0.5",
+                                    EVENT_COLORS[event.event_type]
+                                  )}
+                                >
+                                  <div className="flex items-center justify-between gap-1">
+                                    <div className="truncate flex-1">{event.title}</div>
+                                    {event.skill_level && (
+                                      <span className={cn(
+                                        "text-[9px] px-1 rounded text-white font-bold",
+                                        SKILL_LEVEL_COLORS[event.skill_level]
+                                      )}>
+                                        {SKILL_LEVEL_LABELS[event.skill_level]}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-[10px] opacity-70">Court {court}</div>
+                                  {event.capacity && (
+                                    <div className="text-[10px] opacity-70">
+                                      {event.current_registrations || 0}/{event.capacity}
+                                    </div>
+                                  )}
+                                </div>
+                              ))
+                            ) : (
+                              <div className="text-xs text-muted-foreground opacity-50">
+                                Court {court}
+                              </div>
+                            )}
+                          </Card>
+                        );
+                      })
+                    )}
+                  </div>
+                );
+              })}
             </div>
           ))}
         </div>
