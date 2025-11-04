@@ -304,7 +304,7 @@ export default function CourtBoard() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="relative overflow-hidden rounded-xl shadow-sm p-6 md:p-8 max-w-4xl mx-auto leading-relaxed md:border-l-4 md:border-lime-200 md:pl-6"
+            className="relative overflow-hidden rounded-xl shadow-sm p-6 md:p-8 max-w-7xl mx-auto"
             style={{
               background: '#ffffff',
             }}
@@ -313,51 +313,61 @@ export default function CourtBoard() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.3 }}
-              className="text-3xl md:text-4xl font-semibold text-slate-800 text-center mb-6"
+              className="text-3xl md:text-4xl font-semibold text-slate-800 text-center mb-8"
             >
               Join Pickleball Citi and Take Your Game to the Next Level
             </motion.h2>
             
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.5, delay: 0.4 }}
-              className="space-y-6 max-w-3xl mx-auto"
-            >
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {/* Section 1 - Our Mission */}
-              <div className="space-y-2">
-                <h3 className="text-xl font-semibold text-lime-700 mb-2">Our Mission</h3>
-                <p className="text-slate-700 mb-4 leading-7">
+              <motion.div
+                initial={{ opacity: 0, x: -50 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6, delay: 0.4 }}
+                className="space-y-3 p-6 rounded-lg border-2 border-lime-200 bg-gradient-to-br from-lime-50 to-white"
+              >
+                <h3 className="text-xl font-semibold text-lime-700 mb-3">Our Mission</h3>
+                <p className="text-slate-700 leading-7 text-sm">
                   At Pickleball Citi, our mission is to grow the game of pickleball for all ages, skill levels, and abilities by fostering an inclusive environment that promotes health, social connection, good sportsmanship, and fun.
                 </p>
-                <p className="text-slate-700 mb-4 leading-7">
+                <p className="text-slate-700 leading-7 text-sm">
                   We are committed to providing a welcoming atmosphere, supporting recreational enjoyment and competitive excellence through well-organized play, and engaging the community.
                 </p>
-              </div>
+              </motion.div>
 
               {/* Section 2 - How We Support Players */}
-              <div className="space-y-2">
-                <h3 className="text-xl font-semibold text-lime-700 mb-2">How We Support Players</h3>
-                <p className="text-slate-700 mb-3 leading-7">
+              <motion.div
+                initial={{ opacity: 0, x: -50 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6, delay: 0.6 }}
+                className="space-y-3 p-6 rounded-lg border-2 border-lime-200 bg-gradient-to-br from-lime-50 to-white"
+              >
+                <h3 className="text-xl font-semibold text-lime-700 mb-3">How We Support Players</h3>
+                <p className="text-slate-700 leading-7 text-sm mb-3">
                   We are dedicated to helping athletes of all levels reach their full potential. Our comprehensive approach includes:
                 </p>
-                <ul className="list-disc pl-5 space-y-1 text-slate-700 mb-4">
-                  <li>Personalized training programs designed to enhance your skills</li>
+                <ul className="list-disc pl-5 space-y-1 text-slate-700 text-sm">
+                  <li>Personalized training programs</li>
                   <li>Expert coaches with proven track records</li>
-                  <li>Support for both recreational enjoyment and competitive excellence</li>
-                  <li>Welcoming atmosphere for beginners and experienced players alike</li>
-                  <li>Resources and guidance to help you achieve your goals</li>
+                  <li>Recreational and competitive excellence</li>
+                  <li>Welcoming atmosphere for all levels</li>
+                  <li>Resources to achieve your goals</li>
                 </ul>
-              </div>
+              </motion.div>
 
               {/* Section 3 - Start Playing with Us */}
-              <div className="space-y-2">
-                <h3 className="text-xl font-semibold text-lime-700 mb-2">Start Playing with Us</h3>
-                <p className="text-lg text-slate-800 font-medium mt-2 leading-7">
+              <motion.div
+                initial={{ opacity: 0, x: -50 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6, delay: 0.8 }}
+                className="space-y-3 p-6 rounded-lg border-2 border-lime-200 bg-gradient-to-br from-lime-50 to-white"
+              >
+                <h3 className="text-xl font-semibold text-lime-700 mb-3">Start Playing with Us</h3>
+                <p className="text-slate-700 leading-7 text-sm font-medium">
                   Whether you're a beginner looking to learn the fundamentals or an experienced player looking to fine-tune your technique, join us today and take the first step towards becoming a better athlete!
                 </p>
-              </div>
-            </motion.div>
+              </motion.div>
+            </div>
           </motion.div>
         )}
         
