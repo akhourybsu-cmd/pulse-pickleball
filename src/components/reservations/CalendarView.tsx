@@ -119,12 +119,54 @@ export function CalendarView({ facilityId, currentUserId }: CalendarViewProps) {
     // TODO: Actually create request
   };
 
-  const handleEditEvent = async (eventId: string, eventData: any, updateType?: "single" | "series") => {
+  const handleEditEvent = async (eventId: string, eventData: any, updateType?: "single" | "series", courtChange?: { from: number, to: "1" | "2" | "all" }) => {
     try {
       // Find the event to get its series_id
       const eventToEdit = events.find(e => e.id === eventId);
       
-      if (updateType === "series" && eventToEdit?.series_id) {
+      // Handle court changes
+      if (courtChange) {
+        const { from, to } = courtChange;
+        
+        // Find matching event on other court if it exists
+        const matchingEvent = events.find(e => 
+          e.id !== eventId &&
+          e.title === eventToEdit?.title &&
+          e.event_type === eventToEdit?.event_type &&
+          e.start_time === eventToEdit?.start_time &&
+          e.end_time === eventToEdit?.end_time &&
+          e.court_number !== from
+        );
+        
+        if (to === "all") {
+          // Changing to all courts - update this event and create/update on other court
+          const otherCourtNumber = from === 1 ? 2 : 1;
+          
+          // Update current event
+          await supabase.from("calendar_events").update({ ...eventData, court_number: from }).eq("id", eventId);
+          
+          if (matchingEvent) {
+            // Update existing matching event
+            await supabase.from("calendar_events").update({ ...eventData, court_number: otherCourtNumber }).eq("id", matchingEvent.id);
+          } else {
+            // Create new event on other court
+            await supabase.from("calendar_events").insert({ 
+              ...eventData, 
+              court_number: otherCourtNumber,
+              facility_id: eventToEdit?.facility_id,
+              current_registrations: eventToEdit?.current_registrations || 0,
+              series_id: eventToEdit?.series_id
+            });
+          }
+        } else {
+          // Changing to single court - update this event and delete matching if exists
+          await supabase.from("calendar_events").update({ ...eventData, court_number: parseInt(to) }).eq("id", eventId);
+          
+          if (matchingEvent) {
+            await supabase.from("calendar_events").delete().eq("id", matchingEvent.id);
+          }
+        }
+      } else if (updateType === "series" && eventToEdit?.series_id) {
         // Update all events in the series
         const { error } = await supabase
           .from("calendar_events")

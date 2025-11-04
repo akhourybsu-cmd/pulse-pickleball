@@ -18,6 +18,7 @@ interface EditEventDialogProps {
     event_type: "league" | "open_play" | "private" | "lesson";
     start_time: string;
     end_time: string;
+    court_number: number;
     capacity?: number;
     price?: number;
     instructor?: string;
@@ -25,7 +26,7 @@ interface EditEventDialogProps {
     rental_status?: "available" | "reserved";
     series_id?: string;
   } | null;
-  onSubmit: (eventId: string, eventData: any, updateType?: "single" | "series") => void;
+  onSubmit: (eventId: string, eventData: any, updateType?: "single" | "series", courtChange?: { from: number, to: "1" | "2" | "all" }) => void;
   onDelete: (eventId: string, deleteType?: "single" | "series") => void;
   seriesCount?: number;
 }
@@ -46,11 +47,13 @@ export function EditEventDialog({
   const [instructor, setInstructor] = useState("");
   const [skillLevel, setSkillLevel] = useState<"all" | "beginner" | "intermediate" | "advanced">("all");
   const [rentalStatus, setRentalStatus] = useState<"available" | "reserved">("available");
+  const [selectedCourts, setSelectedCourts] = useState<"1" | "2" | "all">("1");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [eventDate, setEventDate] = useState("");
   const [updateType, setUpdateType] = useState<"single" | "series">("single");
   const [showSeriesOptions, setShowSeriesOptions] = useState(false);
+  const [originalCourtNumber, setOriginalCourtNumber] = useState<number>(1);
 
   useEffect(() => {
     if (event) {
@@ -63,6 +66,8 @@ export function EditEventDialog({
       setSkillLevel(event.skill_level || "all");
       setRentalStatus(event.rental_status || "available");
       setShowSeriesOptions(!!event.series_id && seriesCount > 1);
+      setOriginalCourtNumber(event.court_number);
+      setSelectedCourts(event.court_number.toString() as "1" | "2");
       
       const start = new Date(event.start_time);
       const end = new Date(event.end_time);
@@ -91,7 +96,12 @@ export function EditEventDialog({
       rental_status: eventType === "private" ? rentalStatus : null,
     };
 
-    onSubmit(event.id, updatedData, showSeriesOptions ? updateType : undefined);
+    // Check if court changed
+    const courtChange = selectedCourts !== originalCourtNumber.toString()
+      ? { from: originalCourtNumber, to: selectedCourts }
+      : undefined;
+
+    onSubmit(event.id, updatedData, showSeriesOptions ? updateType : undefined, courtChange);
     onClose();
   };
 
@@ -174,6 +184,20 @@ export function EditEventDialog({
                 onChange={(e) => setEndTime(e.target.value)}
               />
             </div>
+          </div>
+
+          <div>
+            <Label>Court</Label>
+            <Select value={selectedCourts} onValueChange={(v: any) => setSelectedCourts(v)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1">Court 1</SelectItem>
+                <SelectItem value="2">Court 2</SelectItem>
+                <SelectItem value="all">All Courts</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {eventType !== "private" && (
