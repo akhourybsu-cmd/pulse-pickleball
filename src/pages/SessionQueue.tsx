@@ -8,9 +8,9 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Trophy, Play } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Footer } from "@/components/Footer";
-import { WhosUpBoard } from "@/components/court/WhosUpBoard";
 import { SessionQRCode } from "@/components/court/SessionQRCode";
 import { QueueBoxSystem } from "@/components/court/QueueBoxSystem";
+import { CourtStatusBar } from "@/components/court/CourtStatusBar";
 
 interface Session {
   id: string;
@@ -590,21 +590,26 @@ export default function SessionQueue() {
               </div>
               
               {!isCheckedIn ? (
-                <Button onClick={handleCheckIn} className="w-full">
-                  Check In
+                <Button 
+                  onClick={handleCheckIn} 
+                  className="w-full bg-[hsl(var(--pulse-teal))] hover:bg-[hsl(var(--pulse-teal))]/90 text-white shadow-lg shadow-[hsl(var(--pulse-teal))]/20"
+                >
+                  Check In to Session
                 </Button>
               ) : (
                 <div className="space-y-2">
-                  <div className="bg-primary/10 p-4 rounded-lg text-center">
-                    <p className="text-sm font-medium text-primary">✓ Checked In</p>
+                  <div className="bg-[hsl(var(--pulse-success))]/10 border-2 border-[hsl(var(--pulse-success))] p-4 rounded-lg text-center">
+                    <p className="text-sm font-semibold text-[hsl(var(--pulse-success))]">
+                      ✓ Checked In
+                    </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Join a box below to get in queue
+                      Join a game box below to get in queue
                     </p>
                   </div>
                   <Button 
                     onClick={handleCheckOut} 
                     variant="outline" 
-                    className="w-full"
+                    className="w-full border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
                   >
                     Check Out
                   </Button>
@@ -622,42 +627,31 @@ export default function SessionQueue() {
           )}
         </div>
 
-        {/* Who's Up Board */}
-        <WhosUpBoard
-          courtAssignments={matchTickets.map(ticket => ({
+        {/* Courts Status Bar */}
+        <CourtStatusBar
+          courts={matchTickets.map(ticket => ({
             court_number: ticket.court_number,
             status: ticket.status === 'live' ? 'live' : 'on-deck',
             players: [
               {
                 id: ticket.team1_player1_id,
                 ...ticket.team1_player1,
-                current_rating: 3.0 // Default, would need to fetch if needed
               },
               {
                 id: ticket.team1_player2_id,
                 ...ticket.team1_player2,
-                current_rating: 3.0
               },
               {
                 id: ticket.team2_player1_id,
                 ...ticket.team2_player1,
-                current_rating: 3.0
               },
               {
                 id: ticket.team2_player2_id,
                 ...ticket.team2_player2,
-                current_rating: 3.0
               },
             ]
           }))}
-          waitingPlayers={queueEntries
-            .filter(entry => entry.box_number === null)
-            .map(entry => ({
-              id: entry.player_id,
-              ...entry.profiles
-            }))}
           totalCourts={session.num_courts}
-          currentUserId={userId}
         />
 
         {/* Box System - Only show if checked in */}
