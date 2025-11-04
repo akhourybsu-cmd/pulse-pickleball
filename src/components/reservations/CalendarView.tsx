@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, Plus, ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { format, addDays, startOfWeek, addWeeks, subWeeks } from "date-fns";
 import { WeekCalendarGrid } from "./WeekCalendarGrid";
 import { DayCalendarGrid } from "./DayCalendarGrid";
@@ -20,6 +21,7 @@ interface CalendarViewProps {
 
 export function CalendarView({ facilityId, currentUserId }: CalendarViewProps) {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [view, setView] = useState<"week" | "day">("week");
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
@@ -268,7 +270,19 @@ export function CalendarView({ facilityId, currentUserId }: CalendarViewProps) {
     <div className="space-y-4">
       {/* Controls */}
       <div className="flex flex-wrap gap-3 items-center justify-between">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => navigate('/pickleballciti')}
+            className="gap-2 border-lime-300 text-lime-600 hover:bg-lime-50 rounded-full px-3 py-1.5 text-sm transition-all"
+            title="Return to Pickleball Citi homepage"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span className="hidden sm:inline">Back to Pickleball Citi Home</span>
+            <span className="sm:hidden">Home</span>
+          </Button>
+          
           <Select value={view} onValueChange={(v) => setView(v as "week" | "day")}>
             <SelectTrigger className="w-[120px]">
               <SelectValue />
