@@ -93,6 +93,8 @@ export default function SessionQueue() {
   const [isCheckedIn, setIsCheckedIn] = useState(false);
   const [isInQueue, setIsInQueue] = useState(false);
   const [userQueuePosition, setUserQueuePosition] = useState<number | null>(null);
+  const [userCheckInId, setUserCheckInId] = useState<string | null>(null);
+  const [userQueueId, setUserQueueId] = useState<string | null>(null);
 
   useEffect(() => {
     checkUser();
@@ -235,6 +237,32 @@ export default function SessionQueue() {
     };
   }, [session, userId]);
 
+  // Track user check-in and queue status whenever data changes
+  useEffect(() => {
+    if (!session || !userId) return;
+
+    // Check if user is already checked in
+    const userCheckIn = checkIns.find(ci => ci.player_id === userId);
+    setIsCheckedIn(!!userCheckIn);
+    setUserCheckInId(userCheckIn?.id || null);
+
+    // Check if user is in queue
+    const userQueue = queueEntries.find(qe => qe.player_id === userId);
+    setIsInQueue(!!userQueue);
+    setUserQueueId(userQueue?.id || null);
+
+    // Calculate queue position (only for players without box numbers)
+    if (userQueue && userQueue.box_number === null) {
+      const queueWithoutBoxes = queueEntries
+        .filter(qe => qe.box_number === null)
+        .sort((a, b) => new Date(a.joined_at).getTime() - new Date(b.joined_at).getTime());
+      const position = queueWithoutBoxes.findIndex(qe => qe.player_id === userId) + 1;
+      setUserQueuePosition(position);
+    } else {
+      setUserQueuePosition(null);
+    }
+  }, [checkIns, queueEntries, userId, session]);
+
   const checkUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -319,7 +347,6 @@ export default function SessionQueue() {
 
     if (checkInsData) {
       setCheckIns(checkInsData as any);
-      setIsCheckedIn(checkInsData.some((c: any) => c.player_id === userId));
     }
 
     // Fetch queue
@@ -335,12 +362,6 @@ export default function SessionQueue() {
 
     if (queueData) {
       setQueueEntries(queueData as any);
-      const userEntry = queueData.find((q: any) => q.player_id === userId);
-      setIsInQueue(!!userEntry);
-      if (userEntry) {
-        const position = queueData.findIndex((q: any) => q.player_id === userId) + 1;
-        setUserQueuePosition(position);
-      }
     }
 
     // Fetch match tickets
@@ -421,15 +442,53 @@ export default function SessionQueue() {
     }
   };
 
-  const handleLeaveBox = async () => {
+  const handleCheckOut = async () => {
     if (!userId || !session) return;
+
+    try {
+      // Delete check-in
+      if (userCheckInId) {
+        const { error: checkInError } = await supabase
+          .from("check_ins")
+          .delete()
+          .eq("id", userCheckInId);
+
+        if (checkInError) throw checkInError;
+      }
+
+      // Delete queue entry if exists
+      if (userQueueId) {
+        const { error: queueError } = await supabase
+          .from("queue_entries")
+          .delete()
+          .eq("id", userQueueId);
+
+        if (queueError) throw queueError;
+      }
+
+      toast({
+        title: "Checked Out",
+        description: "You've been removed from the session",
+      });
+
+      await fetchSessionData(session.id);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleLeaveBox = async () => {
+    if (!userId || !session || !userQueueId) return;
 
     try {
       const { error } = await supabase
         .from("queue_entries")
         .delete()
-        .eq("session_id", session.id)
-        .eq("player_id", userId);
+        .eq("id", userQueueId);
 
       if (error) throw error;
 
@@ -535,11 +594,20 @@ export default function SessionQueue() {
                   Check In
                 </Button>
               ) : (
-                <div className="bg-primary/10 p-4 rounded-lg text-center">
-                  <p className="text-sm font-medium text-primary">✓ Checked In</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Join a box below to get in queue
-                  </p>
+                <div className="space-y-2">
+                  <div className="bg-primary/10 p-4 rounded-lg text-center">
+                    <p className="text-sm font-medium text-primary">✓ Checked In</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Join a box below to get in queue
+                    </p>
+                  </div>
+                  <Button 
+                    onClick={handleCheckOut} 
+                    variant="outline" 
+                    className="w-full"
+                  >
+                    Check Out
+                  </Button>
                 </div>
               )}
             </CardContent>
