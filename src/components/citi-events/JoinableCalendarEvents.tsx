@@ -12,6 +12,21 @@ interface JoinableCalendarEventsProps {
   courtId: string;
 }
 
+interface GroupedEvent {
+  id: string;
+  title: string;
+  description: string | null;
+  event_type: string;
+  start_time: string;
+  end_time: string;
+  courts: number[];
+  capacity: number | null;
+  current_registrations: number;
+  price: number;
+  instructor: string | null;
+  skill_level: string | null;
+}
+
 export function JoinableCalendarEvents({ courtId }: JoinableCalendarEventsProps) {
   const navigate = useNavigate();
 
@@ -24,11 +39,45 @@ export function JoinableCalendarEvents({ courtId }: JoinableCalendarEventsProps)
         .select("*")
         .neq("event_type", "private")
         .gte("start_time", now)
-        .order("start_time", { ascending: true })
-        .limit(3);
+        .order("start_time", { ascending: true });
       
       if (error) throw error;
-      return data || [];
+      
+      // Group events by title, start_time, end_time, and event_type
+      const eventMap = new Map<string, GroupedEvent>();
+      
+      (data || []).forEach((event) => {
+        const key = `${event.title}-${event.start_time}-${event.end_time}-${event.event_type}`;
+        
+        if (eventMap.has(key)) {
+          const existing = eventMap.get(key)!;
+          existing.courts.push(event.court_number);
+          existing.courts.sort((a, b) => a - b);
+          // Aggregate capacity and registrations
+          if (event.capacity) {
+            existing.capacity = (existing.capacity || 0) + event.capacity;
+          }
+          existing.current_registrations += event.current_registrations || 0;
+        } else {
+          eventMap.set(key, {
+            id: event.id,
+            title: event.title,
+            description: event.description,
+            event_type: event.event_type,
+            start_time: event.start_time,
+            end_time: event.end_time,
+            courts: [event.court_number],
+            capacity: event.capacity,
+            current_registrations: event.current_registrations || 0,
+            price: event.price || 0,
+            instructor: event.instructor,
+            skill_level: event.skill_level,
+          });
+        }
+      });
+      
+      // Convert to array and take first 3
+      return Array.from(eventMap.values()).slice(0, 3);
     },
   });
 
@@ -56,6 +105,13 @@ export function JoinableCalendarEvents({ courtId }: JoinableCalendarEventsProps)
       default:
         return eventType;
     }
+  };
+
+  const formatCourts = (courts: number[]) => {
+    if (courts.length === 1) {
+      return `Court ${courts[0]}`;
+    }
+    return `Courts ${courts.join(", ")}`;
   };
 
   if (events.length === 0) {
@@ -114,7 +170,7 @@ export function JoinableCalendarEvents({ courtId }: JoinableCalendarEventsProps)
                 </div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <MapPin className="w-4 h-4" />
-                  <span>Court {event.court_number}</span>
+                  <span>{formatCourts(event.courts)}</span>
                 </div>
                 {event.capacity && (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
