@@ -110,7 +110,7 @@ export function QueueBoxSystem({
                   isFull
                     ? "border-2 border-[hsl(var(--pulse-success))] bg-gradient-to-br from-[hsl(var(--pulse-success))]/10 to-[hsl(var(--pulse-success))]/5"
                     : isUserInBox
-                    ? "border-2 border-[hsl(var(--pulse-teal))] bg-gradient-to-br from-[hsl(var(--pulse-teal))]/10 to-[hsl(var(--pulse-teal))]/5 animate-pulse"
+                    ? "border-2 border-[hsl(var(--pulse-teal))] bg-gradient-to-br from-[hsl(var(--pulse-teal))]/10 to-[hsl(var(--pulse-teal))]/5"
                     : players.length > 0
                     ? "border-2 border-[hsl(var(--pulse-teal))]/30 bg-gradient-to-br from-[hsl(var(--pulse-teal))]/5 to-transparent"
                     : "border-2 border-dashed border-muted"
