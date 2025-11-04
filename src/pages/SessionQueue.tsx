@@ -5,9 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Trophy, Play } from "lucide-react";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { Trophy, Play } from "lucide-react";
 import { Footer } from "@/components/Footer";
+import { PageHeader } from "@/components/PageHeader";
 import { WhosUpBoard } from "@/components/court/WhosUpBoard";
 import { SessionQRCode } from "@/components/court/SessionQRCode";
 import { QueueBoxSystem } from "@/components/court/QueueBoxSystem";
@@ -518,15 +518,7 @@ export default function SessionQueue() {
   if (!session) {
     return (
       <div className="min-h-screen flex flex-col">
-        <div className="border-b bg-secondary/30">
-          <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-            <Button variant="ghost" onClick={() => navigate("/dashboard")}>
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Dashboard
-            </Button>
-            <ThemeToggle />
-          </div>
-        </div>
+        <PageHeader userId={userId} />
         <div className="flex-1 flex items-center justify-center">
           <Card className="max-w-md">
             <CardHeader>
@@ -549,15 +541,7 @@ export default function SessionQueue() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <div className="border-b bg-secondary/30">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Button variant="ghost" onClick={() => navigate("/dashboard")}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Dashboard
-          </Button>
-          <ThemeToggle />
-        </div>
-      </div>
+      <PageHeader userId={userId} />
 
       <div className="flex-1 container mx-auto px-4 py-8 space-y-6">
         {/* Session Header + Actions */}
