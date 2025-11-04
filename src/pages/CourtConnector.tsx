@@ -467,11 +467,11 @@ export default function CourtConnector() {
                     className="cursor-pointer rounded-2xl border-2 border-border shadow-lg hover:shadow-[0_2px_6px_rgba(0,0,0,0.05),0_4px_12px_rgba(169,220,61,0.15)] transition-all duration-300 h-full bg-card"
                     onClick={() => navigate(`/court/board/${court.id}`)}
                   >
-                <CardHeader>
-                  <div className="flex items-start justify-between">
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
-                      <CardTitle className="text-2xl">{court.name}</CardTitle>
-                      <CardDescription className="flex items-center gap-1 mt-2">
+                      <CardTitle className="text-xl">{court.name}</CardTitle>
+                      <CardDescription className="flex items-center gap-1 mt-1.5">
                         <MapPin className="w-3 h-3" />
                         {court.city}, {court.state}
                       </CardDescription>
@@ -521,16 +521,16 @@ export default function CourtConnector() {
                       </DialogContent>
                     </Dialog>
                   </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex items-center justify-between py-2 px-3 bg-secondary/50 rounded-lg">
-                    <span className="text-sm font-medium text-muted-foreground">Looking for Game</span>
-                    <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Users className="w-4 h-4" />
-                      <span className="text-lg font-bold">{court.lfgCount}</span>
+                      <span>Active LFG Posts:</span>
                     </div>
+                    <Badge className="bg-primary text-primary-foreground">
+                      {court.lfgCount}
+                    </Badge>
                   </div>
-                </CardContent>
+                </CardHeader>
                   </Card>
                 </motion.div>
               ))}
