@@ -5,14 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Trophy, Play, LogOut, User as UserIcon } from "lucide-react";
+import { ArrowLeft, Trophy, Play } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Footer } from "@/components/Footer";
+import { WhosUpBoard } from "@/components/court/WhosUpBoard";
 import { SessionQRCode } from "@/components/court/SessionQRCode";
 import { QueueBoxSystem } from "@/components/court/QueueBoxSystem";
-import { CourtStatusBar } from "@/components/court/CourtStatusBar";
-import { Link } from "react-router-dom";
-import logo from "@/assets/pulse-logo-new.png";
 
 interface Session {
   id: string;
@@ -520,28 +518,15 @@ export default function SessionQueue() {
   if (!session) {
     return (
       <div className="min-h-screen flex flex-col">
-        <nav className="border-b bg-secondary">
+        <div className="border-b bg-secondary/30">
           <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-            <Link to="/dashboard">
-              <img 
-                src={logo} 
-                alt="PULSE Logo" 
-                className="h-[90px] w-auto cursor-pointer hover:opacity-80 transition-opacity" 
-              />
-            </Link>
-            <div className="flex items-center gap-3">
-              <ThemeToggle />
-              <Button 
-                variant="secondary" 
-                size="sm" 
-                onClick={() => navigate("/dashboard")}
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Dashboard
-              </Button>
-            </div>
+            <Button variant="ghost" onClick={() => navigate("/dashboard")}>
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Dashboard
+            </Button>
+            <ThemeToggle />
           </div>
-        </nav>
+        </div>
         <div className="flex-1 flex items-center justify-center">
           <Card className="max-w-md">
             <CardHeader>
@@ -564,39 +549,15 @@ export default function SessionQueue() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <nav className="border-b bg-secondary">
+      <div className="border-b bg-secondary/30">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Link to="/dashboard">
-            <img 
-              src={logo} 
-              alt="PULSE Logo" 
-              className="h-[90px] w-auto cursor-pointer hover:opacity-80 transition-opacity" 
-            />
-          </Link>
-          <div className="flex items-center gap-3">
-            {userId && (
-              <Button 
-                variant="outline" 
-                size="icon" 
-                onClick={() => navigate(`/profile/${userId}`)} 
-                className="rounded-full"
-              >
-                <UserIcon className="h-[1.2rem] w-[1.2rem]" />
-                <span className="sr-only">View Profile</span>
-              </Button>
-            )}
-            <ThemeToggle />
-            <Button 
-              variant="secondary" 
-              size="sm" 
-              onClick={() => navigate("/dashboard")}
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Dashboard
-            </Button>
-          </div>
+          <Button variant="ghost" onClick={() => navigate("/dashboard")}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Dashboard
+          </Button>
+          <ThemeToggle />
         </div>
-      </nav>
+      </div>
 
       <div className="flex-1 container mx-auto px-4 py-8 space-y-6">
         {/* Session Header + Actions */}
@@ -629,26 +590,21 @@ export default function SessionQueue() {
               </div>
               
               {!isCheckedIn ? (
-                <Button 
-                  onClick={handleCheckIn} 
-                  className="w-full bg-[hsl(var(--pulse-teal))] hover:bg-[hsl(var(--pulse-teal))]/90 text-white shadow-lg shadow-[hsl(var(--pulse-teal))]/20"
-                >
-                  Check In to Session
+                <Button onClick={handleCheckIn} className="w-full">
+                  Check In
                 </Button>
               ) : (
                 <div className="space-y-2">
-                  <div className="bg-[hsl(var(--pulse-success))]/10 border-2 border-[hsl(var(--pulse-success))] p-4 rounded-lg text-center">
-                    <p className="text-sm font-semibold text-[hsl(var(--pulse-success))]">
-                      ✓ Checked In
-                    </p>
+                  <div className="bg-primary/10 p-4 rounded-lg text-center">
+                    <p className="text-sm font-medium text-primary">✓ Checked In</p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Join a game box below to get in queue
+                      Join a box below to get in queue
                     </p>
                   </div>
                   <Button 
                     onClick={handleCheckOut} 
                     variant="outline" 
-                    className="w-full border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                    className="w-full"
                   >
                     Check Out
                   </Button>
@@ -666,31 +622,42 @@ export default function SessionQueue() {
           )}
         </div>
 
-        {/* Courts Status Bar */}
-        <CourtStatusBar
-          courts={matchTickets.map(ticket => ({
+        {/* Who's Up Board */}
+        <WhosUpBoard
+          courtAssignments={matchTickets.map(ticket => ({
             court_number: ticket.court_number,
             status: ticket.status === 'live' ? 'live' : 'on-deck',
             players: [
               {
                 id: ticket.team1_player1_id,
                 ...ticket.team1_player1,
+                current_rating: 3.0 // Default, would need to fetch if needed
               },
               {
                 id: ticket.team1_player2_id,
                 ...ticket.team1_player2,
+                current_rating: 3.0
               },
               {
                 id: ticket.team2_player1_id,
                 ...ticket.team2_player1,
+                current_rating: 3.0
               },
               {
                 id: ticket.team2_player2_id,
                 ...ticket.team2_player2,
+                current_rating: 3.0
               },
             ]
           }))}
+          waitingPlayers={queueEntries
+            .filter(entry => entry.box_number === null)
+            .map(entry => ({
+              id: entry.player_id,
+              ...entry.profiles
+            }))}
           totalCourts={session.num_courts}
+          currentUserId={userId}
         />
 
         {/* Box System - Only show if checked in */}
