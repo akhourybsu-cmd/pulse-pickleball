@@ -141,7 +141,6 @@ export default function PickleballCitiMemberships() {
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.1 * index }}
-                className={tier.featured ? "md:col-span-2 lg:col-span-3" : ""}
               >
                 <Card 
                   className={`h-full transition-all duration-300 hover:shadow-xl ${
@@ -183,7 +182,7 @@ export default function PickleballCitiMemberships() {
                     </p>
                   </CardHeader>
                   <CardContent>
-                    <ul className={`space-y-2 ${tier.featured ? 'md:columns-2 md:gap-8' : ''}`}>
+                    <ul className="space-y-2">
                       {tier.features.map((feature, idx) => (
                         <li 
                           key={idx} 
