@@ -204,6 +204,7 @@ export function CalendarView({ facilityId, currentUserId }: CalendarViewProps) {
         defaultHour={createDefaults.hour}
         defaultCourt={createDefaults.court}
         onSubmit={handleCreateEvent}
+        facilityId={facilityId}
       />
     </div>
   );

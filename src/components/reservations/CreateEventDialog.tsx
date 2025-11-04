@@ -14,6 +14,7 @@ interface CreateEventDialogProps {
   defaultHour?: number;
   defaultCourt?: number;
   onSubmit: (eventData: any) => void;
+  facilityId: string;
 }
 
 export function CreateEventDialog({ 
@@ -22,7 +23,8 @@ export function CreateEventDialog({
   defaultDate, 
   defaultHour = 8, 
   defaultCourt = 1,
-  onSubmit 
+  onSubmit,
+  facilityId 
 }: CreateEventDialogProps) {
   const [eventType, setEventType] = useState<"league" | "open_play" | "private" | "lesson">("open_play");
   const [title, setTitle] = useState("");
@@ -35,16 +37,25 @@ export function CreateEventDialog({
   const [selectedCourts, setSelectedCourts] = useState<"1" | "2" | "all">("1");
 
   const handleSubmit = () => {
+    const eventDate = defaultDate || new Date();
+    const startDateTime = new Date(eventDate);
+    startDateTime.setHours(defaultHour, 0, 0, 0);
+    
+    const endDateTime = new Date(startDateTime);
+    endDateTime.setMinutes(endDateTime.getMinutes() + parseInt(duration));
+
     const baseEventData = {
+      facility_id: facilityId,
       event_type: eventType,
       title,
       description,
-      start_time: defaultDate ? new Date(defaultDate).setHours(defaultHour, 0) : new Date(),
-      duration: parseInt(duration),
+      start_time: startDateTime.toISOString(),
+      end_time: endDateTime.toISOString(),
       capacity: eventType === "private" ? null : parseInt(capacity),
       price: parseFloat(price),
       instructor: eventType === "lesson" ? instructor : null,
       skill_level: skillLevel,
+      current_registrations: 0,
     };
 
     // If "all courts" is selected, create events for both courts
