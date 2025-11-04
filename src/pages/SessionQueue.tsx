@@ -96,6 +96,132 @@ export default function SessionQueue() {
   const [userCheckInId, setUserCheckInId] = useState<string | null>(null);
   const [userQueueId, setUserQueueId] = useState<string | null>(null);
 
+  // Define fetchSessionData early so other functions can use it
+  const fetchSessionData = useCallback(async (sessionId: string) => {
+    try {
+      // Fetch all data in parallel for faster updates
+      const [checkInsResult, queueResult, ticketsResult] = await Promise.all([
+        supabase
+          .from("check_ins")
+          .select(`
+            *,
+            profiles:player_id (display_name, full_name, current_rating)
+          `)
+          .eq("session_id", sessionId)
+          .eq("status", "active"),
+        
+        supabase
+          .from("queue_entries")
+          .select(`
+            *,
+            profiles:player_id (display_name, full_name, current_rating)
+          `)
+          .eq("session_id", sessionId)
+          .eq("status", "waiting")
+          .order("joined_at", { ascending: true }),
+        
+        supabase
+          .from("match_tickets")
+          .select(`
+            *,
+            team1_player1:team1_player1_id (display_name, full_name),
+            team1_player2:team1_player2_id (display_name, full_name),
+            team2_player1:team2_player1_id (display_name, full_name),
+            team2_player2:team2_player2_id (display_name, full_name)
+          `)
+          .eq("session_id", sessionId)
+          .in("status", ["on-deck", "live"])
+          .order("court_number", { ascending: true })
+      ]);
+
+      if (checkInsResult.data) {
+        setCheckIns(checkInsResult.data as any);
+      }
+      if (queueResult.data) {
+        setQueueEntries(queueResult.data as any);
+      }
+      if (ticketsResult.data) {
+        setMatchTickets(ticketsResult.data as any);
+      }
+    } catch (error) {
+      console.error('Error fetching session data:', error);
+    }
+  }, []);
+
+  const checkUser = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      navigate("/auth");
+      return;
+    }
+    setUserId(user.id);
+    
+    // Once we have userId, fetch session data if session already loaded
+    if (session?.id) {
+      await fetchSessionData(session.id);
+    }
+  }, [session?.id, fetchSessionData, navigate]);
+
+  const fetchSessionById = useCallback(async (id: string) => {
+    try {
+      const { data: sessionData, error } = await supabase
+        .from("sessions")
+        .select(`
+          *,
+          courts:court_id (name)
+        `)
+        .eq("id", id)
+        .eq("status", "active")
+        .single();
+
+      if (error) throw error;
+
+      if (sessionData) {
+        setSession(sessionData);
+        await fetchSessionData(sessionData.id);
+      }
+    } catch (error: any) {
+      console.error("Error fetching session:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load session",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchSessionData, toast]);
+
+  const fetchActiveSession = useCallback(async () => {
+    try {
+      const { data: sessions, error } = await supabase
+        .from("sessions")
+        .select(`
+          *,
+          courts:court_id (name)
+        `)
+        .eq("status", "active")
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      if (error) throw error;
+
+      if (sessions && sessions.length > 0) {
+        setSession(sessions[0]);
+        await fetchSessionData(sessions[0].id);
+      }
+    } catch (error: any) {
+      console.error("Error fetching session:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load active session",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchSessionData, toast]);
+
   useEffect(() => {
     checkUser();
     if (sessionId) {
@@ -114,7 +240,7 @@ export default function SessionQueue() {
     }, 30000);
 
     return () => clearInterval(refreshInterval);
-  }, [sessionId]);
+  }, [sessionId, checkUser, fetchSessionById, fetchActiveSession]);
 
   // Set up realtime subscriptions with reconnection
   useEffect(() => {
@@ -139,8 +265,8 @@ export default function SessionQueue() {
             table: 'check_ins',
             filter: `session_id=eq.${session.id}`,
           },
-          () => {
-            console.log('Check-ins updated');
+          (payload) => {
+            console.log('Check-ins updated:', payload.eventType);
             fetchSessionData(session.id);
           }
         )
@@ -152,8 +278,8 @@ export default function SessionQueue() {
             table: 'queue_entries',
             filter: `session_id=eq.${session.id}`,
           },
-          () => {
-            console.log('Queue updated');
+          (payload) => {
+            console.log('Queue updated:', payload.eventType);
             fetchSessionData(session.id);
           }
         )
@@ -166,7 +292,7 @@ export default function SessionQueue() {
             filter: `session_id=eq.${session.id}`,
           },
           (payload) => {
-            console.log('Match tickets updated', payload);
+            console.log('Match tickets updated:', payload.eventType);
             fetchSessionData(session.id);
             
             // Show notification if user is assigned to a match
@@ -198,7 +324,7 @@ export default function SessionQueue() {
             filter: `id=eq.${session.id}`,
           },
           (payload) => {
-            console.log('Session updated', payload);
+            console.log('Session updated:', payload.eventType);
             if (payload.new.status === 'completed') {
               toast({
                 title: "Session Ended",
@@ -213,10 +339,10 @@ export default function SessionQueue() {
         )
         .subscribe((status) => {
           if (status === 'SUBSCRIBED') {
-            console.log('Realtime connected');
+            console.log('✅ Realtime subscribed successfully');
             reconnectAttempts = 0;
           } else if (status === 'CHANNEL_ERROR') {
-            console.error('Realtime error, attempting reconnect...');
+            console.error('❌ Realtime error, attempting reconnect...');
             if (reconnectAttempts < maxReconnectAttempts) {
               reconnectAttempts++;
               setTimeout(() => {
@@ -224,6 +350,8 @@ export default function SessionQueue() {
                 setupChannel();
               }, 1000 * reconnectAttempts);
             }
+          } else if (status === 'CLOSED') {
+            console.log('🔌 Realtime connection closed');
           }
         });
 
@@ -233,9 +361,10 @@ export default function SessionQueue() {
     const channel = setupChannel();
 
     return () => {
+      console.log('🧹 Cleaning up realtime subscription');
       supabase.removeChannel(channel);
     };
-  }, [session, userId]);
+  }, [session, userId, fetchSessionData]);
 
   // Refetch session data when userId becomes available
   useEffect(() => {
@@ -269,129 +398,6 @@ export default function SessionQueue() {
       setUserQueuePosition(null);
     }
   }, [checkIns, queueEntries, userId, session]);
-
-  const checkUser = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      navigate("/auth");
-      return;
-    }
-    setUserId(user.id);
-    
-    // Once we have userId, fetch session data if session already loaded
-    if (session?.id) {
-      await fetchSessionData(session.id);
-    }
-  };
-
-  const fetchSessionById = async (id: string) => {
-    try {
-      const { data: sessionData, error } = await supabase
-        .from("sessions")
-        .select(`
-          *,
-          courts:court_id (name)
-        `)
-        .eq("id", id)
-        .eq("status", "active")
-        .single();
-
-      if (error) throw error;
-
-      if (sessionData) {
-        setSession(sessionData);
-        await fetchSessionData(sessionData.id);
-      }
-    } catch (error: any) {
-      console.error("Error fetching session:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load session",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchActiveSession = async () => {
-    try {
-      const { data: sessions, error } = await supabase
-        .from("sessions")
-        .select(`
-          *,
-          courts:court_id (name)
-        `)
-        .eq("status", "active")
-        .order("created_at", { ascending: false })
-        .limit(1);
-
-      if (error) throw error;
-
-      if (sessions && sessions.length > 0) {
-        setSession(sessions[0]);
-        await fetchSessionData(sessions[0].id);
-      }
-    } catch (error: any) {
-      console.error("Error fetching session:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load active session",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchSessionData = async (sessionId: string) => {
-    // Fetch check-ins
-    const { data: checkInsData } = await supabase
-      .from("check_ins")
-      .select(`
-        *,
-        profiles:player_id (display_name, full_name, current_rating)
-      `)
-      .eq("session_id", sessionId)
-      .eq("status", "active");
-
-    if (checkInsData) {
-      setCheckIns(checkInsData as any);
-    }
-
-    // Fetch queue
-    const { data: queueData } = await supabase
-      .from("queue_entries")
-      .select(`
-        *,
-        profiles:player_id (display_name, full_name, current_rating)
-      `)
-      .eq("session_id", sessionId)
-      .eq("status", "waiting")
-      .order("joined_at", { ascending: true });
-
-    if (queueData) {
-      setQueueEntries(queueData as any);
-    }
-
-    // Fetch match tickets
-    const { data: ticketsData } = await supabase
-      .from("match_tickets")
-      .select(`
-        *,
-        team1_player1:team1_player1_id (display_name, full_name),
-        team1_player2:team1_player2_id (display_name, full_name),
-        team2_player1:team2_player1_id (display_name, full_name),
-        team2_player2:team2_player2_id (display_name, full_name)
-      `)
-      .eq("session_id", sessionId)
-      .in("status", ["on-deck", "live"])
-      .order("court_number", { ascending: true });
-
-    if (ticketsData) {
-      setMatchTickets(ticketsData as any);
-    }
-  };
 
   const handleCheckIn = async () => {
     if (!userId || !session) return;
