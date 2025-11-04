@@ -107,6 +107,11 @@ export function EventModal({ event, isOpen, onClose, currentUserId, isAdmin, onR
     enabled: !!event?.series_id && event?.event_type === "league" && isOpen,
   });
 
+  // Calculate unique session count by grouping events on same date
+  const uniqueSessions = seriesEvents ? 
+    new Set(seriesEvents.map(e => new Date(e.start_time).toDateString())).size 
+    : 0;
+
   if (!event) return null;
 
   const startTime = new Date(event.start_time);
@@ -220,7 +225,7 @@ export function EventModal({ event, isOpen, onClose, currentUserId, isAdmin, onR
                 <Clock className="w-4 h-4 text-muted-foreground" />
                 <span>
                   {format(startTime, "EEEE")}s at{" "}
-                  {format(startTime, "h:mm a")} - {format(endTime, "h:mm a")} ({seriesEvents.length} sessions)
+                  {format(startTime, "h:mm a")} - {format(endTime, "h:mm a")} ({uniqueSessions} sessions)
                 </span>
               </div>
             </>

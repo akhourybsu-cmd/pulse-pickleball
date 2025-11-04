@@ -56,7 +56,7 @@ export default function BrowseEvents() {
         .from("calendar_events")
         .select("*")
         .gte("start_time", new Date().toISOString())
-        .neq("event_type", "private_rental")
+        .neq("event_type", "private")
         .order("start_time", { ascending: true });
 
       if (eventsError) throw eventsError;
