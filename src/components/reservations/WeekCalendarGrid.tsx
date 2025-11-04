@@ -1,6 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { format, addDays, startOfWeek, isSameDay } from "date-fns";
 import { cn } from "@/lib/utils";
+import { Clock } from "lucide-react";
 
 interface CalendarEvent {
   id: string;
@@ -121,7 +122,7 @@ export function WeekCalendarGrid({ currentDate, events, onEventClick, onTimeSlot
                               EVENT_COLORS[event.event_type]
                             )}
                           >
-                            <div className="space-y-1">
+                            <div className="space-y-1.5">
                               <div className="flex items-center justify-between gap-1">
                                 <div className="truncate flex-1 font-semibold text-sm">{event.title}</div>
                                 {event.skill_level && (
@@ -132,6 +133,12 @@ export function WeekCalendarGrid({ currentDate, events, onEventClick, onTimeSlot
                                     {SKILL_LEVEL_LABELS[event.skill_level]}
                                   </span>
                                 )}
+                              </div>
+                              <div className="flex items-center gap-1 text-xs opacity-80">
+                                <Clock className="w-3 h-3" />
+                                <span className="font-medium">
+                                  {format(new Date(event.start_time), "h:mm a")} - {format(new Date(event.end_time), "h:mm a")}
+                                </span>
                               </div>
                               <div className="text-xs opacity-80 font-medium">Courts 1&2</div>
                             </div>
@@ -172,7 +179,7 @@ export function WeekCalendarGrid({ currentDate, events, onEventClick, onTimeSlot
                                     EVENT_COLORS[event.event_type]
                                   )}
                                 >
-                                  <div className="space-y-1">
+                                  <div className="space-y-0.5">
                                     <div className="flex items-center justify-between gap-1">
                                       <div className="truncate flex-1 font-semibold text-xs">{event.title}</div>
                                       {event.skill_level && (
@@ -183,6 +190,12 @@ export function WeekCalendarGrid({ currentDate, events, onEventClick, onTimeSlot
                                           {SKILL_LEVEL_LABELS[event.skill_level]}
                                         </span>
                                       )}
+                                    </div>
+                                    <div className="flex items-center gap-1 text-[10px] opacity-80">
+                                      <Clock className="w-2.5 h-2.5" />
+                                      <span className="font-medium">
+                                        {format(new Date(event.start_time), "h:mm a")} - {format(new Date(event.end_time), "h:mm a")}
+                                      </span>
                                     </div>
                                     <div className="text-[10px] opacity-80 font-medium">Court {court}</div>
                                   </div>
