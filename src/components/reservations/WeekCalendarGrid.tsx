@@ -105,9 +105,7 @@ export function WeekCalendarGrid({ currentDate, events, onEventClick, onTimeSlot
                       // Single card spanning both courts - full height
                       <Card
                         key={`${day.toISOString()}-${hour}-both`}
-                        className={cn(
-                          "p-2 min-h-[130px] cursor-pointer hover:shadow-md transition-shadow"
-                        )}
+                        className="overflow-hidden min-h-[130px] cursor-pointer hover:shadow-md transition-shadow border-0"
                         onClick={() => {
                           const slotEvents = getEventsForSlot(day, hour, 1);
                           if (slotEvents.length > 0) {
@@ -119,25 +117,27 @@ export function WeekCalendarGrid({ currentDate, events, onEventClick, onTimeSlot
                           <div
                             key={event.id}
                             className={cn(
-                              "p-1 rounded border text-xs font-medium space-y-0.5",
+                              "h-full p-3 flex flex-col justify-between",
                               EVENT_COLORS[event.event_type]
                             )}
                           >
-                            <div className="flex items-center justify-between gap-1">
-                              <div className="truncate flex-1">{event.title}</div>
-                              {event.skill_level && (
-                                <span className={cn(
-                                  "text-[9px] px-1 rounded text-white font-bold",
-                                  SKILL_LEVEL_COLORS[event.skill_level]
-                                )}>
-                                  {SKILL_LEVEL_LABELS[event.skill_level]}
-                                </span>
-                              )}
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between gap-1">
+                                <div className="truncate flex-1 font-semibold text-sm">{event.title}</div>
+                                {event.skill_level && (
+                                  <span className={cn(
+                                    "text-[9px] px-1.5 py-0.5 rounded text-white font-bold",
+                                    SKILL_LEVEL_COLORS[event.skill_level]
+                                  )}>
+                                    {SKILL_LEVEL_LABELS[event.skill_level]}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-xs opacity-80 font-medium">Courts 1&2</div>
                             </div>
-                            <div className="text-[10px] opacity-70">Courts 1&2</div>
                             {event.capacity && (
-                              <div className="text-[10px] opacity-70">
-                                {event.current_registrations || 0}/{event.capacity}
+                              <div className="text-xs opacity-80 font-medium">
+                                {event.current_registrations || 0}/{event.capacity} registered
                               </div>
                             )}
                           </div>
@@ -152,8 +152,8 @@ export function WeekCalendarGrid({ currentDate, events, onEventClick, onTimeSlot
                           <Card
                             key={`${day.toISOString()}-${hour}-${court}`}
                             className={cn(
-                              "p-2 min-h-[60px] cursor-pointer hover:shadow-md transition-shadow",
-                              slotEvents.length === 0 && "bg-muted/30"
+                              "overflow-hidden min-h-[60px] cursor-pointer hover:shadow-md transition-shadow",
+                              slotEvents.length === 0 && "bg-muted/30 border"
                             )}
                             onClick={() => {
                               if (slotEvents.length > 0) {
@@ -168,31 +168,33 @@ export function WeekCalendarGrid({ currentDate, events, onEventClick, onTimeSlot
                                 <div
                                   key={event.id}
                                   className={cn(
-                                    "p-1 rounded border text-xs font-medium space-y-0.5",
+                                    "h-full p-2 flex flex-col justify-between",
                                     EVENT_COLORS[event.event_type]
                                   )}
                                 >
-                                  <div className="flex items-center justify-between gap-1">
-                                    <div className="truncate flex-1">{event.title}</div>
-                                    {event.skill_level && (
-                                      <span className={cn(
-                                        "text-[9px] px-1 rounded text-white font-bold",
-                                        SKILL_LEVEL_COLORS[event.skill_level]
-                                      )}>
-                                        {SKILL_LEVEL_LABELS[event.skill_level]}
-                                      </span>
-                                    )}
+                                  <div className="space-y-1">
+                                    <div className="flex items-center justify-between gap-1">
+                                      <div className="truncate flex-1 font-semibold text-xs">{event.title}</div>
+                                      {event.skill_level && (
+                                        <span className={cn(
+                                          "text-[9px] px-1 py-0.5 rounded text-white font-bold",
+                                          SKILL_LEVEL_COLORS[event.skill_level]
+                                        )}>
+                                          {SKILL_LEVEL_LABELS[event.skill_level]}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="text-[10px] opacity-80 font-medium">Court {court}</div>
                                   </div>
-                                  <div className="text-[10px] opacity-70">Court {court}</div>
                                   {event.capacity && (
-                                    <div className="text-[10px] opacity-70">
+                                    <div className="text-[10px] opacity-80 font-medium">
                                       {event.current_registrations || 0}/{event.capacity}
                                     </div>
                                   )}
                                 </div>
                               ))
                             ) : (
-                              <div className="text-xs text-muted-foreground opacity-50">
+                              <div className="text-xs text-muted-foreground opacity-50 p-2">
                                 Court {court}
                               </div>
                             )}
