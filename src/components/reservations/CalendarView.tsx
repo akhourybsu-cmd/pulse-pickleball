@@ -41,8 +41,19 @@ export function CalendarView({ facilityId, currentUserId }: CalendarViewProps) {
     enabled: !!currentUserId,
   });
 
-  // Mock events for now - will be replaced with real data
-  const mockEvents: any[] = [];
+  // Fetch calendar events
+  const { data: events = [], refetch } = useQuery({
+    queryKey: ["calendar-events", facilityId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("calendar_events")
+        .select("*")
+        .order("start_time", { ascending: true });
+      
+      if (error) throw error;
+      return data || [];
+    },
+  });
 
   const handleTimeSlotClick = (date: Date, hour: number, court: number) => {
     setCreateDefaults({ date, hour, court });
@@ -50,11 +61,25 @@ export function CalendarView({ facilityId, currentUserId }: CalendarViewProps) {
   };
 
   const handleCreateEvent = async (eventData: any) => {
-    toast({
-      title: "Event created",
-      description: "The event has been added to the calendar",
-    });
-    // TODO: Actually create event in database
+    try {
+      const { error } = await supabase
+        .from("calendar_events")
+        .insert(eventData);
+      
+      if (error) throw error;
+      
+      await refetch();
+      toast({
+        title: "Event created",
+        description: "The event has been added to the calendar",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create event",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleRegister = async (eventId: string) => {
@@ -150,7 +175,7 @@ export function CalendarView({ facilityId, currentUserId }: CalendarViewProps) {
       <Card className="p-4">
         <WeekCalendarGrid
           currentDate={currentDate}
-          events={mockEvents}
+          events={events}
           onEventClick={setSelectedEvent}
           onTimeSlotClick={isAdmin ? handleTimeSlotClick : undefined}
           isAdmin={isAdmin || false}

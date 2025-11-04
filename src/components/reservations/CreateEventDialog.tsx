@@ -32,21 +32,32 @@ export function CreateEventDialog({
   const [instructor, setInstructor] = useState("");
   const [duration, setDuration] = useState("60");
   const [skillLevel, setSkillLevel] = useState<"all" | "beginner" | "intermediate" | "advanced">("all");
+  const [selectedCourts, setSelectedCourts] = useState<"1" | "2" | "all">("1");
 
   const handleSubmit = () => {
-    const eventData = {
+    const baseEventData = {
       event_type: eventType,
       title,
       description,
       start_time: defaultDate ? new Date(defaultDate).setHours(defaultHour, 0) : new Date(),
       duration: parseInt(duration),
-      court_number: defaultCourt,
       capacity: eventType === "private" ? null : parseInt(capacity),
       price: parseFloat(price),
       instructor: eventType === "lesson" ? instructor : null,
       skill_level: skillLevel,
     };
-    onSubmit(eventData);
+
+    // If "all courts" is selected, create events for both courts
+    if (selectedCourts === "all") {
+      const eventsToCreate = [
+        { ...baseEventData, court_number: 1 },
+        { ...baseEventData, court_number: 2 },
+      ];
+      eventsToCreate.forEach(eventData => onSubmit(eventData));
+    } else {
+      onSubmit({ ...baseEventData, court_number: parseInt(selectedCourts) });
+    }
+    
     onClose();
   };
 
@@ -110,13 +121,14 @@ export function CreateEventDialog({
 
             <div>
               <Label>Court</Label>
-              <Select value={String(defaultCourt)} onValueChange={() => {}}>
+              <Select value={selectedCourts} onValueChange={(v: any) => setSelectedCourts(v)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="1">Court 1</SelectItem>
                   <SelectItem value="2">Court 2</SelectItem>
+                  <SelectItem value="all">All Courts</SelectItem>
                 </SelectContent>
               </Select>
             </div>
