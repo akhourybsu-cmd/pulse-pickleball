@@ -68,13 +68,19 @@ export default function BrowseEvents() {
 
       if (courtsError) throw courtsError;
 
-      // Map events with their courts
-      const courtsMap = new Map(courts?.map((c) => [c.id, c]) || []);
+      // Map events with their courts - facility_id is a text field, not UUID
+      const courtsMap = new Map(courts?.map((c) => [c.name.toLowerCase(), c]) || []);
       
-      const eventsWithCourts = (calendarEvents || []).map((event) => ({
-        ...event,
-        courts: courtsMap.get(event.facility_id) || null,
-      })) as CalendarEventWithCourt[];
+      const eventsWithCourts = (calendarEvents || []).map((event) => {
+        // Try to match by facility_id first (might be court name)
+        let court = courtsMap.get(event.facility_id?.toLowerCase()) || 
+                    courtsMap.get("pickleball citi");
+        
+        return {
+          ...event,
+          courts: court || { name: "Pickleball Citi", location: "Cranston", city: "Cranston", state: "RI" },
+        };
+      }) as CalendarEventWithCourt[];
 
       // Group league events by series_id, only show first instance
       const leagueSeriesMap = new Map<string, CalendarEventWithCourt>();

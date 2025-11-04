@@ -5,6 +5,7 @@ import { Calendar, Users, Clock, DollarSign, User } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import pickleballCitiLogo from "@/assets/pickleball-citi-logo-2.png";
 
 const EVENT_TYPE_LABELS = {
   league: "League",
@@ -33,6 +34,13 @@ interface CalendarEventTileProps {
     price: number;
     instructor: string | null;
     skill_level: string | null;
+    facility_id?: string;
+    courts?: {
+      name: string;
+      location?: string;
+      city?: string;
+      state?: string;
+    } | null;
   };
   currentUserId: string | null;
   onRegister: (eventId: string) => void;
@@ -74,6 +82,8 @@ export function CalendarEventTile({
 
   const { dateStr, timeStr } = formatEventDate();
   const isFull = event.current_registrations >= event.capacity;
+  const isPickleballCiti = event.courts?.name?.toLowerCase().includes("pickleball citi") || 
+                           event.facility_id?.toLowerCase().includes("pickleball citi");
 
   const getButtonLabel = () => {
     if (isRegistered) return "Registered ✓";
@@ -150,6 +160,16 @@ export function CalendarEventTile({
             <Badge variant="outline" className="text-xs">
               {event.skill_level}
             </Badge>
+          </div>
+        )}
+
+        {isPickleballCiti && (
+          <div className="flex justify-end mb-2">
+            <img 
+              src={pickleballCitiLogo} 
+              alt="Pickleball Citi" 
+              className="h-8 w-auto object-contain opacity-70"
+            />
           </div>
         )}
 
