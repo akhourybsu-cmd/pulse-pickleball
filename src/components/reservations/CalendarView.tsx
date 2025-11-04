@@ -172,13 +172,33 @@ export function CalendarView({ facilityId, currentUserId }: CalendarViewProps) {
         
         if (error) throw error;
       } else {
-        // Delete only this event
-        const { error } = await supabase
-          .from("calendar_events")
-          .delete()
-          .eq("id", eventId);
+        // Check if this event has a matching event on another court (double-wide event)
+        const matchingEvent = events.find(e => 
+          e.id !== eventId &&
+          e.title === eventToDelete?.title &&
+          e.event_type === eventToDelete?.event_type &&
+          e.start_time === eventToDelete?.start_time &&
+          e.end_time === eventToDelete?.end_time &&
+          e.court_number !== eventToDelete?.court_number
+        );
         
-        if (error) throw error;
+        if (matchingEvent) {
+          // Delete both events (the one on this court and the matching one)
+          const { error } = await supabase
+            .from("calendar_events")
+            .delete()
+            .in("id", [eventId, matchingEvent.id]);
+          
+          if (error) throw error;
+        } else {
+          // Delete only this event
+          const { error } = await supabase
+            .from("calendar_events")
+            .delete()
+            .eq("id", eventId);
+          
+          if (error) throw error;
+        }
       }
       
       await refetch();
