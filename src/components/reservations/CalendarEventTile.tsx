@@ -127,17 +127,17 @@ export function CalendarEventTile({
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-3 flex-1 flex flex-col pt-0">
-        <div className="space-y-1.5 text-sm text-muted-foreground flex-1">
-          <div className="flex items-center gap-2">
+      <CardContent className="space-y-3 flex-1 flex flex-col pt-0 items-center md:items-stretch">
+        <div className="space-y-1.5 text-sm text-muted-foreground flex-1 w-full">
+          <div className="flex items-center justify-center md:justify-start gap-2">
             <Calendar className="w-4 h-4 flex-shrink-0" />
             <span className="truncate">{dateStr}</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-center md:justify-start gap-2">
             <Clock className="w-4 h-4 flex-shrink-0" />
             <span className="truncate">{timeStr}</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-center md:justify-start gap-2">
             <Users className="w-4 h-4 flex-shrink-0" />
             <span>
               {event.current_registrations} / {event.capacity} registered
@@ -149,13 +149,13 @@ export function CalendarEventTile({
             </span>
           </div>
           {event.instructor && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center justify-center md:justify-start gap-2">
               <User className="w-4 h-4 flex-shrink-0" />
               <span className="truncate">{event.instructor}</span>
             </div>
           )}
           {event.price > 0 && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center justify-center md:justify-start gap-2">
               <DollarSign className="w-4 h-4 flex-shrink-0" />
               <span>${event.price}</span>
             </div>
