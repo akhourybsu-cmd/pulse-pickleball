@@ -46,12 +46,12 @@ export function CalendarView({ facilityId, currentUserId }: CalendarViewProps) {
     queryKey: ["calendar-events", facilityId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("calendar_events" as any)
+        .from("calendar_events")
         .select("*")
         .order("start_time", { ascending: true });
       
       if (error) throw error;
-      return (data || []) as any[];
+      return data || [];
     },
   });
 
@@ -63,7 +63,7 @@ export function CalendarView({ facilityId, currentUserId }: CalendarViewProps) {
   const handleCreateEvent = async (eventData: any) => {
     try {
       const { error } = await supabase
-        .from("calendar_events" as any)
+        .from("calendar_events")
         .insert(eventData);
       
       if (error) throw error;
