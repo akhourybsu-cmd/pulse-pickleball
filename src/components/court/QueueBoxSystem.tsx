@@ -114,7 +114,7 @@ export function QueueBoxSystem({
                           {entry.profiles.display_name || entry.profiles.full_name}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {entry.profiles.current_rating.toFixed(2)}
+                          {entry.profiles.current_rating?.toFixed(2) || "3.00"}
                         </p>
                       </div>
                     </div>

@@ -37,21 +37,6 @@ const Auth = () => {
   const [staySignedIn, setStaySignedIn] = useState(true);
   const navigate = useNavigate();
 
-  // Check session persistence on mount
-  useEffect(() => {
-    const checkSessionPersistence = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      const sessionFlag = sessionStorage.getItem('pulse_stay_signed_in');
-      
-      // If we have a session but no sessionStorage flag, user didn't want to stay signed in
-      if (session && !sessionFlag) {
-        await supabase.auth.signOut();
-      }
-    };
-    
-    checkSessionPersistence();
-  }, []);
-
   const checkLocationAccess = async (): Promise<boolean> => {
     return new Promise((resolve) => {
       if (!navigator.geolocation) {

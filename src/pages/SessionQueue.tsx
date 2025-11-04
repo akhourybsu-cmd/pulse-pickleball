@@ -277,6 +277,11 @@ export default function SessionQueue() {
       return;
     }
     setUserId(user.id);
+    
+    // Once we have userId, fetch session data if session already loaded
+    if (session?.id) {
+      await fetchSessionData(session.id);
+    }
   };
 
   const fetchSessionById = async (id: string) => {
@@ -340,8 +345,6 @@ export default function SessionQueue() {
   };
 
   const fetchSessionData = async (sessionId: string) => {
-    if (!userId) return;
-
     // Fetch check-ins
     const { data: checkInsData } = await supabase
       .from("check_ins")
