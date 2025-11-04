@@ -392,7 +392,7 @@ export default function CourtBoard() {
                 alt="Pickleball Citi" 
                 className="h-12 w-auto"
               />
-              <span className="font-semibold">Memberships</span>
+              <span className="font-semibold">View Membership Options</span>
             </Button>
           </motion.div>
         )}
