@@ -107,11 +107,8 @@ export function CalendarView({ facilityId, currentUserId, pickleballCitiLogo }: 
   };
 
   const handleRegister = async (eventId: string) => {
-    toast({
-      title: "Registration successful",
-      description: "You've been registered for this event",
-    });
-    // TODO: Actually register user
+    // Refetch to update counts
+    await refetch();
   };
 
   const handleRequestPrivate = async (eventId: string) => {

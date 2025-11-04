@@ -5,6 +5,9 @@ import { Calendar, Clock, DollarSign, MapPin, Users } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface EventModalProps {
   event: {
@@ -55,13 +58,43 @@ export function EventModal({ event, isOpen, onClose, currentUserId, isAdmin, onR
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  // Fetch registrations for this event
+  const { data: registrations = [], refetch: refetchRegistrations } = useQuery({
+    queryKey: ["event-registrations", event?.id],
+    queryFn: async () => {
+      if (!event?.id) return [];
+      
+      const { data, error } = await supabase
+        .from("calendar_event_registrations")
+        .select(`
+          *,
+          profiles:user_id (
+            id,
+            full_name,
+            display_name,
+            avatar_url
+          )
+        `)
+        .eq("event_id", event.id)
+        .eq("status", "confirmed");
+      
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!event?.id && isOpen,
+  });
+
+  // Check if current user is registered
+  const userRegistration = registrations.find(r => r.user_id === currentUserId);
+  const isRegistered = !!userRegistration;
+
   if (!event) return null;
 
   const startTime = new Date(event.start_time);
   const endTime = new Date(event.end_time);
-  const isFull = event.capacity && event.current_registrations ? event.current_registrations >= event.capacity : false;
+  const isFull = event.capacity && registrations.length >= event.capacity;
 
-  const handleAction = () => {
+  const handleAction = async () => {
     if (!currentUserId) {
       toast({
         title: "Sign in required",
@@ -73,14 +106,77 @@ export function EventModal({ event, isOpen, onClose, currentUserId, isAdmin, onR
 
     if (event.event_type === "private" && onRequestPrivate) {
       onRequestPrivate(event.id);
-    } else if (onRegister) {
-      onRegister(event.id);
+      return;
+    }
+
+    // Handle registration
+    try {
+      const { error } = await supabase
+        .from("calendar_event_registrations")
+        .insert({
+          event_id: event.id,
+          user_id: currentUserId,
+          status: "confirmed",
+        });
+
+      if (error) {
+        if (error.code === "23505") {
+          toast({
+            title: "Already registered",
+            description: "You're already registered for this event",
+            variant: "destructive",
+          });
+        } else {
+          throw error;
+        }
+        return;
+      }
+
+      toast({
+        title: "Registration successful",
+        description: "You've been registered for this event",
+      });
+      await refetchRegistrations();
+      onRegister?.(event.id);
+    } catch (error) {
+      console.error("Registration error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to register. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCancelRegistration = async () => {
+    if (!userRegistration) return;
+
+    try {
+      const { error } = await supabase
+        .from("calendar_event_registrations")
+        .delete()
+        .eq("id", userRegistration.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Registration cancelled",
+        description: "Your registration has been cancelled",
+      });
+      await refetchRegistrations();
+    } catch (error) {
+      console.error("Cancel error:", error);
+      toast({
+        title: "Error",
+        description: "Failed to cancel registration",
+        variant: "destructive",
+      });
     }
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {event.title}
@@ -119,7 +215,7 @@ export function EventModal({ event, isOpen, onClose, currentUserId, isAdmin, onR
           {event.capacity && (
             <div className="flex items-center gap-2 text-sm">
               <Users className="w-4 h-4 text-muted-foreground" />
-              <span>{event.current_registrations || 0} / {event.capacity} registered</span>
+              <span>{registrations.length} / {event.capacity} registered</span>
               {isFull && <Badge variant="destructive">Full</Badge>}
             </div>
           )}
@@ -143,6 +239,39 @@ export function EventModal({ event, isOpen, onClose, currentUserId, isAdmin, onR
             <p className="text-sm text-muted-foreground">{event.description}</p>
           )}
 
+          {/* Roster Section */}
+          {registrations.length > 0 && event.event_type !== "league" && event.event_type !== "private" && (
+            <div className="mt-6 pt-6 border-t">
+              <h3 className="font-semibold mb-3 flex items-center gap-2">
+                <Users className="w-4 h-4" />
+                Registered Players ({registrations.length}{event.capacity ? ` / ${event.capacity}` : ""})
+              </h3>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {registrations.map((reg: any) => (
+                  <div key={reg.id} className="flex items-center gap-3 p-2 rounded-lg bg-muted/50">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={reg.profiles?.avatar_url} />
+                      <AvatarFallback>
+                        {(reg.profiles?.display_name || reg.profiles?.full_name || "U").charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="text-sm font-medium">
+                      {reg.profiles?.display_name || reg.profiles?.full_name || "Unknown"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {registrations.length === 0 && event.event_type !== "league" && event.event_type !== "private" && (
+            <div className="mt-6 pt-6 border-t">
+              <p className="text-sm text-muted-foreground text-center">
+                No one has registered yet. Be the first!
+              </p>
+            </div>
+          )}
+
           {/* Admin Edit Button */}
           {isAdmin && onEdit && (
             <Button 
@@ -160,10 +289,11 @@ export function EventModal({ event, isOpen, onClose, currentUserId, isAdmin, onR
           {/* Action buttons */}
           {!isAdmin && (
             <div className="flex gap-2 pt-4">
-              {event.event_type === "open_play" && (
+              {event.event_type === "open_play" && !isRegistered && (
                 <Button 
                   className="flex-1"
                   onClick={handleAction}
+                  disabled={isFull}
                   style={
                     !isFull ? {
                       backgroundColor: '#B9E43B',
@@ -172,7 +302,17 @@ export function EventModal({ event, isOpen, onClose, currentUserId, isAdmin, onR
                   }
                   variant={isFull ? "outline" : "default"}
                 >
-                  {isFull ? "Join Waitlist" : "Register"}
+                  {isFull ? "Event Full" : "Register"}
+                </Button>
+              )}
+
+              {event.event_type === "open_play" && isRegistered && (
+                <Button 
+                  className="flex-1"
+                  variant="destructive"
+                  onClick={handleCancelRegistration}
+                >
+                  Cancel Registration
                 </Button>
               )}
 
@@ -186,10 +326,11 @@ export function EventModal({ event, isOpen, onClose, currentUserId, isAdmin, onR
                 </Button>
               )}
 
-              {event.event_type === "lesson" && (
+              {event.event_type === "lesson" && !isRegistered && (
                 <Button 
                   className="flex-1"
                   onClick={handleAction}
+                  disabled={isFull}
                   style={
                     !isFull ? {
                       backgroundColor: '#B9E43B',
@@ -198,7 +339,17 @@ export function EventModal({ event, isOpen, onClose, currentUserId, isAdmin, onR
                   }
                   variant={isFull ? "outline" : "default"}
                 >
-                  {isFull ? "Join Waitlist" : "Book Lesson"}
+                  {isFull ? "Event Full" : "Book Lesson"}
+                </Button>
+              )}
+
+              {event.event_type === "lesson" && isRegistered && (
+                <Button 
+                  className="flex-1"
+                  variant="destructive"
+                  onClick={handleCancelRegistration}
+                >
+                  Cancel Registration
                 </Button>
               )}
 

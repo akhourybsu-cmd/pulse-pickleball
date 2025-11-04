@@ -53,6 +53,7 @@ import MyRegistrations from "./pages/MyRegistrations";
 import TournamentLanding from "./pages/TournamentLanding";
 import TournamentCustomize from "./pages/TournamentCustomize";
 import Reservations from "./pages/Reservations";
+import MyCalendarRegistrations from "./pages/MyCalendarRegistrations";
 import PickleballCitiMemberships from "./pages/PickleballCitiMemberships";
 import { RoundRobinBanner } from "@/components/RoundRobinBanner";
 
@@ -101,6 +102,7 @@ const App = () => (
               <Route path="/kiosk" element={<Kiosk />} />
               <Route path="/changelog" element={<Changelog />} />
               <Route path="/reservations" element={<Reservations />} />
+              <Route path="/events/my-calendar-registrations" element={<MyCalendarRegistrations />} />
               <Route path="/pickleball-citi-memberships" element={<PickleballCitiMemberships />} />
               <Route path="/events" element={<Events />} />
               <Route path="/events/new" element={<NewEvent />} />
