@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { format, addDays, startOfWeek, addWeeks, subWeeks } from "date-fns";
 import { WeekCalendarGrid } from "./WeekCalendarGrid";
+import { DayCalendarGrid } from "./DayCalendarGrid";
 import { EventModal } from "./EventModal";
 import { CreateEventDialog } from "./CreateEventDialog";
 import { EditEventDialog } from "./EditEventDialog";
@@ -231,13 +232,23 @@ export function CalendarView({ facilityId, currentUserId }: CalendarViewProps) {
 
       {/* Calendar Grid */}
       <Card className="p-4">
-        <WeekCalendarGrid
-          currentDate={currentDate}
-          events={events}
-          onEventClick={setSelectedEvent}
-          onTimeSlotClick={isAdmin ? handleTimeSlotClick : undefined}
-          isAdmin={isAdmin || false}
-        />
+        {view === "week" ? (
+          <WeekCalendarGrid
+            currentDate={currentDate}
+            events={events}
+            onEventClick={setSelectedEvent}
+            onTimeSlotClick={isAdmin ? handleTimeSlotClick : undefined}
+            isAdmin={isAdmin || false}
+          />
+        ) : (
+          <DayCalendarGrid
+            currentDate={currentDate}
+            events={events}
+            onEventClick={setSelectedEvent}
+            onTimeSlotClick={isAdmin ? handleTimeSlotClick : undefined}
+            isAdmin={isAdmin || false}
+          />
+        )}
       </Card>
 
       {/* Event Modal */}
