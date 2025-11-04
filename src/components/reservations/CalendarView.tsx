@@ -302,7 +302,17 @@ export function CalendarView({ facilityId, currentUserId, pickleballCitiLogo }: 
           )}
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center justify-center mb-3" aria-label="Pickleball Citi branding">
+          <img 
+            src={pickleballCitiLogo} 
+            alt="Pickleball Citi" 
+            className="h-7 object-contain"
+            style={{ maxWidth: '110px' }}
+          />
+          <span className="text-xs text-muted-foreground/70 italic ml-2">Powered by PULSE</span>
+        </div>
+
+        <div className="flex items-center gap-2">
           <Button
             variant="outline"
             size="icon"
@@ -310,25 +320,11 @@ export function CalendarView({ facilityId, currentUserId, pickleballCitiLogo }: 
           >
             <ChevronLeft className="w-4 h-4" />
           </Button>
-          
-          <div className="flex items-center gap-3">
-            <span className="text-sm font-medium min-w-[200px] text-center">
-              {view === "week" 
-                ? `${format(weekDays[0], "MMM d")} - ${format(weekDays[6], "MMM d, yyyy")}`
-                : format(currentDate, "MMMM d, yyyy")}
-            </span>
-            
-            <div className="flex items-center gap-2 px-3 py-1" aria-label="Pickleball Citi branding">
-              <img 
-                src={pickleballCitiLogo} 
-                alt="Pickleball Citi" 
-                className="h-6 object-contain"
-                style={{ maxWidth: '100px' }}
-              />
-              <span className="text-xs text-muted-foreground/70 italic hidden sm:inline">Powered by PULSE</span>
-            </div>
-          </div>
-          
+          <span className="text-sm font-medium min-w-[200px] text-center">
+            {view === "week" 
+              ? `${format(weekDays[0], "MMM d")} - ${format(weekDays[6], "MMM d, yyyy")}`
+              : format(currentDate, "MMMM d, yyyy")}
+          </span>
           <Button
             variant="outline"
             size="icon"
