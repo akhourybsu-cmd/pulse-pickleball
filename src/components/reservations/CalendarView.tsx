@@ -268,41 +268,73 @@ export function CalendarView({ facilityId, currentUserId, pickleballCitiLogo }: 
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Controls */}
-      <div className="flex flex-wrap gap-3 items-center justify-between">
-        <div className="flex items-center gap-2 flex-wrap">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => navigate('/pickleballciti')}
-            className="gap-2 border-lime-300 text-lime-600 hover:bg-lime-50 rounded-full px-3 py-1.5 text-sm transition-all"
-            title="Return to Pickleball Citi homepage"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span className="hidden sm:inline">Back to Pickleball Citi Home</span>
-            <span className="sm:hidden">Home</span>
-          </Button>
-          
-          <Select value={view} onValueChange={(v) => setView(v as "week" | "day")}>
-            <SelectTrigger className="w-[120px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="week">Week View</SelectItem>
-              <SelectItem value="day">Day View</SelectItem>
-            </SelectContent>
-          </Select>
-
-          {isAdmin && (
-            <Button onClick={() => setCreateDialogOpen(true)} size="sm" className="gap-2">
-              <Plus className="w-4 h-4" />
-              Create Event
+      <div className="relative">
+        <div className="flex flex-wrap gap-2 items-center justify-between">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => navigate('/pickleballciti')}
+              className="gap-2 border-lime-300 text-lime-600 hover:bg-lime-50 rounded-full px-3 py-1.5 text-sm transition-all"
+              title="Return to Pickleball Citi homepage"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span className="hidden sm:inline">Back to Pickleball Citi Home</span>
+              <span className="sm:hidden">Home</span>
             </Button>
-          )}
+            
+            <Select value={view} onValueChange={(v) => setView(v as "week" | "day")}>
+              <SelectTrigger className="w-[120px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="week">Week View</SelectItem>
+                <SelectItem value="day">Day View</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {isAdmin && (
+              <Button onClick={() => setCreateDialogOpen(true)} size="sm" className="gap-2">
+                <Plus className="w-4 h-4" />
+                Create Event
+              </Button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setCurrentDate(view === "week" ? subWeeks(currentDate, 1) : addDays(currentDate, -1))}
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+            <span className="text-sm font-medium min-w-[200px] text-center">
+              {view === "week" 
+                ? `${format(weekDays[0], "MMM d")} - ${format(weekDays[6], "MMM d, yyyy")}`
+                : format(currentDate, "MMMM d, yyyy")}
+            </span>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setCurrentDate(view === "week" ? addWeeks(currentDate, 1) : addDays(currentDate, 1))}
+            >
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentDate(new Date())}
+            >
+              Today
+            </Button>
+          </div>
         </div>
 
-        <div className="flex items-center justify-center mb-3" aria-label="Pickleball Citi branding">
+        {/* Logo positioned absolutely to not affect layout */}
+        <div className="absolute left-1/2 top-0 -translate-x-1/2 pointer-events-none -z-10 opacity-20">
           <img 
             src={pickleballCitiLogo} 
             alt="Pickleball Citi" 
@@ -310,39 +342,10 @@ export function CalendarView({ facilityId, currentUserId, pickleballCitiLogo }: 
             style={{ maxWidth: '560px' }}
           />
         </div>
-
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setCurrentDate(view === "week" ? subWeeks(currentDate, 1) : addDays(currentDate, -1))}
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </Button>
-          <span className="text-sm font-medium min-w-[200px] text-center">
-            {view === "week" 
-              ? `${format(weekDays[0], "MMM d")} - ${format(weekDays[6], "MMM d, yyyy")}`
-              : format(currentDate, "MMMM d, yyyy")}
-          </span>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => setCurrentDate(view === "week" ? addWeeks(currentDate, 1) : addDays(currentDate, 1))}
-          >
-            <ChevronRight className="w-4 h-4" />
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCurrentDate(new Date())}
-          >
-            Today
-          </Button>
-        </div>
       </div>
 
       {/* Legend */}
-      <div className="flex flex-wrap gap-2 text-xs">
+      <div className="flex flex-wrap gap-2 text-xs mt-2">
         <div className="flex items-center gap-1">
           <div className="w-3 h-3 rounded bg-purple-400" />
           <span>League</span>
