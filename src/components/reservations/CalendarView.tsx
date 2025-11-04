@@ -46,12 +46,16 @@ export function CalendarView({ facilityId, currentUserId }: CalendarViewProps) {
     queryKey: ["calendar-events", facilityId],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("calendar_events" as any)
+        .from("calendar_events")
         .select("*")
         .order("start_time", { ascending: true });
       
       if (error) throw error;
-      return (data || []) as any;
+      return (data || []).map(event => ({
+        ...event,
+        event_type: event.event_type as "league" | "open_play" | "private" | "lesson",
+        skill_level: event.skill_level as "all" | "beginner" | "intermediate" | "advanced" | undefined,
+      }));
     },
   });
 
@@ -63,7 +67,7 @@ export function CalendarView({ facilityId, currentUserId }: CalendarViewProps) {
   const handleCreateEvent = async (eventData: any) => {
     try {
       const { error } = await supabase
-        .from("calendar_events" as any)
+        .from("calendar_events")
         .insert(eventData);
       
       if (error) throw error;

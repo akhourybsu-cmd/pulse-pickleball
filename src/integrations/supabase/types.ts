@@ -47,6 +47,60 @@ export type Database = {
         }
         Relationships: []
       }
+      calendar_events: {
+        Row: {
+          capacity: number | null
+          court_number: number
+          created_at: string | null
+          current_registrations: number | null
+          description: string | null
+          end_time: string
+          event_type: string
+          facility_id: string
+          id: string
+          instructor: string | null
+          price: number | null
+          skill_level: string | null
+          start_time: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          capacity?: number | null
+          court_number: number
+          created_at?: string | null
+          current_registrations?: number | null
+          description?: string | null
+          end_time: string
+          event_type: string
+          facility_id: string
+          id?: string
+          instructor?: string | null
+          price?: number | null
+          skill_level?: string | null
+          start_time: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          capacity?: number | null
+          court_number?: number
+          created_at?: string | null
+          current_registrations?: number | null
+          description?: string | null
+          end_time?: string
+          event_type?: string
+          facility_id?: string
+          id?: string
+          instructor?: string | null
+          price?: number | null
+          skill_level?: string | null
+          start_time?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       channel_messages: {
         Row: {
           body: string
