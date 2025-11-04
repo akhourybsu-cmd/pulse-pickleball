@@ -5,12 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Trophy, Play } from "lucide-react";
+import { ArrowLeft, Trophy, Play, LogOut, User as UserIcon } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Footer } from "@/components/Footer";
 import { SessionQRCode } from "@/components/court/SessionQRCode";
 import { QueueBoxSystem } from "@/components/court/QueueBoxSystem";
 import { CourtStatusBar } from "@/components/court/CourtStatusBar";
+import { Link } from "react-router-dom";
+import logo from "@/assets/pulse-logo-new.png";
 
 interface Session {
   id: string;
@@ -518,15 +520,28 @@ export default function SessionQueue() {
   if (!session) {
     return (
       <div className="min-h-screen flex flex-col">
-        <div className="border-b bg-secondary/30">
+        <nav className="border-b bg-secondary">
           <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-            <Button variant="ghost" onClick={() => navigate("/dashboard")}>
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Dashboard
-            </Button>
-            <ThemeToggle />
+            <Link to="/dashboard">
+              <img 
+                src={logo} 
+                alt="PULSE Logo" 
+                className="h-[90px] w-auto cursor-pointer hover:opacity-80 transition-opacity" 
+              />
+            </Link>
+            <div className="flex items-center gap-3">
+              <ThemeToggle />
+              <Button 
+                variant="secondary" 
+                size="sm" 
+                onClick={() => navigate("/dashboard")}
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Dashboard
+              </Button>
+            </div>
           </div>
-        </div>
+        </nav>
         <div className="flex-1 flex items-center justify-center">
           <Card className="max-w-md">
             <CardHeader>
@@ -549,15 +564,39 @@ export default function SessionQueue() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <div className="border-b bg-secondary/30">
+      <nav className="border-b bg-secondary">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Button variant="ghost" onClick={() => navigate("/dashboard")}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Dashboard
-          </Button>
-          <ThemeToggle />
+          <Link to="/dashboard">
+            <img 
+              src={logo} 
+              alt="PULSE Logo" 
+              className="h-[90px] w-auto cursor-pointer hover:opacity-80 transition-opacity" 
+            />
+          </Link>
+          <div className="flex items-center gap-3">
+            {userId && (
+              <Button 
+                variant="outline" 
+                size="icon" 
+                onClick={() => navigate(`/profile/${userId}`)} 
+                className="rounded-full"
+              >
+                <UserIcon className="h-[1.2rem] w-[1.2rem]" />
+                <span className="sr-only">View Profile</span>
+              </Button>
+            )}
+            <ThemeToggle />
+            <Button 
+              variant="secondary" 
+              size="sm" 
+              onClick={() => navigate("/dashboard")}
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Dashboard
+            </Button>
+          </div>
         </div>
-      </div>
+      </nav>
 
       <div className="flex-1 container mx-auto px-4 py-8 space-y-6">
         {/* Session Header + Actions */}
