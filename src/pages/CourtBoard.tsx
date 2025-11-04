@@ -173,25 +173,36 @@ export default function CourtBoard() {
                   initial={{ scale: 0.8, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ duration: 0.5, delay: 0.1 }}
-                  className="flex-1 min-w-0"
+                  className="flex items-center gap-6 flex-1"
                 >
                   <img 
                     src={pickleballCitiLogo} 
                     alt="Pickleball Citi" 
-                    className="h-20 md:h-32 w-auto mb-3"
+                    className="h-32 md:h-40 w-auto"
                     style={{ 
                       filter: 'drop-shadow(0px 2px 4px rgba(0, 0, 0, 0.1))'
                     }}
                   />
-                  <motion.p
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.5, delay: 0.3 }}
-                    className="text-sm md:text-lg leading-relaxed break-words"
-                    style={{ color: '#0E4C58', opacity: 0.8 }}
-                  >
-                    Cranston, RI
-                  </motion.p>
+                  <div className="flex flex-col gap-1">
+                    <motion.p
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.5, delay: 0.3 }}
+                      className="text-xl md:text-2xl font-semibold"
+                      style={{ color: '#0E4C58' }}
+                    >
+                      Cranston, RI
+                    </motion.p>
+                    <motion.p
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.5, delay: 0.4 }}
+                      className="text-sm md:text-base"
+                      style={{ color: '#0E4C58', opacity: 0.7 }}
+                    >
+                      Powered by PULSE
+                    </motion.p>
+                  </div>
                 </motion.div>
               </>
             ) : (
