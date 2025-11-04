@@ -11,7 +11,7 @@ import { CourtPresence } from "@/components/court/CourtPresence";
 import { CourtCheckIn } from "@/components/court/CourtCheckIn";
 import { CourtFeed } from "@/components/court/feed/CourtFeed";
 import { useToast } from "@/hooks/use-toast";
-import { MapPin, MessageSquare, Activity, LogOut, User as UserIcon, ExternalLink } from "lucide-react";
+import { MapPin, MessageSquare, Activity, LogOut, User as UserIcon, ExternalLink, Calendar } from "lucide-react";
 import { motion } from "framer-motion";
 import logo from "@/assets/pulse-logo-new.png";
 import pickleballCitiLogo from "@/assets/pickleball-citi-logo.png";
@@ -216,6 +216,18 @@ export default function CourtBoard() {
                     {currentUserId && (
                       <CourtCheckIn courtId={court.id} userId={currentUserId} />
                     )}
+                    <Button
+                      onClick={() => navigate('/reservations')}
+                      size="sm"
+                      className="gap-2 text-sm px-3 py-1.5 rounded-full"
+                      style={{
+                        backgroundColor: '#B9E43B',
+                        color: '#0E4C58',
+                      }}
+                    >
+                      <Calendar className="w-4 h-4" />
+                      Court Reservations
+                    </Button>
                     <Button
                       asChild
                       variant="outline"
