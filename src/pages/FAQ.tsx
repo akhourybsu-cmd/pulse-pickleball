@@ -628,7 +628,7 @@ const FAQ = () => {
                       <li><strong>Smart Matching:</strong> Get matched with players of similar skill levels</li>
                     </ul>
                     <p className="text-muted-foreground">
-                      Access <Link to="/court-connector" className="text-primary hover:underline inline-flex items-center gap-1">Court Connector <ArrowRight className="h-3 w-3" /></Link> from the main menu to start connecting with your local pickleball community.
+                      Access <Link to="/court/connector" className="text-primary hover:underline inline-flex items-center gap-1">Court Connector <ArrowRight className="h-3 w-3" /></Link> from the main menu to start connecting with your local pickleball community.
                     </p>
                   </CardContent>
                 </AccordionContent>
