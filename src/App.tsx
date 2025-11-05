@@ -56,6 +56,8 @@ import Reservations from "./pages/Reservations";
 import MyCalendarRegistrations from "./pages/MyCalendarRegistrations";
 import BrowseEvents from "./pages/BrowseEvents";
 import PickleballCitiMemberships from "./pages/PickleballCitiMemberships";
+import DataExport from "./pages/DataExport";
+import AdminAuditLog from "./pages/AdminAuditLog";
 import { RoundRobinBanner } from "@/components/RoundRobinBanner";
 
 const queryClient = new QueryClient();
@@ -96,6 +98,7 @@ const App = () => (
               <Route path="/admin/badges" element={<AdminBadges />} />
               <Route path="/admin/matches" element={<AdminMatches />} />
               <Route path="/admin/marketing" element={<AdminMarketing />} />
+              <Route path="/admin/audit-log" element={<AdminAuditLog />} />
               <Route path="/admin/manage/:sessionId" element={<AdminManage />} />
               <Route path="/match/ticket/:ticketId" element={<MatchTicket />} />
               <Route path="/qr-checkin" element={<QRCheckIn />} />
@@ -105,6 +108,7 @@ const App = () => (
               <Route path="/events/my-calendar-registrations" element={<MyCalendarRegistrations />} />
               <Route path="/events/browse" element={<BrowseEvents />} />
               <Route path="/pickleball-citi-memberships" element={<PickleballCitiMemberships />} />
+              <Route path="/profile/data-export" element={<DataExport />} />
               <Route path="/events" element={<Events />} />
               <Route path="/events/new" element={<NewEvent />} />
               <Route path="/events/:eventId" element={<EventDetail />} />

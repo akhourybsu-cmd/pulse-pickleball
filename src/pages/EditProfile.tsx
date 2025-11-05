@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { ArrowLeft, Save, UserCog, Upload, X, KeyRound } from "lucide-react";
+import { ArrowLeft, Save, UserCog, Upload, X, KeyRound, Download } from "lucide-react";
 import { motion } from "framer-motion";
 import type { User } from "@supabase/supabase-js";
 import logo from "@/assets/pulse-logo-new.png";
@@ -446,6 +446,24 @@ const EditProfile = () => {
                 >
                   <KeyRound className="w-4 h-4 mr-2" />
                   {resettingPassword ? "Sending..." : "Reset Password"}
+                </Button>
+              </div>
+
+              <Separator />
+
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label>Data Export (GDPR)</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Download all your personal data
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => navigate('/profile/data-export')}
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  Export My Data
                 </Button>
               </div>
             </CardContent>

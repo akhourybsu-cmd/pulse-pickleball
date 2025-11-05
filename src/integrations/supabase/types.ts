@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_audit_log: {
+        Row: {
+          action: string
+          admin_user_id: string
+          created_at: string
+          details: Json | null
+          id: string
+          ip_address: string | null
+          resource_id: string | null
+          resource_type: string
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          admin_user_id: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          resource_id?: string | null
+          resource_type: string
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          admin_user_id?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          resource_id?: string | null
+          resource_type?: string
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       badges: {
         Row: {
           category: string
@@ -2872,6 +2908,7 @@ export type Database = {
         Args: { p_event_id: string }
         Returns: undefined
       }
+      export_user_data: { Args: never; Returns: Json }
       freeze_week_ratings: {
         Args: { target_week_start: string }
         Returns: undefined
@@ -2909,6 +2946,15 @@ export type Database = {
       is_event_participant: {
         Args: { _event_id: string; _user_id: string }
         Returns: boolean
+      }
+      log_admin_action: {
+        Args: {
+          p_action: string
+          p_details?: Json
+          p_resource_id?: string
+          p_resource_type: string
+        }
+        Returns: string
       }
       recalculate_all_player_stats: { Args: never; Returns: undefined }
       recalculate_all_ratings: { Args: never; Returns: undefined }

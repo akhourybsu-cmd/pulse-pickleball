@@ -18,7 +18,8 @@ import {
   UserPlus,
   FileText,
   Swords,
-  Megaphone
+  Megaphone,
+  Shield
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import logo from "@/assets/pulse-logo-new.png";
@@ -350,6 +351,23 @@ const AdminDashboard = () => {
             <CardContent>
               <Button className="w-full" variant="secondary">
                 View Materials
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate("/admin/audit-log")}>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <Shield className="w-10 h-10 text-primary" />
+              </div>
+              <CardTitle className="mt-4">Admin Audit Log</CardTitle>
+              <CardDescription>
+                View complete history of all administrative actions
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button className="w-full" variant="secondary">
+                View Audit Log
               </Button>
             </CardContent>
           </Card>

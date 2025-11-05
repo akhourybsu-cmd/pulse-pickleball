@@ -126,14 +126,41 @@ Required secrets:
 - `SUPABASE_ANON_KEY` - Auto-configured  
 - `SUPABASE_SERVICE_ROLE_KEY` - Auto-configured (backend only)
 
-## Known Security Warnings
+## Recent Security Enhancements (2025-11-05)
 
-### From Supabase Linter
+### 1. Admin Audit Logging ✅
+**Implementation**: Complete admin action tracking system
+- New `admin_audit_log` table with immutable records
+- Tracks: action, resource_type, resource_id, details, timestamp
+- Security definer function `log_admin_action()` for controlled access
+- RLS policies: Admins view only, no updates/deletes (immutable)
+- Indexes for efficient querying by admin, date, resource, action
 
-1. **Leaked Password Protection Disabled** (WARN)
-   - Status: Auth configuration warning
-   - Recommendation: Enable in production via Supabase auth settings
-   - Impact: Users can use compromised passwords
+### 2. GDPR Data Export ✅
+**Implementation**: Complete user data portability
+- Security definer function `export_user_data()` 
+- Exports ALL user data in JSON format:
+  - Profile information
+  - Match history and statistics
+  - Badges and achievements
+  - Event participation (round-robin, tournaments, calendar)
+  - Social activity (posts, comments, LFG)
+  - Disputes and issues reported
+- Complies with GDPR right to data portability
+
+### 3. Enhanced RLS Policies ✅
+**Critical PII Protection**:
+- `profiles` table: Restricted to authenticated users
+- `profiles_public` view: Safe public data exposure (no PII)
+- Location tracking prevention: `queue_entries`, `check_ins`, `court_checkins`
+- Rating changes: Only visible to participants and admins
+- Tournament data: Partner info restricted to captain/partner/admin
+- Match disputes: Only visible to participants and admins
+
+### 4. Auth Configuration ✅
+- Auto-confirm email enabled for non-production
+- Anonymous signups disabled
+- Leaked password protection: Configured
 
 ## Security Best Practices
 
@@ -158,14 +185,32 @@ Required secrets:
 
 ## Audit Trails
 
-### Implemented
+### Implemented ✅
 - `match_edits` - Track all match modifications
-- `round_robin_audit` - Track round robin event changes
+- `round_robin_audit` - Track round robin event changes  
+- `admin_audit_log` - **NEW** Complete admin action logging:
+  - Badge assignments/removals
+  - Session management
+  - Player management
+  - Match editing
+  - Tournament administration
+  - All admin portal actions
+
+### Usage Example
+```javascript
+// Log admin action
+await supabase.rpc('log_admin_action', {
+  p_action: 'badge_awarded',
+  p_resource_type: 'player_badge',
+  p_resource_id: badgeId,
+  p_details: { player_id, badge_code }
+});
+```
 
 ### Recommended
-- Admin action logging (badge assignments, role changes)
 - Authentication attempt logging
-- Sensitive data access logging
+- Sensitive data access logging  
+- Failed authorization attempt tracking
 
 ## Future Security Enhancements
 
@@ -179,11 +224,11 @@ Required secrets:
    - IP-based throttling
    - Progressive delays for repeated failures
 
-3. **Data Privacy**
-   - GDPR compliance features
-   - User data export functionality
-   - Data retention policies
-   - Right to be forgotten implementation
+3. **Data Privacy** - ✅ PARTIALLY COMPLETE
+   - ✅ GDPR data export functionality
+   - ⏳ Data retention policies
+   - ⏳ Right to be forgotten implementation (account deletion with data wipe)
+   - ⏳ Privacy policy and terms of service pages
 
 4. **Enhanced MFA**
    - Backup codes
@@ -191,9 +236,10 @@ Required secrets:
    - Biometric options (WebAuthn)
 
 5. **Security Monitoring**
-   - Real-time anomaly detection
-   - Failed login attempt monitoring
-   - Automated security scans
+   - ⏳ Real-time anomaly detection
+   - ⏳ Failed login attempt monitoring
+   - ⏳ Automated security scans
+   - ⏳ Admin audit log dashboard
 
 ## Incident Response
 
@@ -240,7 +286,24 @@ Contact: [Add security contact email]
 - Update security documentation
 - Review and update security policies
 
+## Quick Reference: Security Functions
+
+### Admin Audit Logging
+```sql
+SELECT log_admin_action(
+  'action_name',           -- e.g., 'badge_awarded', 'session_created'
+  'resource_type',         -- e.g., 'badge', 'session', 'match'
+  'resource_id',           -- UUID or identifier
+  '{"key": "value"}'::jsonb -- Additional details
+);
+```
+
+### GDPR Data Export
+```sql
+SELECT export_user_data(); -- Returns complete user data as JSONB
+```
+
 ---
 
-Last Updated: 2025-10-27  
-Version: 1.0
+Last Updated: 2025-11-05  
+Version: 2.0
