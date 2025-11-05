@@ -493,12 +493,15 @@ const Dashboard = () => {
         </div>
 
         <div className="grid gap-4 md:gap-6 mb-6 md:mb-8">
-          <Card className="border-2 border-primary pulse-score-focal" data-tour="pulse-score">
-            <CardHeader className="pb-3 md:pb-4">
-              <CardDescription className="md:text-base">Live Pulse Score</CardDescription>
-              <CardTitle className="flex items-center gap-3">
+          <Card className="rounded-xl shadow-sm border border-gray-200 bg-white dark:bg-card dark:border-border border-t-4 border-t-[#A9CF46]" data-tour="pulse-score">
+            <CardHeader className="pb-2 border-b border-gray-100 dark:border-border mb-2">
+              <CardDescription className="text-sm text-gray-500 dark:text-muted-foreground font-medium">Live Pulse Score</CardDescription>
+            </CardHeader>
+            <CardContent className="pt-3 pb-5 px-5">
+              <div className="flex items-center gap-3 mb-3">
                 <motion.span 
-                  className="text-5xl md:text-6xl lg:text-7xl font-bold text-primary pulse-score-number opacity-0"
+                  className="text-5xl md:text-6xl lg:text-7xl font-bold opacity-0"
+                  style={{ color: '#A9CF46' }}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ duration: 0.8, delay: 0.75, ease: "easeOut" }}
@@ -526,15 +529,13 @@ const Dashboard = () => {
                     pathLength="100"
                   />
                 </motion.svg>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="text-sm md:text-base">
-                <span className="text-muted-foreground">Weekly snapshot (Mon): </span>
-                <span className="font-semibold">
+              </div>
+              <div className="text-sm">
+                <span className="text-gray-600 dark:text-muted-foreground">Weekly snapshot (Mon): </span>
+                <span className="font-semibold text-gray-900 dark:text-foreground">
                   {profile?.week_start_rating?.toFixed(2) || '3.00'}
                 </span>
-                <span className={`ml-2 font-semibold ${weeklyChange > 0 ? 'text-green-500' : weeklyChange < 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
+                <span className={`ml-2 font-semibold ${weeklyChange > 0 ? 'text-green-500' : weeklyChange < 0 ? 'text-red-500' : 'text-gray-600 dark:text-muted-foreground'}`}>
                   ({weeklyChange > 0 ? '+' : ''}{weeklyChange.toFixed(2)})
                 </span>
               </div>
@@ -542,54 +543,60 @@ const Dashboard = () => {
           </Card>
 
           <div className="grid grid-cols-2 gap-4 md:gap-6">
-            <Card className="py-2 md:py-3">
-              <CardHeader className="pb-2 pt-3 md:pb-3 md:pt-4">
-                <CardDescription className="text-xs md:text-sm">Record</CardDescription>
-                <CardTitle className="text-3xl md:text-4xl lg:text-5xl">
+            <Card className="rounded-xl shadow-sm border border-gray-200 bg-white dark:bg-card dark:border-border p-5">
+              <CardHeader className="p-0 mb-3">
+                <CardDescription className="text-sm text-gray-500 dark:text-muted-foreground font-medium">Record</CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                <CardTitle className="text-2xl font-semibold text-gray-900 dark:text-foreground mb-1">
                   {profile?.wins}W - {profile?.losses}L
                 </CardTitle>
-              </CardHeader>
-              <CardContent className="text-xs md:text-sm text-muted-foreground pb-3 md:pb-4">
-                {profile?.total_matches} {profile?.total_matches === 1 ? 'match' : 'matches'} played
+                <p className="text-sm text-gray-600 dark:text-muted-foreground">
+                  {profile?.total_matches} {profile?.total_matches === 1 ? 'match' : 'matches'} played
+                </p>
               </CardContent>
             </Card>
 
-            <Card className="py-2 md:py-3">
-              <CardHeader className="pb-2 pt-3 md:pb-3 md:pt-4">
-                <CardDescription className="flex items-center gap-2 text-xs md:text-sm">
-                  <TrendingUp className="w-3 h-3 md:w-4 md:h-4" />
+            <Card className="rounded-xl shadow-sm border border-gray-200 bg-white dark:bg-card dark:border-border p-5">
+              <CardHeader className="p-0 mb-3">
+                <CardDescription className="text-sm text-gray-500 dark:text-muted-foreground font-medium flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4" />
                   Win Rate
                 </CardDescription>
-                <CardTitle className="text-3xl md:text-4xl lg:text-5xl">{winRate}%</CardTitle>
               </CardHeader>
+              <CardContent className="p-0">
+                <CardTitle className="text-2xl font-semibold text-gray-900 dark:text-foreground">{winRate}%</CardTitle>
+              </CardContent>
             </Card>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 md:gap-6">
-            <Card className="py-2 md:py-3">
-              <CardHeader className="pb-2 pt-3 md:pb-3 md:pt-4">
-                <CardDescription className="flex items-center gap-2 text-xs md:text-sm">
-                  <BarChart3 className="w-3 h-3 md:w-4 md:h-4" />
+          <div className="grid grid-cols-2 gap-4 md:gap-6 mt-6">
+            <Card className="rounded-xl shadow-sm border border-gray-200 bg-white dark:bg-card dark:border-border p-5">
+              <CardHeader className="p-0 mb-3">
+                <CardDescription className="text-sm text-gray-500 dark:text-muted-foreground font-medium flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4" />
                   Point Diff / Game
                 </CardDescription>
-                <CardTitle className="text-3xl md:text-4xl lg:text-5xl">
+              </CardHeader>
+              <CardContent className="p-0">
+                <CardTitle className="text-2xl font-semibold text-gray-900 dark:text-foreground mb-1">
                   {parseFloat(pointDifferentialPerGame) > 0 ? "+" : ""}{pointDifferentialPerGame}
                 </CardTitle>
-              </CardHeader>
-              <CardContent className="text-xs md:text-sm text-muted-foreground pb-3 md:pb-4">
-                For: {profile?.total_points_for || 0} • Against: {profile?.total_points_against || 0}
+                <p className="text-sm text-gray-600 dark:text-muted-foreground">
+                  For: {profile?.total_points_for || 0} • Against: {profile?.total_points_against || 0}
+                </p>
               </CardContent>
             </Card>
 
-            <Card className="py-2 md:py-3">
-              <CardHeader className="pb-2 pt-3 md:pb-3 md:pt-4">
-                <CardDescription className="text-xs md:text-sm">Avg. Opponent Rating</CardDescription>
-                <CardTitle className="text-3xl md:text-4xl lg:text-5xl">
+            <Card className="rounded-xl shadow-sm border border-gray-200 bg-white dark:bg-card dark:border-border p-5">
+              <CardHeader className="p-0 mb-3">
+                <CardDescription className="text-sm text-gray-500 dark:text-muted-foreground font-medium">Avg. Opponent Rating</CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                <CardTitle className="text-2xl font-semibold text-gray-900 dark:text-foreground mb-1">
                   {profile?.avg_opponent_rating?.toFixed(2) || "N/A"}
                 </CardTitle>
-              </CardHeader>
-              <CardContent className="text-xs md:text-sm text-muted-foreground pb-3 md:pb-4">
-                Strength of schedule
+                <p className="text-sm text-gray-600 dark:text-muted-foreground">Strength of schedule</p>
               </CardContent>
             </Card>
           </div>
