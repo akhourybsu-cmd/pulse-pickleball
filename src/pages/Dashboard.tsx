@@ -406,7 +406,7 @@ const Dashboard = () => {
                   >
                     <div className="flex items-center w-full">
                       <MessageSquare className="w-5 h-5 md:w-6 md:h-6 mr-2 flex-shrink-0" />
-                      <span className="font-semibold text-sm md:text-base">Court Connector</span>
+                      <span className="font-semibold text-sm md:text-base whitespace-nowrap">Court Connector</span>
                       {hasNewParticipants && (
                         <span className="absolute top-2 right-2 flex h-3 w-3">
                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
@@ -414,7 +414,7 @@ const Dashboard = () => {
                         </span>
                       )}
                     </div>
-                    <span className="text-xs md:text-sm text-muted-foreground mt-1">Find a group near you</span>
+                    <span className="text-xs md:text-sm text-muted-foreground mt-1 whitespace-nowrap">Find a group near you</span>
                   </Button>
 
                   <Button 
@@ -426,9 +426,9 @@ const Dashboard = () => {
                   >
                     <div className="flex items-center w-full">
                       <Calendar className="w-5 h-5 md:w-6 md:h-6 mr-2 flex-shrink-0" />
-                      <span className="font-semibold text-sm md:text-base">Match History</span>
+                      <span className="font-semibold text-sm md:text-base whitespace-nowrap">Match History</span>
                     </div>
-                    <span className="text-xs md:text-sm text-muted-foreground mt-1">View your matches</span>
+                    <span className="text-xs md:text-sm text-muted-foreground mt-1 whitespace-nowrap">View your matches</span>
                   </Button>
 
                   <Button 
@@ -439,9 +439,9 @@ const Dashboard = () => {
                   >
                     <div className="flex items-center w-full">
                       <CalendarDays className="w-5 h-5 md:w-6 md:h-6 mr-2 flex-shrink-0" />
-                      <span className="font-semibold text-sm md:text-base">My Registered Events</span>
+                      <span className="font-semibold text-sm md:text-base whitespace-nowrap">My Registered Events</span>
                     </div>
-                    <span className="text-xs md:text-sm text-muted-foreground mt-1">View upcoming reservations</span>
+                    <span className="text-xs md:text-sm text-muted-foreground mt-1 whitespace-nowrap">View upcoming reservations</span>
                   </Button>
 
                   <Button 
@@ -452,9 +452,9 @@ const Dashboard = () => {
                   >
                     <div className="flex items-center w-full">
                       <Trophy className="w-5 h-5 md:w-6 md:h-6 mr-2 flex-shrink-0" />
-                      <span className="font-semibold text-sm md:text-base">Organize Round Robin</span>
+                      <span className="font-semibold text-sm md:text-base whitespace-nowrap">Organize Round Robin</span>
                     </div>
-                    <span className="text-xs md:text-sm text-muted-foreground mt-1">Create an event</span>
+                    <span className="text-xs md:text-sm text-muted-foreground mt-1 whitespace-nowrap">Create an event</span>
                   </Button>
                 </div>
               </div>
