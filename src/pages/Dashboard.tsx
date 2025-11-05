@@ -405,8 +405,8 @@ const Dashboard = () => {
                     data-tour="court-connector"
                   >
                     <div className="flex items-center w-full">
-                      <MessageSquare className="w-5 h-5 md:w-6 md:h-6 mr-2 flex-shrink-0" />
-                      <span className="font-semibold text-sm md:text-base whitespace-nowrap">Court Connector</span>
+                      <MessageSquare className="w-4 h-4 md:w-6 md:h-6 mr-1.5 md:mr-2 flex-shrink-0" />
+                      <span className="font-semibold text-xs md:text-base">Court Connector</span>
                       {hasNewParticipants && (
                         <span className="absolute top-2 right-2 flex h-3 w-3">
                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
@@ -414,7 +414,7 @@ const Dashboard = () => {
                         </span>
                       )}
                     </div>
-                    <span className="text-xs md:text-sm text-muted-foreground mt-1 whitespace-nowrap">Find a group near you</span>
+                    <span className="text-[10px] md:text-sm text-muted-foreground mt-1">Find a group</span>
                   </Button>
 
                   <Button 
@@ -425,10 +425,10 @@ const Dashboard = () => {
                     data-tour="match-history"
                   >
                     <div className="flex items-center w-full">
-                      <Calendar className="w-5 h-5 md:w-6 md:h-6 mr-2 flex-shrink-0" />
-                      <span className="font-semibold text-sm md:text-base whitespace-nowrap">Match History</span>
+                      <Calendar className="w-4 h-4 md:w-6 md:h-6 mr-1.5 md:mr-2 flex-shrink-0" />
+                      <span className="font-semibold text-xs md:text-base">Match History</span>
                     </div>
-                    <span className="text-xs md:text-sm text-muted-foreground mt-1 whitespace-nowrap">View your matches</span>
+                    <span className="text-[10px] md:text-sm text-muted-foreground mt-1">View matches</span>
                   </Button>
 
                   <Button 
@@ -438,10 +438,10 @@ const Dashboard = () => {
                     className="flex flex-col items-start py-3 h-auto md:text-lg md:py-6 [&:hover_span.text-muted-foreground]:text-black"
                   >
                     <div className="flex items-center w-full">
-                      <CalendarDays className="w-5 h-5 md:w-6 md:h-6 mr-2 flex-shrink-0" />
-                      <span className="font-semibold text-sm md:text-base whitespace-nowrap">My Registered Events</span>
+                      <CalendarDays className="w-4 h-4 md:w-6 md:h-6 mr-1.5 md:mr-2 flex-shrink-0" />
+                      <span className="font-semibold text-xs md:text-base">My Events</span>
                     </div>
-                    <span className="text-xs md:text-sm text-muted-foreground mt-1 whitespace-nowrap">View upcoming reservations</span>
+                    <span className="text-[10px] md:text-sm text-muted-foreground mt-1">View registrations</span>
                   </Button>
 
                   <Button 
@@ -451,10 +451,10 @@ const Dashboard = () => {
                     className="flex flex-col items-start py-3 h-auto md:text-lg md:py-6 [&:hover_span.text-muted-foreground]:text-black"
                   >
                     <div className="flex items-center w-full">
-                      <Trophy className="w-5 h-5 md:w-6 md:h-6 mr-2 flex-shrink-0" />
-                      <span className="font-semibold text-sm md:text-base whitespace-nowrap">Organize Round Robin</span>
+                      <Trophy className="w-4 h-4 md:w-6 md:h-6 mr-1.5 md:mr-2 flex-shrink-0" />
+                      <span className="font-semibold text-xs md:text-base">Round Robin</span>
                     </div>
-                    <span className="text-xs md:text-sm text-muted-foreground mt-1 whitespace-nowrap">Create an event</span>
+                    <span className="text-[10px] md:text-sm text-muted-foreground mt-1">Create event</span>
                   </Button>
                 </div>
               </div>
