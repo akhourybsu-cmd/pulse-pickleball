@@ -306,9 +306,9 @@ export default function AdminSession() {
     <div className="min-h-screen flex flex-col">
       <div className="border-b bg-secondary/30">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Button variant="ghost" onClick={() => navigate("/dashboard")}>
+          <Button variant="ghost" onClick={() => navigate("/admin")}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Dashboard
+            Back to Admin
           </Button>
           <ThemeToggle />
         </div>

@@ -91,7 +91,6 @@ const App = () => (
               <Route path="/session/queue" element={<SessionQueue />} />
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/admin/session" element={<AdminSession />} />
-              <Route path="/admin/sessions" element={<AdminSession />} />
               <Route path="/admin/pairing" element={<AdminPairing />} />
               <Route path="/admin/players" element={<AdminPlayers />} />
               <Route path="/admin/badges" element={<AdminBadges />} />

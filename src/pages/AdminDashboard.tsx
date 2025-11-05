@@ -150,7 +150,7 @@ const AdminDashboard = () => {
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate("/admin/sessions")}>
+          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate("/admin/session")}>
             <CardHeader>
               <div className="flex items-center justify-between">
                 <Calendar className="w-10 h-10 text-primary" />
@@ -362,7 +362,7 @@ const AdminDashboard = () => {
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex gap-3 flex-wrap">
-              <Button variant="outline" onClick={() => navigate("/admin/sessions")}>
+              <Button variant="outline" onClick={() => navigate("/admin/session")}>
                 Create New Session
               </Button>
               <Button variant="outline" onClick={() => navigate("/match/new")}>
