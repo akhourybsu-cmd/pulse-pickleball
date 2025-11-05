@@ -396,7 +396,7 @@ const Dashboard = () => {
                   Record New Match
                 </Button>
                 
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-6">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
                   <Button 
                     size="lg" 
                     variant="outline"
@@ -435,13 +435,26 @@ const Dashboard = () => {
                     size="lg"
                     variant="outline"
                     onClick={() => navigate("/events/my-calendar-registrations")}
-                    className="flex flex-col items-start py-3 h-auto md:text-lg md:py-6 [&:hover_span.text-muted-foreground]:text-black col-span-2 md:col-span-1"
+                    className="flex flex-col items-start py-3 h-auto md:text-lg md:py-6 [&:hover_span.text-muted-foreground]:text-black"
                   >
                     <div className="flex items-center w-full">
                       <CalendarDays className="w-5 h-5 md:w-6 md:h-6 mr-2 flex-shrink-0" />
                       <span className="font-semibold text-sm md:text-base">My Registered Events</span>
                     </div>
                     <span className="text-xs md:text-sm text-muted-foreground mt-1">View upcoming reservations</span>
+                  </Button>
+
+                  <Button 
+                    size="lg" 
+                    variant="outline"
+                    onClick={() => navigate("/round-robin")}
+                    className="flex flex-col items-start py-3 h-auto md:text-lg md:py-6 [&:hover_span.text-muted-foreground]:text-black"
+                  >
+                    <div className="flex items-center w-full">
+                      <Trophy className="w-5 h-5 md:w-6 md:h-6 mr-2 flex-shrink-0" />
+                      <span className="font-semibold text-sm md:text-base">Organize Round Robin</span>
+                    </div>
+                    <span className="text-xs md:text-sm text-muted-foreground mt-1">Create an event</span>
                   </Button>
                 </div>
               </div>
@@ -559,20 +572,7 @@ const Dashboard = () => {
         </div>
 
         <div className="space-y-4 md:space-y-6">
-          {/* First row - Round Robin centered */}
-          <div className="flex justify-center">
-            <Button 
-              size="lg" 
-              variant="outline"
-              onClick={() => navigate("/round-robin")}
-              className="h-auto py-4 md:text-lg md:py-6 w-full md:w-auto"
-            >
-              <Trophy className="w-5 h-5 md:w-6 md:h-6 mr-2" />
-              Organize a Round Robin Event
-            </Button>
-          </div>
-
-          {/* Second row - Edit Profile and Help & FAQ */}
+          {/* Edit Profile and Help & FAQ */}
           <div className="grid grid-cols-2 gap-4 md:gap-6">
             <Button
               size="lg" 
