@@ -1,14 +1,10 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trophy, TrendingUp, Calendar, Plus, MapPin, BarChart3, MessageSquare, CalendarDays, Award, UserIcon, Zap } from "lucide-react";
+import { Trophy, TrendingUp, Calendar, Plus, MapPin, BarChart3, MessageSquare, CalendarDays, UserIcon, Zap } from "lucide-react";
 import logo from "@/assets/pulse-logo-new.png";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { FlippableBadge } from "@/components/FlippableBadge";
-import firstGameBadge from "@/assets/badges/first_game.png";
-import dailyGrinder1Badge from "@/assets/badges/daily_grinder_1.png";
-import socialButterfly1Badge from "@/assets/badges/social_butterfly_1.png";
 
 const DemoTour = () => {
   const navigate = useNavigate();
@@ -31,35 +27,6 @@ const DemoTour = () => {
   const pointDifferentialPerGame = (totalPointDifferential / demoProfile.total_matches).toFixed(1);
   const weeklyChange = demoProfile.current_rating - demoProfile.week_start_rating;
 
-  const demoBadges = [
-    {
-      id: "1",
-      code: "first_game",
-      name: "First Game",
-      description: "Played your first match",
-      category: "milestone",
-      tier: 1,
-      image: firstGameBadge,
-    },
-    {
-      id: "2",
-      code: "daily_grinder_1",
-      name: "Daily Grinder",
-      description: "Played matches on 5 different days",
-      category: "consistency",
-      tier: 1,
-      image: dailyGrinder1Badge,
-    },
-    {
-      id: "3",
-      code: "social_butterfly_1",
-      name: "Social Butterfly",
-      description: "Played with 10 different partners",
-      category: "social",
-      tier: 1,
-      image: socialButterfly1Badge,
-    },
-  ];
 
   return (
     <div className="min-h-screen bg-background">
@@ -347,22 +314,6 @@ const DemoTour = () => {
             </CardContent>
           </Card>
 
-          <Card data-tour="badges">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Award className="w-5 h-5" />
-                Your Badges
-              </CardTitle>
-              <CardDescription>Achievements earned from your matches</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-3 md:grid-cols-6 gap-3 md:gap-4">
-                {demoBadges.map((badge) => (
-                  <FlippableBadge key={badge.id} badge={badge} />
-                ))}
-              </div>
-            </CardContent>
-          </Card>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-8">
