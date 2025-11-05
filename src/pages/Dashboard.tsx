@@ -421,7 +421,7 @@ const Dashboard = () => {
                   >
                     <MapPin className="w-5 h-5 md:w-6 md:h-6 mr-2 flex-shrink-0" />
                     <span className="truncate">
-                      Go to "{homeCourtName || 'Home Court'}"
+                      Go to {homeCourtName || 'Home Court'}
                     </span>
                   </Button>
                 )}
