@@ -1,9 +1,10 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trophy, TrendingUp, Calendar, Plus, MapPin, BarChart3, MessageSquare, CalendarDays, Award, UserIcon } from "lucide-react";
+import { Trophy, TrendingUp, Calendar, Plus, MapPin, BarChart3, MessageSquare, CalendarDays, Award, UserIcon, Zap } from "lucide-react";
 import logo from "@/assets/pulse-logo-new.png";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useNavigate, Link } from "react-router-dom";
+import { motion } from "framer-motion";
 import { FlippableBadge } from "@/components/FlippableBadge";
 import firstGameBadge from "@/assets/badges/first_game.png";
 import dailyGrinder1Badge from "@/assets/badges/daily_grinder_1.png";
@@ -80,47 +81,137 @@ const DemoTour = () => {
         </div>
       </nav>
 
-      <div className="container mx-auto px-4 py-8">
+      {/* Pulse Header - Full Width */}
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="mb-2 md:mb-3"
+        style={{
+          background: 'linear-gradient(180deg, #E8FBD5 0%, #FFFFFF 80%)',
+          borderBottom: '1px solid rgba(169, 220, 61, 0.15)',
+        }}
+      >
+        <div className="container mx-auto px-4 py-6 md:py-8">
+          <div className="flex items-start gap-3 md:gap-6">
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              className="flex-shrink-0"
+            >
+              <Zap 
+                className="w-8 h-8 md:w-12 md:h-12"
+                style={{ 
+                  color: '#A9DC3D',
+                  filter: 'drop-shadow(0px 2px 4px rgba(169, 220, 61, 0.3))'
+                }} 
+              />
+            </motion.div>
+            <div className="flex-1 min-w-0">
+              <motion.h1
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+                className="text-2xl md:text-4xl lg:text-5xl font-bold mb-2 md:mb-4 relative inline-block pb-2"
+                style={{
+                  color: '#0E4C58',
+                  letterSpacing: '0.02em',
+                  textShadow: '0px 1px 2px rgba(14, 76, 88, 0.1)',
+                  borderLeft: '3px solid #A9DC3D',
+                  paddingLeft: '12px',
+                }}
+              >
+                Welcome back, {demoProfile.display_name}!
+                <motion.span
+                  className="absolute bottom-0 left-3 h-0.5 bg-gradient-to-r from-[#A9DC3D] to-transparent"
+                  initial={{ width: 0 }}
+                  animate={{ width: '100%' }}
+                  transition={{ duration: 0.8, delay: 0.5 }}
+                  style={{ display: 'block' }}
+                />
+              </motion.h1>
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5, delay: 0.3 }}
+                className="text-sm md:text-lg leading-relaxed"
+                style={{ color: '#0E4C58', opacity: 0.8 }}
+              >
+                Track your pickleball journey, analyze your performance, and compete with your community
+              </motion.p>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
+      <div className="container mx-auto px-4 py-3 md:py-4 md:py-6">
         <div className="mb-6 md:mb-8">
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-2">Welcome back, {demoProfile.display_name}!</h2>
-              <p className="text-muted-foreground mb-4 md:text-lg">Track your pickleball journey</p>
               
-              <div className="space-y-3 w-full md:w-auto">
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full mb-6">
                 <Button 
                   size="lg" 
-                  className="shadow-[var(--shadow-glow)] w-full md:w-auto md:text-lg md:py-6 cursor-default"
+                  className="shadow-[var(--shadow-glow)] w-full sm:w-auto rounded-full md:text-lg md:py-6 md:px-8 pulse-glow button-ripple cursor-default"
+                  data-tour="record-match"
                 >
-                  <Plus className="w-5 h-5 md:w-6 md:h-6 mr-2" />
+                  <Plus className="w-5 h-5 md:w-6 md:h-6 mr-2 flex-shrink-0" />
                   Record New Match
                 </Button>
+              </div>
                 
-                <div className="grid grid-cols-2 gap-3 md:gap-6">
-                  <Button 
-                    size="lg" 
-                    variant="outline"
-                    className="flex flex-col items-start py-3 h-auto md:text-lg md:py-6 cursor-default [&:hover_span.text-muted-foreground]:text-foreground"
-                  >
-                    <div className="flex items-center w-full">
-                      <MessageSquare className="w-5 h-5 md:w-6 md:h-6 mr-2 flex-shrink-0" />
-                      <span className="font-semibold text-sm md:text-base">Court Connector</span>
-                    </div>
-                    <span className="text-xs md:text-sm text-muted-foreground mt-1">Find a group near you</span>
-                  </Button>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
+                <Button 
+                  size="lg" 
+                  variant="outline"
+                  className="relative flex flex-col items-start py-3 h-auto md:text-lg md:py-6 cursor-default [&:hover_span.text-muted-foreground]:text-black"
+                  data-tour="court-connector"
+                >
+                  <div className="flex items-center w-full">
+                    <MessageSquare className="w-4 h-4 md:w-6 md:h-6 mr-1.5 md:mr-2 flex-shrink-0" />
+                    <span className="font-semibold text-[13px] md:text-base leading-tight">Court Connector</span>
+                  </div>
+                  <span className="text-[11px] md:text-sm text-muted-foreground mt-1 leading-tight">Find a group</span>
+                </Button>
 
-                  <Button 
-                    size="lg" 
-                    variant="outline"
-                    className="flex flex-col items-start py-3 h-auto md:text-lg md:py-6 cursor-default [&:hover_span.text-muted-foreground]:text-foreground"
-                  >
-                    <div className="flex items-center w-full">
-                      <Calendar className="w-5 h-5 md:w-6 md:h-6 mr-2 flex-shrink-0" />
-                      <span className="font-semibold text-sm md:text-base">Match History</span>
-                    </div>
-                    <span className="text-xs md:text-sm text-muted-foreground mt-1">View your matches</span>
-                  </Button>
-                </div>
+                <Button 
+                  size="lg"
+                  variant="outline"
+                  className="flex flex-col items-start py-3 h-auto md:text-lg md:py-6 cursor-default [&:hover_span.text-muted-foreground]:text-black"
+                  data-tour="match-history"
+                >
+                  <div className="flex items-center w-full">
+                    <Calendar className="w-4 h-4 md:w-6 md:h-6 mr-1.5 md:mr-2 flex-shrink-0" />
+                    <span className="font-semibold text-[13px] md:text-base leading-tight">Match History</span>
+                  </div>
+                  <span className="text-[11px] md:text-sm text-muted-foreground mt-1 leading-tight">View matches</span>
+                </Button>
+
+                <Button 
+                  size="lg"
+                  variant="outline"
+                  className="flex flex-col items-start py-3 h-auto md:text-lg md:py-6 cursor-default [&:hover_span.text-muted-foreground]:text-black"
+                >
+                  <div className="flex items-center w-full">
+                    <CalendarDays className="w-4 h-4 md:w-6 md:h-6 mr-1.5 md:mr-2 flex-shrink-0" />
+                    <span className="font-semibold text-[13px] md:text-base leading-tight">My Event Registrations</span>
+                  </div>
+                  <span className="text-[11px] md:text-sm text-muted-foreground mt-1 leading-tight">View events</span>
+                </Button>
+
+                <Button 
+                  size="lg"
+                  variant="outline"
+                  className="flex flex-col items-start py-3 h-auto md:text-lg md:py-6 cursor-default [&:hover_span.text-muted-foreground]:text-black"
+                  data-tour="leaderboard"
+                >
+                  <div className="flex items-center w-full">
+                    <MapPin className="w-4 h-4 md:w-6 md:h-6 mr-1.5 md:mr-2 flex-shrink-0" />
+                    <span className="font-semibold text-[13px] md:text-base leading-tight">Court History</span>
+                  </div>
+                  <span className="text-[11px] md:text-sm text-muted-foreground mt-1 leading-tight">Browse courts</span>
+                </Button>
               </div>
             </div>
           </div>
@@ -222,7 +313,7 @@ const DemoTour = () => {
         </div>
 
         <div className="mb-8 space-y-6">
-          <Card>
+          <Card data-tour="court-stats">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <MapPin className="w-5 h-5" />
@@ -256,9 +347,25 @@ const DemoTour = () => {
             </CardContent>
           </Card>
 
+          <Card data-tour="badges">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Award className="w-5 h-5" />
+                Your Badges
+              </CardTitle>
+              <CardDescription>Achievements earned from your matches</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-3 md:grid-cols-6 gap-3 md:gap-4">
+                {demoBadges.map((badge) => (
+                  <FlippableBadge key={badge.id} badge={badge} />
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
-        <div className="grid gap-4 md:gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-8">
           <Button 
             size="lg" 
             variant="outline"
@@ -268,25 +375,14 @@ const DemoTour = () => {
             Organize a Round Robin Event
           </Button>
 
-          <div className="grid gap-4 md:gap-6 md:grid-cols-2">
-            <Button 
-              size="lg" 
-              variant="outline"
-              className="md:text-lg md:py-6 cursor-default"
-            >
-              <UserIcon className="w-5 h-5 md:w-6 md:h-6 mr-2" />
-              Edit Profile
-            </Button>
-
-            <Button 
-              size="lg" 
-              variant="outline"
-              className="md:text-lg md:py-6 cursor-default"
-            >
-              <MessageSquare className="w-5 h-5 md:w-6 md:h-6 mr-2" />
-              Court Connector
-            </Button>
-          </div>
+          <Button 
+            size="lg" 
+            variant="outline"
+            className="md:text-lg md:py-6 cursor-default"
+          >
+            <UserIcon className="w-5 h-5 md:w-6 md:h-6 mr-2" />
+            Edit Profile
+          </Button>
         </div>
 
         <Card className="bg-primary/5 border-primary">
