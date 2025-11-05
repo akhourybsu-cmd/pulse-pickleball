@@ -401,7 +401,7 @@ const Dashboard = () => {
           <div className="flex items-center justify-between">
             <div className="flex-1">
               
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full">
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full mb-6">
                 <Button 
                   size="lg" 
                   onClick={() => navigate("/match/new")}
@@ -425,68 +425,68 @@ const Dashboard = () => {
                     </span>
                   </Button>
                 )}
+              </div>
                 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
-                  <Button 
-                    size="lg" 
-                    variant="outline"
-                    onClick={() => navigate("/court/connector")}
-                    className="relative flex flex-col items-start py-3 h-auto md:text-lg md:py-6 [&:hover_span.text-muted-foreground]:text-black"
-                    data-tour="court-connector"
-                  >
-                    <div className="flex items-center w-full">
-                      <MessageSquare className="w-4 h-4 md:w-6 md:h-6 mr-1.5 md:mr-2 flex-shrink-0" />
-                      <span className="font-semibold text-[13px] md:text-base leading-tight">Court Connector</span>
-                      {hasNewParticipants && (
-                        <span className="absolute top-2 right-2 flex h-3 w-3">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
-                        </span>
-                      )}
-                    </div>
-                    <span className="text-[11px] md:text-sm text-muted-foreground mt-1 leading-tight">Find a group</span>
-                  </Button>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
+                <Button 
+                  size="lg" 
+                  variant="outline"
+                  onClick={() => navigate("/court/connector")}
+                  className="relative flex flex-col items-start py-3 h-auto md:text-lg md:py-6 [&:hover_span.text-muted-foreground]:text-black"
+                  data-tour="court-connector"
+                >
+                  <div className="flex items-center w-full">
+                    <MessageSquare className="w-4 h-4 md:w-6 md:h-6 mr-1.5 md:mr-2 flex-shrink-0" />
+                    <span className="font-semibold text-[13px] md:text-base leading-tight">Court Connector</span>
+                    {hasNewParticipants && (
+                      <span className="absolute top-2 right-2 flex h-3 w-3">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[11px] md:text-sm text-muted-foreground mt-1 leading-tight">Find a group</span>
+                </Button>
 
-                  <Button 
-                    size="lg"
-                    variant="outline"
-                    onClick={() => navigate("/match/history")}
-                    className="flex flex-col items-start py-3 h-auto md:text-lg md:py-6 [&:hover_span.text-muted-foreground]:text-black"
-                    data-tour="match-history"
-                  >
-                    <div className="flex items-center w-full">
-                      <Calendar className="w-4 h-4 md:w-6 md:h-6 mr-1.5 md:mr-2 flex-shrink-0" />
-                      <span className="font-semibold text-[13px] md:text-base leading-tight">Match History</span>
-                    </div>
-                    <span className="text-[11px] md:text-sm text-muted-foreground mt-1 leading-tight">View matches</span>
-                  </Button>
+                <Button 
+                  size="lg"
+                  variant="outline"
+                  onClick={() => navigate("/match/history")}
+                  className="flex flex-col items-start py-3 h-auto md:text-lg md:py-6 [&:hover_span.text-muted-foreground]:text-black"
+                  data-tour="match-history"
+                >
+                  <div className="flex items-center w-full">
+                    <Calendar className="w-4 h-4 md:w-6 md:h-6 mr-1.5 md:mr-2 flex-shrink-0" />
+                    <span className="font-semibold text-[13px] md:text-base leading-tight">Match History</span>
+                  </div>
+                  <span className="text-[11px] md:text-sm text-muted-foreground mt-1 leading-tight">View matches</span>
+                </Button>
 
-                  <Button 
-                    size="lg"
-                    variant="outline"
-                    onClick={() => navigate("/events/my-calendar-registrations")}
-                    className="flex flex-col items-start py-3 h-auto md:text-lg md:py-6 [&:hover_span.text-muted-foreground]:text-black"
-                  >
-                    <div className="flex items-center w-full">
-                      <CalendarDays className="w-4 h-4 md:w-6 md:h-6 mr-1.5 md:mr-2 flex-shrink-0" />
-                      <span className="font-semibold text-[13px] md:text-base leading-tight">My Events</span>
-                    </div>
-                    <span className="text-[11px] md:text-sm text-muted-foreground mt-1 leading-tight">View registrations</span>
-                  </Button>
+                <Button 
+                  size="lg"
+                  variant="outline"
+                  onClick={() => navigate("/events/my-calendar-registrations")}
+                  className="flex flex-col items-start py-3 h-auto md:text-lg md:py-6 [&:hover_span.text-muted-foreground]:text-black"
+                >
+                  <div className="flex items-center w-full">
+                    <CalendarDays className="w-4 h-4 md:w-6 md:h-6 mr-1.5 md:mr-2 flex-shrink-0" />
+                    <span className="font-semibold text-[13px] md:text-base leading-tight">My Events</span>
+                  </div>
+                  <span className="text-[11px] md:text-sm text-muted-foreground mt-1 leading-tight">View registrations</span>
+                </Button>
 
-                  <Button 
-                    size="lg" 
-                    variant="outline"
-                    onClick={() => navigate("/round-robin")}
-                    className="flex flex-col items-start py-3 h-auto md:text-lg md:py-6 [&:hover_span.text-muted-foreground]:text-black"
-                  >
-                    <div className="flex items-center w-full">
-                      <Trophy className="w-4 h-4 md:w-6 md:h-6 mr-1.5 md:mr-2 flex-shrink-0" />
-                      <span className="font-semibold text-[13px] md:text-base leading-tight">Round Robin</span>
-                    </div>
-                    <span className="text-[11px] md:text-sm text-muted-foreground mt-1 leading-tight">Create event</span>
-                  </Button>
-                </div>
+                <Button 
+                  size="lg" 
+                  variant="outline"
+                  onClick={() => navigate("/round-robin")}
+                  className="flex flex-col items-start py-3 h-auto md:text-lg md:py-6 [&:hover_span.text-muted-foreground]:text-black"
+                >
+                  <div className="flex items-center w-full">
+                    <Trophy className="w-4 h-4 md:w-6 md:h-6 mr-1.5 md:mr-2 flex-shrink-0" />
+                    <span className="font-semibold text-[13px] md:text-base leading-tight">Round Robin</span>
+                  </div>
+                  <span className="text-[11px] md:text-sm text-muted-foreground mt-1 leading-tight">Create event</span>
+                </Button>
               </div>
             </div>
           </div>
