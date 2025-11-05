@@ -465,7 +465,7 @@ const FAQ = () => {
                     Your complete match history is available in multiple places:
                   </p>
                   <ul className="list-disc list-inside ml-4 space-y-1">
-                    <li><strong>Match History page:</strong> Access from the <Link to="/dashboard" className="text-primary hover:underline inline-flex items-center gap-1">dashboard <ArrowRight className="h-3 w-3" /></Link> to see all your matches with detailed stats</li>
+                    <li><strong>Match History page:</strong> Access from the <Link to="/match-history" className="text-primary hover:underline inline-flex items-center gap-1">Match History <ArrowRight className="h-3 w-3" /></Link> to see all your matches with detailed stats</li>
                     <li><strong>Your Profile:</strong> View your recent matches and performance trends</li>
                     <li><strong>Player Profiles:</strong> See head-to-head records when viewing other players</li>
                   </ul>
@@ -512,7 +512,7 @@ const FAQ = () => {
                       To create a round robin event:
                     </p>
                     <ol className="list-decimal list-inside ml-4 space-y-2">
-                      <li>Navigate to <Link to="/events" className="text-primary hover:underline inline-flex items-center gap-1">"Round Robin" <ArrowRight className="h-3 w-3" /></Link> from the main menu</li>
+                      <li>Navigate to <Link to="/round-robin" className="text-primary hover:underline inline-flex items-center gap-1">"Round Robin" <ArrowRight className="h-3 w-3" /></Link> from the main menu</li>
                       <li>Click "Create New Event"</li>
                       <li>Enter event details (name, date, time, location)</li>
                       <li>Set the number of courts available</li>
