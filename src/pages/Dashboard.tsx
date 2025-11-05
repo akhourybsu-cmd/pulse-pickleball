@@ -48,6 +48,8 @@ const Dashboard = () => {
   // Notification state
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [homeCourtId, setHomeCourtId] = useState<string | null>(null);
+  const [homeCourtName, setHomeCourtName] = useState<string>("");
 
   const unreadCount = notifications.filter(n => n.unread).length;
 
@@ -67,14 +69,15 @@ const Dashboard = () => {
         setUser(user);
 
         // Fetch all data in parallel for faster loading
-        const [profileResult, roleResult, postsResult] = await Promise.all([
+        const [profileResult, roleResult, postsResult, publicProfileResult] = await Promise.all([
           supabase.from("profiles").select("*").eq("id", user.id).single(),
           supabase.from('user_roles').select('role').eq('user_id', user.id).eq('role', 'admin').maybeSingle(),
           supabase.from("court_posts").select(`
             id,
             viewed_participants_count,
             court_post_participants(count)
-          `).eq("user_id", user.id).eq("status", "open")
+          `).eq("user_id", user.id).eq("status", "open"),
+          supabase.from("profiles_public").select("home_court_id").eq("id", user.id).single()
         ]);
 
         if (profileResult.error) {
@@ -86,6 +89,19 @@ const Dashboard = () => {
 
         setProfile(profileResult.data);
         setIsAdmin(!!roleResult.data);
+
+        // Fetch home court info if available
+        if (publicProfileResult.data?.home_court_id) {
+          setHomeCourtId(publicProfileResult.data.home_court_id);
+          const { data: courtData } = await supabase
+            .from("courts")
+            .select("name")
+            .eq("id", publicProfileResult.data.home_court_id)
+            .single();
+          if (courtData) {
+            setHomeCourtName(courtData.name);
+          }
+        }
 
         // Check for new participants
         if (postsResult.data) {
@@ -395,6 +411,21 @@ const Dashboard = () => {
                   <Plus className="w-5 h-5 md:w-6 md:h-6 mr-2" />
                   Record New Match
                 </Button>
+
+                {homeCourtId && (
+                  <Button 
+                    variant="secondary" 
+                    size="lg" 
+                    className="w-full md:w-auto shadow-md hover:shadow-lg transition-all border-2 border-primary/30 md:text-lg md:py-6"
+                    onClick={() => navigate(`/court/board/${homeCourtId}`)}
+                  >
+                    <MapPin className="w-5 h-5 md:w-6 md:h-6 mr-2" />
+                    Go to Home Court
+                    {homeCourtName && (
+                      <span className="ml-2 text-xs md:text-sm text-muted-foreground">({homeCourtName})</span>
+                    )}
+                  </Button>
+                )}
                 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
                   <Button 

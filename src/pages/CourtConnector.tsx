@@ -37,6 +37,7 @@ interface CourtWithLFGCount extends Court {
   lfgCount: number;
   isHidden: boolean;
   isAdded: boolean;
+  isHomeCourt?: boolean;
 }
 
 export default function CourtConnector() {
@@ -49,6 +50,7 @@ export default function CourtConnector() {
   const [loading, setLoading] = useState(true);
   const [addCourtDialogOpen, setAddCourtDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [homeCourtId, setHomeCourtId] = useState<string | null>(null);
 
   useEffect(() => {
     checkUser();
@@ -83,6 +85,15 @@ export default function CourtConnector() {
     }
     
     setLoading(true);
+
+    // Fetch user's home court
+    const { data: profileData } = await supabase
+      .from("profiles_public")
+      .select("home_court_id")
+      .eq("id", currentUserId)
+      .single();
+
+    setHomeCourtId(profileData?.home_court_id || null);
 
     // Fetch all courts
     const { data: courtsData, error: courtsError } = await supabase
@@ -140,8 +151,16 @@ export default function CourtConnector() {
           lfgCount: lfgCountMap.get(court.id) || 0,
           isHidden: pref.hidden,
           isAdded: true,
+          isHomeCourt: court.id === profileData?.home_court_id,
         };
       }) || [];
+
+    // Sort courts: home court first, then by name
+    courtsWithData.sort((a, b) => {
+      if (a.isHomeCourt && !b.isHomeCourt) return -1;
+      if (!a.isHomeCourt && b.isHomeCourt) return 1;
+      return a.name.localeCompare(b.name);
+    });
 
     setCourts(courtsWithData);
     setLoading(false);
@@ -464,13 +483,22 @@ export default function CourtConnector() {
                   className={court.isHidden ? 'opacity-60' : ''}
                 >
                   <Card 
-                    className="cursor-pointer rounded-2xl border-2 border-border shadow-lg hover:shadow-[0_2px_6px_rgba(0,0,0,0.05),0_4px_12px_rgba(169,220,61,0.15)] transition-all duration-300 h-full bg-card"
+                    className={`cursor-pointer rounded-2xl border-2 shadow-lg transition-all duration-300 h-full ${
+                      court.isHomeCourt 
+                        ? 'border-primary shadow-[0_4px_16px_rgba(169,220,61,0.35),0_0_24px_rgba(169,220,61,0.25)] hover:shadow-[0_6px_20px_rgba(169,220,61,0.45),0_0_32px_rgba(169,220,61,0.35)] bg-gradient-to-br from-card to-primary/5' 
+                        : 'border-border hover:shadow-[0_2px_6px_rgba(0,0,0,0.05),0_4px_12px_rgba(169,220,61,0.15)] bg-card'
+                    }`}
                     onClick={() => navigate(`/court/board/${court.id}`)}
                   >
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
-                      <CardTitle className="text-xl">{court.name}</CardTitle>
+                      <div className="flex items-center gap-2">
+                        <CardTitle className="text-xl">{court.name}</CardTitle>
+                        {court.isHomeCourt && (
+                          <Badge variant="default" className="text-xs">Home Court</Badge>
+                        )}
+                      </div>
                       <CardDescription className="flex items-center gap-1 mt-1.5">
                         <MapPin className="w-3 h-3" />
                         {court.city}, {court.state}
