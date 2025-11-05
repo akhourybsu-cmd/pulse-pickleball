@@ -16,10 +16,26 @@ export default function QRCheckIn() {
   const [checkedIn, setCheckedIn] = useState(false);
 
   useEffect(() => {
-    if (sessionId) {
-      fetchSession();
-      checkIfAlreadyCheckedIn();
-    }
+    const initPage = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (sessionId) {
+        await fetchSession();
+        if (user) {
+          await checkIfAlreadyCheckedIn();
+        }
+      } else {
+        // No session ID provided
+        toast({
+          title: "Invalid Link",
+          description: "No session ID provided",
+          variant: "destructive",
+        });
+        setLoading(false);
+      }
+    };
+    
+    initPage();
   }, [sessionId]);
 
   const fetchSession = async () => {
