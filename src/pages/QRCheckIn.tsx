@@ -97,7 +97,7 @@ export default function QRCheckIn() {
 
       // Redirect to session queue after 2 seconds
       setTimeout(() => {
-        navigate("/session/queue");
+        navigate(`/session/queue?session=${sessionId}`);
       }, 2000);
     } catch (error: any) {
       toast({
@@ -162,7 +162,7 @@ export default function QRCheckIn() {
                 </p>
               </div>
               <Button 
-                onClick={() => navigate("/session/queue")} 
+                onClick={() => navigate(`/session/queue?session=${sessionId}`)} 
                 className="w-full"
               >
                 Go to Queue Now
