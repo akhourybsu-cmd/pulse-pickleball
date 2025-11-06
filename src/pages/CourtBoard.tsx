@@ -452,10 +452,16 @@ export default function CourtBoard() {
             </div>
             <div className="relative z-10">
               <h2 className="text-3xl md:text-4xl font-bold mb-4" style={{ color: '#B9E43B' }}>
-                Join the Pickleball Citi Community
+                {courtId === PICKLEBALL_CITI_ID 
+                  ? "Join the Pickleball Citi Community"
+                  : `Want to Join ${court.name} Events?`
+                }
               </h2>
               <p className="text-lg md:text-xl mb-6 text-white/90 max-w-2xl mx-auto">
-                Connect with fellow players, join exciting events, and stay updated on everything happening at Pickleball Citi. Create your free PULSE profile today!
+                {courtId === PICKLEBALL_CITI_ID
+                  ? "Connect with fellow players, join exciting events, and stay updated on everything happening at Pickleball Citi. Create your free PULSE profile today!"
+                  : "Connect with fellow players, join exciting events, and access the court feed. Create your free PULSE profile today!"
+                }
               </p>
               <Button
                 onClick={() => navigate(`/auth?redirect=${encodeURIComponent(window.location.pathname)}`)}
@@ -466,7 +472,7 @@ export default function CourtBoard() {
                   color: '#0E4C58',
                 }}
               >
-                Create Free Account
+                Join Pulse Today
               </Button>
             </div>
           </motion.div>
