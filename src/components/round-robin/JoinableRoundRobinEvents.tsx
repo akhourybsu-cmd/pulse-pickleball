@@ -158,10 +158,10 @@ export function JoinableRoundRobinEvents({ courtLocation, userId }: JoinableRoun
         <Button
           variant="outline"
           size="sm"
-          onClick={() => navigate("/round-robin-hub")}
+          onClick={() => navigate("/browse-events")}
           className="gap-2"
         >
-          View All
+          View Events
         </Button>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
