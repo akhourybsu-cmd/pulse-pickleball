@@ -122,23 +122,49 @@ export default function MyCalendarRegistrations() {
   const handleCancelRegistration = async (registrationId: string, type: 'calendar' | 'round_robin') => {
     try {
       if (type === 'calendar') {
+        if (!confirm('Are you sure you want to cancel this registration?')) return;
+
         const { error } = await supabase
           .from("calendar_event_registrations")
           .delete()
           .eq("id", registrationId);
 
         if (error) throw error;
+        toast.success('Registration cancelled');
       } else {
+        // For round robin, validate before allowing leave
+        const registration = roundRobinRegistrations.find((r: any) => r.id === registrationId);
+        if (!registration) return;
+
+        const eventData = registration.event;
+
+        // Validation checks
+        if (eventData.organizer_id === session?.user?.id) {
+          toast.error("Organizers cannot leave their own events");
+          return;
+        }
+
+        if (eventData.status === 'live' || eventData.status === 'completed') {
+          toast.error("Cannot leave event that has already started");
+          return;
+        }
+
+        if (eventData.registration_deadline && new Date() > new Date(eventData.registration_deadline)) {
+          toast.error("Registration deadline has passed");
+          return;
+        }
+
+        if (!confirm(`Are you sure you want to leave "${eventData.name}"? You can rejoin before the registration deadline.`)) return;
+
         const { error } = await supabase
           .from("round_robin_players")
           .update({ active: false })
           .eq("id", registrationId);
 
         if (error) throw error;
+        toast.success('You have left the event');
       }
 
-      toast.success("Registration cancelled successfully");
-      // Refetch would need to be handled differently now
       window.location.reload();
     } catch (error) {
       console.error("Cancel error:", error);

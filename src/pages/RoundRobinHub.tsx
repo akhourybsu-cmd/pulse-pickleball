@@ -4,8 +4,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Calendar, Users, Trophy, Sparkles } from "lucide-react";
+import { Plus, Calendar, Users, Trophy, Sparkles, LogOut } from "lucide-react";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { BackToDashboard } from "@/components/BackToDashboard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AvailableRoundRobinEvents } from "@/components/round-robin/AvailableRoundRobinEvents";
@@ -30,6 +40,8 @@ export default function RoundRobinHub() {
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"my" | "participating" | "available">("my");
+  const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
+  const [selectedEventToLeave, setSelectedEventToLeave] = useState<RoundRobinEvent | null>(null);
 
   useEffect(() => {
     fetchEvents();
@@ -87,6 +99,28 @@ export default function RoundRobinHub() {
     return <Badge variant={variants[status] || "outline"}>{status.toUpperCase()}</Badge>;
   };
 
+  const handleLeaveEvent = async () => {
+    if (!selectedEventToLeave || !userId) return;
+
+    try {
+      const { error } = await supabase
+        .from('round_robin_players')
+        .update({ active: false })
+        .eq('event_id', selectedEventToLeave.id)
+        .eq('player_id', userId);
+
+      if (error) throw error;
+
+      toast.success(`You have left ${selectedEventToLeave.name}`);
+      setLeaveDialogOpen(false);
+      setSelectedEventToLeave(null);
+      fetchEvents();
+    } catch (error: any) {
+      console.error('Leave error:', error);
+      toast.error('Failed to leave event');
+    }
+  };
+
   const EventCard = ({ event, isOrganizer }: { event: RoundRobinEvent; isOrganizer: boolean }) => (
     <motion.div
       whileHover={{ y: -4, scale: 1.02 }}
@@ -119,17 +153,45 @@ export default function RoundRobinHub() {
               <span className="truncate">{event.num_courts} {event.num_courts === 1 ? "Court" : "Courts"}</span>
             </div>
           </div>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="w-full hover:bg-primary hover:text-primary-foreground transition-colors"
-            onClick={(e) => {
-              e.stopPropagation();
-              navigate(`/round-robin/${event.id}`);
-            }}
-          >
-            {isOrganizer ? "Manage" : "View"} Event
-          </Button>
+          {!isOrganizer && event.status === 'draft' ? (
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="flex-1 hover:bg-primary hover:text-primary-foreground transition-colors"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigate(`/round-robin/${event.id}`);
+                }}
+              >
+                View Event
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedEventToLeave(event);
+                  setLeaveDialogOpen(true);
+                }}
+                className="hover:bg-destructive/10 hover:text-destructive"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </div>
+          ) : (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="w-full hover:bg-primary hover:text-primary-foreground transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/round-robin/${event.id}`);
+              }}
+            >
+              {isOrganizer ? "Manage" : "View"} Event
+            </Button>
+          )}
         </CardContent>
       </Card>
     </motion.div>
@@ -305,6 +367,24 @@ export default function RoundRobinHub() {
       >
         <Plus className="h-6 w-6 group-hover:scale-110 transition-transform" />
       </motion.button>
+
+      {/* Leave Event Dialog */}
+      <AlertDialog open={leaveDialogOpen} onOpenChange={setLeaveDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Leave Event</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to leave "{selectedEventToLeave?.name}"? You can rejoin before the registration deadline if you change your mind.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setSelectedEventToLeave(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleLeaveEvent}>
+              Leave Event
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

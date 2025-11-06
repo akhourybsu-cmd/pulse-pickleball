@@ -35,6 +35,7 @@ import { ScheduleEditorDialog } from "@/components/round-robin/ScheduleEditorDia
 import { ScoreManagementDialog } from "@/components/round-robin/ScoreManagementDialog";
 import { AuditHistoryDialog } from "@/components/round-robin/AuditHistoryDialog";
 import { EditNotifications } from "@/components/round-robin/EditNotifications";
+import { RegistrationManagement } from "@/components/round-robin/RegistrationManagement";
 import { z } from "zod";
 import logo from "@/assets/pulse-logo-new.png";
 
@@ -66,6 +67,9 @@ interface Event {
   completed_at: string | null;
   voided: boolean;
   organizer_pin: string | null;
+  registration_deadline?: string | null;
+  registration_mode?: string | null;
+  max_players?: number | null;
 }
 
 interface Player {
@@ -122,12 +126,14 @@ export default function RoundRobinDetail() {
   const [schedule, setSchedule] = useState<ScheduleMatch[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
   const [isOrganizer, setIsOrganizer] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isParticipant, setIsParticipant] = useState(false);
+  const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
   const [scores, setScores] = useState<MatchScore>({});
   const [savingScore, setSavingScore] = useState<string | null>(null);
   const [standings, setStandings] = useState<StandingsRow[]>([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteMode, setDeleteMode] = useState<'void' | 'hard'>('void');
-  const [isAdmin, setIsAdmin] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -244,6 +250,13 @@ export default function RoundRobinDetail() {
 
       if (playersError) throw playersError;
       setPlayers(playersData || []);
+      
+      // Check if user is a participant
+      const userIsParticipant = playersData?.some(
+        (p: Player) => p.player_id === user.id && p.active
+      );
+      setIsParticipant(userIsParticipant || false);
+
 
       const { data: scheduleData, error: scheduleError } = await supabase
         .from("round_robin_schedule")
@@ -1361,6 +1374,43 @@ export default function RoundRobinDetail() {
     }
   };
 
+  const handleLeaveEvent = async () => {
+    if (!userId || !event) return;
+
+    // Validation checks
+    if (isOrganizer) {
+      toast.error("Organizers cannot leave their own events");
+      return;
+    }
+
+    if (event.status === 'live' || event.status === 'completed') {
+      toast.error("Cannot leave event that has already started");
+      return;
+    }
+
+    if (event.registration_deadline && new Date() > new Date(event.registration_deadline)) {
+      toast.error("Registration deadline has passed");
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('round_robin_players')
+        .update({ active: false })
+        .eq('event_id', event.id)
+        .eq('player_id', userId);
+
+      if (error) throw error;
+
+      toast.success(`You have left ${event.name}`);
+      setLeaveDialogOpen(false);
+      navigate('/round-robin');
+    } catch (error: any) {
+      console.error('Leave error:', error);
+      toast.error('Failed to leave event');
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -1392,6 +1442,18 @@ export default function RoundRobinDetail() {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              {!isOrganizer && isParticipant && !event.voided && 
+                event.status === 'draft' && 
+                (!event.registration_deadline || new Date() < new Date(event.registration_deadline)) && (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setLeaveDialogOpen(true)}
+                  className="hidden sm:flex"
+                >
+                  Leave Event
+                </Button>
+              )}
               {isOrganizer && !event.voided && (
                 <>
                   {event.status === 'live' && (
