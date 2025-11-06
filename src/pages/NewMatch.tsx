@@ -189,7 +189,7 @@ const NewMatch = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen" style={{ background: 'linear-gradient(180deg, #F9FBF8 0%, #F3F9F6 100%)' }}>
       <nav className="border-b bg-card">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <Button variant="ghost" onClick={() => navigate("/dashboard")}>
@@ -200,132 +200,303 @@ const NewMatch = () => {
         </div>
       </nav>
 
-      <div className="container mx-auto px-4 py-8 max-w-2xl">
-        <Card>
-          <CardHeader>
-            <CardTitle>Record New Match</CardTitle>
-            <CardDescription>
+      {/* Progress Indicator */}
+      <div className="w-full bg-[#E9F4F1] h-2">
+        <div 
+          className="h-full transition-all duration-500 ease-out"
+          style={{ 
+            width: '50%', 
+            background: 'linear-gradient(90deg, #A9CF46 0%, #96C13F 100%)'
+          }}
+        />
+      </div>
+      <div className="container mx-auto px-4 py-2 text-center">
+        <p className="text-sm font-medium" style={{ color: '#0F2E33' }}>
+          Step 1 of 2: Record Match Details
+        </p>
+      </div>
+
+      <div className="container mx-auto px-4 py-8 max-w-[700px]">
+        <Card 
+          className="animate-fade-in shadow-lg"
+          style={{ 
+            borderRadius: '18px',
+            background: '#ffffff',
+            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.05)'
+          }}
+        >
+          <CardHeader className="text-center pb-6">
+            <CardTitle 
+              className="text-3xl font-semibold"
+              style={{ color: '#0F2E33' }}
+            >
+              Record New Match
+            </CardTitle>
+            <div 
+              className="mx-auto mt-2"
+              style={{
+                width: '60px',
+                height: '3px',
+                borderRadius: '3px',
+                background: '#A9CF46'
+              }}
+            />
+            <CardDescription 
+              className="mt-4 text-base"
+              style={{ color: '#0F2E33', opacity: 0.7 }}
+            >
               Enter the details of your doubles match
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="matchDate">Match Date</Label>
-                <Input
-                  id="matchDate"
-                  type="date"
-                  value={matchDate}
-                  onChange={(e) => setMatchDate(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="court">Court Location</Label>
-                <Select value={selectedCourt} onValueChange={setSelectedCourt} required>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select court" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {courts.map((court) => (
-                      <SelectItem key={court.id} value={court.id}>
-                        {court.name} - {court.city}, {court.state}
-                      </SelectItem>
-                    ))}
-                    <SelectItem value="other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {selectedCourt === 'other' && (
+            <form onSubmit={handleSubmit} className="space-y-8">
+              {/* Match Details Section */}
+              <div className="space-y-4 animate-fade-in" style={{ animationDelay: '100ms' }}>
                 <div className="space-y-2">
-                  <Label htmlFor="otherLocation">Location Name</Label>
+                  <Label 
+                    htmlFor="matchDate" 
+                    className="text-sm font-semibold"
+                    style={{ color: '#0F2E33' }}
+                  >
+                    Match Date
+                  </Label>
                   <Input
-                    id="otherLocation"
-                    value={otherLocation}
-                    onChange={(e) => setOtherLocation(e.target.value)}
-                    placeholder="Enter custom location name"
+                    id="matchDate"
+                    type="date"
+                    value={matchDate}
+                    onChange={(e) => setMatchDate(e.target.value)}
                     required
+                    className="transition-all duration-200"
+                    style={{
+                      background: '#F8FBF6',
+                      borderRadius: '12px',
+                      border: '1px solid #DCE8D1',
+                      padding: '10px 14px'
+                    }}
                   />
                 </div>
-              )}
 
-              <div className="space-y-4">
-                <h3 className="font-semibold text-primary">Team 1</h3>
+                <div className="space-y-2">
+                  <Label 
+                    htmlFor="court"
+                    className="text-sm font-semibold"
+                    style={{ color: '#0F2E33' }}
+                  >
+                    Court Location
+                  </Label>
+                  <Select value={selectedCourt} onValueChange={setSelectedCourt} required>
+                    <SelectTrigger
+                      className="transition-all duration-200"
+                      style={{
+                        background: '#F8FBF6',
+                        borderRadius: '12px',
+                        border: '1px solid #DCE8D1',
+                        padding: '10px 14px'
+                      }}
+                    >
+                      <SelectValue placeholder="Select court" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {courts.map((court) => (
+                        <SelectItem key={court.id} value={court.id}>
+                          {court.name} - {court.city}, {court.state}
+                        </SelectItem>
+                      ))}
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {selectedCourt === 'other' && (
+                  <div className="space-y-2 animate-fade-in">
+                    <Label 
+                      htmlFor="otherLocation"
+                      className="text-sm font-semibold"
+                      style={{ color: '#0F2E33' }}
+                    >
+                      Location Name
+                    </Label>
+                    <Input
+                      id="otherLocation"
+                      value={otherLocation}
+                      onChange={(e) => setOtherLocation(e.target.value)}
+                      placeholder="Enter custom location name"
+                      required
+                      style={{
+                        background: '#F8FBF6',
+                        borderRadius: '12px',
+                        border: '1px solid #DCE8D1',
+                        padding: '10px 14px'
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Team 1 Section */}
+              <div 
+                className="animate-fade-in"
+                style={{ 
+                  animationDelay: '200ms',
+                  border: '1px solid rgba(169, 207, 70, 0.3)',
+                  borderRadius: '12px',
+                  padding: '20px',
+                  background: '#ffffff'
+                }}
+              >
+                <h3 
+                  className="font-semibold text-lg mb-4 flex items-center gap-2"
+                  style={{ color: '#A9CF46' }}
+                >
+                  <span className="text-xl">🎾</span> Team 1
+                </h3>
                 
-                <div className="space-y-2">
-                  <Label>Player 1 (You)</Label>
-                  <PlayerCombobox
-                    players={players}
-                    value={team1Player1}
-                    onValueChange={setTeam1Player1}
-                    placeholder="You"
-                    disabled={true}
-                  />
-                </div>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold" style={{ color: '#0F2E33' }}>
+                      Player 1 (You)
+                    </Label>
+                    <PlayerCombobox
+                      players={players}
+                      value={team1Player1}
+                      onValueChange={setTeam1Player1}
+                      placeholder="You"
+                      disabled={true}
+                    />
+                  </div>
 
-                <div className="space-y-2">
-                  <Label>Player 2</Label>
-                  <PlayerCombobox
-                    players={players}
-                    value={team1Player2}
-                    onValueChange={setTeam1Player2}
-                    placeholder="Search player..."
-                  />
-                </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold" style={{ color: '#0F2E33' }}>
+                      Player 2
+                    </Label>
+                    <PlayerCombobox
+                      players={players}
+                      value={team1Player2}
+                      onValueChange={setTeam1Player2}
+                      placeholder="Search player..."
+                    />
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="team1Score">Team 1 Score</Label>
-                  <Input
-                    id="team1Score"
-                    type="number"
-                    min="0"
-                    value={team1Score}
-                    onChange={(e) => setTeam1Score(e.target.value)}
-                    required
-                  />
+                  <div className="space-y-2">
+                    <Label 
+                      htmlFor="team1Score"
+                      className="text-sm font-semibold"
+                      style={{ color: '#0F2E33' }}
+                    >
+                      Team 1 Score
+                    </Label>
+                    <Input
+                      id="team1Score"
+                      type="number"
+                      min="0"
+                      value={team1Score}
+                      onChange={(e) => setTeam1Score(e.target.value)}
+                      required
+                      className="text-2xl font-bold text-center transition-all duration-200"
+                      style={{
+                        background: '#F8FBF6',
+                        borderRadius: '12px',
+                        border: '1px solid #DCE8D1',
+                        padding: '12px',
+                        color: '#A9CF46'
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <h3 className="font-semibold text-secondary">Team 2</h3>
+              {/* Team 2 Section */}
+              <div 
+                className="animate-fade-in"
+                style={{ 
+                  animationDelay: '300ms',
+                  border: '1px solid rgba(169, 207, 70, 0.3)',
+                  borderRadius: '12px',
+                  padding: '20px',
+                  background: '#ffffff'
+                }}
+              >
+                <h3 
+                  className="font-semibold text-lg mb-4 flex items-center gap-2"
+                  style={{ color: '#96C13F' }}
+                >
+                  <span className="text-xl">🏓</span> Team 2
+                </h3>
                 
-                <div className="space-y-2">
-                  <Label>Player 1</Label>
-                  <PlayerCombobox
-                    players={players}
-                    value={team2Player1}
-                    onValueChange={setTeam2Player1}
-                    placeholder="Search player..."
-                  />
-                </div>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold" style={{ color: '#0F2E33' }}>
+                      Player 1
+                    </Label>
+                    <PlayerCombobox
+                      players={players}
+                      value={team2Player1}
+                      onValueChange={setTeam2Player1}
+                      placeholder="Search player..."
+                    />
+                  </div>
 
-                <div className="space-y-2">
-                  <Label>Player 2</Label>
-                  <PlayerCombobox
-                    players={players}
-                    value={team2Player2}
-                    onValueChange={setTeam2Player2}
-                    placeholder="Search player..."
-                  />
-                </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold" style={{ color: '#0F2E33' }}>
+                      Player 2
+                    </Label>
+                    <PlayerCombobox
+                      players={players}
+                      value={team2Player2}
+                      onValueChange={setTeam2Player2}
+                      placeholder="Search player..."
+                    />
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="team2Score">Team 2 Score</Label>
-                  <Input
-                    id="team2Score"
-                    type="number"
-                    min="0"
-                    value={team2Score}
-                    onChange={(e) => setTeam2Score(e.target.value)}
-                    required
-                  />
+                  <div className="space-y-2">
+                    <Label 
+                      htmlFor="team2Score"
+                      className="text-sm font-semibold"
+                      style={{ color: '#0F2E33' }}
+                    >
+                      Team 2 Score
+                    </Label>
+                    <Input
+                      id="team2Score"
+                      type="number"
+                      min="0"
+                      value={team2Score}
+                      onChange={(e) => setTeam2Score(e.target.value)}
+                      required
+                      className="text-2xl font-bold text-center transition-all duration-200"
+                      style={{
+                        background: '#F8FBF6',
+                        borderRadius: '12px',
+                        border: '1px solid #DCE8D1',
+                        padding: '12px',
+                        color: '#96C13F'
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
 
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "Next: Review Match" : "Next: Review Match"}
+              {/* Submit Button */}
+              <Button 
+                type="submit" 
+                className="w-full font-semibold text-base py-6 transition-all duration-200 hover-scale sticky bottom-4 z-10"
+                disabled={loading}
+                style={{
+                  background: 'linear-gradient(90deg, #A9CF46 0%, #96C13F 100%)',
+                  borderRadius: '10px',
+                  color: '#0F2E33',
+                  boxShadow: '0 2px 8px rgba(169, 207, 70, 0.2)'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'scale(1.02)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(169, 207, 70, 0.3)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)';
+                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(169, 207, 70, 0.2)';
+                }}
+              >
+                {loading ? "Processing..." : "Next: Review & Confirm Match →"}
               </Button>
             </form>
           </CardContent>
