@@ -153,7 +153,7 @@ export function JoinableRoundRobinEvents({ courtLocation, userId }: JoinableRoun
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold flex items-center gap-2" style={{ color: "#0E4C58" }}>
           <Trophy className="w-6 h-6" style={{ color: "#A9DC3D" }} />
-          Upcoming Round Robin Events
+          Upcoming Events
         </h2>
         <Button
           variant="outline"
