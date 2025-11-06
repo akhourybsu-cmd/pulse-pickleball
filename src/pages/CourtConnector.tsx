@@ -488,7 +488,14 @@ export default function CourtConnector() {
                         ? 'border-primary shadow-[0_4px_16px_rgba(169,220,61,0.35),0_0_24px_rgba(169,220,61,0.25)] hover:shadow-[0_6px_20px_rgba(169,220,61,0.45),0_0_32px_rgba(169,220,61,0.35)] bg-gradient-to-br from-card to-primary/5' 
                         : 'border-border hover:shadow-[0_2px_6px_rgba(0,0,0,0.05),0_4px_12px_rgba(169,220,61,0.15)] bg-card'
                     }`}
-                    onClick={() => navigate(`/court/board/${court.id}`)}
+                    onClick={() => {
+                      // Special routing for Mason Field
+                      if (court.id === '4a5d9fb8-981b-42f1-9504-595cb8f22fca') {
+                        navigate('/masonfield');
+                      } else {
+                        navigate(`/court/board/${court.id}`);
+                      }
+                    }}
                   >
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between mb-3">
