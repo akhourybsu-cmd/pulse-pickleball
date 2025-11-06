@@ -860,30 +860,30 @@ export default function RoundRobinDetail() {
     if (!player) return;
 
     try {
-      // Mark player inactive
-      const { error: updateError } = await supabase
+      // Delete player record completely so they can rejoin
+      const { error: deleteError } = await supabase
         .from("round_robin_players")
-        .update({ active: false })
+        .delete()
         .eq("id", playerEventId);
 
-      if (updateError) throw updateError;
+      if (deleteError) throw deleteError;
 
       // Audit entry
       await supabase.from("round_robin_audit").insert({
         event_id: event.id,
         editor_id: userId,
-        change_type: "player_inactive",
+        change_type: "player_removed",
         changes: { player_id: player.player_id },
-        reason: "Player marked inactive (early exit)",
+        reason: "Player removed (can rejoin later)",
       });
 
       // Regenerate from current round
       const fromRound = event.current_round || 1;
       await regenerateScheduleFromRound(fromRound);
 
-      toast.success("Player marked inactive and schedule regenerated");
+      toast.success("Player removed and schedule regenerated - they can rejoin later");
     } catch (error: any) {
-      toast.error("Failed to mark player inactive");
+      toast.error("Failed to remove player");
       console.error(error);
       throw error;
     }
