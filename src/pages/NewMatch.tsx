@@ -6,12 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { ArrowLeft } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PlayerCombobox } from "@/components/PlayerCombobox";
 import { z } from "zod";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import MatchConfirmationDialog from "@/components/MatchConfirmationDialog";
+import { PageHeader } from "@/components/PageHeader";
 
 const matchSchema = z.object({
   matchDate: z.string().refine((date) => {
@@ -190,15 +189,7 @@ const NewMatch = () => {
 
   return (
     <div className="min-h-screen" style={{ background: 'linear-gradient(180deg, #F9FBF8 0%, #F3F9F6 100%)' }}>
-      <nav className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Button variant="ghost" onClick={() => navigate("/dashboard")}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Dashboard
-          </Button>
-          <ThemeToggle />
-        </div>
-      </nav>
+      <PageHeader userId={currentUserId} />
 
       {/* Progress Indicator */}
       <div className="w-full bg-[#E9F4F1] h-2">
@@ -345,10 +336,10 @@ const NewMatch = () => {
                 }}
               >
                 <h3 
-                  className="font-semibold text-lg mb-4 flex items-center gap-2"
+                  className="font-semibold text-lg mb-4"
                   style={{ color: '#A9CF46' }}
                 >
-                  <span className="text-xl">🎾</span> Team 1
+                  Team 1
                 </h3>
                 
                 <div className="space-y-4">
@@ -417,10 +408,10 @@ const NewMatch = () => {
                 }}
               >
                 <h3 
-                  className="font-semibold text-lg mb-4 flex items-center gap-2"
+                  className="font-semibold text-lg mb-4"
                   style={{ color: '#96C13F' }}
                 >
-                  <span className="text-xl">🏓</span> Team 2
+                  Team 2
                 </h3>
                 
                 <div className="space-y-4">
