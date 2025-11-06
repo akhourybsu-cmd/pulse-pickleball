@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,6 +43,7 @@ const NewMatch = () => {
   const [players, setPlayers] = useState<Profile[]>([]);
   const [courts, setCourts] = useState<Array<{ id: string; name: string; city: string; state: string }>>([]);
   const [currentUserId, setCurrentUserId] = useState<string>("");
+  const [currentUserName, setCurrentUserName] = useState<string>("");
   
   const [team1Player1, setTeam1Player1] = useState("");
   const [team1Player2, setTeam1Player2] = useState("");
@@ -55,6 +56,7 @@ const NewMatch = () => {
   const [matchDate, setMatchDate] = useState(new Date().toISOString().split("T")[0]);
   
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -72,7 +74,24 @@ const NewMatch = () => {
 
       if (profilesData) {
         setPlayers(profilesData);
-        setTeam1Player1(user.id);
+        const currentUser = profilesData.find(p => p.id === user.id);
+        setCurrentUserName(currentUser?.display_name || currentUser?.full_name || "You");
+        
+        // Restore state if coming from confirmation edit
+        if (location.state) {
+          const state = location.state as any;
+          setTeam1Player1(state.team1Player1 || user.id);
+          setTeam1Player2(state.team1Player2 || "");
+          setTeam2Player1(state.team2Player1 || "");
+          setTeam2Player2(state.team2Player2 || "");
+          setTeam1Score(state.team1Score || "");
+          setTeam2Score(state.team2Score || "");
+          setSelectedCourt(state.selectedCourt || "");
+          setOtherLocation(state.otherLocation || "");
+          setMatchDate(state.matchDate || new Date().toISOString().split("T")[0]);
+        } else {
+          setTeam1Player1(user.id);
+        }
       }
 
       // Fetch courts
@@ -84,25 +103,27 @@ const NewMatch = () => {
       if (courtsData) {
         setCourts(courtsData);
         
-        // Get user's home court
-        const { data: profileData } = await supabase
-          .from("profiles")
-          .select("home_court_id")
-          .eq("id", user.id)
-          .single();
-        
-        if (courtsData.length > 0) {
-          if (profileData?.home_court_id && courtsData.some(c => c.id === profileData.home_court_id)) {
-            setSelectedCourt(profileData.home_court_id);
-          } else {
-            setSelectedCourt(courtsData[0].id);
+        // Only set default court if not restoring state
+        if (!location.state) {
+          const { data: profileData } = await supabase
+            .from("profiles")
+            .select("home_court_id")
+            .eq("id", user.id)
+            .single();
+          
+          if (courtsData.length > 0) {
+            if (profileData?.home_court_id && courtsData.some(c => c.id === profileData.home_court_id)) {
+              setSelectedCourt(profileData.home_court_id);
+            } else {
+              setSelectedCourt(courtsData[0].id);
+            }
           }
         }
       }
     };
 
     fetchData();
-  }, [navigate]);
+  }, [navigate, location.state]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -136,63 +157,43 @@ const NewMatch = () => {
         return;
       }
 
-      const { data: matchData, error: matchError } = await supabase
-        .from("matches")
-        .insert({
-          match_date: matchDate,
-          team1_score: score1,
-          team2_score: score2,
-          created_by: currentUserId,
-          court_id: selectedCourt === 'other' ? null : selectedCourt,
-          other_location: selectedCourt === 'other' ? otherLocation : null,
-          status: 'approved',
-        })
-        .select()
-        .single();
+      // Get player names
+      const team1Player1Name = players.find(p => p.id === team1Player1)?.display_name || 
+                              players.find(p => p.id === team1Player1)?.full_name || "";
+      const team1Player2Name = players.find(p => p.id === team1Player2)?.display_name || 
+                              players.find(p => p.id === team1Player2)?.full_name || "";
+      const team2Player1Name = players.find(p => p.id === team2Player1)?.display_name || 
+                              players.find(p => p.id === team2Player1)?.full_name || "";
+      const team2Player2Name = players.find(p => p.id === team2Player2)?.display_name || 
+                              players.find(p => p.id === team2Player2)?.full_name || "";
 
-      if (matchError) throw matchError;
+      const courtName = courts.find(c => c.id === selectedCourt)
+        ? `${courts.find(c => c.id === selectedCourt)?.name} - ${courts.find(c => c.id === selectedCourt)?.city}, ${courts.find(c => c.id === selectedCourt)?.state}`
+        : "";
 
-      // Create minimal participant records - ratings will be calculated by recompute function
-      const participants = [
-        {
-          match_id: matchData.id,
-          player_id: team1Player1,
-          team: 1,
-        },
-        {
-          match_id: matchData.id,
-          player_id: team1Player2,
-          team: 1,
-        },
-        {
-          match_id: matchData.id,
-          player_id: team2Player1,
-          team: 2,
-        },
-        {
-          match_id: matchData.id,
-          player_id: team2Player2,
-          team: 2,
-        },
-      ];
-
-      const { error: participantsError } = await supabase
-        .from("match_participants")
-        .insert(participants);
-
-      if (participantsError) throw participantsError;
-
-      // Get the week_start for this match and trigger recomputation from that week
-      // Recalculate all ratings (handles new match and any backfill)
-      await supabase.rpc('recalculate_all_ratings');
-
-      toast.success("Match recorded successfully!");
-      navigate("/dashboard");
+      // Navigate to confirmation screen with all data
+      navigate("/match-confirmation", {
+        state: {
+          team1Player1,
+          team1Player1Name,
+          team1Player2,
+          team1Player2Name,
+          team2Player1,
+          team2Player1Name,
+          team2Player2,
+          team2Player2Name,
+          team1Score,
+          team2Score,
+          matchDate,
+          selectedCourt,
+          courtName,
+          otherLocation,
+          currentUserId,
+          currentUserName,
+        }
+      });
     } catch (error: any) {
-      const userMessage = error.message?.includes('unique') || error.message?.includes('duplicate')
-        ? "A match with this information already exists"
-        : "Failed to record match. Please try again.";
-      toast.error(userMessage);
+      toast.error("Failed to proceed. Please try again.");
       console.error(error);
     } finally {
       setLoading(false);
@@ -336,7 +337,7 @@ const NewMatch = () => {
               </div>
 
               <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "Recording..." : "Record Match"}
+                {loading ? "Next: Review Match" : "Next: Review Match"}
               </Button>
             </form>
           </CardContent>
