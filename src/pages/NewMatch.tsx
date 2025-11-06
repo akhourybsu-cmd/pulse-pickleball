@@ -88,7 +88,9 @@ const NewMatch = () => {
           setTeam2Score(state.team2Score || "");
           setSelectedCourt(state.selectedCourt || "");
           setOtherLocation(state.otherLocation || "");
-          setMatchDate(state.matchDate || new Date().toISOString().split("T")[0]);
+          if (state.matchDate) {
+            setMatchDate(state.matchDate);
+          }
         } else {
           setTeam1Player1(user.id);
         }
