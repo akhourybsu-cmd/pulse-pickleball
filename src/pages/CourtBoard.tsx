@@ -12,13 +12,14 @@ import { CourtCheckIn } from "@/components/court/CourtCheckIn";
 import { CourtFeed } from "@/components/court/feed/CourtFeed";
 import { ActivateSessionDialog } from "@/components/court/ActivateSessionDialog";
 import { useToast } from "@/hooks/use-toast";
-import { MapPin, MessageSquare, Activity, LogOut, User as UserIcon, ExternalLink, Calendar, Play, Users } from "lucide-react";
+import { MapPin, MessageSquare, Activity, LogOut, User as UserIcon, ExternalLink, Calendar, Play, Users, HelpCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import logo from "@/assets/pulse-logo-new.png";
 import pickleballCitiLogo from "@/assets/pickleball-citi-logo.png";
 import { JoinableCalendarEvents } from "@/components/citi-events/JoinableCalendarEvents";
 import { JoinableRoundRobinEvents } from "@/components/round-robin/JoinableRoundRobinEvents";
 import VenueInfoCard from "@/components/VenueInfoCard";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 interface Court {
   id: string;
@@ -39,8 +40,10 @@ export default function CourtBoard() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [activateDialogOpen, setActivateDialogOpen] = useState(false);
+  const [sessionQueueHelpOpen, setSessionQueueHelpOpen] = useState(false);
 
   const PICKLEBALL_CITI_ID = "836003fb-fbd7-429c-8973-67ac6766a511";
+  const CENTERLINE_PICKLEBALL_ID = "d8f3c9e1-7b4a-4d2e-9f8c-1a2b3c4d5e6f"; // Replace with actual ID if different
 
   useEffect(() => {
     checkUser();
@@ -488,7 +491,7 @@ export default function CourtBoard() {
           )}
           
           {/* Session Queue Button */}
-          {currentUserId && (
+          {currentUserId && courtId !== PICKLEBALL_CITI_ID && courtId !== CENTERLINE_PICKLEBALL_ID && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -502,7 +505,16 @@ export default function CourtBoard() {
                         <Users className="w-6 h-6 text-primary" />
                       </div>
                       <div>
-                        <h3 className="font-semibold text-lg">Session Queue</h3>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-semibold text-lg">Session Queue</h3>
+                          <button
+                            onClick={() => setSessionQueueHelpOpen(true)}
+                            className="text-muted-foreground hover:text-foreground transition-colors"
+                            aria-label="Learn about Session Queue"
+                          >
+                            <HelpCircle className="w-5 h-5" />
+                          </button>
+                        </div>
                         <p className="text-sm text-muted-foreground">
                           {activeSessionId ? "Join the active session" : "Start a new session"}
                         </p>
@@ -575,6 +587,33 @@ export default function CourtBoard() {
           }}
         />
       )}
+
+      {/* Session Queue Help Dialog */}
+      <Dialog open={sessionQueueHelpOpen} onOpenChange={setSessionQueueHelpOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>What is Session Queue?</DialogTitle>
+            <DialogDescription className="pt-4 space-y-3 text-base">
+              <p>
+                <strong>Session Queue</strong> is a real-time court management system that helps organize pickleball play sessions at your venue.
+              </p>
+              <p>
+                <strong>How it works:</strong>
+              </p>
+              <ul className="list-disc pl-5 space-y-2">
+                <li><strong>Check In:</strong> Players check in when they arrive at the court</li>
+                <li><strong>Join a Box:</strong> Players select which court (box) they want to play on</li>
+                <li><strong>Queue Management:</strong> The system automatically tracks who's waiting and assigns players to courts</li>
+                <li><strong>Match Tracking:</strong> Once you're assigned to a match, you can enter scores and track your games</li>
+                <li><strong>Real-time Updates:</strong> Everyone sees live updates on court availability and queue positions</li>
+              </ul>
+              <p className="pt-2">
+                Perfect for open play sessions where you want organized, fair rotation across multiple courts!
+              </p>
+            </DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
