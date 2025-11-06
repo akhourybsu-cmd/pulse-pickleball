@@ -141,6 +141,7 @@ export default function CreateRoundRobin() {
       toast.error("Women's format requires at least 4 female players");
       return;
     }
+    }
 
     setLoading(true);
     try {
