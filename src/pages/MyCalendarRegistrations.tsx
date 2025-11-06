@@ -287,12 +287,12 @@ export default function MyCalendarRegistrations() {
                           >
                             View Details
                           </Button>
-                          {!eventPassed && reg.registration_status !== 'confirmed' && (
+                          {!eventPassed && event.status === 'draft' && (
                             <Button
                               variant="destructive"
                               onClick={() => handleCancelRegistration(reg.id, 'round_robin')}
                             >
-                              Cancel Registration
+                              Leave Event
                             </Button>
                           )}
                         </div>
