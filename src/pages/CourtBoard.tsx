@@ -17,6 +17,7 @@ import { motion } from "framer-motion";
 import logo from "@/assets/pulse-logo-new.png";
 import pickleballCitiLogo from "@/assets/pickleball-citi-logo.png";
 import { JoinableCalendarEvents } from "@/components/citi-events/JoinableCalendarEvents";
+import { JoinableRoundRobinEvents } from "@/components/round-robin/JoinableRoundRobinEvents";
 import VenueInfoCard from "@/components/VenueInfoCard";
 
 interface Court {
@@ -419,6 +420,18 @@ export default function CourtBoard() {
         {courtId === PICKLEBALL_CITI_ID && (
           <div style={{ borderTop: '1px solid rgba(14, 76, 88, 0.15)', paddingTop: '1.5rem' }}>
             <JoinableCalendarEvents courtId={courtId} />
+          </div>
+        )}
+
+        {courtId === PICKLEBALL_CITI_ID && (
+          <div style={{ borderTop: '1px solid rgba(14, 76, 88, 0.15)', paddingTop: '1.5rem', marginTop: '1.5rem' }}>
+            <JoinableRoundRobinEvents courtLocation={court.location || court.name} userId={currentUserId} />
+          </div>
+        )}
+
+        {courtId !== PICKLEBALL_CITI_ID && court && (
+          <div style={{ borderTop: '1px solid rgba(14, 76, 88, 0.15)', paddingTop: '1.5rem' }}>
+            <JoinableRoundRobinEvents courtLocation={court.location || court.name} userId={currentUserId} />
           </div>
         )}
 
