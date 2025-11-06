@@ -162,7 +162,7 @@ export default function MyCalendarRegistrations() {
         </div>
 
         {/* Filter Pills */}
-        <div className="flex gap-2 mb-6">
+        <div className="flex gap-2 mb-6 flex-wrap">
           <Button
             variant={filter === "upcoming" ? "default" : "outline"}
             onClick={() => setFilter("upcoming")}
@@ -178,6 +178,14 @@ export default function MyCalendarRegistrations() {
           >
             <Filter className="w-4 h-4" />
             Past
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => window.location.href = "/browse-events"}
+            className="gap-2 ml-auto"
+          >
+            <Calendar className="w-4 h-4" />
+            Browse Events
           </Button>
         </div>
 
