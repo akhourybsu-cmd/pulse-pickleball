@@ -825,14 +825,14 @@ export default function RoundRobinDetail() {
         editor_id: userId,
         change_type: "player_add",
         changes: { player_id: playerId },
-        reason: "Player added (late join)",
+        reason: "Player added by organizer",
       });
 
       // Regenerate from current round
       const fromRound = event.current_round || 1;
       await regenerateScheduleFromRound(fromRound);
 
-      toast.success("Player added and schedule regenerated");
+      toast.success("Player added - they will see this event in their events list");
     } catch (error: any) {
       toast.error("Failed to add player");
       console.error(error);
