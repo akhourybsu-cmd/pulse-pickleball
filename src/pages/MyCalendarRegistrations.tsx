@@ -181,7 +181,7 @@ export default function MyCalendarRegistrations() {
           </Button>
           <Button
             variant="outline"
-            onClick={() => window.location.href = "/browse-events"}
+            onClick={() => window.location.href = "/events/browse"}
             className="gap-2 ml-auto"
           >
             <Calendar className="w-4 h-4" />
