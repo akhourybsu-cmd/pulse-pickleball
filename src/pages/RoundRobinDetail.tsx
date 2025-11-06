@@ -1825,7 +1825,36 @@ export default function RoundRobinDetail() {
                           <div className="font-medium">
                             {player.profiles.display_name || player.profiles.full_name}
                           </div>
-                          <Badge variant="default">Active</Badge>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="default">Active</Badge>
+                            {isOrganizer && !event.voided && event.status !== 'completed' && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={async () => {
+                                  const playerName = player.profiles.display_name || player.profiles.full_name;
+                                  if (!confirm(`Remove ${playerName} from this event?`)) return;
+                                  
+                                  try {
+                                    const { error } = await supabase
+                                      .from('round_robin_players')
+                                      .update({ active: false })
+                                      .eq('id', player.id);
+                                    
+                                    if (error) throw error;
+                                    toast.success('Player removed');
+                                    fetchEventDetails();
+                                  } catch (error) {
+                                    console.error('Remove error:', error);
+                                    toast.error('Failed to remove player');
+                                  }
+                                }}
+                                title="Remove player"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </>
