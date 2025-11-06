@@ -85,7 +85,7 @@ export default function MyCalendarRegistrations() {
           event_id,
           registration_status,
           joined_at,
-          event:round_robin_events(id, name, date, location, max_players, status)
+          event:round_robin_events(id, name, date, location, max_players, status, organizer_id, registration_deadline)
         `)
         .eq("player_id", session.user.id)
         .eq("active", true);
