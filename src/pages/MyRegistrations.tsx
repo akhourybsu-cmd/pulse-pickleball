@@ -10,7 +10,7 @@ import { Calendar, MapPin, Users, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { BackToDashboard } from "@/components/BackToDashboard";
 
-interface Registration {
+interface TournamentRegistration {
   id: string;
   team_name: string;
   status: string;
@@ -34,8 +34,25 @@ interface Registration {
   } | null;
 }
 
+interface RoundRobinRegistration {
+  id: string;
+  event_id: string;
+  registration_status: string;
+  joined_at: string;
+  event: {
+    id: string;
+    name: string;
+    date: string;
+    location: string | null;
+    max_players: number;
+    status: string;
+  };
+}
+
+type Registration = (TournamentRegistration & { type: 'tournament' }) | (RoundRobinRegistration & { type: 'round_robin' });
+
 export default function MyRegistrations() {
-  const [registrations, setRegistrations] = useState<Registration[]>([]);
+  const [registrations, setRegistrations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -52,7 +69,8 @@ export default function MyRegistrations() {
         return;
       }
 
-      const { data, error } = await supabase
+      // Fetch tournament registrations
+      const { data: tournamentData, error: tournamentError } = await supabase
         .from("tournament_registrations")
         .select(`
           id,
@@ -67,8 +85,38 @@ export default function MyRegistrations() {
         .or(`captain_user_id.eq.${user.id},partner_user_id.eq.${user.id}`)
         .order("registration_date", { ascending: false });
 
-      if (error) throw error;
-      setRegistrations(data as any || []);
+      if (tournamentError) throw tournamentError;
+
+      // Fetch round robin registrations
+      const { data: roundRobinData, error: roundRobinError } = await supabase
+        .from("round_robin_players")
+        .select(`
+          id,
+          event_id,
+          registration_status,
+          joined_at,
+          event:round_robin_events(id, name, date, location, max_players, status)
+        `)
+        .eq("player_id", user.id)
+        .eq("active", true)
+        .order("joined_at", { ascending: false });
+
+      if (roundRobinError) throw roundRobinError;
+
+      // Combine and sort all registrations
+      const allRegistrations = [
+        ...(tournamentData || []).map((reg: any) => ({ ...reg, type: 'tournament' })),
+        ...(roundRobinData || []).map((reg: any) => ({ ...reg, type: 'round_robin' }))
+      ];
+
+      // Sort by date (most recent first)
+      allRegistrations.sort((a: any, b: any) => {
+        const dateA = a.type === 'tournament' ? new Date(a.registration_date) : new Date(a.joined_at);
+        const dateB = b.type === 'tournament' ? new Date(b.registration_date) : new Date(b.joined_at);
+        return dateB.getTime() - dateA.getTime();
+      });
+
+      setRegistrations(allRegistrations);
     } catch (error: any) {
       toast({
         title: "Error loading registrations",
@@ -148,9 +196,9 @@ export default function MyRegistrations() {
       <BackToDashboard />
       
       <div className="mb-8">
-        <h1 className="text-4xl font-bold mb-2">My Tournament Registrations</h1>
+        <h1 className="text-4xl font-bold mb-2">My Registrations</h1>
         <p className="text-muted-foreground">
-          View and manage your tournament registrations
+          View and manage your tournament and round robin event registrations
         </p>
       </div>
 
@@ -158,104 +206,178 @@ export default function MyRegistrations() {
         <Card>
           <CardContent className="py-12 text-center">
             <p className="text-muted-foreground mb-4">
-              You haven't registered for any tournaments yet
+              You haven't registered for any events yet
             </p>
-            <Button onClick={() => navigate("/tournaments")}>
-              Browse Tournaments
+            <Button onClick={() => navigate("/browse-events")}>
+              Browse Events
             </Button>
           </CardContent>
         </Card>
       ) : (
         <div className="grid gap-6">
-          {registrations.map((reg) => (
-            <Card key={reg.id}>
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <CardTitle className="text-xl mb-1">
-                      {reg.event.name}
-                    </CardTitle>
-                    <CardDescription>
-                      {reg.division.name} • {reg.division.format}
-                    </CardDescription>
-                  </div>
-                  <div className="flex gap-2">
-                    <Badge variant={getStatusColor(reg.status)}>
-                      {reg.status.charAt(0).toUpperCase() + reg.status.slice(1)}
-                    </Badge>
-                    <Badge variant={getPaymentStatusColor(reg.payment_status)}>
-                      {reg.payment_status.charAt(0).toUpperCase() + reg.payment_status.slice(1)}
-                    </Badge>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-4 md:grid-cols-2 mb-4">
-                  <div className="flex items-center gap-2 text-sm">
-                    <Users className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">{reg.team_name}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Users className="h-4 w-4 text-muted-foreground" />
-                    <span>
-                      Partner: {reg.partner?.display_name || "TBD"}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <span>
-                      {format(new Date(reg.event.start_date), "MMM d")} -{" "}
-                      {format(new Date(reg.event.end_date), "MMM d, yyyy")}
-                    </span>
-                  </div>
-                  {reg.event.location && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <MapPin className="h-4 w-4 text-muted-foreground" />
-                      <span>{reg.event.location}</span>
+          {registrations.map((reg: any) => {
+            if (reg.type === 'round_robin') {
+              const rrReg = reg;
+              return (
+                <Card key={rrReg.id}>
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <CardTitle className="text-xl mb-1">
+                          {rrReg.event.name}
+                        </CardTitle>
+                        <CardDescription>
+                          Round Robin Event
+                        </CardDescription>
+                      </div>
+                      <div className="flex gap-2">
+                        <Badge variant="outline">Round Robin</Badge>
+                        <Badge variant={rrReg.registration_status === 'confirmed' ? 'default' : 'secondary'}>
+                          {rrReg.registration_status.charAt(0).toUpperCase() + rrReg.registration_status.slice(1)}
+                        </Badge>
+                        {rrReg.event.status && (
+                          <Badge variant={
+                            rrReg.event.status === 'completed' ? 'outline' : 
+                            rrReg.event.status === 'live' ? 'default' : 'secondary'
+                          }>
+                            {rrReg.event.status.charAt(0).toUpperCase() + rrReg.event.status.slice(1)}
+                          </Badge>
+                        )}
+                      </div>
                     </div>
-                  )}
-                </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid gap-4 md:grid-cols-2 mb-4">
+                      <div className="flex items-center gap-2 text-sm">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        <span>
+                          {format(new Date(rrReg.event.date), "MMM d, yyyy")}
+                        </span>
+                      </div>
+                      {rrReg.event.location && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <MapPin className="h-4 w-4 text-muted-foreground" />
+                          <span>{rrReg.event.location}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2 text-sm">
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                        <span>Max Players: {rrReg.event.max_players}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        <span>
+                          Joined {format(new Date(rrReg.joined_at), "MMM d, h:mm a")}
+                        </span>
+                      </div>
+                    </div>
 
-                <div className="flex gap-2 pt-4 border-t">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigate(`/tournament/${reg.event.id}/live`)}
-                  >
-                    View Event
-                  </Button>
-                  
-                  {reg.status === "pending" && (
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="destructive" size="sm">
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Cancel
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Cancel Registration?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            This will cancel your registration for {reg.event.name}. This action cannot be undone.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Keep Registration</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => handleCancelRegistration(reg.id)}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          >
-                            Cancel Registration
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                    <div className="flex gap-2 pt-4 border-t">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => navigate(`/round-robin/${rrReg.event.id}`)}
+                      >
+                        View Event
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            } else {
+              const tournamentReg = reg;
+              return (
+                <Card key={tournamentReg.id}>
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <CardTitle className="text-xl mb-1">
+                          {tournamentReg.event.name}
+                        </CardTitle>
+                        <CardDescription>
+                          {tournamentReg.division.name} • {tournamentReg.division.format}
+                        </CardDescription>
+                      </div>
+                      <div className="flex gap-2">
+                        <Badge variant="outline">Tournament</Badge>
+                        <Badge variant={getStatusColor(tournamentReg.status)}>
+                          {tournamentReg.status.charAt(0).toUpperCase() + tournamentReg.status.slice(1)}
+                        </Badge>
+                        <Badge variant={getPaymentStatusColor(tournamentReg.payment_status)}>
+                          {tournamentReg.payment_status.charAt(0).toUpperCase() + tournamentReg.payment_status.slice(1)}
+                        </Badge>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid gap-4 md:grid-cols-2 mb-4">
+                      <div className="flex items-center gap-2 text-sm">
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium">{tournamentReg.team_name}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm">
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                        <span>
+                          Partner: {tournamentReg.partner?.display_name || "TBD"}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        <span>
+                          {format(new Date(tournamentReg.event.start_date), "MMM d")} -{" "}
+                          {format(new Date(tournamentReg.event.end_date), "MMM d, yyyy")}
+                        </span>
+                      </div>
+                      {tournamentReg.event.location && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <MapPin className="h-4 w-4 text-muted-foreground" />
+                          <span>{tournamentReg.event.location}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex gap-2 pt-4 border-t">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => navigate(`/tournament/${tournamentReg.event.id}/live`)}
+                      >
+                        View Event
+                      </Button>
+                      
+                      {tournamentReg.status === "pending" && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="destructive" size="sm">
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Cancel
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Cancel Registration?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will cancel your registration for {tournamentReg.event.name}. This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Keep Registration</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleCancelRegistration(tournamentReg.id)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Cancel Registration
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            }
+          })}
         </div>
       )}
     </div>
