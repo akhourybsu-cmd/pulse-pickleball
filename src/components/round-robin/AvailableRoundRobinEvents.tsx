@@ -34,7 +34,7 @@ export function AvailableRoundRobinEvents({ userId }: { userId: string | null })
         (data || []).map(async (event) => {
           const { data: players } = await supabase
             .from('round_robin_players')
-            .select('registration_status')
+            .select('id, registration_status')
             .eq('event_id', event.id)
             .eq('active', true);
 
