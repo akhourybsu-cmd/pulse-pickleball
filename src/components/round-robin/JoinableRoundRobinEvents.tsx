@@ -106,8 +106,12 @@ export function JoinableRoundRobinEvents({ courtLocation, userId }: JoinableRoun
 
   const handleJoinEvent = async (eventId: string, maxPlayers: number, confirmedCount: number) => {
     if (!userId) {
-      toast.error("Please sign in to join events");
-      navigate("/auth");
+      toast.error("Please sign up to join events", {
+        action: {
+          label: "Join Pulse",
+          onClick: () => navigate(`/auth?redirect=${encodeURIComponent(window.location.pathname)}`),
+        },
+      });
       return;
     }
 
