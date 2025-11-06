@@ -174,8 +174,11 @@ export default function CreateRoundRobin() {
         eventData.max_players = maxPlayers;
         eventData.is_published = isPublished;
         // Calculate rounds based on max players
-        const futureMetrics = calculateScheduleMetrics();
-        eventData.num_rounds = futureMetrics.rounds;
+        const C = parseInt(numCourts) || 0;
+        const G = parseInt(gamesPerPlayer) || 0;
+        const totalSlots = maxPlayers * G;
+        const capacity = C * 4;
+        eventData.num_rounds = Math.ceil(totalSlots / capacity);
       }
 
       const { data: event, error: eventError } = await supabase
