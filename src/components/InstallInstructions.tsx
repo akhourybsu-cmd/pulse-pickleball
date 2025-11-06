@@ -1,7 +1,59 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Smartphone, Download } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 const InstallInstructions = () => {
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isIOS, setIsIOS] = useState(false);
+  const [isAndroid, setIsAndroid] = useState(false);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    // Detect iOS
+    const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+    setIsIOS(iOS);
+
+    // Detect Android
+    const android = /Android/.test(navigator.userAgent);
+    setIsAndroid(android);
+
+    // Capture the install prompt event (Android/Chrome)
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+
+    window.addEventListener('beforeinstallprompt', handler);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handler);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) {
+      toast({
+        title: "Already Installed",
+        description: "PULSE is already installed or your browser doesn't support installation.",
+      });
+      return;
+    }
+
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    
+    if (outcome === 'accepted') {
+      toast({
+        title: "Success!",
+        description: "PULSE has been installed to your home screen.",
+      });
+    }
+    
+    setDeferredPrompt(null);
+  };
+
   return (
     <section className="py-16 px-4 bg-muted/30">
       <div className="container mx-auto max-w-4xl">
@@ -21,7 +73,7 @@ const InstallInstructions = () => {
               <CardDescription>Install on Apple devices</CardDescription>
             </CardHeader>
             <CardContent>
-              <ol className="space-y-3 text-sm">
+              <ol className="space-y-3 text-sm mb-4">
                 <li className="flex gap-2">
                   <span className="font-semibold min-w-6">1.</span>
                   <span>Open this website in <strong>Safari</strong></span>
@@ -43,6 +95,11 @@ const InstallInstructions = () => {
                   <span>The PULSE app will appear on your home screen!</span>
                 </li>
               </ol>
+              {isIOS && (
+                <div className="text-xs text-muted-foreground bg-muted/50 p-3 rounded-md">
+                  Note: iOS requires manual installation through Safari's Share menu.
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -53,7 +110,7 @@ const InstallInstructions = () => {
               <CardDescription>Install on Android devices</CardDescription>
             </CardHeader>
             <CardContent>
-              <ol className="space-y-3 text-sm">
+              <ol className="space-y-3 text-sm mb-4">
                 <li className="flex gap-2">
                   <span className="font-semibold min-w-6">1.</span>
                   <span>Open this website in <strong>Chrome</strong></span>
@@ -75,6 +132,12 @@ const InstallInstructions = () => {
                   <span>The PULSE app will appear on your home screen!</span>
                 </li>
               </ol>
+              {(isAndroid || deferredPrompt) && (
+                <Button onClick={handleInstallClick} className="w-full" size="lg">
+                  <Download className="w-4 h-4 mr-2" />
+                  Install Now
+                </Button>
+              )}
             </CardContent>
           </Card>
         </div>
