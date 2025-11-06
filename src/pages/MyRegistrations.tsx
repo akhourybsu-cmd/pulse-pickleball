@@ -119,11 +119,7 @@ export default function MyRegistrations() {
         .eq("active", true)
         .order("joined_at", { ascending: false });
 
-      if (roundRobinError) {
-        console.error("Round robin fetch error:", roundRobinError);
-        throw roundRobinError;
-      }
-      console.log("Round robin data:", roundRobinData);
+      if (roundRobinError) throw roundRobinError;
 
       // Fetch calendar event registrations
       const { data: calendarData, error: calendarError } = await supabase
@@ -138,11 +134,7 @@ export default function MyRegistrations() {
         .eq("user_id", user.id)
         .order("registered_at", { ascending: false });
 
-      if (calendarError) {
-        console.error("Calendar fetch error:", calendarError);
-        throw calendarError;
-      }
-      console.log("Calendar data:", calendarData);
+      if (calendarError) throw calendarError;
 
       // Combine and sort all registrations
       const allRegistrations = [
@@ -163,7 +155,6 @@ export default function MyRegistrations() {
       });
 
       setRegistrations(allRegistrations);
-      console.log("All registrations combined:", allRegistrations);
     } catch (error: any) {
       toast({
         title: "Error loading registrations",

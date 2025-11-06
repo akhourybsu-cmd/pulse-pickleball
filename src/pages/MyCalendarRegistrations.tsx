@@ -192,12 +192,13 @@ export default function MyCalendarRegistrations() {
                   ? "You haven't registered for any upcoming events yet."
                   : "You don't have any past event registrations."}
               </p>
-              <Button
-                className="mt-4"
-                onClick={() => window.location.href = "/events/browse"}
-              >
-                Browse Events
-              </Button>
+              <div className="flex gap-3 mt-4">
+                <Button
+                  onClick={() => window.location.href = "/browse-events"}
+                >
+                  Browse Events
+                </Button>
+              </div>
             </CardContent>
           </Card>
         ) : (

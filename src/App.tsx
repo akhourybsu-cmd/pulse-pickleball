@@ -122,7 +122,7 @@ const App = () => (
               <Route path="/tournaments" element={<Tournaments />} />
               <Route path="/tournament/:slug" element={<TournamentLanding />} />
               <Route path="/tournament/:eventId/register" element={<TournamentRegister />} />
-              <Route path="/my-registrations" element={<MyRegistrations />} />
+              <Route path="/my-registrations" element={<MyCalendarRegistrations />} />
               <Route path="/tournament/:eventId/live" element={<TournamentLiveView />} />
               <Route path="/tournament/:eventId/team/:teamId" element={<TournamentTeamView />} />
               <Route path="/tournament-admin" element={<TournamentAdmin />} />
