@@ -146,13 +146,14 @@ const SwipeToConfirm = ({
           onMouseDown={handleMouseDown}
           onTouchStart={handleTouchStart}
           className={cn(
-            "absolute left-1 top-1 bottom-1 flex items-center justify-center rounded-full cursor-grab active:cursor-grabbing transition-all duration-300",
-            isConfirmed ? "w-14 h-14 bg-white scale-100" : "w-14 bg-primary"
+            "absolute left-1 top-1 bottom-1 flex items-center justify-center rounded-full cursor-grab active:cursor-grabbing transition-all duration-100",
+            isConfirmed ? "w-14 h-14 bg-white" : "w-14 bg-primary"
           )}
           style={{
-            transform: isConfirmed 
-              ? "translateX(calc(50vw - 50% - 1rem))" 
-              : `translateX(${progress}%)`,
+            left: isConfirmed ? 'auto' : '0.25rem',
+            right: isConfirmed ? '0.25rem' : 'auto',
+            transform: isConfirmed ? 'none' : `translateX(${(progress / 100) * (containerRef.current ? containerRef.current.offsetWidth - 64 : 0)}px)`,
+            transition: isConfirmed ? 'all 0.3s ease' : 'none',
           }}
         >
           {isConfirmed ? (
