@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Calendar, MapPin, Users, Trash2 } from "lucide-react";
+import { Calendar, MapPin, Users, Trash2, Clock, DollarSign } from "lucide-react";
 import { format } from "date-fns";
 import { BackToDashboard } from "@/components/BackToDashboard";
 
@@ -46,6 +46,24 @@ interface RoundRobinRegistration {
     location: string | null;
     max_players: number;
     status: string;
+  };
+}
+
+interface CalendarEventRegistration {
+  id: string;
+  event_id: string;
+  registered_at: string;
+  status: string;
+  event: {
+    id: string;
+    title: string;
+    start_time: string;
+    end_time: string;
+    event_type: string;
+    instructor: string | null;
+    skill_level: string | null;
+    capacity: number;
+    price: number;
   };
 }
 
@@ -103,16 +121,36 @@ export default function MyRegistrations() {
 
       if (roundRobinError) throw roundRobinError;
 
+      // Fetch calendar event registrations
+      const { data: calendarData, error: calendarError } = await supabase
+        .from("calendar_event_registrations")
+        .select(`
+          id,
+          event_id,
+          registered_at,
+          status,
+          event:calendar_events(id, title, start_time, end_time, event_type, instructor, skill_level, capacity, price)
+        `)
+        .eq("user_id", user.id)
+        .order("registered_at", { ascending: false });
+
+      if (calendarError) throw calendarError;
+
       // Combine and sort all registrations
       const allRegistrations = [
         ...(tournamentData || []).map((reg: any) => ({ ...reg, type: 'tournament' })),
-        ...(roundRobinData || []).map((reg: any) => ({ ...reg, type: 'round_robin' }))
+        ...(roundRobinData || []).map((reg: any) => ({ ...reg, type: 'round_robin' })),
+        ...(calendarData || []).map((reg: any) => ({ ...reg, type: 'calendar' }))
       ];
 
       // Sort by date (most recent first)
       allRegistrations.sort((a: any, b: any) => {
-        const dateA = a.type === 'tournament' ? new Date(a.registration_date) : new Date(a.joined_at);
-        const dateB = b.type === 'tournament' ? new Date(b.registration_date) : new Date(b.joined_at);
+        const dateA = a.type === 'tournament' ? new Date(a.registration_date) : 
+                      a.type === 'round_robin' ? new Date(a.joined_at) :
+                      new Date(a.registered_at);
+        const dateB = b.type === 'tournament' ? new Date(b.registration_date) : 
+                      b.type === 'round_robin' ? new Date(b.joined_at) :
+                      new Date(b.registered_at);
         return dateB.getTime() - dateA.getTime();
       });
 
@@ -198,7 +236,7 @@ export default function MyRegistrations() {
       <div className="mb-8">
         <h1 className="text-4xl font-bold mb-2">My Registrations</h1>
         <p className="text-muted-foreground">
-          View and manage your tournament and round robin event registrations
+          View and manage all your event registrations (tournaments, round robins, lessons, open play, etc.)
         </p>
       </div>
 
@@ -279,6 +317,88 @@ export default function MyRegistrations() {
                         onClick={() => navigate(`/round-robin/${rrReg.event.id}`)}
                       >
                         View Event
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            } else if (reg.type === 'calendar') {
+              const calReg = reg;
+              const EVENT_TYPE_LABELS: Record<string, string> = {
+                'open_play': 'Open Play',
+                'lesson': 'Lesson',
+                'private': 'Private Event',
+                'league': 'League',
+                'tournament': 'Tournament'
+              };
+              
+              return (
+                <Card key={calReg.id}>
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <CardTitle className="text-xl mb-1">
+                          {calReg.event.title}
+                        </CardTitle>
+                        <CardDescription>
+                          {EVENT_TYPE_LABELS[calReg.event.event_type] || calReg.event.event_type}
+                        </CardDescription>
+                      </div>
+                      <div className="flex gap-2">
+                        <Badge variant="outline">Calendar Event</Badge>
+                        <Badge variant={calReg.status === 'confirmed' ? 'default' : 'secondary'}>
+                          {calReg.status.charAt(0).toUpperCase() + calReg.status.slice(1)}
+                        </Badge>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid gap-4 md:grid-cols-2 mb-4">
+                      <div className="flex items-center gap-2 text-sm">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        <span>
+                          {format(new Date(calReg.event.start_time), "MMM d, yyyy")}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm">
+                        <Clock className="h-4 w-4 text-muted-foreground" />
+                        <span>
+                          {format(new Date(calReg.event.start_time), "h:mm a")} - {format(new Date(calReg.event.end_time), "h:mm a")}
+                        </span>
+                      </div>
+                      {calReg.event.instructor && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <Users className="h-4 w-4 text-muted-foreground" />
+                          <span>Instructor: {calReg.event.instructor}</span>
+                        </div>
+                      )}
+                      {calReg.event.skill_level && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <Users className="h-4 w-4 text-muted-foreground" />
+                          <span>Skill Level: {calReg.event.skill_level}</span>
+                        </div>
+                      )}
+                      {calReg.event.price > 0 && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <DollarSign className="h-4 w-4 text-muted-foreground" />
+                          <span>${calReg.event.price}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2 text-sm">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        <span>
+                          Registered {format(new Date(calReg.registered_at), "MMM d, h:mm a")}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 pt-4 border-t">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => navigate(`/reservations`)}
+                      >
+                        View Calendar
                       </Button>
                     </div>
                   </CardContent>
