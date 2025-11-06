@@ -11,7 +11,7 @@ import Dashboard from "./pages/Dashboard";
 import EditProfile from "./pages/EditProfile";
 import ViewProfile from "./pages/ViewProfile";
 import NewMatch from "./pages/NewMatch";
-import MatchConfirmation from "./pages/MatchConfirmation";
+
 import PendingMatches from "./pages/PendingMatches";
 import MatchHistory from "./pages/MatchHistory";
 import CourtHistory from "./pages/CourtHistory";
@@ -80,7 +80,7 @@ const App = () => (
               <Route path="/profile/edit" element={<EditProfile />} />
               <Route path="/profile/:userId" element={<ViewProfile />} />
               <Route path="/match/new" element={<NewMatch />} />
-              <Route path="/match-confirmation" element={<MatchConfirmation />} />
+              
               <Route path="/match/pending" element={<PendingMatches />} />
               <Route path="/match/history" element={<MatchHistory />} />
               <Route path="/court/history" element={<CourtHistory />} />

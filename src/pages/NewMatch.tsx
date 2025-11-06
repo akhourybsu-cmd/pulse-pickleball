@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { PlayerCombobox } from "@/components/PlayerCombobox";
 import { z } from "zod";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import MatchConfirmationDialog from "@/components/MatchConfirmationDialog";
 
 const matchSchema = z.object({
   matchDate: z.string().refine((date) => {
@@ -44,6 +45,8 @@ const NewMatch = () => {
   const [courts, setCourts] = useState<Array<{ id: string; name: string; city: string; state: string }>>([]);
   const [currentUserId, setCurrentUserId] = useState<string>("");
   const [currentUserName, setCurrentUserName] = useState<string>("");
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [matchData, setMatchData] = useState<any>(null);
   
   const [team1Player1, setTeam1Player1] = useState("");
   const [team1Player2, setTeam1Player2] = useState("");
@@ -56,7 +59,6 @@ const NewMatch = () => {
   const [matchDate, setMatchDate] = useState(new Date().toISOString().split("T")[0]);
   
   const navigate = useNavigate();
-  const location = useLocation();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -76,24 +78,7 @@ const NewMatch = () => {
         setPlayers(profilesData);
         const currentUser = profilesData.find(p => p.id === user.id);
         setCurrentUserName(currentUser?.display_name || currentUser?.full_name || "You");
-        
-        // Restore state if coming from confirmation edit
-        if (location.state) {
-          const state = location.state as any;
-          setTeam1Player1(state.team1Player1 || user.id);
-          setTeam1Player2(state.team1Player2 || "");
-          setTeam2Player1(state.team2Player1 || "");
-          setTeam2Player2(state.team2Player2 || "");
-          setTeam1Score(state.team1Score || "");
-          setTeam2Score(state.team2Score || "");
-          setSelectedCourt(state.selectedCourt || "");
-          setOtherLocation(state.otherLocation || "");
-          if (state.matchDate) {
-            setMatchDate(state.matchDate);
-          }
-        } else {
-          setTeam1Player1(user.id);
-        }
+        setTeam1Player1(user.id);
       }
 
       // Fetch courts
@@ -105,27 +90,24 @@ const NewMatch = () => {
       if (courtsData) {
         setCourts(courtsData);
         
-        // Only set default court if not restoring state
-        if (!location.state) {
-          const { data: profileData } = await supabase
-            .from("profiles")
-            .select("home_court_id")
-            .eq("id", user.id)
-            .single();
-          
-          if (courtsData.length > 0) {
-            if (profileData?.home_court_id && courtsData.some(c => c.id === profileData.home_court_id)) {
-              setSelectedCourt(profileData.home_court_id);
-            } else {
-              setSelectedCourt(courtsData[0].id);
-            }
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("home_court_id")
+          .eq("id", user.id)
+          .single();
+        
+        if (courtsData.length > 0) {
+          if (profileData?.home_court_id && courtsData.some(c => c.id === profileData.home_court_id)) {
+            setSelectedCourt(profileData.home_court_id);
+          } else {
+            setSelectedCourt(courtsData[0].id);
           }
         }
       }
     };
 
     fetchData();
-  }, [navigate, location.state]);
+  }, [navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -173,33 +155,37 @@ const NewMatch = () => {
         ? `${courts.find(c => c.id === selectedCourt)?.name} - ${courts.find(c => c.id === selectedCourt)?.city}, ${courts.find(c => c.id === selectedCourt)?.state}`
         : "";
 
-      // Navigate to confirmation screen with all data
-      navigate("/match-confirmation", {
-        state: {
-          team1Player1,
-          team1Player1Name,
-          team1Player2,
-          team1Player2Name,
-          team2Player1,
-          team2Player1Name,
-          team2Player2,
-          team2Player2Name,
-          team1Score,
-          team2Score,
-          matchDate,
-          selectedCourt,
-          courtName,
-          otherLocation,
-          currentUserId,
-          currentUserName,
-        }
+      // Set match data and show confirmation dialog
+      setMatchData({
+        team1Player1,
+        team1Player1Name,
+        team1Player2,
+        team1Player2Name,
+        team2Player1,
+        team2Player1Name,
+        team2Player2,
+        team2Player2Name,
+        team1Score,
+        team2Score,
+        matchDate,
+        selectedCourt,
+        courtName,
+        otherLocation,
+        currentUserId,
+        currentUserName,
       });
+      setShowConfirmation(true);
     } catch (error: any) {
       toast.error("Failed to proceed. Please try again.");
       console.error(error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleConfirmationSuccess = () => {
+    setShowConfirmation(false);
+    navigate("/dashboard");
   };
 
   return (
@@ -345,6 +331,13 @@ const NewMatch = () => {
           </CardContent>
         </Card>
       </div>
+
+      <MatchConfirmationDialog
+        open={showConfirmation}
+        onOpenChange={setShowConfirmation}
+        matchData={matchData}
+        onSuccess={handleConfirmationSuccess}
+      />
     </div>
   );
 };
