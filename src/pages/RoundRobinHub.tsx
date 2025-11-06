@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Calendar, Users, Trophy, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { BackToDashboard } from "@/components/BackToDashboard";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AvailableRoundRobinEvents } from "@/components/round-robin/AvailableRoundRobinEvents";
 import logo from "@/assets/pulse-logo-new.png";
 import { motion } from "framer-motion";
 
@@ -27,7 +29,7 @@ export default function RoundRobinHub() {
   const [participatingEvents, setParticipatingEvents] = useState<RoundRobinEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"my" | "participating">("my");
+  const [activeTab, setActiveTab] = useState<"my" | "participating" | "available">("my");
 
   useEffect(() => {
     fetchEvents();
@@ -190,83 +192,106 @@ export default function RoundRobinHub() {
         </motion.div>
 
         {/* Tab Switcher */}
-        <motion.div 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.1 }}
-          className="flex justify-center"
-        >
-          <div className="inline-flex items-center bg-muted/50 rounded-full p-1.5 gap-1">
-            <button
-              onClick={() => setActiveTab("my")}
-              className={`px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-200 ${
-                activeTab === "my"
-                  ? "bg-primary text-primary-foreground shadow-md"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              My Events ({myEvents.length})
-            </button>
-            <button
-              onClick={() => setActiveTab("participating")}
-              className={`px-6 py-2.5 rounded-full text-sm font-medium transition-all duration-200 ${
-                activeTab === "participating"
-                  ? "bg-primary text-primary-foreground shadow-md"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Participating ({participatingEvents.length})
-            </button>
+        <Tabs value={activeTab} onValueChange={(v: any) => setActiveTab(v)}>
+          <div className="flex justify-center">
+            <TabsList className="inline-flex items-center bg-muted/50 rounded-full p-1.5 gap-1">
+              <TabsTrigger value="my" className="rounded-full">
+                My Events ({myEvents.length})
+              </TabsTrigger>
+              <TabsTrigger value="participating" className="rounded-full">
+                Participating ({participatingEvents.length})
+              </TabsTrigger>
+              <TabsTrigger value="available" className="rounded-full">
+                Browse Events
+              </TabsTrigger>
+            </TabsList>
           </div>
-        </motion.div>
 
-        {/* Content Area */}
-        <motion.div
-          key={activeTab}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          {currentEvents.length === 0 ? (
-            <div className="flex justify-center py-12">
-              <Card className="max-w-[520px] w-full bg-white rounded-xl shadow-sm border-slate-200">
-                <CardContent className="flex flex-col items-center text-center py-12 px-6 gap-4">
-                  <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center">
-                    {activeTab === "my" ? (
-                      <Trophy className="h-10 w-10 text-primary" />
-                    ) : (
-                      <Users className="h-10 w-10 text-primary" />
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <h3 className="text-xl font-semibold text-foreground">No events yet</h3>
-                    <p className="text-muted-foreground text-sm">
-                      {activeTab === "my" 
-                        ? "Create your first Round Robin and invite players from your court."
-                        : "You're not participating in any events yet. Check back soon!"}
-                    </p>
-                  </div>
-                  {activeTab === "my" && (
-                    <Button 
-                      onClick={() => navigate("/round-robin/create")}
-                      size="lg"
-                      className="mt-2"
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Create Your First Event
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" data-tour={activeTab === "my" ? "upcoming-events" : "past-events"}>
-              {currentEvents.map((event) => (
-                <EventCard key={event.id} event={event} isOrganizer={activeTab === "my"} />
-              ))}
-            </div>
-          )}
-        </motion.div>
+          {/* My Events */}
+          <TabsContent value="my">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              {myEvents.length === 0 ? (
+                <div className="flex justify-center py-12">
+                  <Card className="max-w-[520px] w-full bg-white rounded-xl shadow-sm border-slate-200">
+                    <CardContent className="flex flex-col items-center text-center py-12 px-6 gap-4">
+                      <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center">
+                        <Trophy className="h-10 w-10 text-primary" />
+                      </div>
+                      <div className="space-y-2">
+                        <h3 className="text-xl font-semibold text-foreground">No events yet</h3>
+                        <p className="text-muted-foreground text-sm">
+                          Create your first Round Robin and invite players from your court.
+                        </p>
+                      </div>
+                      <Button 
+                        onClick={() => navigate("/round-robin/create")}
+                        size="lg"
+                        className="mt-2"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create Your First Event
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" data-tour="upcoming-events">
+                  {myEvents.map((event) => (
+                    <EventCard key={event.id} event={event} isOrganizer={true} />
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          </TabsContent>
+
+          {/* Participating Events */}
+          <TabsContent value="participating">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              {participatingEvents.length === 0 ? (
+                <div className="flex justify-center py-12">
+                  <Card className="max-w-[520px] w-full bg-white rounded-xl shadow-sm border-slate-200">
+                    <CardContent className="flex flex-col items-center text-center py-12 px-6 gap-4">
+                      <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center">
+                        <Users className="h-10 w-10 text-primary" />
+                      </div>
+                      <div className="space-y-2">
+                        <h3 className="text-xl font-semibold text-foreground">No events yet</h3>
+                        <p className="text-muted-foreground text-sm">
+                          You're not participating in any events yet. Check back soon!
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" data-tour="past-events">
+                  {participatingEvents.map((event) => (
+                    <EventCard key={event.id} event={event} isOrganizer={false} />
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          </TabsContent>
+
+          {/* Available Events */}
+          <TabsContent value="available">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <AvailableRoundRobinEvents userId={userId} />
+            </motion.div>
+          </TabsContent>
+        </Tabs>
       </main>
 
       {/* Floating Action Button */}

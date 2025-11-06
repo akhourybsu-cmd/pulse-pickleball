@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Calendar } from "lucide-react";
 import { toast } from "sonner";
 import { MultiPlayerCombobox } from "@/components/MultiPlayerCombobox";
@@ -33,6 +34,7 @@ export default function CreateRoundRobin() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [courts, setCourts] = useState<Court[]>([]);
+  const [registrationMode, setRegistrationMode] = useState<"immediate" | "open_registration">("immediate");
   const [name, setName] = useState("");
   const [location, setLocation] = useState("");
   const [notes, setNotes] = useState("");
@@ -42,6 +44,12 @@ export default function CreateRoundRobin() {
   const [ratingEligible, setRatingEligible] = useState(true);
   const [ratingType, setRatingType] = useState<"ladder" | "league" | "playoffs" | "casual">("league");
   const [format, setFormat] = useState<"open" | "mixed" | "male" | "female">("open");
+  
+  // Future event fields
+  const [eventDateTime, setEventDateTime] = useState("");
+  const [registrationDeadline, setRegistrationDeadline] = useState("");
+  const [maxPlayers, setMaxPlayers] = useState(20);
+  const [isPublished, setIsPublished] = useState(false);
   
   // Get gender counts
   const getGenderCounts = () => {
@@ -96,12 +104,30 @@ export default function CreateRoundRobin() {
       return;
     }
 
-    if (selectedPlayers.length < 4) {
-      toast.error("At least 4 players are required");
-      return;
+    // Validate based on mode
+    if (registrationMode === 'immediate') {
+      if (selectedPlayers.length < 4) {
+        toast.error("At least 4 players are required");
+        return;
+      }
+    } else {
+      // Future event validation
+      if (!eventDateTime || !registrationDeadline) {
+        toast.error("Event date and registration deadline are required");
+        return;
+      }
+      if (maxPlayers < 4) {
+        toast.error("Maximum players must be at least 4");
+        return;
+      }
+      if (new Date(registrationDeadline) >= new Date(eventDateTime)) {
+        toast.error("Registration deadline must be before event date");
+        return;
+      }
     }
 
-    // Validate format requirements
+    // Validate format requirements for immediate mode
+    if (registrationMode === 'immediate') {
     const { males, females } = getGenderCounts();
     if (format === "mixed" && (males < 2 || females < 2)) {
       toast.error("Mixed format requires at least 2 male and 2 female players");
@@ -125,38 +151,62 @@ export default function CreateRoundRobin() {
       }
 
       // Create event
+      const eventData: any = {
+        name: name.trim(),
+        location: location.trim() || null,
+        notes: notes.trim() || null,
+        organizer_id: user.id,
+        num_courts: parseInt(numCourts),
+        games_per_player: parseInt(gamesPerPlayer),
+        rating_eligible: ratingEligible,
+        rating_type: ratingType,
+        format: format,
+        registration_mode: registrationMode,
+      };
+
+      if (registrationMode === 'immediate') {
+        eventData.num_rounds = metrics.rounds;
+        eventData.date = new Date().toISOString().split('T')[0];
+      } else {
+        eventData.date = new Date(eventDateTime).toISOString().split('T')[0];
+        eventData.registration_deadline = new Date(registrationDeadline).toISOString();
+        eventData.max_players = maxPlayers;
+        eventData.is_published = isPublished;
+        // Calculate rounds based on max players
+        const futureMetrics = calculateScheduleMetrics();
+        eventData.num_rounds = futureMetrics.rounds;
+      }
+
       const { data: event, error: eventError } = await supabase
         .from("round_robin_events")
-        .insert({
-          name: name.trim(),
-          location: location.trim() || null,
-          notes: notes.trim() || null,
-          organizer_id: user.id,
-          num_courts: parseInt(numCourts),
-          num_rounds: metrics.rounds,
-          games_per_player: parseInt(gamesPerPlayer),
-          rating_eligible: ratingEligible,
-          rating_type: ratingType,
-          format: format,
-        })
+        .insert(eventData)
         .select()
         .single();
 
       if (eventError) throw eventError;
 
-      // Add players
-      const playerInserts = selectedPlayers.map((p) => ({
-        event_id: event.id,
-        player_id: p.id,
-      }));
+      // Add players only for immediate mode
+      if (registrationMode === 'immediate') {
+        const playerInserts = selectedPlayers.map((p) => ({
+          event_id: event.id,
+          player_id: p.id,
+          registration_status: 'confirmed',
+        }));
 
-      const { error: playersError } = await supabase
-        .from("round_robin_players")
-        .insert(playerInserts);
+        const { error: playersError } = await supabase
+          .from("round_robin_players")
+          .insert(playerInserts);
 
-      if (playersError) throw playersError;
+        if (playersError) throw playersError;
+      }
 
-      toast.success("Event created successfully!");
+      const successMessage = registrationMode === 'immediate' 
+        ? 'Event created successfully!'
+        : isPublished 
+          ? 'Event created and published! Share the link for players to join.'
+          : 'Event created in draft mode.';
+      
+      toast.success(successMessage);
       navigate(`/round-robin/${event.id}`);
     } catch (error: any) {
       toast.error("Failed to create event");
@@ -166,7 +216,9 @@ export default function CreateRoundRobin() {
     }
   };
 
-  const canCreate = name.trim() && selectedPlayers.length >= 4 && parseInt(numCourts) >= 1 && parseInt(gamesPerPlayer) >= 1 && metrics.rounds > 0;
+  const canCreate = registrationMode === 'immediate'
+    ? name.trim() && selectedPlayers.length >= 4 && parseInt(numCourts) >= 1 && parseInt(gamesPerPlayer) >= 1 && metrics.rounds > 0
+    : name.trim() && eventDateTime && registrationDeadline && maxPlayers >= 4 && parseInt(numCourts) >= 1 && parseInt(gamesPerPlayer) >= 1;
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -200,13 +252,97 @@ export default function CreateRoundRobin() {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label>Date</Label>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Calendar className="h-4 w-4" />
-                {new Date().toLocaleDateString()} (Today, locked)
-              </div>
+            {/* Registration Mode Selector */}
+            <div className="space-y-4 p-4 bg-muted/30 rounded-lg">
+              <Label>Event Mode</Label>
+              <RadioGroup value={registrationMode} onValueChange={(v: any) => setRegistrationMode(v)}>
+                <div className="flex items-start space-x-3 space-y-0">
+                  <RadioGroupItem value="immediate" id="immediate" />
+                  <Label htmlFor="immediate" className="font-normal cursor-pointer">
+                    <div className="space-y-1">
+                      <p className="font-medium">Immediate Event</p>
+                      <p className="text-sm text-muted-foreground">
+                        Add players now and start today
+                      </p>
+                    </div>
+                  </Label>
+                </div>
+                <div className="flex items-start space-x-3 space-y-0">
+                  <RadioGroupItem value="open_registration" id="open_registration" />
+                  <Label htmlFor="open_registration" className="font-normal cursor-pointer">
+                    <div className="space-y-1">
+                      <p className="font-medium">Future Event with Registration</p>
+                      <p className="text-sm text-muted-foreground">
+                        Schedule event and let players sign up
+                      </p>
+                    </div>
+                  </Label>
+                </div>
+              </RadioGroup>
             </div>
+
+            {/* Conditional Fields Based on Mode */}
+            {registrationMode === 'open_registration' ? (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="event-datetime">Event Date & Time *</Label>
+                  <Input
+                    id="event-datetime"
+                    type="datetime-local"
+                    value={eventDateTime}
+                    onChange={(e) => setEventDateTime(e.target.value)}
+                    min={new Date().toISOString().slice(0, 16)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="reg-deadline">Registration Deadline *</Label>
+                  <Input
+                    id="reg-deadline"
+                    type="datetime-local"
+                    value={registrationDeadline}
+                    onChange={(e) => setRegistrationDeadline(e.target.value)}
+                    max={eventDateTime}
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Players can join until this time
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="max-players">Max Players *</Label>
+                  <Input
+                    id="max-players"
+                    type="number"
+                    min="4"
+                    max="100"
+                    value={maxPlayers}
+                    onChange={(e) => setMaxPlayers(parseInt(e.target.value) || 4)}
+                  />
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="publish"
+                    checked={isPublished}
+                    onCheckedChange={setIsPublished}
+                  />
+                  <Label htmlFor="publish" className="cursor-pointer">
+                    Publish event for player registration
+                  </Label>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <Label>Date</Label>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Calendar className="h-4 w-4" />
+                    {new Date().toLocaleDateString()} (Today, locked)
+                  </div>
+                </div>
+              </>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="location">Location (Optional)</Label>
@@ -260,36 +396,41 @@ export default function CreateRoundRobin() {
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label>1. How many players are playing? *</Label>
-              <MultiPlayerCombobox
-                selectedPlayers={selectedPlayers}
-                onPlayersChange={setSelectedPlayers}
-                genderFilter={format === "male" ? "male" : format === "female" ? "female" : undefined}
-              />
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">
-                  {selectedPlayers.length} {selectedPlayers.length === 1 ? "player" : "players"} selected (minimum 4)
-                </p>
-                {format === "mixed" && (() => {
-                  const { males, females } = getGenderCounts();
-                  return (
-                    <div className="text-xs text-muted-foreground space-y-0.5">
-                      <p>• Males selected: {males}</p>
-                      <p>• Females selected: {females}</p>
-                      <p>• Courts: {numCourts} → needs {parseInt(numCourts) * 2} males and {parseInt(numCourts) * 2} females per round</p>
-                      {Math.abs(males - females) > 2 && males > 0 && females > 0 && (
-                        <p className="text-amber-600 dark:text-amber-400">⚠ Schedule will include sit-out rotations to balance male/female counts</p>
-                      )}
-                    </div>
-                  );
-                })()}
+            {/* Player Selection - Only for Immediate Mode */}
+            {registrationMode === 'immediate' && (
+              <div className="space-y-2">
+                <Label>1. How many players are playing? *</Label>
+                <MultiPlayerCombobox
+                  selectedPlayers={selectedPlayers}
+                  onPlayersChange={setSelectedPlayers}
+                  genderFilter={format === "male" ? "male" : format === "female" ? "female" : undefined}
+                />
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">
+                    {selectedPlayers.length} {selectedPlayers.length === 1 ? "player" : "players"} selected (minimum 4)
+                  </p>
+                  {format === "mixed" && (() => {
+                    const { males, females } = getGenderCounts();
+                    return (
+                      <div className="text-xs text-muted-foreground space-y-0.5">
+                        <p>• Males selected: {males}</p>
+                        <p>• Females selected: {females}</p>
+                        <p>• Courts: {numCourts} → needs {parseInt(numCourts) * 2} males and {parseInt(numCourts) * 2} females per round</p>
+                        {Math.abs(males - females) > 2 && males > 0 && females > 0 && (
+                          <p className="text-amber-600 dark:text-amber-400">⚠ Schedule will include sit-out rotations to balance male/female counts</p>
+                        )}
+                      </div>
+                    );
+                  })()}
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="games">2. How many games per player? *</Label>
+                <Label htmlFor="games">
+                  {registrationMode === 'immediate' ? '2.' : ''} How many games per player? *
+                </Label>
                 <Select value={gamesPerPlayer} onValueChange={setGamesPerPlayer}>
                   <SelectTrigger id="games">
                     <SelectValue />
@@ -305,7 +446,9 @@ export default function CreateRoundRobin() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="courts">3. How many courts are available? *</Label>
+                <Label htmlFor="courts">
+                  {registrationMode === 'immediate' ? '3.' : ''} How many courts are available? *
+                </Label>
                 <Input
                   id="courts"
                   type="number"
@@ -317,7 +460,8 @@ export default function CreateRoundRobin() {
               </div>
             </div>
 
-            {metrics.rounds > 0 && (
+            {/* Schedule Summary - Only show for immediate mode with selected players */}
+            {registrationMode === 'immediate' && metrics.rounds > 0 && (
               <Card className="bg-muted/50 border-primary/20">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base">Schedule Summary</CardTitle>

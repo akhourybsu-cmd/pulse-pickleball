@@ -1832,7 +1832,9 @@ export type Database = {
           format: string
           games_per_player: number | null
           id: string
+          is_published: boolean | null
           location: string | null
+          max_players: number | null
           name: string
           notes: string | null
           num_courts: number
@@ -1841,6 +1843,8 @@ export type Database = {
           organizer_pin: string | null
           rating_eligible: boolean
           rating_type: Database["public"]["Enums"]["rating_type"]
+          registration_deadline: string | null
+          registration_mode: string | null
           status: Database["public"]["Enums"]["round_robin_status"]
           updated_at: string
           void_reason: string | null
@@ -1856,7 +1860,9 @@ export type Database = {
           format?: string
           games_per_player?: number | null
           id?: string
+          is_published?: boolean | null
           location?: string | null
+          max_players?: number | null
           name: string
           notes?: string | null
           num_courts: number
@@ -1865,6 +1871,8 @@ export type Database = {
           organizer_pin?: string | null
           rating_eligible?: boolean
           rating_type?: Database["public"]["Enums"]["rating_type"]
+          registration_deadline?: string | null
+          registration_mode?: string | null
           status?: Database["public"]["Enums"]["round_robin_status"]
           updated_at?: string
           void_reason?: string | null
@@ -1880,7 +1888,9 @@ export type Database = {
           format?: string
           games_per_player?: number | null
           id?: string
+          is_published?: boolean | null
           location?: string | null
+          max_players?: number | null
           name?: string
           notes?: string | null
           num_courts?: number
@@ -1889,6 +1899,8 @@ export type Database = {
           organizer_pin?: string | null
           rating_eligible?: boolean
           rating_type?: Database["public"]["Enums"]["rating_type"]
+          registration_deadline?: string | null
+          registration_mode?: string | null
           status?: Database["public"]["Enums"]["round_robin_status"]
           updated_at?: string
           void_reason?: string | null
@@ -1906,6 +1918,7 @@ export type Database = {
           id: string
           joined_at: string
           player_id: string
+          registration_status: string | null
         }
         Insert: {
           active?: boolean
@@ -1914,6 +1927,7 @@ export type Database = {
           id?: string
           joined_at?: string
           player_id: string
+          registration_status?: string | null
         }
         Update: {
           active?: boolean
@@ -1922,6 +1936,7 @@ export type Database = {
           id?: string
           joined_at?: string
           player_id?: string
+          registration_status?: string | null
         }
         Relationships: [
           {
