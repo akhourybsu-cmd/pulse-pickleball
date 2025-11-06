@@ -253,7 +253,7 @@ export default function RoundRobinDetail() {
       
       // Check if user is a participant
       const userIsParticipant = playersData?.some(
-        (p: Player) => p.player_id === user.id && p.active
+        (p: Player) => p.player_id === user.id
       );
       setIsParticipant(userIsParticipant || false);
 
@@ -320,9 +320,9 @@ export default function RoundRobinDetail() {
   const handleGenerateSchedule = async () => {
     if (!event) return;
     
-    const activePlayers = players.filter((p) => p.active);
+    const activePlayers = players;
     if (activePlayers.length < 4) {
-      toast.error("At least 4 active players are required");
+      toast.error("At least 4 players are required");
       return;
     }
 
@@ -782,9 +782,9 @@ export default function RoundRobinDetail() {
   const regenerateScheduleFromRound = async (fromRound: number) => {
     if (!event) return;
 
-    const activePlayers = players.filter(p => p.active);
+    const activePlayers = players;
     if (activePlayers.length < 4) {
-      toast.error("At least 4 active players are required");
+      toast.error("At least 4 players are required");
       return;
     }
 
@@ -827,7 +827,6 @@ export default function RoundRobinDetail() {
         .insert({
           event_id: event.id,
           player_id: playerId,
-          active: true,
         });
 
       if (insertError) throw insertError;
@@ -898,11 +897,10 @@ export default function RoundRobinDetail() {
 
     try {
       if (scope === 'global') {
-        // Global substitution: add new player, mark old as inactive, swap in unstarted matches
+        // Global substitution: add new player, swap in unstarted matches
         await supabase.from("round_robin_players").insert({
           event_id: event.id,
           player_id: newPlayerId,
-          active: true,
         });
 
         const oldPlayer = players.find(p => p.player_id === originalPlayerId);
@@ -1424,7 +1422,7 @@ export default function RoundRobinDetail() {
   }
 
   const hasSchedule = schedule.length > 0;
-  const canGenerate = players.filter((p) => p.active).length >= 4;
+  const canGenerate = players.length >= 4;
   const hasScores = schedule.some(m => m.team1_score !== null || m.team2_score !== null);
   const currentRound = event.current_round || 1;
 
@@ -1618,7 +1616,7 @@ export default function RoundRobinDetail() {
         <Tabs defaultValue="schedule" className="w-full">
           <TabsList className="grid w-full grid-cols-3 mb-6">
             <TabsTrigger value="schedule">Schedule</TabsTrigger>
-            <TabsTrigger value="players">Players ({players.filter(p => p.active).length})</TabsTrigger>
+            <TabsTrigger value="players">Players ({players.length})</TabsTrigger>
             <TabsTrigger value="standings">Standings</TabsTrigger>
           </TabsList>
 
@@ -1815,12 +1813,12 @@ export default function RoundRobinDetail() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  {players.filter(p => p.active).length > 0 && (
+                  {players.length > 0 && (
                     <>
                       <p className="text-sm font-medium text-muted-foreground mb-2">
-                        Active Players ({players.filter(p => p.active).length})
+                        Players ({players.length})
                       </p>
-                      {players.filter(p => p.active).map((player) => (
+                      {players.map((player) => (
                         <div key={player.id} className="flex items-center justify-between p-3 border rounded-lg">
                           <div className="font-medium">
                             {player.profiles.display_name || player.profiles.full_name}
@@ -1855,24 +1853,6 @@ export default function RoundRobinDetail() {
                               </Button>
                             )}
                           </div>
-                        </div>
-                      ))}
-                    </>
-                  )}
-                  
-                  {players.filter(p => !p.active).length > 0 && (
-                    <>
-                      <div className="pt-4 border-t mt-4">
-                        <p className="text-sm font-medium text-muted-foreground mb-2">
-                          Inactive Players ({players.filter(p => !p.active).length})
-                        </p>
-                      </div>
-                      {players.filter(p => !p.active).map((player) => (
-                        <div key={player.id} className="flex items-center justify-between p-3 border rounded-lg opacity-60">
-                          <div className="font-medium">
-                            {player.profiles.display_name || player.profiles.full_name}
-                          </div>
-                          <Badge variant="outline">Inactive</Badge>
                         </div>
                       ))}
                     </>
@@ -2056,7 +2036,7 @@ export default function RoundRobinDetail() {
             currentRounds={event.num_rounds}
             currentRound={event.current_round}
             hasScores={hasScores}
-            totalPlayers={players.filter(p => p.active).length}
+            totalPlayers={players.length}
             onUpdateCourts={handleUpdateCourts}
             onUpdateRounds={handleUpdateRounds}
           />

@@ -34,7 +34,6 @@ export function RegistrationManagement({
           profiles(full_name, display_name)
         `)
         .eq('event_id', eventId)
-        .eq('active', true)
         .order('joined_at', { ascending: true });
 
       if (error) throw error;
@@ -46,17 +45,17 @@ export function RegistrationManagement({
   const waitlisted = players.filter(p => p.registration_status === 'waitlisted');
 
   const handleRemovePlayer = async (playerId: string, playerName: string) => {
-    if (!confirm(`Remove ${playerName} from this event?`)) return;
+    if (!confirm(`Remove ${playerName} from this event? They can rejoin later.`)) return;
 
     try {
       const { error } = await supabase
         .from('round_robin_players')
-        .update({ active: false })
+        .delete()
         .eq('event_id', eventId)
         .eq('player_id', playerId);
 
       if (error) throw error;
-      toast.success('Player removed');
+      toast.success('Player removed - they can rejoin later');
       refetch();
     } catch (error) {
       console.error('Remove error:', error);
