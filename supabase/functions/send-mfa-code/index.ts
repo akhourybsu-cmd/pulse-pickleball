@@ -205,9 +205,9 @@ const handler = async (req: Request): Promise<Response> => {
       try {
         await sendEmail(email, code);
       } catch (emailError: any) {
-        console.error("Failed to send verification email:", emailError.message);
+        console.error("Failed to send verification email:", emailError);
         return new Response(
-          JSON.stringify({ error: `Failed to send verification email: ${emailError.message}` }),
+          JSON.stringify({ error: "Failed to send verification code" }),
           {
             status: 500,
             headers: { "Content-Type": "application/json", ...corsHeaders },

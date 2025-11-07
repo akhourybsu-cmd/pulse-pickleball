@@ -150,7 +150,7 @@ serve(async (req) => {
     );
   } catch (error: any) {
     console.error("Error sending team assignment emails:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: "Failed to send team assignment notification" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

@@ -19,7 +19,7 @@ Deno.serve(async (req) => {
     if (error) {
       console.error('Error deleting old messages:', error);
       return new Response(
-        JSON.stringify({ error: error.message }),
+        JSON.stringify({ error: 'Failed to cleanup old messages' }),
         { status: 500, headers: { 'Content-Type': 'application/json' } }
       );
     }
@@ -36,9 +36,8 @@ Deno.serve(async (req) => {
     );
   } catch (error) {
     console.error('Unexpected error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ error: 'An unexpected error occurred' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }

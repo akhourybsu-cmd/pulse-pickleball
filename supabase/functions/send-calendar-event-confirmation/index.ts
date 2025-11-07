@@ -265,7 +265,7 @@ serve(async (req) => {
     });
   } catch (error: any) {
     console.error("Error sending confirmation email:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: "Failed to send confirmation email" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

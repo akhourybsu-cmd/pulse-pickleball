@@ -127,7 +127,7 @@ serve(async (req) => {
     });
   } catch (error: any) {
     console.error("Error sending approval email:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: "Failed to send approval notification" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
