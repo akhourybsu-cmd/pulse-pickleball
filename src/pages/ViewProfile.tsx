@@ -6,12 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
-import { ArrowLeft, User, Trophy, TrendingUp, Share2, Hash, Dumbbell, Calendar } from "lucide-react";
+import { ArrowLeft, User, Trophy, TrendingUp, Hash, Dumbbell, Calendar } from "lucide-react";
 import logo from "@/assets/pulse-logo-new.png";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { CircularProgressRing } from "@/components/profile/CircularProgressRing";
 import { PulseScoreBadge } from "@/components/profile/PulseScoreBadge";
-import { MiniSparkline } from "@/components/profile/MiniSparkline";
 import { RecentMatches } from "@/components/profile/RecentMatches";
 
 interface Profile {
@@ -53,7 +52,6 @@ interface RecentMatch {
 const ViewProfile = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [recentMatches, setRecentMatches] = useState<RecentMatch[]>([]);
-  const [ratingHistory, setRatingHistory] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { userId } = useParams<{ userId: string }>();
@@ -164,14 +162,6 @@ const ViewProfile = () => {
         setRecentMatches(formattedMatches.filter(Boolean) as RecentMatch[]);
       }
 
-      // Generate mock rating history (last 7 data points)
-      const currentRating = profileData.current_rating || profileData.week_start_rating;
-      const mockHistory = Array.from({ length: 7 }, (_, i) => {
-        const variance = (Math.random() - 0.5) * 0.2;
-        return currentRating + variance;
-      });
-      setRatingHistory(mockHistory);
-
       setProfile(profileData as Profile);
       setLoading(false);
     };
@@ -201,12 +191,6 @@ const ViewProfile = () => {
     : 0;
 
   const weeklyChange = (profile.current_rating || profile.week_start_rating) - profile.week_start_rating;
-
-  const handleShareProfile = () => {
-    const url = window.location.href;
-    navigator.clipboard.writeText(url);
-    toast.success("Profile link copied to clipboard!");
-  };
 
   const handleCourtClick = () => {
     if (profile.courts?.id) {
@@ -250,17 +234,11 @@ const ViewProfile = () => {
                 )}
               </div>
               <div className="flex-1">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-3">
-                  <div>
-                    <h1 className="text-3xl font-bold mb-1">{displayName}</h1>
-                    {profile.phonetic_name && (
-                      <p className="text-sm text-muted-foreground">Pronounced: {profile.phonetic_name}</p>
-                    )}
-                  </div>
-                  <Button onClick={handleShareProfile} variant="outline" size="sm" className="self-start md:self-auto">
-                    <Share2 className="w-4 h-4 mr-2" />
-                    Share Profile
-                  </Button>
+                <div className="mb-3">
+                  <h1 className="text-3xl font-bold mb-1">{displayName}</h1>
+                  {profile.phonetic_name && (
+                    <p className="text-sm text-muted-foreground">Pronounced: {profile.phonetic_name}</p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-6">
@@ -280,11 +258,6 @@ const ViewProfile = () => {
                     <div className="mt-2">
                       <PulseScoreBadge score={profile.current_rating || profile.week_start_rating} />
                     </div>
-                    {ratingHistory.length > 0 && (
-                      <div className="mt-3">
-                        <MiniSparkline data={ratingHistory} />
-                      </div>
-                    )}
                   </div>
                   
                   <div>
