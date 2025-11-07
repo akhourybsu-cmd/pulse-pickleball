@@ -85,7 +85,7 @@ export default function MyCalendarRegistrations() {
           event_id,
           registration_status,
           joined_at,
-          event:round_robin_events(id, name, date, location, max_players, status, organizer_id, registration_deadline)
+          event:round_robin_events(id, name, date, start_time, location, max_players, status, organizer_id, registration_deadline)
         `)
         .eq("player_id", session.user.id)
         .eq("active", true);
@@ -265,6 +265,13 @@ export default function MyCalendarRegistrations() {
                           <Calendar className="w-4 h-4 text-muted-foreground" />
                           <span>{format(eventDate, "EEEE, MMMM d, yyyy")}</span>
                         </div>
+
+                        {event.start_time && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <Clock className="w-4 h-4 text-muted-foreground" />
+                            <span>{event.start_time.slice(0, 5)}</span>
+                          </div>
+                        )}
 
                         {event.location && (
                           <div className="flex items-center gap-2 text-sm">
