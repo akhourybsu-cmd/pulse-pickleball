@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { format, isPast } from "date-fns";
+import { format, isPast, parseISO } from "date-fns";
 import { useState } from "react";
 import { toast } from "sonner";
 import { EventModal } from "@/components/reservations/EventModal";
@@ -240,7 +240,8 @@ export default function MyCalendarRegistrations() {
             {filteredRegistrations.map((reg: any) => {
               if (reg.type === 'round_robin') {
                 const event = reg.event;
-                const eventDate = new Date(event.date);
+                // Parse date string correctly to avoid timezone issues
+                const eventDate = parseISO(event.date + 'T00:00:00');
                 const eventPassed = isPast(eventDate);
 
                 return (
