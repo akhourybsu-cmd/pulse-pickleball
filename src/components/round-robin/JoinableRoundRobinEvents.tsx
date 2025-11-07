@@ -119,20 +119,33 @@ export function JoinableRoundRobinEvents({ courtLocation, userId }: JoinableRoun
     try {
       const status = confirmedCount >= maxPlayers ? "waitlisted" : "confirmed";
       
-      const { error } = await supabase
+      const { data: newRegistration, error } = await supabase
         .from("round_robin_players")
         .insert({
           event_id: eventId,
           player_id: userId,
           registration_status: status,
           active: true
-        });
+        })
+        .select()
+        .single();
 
       if (error) throw error;
 
+      // Send confirmation email
+      if (newRegistration) {
+        try {
+          await supabase.functions.invoke("send-round-robin-confirmation", {
+            body: { registrationId: newRegistration.id }
+          });
+        } catch (emailError) {
+          console.error("Failed to send confirmation email:", emailError);
+        }
+      }
+
       toast.success(
         status === "confirmed" 
-          ? "Successfully registered!" 
+          ? "Registration confirmed! Check your email for details." 
           : "Added to waitlist - you'll be notified if a spot opens"
       );
       refetch();
