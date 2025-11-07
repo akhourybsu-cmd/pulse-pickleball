@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { Calendar, Clock, Users, MapPin, Trophy } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -183,8 +183,8 @@ export function JoinableRoundRobinEvents({ courtLocation, userId }: JoinableRoun
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {events.map((event, index) => {
-          const eventDate = new Date(event.date);
-          const deadline = new Date(event.registration_deadline);
+          const eventDate = parseISO(event.date + 'T00:00:00');
+          const deadline = parseISO(event.registration_deadline);
           const isFull = event.confirmed_count >= event.max_players;
 
           return (

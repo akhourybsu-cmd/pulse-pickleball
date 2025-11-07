@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Trophy } from "lucide-react";
+import { format, parseISO } from "date-fns";
 import {
   Sheet,
   SheetContent,
@@ -117,7 +118,7 @@ export const ActiveRoundRobinIndicator = memo(() => {
               <CardHeader>
                 <CardTitle className="text-base">{event.name}</CardTitle>
                 <CardDescription>
-                  Round {event.current_round}/{event.num_rounds} • {new Date(event.date).toLocaleDateString()}
+                  Round {event.current_round}/{event.num_rounds} • {format(parseISO(event.date + 'T00:00:00'), 'PP')}
                 </CardDescription>
               </CardHeader>
             </Card>

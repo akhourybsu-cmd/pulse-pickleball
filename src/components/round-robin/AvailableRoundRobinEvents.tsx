@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, MapPin, Users, Clock, Trophy } from "lucide-react";
-import { format, isPast } from "date-fns";
+import { format, isPast, parseISO } from "date-fns";
 import { toast } from "sonner";
 
 export function AvailableRoundRobinEvents({ userId }: { userId: string | null }) {
@@ -125,8 +125,8 @@ export function AvailableRoundRobinEvents({ userId }: { userId: string | null })
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
       {events.map((event) => {
-        const eventDate = new Date(event.date);
-        const deadline = new Date(event.registration_deadline);
+        const eventDate = parseISO(event.date + 'T00:00:00');
+        const deadline = parseISO(event.registration_deadline);
         const isFull = event.confirmed_count >= event.max_players;
 
         return (

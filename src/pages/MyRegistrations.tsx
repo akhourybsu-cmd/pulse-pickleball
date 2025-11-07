@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Calendar, MapPin, Users, Trash2, Clock, DollarSign } from "lucide-react";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { BackToDashboard } from "@/components/BackToDashboard";
 
 interface TournamentRegistration {
@@ -289,7 +289,7 @@ export default function MyRegistrations() {
                       <div className="flex items-center gap-2 text-sm">
                         <Calendar className="h-4 w-4 text-muted-foreground" />
                         <span>
-                          {format(new Date(rrReg.event.date), "MMM d, yyyy")}
+                          {format(parseISO(rrReg.event.date + 'T00:00:00'), "MMM d, yyyy")}
                         </span>
                       </div>
                       {rrReg.event.location && (

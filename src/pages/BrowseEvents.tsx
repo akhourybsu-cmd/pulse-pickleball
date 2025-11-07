@@ -465,8 +465,8 @@ export default function BrowseEvents() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                   {events.map((event, index) => {
-                    const eventDate = new Date(event.date);
-                    const deadline = new Date(event.registration_deadline);
+                    const eventDate = parseISO(event.date + 'T00:00:00');
+                    const deadline = parseISO(event.registration_deadline);
                     const isFull = event.confirmed_count >= event.max_players;
 
                     return (

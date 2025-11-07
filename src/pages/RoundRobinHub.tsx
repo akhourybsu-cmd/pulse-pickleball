@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Plus, Calendar, Users, Trophy, Sparkles, LogOut } from "lucide-react";
 import { toast } from "sonner";
+import { format, parseISO } from "date-fns";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -136,7 +137,7 @@ export default function RoundRobinHub() {
               <CardTitle className="text-lg truncate">{event.name}</CardTitle>
               <CardDescription className="flex items-center gap-2 mt-2">
                 <Calendar className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate">{new Date(event.date).toLocaleDateString()}</span>
+                <span className="truncate">{format(parseISO(event.date + 'T00:00:00'), 'PP')}</span>
               </CardDescription>
             </div>
             {getStatusBadge(event.status)}

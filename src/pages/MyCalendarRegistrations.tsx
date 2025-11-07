@@ -113,7 +113,7 @@ export default function MyCalendarRegistrations() {
   const filteredRegistrations = allRegistrations.filter((reg: any) => {
     const eventTime = reg.type === 'calendar' 
       ? (reg.calendar_events ? new Date(reg.calendar_events.start_time) : null)
-      : new Date(reg.event.date);
+      : parseISO(reg.event.date + 'T00:00:00');
     
     if (!eventTime) return false;
     return filter === "upcoming" ? !isPast(eventTime) : isPast(eventTime);

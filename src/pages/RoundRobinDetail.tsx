@@ -27,6 +27,7 @@ import {
 import { Play, Trophy, AlertCircle, Settings, Trash2, Ban, CheckCircle, Edit, Edit3, Bell, Monitor, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { BackToDashboard } from "@/components/BackToDashboard";
+import { format, parseISO } from "date-fns";
 import { EditEventDialog } from "@/components/round-robin/EditEventDialog";
 import { EditModeBanner } from "@/components/round-robin/EditModeBanner";
 import { PlayerManagementDialog } from "@/components/round-robin/PlayerManagementDialog";
@@ -1581,7 +1582,7 @@ export default function RoundRobinDetail() {
           </div>
           <div className="flex items-center gap-3 flex-wrap">
             <p className="text-sm text-muted-foreground">
-              {new Date(event.date).toLocaleDateString()}
+              {format(parseISO(event.date + 'T00:00:00'), 'PP')}
               {event.location && ` • ${event.location}`}
             </p>
             {isOrganizer && event.organizer_pin && (
