@@ -135,13 +135,15 @@ export function EventModal({ event, isOpen, onClose, currentUserId, isAdmin, onR
 
     // Handle registration
     try {
-      const { error } = await supabase
+      const { data: newRegistration, error } = await supabase
         .from("calendar_event_registrations")
         .insert({
           event_id: event.id,
           user_id: currentUserId,
           status: "confirmed",
-        });
+        })
+        .select()
+        .single();
 
       if (error) {
         if (error.code === "23505") {
@@ -156,9 +158,19 @@ export function EventModal({ event, isOpen, onClose, currentUserId, isAdmin, onR
         return;
       }
 
+      // Send confirmation email
+      try {
+        await supabase.functions.invoke("send-calendar-event-confirmation", {
+          body: { registrationId: newRegistration.id },
+        });
+      } catch (emailError) {
+        console.error("Failed to send confirmation email:", emailError);
+        // Don't fail the registration if email fails
+      }
+
       toast({
         title: "Registration successful",
-        description: "You've been registered for this event",
+        description: "You've been registered for this event. Check your email for confirmation.",
       });
       await refetchRegistrations();
       onRegister?.(event.id);
