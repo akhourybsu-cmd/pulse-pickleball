@@ -233,7 +233,7 @@ const ViewProfile = () => {
 
       <div className="container mx-auto px-4 py-8 max-w-5xl">
         {/* Profile Header */}
-        <Card className="mb-8 shadow-lg bg-gradient-to-br from-background via-background to-muted/10">
+        <Card className="mb-8 shadow-[var(--shadow-glow)] bg-gradient-to-br from-background via-background to-muted/10 border-2 border-primary/20">
           <CardContent className="pt-6">
             <div className="flex flex-col md:flex-row items-start gap-6">
               <div className="flex-shrink-0">
