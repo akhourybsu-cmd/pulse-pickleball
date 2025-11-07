@@ -1845,6 +1845,7 @@ export type Database = {
           rating_type: Database["public"]["Enums"]["rating_type"]
           registration_deadline: string | null
           registration_mode: string | null
+          start_time: string | null
           status: Database["public"]["Enums"]["round_robin_status"]
           updated_at: string
           void_reason: string | null
@@ -1873,6 +1874,7 @@ export type Database = {
           rating_type?: Database["public"]["Enums"]["rating_type"]
           registration_deadline?: string | null
           registration_mode?: string | null
+          start_time?: string | null
           status?: Database["public"]["Enums"]["round_robin_status"]
           updated_at?: string
           void_reason?: string | null
@@ -1901,6 +1903,7 @@ export type Database = {
           rating_type?: Database["public"]["Enums"]["rating_type"]
           registration_deadline?: string | null
           registration_mode?: string | null
+          start_time?: string | null
           status?: Database["public"]["Enums"]["round_robin_status"]
           updated_at?: string
           void_reason?: string | null

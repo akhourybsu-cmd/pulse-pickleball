@@ -23,6 +23,8 @@ import {
 interface Event {
   id: string;
   name: string;
+  date: string;
+  start_time: string | null;
   notes: string | null;
   rating_eligible: boolean;
   rating_type: "ladder" | "league" | "playoffs" | "casual";
@@ -37,6 +39,8 @@ interface EditEventDialogProps {
 
 export function EditEventDialog({ open, onOpenChange, event, onSave }: EditEventDialogProps) {
   const [name, setName] = useState(event.name);
+  const [date, setDate] = useState(event.date);
+  const [startTime, setStartTime] = useState(event.start_time || "09:00");
   const [notes, setNotes] = useState(event.notes || "");
   const [ratingEligible, setRatingEligible] = useState(event.rating_eligible);
   const [ratingType, setRatingType] = useState<"ladder" | "league" | "playoffs" | "casual">(event.rating_type);
@@ -44,6 +48,8 @@ export function EditEventDialog({ open, onOpenChange, event, onSave }: EditEvent
 
   const hasChanges = 
     name !== event.name ||
+    date !== event.date ||
+    startTime !== (event.start_time || "09:00") ||
     notes !== (event.notes || "") ||
     ratingEligible !== event.rating_eligible ||
     ratingType !== event.rating_type;
@@ -55,6 +61,8 @@ export function EditEventDialog({ open, onOpenChange, event, onSave }: EditEvent
     try {
       const updates: Partial<Event> = {};
       if (name !== event.name) updates.name = name;
+      if (date !== event.date) updates.date = date;
+      if (startTime !== (event.start_time || "09:00")) updates.start_time = startTime;
       if (notes !== (event.notes || "")) updates.notes = notes || null;
       if (ratingEligible !== event.rating_eligible) updates.rating_eligible = ratingEligible;
       if (ratingType !== event.rating_type) updates.rating_type = ratingType;
@@ -85,6 +93,28 @@ export function EditEventDialog({ open, onOpenChange, event, onSave }: EditEvent
               onChange={(e) => setName(e.target.value)}
               placeholder="Event name"
             />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="date">Event Date</Label>
+              <Input
+                id="date"
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="time">Start Time</Label>
+              <Input
+                id="time"
+                type="time"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+              />
+            </div>
           </div>
 
           <div className="space-y-2">

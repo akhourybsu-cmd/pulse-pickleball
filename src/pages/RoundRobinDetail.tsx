@@ -52,6 +52,7 @@ interface Event {
   id: string;
   name: string;
   date: string;
+  start_time: string | null;
   location: string | null;
   notes: string | null;
   organizer_id: string;
