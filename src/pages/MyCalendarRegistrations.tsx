@@ -249,8 +249,8 @@ export default function MyCalendarRegistrations() {
                     <CardHeader>
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <CardTitle className="flex items-center gap-2 mb-2">
-                            {event.name}
+                          <CardTitle className="flex items-start gap-2 mb-2 flex-wrap">
+                            <span className="break-words">{event.name}</span>
                             <Badge variant="outline">Round Robin</Badge>
                             <Badge variant={reg.registration_status === 'confirmed' ? 'default' : 'secondary'}>
                               {reg.registration_status.charAt(0).toUpperCase() + reg.registration_status.slice(1)}
@@ -321,8 +321,8 @@ export default function MyCalendarRegistrations() {
                     <CardHeader>
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <CardTitle className="flex items-center gap-2 mb-2">
-                            {event.title}
+                          <CardTitle className="flex items-start gap-2 mb-2 flex-wrap">
+                            <span className="break-words">{event.title}</span>
                             <Badge className={EVENT_TYPE_COLORS[event.event_type as keyof typeof EVENT_TYPE_COLORS]}>
                               {EVENT_TYPE_LABELS[event.event_type as keyof typeof EVENT_TYPE_LABELS]}
                             </Badge>
