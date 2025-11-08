@@ -784,9 +784,9 @@ export default function RoundRobinDetail() {
   const regenerateScheduleFromRound = async (fromRound: number) => {
     if (!event) return;
 
-    const activePlayers = players;
+    const activePlayers = players.filter(p => p.active);
     if (activePlayers.length < 4) {
-      toast.error("At least 4 players are required");
+      toast.error("At least 4 active players are required");
       return;
     }
 
