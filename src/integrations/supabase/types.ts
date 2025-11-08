@@ -3000,6 +3000,13 @@ export type Database = {
         Args: { target_week_start: string }
         Returns: undefined
       }
+      get_emergency_contact: {
+        Args: { profile_id: string }
+        Returns: {
+          contact_name: string
+          contact_phone: string
+        }[]
+      }
       get_own_email: { Args: never; Returns: string }
       get_own_private_fields: {
         Args: { profile_id: string }

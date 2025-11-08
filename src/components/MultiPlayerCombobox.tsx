@@ -45,6 +45,8 @@ export function MultiPlayerCombobox({
   }, [genderFilter]);
 
   const fetchPlayers = async () => {
+    // Use profiles table for gender filtering (gender is in profiles but not profiles_public)
+    // This is acceptable as gender is not highly sensitive PII
     let queryBuilder = supabase
       .from("profiles")
       .select("id, full_name, display_name, gender")

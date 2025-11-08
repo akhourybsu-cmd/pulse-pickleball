@@ -19,25 +19,15 @@ interface Profile {
   first_name: string | null;
   last_name: string | null;
   avatar_url: string | null;
-  phonetic_name: string | null;
   current_rating: number;
-  week_start_rating: number;
   total_matches: number;
   wins: number;
   losses: number;
-  total_points_for: number;
-  total_points_against: number;
   handedness: string | null;
   play_side: string | null;
   paddle_brand: string | null;
   paddle_model: string | null;
   home_court_id: string | null;
-  courts: {
-    id: string;
-    name: string;
-    city: string;
-    state: string;
-  } | null;
 }
 
 interface RecentMatch {
@@ -64,33 +54,24 @@ const ViewProfile = () => {
         return;
       }
 
+      // Use profiles_public view for viewing other users' profiles to protect PII
       const { data: profileData, error } = await supabase
-        .from("profiles")
+        .from("profiles_public")
         .select(`
           id,
           display_name,
           first_name,
           last_name,
           avatar_url,
-          phonetic_name,
           current_rating,
-          week_start_rating,
           total_matches,
           wins,
           losses,
-          total_points_for,
-          total_points_against,
           handedness,
           play_side,
           paddle_brand,
           paddle_model,
-          home_court_id,
-          courts (
-            id,
-            name,
-            city,
-            state
-          )
+          home_court_id
         `)
         .eq("id", userId)
         .single();
@@ -190,14 +171,6 @@ const ViewProfile = () => {
     ? parseFloat(((profile.wins / profile.total_matches) * 100).toFixed(1))
     : 0;
 
-  const weeklyChange = (profile.current_rating || profile.week_start_rating) - profile.week_start_rating;
-
-  const handleCourtClick = () => {
-    if (profile.courts?.id) {
-      navigate(`/court-board?court=${profile.courts.id}`);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-background">
       <nav className="border-b bg-secondary">
@@ -236,9 +209,6 @@ const ViewProfile = () => {
               <div className="flex-1">
                 <div className="mb-3">
                   <h1 className="text-3xl font-bold mb-1">{displayName}</h1>
-                  {profile.phonetic_name && (
-                    <p className="text-sm text-muted-foreground">Pronounced: {profile.phonetic_name}</p>
-                  )}
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-6">
@@ -249,14 +219,11 @@ const ViewProfile = () => {
                     </div>
                     <div className="pulse-score-container">
                       <p className="text-2xl font-bold text-primary pulse-score-number">
-                        {profile.current_rating?.toFixed(2) || profile.week_start_rating.toFixed(2)}
+                        {profile.current_rating?.toFixed(2)}
                       </p>
                     </div>
-                    <p className={`text-xs mt-1 ${weeklyChange > 0 ? 'text-green-500' : weeklyChange < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
-                      {weeklyChange > 0 ? '+' : ''}{weeklyChange.toFixed(2)} this week
-                    </p>
                     <div className="mt-2">
-                      <PulseScoreBadge score={profile.current_rating || profile.week_start_rating} />
+                      <PulseScoreBadge score={profile.current_rating} />
                     </div>
                   </div>
                   
@@ -304,35 +271,7 @@ const ViewProfile = () => {
         <h2 className="text-xl font-semibold mb-4 text-muted-foreground">Performance & Gameplay</h2>
 
         {/* Stats Grid */}
-        <div className="grid gap-6 md:grid-cols-2 mb-8">
-          <Card className="hover:shadow-md transition-shadow">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Trophy className="w-5 h-5 text-primary" />
-                Performance Stats
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Total Points For</span>
-                <span className="font-semibold text-lg">{profile.total_points_for}</span>
-              </div>
-              <Separator />
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Total Points Against</span>
-                <span className="font-semibold text-lg">{profile.total_points_against}</span>
-              </div>
-              <Separator />
-              <div className="flex justify-between items-center">
-                <span className="text-muted-foreground">Point Differential</span>
-                <span className={`font-semibold text-lg ${(profile.total_points_for - profile.total_points_against) > 0 ? 'text-green-500' : 'text-destructive'}`}>
-                  {(profile.total_points_for - profile.total_points_against) > 0 ? '+' : ''}
-                  {profile.total_points_for - profile.total_points_against}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-
+        <div className="grid gap-6 md:grid-cols-1 mb-8">
           <Card className="hover:shadow-md transition-shadow">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -341,20 +280,6 @@ const ViewProfile = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {profile.courts && (
-                <>
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Home Court</span>
-                    <button 
-                      onClick={handleCourtClick}
-                      className="font-semibold text-right text-primary hover:underline cursor-pointer"
-                    >
-                      {profile.courts.name}
-                    </button>
-                  </div>
-                  <Separator />
-                </>
-              )}
               {profile.handedness && (
                 <>
                   <div className="flex justify-between items-center">

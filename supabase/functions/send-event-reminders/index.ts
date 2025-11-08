@@ -1,5 +1,4 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
-import { format } from 'https://esm.sh/date-fns@3.0.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -40,7 +39,7 @@ Deno.serve(async (req) => {
       .select(`
         user_id,
         event_id,
-        calendar_events (
+        calendar_events!inner (
           id,
           title,
           start_time,
@@ -56,7 +55,7 @@ Deno.serve(async (req) => {
       console.error('Error fetching calendar events:', calendarError);
     } else if (calendarEvents) {
       for (const reg of calendarEvents) {
-        const event = reg.calendar_events;
+        const event = Array.isArray(reg.calendar_events) ? reg.calendar_events[0] : reg.calendar_events;
         if (!event) continue;
 
         reminders.push({
@@ -76,7 +75,7 @@ Deno.serve(async (req) => {
       .select(`
         player_id,
         event_id,
-        event:round_robin_events (
+        event:round_robin_events!inner (
           id,
           name,
           date,
@@ -91,7 +90,7 @@ Deno.serve(async (req) => {
       console.error('Error fetching round robin events:', rrError);
     } else if (roundRobinEvents) {
       for (const reg of roundRobinEvents) {
-        const event = reg.event;
+        const event = Array.isArray(reg.event) ? reg.event[0] : reg.event;
         if (!event) continue;
 
         // Construct event datetime
@@ -134,8 +133,8 @@ Deno.serve(async (req) => {
 
       // Format the event time
       const eventTime = new Date(reminder.event_time);
-      const timeStr = format(eventTime, 'h:mm a');
-      const dateStr = format(eventTime, 'EEEE, MMM d');
+      const timeStr = eventTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+      const dateStr = eventTime.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
 
       // Create notification
       const { error: notifError } = await supabase
@@ -187,7 +186,7 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error('Error in send-event-reminders:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500,

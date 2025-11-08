@@ -53,8 +53,9 @@ export function PlayerSelector({
   const fetchPlayers = async () => {
     setLoading(true);
     try {
+      // Use profiles_public view to protect PII when searching for other players
       const { data, error } = await supabase
-        .from("profiles")
+        .from("profiles_public")
         .select("id, full_name, display_name, current_rating")
         .or(`full_name.ilike.%${searchQuery}%,display_name.ilike.%${searchQuery}%`)
         .not("id", "in", `(${excludePlayerIds.length > 0 ? excludePlayerIds.join(',') : '00000000-0000-0000-0000-000000000000'})`)
