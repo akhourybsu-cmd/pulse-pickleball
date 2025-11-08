@@ -899,12 +899,25 @@ export default function RoundRobinDetail() {
 
     try {
       if (scope === 'global') {
-        // Global substitution: add new player, swap in unstarted matches
-        await supabase.from("round_robin_players").insert({
-          event_id: event.id,
-          player_id: newPlayerId,
-        });
+        // Global substitution: add new player (or reactivate if they exist), swap in unstarted matches
+        const existingPlayer = players.find(p => p.player_id === newPlayerId);
+        
+        if (existingPlayer) {
+          // Player already exists, just reactivate them
+          await supabase
+            .from("round_robin_players")
+            .update({ active: true })
+            .eq("id", existingPlayer.id);
+        } else {
+          // New player, insert them as active
+          await supabase.from("round_robin_players").insert({
+            event_id: event.id,
+            player_id: newPlayerId,
+            active: true,
+          });
+        }
 
+        // Mark the old player as inactive
         const oldPlayer = players.find(p => p.player_id === originalPlayerId);
         if (oldPlayer) {
           await supabase
