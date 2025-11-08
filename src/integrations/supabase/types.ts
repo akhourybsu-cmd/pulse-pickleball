@@ -767,6 +767,30 @@ export type Database = {
         }
         Relationships: []
       }
+      event_reminders_sent: {
+        Row: {
+          event_id: string
+          event_type: string
+          id: string
+          sent_at: string
+          user_id: string
+        }
+        Insert: {
+          event_id: string
+          event_type: string
+          id?: string
+          sent_at?: string
+          user_id: string
+        }
+        Update: {
+          event_id?: string
+          event_type?: string
+          id?: string
+          sent_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       events: {
         Row: {
           created_at: string | null
@@ -2788,6 +2812,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_notifications: {
+        Row: {
+          created_at: string
+          event_id: string | null
+          event_type: string | null
+          id: string
+          link: string | null
+          message: string
+          notification_type: string
+          read: boolean
+          title: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_id?: string | null
+          event_type?: string | null
+          id?: string
+          link?: string | null
+          message: string
+          notification_type: string
+          read?: boolean
+          title: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string | null
+          event_type?: string | null
+          id?: string
+          link?: string | null
+          message?: string
+          notification_type?: string
+          read?: boolean
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
