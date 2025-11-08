@@ -50,7 +50,7 @@ import TournamentLiveView from "./pages/TournamentLiveView";
 import TournamentTeamView from "./pages/TournamentTeamView";
 import Tournaments from "./pages/Tournaments";
 import TournamentRegister from "./pages/TournamentRegister";
-import MyRegistrations from "./pages/MyRegistrations";
+
 import TournamentLanding from "./pages/TournamentLanding";
 import TournamentCustomize from "./pages/TournamentCustomize";
 import Reservations from "./pages/Reservations";

@@ -270,7 +270,7 @@ export default function MyCalendarRegistrations() {
                         {event.start_time && (
                           <div className="flex items-center gap-2 text-sm">
                             <Clock className="w-4 h-4 text-muted-foreground" />
-                            <span>{event.start_time.slice(0, 5)}</span>
+                            <span>{format(parseISO(event.date + 'T' + event.start_time), "h:mm a")}</span>
                           </div>
                         )}
 
