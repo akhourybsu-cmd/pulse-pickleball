@@ -27,3 +27,15 @@ verify_jwt = false
 
 [functions.validate-signup-location]
 verify_jwt = false
+
+[functions.send-event-reminders]
+verify_jwt = false
+
+[edge_runtime]
+policy = "per_worker"
+
+# Run event reminders every 10 minutes
+[[edge_runtime.cron]]
+name = "send-event-reminders"
+schedule = "*/10 * * * *"
+function_name = "send-event-reminders"
