@@ -28,7 +28,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { PlayerCombobox } from "@/components/PlayerCombobox";
+import { PlayerSelector } from "@/components/round-robin/PlayerSelector";
 import { toast } from "sonner";
 import { Trash2, AlertTriangle } from "lucide-react";
 import { z } from "zod";
@@ -182,7 +182,7 @@ export function EditMatchSheet({ matchId, open, onOpenChange, onSaved }: EditMat
       .from("match_edits")
       .select(`
         *,
-        profiles!match_edits_editor_id_fkey(display_name, full_name)
+        profiles!editor_id(display_name, full_name)
       `)
       .eq("match_id", matchId)
       .order("edited_at", { ascending: false })
@@ -572,18 +572,18 @@ export function EditMatchSheet({ matchId, open, onOpenChange, onSaved }: EditMat
               <h3 className="font-semibold">Team 1</h3>
               <div className="space-y-2">
                 <Label>Player 1</Label>
-                <PlayerCombobox
-                  players={players}
+                <PlayerSelector
                   value={team1Player1}
                   onValueChange={setTeam1Player1}
+                  placeholder="Search for player..."
                 />
               </div>
               <div className="space-y-2">
                 <Label>Player 2</Label>
-                <PlayerCombobox
-                  players={players}
+                <PlayerSelector
                   value={team1Player2}
                   onValueChange={setTeam1Player2}
+                  placeholder="Search for player..."
                 />
               </div>
             </div>
@@ -592,18 +592,18 @@ export function EditMatchSheet({ matchId, open, onOpenChange, onSaved }: EditMat
               <h3 className="font-semibold">Team 2</h3>
               <div className="space-y-2">
                 <Label>Player 1</Label>
-                <PlayerCombobox
-                  players={players}
+                <PlayerSelector
                   value={team2Player1}
                   onValueChange={setTeam2Player1}
+                  placeholder="Search for player..."
                 />
               </div>
               <div className="space-y-2">
                 <Label>Player 2</Label>
-                <PlayerCombobox
-                  players={players}
+                <PlayerSelector
                   value={team2Player2}
                   onValueChange={setTeam2Player2}
+                  placeholder="Search for player..."
                 />
               </div>
             </div>
