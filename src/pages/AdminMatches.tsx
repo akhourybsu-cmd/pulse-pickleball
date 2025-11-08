@@ -140,15 +140,22 @@ const AdminMatches = () => {
       (matchesData || []).map(async (match: any) => {
         const { data: participants } = await supabase
           .from("match_participants")
-          .select(`
-            player_id,
-            profiles(display_name, full_name)
-          `)
+          .select("player_id")
           .eq("match_id", match.id);
 
-        const playerNames = participants?.map(
-          p => p.profiles?.display_name || p.profiles?.full_name || "Unknown"
-        ) || [];
+        // Fetch player profiles separately to avoid join issues
+        const playerNames: string[] = [];
+        if (participants && participants.length > 0) {
+          const playerIds = participants.map(p => p.player_id);
+          const { data: profiles } = await supabase
+            .from("profiles_public")
+            .select("id, display_name, full_name")
+            .in("id", playerIds);
+          
+          if (profiles) {
+            playerNames.push(...profiles.map(p => p.display_name || p.full_name || "Unknown"));
+          }
+        }
 
         let courtName = "Unknown Court";
         if (match.other_location) {
