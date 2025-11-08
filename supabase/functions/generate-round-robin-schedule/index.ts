@@ -65,7 +65,8 @@ class SeededRandom {
 
 // Calculate metrics based on games per player
 function calculateMetrics(players: number, courts: number, gamesPerPlayer: number) {
-  const matchesPerRound = Math.min(courts, Math.floor(players / 4));
+  const possibleMatches = Math.floor(players / 4);
+  const matchesPerRound = Math.min(courts, possibleMatches);
   const onCourtPerRound = 4 * matchesPerRound;
   const byesPerRound = Math.max(0, players - onCourtPerRound);
   
