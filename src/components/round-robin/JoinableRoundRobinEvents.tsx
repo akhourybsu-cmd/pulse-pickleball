@@ -19,6 +19,7 @@ interface EnrichedEvent {
   id: string;
   name: string;
   date: string;
+  start_time?: string;
   location: string;
   max_players: number;
   registration_deadline: string;
@@ -86,6 +87,7 @@ export function JoinableRoundRobinEvents({ courtLocation, userId }: JoinableRoun
             id: event.id,
             name: event.name,
             date: event.date,
+            start_time: event.start_time,
             location: event.location,
             max_players: event.max_players,
             registration_deadline: event.registration_deadline,
@@ -217,6 +219,12 @@ export function JoinableRoundRobinEvents({ courtLocation, userId }: JoinableRoun
                     <Calendar className="w-4 h-4" />
                     <span>{format(eventDate, "MMM d, yyyy")}</span>
                   </div>
+                  {event.start_time && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Clock className="w-4 h-4" />
+                      <span>Event Time: {event.start_time}</span>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Clock className="w-4 h-4" />
                     <span>Register by {format(deadline, "MMM d, h:mm a")}</span>
