@@ -791,12 +791,14 @@ export default function RoundRobinDetail() {
     }
 
     try {
-      // Delete schedule from the specified round onward
+      // Only delete unscored matches from the specified round onward
       const { error: deleteError } = await supabase
         .from("round_robin_schedule")
         .delete()
         .eq("event_id", event.id)
-        .gte("round_no", fromRound);
+        .gte("round_no", fromRound)
+        .is("team1_score", null)
+        .is("team2_score", null);
 
       if (deleteError) throw deleteError;
 
