@@ -306,13 +306,21 @@ export function EditMatchSheet({ matchId, open, onOpenChange, onSaved }: EditMat
 
       // Update participants if changed
       if (participantsChanged) {
-        // Delete old participants and wait for completion
+        console.log("Participants changed, updating...");
+        console.log("Match ID:", matchId);
+        
+        // First, delete ALL existing participants for this match
         const { error: deleteError } = await supabase
           .from("match_participants")
           .delete()
           .eq("match_id", matchId);
 
-        if (deleteError) throw deleteError;
+        if (deleteError) {
+          console.error("Error deleting participants:", deleteError);
+          throw deleteError;
+        }
+
+        console.log("Old participants deleted, inserting new ones...");
 
         // Insert new participants
         const newParticipants = [
@@ -322,11 +330,18 @@ export function EditMatchSheet({ matchId, open, onOpenChange, onSaved }: EditMat
           { match_id: matchId, player_id: team2Player2, team: 2 },
         ];
 
+        console.log("Inserting participants:", newParticipants);
+
         const { error: participantsError } = await supabase
           .from("match_participants")
           .insert(newParticipants);
 
-        if (participantsError) throw participantsError;
+        if (participantsError) {
+          console.error("Error inserting participants:", participantsError);
+          throw participantsError;
+        }
+
+        console.log("New participants inserted successfully");
       }
 
       // Log edit to audit trail
