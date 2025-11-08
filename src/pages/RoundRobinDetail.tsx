@@ -899,11 +899,12 @@ export default function RoundRobinDetail() {
 
     try {
       if (scope === 'global') {
-        // Global substitution: add new player (or reactivate if they exist), swap in unstarted matches
+        // Global substitution: add new player (or reactivate if they exist), regenerate schedule
         const existingPlayer = players.find(p => p.player_id === newPlayerId);
+        const wasInactive = existingPlayer && !existingPlayer.active;
         
         if (existingPlayer) {
-          // Player already exists, just reactivate them
+          // Player already exists, reactivate them
           await supabase
             .from("round_robin_players")
             .update({ active: true })
@@ -926,30 +927,6 @@ export default function RoundRobinDetail() {
             .eq("id", oldPlayer.id);
         }
 
-        // Update all unstarted matches (no scores) with the new player
-        const fromRound = event.current_round || 1;
-        const futureMatches = schedule.filter(s => 
-          s.round_no >= fromRound && 
-          !s.is_bye && 
-          s.team1_score === null && 
-          s.team2_score === null
-        );
-        
-        for (const match of futureMatches) {
-          const updates: any = {};
-          if (match.a1_player_id === originalPlayerId) updates.a1_player_id = newPlayerId;
-          if (match.a2_player_id === originalPlayerId) updates.a2_player_id = newPlayerId;
-          if (match.b1_player_id === originalPlayerId) updates.b1_player_id = newPlayerId;
-          if (match.b2_player_id === originalPlayerId) updates.b2_player_id = newPlayerId;
-
-          if (Object.keys(updates).length > 0) {
-            await supabase
-              .from("round_robin_schedule")
-              .update(updates)
-              .eq("id", match.id);
-          }
-        }
-
         await supabase.from("round_robin_audit").insert({
           event_id: event.id,
           editor_id: userId,
@@ -958,12 +935,23 @@ export default function RoundRobinDetail() {
             original_player_id: originalPlayerId,
             new_player_id: newPlayerId,
             scope: 'global',
+            was_reactivated: wasInactive,
           },
-          reason: "Global player substitution",
+          reason: wasInactive 
+            ? "Player reactivated and substituted globally" 
+            : "Global player substitution",
         });
 
+        // Regenerate schedule from current round for fair redistribution
+        const fromRound = event.current_round || 1;
+        await regenerateScheduleFromRound(fromRound);
+
         await fetchEventDetails();
-        toast.success("Player substituted globally in all unstarted matches");
+        toast.success(
+          wasInactive 
+            ? "Player reactivated and schedule regenerated" 
+            : "Player substituted and schedule regenerated"
+        );
       } else {
         // Single round substitution: update specific unstarted matches
         const roundMatches = schedule.filter(s => 
