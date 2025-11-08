@@ -43,6 +43,7 @@ export default function CourtBoard() {
   const [sessionQueueHelpOpen, setSessionQueueHelpOpen] = useState(false);
 
   const PICKLEBALL_CITI_ID = "836003fb-fbd7-429c-8973-67ac6766a511";
+  const TILDA_STONE_ID = "2bf21943-2efc-43fe-bab4-9bb7693d4674";
   const CENTERLINE_PICKLEBALL_ID = "d8f3c9e1-7b4a-4d2e-9f8c-1a2b3c4d5e6f"; // Replace with actual ID if different
 
   useEffect(() => {
@@ -70,6 +71,13 @@ export default function CourtBoard() {
         setIsAdmin(true);
       }
     }
+  };
+
+  const isTildaStone = courtId === TILDA_STONE_ID;
+
+  const checkUserTildaStone = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    setCurrentUserId(user?.id || null);
   };
 
   const fetchCourt = async () => {
@@ -191,7 +199,7 @@ export default function CourtBoard() {
       >
         <div className="container mx-auto px-4 py-6 md:py-8">
           <div className="flex items-start gap-3 md:gap-6 flex-wrap md:flex-nowrap">
-            {courtId === PICKLEBALL_CITI_ID ? (
+            {courtId === PICKLEBALL_CITI_ID || isTildaStone ? (
               <>
                 <motion.div
                   initial={{ scale: 0.8, opacity: 0 }}
@@ -199,14 +207,25 @@ export default function CourtBoard() {
                   transition={{ duration: 0.5, delay: 0.1 }}
                   className="flex items-center gap-6 flex-1"
                 >
-                  <img 
-                    src={pickleballCitiLogo} 
-                    alt="Pickleball Citi" 
-                    className="h-40 md:h-52 lg:h-56 w-auto"
-                    style={{ 
-                      filter: 'drop-shadow(0px 2px 4px rgba(0, 0, 0, 0.1))'
-                    }}
-                  />
+                  {courtId === PICKLEBALL_CITI_ID ? (
+                    <img 
+                      src={pickleballCitiLogo} 
+                      alt="Pickleball Citi" 
+                      className="h-40 md:h-52 lg:h-56 w-auto"
+                      style={{ 
+                        filter: 'drop-shadow(0px 2px 4px rgba(0, 0, 0, 0.1))'
+                      }}
+                    />
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold" style={{ color: '#0E4C58' }}>
+                        Tilda Stone
+                      </h1>
+                      <p className="text-lg md:text-xl" style={{ color: '#0E4C58', opacity: 0.7 }}>
+                        Indoor Pickleball
+                      </p>
+                    </div>
+                  )}
                   <div className="flex flex-col gap-1">
                     <motion.p
                       initial={{ opacity: 0 }}
@@ -215,7 +234,7 @@ export default function CourtBoard() {
                       className="text-xl md:text-2xl font-semibold"
                       style={{ color: '#0E4C58' }}
                     >
-                      Cranston, RI
+                      {courtId === PICKLEBALL_CITI_ID ? "Cranston, RI" : "Attleboro, MA"}
                     </motion.p>
                     <motion.p
                       initial={{ opacity: 0 }}
@@ -234,34 +253,38 @@ export default function CourtBoard() {
                   transition={{ duration: 0.5, delay: 0.2 }}
                   className="w-full md:w-auto md:flex-shrink-0 flex flex-col items-end gap-2"
                 >
-                  <VenueInfoCard />
+                  {courtId === PICKLEBALL_CITI_ID && <VenueInfoCard />}
                   <div className="flex gap-2">
                     {currentUserId && (
                       <CourtCheckIn courtId={court.id} userId={currentUserId} />
                     )}
-                    <Button
-                      onClick={() => navigate('/reservations')}
-                      size="sm"
-                      className="gap-2 text-sm px-3 py-1.5 rounded-full"
-                      style={{
-                        backgroundColor: '#B9E43B',
-                        color: '#0E4C58',
-                      }}
-                    >
-                      <Calendar className="w-4 h-4" />
-                      Court Reservations
-                    </Button>
-                    <Button
-                      asChild
-                      variant="outline"
-                      size="sm"
-                      className="gap-2 text-sm px-3 py-1.5 rounded-full"
-                    >
-                      <a href="https://pickleballciti.com/" target="_blank" rel="noopener noreferrer">
-                        <ExternalLink className="w-4 h-4" />
-                        Visit Official Website
-                      </a>
-                    </Button>
+                    {courtId === PICKLEBALL_CITI_ID && (
+                      <>
+                        <Button
+                          onClick={() => navigate('/reservations')}
+                          size="sm"
+                          className="gap-2 text-sm px-3 py-1.5 rounded-full"
+                          style={{
+                            backgroundColor: '#B9E43B',
+                            color: '#0E4C58',
+                          }}
+                        >
+                          <Calendar className="w-4 h-4" />
+                          Court Reservations
+                        </Button>
+                        <Button
+                          asChild
+                          variant="outline"
+                          size="sm"
+                          className="gap-2 text-sm px-3 py-1.5 rounded-full"
+                        >
+                          <a href="https://pickleballciti.com/" target="_blank" rel="noopener noreferrer">
+                            <ExternalLink className="w-4 h-4" />
+                            Visit Official Website
+                          </a>
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </motion.div>
               </>
