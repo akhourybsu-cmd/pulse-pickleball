@@ -39,6 +39,7 @@ import { EditNotifications } from "@/components/round-robin/EditNotifications";
 import { RegistrationManagement } from "@/components/round-robin/RegistrationManagement";
 import { z } from "zod";
 import logo from "@/assets/pulse-logo-new.png";
+import { suggestRounds } from "@/lib/roundRobinFairness";
 
 // Score validation schema
 const scoreSchema = z.object({
@@ -1039,8 +1040,8 @@ export default function RoundRobinDetail() {
       const before = { games_per_player: event.games_per_player };
       const after = { games_per_player: newGamesPerPlayer };
 
-      // Calculate new number of rounds needed
-      const newRounds = Math.ceil((newGamesPerPlayer * players.length) / (event.num_courts * 4));
+      // Calculate new number of rounds needed using the same algorithm as the dialog
+      const newRounds = suggestRounds(players.length, event.num_courts, newGamesPerPlayer);
 
       // Update event
       const { error: updateError } = await supabase
