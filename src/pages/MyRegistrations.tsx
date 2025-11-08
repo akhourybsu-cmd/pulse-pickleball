@@ -113,7 +113,7 @@ export default function MyRegistrations() {
           event_id,
           registration_status,
           joined_at,
-          event:round_robin_events(id, name, date, location, max_players, status)
+          event:round_robin_events(id, name, date, location, max_players, status, start_time)
         `)
         .eq("player_id", user.id)
         .eq("active", true)
@@ -292,6 +292,14 @@ export default function MyRegistrations() {
                           {format(parseISO(rrReg.event.date + 'T00:00:00'), "MMM d, yyyy")}
                         </span>
                       </div>
+                      {rrReg.event.start_time && (
+                        <div className="flex items-center gap-2 text-sm">
+                          <Clock className="h-4 w-4 text-muted-foreground" />
+                          <span>
+                            {format(parseISO(rrReg.event.date + 'T' + rrReg.event.start_time), "h:mm a")}
+                          </span>
+                        </div>
+                      )}
                       {rrReg.event.location && (
                         <div className="flex items-center gap-2 text-sm">
                           <MapPin className="h-4 w-4 text-muted-foreground" />
