@@ -302,7 +302,7 @@ export function PlayerManagementDialog({
                   }
                 }}
                 placeholder="Search for replacement player..."
-                excludePlayerIds={players.map(p => p.player_id).filter(id => id !== substituteOriginal)}
+                excludePlayerIds={activePlayers.map(p => p.player_id).filter(id => id !== substituteOriginal)}
               />
               {substituteNew && substituteNewName && (
                 <div className="text-sm text-muted-foreground mt-1">
