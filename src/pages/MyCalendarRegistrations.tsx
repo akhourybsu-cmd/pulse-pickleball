@@ -94,7 +94,7 @@ export default function MyCalendarRegistrations() {
       return (data || []).map((reg: any) => ({
         ...reg,
         type: 'round_robin',
-        start_time: `${reg.event.date}T00:00:00`
+        event_start_time: reg.event.date
       }));
     },
     enabled: !!session?.user?.id,
@@ -105,18 +105,26 @@ export default function MyCalendarRegistrations() {
     ...calendarRegistrations.map((reg: any) => ({
       ...reg,
       type: 'calendar',
-      start_time: reg.calendar_events?.start_time
+      event_start_time: reg.calendar_events?.start_time
     })),
     ...roundRobinRegistrations
-  ];
+  ].sort((a, b) => {
+    const timeA = a.type === 'calendar' ? new Date(a.event_start_time || 0) : parseISO((a.event_start_time || '') + 'T00:00:00');
+    const timeB = b.type === 'calendar' ? new Date(b.event_start_time || 0) : parseISO((b.event_start_time || '') + 'T00:00:00');
+    return timeA.getTime() - timeB.getTime();
+  });
 
   const filteredRegistrations = allRegistrations.filter((reg: any) => {
     const eventTime = reg.type === 'calendar' 
       ? (reg.calendar_events ? new Date(reg.calendar_events.start_time) : null)
-      : parseISO(reg.event.date + 'T00:00:00');
+      : parseISO((reg.event?.date || reg.event_start_time) + 'T00:00:00');
     
     if (!eventTime) return false;
-    return filter === "upcoming" ? !isPast(eventTime) : isPast(eventTime);
+    
+    const now = new Date();
+    now.setHours(0, 0, 0, 0); // Start of today
+    
+    return filter === "upcoming" ? eventTime >= now : eventTime < now;
   });
 
   const handleCancelRegistration = async (registrationId: string, type: 'calendar' | 'round_robin') => {
@@ -240,9 +248,10 @@ export default function MyCalendarRegistrations() {
             {filteredRegistrations.map((reg: any) => {
               if (reg.type === 'round_robin') {
                 const event = reg.event;
-                // Parse date string correctly to avoid timezone issues
                 const eventDate = parseISO(event.date + 'T00:00:00');
-                const eventPassed = isPast(eventDate);
+                const now = new Date();
+                now.setHours(0, 0, 0, 0);
+                const eventPassed = eventDate < now;
 
                 return (
                   <Card key={reg.id} className="hover:shadow-md transition-shadow">
