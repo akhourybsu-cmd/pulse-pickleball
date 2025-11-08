@@ -100,11 +100,25 @@ export default function MyCalendarRegistrations() {
         .eq("active", true);
 
       if (error) throw error;
-      return (data || []).map((reg: any) => ({
-        ...reg,
-        type: 'round_robin',
-        event_start_time: reg.event.date
+
+      // Enrich with current player counts
+      const enrichedData = await Promise.all((data || []).map(async (reg: any) => {
+        const { count } = await supabase
+          .from("round_robin_players")
+          .select("*", { count: 'exact', head: true })
+          .eq("event_id", reg.event_id)
+          .eq("active", true)
+          .eq("registration_status", "confirmed");
+
+        return {
+          ...reg,
+          type: 'round_robin',
+          event_start_time: reg.event.date,
+          current_players: count || 0
+        };
       }));
+
+      return enrichedData;
     },
     enabled: !!session?.user?.id,
   });
@@ -329,10 +343,10 @@ export default function MyCalendarRegistrations() {
                                 <span className="text-muted-foreground">Players</span>
                               </div>
                               <span className="font-medium">
-                                {Math.min(event.max_players || 0, event.max_players)} / {event.max_players}
+                                {reg.current_players || 0} / {event.max_players}
                               </span>
                             </div>
-                            <Progress value={(event.max_players / event.max_players) * 100} className="h-2" />
+                            <Progress value={((reg.current_players || 0) / event.max_players) * 100} className="h-2" />
                           </div>
                         )}
                       </div>
