@@ -447,9 +447,16 @@ const Auth = () => {
                 </Button>
                 
                 {!isLogin && (
-                  <p className="text-xs text-muted-foreground text-center">
-                    Account creation requires location access to verify MA/RI residency
-                  </p>
+                  <div className="bg-muted/50 border border-border rounded-lg p-3 space-y-1">
+                    <p className="text-sm font-medium text-foreground">
+                      Location Verification Required
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      PULSE is designed for pickleball players in Massachusetts and Rhode Island. 
+                      Location access is only required during sign-up to verify eligibility. 
+                      You will not be asked for location access again after creating your account.
+                    </p>
+                  </div>
                 )}
 
                 <div className="text-center text-sm">
