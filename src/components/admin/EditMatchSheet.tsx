@@ -195,6 +195,14 @@ export function EditMatchSheet({ matchId, open, onOpenChange, onSaved }: EditMat
     setSaving(true);
 
     try {
+      // Log current player selections for debugging
+      console.log("Current player selections:", {
+        team1Player1,
+        team1Player2,
+        team2Player1,
+        team2Player2
+      });
+
       // Validate input
       const validationResult = matchEditSchema.safeParse({
         match_date: matchDate,
@@ -216,9 +224,13 @@ export function EditMatchSheet({ matchId, open, onOpenChange, onSaved }: EditMat
 
       // Check for duplicate players
       const playerIds = [team1Player1, team1Player2, team2Player1, team2Player2];
+      console.log("All player IDs:", playerIds);
+      
       const uniquePlayerIds = new Set(playerIds);
+      console.log("Unique player IDs count:", uniquePlayerIds.size);
+      
       if (uniquePlayerIds.size !== 4) {
-        toast.error("All four players must be different");
+        toast.error("All four players must be different. Please check your selections.");
         setSaving(false);
         return;
       }
