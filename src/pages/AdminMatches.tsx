@@ -157,7 +157,10 @@ const AdminMatches = () => {
           }
           
           if (profiles && profiles.length > 0) {
-            playerNames.push(...profiles.map(p => p.display_name || p.full_name || "Unknown"));
+            profiles.forEach(p => {
+              playerNames.push(p.display_name || p.full_name || "Unknown");
+            });
+            console.log(`Match ${match.id}: Found ${playerNames.length} players:`, playerNames);
           } else {
             console.warn("No profiles found for match", match.id, "playerIds:", playerIds);
           }
@@ -412,7 +415,12 @@ const AdminMatches = () => {
 
                     <div className="text-sm">
                       <span className="text-muted-foreground">Players: </span>
-                      <span>{match.players.join(" / ")}</span>
+                      <span>
+                        {match.players && match.players.length > 0 
+                          ? match.players.join(" / ") 
+                          : <span className="text-destructive">No players found</span>
+                        }
+                      </span>
                     </div>
 
                     <div className="flex items-center gap-4 text-sm">
