@@ -108,15 +108,15 @@ export function EditEventDialog({ open, onOpenChange, event, onSave, playerCount
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle>Edit Event Settings</DialogTitle>
           <DialogDescription>
             Changes to rating settings will only apply to future, unscored matches.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className="space-y-4 py-4 overflow-y-auto flex-1 px-1">
           <div className="space-y-2">
             <Label htmlFor="name">Event Name</Label>
             <Input
@@ -246,7 +246,7 @@ export function EditEventDialog({ open, onOpenChange, event, onSave, playerCount
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="flex-shrink-0">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
