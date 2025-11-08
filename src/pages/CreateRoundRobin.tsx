@@ -314,7 +314,7 @@ export default function CreateRoundRobin() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="max-players">Max Players *</Label>
+                  <Label htmlFor="max-players">Number of Players *</Label>
                   <Input
                     id="max-players"
                     type="number"
@@ -323,6 +323,15 @@ export default function CreateRoundRobin() {
                     value={maxPlayers}
                     onChange={(e) => setMaxPlayers(parseInt(e.target.value) || 4)}
                   />
+                  <p className="text-sm text-muted-foreground">
+                    Expected players: {maxPlayers} → Will generate {(() => {
+                      const C = parseInt(numCourts) || 0;
+                      const G = parseInt(gamesPerPlayer) || 0;
+                      const totalSlots = maxPlayers * G;
+                      const capacity = C * 4;
+                      return Math.ceil(totalSlots / capacity);
+                    })()} rounds
+                  </p>
                 </div>
 
                 <div className="flex items-center space-x-2">

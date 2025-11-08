@@ -28,6 +28,11 @@ interface Event {
   notes: string | null;
   rating_eligible: boolean;
   rating_type: "ladder" | "league" | "playoffs" | "casual";
+  num_courts: number;
+  num_rounds: number;
+  games_per_player?: number;
+  max_players?: number;
+  registration_mode?: string;
 }
 
 interface EditEventDialogProps {
@@ -35,16 +40,33 @@ interface EditEventDialogProps {
   onOpenChange: (open: boolean) => void;
   event: Event;
   onSave: (updates: Partial<Event>) => Promise<void>;
+  playerCount?: number; // Current player count for display
 }
 
-export function EditEventDialog({ open, onOpenChange, event, onSave }: EditEventDialogProps) {
+export function EditEventDialog({ open, onOpenChange, event, onSave, playerCount }: EditEventDialogProps) {
   const [name, setName] = useState(event.name);
   const [date, setDate] = useState(event.date);
   const [startTime, setStartTime] = useState(event.start_time || "09:00");
   const [notes, setNotes] = useState(event.notes || "");
   const [ratingEligible, setRatingEligible] = useState(event.rating_eligible);
   const [ratingType, setRatingType] = useState<"ladder" | "league" | "playoffs" | "casual">(event.rating_type);
+  const [numCourts, setNumCourts] = useState(event.num_courts);
+  const [gamesPerPlayer, setGamesPerPlayer] = useState(event.games_per_player || 3);
+  const [maxPlayers, setMaxPlayers] = useState(event.max_players || playerCount || 8);
   const [saving, setSaving] = useState(false);
+
+  // Calculate rounds automatically based on players, courts, and games
+  const calculateRounds = (players: number, courts: number, games: number) => {
+    const totalSlots = players * games;
+    const capacity = courts * 4;
+    return Math.ceil(totalSlots / capacity);
+  };
+
+  const calculatedRounds = calculateRounds(
+    event.registration_mode === 'open_registration' ? maxPlayers : (playerCount || 8),
+    numCourts,
+    gamesPerPlayer
+  );
 
   const hasChanges = 
     name !== event.name ||
@@ -52,7 +74,11 @@ export function EditEventDialog({ open, onOpenChange, event, onSave }: EditEvent
     startTime !== (event.start_time || "09:00") ||
     notes !== (event.notes || "") ||
     ratingEligible !== event.rating_eligible ||
-    ratingType !== event.rating_type;
+    ratingType !== event.rating_type ||
+    numCourts !== event.num_courts ||
+    gamesPerPlayer !== (event.games_per_player || 3) ||
+    (event.registration_mode === 'open_registration' && maxPlayers !== event.max_players) ||
+    calculatedRounds !== event.num_rounds;
 
   const handleSave = async () => {
     if (!hasChanges) return;
@@ -66,6 +92,12 @@ export function EditEventDialog({ open, onOpenChange, event, onSave }: EditEvent
       if (notes !== (event.notes || "")) updates.notes = notes || null;
       if (ratingEligible !== event.rating_eligible) updates.rating_eligible = ratingEligible;
       if (ratingType !== event.rating_type) updates.rating_type = ratingType;
+      if (numCourts !== event.num_courts) updates.num_courts = numCourts;
+      if (gamesPerPlayer !== (event.games_per_player || 3)) updates.games_per_player = gamesPerPlayer;
+      if (event.registration_mode === 'open_registration' && maxPlayers !== event.max_players) {
+        updates.max_players = maxPlayers;
+      }
+      if (calculatedRounds !== event.num_rounds) updates.num_rounds = calculatedRounds;
 
       await onSave(updates);
       onOpenChange(false);
@@ -160,6 +192,58 @@ export function EditEventDialog({ open, onOpenChange, event, onSave }: EditEvent
               </Select>
             </div>
           )}
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="courts">Number of Courts</Label>
+              <Input
+                id="courts"
+                type="number"
+                min="1"
+                max="20"
+                value={numCourts}
+                onChange={(e) => setNumCourts(parseInt(e.target.value) || 1)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="games-per-player">Games per Player</Label>
+              <Input
+                id="games-per-player"
+                type="number"
+                min="1"
+                max="20"
+                value={gamesPerPlayer}
+                onChange={(e) => setGamesPerPlayer(parseInt(e.target.value) || 3)}
+              />
+            </div>
+          </div>
+
+          {event.registration_mode === 'open_registration' && (
+            <div className="space-y-2">
+              <Label htmlFor="max-players">Number of Players</Label>
+              <Input
+                id="max-players"
+                type="number"
+                min="4"
+                max="100"
+                value={maxPlayers}
+                onChange={(e) => setMaxPlayers(parseInt(e.target.value) || 8)}
+              />
+            </div>
+          )}
+
+          <div className="bg-muted/50 p-3 rounded-lg space-y-1">
+            <p className="text-sm font-medium">Auto-calculated Schedule</p>
+            <p className="text-xs text-muted-foreground">
+              {event.registration_mode === 'open_registration' ? maxPlayers : playerCount || 8} players × {gamesPerPlayer} games ÷ ({numCourts} courts × 4 slots) = <span className="font-semibold">{calculatedRounds} rounds</span>
+            </p>
+            {calculatedRounds !== event.num_rounds && (
+              <p className="text-xs text-amber-600 dark:text-amber-400">
+                ⚠ Rounds will update from {event.num_rounds} to {calculatedRounds}
+              </p>
+            )}
+          </div>
         </div>
 
         <DialogFooter>

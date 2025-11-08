@@ -2007,6 +2007,7 @@ export default function RoundRobinDetail() {
             onOpenChange={setEditDialogOpen}
             event={event}
             onSave={handleSaveEventSettings}
+            playerCount={players.length}
           />
           
           <PlayerManagementDialog
