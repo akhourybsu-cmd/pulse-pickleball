@@ -230,7 +230,24 @@ export function EditMatchSheet({ matchId, open, onOpenChange, onSaved }: EditMat
       console.log("Unique player IDs count:", uniquePlayerIds.size);
       
       if (uniquePlayerIds.size !== 4) {
-        toast.error("All four players must be different. Please check your selections.");
+        // Find which player is duplicated
+        const duplicates = playerIds.filter((id, index) => playerIds.indexOf(id) !== index);
+        const duplicateNames = await Promise.all(
+          duplicates.map(async (id) => {
+            const player = players.find(p => p.id === id);
+            if (player) return player.display_name || player.full_name;
+            
+            // Fetch player name if not in list
+            const { data } = await supabase
+              .from("profiles_public")
+              .select("display_name, full_name")
+              .eq("id", id)
+              .single();
+            return data?.display_name || data?.full_name || "Unknown";
+          })
+        );
+        
+        toast.error(`Player "${duplicateNames[0]}" is selected multiple times. Each position must have a different player.`);
         setSaving(false);
         return;
       }
