@@ -11,47 +11,41 @@ import {
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertTriangle, Grid3x3, Calendar } from "lucide-react";
+import { AlertTriangle, Grid3x3, Gamepad2 } from "lucide-react";
+import { suggestRounds } from "@/lib/roundRobinFairness";
 
 interface CourtsRoundsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   currentCourts: number;
-  currentRounds: number;
+  currentGamesPerPlayer: number;
   currentRound: number | null;
   hasScores: boolean;
   totalPlayers: number;
   onUpdateCourts: (newCourts: number) => Promise<void>;
-  onUpdateRounds: (newRounds: number) => Promise<void>;
+  onUpdateGamesPerPlayer: (newGamesPerPlayer: number) => Promise<void>;
 }
 
-type Mode = 'courts' | 'rounds' | null;
+type Mode = 'courts' | 'games' | null;
 
 export function CourtsRoundsDialog({
   open,
   onOpenChange,
   currentCourts,
-  currentRounds,
+  currentGamesPerPlayer,
   currentRound,
   hasScores,
   totalPlayers,
   onUpdateCourts,
-  onUpdateRounds,
+  onUpdateGamesPerPlayer,
 }: CourtsRoundsDialogProps) {
   const [mode, setMode] = useState<Mode>(null);
   const [newCourts, setNewCourts] = useState(currentCourts);
-  const [newRounds, setNewRounds] = useState(currentRounds);
+  const [newGamesPerPlayer, setNewGamesPerPlayer] = useState(currentGamesPerPlayer);
   const [loading, setLoading] = useState(false);
 
-  // Calculate optimal rounds to maximize games played
-  const calculateOptimalRounds = (courts: number, players: number): number => {
-    const playersPerRound = courts * 4;
-    const matchesNeededForEachPair = Math.ceil((players * (players - 1)) / 8); // Each player with each other as partner/opponent
-    const baseRounds = Math.ceil(matchesNeededForEachPair / courts);
-    return Math.max(baseRounds, Math.ceil(players / 2)); // At least enough rounds so everyone plays multiple times
-  };
-
-  const optimalRounds = calculateOptimalRounds(newCourts, totalPlayers);
+  // Calculate rounds based on courts and games per player
+  const calculatedRounds = suggestRounds(totalPlayers, newCourts, mode === 'games' ? newGamesPerPlayer : currentGamesPerPlayer);
 
   const handleUpdateCourts = async () => {
     if (newCourts === currentCourts || newCourts < 1) return;
@@ -66,14 +60,14 @@ export function CourtsRoundsDialog({
     }
   };
 
-  const handleUpdateRounds = async () => {
-    if (newRounds === currentRounds || newRounds < 1) return;
+  const handleUpdateGamesPerPlayer = async () => {
+    if (newGamesPerPlayer === currentGamesPerPlayer || newGamesPerPlayer < 1) return;
     
     setLoading(true);
     try {
-      await onUpdateRounds(newRounds);
+      await onUpdateGamesPerPlayer(newGamesPerPlayer);
       setMode(null);
-      setNewRounds(currentRounds);
+      setNewGamesPerPlayer(currentGamesPerPlayer);
     } finally {
       setLoading(false);
     }
@@ -82,23 +76,21 @@ export function CourtsRoundsDialog({
   const handleClose = () => {
     setMode(null);
     setNewCourts(currentCourts);
-    setNewRounds(currentRounds);
+    setNewGamesPerPlayer(currentGamesPerPlayer);
     onOpenChange(false);
   };
 
-  const courtsWillIncrease = newCourts > currentCourts;
-  const courtsWillDecrease = newCourts < currentCourts;
-  const roundsWillIncrease = newRounds > currentRounds;
-  const roundsWillDecrease = newRounds < currentRounds;
+  const courtsWillChange = newCourts !== currentCourts;
+  const gamesWillChange = newGamesPerPlayer !== currentGamesPerPlayer;
   const fromRound = currentRound || 1;
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Adjust Courts & Rounds</DialogTitle>
+          <DialogTitle>Adjust Courts & Games</DialogTitle>
           <DialogDescription>
-            Modify the tournament structure. Changes will regenerate future rounds.
+            Modify courts and games per player. Rounds will auto-calculate based on these settings.
           </DialogDescription>
         </DialogHeader>
 
@@ -121,33 +113,19 @@ export function CourtsRoundsDialog({
             <Button
               variant="outline"
               className="w-full justify-start h-auto py-4"
-              onClick={() => setMode('rounds')}
+              onClick={() => setMode('games')}
             >
-              <Calendar className="w-5 h-5 mr-3" />
+              <Gamepad2 className="w-5 h-5 mr-3" />
               <div className="text-left">
-                <div className="font-semibold">Adjust Number of Rounds</div>
+                <div className="font-semibold">Adjust Games Per Player</div>
                 <div className="text-sm text-muted-foreground">
-                  Currently: {currentRounds} {currentRounds === 1 ? 'round' : 'rounds'}
+                  Currently: {currentGamesPerPlayer} {currentGamesPerPlayer === 1 ? 'game' : 'games'}
                 </div>
               </div>
             </Button>
           </div>
         ) : mode === 'courts' ? (
           <div className="space-y-4 py-4">
-            <Alert>
-              <Grid3x3 className="w-4 h-4" />
-              <AlertDescription>
-                {courtsWillIncrease && (
-                  <>Increasing courts will regenerate the schedule from Round {fromRound} onward, 
-                  distributing matches across more courts.</>
-                )}
-                {courtsWillDecrease && (
-                  <>Decreasing courts will consolidate matches and may create more byes. 
-                  Schedule will be regenerated from Round {fromRound} onward.</>
-                )}
-              </AlertDescription>
-            </Alert>
-
             <div className="space-y-2">
               <Label htmlFor="courts">Number of Courts</Label>
               <Input
@@ -165,19 +143,17 @@ export function CourtsRoundsDialog({
 
             <Alert>
               <AlertDescription>
-                <strong>Suggested rounds with {newCourts} {newCourts === 1 ? 'court' : 'courts'}:</strong> {optimalRounds} rounds
+                <strong>With {newCourts} {newCourts === 1 ? 'court' : 'courts'} and {currentGamesPerPlayer} {currentGamesPerPlayer === 1 ? 'game' : 'games'} per player:</strong>
                 <br />
-                <span className="text-xs text-muted-foreground">
-                  This maximizes games for {totalPlayers} players. You can adjust rounds separately if needed.
-                </span>
+                This will require {calculatedRounds} {calculatedRounds === 1 ? 'round' : 'rounds'} for {totalPlayers} players
               </AlertDescription>
             </Alert>
 
-            {courtsWillDecrease && hasScores && (
+            {courtsWillChange && hasScores && (
               <Alert variant="destructive">
                 <AlertTriangle className="w-4 h-4" />
                 <AlertDescription>
-                  <strong>Warning:</strong> This event has scored matches. Decreasing courts 
+                  <strong>Warning:</strong> This event has scored matches. Changing courts 
                   will regenerate future rounds and may affect scheduled matches.
                 </AlertDescription>
               </Alert>
@@ -185,58 +161,35 @@ export function CourtsRoundsDialog({
           </div>
         ) : (
           <div className="space-y-4 py-4">
-            <Alert>
-              <Calendar className="w-4 h-4" />
-              <AlertDescription>
-                {roundsWillIncrease && (
-                  <>Adding rounds will generate additional rounds with the same fairness rules.</>
-                )}
-                {roundsWillDecrease && (
-                  <>Removing rounds will delete all rounds beyond Round {newRounds}. 
-                  This cannot be undone.</>
-                )}
-              </AlertDescription>
-            </Alert>
-
             <div className="space-y-2">
-              <Label htmlFor="rounds">Number of Rounds</Label>
+              <Label htmlFor="games">Games Per Player</Label>
               <Input
-                id="rounds"
+                id="games"
                 type="number"
                 min="1"
-                max="50"
-                value={newRounds}
-                onChange={(e) => setNewRounds(parseInt(e.target.value) || 1)}
+                max="20"
+                value={newGamesPerPlayer}
+                onChange={(e) => setNewGamesPerPlayer(parseInt(e.target.value) || 1)}
               />
               <p className="text-sm text-muted-foreground">
-                Enter between 1 and 50 rounds
+                Target number of games each player should play
               </p>
             </div>
 
-            {roundsWillDecrease && (
-              <Alert variant="destructive">
-                <AlertTriangle className="w-4 h-4" />
-                <AlertDescription>
-                  <strong>Warning:</strong> You are decreasing from {currentRounds} to {newRounds} rounds.
-                  {hasScores && newRounds < fromRound && (
-                    <> This will delete rounds that have scored matches. All scores in those rounds will be lost.</>
-                  )}
-                  {hasScores && newRounds >= fromRound && (
-                    <> Rounds {newRounds + 1} through {currentRounds} will be deleted.</>
-                  )}
-                  {!hasScores && (
-                    <> Rounds {newRounds + 1} through {currentRounds} will be deleted.</>
-                  )}
-                </AlertDescription>
-              </Alert>
-            )}
+            <Alert>
+              <AlertDescription>
+                <strong>With {currentCourts} {currentCourts === 1 ? 'court' : 'courts'} and {newGamesPerPlayer} {newGamesPerPlayer === 1 ? 'game' : 'games'} per player:</strong>
+                <br />
+                This will require {calculatedRounds} {calculatedRounds === 1 ? 'round' : 'rounds'} for {totalPlayers} players
+              </AlertDescription>
+            </Alert>
 
-            {roundsWillDecrease && newRounds < fromRound && (
+            {gamesWillChange && hasScores && (
               <Alert variant="destructive">
                 <AlertTriangle className="w-4 h-4" />
                 <AlertDescription>
-                  <strong>Cannot proceed:</strong> You cannot decrease rounds below the current round ({fromRound}).
-                  Complete or void the event first.
+                  <strong>Warning:</strong> This event has scored matches. Changing games per player 
+                  will regenerate the schedule and may affect scheduled matches.
                 </AlertDescription>
               </Alert>
             )}
@@ -248,45 +201,19 @@ export function CourtsRoundsDialog({
             Cancel
           </Button>
           {mode === 'courts' && (
-            <>
-              {optimalRounds !== currentRounds && (
-                <Button 
-                  onClick={async () => {
-                    setLoading(true);
-                    try {
-                      await onUpdateCourts(newCourts);
-                      await onUpdateRounds(optimalRounds);
-                      setMode(null);
-                    } finally {
-                      setLoading(false);
-                    }
-                  }} 
-                  disabled={newCourts === currentCourts || newCourts < 1 || loading}
-                >
-                  {loading ? "Updating..." : `Update & Set ${optimalRounds} Rounds`}
-                </Button>
-              )}
-              <Button 
-                variant={optimalRounds !== currentRounds ? "outline" : "default"}
-                onClick={handleUpdateCourts} 
-                disabled={newCourts === currentCourts || newCourts < 1 || loading}
-              >
-                {loading ? "Updating..." : "Update Courts Only"}
-              </Button>
-            </>
-          )}
-          {mode === 'rounds' && (
             <Button 
-              onClick={handleUpdateRounds} 
-              disabled={
-                newRounds === currentRounds || 
-                newRounds < 1 || 
-                (roundsWillDecrease && newRounds < fromRound) || 
-                loading
-              }
-              variant={roundsWillDecrease ? "destructive" : "default"}
+              onClick={handleUpdateCourts} 
+              disabled={newCourts === currentCourts || newCourts < 1 || loading}
             >
-              {loading ? "Updating..." : roundsWillDecrease ? "Delete Rounds" : "Add Rounds"}
+              {loading ? "Updating..." : "Update Courts"}
+            </Button>
+          )}
+          {mode === 'games' && (
+            <Button 
+              onClick={handleUpdateGamesPerPlayer} 
+              disabled={newGamesPerPlayer === currentGamesPerPlayer || newGamesPerPlayer < 1 || loading}
+            >
+              {loading ? "Updating..." : "Update Games Per Player"}
             </Button>
           )}
         </DialogFooter>

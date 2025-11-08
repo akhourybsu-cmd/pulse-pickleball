@@ -1032,28 +1032,23 @@ export default function RoundRobinDetail() {
     }
   };
 
-  const handleUpdateRounds = async (newRounds: number) => {
+  const handleUpdateGamesPerPlayer = async (newGamesPerPlayer: number) => {
     if (!event || !userId) return;
 
     try {
-      const before = { num_rounds: event.num_rounds };
-      const after = { num_rounds: newRounds };
+      const before = { games_per_player: event.games_per_player };
+      const after = { games_per_player: newGamesPerPlayer };
 
-      if (newRounds < event.num_rounds) {
-        // Decreasing: delete rounds beyond newRounds
-        const { error: deleteError } = await supabase
-          .from("round_robin_schedule")
-          .delete()
-          .eq("event_id", event.id)
-          .gt("round_no", newRounds);
-
-        if (deleteError) throw deleteError;
-      }
+      // Calculate new number of rounds needed
+      const newRounds = Math.ceil((newGamesPerPlayer * players.length) / (event.num_courts * 4));
 
       // Update event
       const { error: updateError } = await supabase
         .from("round_robin_events")
-        .update({ num_rounds: newRounds })
+        .update({ 
+          games_per_player: newGamesPerPlayer,
+          num_rounds: newRounds
+        })
         .eq("id", event.id);
 
       if (updateError) throw updateError;
@@ -1062,20 +1057,19 @@ export default function RoundRobinDetail() {
       await supabase.from("round_robin_audit").insert({
         event_id: event.id,
         editor_id: userId,
-        change_type: "rounds_update",
-        changes: { before, after },
-        reason: `Rounds ${newRounds > event.num_rounds ? 'increased' : 'decreased'} to ${newRounds}`,
+        change_type: "games_per_player_update",
+        changes: { before, after, rounds_adjusted_to: newRounds },
+        reason: `Games per player updated to ${newGamesPerPlayer}, rounds adjusted to ${newRounds}`,
       });
 
-      if (newRounds > event.num_rounds) {
-        // Increasing: regenerate to add new rounds
-        await regenerateScheduleFromRound(1);
-      }
+      // Regenerate schedule from current round
+      const fromRound = event.current_round || 1;
+      await regenerateScheduleFromRound(fromRound);
 
-      toast.success(`Rounds updated to ${newRounds}`);
+      toast.success(`Games per player updated to ${newGamesPerPlayer} (${newRounds} rounds)`);
       await fetchEventDetails();
     } catch (error: any) {
-      toast.error("Failed to update rounds");
+      toast.error("Failed to update games per player");
       console.error(error);
       throw error;
     }
@@ -1487,7 +1481,7 @@ export default function RoundRobinDetail() {
                       className="hidden sm:flex"
                     >
                       <Edit className="h-4 w-4 mr-2" />
-                      Courts & Rounds
+                      Courts & Games
                     </Button>
                   )}
                   <DropdownMenu>
@@ -2029,12 +2023,12 @@ export default function RoundRobinDetail() {
             open={courtsRoundsOpen}
             onOpenChange={setCourtsRoundsOpen}
             currentCourts={event.num_courts}
-            currentRounds={event.num_rounds}
+            currentGamesPerPlayer={event.games_per_player || 3}
             currentRound={event.current_round}
             hasScores={hasScores}
             totalPlayers={players.length}
             onUpdateCourts={handleUpdateCourts}
-            onUpdateRounds={handleUpdateRounds}
+            onUpdateGamesPerPlayer={handleUpdateGamesPerPlayer}
           />
 
           <ScheduleEditorDialog
