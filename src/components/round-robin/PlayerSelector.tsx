@@ -41,6 +41,16 @@ export function PlayerSelector({
   const [searchQuery, setSearchQuery] = useState("");
   const [players, setPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(false);
+  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
+
+  // Fetch the selected player when value changes
+  useEffect(() => {
+    if (value) {
+      fetchSelectedPlayer();
+    } else {
+      setSelectedPlayer(null);
+    }
+  }, [value]);
 
   useEffect(() => {
     if (searchQuery.trim().length >= 2) {
@@ -49,6 +59,21 @@ export function PlayerSelector({
       setPlayers([]);
     }
   }, [searchQuery]);
+
+  const fetchSelectedPlayer = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("profiles_public")
+        .select("id, full_name, display_name, current_rating")
+        .eq("id", value)
+        .single();
+
+      if (error) throw error;
+      setSelectedPlayer(data);
+    } catch (error) {
+      console.error("Error fetching selected player:", error);
+    }
+  };
 
   const fetchPlayers = async () => {
     setLoading(true);
@@ -70,7 +95,7 @@ export function PlayerSelector({
     }
   };
 
-  const selectedPlayer = players.find((player) => player.id === value);
+  
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
