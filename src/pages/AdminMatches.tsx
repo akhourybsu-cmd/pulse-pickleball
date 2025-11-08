@@ -147,14 +147,22 @@ const AdminMatches = () => {
         const playerNames: string[] = [];
         if (participants && participants.length > 0) {
           const playerIds = participants.map(p => p.player_id);
-          const { data: profiles } = await supabase
-            .from("profiles_public")
+          const { data: profiles, error: profilesError } = await supabase
+            .from("profiles")
             .select("id, display_name, full_name")
             .in("id", playerIds);
           
-          if (profiles) {
-            playerNames.push(...profiles.map(p => p.display_name || p.full_name || "Unknown"));
+          if (profilesError) {
+            console.error("Error fetching profiles for match", match.id, profilesError);
           }
+          
+          if (profiles && profiles.length > 0) {
+            playerNames.push(...profiles.map(p => p.display_name || p.full_name || "Unknown"));
+          } else {
+            console.warn("No profiles found for match", match.id, "playerIds:", playerIds);
+          }
+        } else {
+          console.warn("No participants found for match", match.id);
         }
 
         let courtName = "Unknown Court";
