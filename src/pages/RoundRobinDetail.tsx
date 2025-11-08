@@ -68,7 +68,6 @@ interface Event {
   updated_at: string;
   completed_at: string | null;
   voided: boolean;
-  organizer_pin: string | null;
   registration_deadline?: string | null;
   registration_mode?: string | null;
   max_players?: number | null;
@@ -1585,11 +1584,6 @@ export default function RoundRobinDetail() {
               {format(parseISO(event.date + 'T00:00:00'), 'PP')}
               {event.location && ` • ${event.location}`}
             </p>
-            {isOrganizer && event.organizer_pin && (
-              <Badge variant="secondary" className="text-sm font-mono">
-                PIN: {event.organizer_pin}
-              </Badge>
-            )}
           </div>
         </div>
       </div>

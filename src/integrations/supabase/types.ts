@@ -1486,6 +1486,7 @@ export type Database = {
           id: string
           last_name: string | null
           last_rating_update: string | null
+          location_public: boolean | null
           losses: number | null
           mfa_method: string | null
           notify_badges_email: boolean | null
@@ -1504,9 +1505,11 @@ export type Database = {
           pronouns: string | null
           shirt_size: string | null
           skill_level_self: string | null
+          state: string | null
           total_matches: number | null
           total_points_against: number | null
           total_points_for: number | null
+          town: string | null
           tutorial_completed: boolean
           updated_at: string | null
           week_start_date: string | null
@@ -1533,6 +1536,7 @@ export type Database = {
           id: string
           last_name?: string | null
           last_rating_update?: string | null
+          location_public?: boolean | null
           losses?: number | null
           mfa_method?: string | null
           notify_badges_email?: boolean | null
@@ -1551,9 +1555,11 @@ export type Database = {
           pronouns?: string | null
           shirt_size?: string | null
           skill_level_self?: string | null
+          state?: string | null
           total_matches?: number | null
           total_points_against?: number | null
           total_points_for?: number | null
+          town?: string | null
           tutorial_completed?: boolean
           updated_at?: string | null
           week_start_date?: string | null
@@ -1580,6 +1586,7 @@ export type Database = {
           id?: string
           last_name?: string | null
           last_rating_update?: string | null
+          location_public?: boolean | null
           losses?: number | null
           mfa_method?: string | null
           notify_badges_email?: boolean | null
@@ -1598,9 +1605,11 @@ export type Database = {
           pronouns?: string | null
           shirt_size?: string | null
           skill_level_self?: string | null
+          state?: string | null
           total_matches?: number | null
           total_points_against?: number | null
           total_points_for?: number | null
+          town?: string | null
           tutorial_completed?: boolean
           updated_at?: string | null
           week_start_date?: string | null
@@ -1840,7 +1849,6 @@ export type Database = {
           num_courts: number
           num_rounds: number
           organizer_id: string
-          organizer_pin: string | null
           rating_eligible: boolean
           rating_type: Database["public"]["Enums"]["rating_type"]
           registration_deadline: string | null
@@ -1869,7 +1877,6 @@ export type Database = {
           num_courts: number
           num_rounds: number
           organizer_id: string
-          organizer_pin?: string | null
           rating_eligible?: boolean
           rating_type?: Database["public"]["Enums"]["rating_type"]
           registration_deadline?: string | null
@@ -1898,7 +1905,6 @@ export type Database = {
           num_courts?: number
           num_rounds?: number
           organizer_id?: string
-          organizer_pin?: string | null
           rating_eligible?: boolean
           rating_type?: Database["public"]["Enums"]["rating_type"]
           registration_deadline?: string | null

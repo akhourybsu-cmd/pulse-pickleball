@@ -19,7 +19,6 @@ interface Event {
   num_rounds: number;
   current_round: number | null;
   status: "draft" | "live" | "completed";
-  organizer_pin: string;
 }
 
 interface ScheduleMatch {
