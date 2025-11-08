@@ -122,7 +122,7 @@ export function PlayerManagementDialog({
     
     // If not in players list, fetch from database (for new substitutes)
     const { data } = await supabase
-      .from('profiles')
+      .from('profiles_public')
       .select('display_name, full_name')
       .eq('id', playerId)
       .single();
