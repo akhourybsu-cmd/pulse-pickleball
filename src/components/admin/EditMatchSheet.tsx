@@ -322,9 +322,22 @@ export function EditMatchSheet({ matchId, open, onOpenChange, onSaved }: EditMat
       onSaved();
     } catch (error: any) {
       console.error("Error saving match:", error);
-      const userMessage = error.message?.includes('unique') || error.message?.includes('duplicate')
-        ? "A match with this information already exists"
-        : "Failed to save match. Please try again.";
+      console.error("Error code:", error.code);
+      console.error("Error details:", error.details);
+      
+      let userMessage = "Failed to save match. Please try again.";
+      
+      if (error.code === '23505') {
+        // Unique constraint violation
+        if (error.message?.includes('match_participants_match_id_player_id_key')) {
+          userMessage = "Error: A player cannot be assigned to the same match multiple times. Please check that all four players are different.";
+        } else {
+          userMessage = "A match with these exact details already exists in the database.";
+        }
+      } else if (error.message?.includes('unique') || error.message?.includes('duplicate')) {
+        userMessage = "A match with this information already exists";
+      }
+      
       toast.error(userMessage);
     } finally {
       setSaving(false);
