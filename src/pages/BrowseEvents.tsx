@@ -505,7 +505,7 @@ export default function BrowseEvents() {
                             {event.start_time && (
                               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                 <Clock className="w-4 h-4" />
-                                <span>{event.start_time}</span>
+                                <span>{format(new Date(`2000-01-01T${event.start_time}`), 'h:mm a')}</span>
                               </div>
                             )}
                             <div className="flex items-center gap-2 text-sm text-muted-foreground">
