@@ -277,11 +277,13 @@ export function EditMatchSheet({ matchId, open, onOpenChange, onSaved }: EditMat
 
       // Update participants if changed
       if (participantsChanged) {
-        // Delete old participants
-        await supabase
+        // Delete old participants and wait for completion
+        const { error: deleteError } = await supabase
           .from("match_participants")
           .delete()
           .eq("match_id", matchId);
+
+        if (deleteError) throw deleteError;
 
         // Insert new participants
         const newParticipants = [
