@@ -199,7 +199,7 @@ export default function CourtBoard() {
       >
         <div className="container mx-auto px-4 py-6 md:py-8">
           <div className="flex items-start gap-3 md:gap-6 flex-wrap md:flex-nowrap">
-            {courtId === PICKLEBALL_CITI_ID || isTildaStone ? (
+            {courtId === PICKLEBALL_CITI_ID ? (
               <>
                 <motion.div
                   initial={{ scale: 0.8, opacity: 0 }}
@@ -207,25 +207,14 @@ export default function CourtBoard() {
                   transition={{ duration: 0.5, delay: 0.1 }}
                   className="flex items-center gap-6 flex-1"
                 >
-                  {courtId === PICKLEBALL_CITI_ID ? (
-                    <img 
-                      src={pickleballCitiLogo} 
-                      alt="Pickleball Citi" 
-                      className="h-40 md:h-52 lg:h-56 w-auto"
-                      style={{ 
-                        filter: 'drop-shadow(0px 2px 4px rgba(0, 0, 0, 0.1))'
-                      }}
-                    />
-                  ) : (
-                    <div className="flex flex-col gap-2">
-                      <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold" style={{ color: '#0E4C58' }}>
-                        Tilda Stone
-                      </h1>
-                      <p className="text-lg md:text-xl" style={{ color: '#0E4C58', opacity: 0.7 }}>
-                        Indoor Pickleball
-                      </p>
-                    </div>
-                  )}
+                  <img 
+                    src={pickleballCitiLogo} 
+                    alt="Pickleball Citi" 
+                    className="h-40 md:h-52 lg:h-56 w-auto"
+                    style={{ 
+                      filter: 'drop-shadow(0px 2px 4px rgba(0, 0, 0, 0.1))'
+                    }}
+                  />
                   <div className="flex flex-col gap-1">
                     <motion.p
                       initial={{ opacity: 0 }}
@@ -234,7 +223,7 @@ export default function CourtBoard() {
                       className="text-xl md:text-2xl font-semibold"
                       style={{ color: '#0E4C58' }}
                     >
-                      {courtId === PICKLEBALL_CITI_ID ? "Cranston, RI" : "Attleboro, MA"}
+                      Cranston, RI
                     </motion.p>
                     <motion.p
                       initial={{ opacity: 0 }}
@@ -253,38 +242,34 @@ export default function CourtBoard() {
                   transition={{ duration: 0.5, delay: 0.2 }}
                   className="w-full md:w-auto md:flex-shrink-0 flex flex-col items-end gap-2"
                 >
-                  {courtId === PICKLEBALL_CITI_ID && <VenueInfoCard />}
+                  <VenueInfoCard />
                   <div className="flex gap-2">
                     {currentUserId && (
                       <CourtCheckIn courtId={court.id} userId={currentUserId} />
                     )}
-                    {courtId === PICKLEBALL_CITI_ID && (
-                      <>
-                        <Button
-                          onClick={() => navigate('/reservations')}
-                          size="sm"
-                          className="gap-2 text-sm px-3 py-1.5 rounded-full"
-                          style={{
-                            backgroundColor: '#B9E43B',
-                            color: '#0E4C58',
-                          }}
-                        >
-                          <Calendar className="w-4 h-4" />
-                          Court Reservations
-                        </Button>
-                        <Button
-                          asChild
-                          variant="outline"
-                          size="sm"
-                          className="gap-2 text-sm px-3 py-1.5 rounded-full"
-                        >
-                          <a href="https://pickleballciti.com/" target="_blank" rel="noopener noreferrer">
-                            <ExternalLink className="w-4 h-4" />
-                            Visit Official Website
-                          </a>
-                        </Button>
-                      </>
-                    )}
+                    <Button
+                      onClick={() => navigate('/reservations')}
+                      size="sm"
+                      className="gap-2 text-sm px-3 py-1.5 rounded-full"
+                      style={{
+                        backgroundColor: '#B9E43B',
+                        color: '#0E4C58',
+                      }}
+                    >
+                      <Calendar className="w-4 h-4" />
+                      Court Reservations
+                    </Button>
+                    <Button
+                      asChild
+                      variant="outline"
+                      size="sm"
+                      className="gap-2 text-sm px-3 py-1.5 rounded-full"
+                    >
+                      <a href="https://pickleballciti.com/" target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="w-4 h-4" />
+                        Visit Official Website
+                      </a>
+                    </Button>
                   </div>
                 </motion.div>
               </>
@@ -334,8 +319,8 @@ export default function CourtBoard() {
                     className="text-sm md:text-lg leading-relaxed break-words"
                     style={{ color: '#0E4C58', opacity: 0.8 }}
                   >
-                    {court.city}, {court.state}
-                    {court.location && ` • ${court.location}`}
+                    {isTildaStone ? "Attleboro, MA" : `${court.city}, ${court.state}`}
+                    {!isTildaStone && court.location && ` • ${court.location}`}
                   </motion.p>
                 </div>
               </>
