@@ -34,7 +34,8 @@ export function calculateMetrics(
   courts: number,
   rounds: number
 ): RoundRobinMetrics {
-  const matchesPerRound = Math.min(courts, Math.floor(players / 4));
+  const possibleMatches = Math.floor(players / 4);
+  const matchesPerRound = Math.min(courts, possibleMatches);
   const onCourtPerRound = 4 * matchesPerRound;
   const byesPerRound = Math.max(0, players - onCourtPerRound);
   
@@ -63,7 +64,9 @@ export function suggestRounds(
   courts: number,
   desiredGamesPerPlayer: number = 4
 ): number {
-  const onCourtPerRound = 4 * Math.min(courts, Math.floor(players / 4));
+  const possibleMatches = Math.floor(players / 4);
+  const matchesPerRound = Math.min(courts, possibleMatches);
+  const onCourtPerRound = 4 * matchesPerRound;
   if (onCourtPerRound === 0) return 0;
   return Math.ceil((desiredGamesPerPlayer * players) / onCourtPerRound);
 }
