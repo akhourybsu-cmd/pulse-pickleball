@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { useAuthPersistence } from "@/hooks/useAuthPersistence";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
@@ -63,6 +64,77 @@ import { RoundRobinBanner } from "@/components/RoundRobinBanner";
 
 const queryClient = new QueryClient();
 
+const AppContent = () => {
+  useAuthPersistence();
+  return (
+    <>
+      <RoundRobinBanner />
+      <Routes>
+        <Route path="/" element={<Index />} />
+        <Route path="/auth" element={<Auth />} />
+        <Route path="/demo" element={<DemoTour />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/profile/edit" element={<EditProfile />} />
+        <Route path="/profile/:userId" element={<ViewProfile />} />
+        <Route path="/match/new" element={<NewMatch />} />
+        
+        <Route path="/match/pending" element={<PendingMatches />} />
+        <Route path="/match/history" element={<MatchHistory />} />
+        <Route path="/court/history" element={<CourtHistory />} />
+        <Route path="/court/board" element={<CourtBoard />} />
+        <Route path="/court/connector" element={<CourtConnector />} />
+        <Route path="/pickleballciti" element={<Navigate to="/court/board/836003fb-fbd7-429c-8973-67ac6766a511" replace />} />
+        <Route path="/masonfield" element={<Navigate to="/court/board/4a5d9fb8-981b-42f1-9504-595cb8f22fca" replace />} />
+        <Route path="/tildastone" element={<Navigate to="/court/board/2bf21943-2efc-43fe-bab4-9bb7693d4674" replace />} />
+        <Route path="/court/board/:courtId" element={<CourtBoard />} />
+        <Route path="/court/feed/:postId" element={<PostDetail />} />
+        <Route path="/court/history" element={<CourtHistory />} />
+        <Route path="/settings/courts" element={<CourtSettings />} />
+        <Route path="/faq" element={<FAQ />} />
+        <Route path="/session/queue" element={<SessionQueue />} />
+        <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/admin/session" element={<AdminSession />} />
+        <Route path="/admin/pairing" element={<AdminPairing />} />
+        <Route path="/admin/players" element={<AdminPlayers />} />
+        <Route path="/admin/badges" element={<AdminBadges />} />
+        <Route path="/admin/matches" element={<AdminMatches />} />
+        <Route path="/admin/marketing" element={<AdminMarketing />} />
+        <Route path="/admin/audit-log" element={<AdminAuditLog />} />
+        <Route path="/admin/manage/:sessionId" element={<AdminManage />} />
+        <Route path="/match/ticket/:ticketId" element={<MatchTicket />} />
+        <Route path="/qr-checkin" element={<QRCheckIn />} />
+        <Route path="/kiosk" element={<Kiosk />} />
+        <Route path="/changelog" element={<Changelog />} />
+        <Route path="/reservations" element={<Reservations />} />
+        <Route path="/events/my-calendar-registrations" element={<MyCalendarRegistrations />} />
+        <Route path="/events/browse" element={<BrowseEvents />} />
+        <Route path="/pickleball-citi-memberships" element={<PickleballCitiMemberships />} />
+        <Route path="/profile/data-export" element={<DataExport />} />
+        <Route path="/events" element={<Events />} />
+        <Route path="/events/new" element={<NewEvent />} />
+        <Route path="/events/:eventId" element={<EventDetail />} />
+        <Route path="/events/:eventId/add-match" element={<EventMatchEntry />} />
+        <Route path="/round-robin" element={<RoundRobinHub />} />
+        <Route path="/round-robin/create" element={<CreateRoundRobin />} />
+        <Route path="/round-robin/:id" element={<RoundRobinDetail />} />
+        <Route path="/round-robin/:id/kiosk" element={<RoundRobinKiosk />} />
+        <Route path="/tournaments" element={<Tournaments />} />
+        <Route path="/tournament/:slug" element={<TournamentLanding />} />
+        <Route path="/tournament/:eventId/register" element={<TournamentRegister />} />
+        <Route path="/my-registrations" element={<MyCalendarRegistrations />} />
+        <Route path="/tournament/:eventId/live" element={<TournamentLiveView />} />
+        <Route path="/tournament/:eventId/team/:teamId" element={<TournamentTeamView />} />
+        <Route path="/tournament-admin" element={<TournamentAdmin />} />
+        <Route path="/tournament-admin/:eventId/customize" element={<TournamentCustomize />} />
+        <Route path="/tournament-admin/event/:eventId" element={<TournamentEventDetail />} />
+        <Route path="/tournament-admin/division/:divisionId" element={<TournamentDivisionDetail />} />
+        {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </>
+  );
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
@@ -71,69 +143,7 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
-            <RoundRobinBanner />
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/demo" element={<DemoTour />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/profile/edit" element={<EditProfile />} />
-              <Route path="/profile/:userId" element={<ViewProfile />} />
-              <Route path="/match/new" element={<NewMatch />} />
-              
-              <Route path="/match/pending" element={<PendingMatches />} />
-              <Route path="/match/history" element={<MatchHistory />} />
-              <Route path="/court/history" element={<CourtHistory />} />
-              <Route path="/court/board" element={<CourtBoard />} />
-            <Route path="/court/connector" element={<CourtConnector />} />
-            <Route path="/pickleballciti" element={<Navigate to="/court/board/836003fb-fbd7-429c-8973-67ac6766a511" replace />} />
-            <Route path="/masonfield" element={<Navigate to="/court/board/4a5d9fb8-981b-42f1-9504-595cb8f22fca" replace />} />
-            <Route path="/tildastone" element={<Navigate to="/court/board/2bf21943-2efc-43fe-bab4-9bb7693d4674" replace />} />
-            <Route path="/court/board/:courtId" element={<CourtBoard />} />
-            <Route path="/court/feed/:postId" element={<PostDetail />} />
-            <Route path="/court/history" element={<CourtHistory />} />
-            <Route path="/settings/courts" element={<CourtSettings />} />
-              <Route path="/faq" element={<FAQ />} />
-              <Route path="/session/queue" element={<SessionQueue />} />
-              <Route path="/admin" element={<AdminDashboard />} />
-              <Route path="/admin/session" element={<AdminSession />} />
-              <Route path="/admin/pairing" element={<AdminPairing />} />
-              <Route path="/admin/players" element={<AdminPlayers />} />
-              <Route path="/admin/badges" element={<AdminBadges />} />
-              <Route path="/admin/matches" element={<AdminMatches />} />
-              <Route path="/admin/marketing" element={<AdminMarketing />} />
-              <Route path="/admin/audit-log" element={<AdminAuditLog />} />
-              <Route path="/admin/manage/:sessionId" element={<AdminManage />} />
-              <Route path="/match/ticket/:ticketId" element={<MatchTicket />} />
-              <Route path="/qr-checkin" element={<QRCheckIn />} />
-              <Route path="/kiosk" element={<Kiosk />} />
-              <Route path="/changelog" element={<Changelog />} />
-              <Route path="/reservations" element={<Reservations />} />
-              <Route path="/events/my-calendar-registrations" element={<MyCalendarRegistrations />} />
-              <Route path="/events/browse" element={<BrowseEvents />} />
-              <Route path="/pickleball-citi-memberships" element={<PickleballCitiMemberships />} />
-              <Route path="/profile/data-export" element={<DataExport />} />
-              <Route path="/events" element={<Events />} />
-              <Route path="/events/new" element={<NewEvent />} />
-              <Route path="/events/:eventId" element={<EventDetail />} />
-              <Route path="/events/:eventId/add-match" element={<EventMatchEntry />} />
-              <Route path="/round-robin" element={<RoundRobinHub />} />
-              <Route path="/round-robin/create" element={<CreateRoundRobin />} />
-              <Route path="/round-robin/:id" element={<RoundRobinDetail />} />
-              <Route path="/round-robin/:id/kiosk" element={<RoundRobinKiosk />} />
-              <Route path="/tournaments" element={<Tournaments />} />
-              <Route path="/tournament/:slug" element={<TournamentLanding />} />
-              <Route path="/tournament/:eventId/register" element={<TournamentRegister />} />
-              <Route path="/my-registrations" element={<MyCalendarRegistrations />} />
-              <Route path="/tournament/:eventId/live" element={<TournamentLiveView />} />
-              <Route path="/tournament/:eventId/team/:teamId" element={<TournamentTeamView />} />
-              <Route path="/tournament-admin" element={<TournamentAdmin />} />
-              <Route path="/tournament-admin/:eventId/customize" element={<TournamentCustomize />} />
-              <Route path="/tournament-admin/event/:eventId" element={<TournamentEventDetail />} />
-              <Route path="/tournament-admin/division/:divisionId" element={<TournamentDivisionDetail />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+            <AppContent />
           </BrowserRouter>
         </ErrorBoundary>
       </TooltipProvider>

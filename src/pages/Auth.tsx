@@ -34,7 +34,11 @@ const Auth = () => {
   const [showEmailMFA, setShowEmailMFA] = useState(false);
   const [mfaMethod, setMfaMethod] = useState<"authenticator" | "email" | "none">("none");
   const [checkingLocation, setCheckingLocation] = useState(false);
-  const [staySignedIn, setStaySignedIn] = useState(true);
+  const [staySignedIn, setStaySignedIn] = useState(() => {
+    // Check localStorage for persisted preference (default to true)
+    const saved = localStorage.getItem('pulse_persist_session');
+    return saved === null ? true : saved === 'true';
+  });
   const navigate = useNavigate();
 
   const checkLocationAccess = async (): Promise<boolean> => {
@@ -121,28 +125,15 @@ const Auth = () => {
       }
 
       if (isLogin) {
+        // Save the "stay signed in" preference BEFORE login
+        localStorage.setItem('pulse_persist_session', String(staySignedIn));
+        
         const { data, error } = await supabase.auth.signInWithPassword({
           email: validationResult.data.email,
           password: validationResult.data.password,
         });
         
         if (error) throw error;
-
-        // Handle session persistence based on checkbox
-        if (staySignedIn) {
-          // Set flag in sessionStorage so we know user wants to stay signed in
-          sessionStorage.setItem('pulse_stay_signed_in', 'true');
-        } else {
-          // Don't set the flag - session will be cleared on browser close
-          sessionStorage.setItem('pulse_stay_signed_in', 'false');
-          
-          // Set up listener to clear session when tab/window closes
-          const handleBeforeUnload = () => {
-            sessionStorage.removeItem('pulse_stay_signed_in');
-          };
-          
-          window.addEventListener('beforeunload', handleBeforeUnload);
-        }
         
         // Check user's MFA preference from profile (with timeout)
         if (data.session) {

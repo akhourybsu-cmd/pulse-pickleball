@@ -8,10 +8,18 @@ const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
+// Use a custom storage implementation that respects user's "stay signed in" preference
+const getStorage = () => {
+  const preference = localStorage.getItem('pulse_persist_session');
+  return preference === 'false' ? sessionStorage : localStorage;
+};
+
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
-    storage: localStorage,
+    storage: getStorage() as any,
     persistSession: true,
     autoRefreshToken: true,
+    storageKey: 'pulse-auth',
+    flowType: 'pkce',
   }
 });
