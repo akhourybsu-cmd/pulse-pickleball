@@ -103,18 +103,22 @@ export default function MyCalendarRegistrations() {
 
       // Enrich with current player counts
       const enrichedData = await Promise.all((data || []).map(async (reg: any) => {
-        const { count } = await supabase
+        const { data: players, error: countError } = await supabase
           .from("round_robin_players")
-          .select("*", { count: 'exact', head: true })
+          .select("id")
           .eq("event_id", reg.event_id)
           .eq("active", true)
           .eq("registration_status", "confirmed");
+
+        if (countError) {
+          console.error("Error counting players:", countError);
+        }
 
         return {
           ...reg,
           type: 'round_robin',
           event_start_time: reg.event.date,
-          current_players: count || 0
+          current_players: players?.length || 0
         };
       }));
 
