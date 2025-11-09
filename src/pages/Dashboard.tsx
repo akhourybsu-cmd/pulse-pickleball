@@ -460,8 +460,8 @@ const Dashboard = () => {
                   icon={Trophy}
                   title="Round Robin"
                   subtitle="Create event"
-                  onClick={() => navigate("/round-robin/create")}
-                  ariaLabel="Open Round Robin"
+                  onClick={() => navigate("/round-robin")}
+                  ariaLabel="Open Round Robin Hub"
                 />
               </div>
             </div>
