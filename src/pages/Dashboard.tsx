@@ -428,7 +428,7 @@ const Dashboard = () => {
                 )}
               </div>
                 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                 <DashboardTile
                   icon={MessageSquare}
                   title="Court Connector"
@@ -441,9 +441,10 @@ const Dashboard = () => {
                     onClick: () => navigate("/court/connector"),
                   }}
                   secondaryAction={{
-                    label: "Find a group →",
+                    label: "Find a group",
                     onClick: () => navigate("/court/connector"),
                     variant: "ghost",
+                    icon: Search,
                   }}
                   iconActions={[
                     {
@@ -453,7 +454,13 @@ const Dashboard = () => {
                     },
                     {
                       icon: Plus,
-                      tooltip: "Add court",
+                      tooltip: "New post",
+                      onClick: () => navigate("/court/connector"),
+                    },
+                  ]}
+                  menuActions={[
+                    {
+                      label: "Pin to top",
                       onClick: () => navigate("/court/connector"),
                     },
                   ]}
@@ -473,17 +480,25 @@ const Dashboard = () => {
                     label: "Record New Match",
                     onClick: () => navigate("/match/new"),
                     variant: "outline",
+                    icon: Plus,
                   }}
                   iconActions={[
                     {
                       icon: Download,
-                      tooltip: "Download CSV",
+                      tooltip: "Export CSV",
                       onClick: () => navigate("/match/history"),
                     },
                     {
                       icon: Filter,
-                      tooltip: "Filter matches",
+                      tooltip: "Filter",
                       onClick: () => navigate("/match/history"),
+                    },
+                  ]}
+                  menuActions={[
+                    {
+                      label: "Pending verifications",
+                      onClick: () => navigate("/match/pending"),
+                      icon: Bell,
                     },
                   ]}
                   data-tour="match-history"
@@ -499,7 +514,7 @@ const Dashboard = () => {
                     onClick: () => navigate("/events/my-calendar-registrations"),
                   }}
                   secondaryAction={{
-                    label: "View registrations →",
+                    label: "View registrations",
                     onClick: () => navigate("/events/my-calendar-registrations"),
                     variant: "ghost",
                   }}
@@ -512,6 +527,12 @@ const Dashboard = () => {
                     {
                       icon: Bell,
                       tooltip: "Notifications",
+                      onClick: () => navigate("/events/my-calendar-registrations"),
+                    },
+                  ]}
+                  menuActions={[
+                    {
+                      label: "Calendar sync",
                       onClick: () => navigate("/events/my-calendar-registrations"),
                     },
                   ]}
@@ -534,7 +555,7 @@ const Dashboard = () => {
                   iconActions={[
                     {
                       icon: Users,
-                      tooltip: "Manage participants",
+                      tooltip: "Manage players",
                       onClick: () => navigate("/round-robin"),
                     },
                     {
@@ -546,10 +567,6 @@ const Dashboard = () => {
                   menuActions={[
                     {
                       label: "Templates",
-                      onClick: () => navigate("/round-robin"),
-                    },
-                    {
-                      label: "Kiosk Mode",
                       onClick: () => navigate("/round-robin"),
                     },
                     {
