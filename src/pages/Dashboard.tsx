@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Trophy, TrendingUp, Calendar, LogOut, Plus, MapPin, BarChart3, RefreshCw, HelpCircle, MessageSquare, Trash2, Award, UserCog, User as UserIcon, Settings, Share2, CalendarDays, Activity, Zap } from "lucide-react";
+import { Trophy, TrendingUp, Calendar, LogOut, Plus, MapPin, BarChart3, RefreshCw, HelpCircle, MessageSquare, Trash2, Award, UserCog, User as UserIcon, Settings, Share2, CalendarDays, Activity, Zap, Search, Download, Filter, Bell, Ticket, Users, ChevronDown, ExternalLink } from "lucide-react";
 import { motion } from "framer-motion";
 import type { User } from "@supabase/supabase-js";
 import logo from "@/assets/pulse-logo-new.png";
@@ -19,6 +19,7 @@ import { LFGNotifications } from "@/components/court/LFGNotifications";
 import { MFAPrompt } from "@/components/auth/MFAPrompt";
 import { NotificationBell } from "@/components/NotificationBell";
 import { NotificationDrawer, Notification } from "@/components/NotificationDrawer";
+import { DashboardTile } from "@/components/dashboard/DashboardTile";
 
 interface Profile {
   id: string;
@@ -428,65 +429,135 @@ const Dashboard = () => {
               </div>
                 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
-                <Button 
-                  size="lg" 
-                  variant="outline"
-                  onClick={() => navigate("/court/connector")}
-                  className="relative flex flex-col items-start py-3 h-auto md:text-lg md:py-6 [&:hover_span.text-muted-foreground]:text-black"
+                <DashboardTile
+                  icon={MessageSquare}
+                  title="Court Connector"
+                  subtitle="Find a group"
+                  notification={hasNewParticipants}
+                  badge={hasNewParticipants ? { label: "New posts" } : undefined}
+                  primaryAction={{
+                    label: "Open Court Connector",
+                    icon: ExternalLink,
+                    onClick: () => navigate("/court/connector"),
+                  }}
+                  secondaryAction={{
+                    label: "Find a group →",
+                    onClick: () => navigate("/court/connector"),
+                    variant: "ghost",
+                  }}
+                  iconActions={[
+                    {
+                      icon: Search,
+                      tooltip: "Search courts",
+                      onClick: () => navigate("/court/connector"),
+                    },
+                    {
+                      icon: Plus,
+                      tooltip: "Add court",
+                      onClick: () => navigate("/court/connector"),
+                    },
+                  ]}
                   data-tour="court-connector"
-                >
-                  <div className="flex items-center w-full">
-                    <MessageSquare className="w-4 h-4 md:w-6 md:h-6 mr-1.5 md:mr-2 flex-shrink-0" />
-                    <span className="font-semibold text-[13px] md:text-base leading-tight">Court Connector</span>
-                    {hasNewParticipants && (
-                      <span className="absolute top-2 right-2 flex h-3 w-3">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
-                      </span>
-                    )}
-                  </div>
-                  <span className="text-[11px] md:text-sm text-muted-foreground mt-1 leading-tight">Find a group</span>
-                </Button>
+                />
 
-                <Button 
-                  size="lg"
-                  variant="outline"
-                  onClick={() => navigate("/match/history")}
-                  className="flex flex-col items-start py-3 h-auto md:text-lg md:py-6 [&:hover_span.text-muted-foreground]:text-black"
+                <DashboardTile
+                  icon={Calendar}
+                  title="Match History"
+                  subtitle="View matches"
+                  primaryAction={{
+                    label: "View Matches",
+                    icon: Activity,
+                    onClick: () => navigate("/match/history"),
+                  }}
+                  secondaryAction={{
+                    label: "Record New Match",
+                    onClick: () => navigate("/match/new"),
+                    variant: "outline",
+                  }}
+                  iconActions={[
+                    {
+                      icon: Download,
+                      tooltip: "Download CSV",
+                      onClick: () => navigate("/match/history"),
+                    },
+                    {
+                      icon: Filter,
+                      tooltip: "Filter matches",
+                      onClick: () => navigate("/match/history"),
+                    },
+                  ]}
                   data-tour="match-history"
-                >
-                  <div className="flex items-center w-full">
-                    <Calendar className="w-4 h-4 md:w-6 md:h-6 mr-1.5 md:mr-2 flex-shrink-0" />
-                    <span className="font-semibold text-[13px] md:text-base leading-tight">Match History</span>
-                  </div>
-                  <span className="text-[11px] md:text-sm text-muted-foreground mt-1 leading-tight">View matches</span>
-                </Button>
+                />
 
-                <Button 
-                  size="lg"
-                  variant="outline"
-                  onClick={() => navigate("/events/my-calendar-registrations")}
-                  className="flex flex-col items-start py-3 h-auto md:text-lg md:py-6 [&:hover_span.text-muted-foreground]:text-black"
-                >
-                  <div className="flex items-center w-full">
-                    <CalendarDays className="w-4 h-4 md:w-6 md:h-6 mr-1.5 md:mr-2 flex-shrink-0" />
-                    <span className="font-semibold text-[13px] md:text-base leading-tight">My Events</span>
-                  </div>
-                  <span className="text-[11px] md:text-sm text-muted-foreground mt-1 leading-tight">View registrations</span>
-                </Button>
+                <DashboardTile
+                  icon={CalendarDays}
+                  title="My Events"
+                  subtitle="View registrations"
+                  primaryAction={{
+                    label: "My Events",
+                    icon: Ticket,
+                    onClick: () => navigate("/events/my-calendar-registrations"),
+                  }}
+                  secondaryAction={{
+                    label: "View registrations →",
+                    onClick: () => navigate("/events/my-calendar-registrations"),
+                    variant: "ghost",
+                  }}
+                  iconActions={[
+                    {
+                      icon: Ticket,
+                      tooltip: "Event tickets",
+                      onClick: () => navigate("/events/my-calendar-registrations"),
+                    },
+                    {
+                      icon: Bell,
+                      tooltip: "Notifications",
+                      onClick: () => navigate("/events/my-calendar-registrations"),
+                    },
+                  ]}
+                />
 
-                <Button 
-                  size="lg" 
-                  variant="outline"
-                  onClick={() => navigate("/round-robin")}
-                  className="flex flex-col items-start py-3 h-auto md:text-lg md:py-6 [&:hover_span.text-muted-foreground]:text-black"
-                >
-                  <div className="flex items-center w-full">
-                    <Trophy className="w-4 h-4 md:w-6 md:h-6 mr-1.5 md:mr-2 flex-shrink-0" />
-                    <span className="font-semibold text-[13px] md:text-base leading-tight">Round Robin</span>
-                  </div>
-                  <span className="text-[11px] md:text-sm text-muted-foreground mt-1 leading-tight">Create event</span>
-                </Button>
+                <DashboardTile
+                  icon={Trophy}
+                  title="Round Robin"
+                  subtitle="Create event"
+                  primaryAction={{
+                    label: "Create Event",
+                    icon: Plus,
+                    onClick: () => navigate("/round-robin/create"),
+                  }}
+                  secondaryAction={{
+                    label: "Open Kiosk Mode",
+                    onClick: () => navigate("/round-robin"),
+                    variant: "outline",
+                  }}
+                  iconActions={[
+                    {
+                      icon: Users,
+                      tooltip: "Manage participants",
+                      onClick: () => navigate("/round-robin"),
+                    },
+                    {
+                      icon: Settings,
+                      tooltip: "Settings",
+                      onClick: () => navigate("/round-robin"),
+                    },
+                  ]}
+                  menuActions={[
+                    {
+                      label: "Templates",
+                      onClick: () => navigate("/round-robin"),
+                    },
+                    {
+                      label: "Kiosk Mode",
+                      onClick: () => navigate("/round-robin"),
+                    },
+                    {
+                      label: "How it works",
+                      onClick: () => navigate("/round-robin"),
+                    },
+                  ]}
+                />
               </div>
             </div>
           </div>

@@ -44,6 +44,19 @@ All colors MUST be HSL.
     --shadow-glow: 0 0 40px hsl(74 65% 52% / 0.3);
     --shadow-card: 0 4px 20px hsl(195 60% 12% / 0.08);
 
+    /* Premium Dashboard Tiles - Light Mode */
+    --accent-lime: 74 65% 52%;
+    --page-bg: 0 0% 98%;
+    --tile-card-bg: 0 0% 100%;
+    --tile-card-border: 195 30% 90%;
+    --ink-900: 195 60% 12%;
+    --ink-700: 195 60% 20%;
+    --tile-muted: 195 30% 96%;
+    --tile-shadow: 0 2px 8px hsl(195 40% 20% / 0.06);
+    --tile-gradient-lime: linear-gradient(90deg, hsl(74 65% 52% / 0.85), transparent 70%);
+    --tile-pattern-opacity: 0.05;
+    --tile-pattern-color: 11 42% 18%;
+
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 195 60% 12%;
     --sidebar-primary: 74 65% 52%;
@@ -88,6 +101,19 @@ All colors MUST be HSL.
     
     --shadow-glow: 0 0 40px hsl(74 65% 52% / 0.5);
     --shadow-card: 0 4px 20px hsl(194 60% 10% / 0.6);
+
+    /* Premium Dashboard Tiles - Dark Mode */
+    --accent-lime: 74 65% 52%;
+    --page-bg: 195 60% 6%;
+    --tile-card-bg: 195 50% 10%;
+    --tile-card-border: 195 30% 22%;
+    --ink-900: 0 0% 100%;
+    --ink-700: 195 10% 80%;
+    --tile-muted: 195 35% 14%;
+    --tile-shadow: 0 1px 0 hsl(195 80% 2% / 0.6), 0 8px 24px hsl(195 80% 2% / 0.28);
+    --tile-gradient-lime: linear-gradient(90deg, hsl(74 65% 52% / 0.85), transparent 70%);
+    --tile-pattern-opacity: 0.03;
+    --tile-pattern-color: 0 0% 100%;
 
     --sidebar-background: 194 55% 30%;
     --sidebar-foreground: 74 60% 85%;
@@ -247,14 +273,72 @@ body {
   100% { opacity: 0.6; transform: scaleX(0.8); }
 }
 
+/* Premium Tile Animations */
+@keyframes tile-lift {
+  from { transform: translateY(0); }
+  to { transform: translateY(-1px); }
+}
+
+@keyframes tile-shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes icon-halo-scale {
+  from { transform: scale(1); }
+  to { transform: scale(1.03); }
+}
+
+@keyframes ripple {
+  0% { transform: scale(0); opacity: 0.5; }
+  100% { transform: scale(4); opacity: 0; }
+}
+
+.tile-hover {
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.tile-hover:hover {
+  animation: tile-lift 0.2s ease forwards;
+  border-color: hsl(var(--accent-lime));
+  outline: 2px solid hsl(var(--accent-lime) / 0.2);
+  outline-offset: 2px;
+}
+
+.tile-hover:active {
+  transform: translateY(0);
+}
+
+.icon-halo:hover {
+  animation: icon-halo-scale 0.2s ease forwards;
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    hsl(var(--tile-muted)) 0%,
+    hsl(var(--tile-card-bg)) 50%,
+    hsl(var(--tile-muted)) 100%
+  );
+  background-size: 200% 100%;
+  animation: tile-shimmer 1.5s ease-in-out infinite;
+}
+
 /* Respect prefers-reduced-motion */
 @media (prefers-reduced-motion: reduce) {
   .ecg-pulse path,
   .pulse-score-number,
   .animate-pulse-glow,
   .animate-pulse-border,
-  .animate-shake {
+  .animate-shake,
+  .tile-hover,
+  .icon-halo,
+  .skeleton-shimmer {
     animation: none;
+  }
+  
+  .tile-hover:hover {
+    transform: none;
   }
 }
 }

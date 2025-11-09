@@ -57,6 +57,16 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        tile: {
+          bg: "hsl(var(--tile-card-bg))",
+          border: "hsl(var(--tile-card-border))",
+          muted: "hsl(var(--tile-muted))",
+          ink: {
+            900: "hsl(var(--ink-900))",
+            700: "hsl(var(--ink-700))",
+          },
+        },
+        lime: "hsl(var(--accent-lime))",
       },
       borderRadius: {
         lg: "var(--radius)",
