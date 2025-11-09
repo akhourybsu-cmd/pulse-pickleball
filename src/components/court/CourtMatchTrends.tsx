@@ -1,0 +1,161 @@
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts";
+
+interface CourtMatchTrendsProps {
+  courtId: string;
+}
+
+interface WeeklyData {
+  week: string;
+  matches: number;
+  avgScore: number;
+}
+
+export function CourtMatchTrends({ courtId }: CourtMatchTrendsProps) {
+  const [weeklyData, setWeeklyData] = useState<WeeklyData[]>([]);
+  const [view, setView] = useState<"matches" | "scores">("matches");
+
+  useEffect(() => {
+    fetchTrends();
+  }, [courtId]);
+
+  const fetchTrends = async () => {
+    const eightWeeksAgo = new Date();
+    eightWeeksAgo.setDate(eightWeeksAgo.getDate() - 56);
+
+    const { data: matches } = await supabase
+      .from("matches")
+      .select(`
+        id,
+        match_date,
+        team1_score,
+        team2_score,
+        match_participants!inner(player_id, profiles:player_id(is_test_account))
+      `)
+      .eq("court_id", courtId)
+      .gte("match_date", eightWeeksAgo.toISOString().split('T')[0])
+      .eq("status", "approved")
+      .eq("voided", false);
+
+    if (!matches || matches.length === 0) {
+      setWeeklyData([]);
+      return;
+    }
+
+    // Filter out test accounts
+    const validMatches = matches.filter((match: any) => 
+      !match.match_participants.some((p: any) => p.profiles?.is_test_account)
+    );
+
+    // Group by week
+    const weekMap = new Map<string, { count: number; scores: number[] }>();
+    
+    validMatches.forEach((match: any) => {
+      const date = new Date(match.match_date);
+      const weekStart = new Date(date);
+      weekStart.setDate(date.getDate() - date.getDay());
+      const weekKey = weekStart.toISOString().split('T')[0];
+
+      if (!weekMap.has(weekKey)) {
+        weekMap.set(weekKey, { count: 0, scores: [] });
+      }
+
+      const week = weekMap.get(weekKey)!;
+      week.count++;
+      
+      if (match.team1_score !== null && match.team2_score !== null) {
+        const winningScore = Math.max(match.team1_score, match.team2_score);
+        week.scores.push(winningScore);
+      }
+    });
+
+    // Convert to array and sort by date
+    const data = Array.from(weekMap.entries())
+      .map(([weekKey, { count, scores }]) => ({
+        week: new Date(weekKey).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        matches: count,
+        avgScore: scores.length > 0 
+          ? Math.round(scores.reduce((sum, s) => sum + s, 0) / scores.length)
+          : 0,
+      }))
+      .sort((a, b) => new Date(a.week).getTime() - new Date(b.week).getTime());
+
+    setWeeklyData(data);
+  };
+
+  if (weeklyData.length === 0) {
+    return null;
+  }
+
+  const chartConfig = {
+    matches: {
+      label: "Matches",
+      color: "hsl(var(--primary))",
+    },
+    avgScore: {
+      label: "Avg Winning Score",
+      color: "hsl(var(--chart-2))",
+    },
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base sm:text-lg">Match Activity (8 weeks)</CardTitle>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setView("matches")}
+              className={`text-xs px-2 py-1 rounded ${
+                view === "matches" 
+                  ? "bg-primary text-primary-foreground" 
+                  : "bg-secondary text-secondary-foreground"
+              }`}
+            >
+              Matches
+            </button>
+            <button
+              onClick={() => setView("scores")}
+              className={`text-xs px-2 py-1 rounded ${
+                view === "scores" 
+                  ? "bg-primary text-primary-foreground" 
+                  : "bg-secondary text-secondary-foreground"
+              }`}
+            >
+              Scores
+            </button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <ChartContainer config={chartConfig} className="h-[200px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={weeklyData}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+              <XAxis 
+                dataKey="week" 
+                className="text-xs"
+                tick={{ fill: 'hsl(var(--muted-foreground))' }}
+              />
+              <YAxis 
+                className="text-xs"
+                tick={{ fill: 'hsl(var(--muted-foreground))' }}
+              />
+              <ChartTooltip content={<ChartTooltipContent />} />
+              <Line
+                type="monotone"
+                dataKey={view === "matches" ? "matches" : "avgScore"}
+                stroke={view === "matches" ? "hsl(var(--primary))" : "hsl(var(--chart-2))"}
+                strokeWidth={2}
+                dot={{ fill: view === "matches" ? "hsl(var(--primary))" : "hsl(var(--chart-2))" }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </ChartContainer>
+      </CardContent>
+    </Card>
+  );
+}

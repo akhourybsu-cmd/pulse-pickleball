@@ -7,6 +7,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { CourtHeatmap } from "@/components/court/CourtHeatmap";
 import { CourtAnalytics } from "@/components/court/CourtAnalytics";
+import { CourtMatchAnalytics } from "@/components/court/CourtMatchAnalytics";
+import { CourtMatchTrends } from "@/components/court/CourtMatchTrends";
+import { CourtTopPlayers } from "@/components/court/CourtTopPlayers";
+import { MatchTypeBreakdown } from "@/components/court/MatchTypeBreakdown";
 import { CourtPresence } from "@/components/court/CourtPresence";
 import { CourtCheckIn } from "@/components/court/CourtCheckIn";
 import { CourtFeed } from "@/components/court/feed/CourtFeed";
@@ -577,6 +581,12 @@ export default function CourtBoard() {
 
           <TabsContent value="stats" className="space-y-3 sm:space-y-4">
             <CourtAnalytics courtId={court.id} />
+            <CourtMatchAnalytics courtId={court.id} />
+            <CourtMatchTrends courtId={court.id} />
+            <div className="grid gap-4 md:grid-cols-2">
+              <CourtTopPlayers courtId={court.id} />
+              <MatchTypeBreakdown courtId={court.id} />
+            </div>
             <CourtHeatmap courtId={court.id} />
           </TabsContent>
         </Tabs>
