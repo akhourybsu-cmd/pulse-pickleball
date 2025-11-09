@@ -58,12 +58,12 @@ export const DashboardTile = forwardRef<HTMLButtonElement, DashboardTileProps>(
               loading && "animate-pulse"
             )}
             style={{
-              background: "linear-gradient(90deg, var(--accent-lime), transparent 70%)",
+              background: "linear-gradient(90deg, hsl(var(--accent-lime)), transparent 70%)",
             }}
           />
 
           {/* 3-Zone Grid Layout */}
-          <div className="relative grid grid-cols-[1fr_auto_48px] items-center gap-2 md:gap-3 h-full">
+          <div className="relative grid grid-cols-[1fr_auto_48px] items-center gap-1 md:gap-1.5 h-full">
             {/* Zone 1: Info (Icon + Title + Subtitle) ~64% */}
             <div className="flex items-center gap-2 md:gap-2.5 min-w-0">
               {/* Icon Halo - 28–36px */}
