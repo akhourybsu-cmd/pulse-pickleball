@@ -1508,6 +1508,7 @@ export type Database = {
           handedness: string | null
           home_court_id: string | null
           id: string
+          is_test_account: boolean | null
           last_name: string | null
           last_rating_update: string | null
           location_public: boolean | null
@@ -1558,6 +1559,7 @@ export type Database = {
           handedness?: string | null
           home_court_id?: string | null
           id: string
+          is_test_account?: boolean | null
           last_name?: string | null
           last_rating_update?: string | null
           location_public?: boolean | null
@@ -1608,6 +1610,7 @@ export type Database = {
           handedness?: string | null
           home_court_id?: string | null
           id?: string
+          is_test_account?: boolean | null
           last_name?: string | null
           last_rating_update?: string | null
           location_public?: boolean | null
