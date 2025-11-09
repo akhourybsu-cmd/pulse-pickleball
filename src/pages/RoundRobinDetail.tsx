@@ -623,7 +623,8 @@ export default function RoundRobinDetail() {
         .update({ 
           status: "completed",
           completed_at: new Date().toISOString(),
-          archived: true
+          archived: true,
+          current_round: null
         })
         .eq("id", id);
 
@@ -1619,9 +1620,9 @@ export default function RoundRobinDetail() {
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <div className="h-px bg-border flex-1 w-12" />
-                            <div className={`text-lg font-bold px-4 py-2 rounded-full ${isCurrentRound ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                            <div className={`text-lg font-bold px-4 py-2 rounded-full ${isCurrentRound && event.status === 'live' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
                               Round {roundNo}
-                              {isCurrentRound && <span className="ml-2 text-xs">(Active)</span>}
+                              {isCurrentRound && event.status === 'live' && <span className="ml-2 text-xs">(Active)</span>}
                             </div>
                             <div className="h-px bg-border flex-1 w-12" />
                           </div>
