@@ -129,11 +129,13 @@ export default function CourtConnector() {
       });
     });
 
-    // Fetch LFG counts for all courts
+    // Fetch LFG counts for all courts (only upcoming/active posts)
+    const now = new Date().toISOString();
     const { data: lfgData } = await supabase
       .from("lfg_posts")
       .select("court_id")
-      .eq("status", "open");
+      .eq("status", "open")
+      .gte("starts_at", now);
 
     const lfgCountMap = new Map<string, number>();
     lfgData?.forEach((lfg: any) => {
