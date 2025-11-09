@@ -45,30 +45,16 @@ export function CourtMatchAnalytics({ courtId }: CourtMatchAnalyticsProps) {
       return;
     }
 
-    // Get unique player IDs
-    const playerIds = Array.from(new Set(
-      matches.flatMap((m: any) => m.match_participants.map((p: any) => p.player_id))
-    ));
-
-    // Fetch profiles to check test accounts
-    const { data: profiles } = await supabase
-      .from("profiles")
-      .select("id")
-      .in("id", playerIds)
-      .is("is_test_account", null);
-
-    const validPlayerIds = new Set(profiles?.map(p => p.id) || []);
-
-    // Filter out matches with test accounts
-    const validMatches = matches.filter((match: any) => 
-      match.match_participants.every((p: any) => validPlayerIds.has(p.player_id))
-    );
-
-    // Calculate unique players (already filtered)
-    const uniquePlayerIds = validPlayerIds;
+    // Calculate unique players
+    const uniquePlayerIds = new Set<string>();
+    matches.forEach((match: any) => {
+      match.match_participants.forEach((p: any) => {
+        uniquePlayerIds.add(p.player_id);
+      });
+    });
 
     // Calculate average scores
-    const scores = validMatches
+    const scores = matches
       .filter((m: any) => m.team1_score !== null && m.team2_score !== null)
       .map((m: any) => ({
         winning: Math.max(m.team1_score, m.team2_score),
@@ -84,7 +70,7 @@ export function CourtMatchAnalytics({ courtId }: CourtMatchAnalyticsProps) {
       : 0;
 
     setAnalytics({
-      totalMatches: validMatches.length,
+      totalMatches: matches.length,
       uniquePlayers: uniquePlayerIds.size,
       avgWinningScore,
       avgLosingScore,

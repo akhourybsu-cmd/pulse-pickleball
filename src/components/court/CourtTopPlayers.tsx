@@ -51,12 +51,11 @@ export function CourtTopPlayers({ courtId }: CourtTopPlayersProps) {
       matches.flatMap((m: any) => m.match_participants.map((p: any) => p.player_id))
     ));
 
-    // Fetch player profiles (excluding test accounts)
+    // Fetch player profiles
     const { data: profiles } = await supabase
       .from("profiles")
       .select("id, display_name, avatar_url")
-      .in("id", playerIds)
-      .is("is_test_account", null);
+      .in("id", playerIds);
 
     const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
 
@@ -74,7 +73,6 @@ export function CourtTopPlayers({ courtId }: CourtTopPlayersProps) {
       const winningTeam = match.team1_score > match.team2_score ? 1 : 2;
 
       match.match_participants.forEach((p: any) => {
-        // Skip if not in valid profiles (test accounts filtered out)
         const profile = profileMap.get(p.player_id);
         if (!profile) return;
 

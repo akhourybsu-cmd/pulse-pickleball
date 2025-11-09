@@ -38,33 +38,14 @@ export function MatchTypeBreakdown({ courtId }: MatchTypeBreakdownProps) {
       return;
     }
 
-    // Get player IDs to filter test accounts
-    const playerIds = Array.from(new Set(
-      matches.flatMap((m: any) => m.match_participants.map((p: any) => p.player_id))
-    ));
-
-    // Fetch profiles to check test accounts
-    const { data: profiles } = await supabase
-      .from("profiles")
-      .select("id")
-      .in("id", playerIds)
-      .is("is_test_account", null);
-
-    const validPlayerIds = new Set(profiles?.map(p => p.id) || []);
-
-    // Filter out matches with test accounts
-    const validMatches = matches.filter((match: any) => 
-      match.match_participants.every((p: any) => validPlayerIds.has(p.player_id))
-    );
-
     // Count by type
     const typeCount = new Map<string, number>();
-    validMatches.forEach((match: any) => {
+    matches.forEach((match: any) => {
       const type = match.match_type || 'casual';
       typeCount.set(type, (typeCount.get(type) || 0) + 1);
     });
 
-    const total = validMatches.length;
+    const total = matches.length;
     const breakdown: MatchTypeData[] = Array.from(typeCount.entries())
       .map(([type, count]) => ({
         type: type.charAt(0).toUpperCase() + type.slice(1),

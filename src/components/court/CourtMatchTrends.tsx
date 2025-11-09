@@ -33,8 +33,7 @@ export function CourtMatchTrends({ courtId }: CourtMatchTrendsProps) {
         id,
         match_date,
         team1_score,
-        team2_score,
-        match_participants!inner(player_id)
+        team2_score
       `)
       .eq("court_id", courtId)
       .gte("match_date", sixMonthsAgo.toISOString().split('T')[0])
@@ -46,29 +45,10 @@ export function CourtMatchTrends({ courtId }: CourtMatchTrendsProps) {
       return;
     }
 
-    // Get player IDs to filter test accounts
-    const playerIds = Array.from(new Set(
-      matches.flatMap((m: any) => m.match_participants.map((p: any) => p.player_id))
-    ));
-
-    // Fetch profiles to check test accounts
-    const { data: profiles } = await supabase
-      .from("profiles")
-      .select("id")
-      .in("id", playerIds)
-      .is("is_test_account", null);
-
-    const validPlayerIds = new Set(profiles?.map(p => p.id) || []);
-
-    // Filter out matches with test accounts
-    const validMatches = matches.filter((match: any) => 
-      match.match_participants.every((p: any) => validPlayerIds.has(p.player_id))
-    );
-
     // Group by week
     const weekMap = new Map<string, { count: number; scores: number[] }>();
     
-    validMatches.forEach((match: any) => {
+    matches.forEach((match: any) => {
       const date = new Date(match.match_date);
       const weekStart = new Date(date);
       weekStart.setDate(date.getDate() - date.getDay());
