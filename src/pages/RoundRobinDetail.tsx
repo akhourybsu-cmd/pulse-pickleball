@@ -510,67 +510,8 @@ export default function RoundRobinDetail() {
 
       if (scheduleError) throw scheduleError;
 
-      // Create match history record immediately if rating eligible
-      if (event.rating_eligible && !match.match_id) {
-        try {
-          // Determine court_id from event location if possible
-          const courtId = null; // Will use other_location instead
-          
-          // Create match record
-          const { data: matchData, error: matchError } = await supabase
-            .from("matches")
-            .insert({
-              match_date: event.date,
-              team1_score: score.team1_score,
-              team2_score: score.team2_score,
-              created_by: userId,
-              source: "round_robin",
-              round_no: match.round_no,
-              court_no: match.court_no,
-              court_id: courtId,
-              other_location: event.location,
-              match_type: event.rating_type,
-              status: "approved",
-            })
-            .select()
-            .single();
-
-          if (matchError) {
-            console.error("Failed to create match record:", matchError);
-          } else {
-            // Insert participants
-            const participants = [
-              { match_id: matchData.id, player_id: match.a1_player_id!, team: 1 },
-              { match_id: matchData.id, player_id: match.a2_player_id!, team: 1 },
-              { match_id: matchData.id, player_id: match.b1_player_id!, team: 2 },
-              { match_id: matchData.id, player_id: match.b2_player_id!, team: 2 },
-            ];
-
-            const { error: participantsError } = await supabase
-              .from("match_participants")
-              .insert(participants);
-
-            if (participantsError) {
-              console.error("Failed to create participants:", participantsError);
-              // Clean up orphaned match
-              await supabase.from("matches").delete().eq("id", matchData.id);
-            } else {
-              // Link match to schedule
-              await supabase
-                .from("round_robin_schedule")
-                .update({ match_id: matchData.id })
-                .eq("id", match.id);
-              
-              console.log("Match added to history in real-time");
-            }
-          }
-        } catch (matchErr: any) {
-          console.error("Error creating match history:", matchErr);
-          // Continue even if match creation fails - score is still saved
-        }
-      }
-
-      toast.success(event.rating_eligible && !match.match_id ? "Score saved & added to match history!" : "Score saved!");
+      // Scores are saved to schedule only - matches will be created when event is completed
+      toast.success("Score saved!");
       fetchEventDetails();
       
       setScores(prev => {
@@ -601,8 +542,8 @@ export default function RoundRobinDetail() {
       const errors: string[] = [];
       
       for (const match of schedule) {
-        // Only process scored matches that haven't been submitted yet
-        if (!match.is_bye && match.team1_score !== null && match.team2_score !== null && !match.match_id) {
+        // Process all scored matches regardless of match_id (in case of re-completion)
+        if (!match.is_bye && match.team1_score !== null && match.team2_score !== null) {
           try {
             // Get court_id from event location if it matches a court name
             let courtId: string | null = null;
@@ -690,10 +631,8 @@ export default function RoundRobinDetail() {
       if (errors.length > 0) {
         toast.error(`Event completed with ${errors.length} error(s). ${matchesCreated} match(es) added successfully. Check console for details.`);
         console.error("Match submission errors:", errors);
-      } else if (matchesCreated > 0) {
-        toast.success(`Event completed! ${matchesCreated} additional match(es) added to history and ratings calculated.`);
       } else {
-        toast.success("Event completed! All matches were already added to history during live scoring.");
+        toast.success(`Event completed! ${matchesCreated} match(es) added to match history and ratings will be calculated.`);
       }
       fetchEventDetails();
     } catch (error: any) {
