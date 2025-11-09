@@ -1517,6 +1517,12 @@ export default function RoundRobinDetail() {
           <div className="flex items-center gap-2 flex-wrap mb-1">
             <h2 className="text-xl sm:text-2xl font-bold text-foreground">{event.name}</h2>
             {event.voided && <Badge variant="destructive">Voided</Badge>}
+            {event.status === "completed" && event.completed_at && (
+              <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+                <CheckCircle className="h-3 w-3 mr-1" />
+                Completed {format(parseISO(event.completed_at), "MMM d, yyyy 'at' h:mm a")}
+              </Badge>
+            )}
           </div>
           <div className="flex items-center gap-3 flex-wrap">
             <p className="text-sm text-muted-foreground">
