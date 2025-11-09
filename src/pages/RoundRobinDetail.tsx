@@ -617,12 +617,13 @@ export default function RoundRobinDetail() {
         }
       }
 
-      // Update event status
+      // Update event status to completed and archive
       const { error } = await supabase
         .from("round_robin_events")
         .update({ 
           status: "completed",
-          completed_at: new Date().toISOString()
+          completed_at: new Date().toISOString(),
+          archived: true
         })
         .eq("id", id);
 
