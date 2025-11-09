@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { EventModal } from "@/components/reservations/EventModal";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
+import { motion } from "framer-motion";
 
 const EVENT_TYPE_LABELS = {
   league: "League",
@@ -211,58 +212,129 @@ export default function MyCalendarRegistrations() {
     <div className="min-h-screen bg-background">
       <PageHeader userId={session?.user?.id} />
 
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <Calendar className="w-8 h-8 text-primary" />
-            <h1 className="text-3xl font-bold">My Registered Events</h1>
-          </div>
-          <p className="text-muted-foreground ml-11">
-            All events, lessons, and court sessions you've signed up for
-          </p>
-        </div>
+      {/* Pulse-Branded Header Section - Full Width */}
+      <motion.div 
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="relative border-b-2"
+        style={{
+          background: 'linear-gradient(180deg, #E8FBD5 0%, #FFFFFF 80%)',
+          borderBottomColor: 'rgba(169, 220, 61, 0.15)',
+        }}
+      >
+        <div className="container mx-auto py-6 px-4 md:py-8">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+            {/* Title & Subtitle */}
+            <div className="space-y-2 flex-1">
+              <motion.div 
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6, delay: 0.1 }}
+                className="flex items-center gap-3"
+              >
+                <Calendar className="w-5 h-5 text-primary" style={{ color: '#A9DC3D' }} />
+                <h1 
+                  className="text-3xl md:text-4xl lg:text-5xl font-bold border-l-4 pl-3"
+                  style={{
+                    color: '#0E4C58',
+                    letterSpacing: '0.02em',
+                    textShadow: '0px 1px 2px rgba(169, 220, 61, 0.25)',
+                    borderLeftColor: '#A9DC3D',
+                  }}
+                >
+                  My Registered Events
+                  {/* Accent line animation */}
+                  <motion.div
+                    initial={{ scaleX: 0, opacity: 0 }}
+                    animate={{ scaleX: 1, opacity: 0.3 }}
+                    transition={{ duration: 1.5, ease: "easeInOut" }}
+                    className="h-0.5 mt-1 origin-left"
+                    style={{ backgroundColor: '#A9DC3D' }}
+                  />
+                </h1>
+              </motion.div>
+              <motion.p 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+                className="text-base md:text-lg mt-2"
+                style={{ 
+                  color: '#53797E',
+                  fontWeight: 400,
+                }}
+              >
+                All events, lessons, and court sessions you've signed up for
+              </motion.p>
+            </div>
 
-        {/* Filter Pills & Sort */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-8 items-start sm:items-center justify-between">
-          <div className="flex gap-2 flex-wrap">
-            <Button
-              variant={filter === "upcoming" ? "default" : "outline"}
-              onClick={() => setFilter("upcoming")}
-              className="gap-2"
+            {/* Buttons Card */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+              className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto rounded-xl p-3 shadow-sm"
+              style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.6)',
+                backdropFilter: 'blur(8px)',
+              }}
             >
-              <Filter className="w-4 h-4" />
-              Upcoming
-            </Button>
-            <Button
-              variant={filter === "past" ? "default" : "outline"}
-              onClick={() => setFilter("past")}
-              className="gap-2"
-            >
-              <Filter className="w-4 h-4" />
-              Past
-            </Button>
+              <Button
+                variant={filter === "upcoming" ? "default" : "outline"}
+                onClick={() => setFilter("upcoming")}
+                className="gap-2 transition-transform hover:scale-105"
+                style={filter === "upcoming" ? {
+                  backgroundColor: '#B9E43B',
+                  color: '#0E4C58',
+                } : {}}
+              >
+                <Filter className="w-4 h-4" />
+                Upcoming
+              </Button>
+              <Button
+                variant={filter === "past" ? "default" : "outline"}
+                onClick={() => setFilter("past")}
+                className="gap-2 transition-transform hover:scale-105"
+                style={filter === "past" ? {
+                  backgroundColor: '#B9E43B',
+                  color: '#0E4C58',
+                } : {}}
+              >
+                <Filter className="w-4 h-4" />
+                Past
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => window.location.href = "/events/browse"}
+                className="gap-2 whitespace-nowrap transition-transform hover:scale-105"
+                style={{
+                  borderColor: '#0E4C58',
+                  color: '#0E4C58',
+                  backgroundColor: '#FFFFFF',
+                }}
+              >
+                <Calendar className="w-4 h-4" />
+                Browse Events
+              </Button>
+            </motion.div>
           </div>
-          
-          <div className="flex gap-3 items-center w-full sm:w-auto">
-            <Select value={sortBy} onValueChange={(value: "date" | "type") => setSortBy(value)}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder="Sort by..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="date">Sort by Date</SelectItem>
-                <SelectItem value="type">Sort by Type</SelectItem>
-              </SelectContent>
-            </Select>
-            
-            <Button
-              variant="outline"
-              onClick={() => window.location.href = "/events/browse"}
-              className="gap-2 whitespace-nowrap"
-            >
-              <Calendar className="w-4 h-4" />
-              Browse Events
-            </Button>
-          </div>
+        </div>
+      </motion.div>
+
+      <div className="bg-gradient-to-br from-background via-muted/10 to-background py-8">
+        <div className="container mx-auto px-4">
+
+        {/* Sort */}
+        <div className="flex justify-end mb-6">
+          <Select value={sortBy} onValueChange={(value: "date" | "type") => setSortBy(value)}>
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectValue placeholder="Sort by..." />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="date">Sort by Date</SelectItem>
+              <SelectItem value="type">Sort by Type</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Registrations List */}
@@ -286,7 +358,7 @@ export default function MyCalendarRegistrations() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-4">
+          <div className="grid gap-4 max-w-5xl mx-auto">
             {filteredRegistrations.map((reg: any) => {
               if (reg.type === 'round_robin') {
                 const event = reg.event;
@@ -476,6 +548,7 @@ export default function MyCalendarRegistrations() {
             })}
           </div>
         )}
+        </div>
       </div>
 
       {/* Event Modal */}
