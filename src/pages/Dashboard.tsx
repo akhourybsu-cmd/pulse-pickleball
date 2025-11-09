@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Trophy, TrendingUp, Calendar, LogOut, Plus, MapPin, BarChart3, RefreshCw, HelpCircle, MessageSquare, Trash2, Award, UserCog, User as UserIcon, Settings, Share2, CalendarDays, Activity, Zap, Search, Download, Filter, Bell, Ticket, Users, ChevronDown, ExternalLink } from "lucide-react";
+import { Trophy, TrendingUp, Calendar, LogOut, Plus, MapPin, BarChart3, RefreshCw, HelpCircle, MessageSquare, Trash2, Award, UserCog, User as UserIcon, Settings, Share2, CalendarDays, Activity, Zap, Search, Download, Filter, Bell, Ticket, Users, ExternalLink, Link2, History, PlusCircle, LayoutGrid, BookOpen } from "lucide-react";
 import { motion } from "framer-motion";
 import type { User } from "@supabase/supabase-js";
 import logo from "@/assets/pulse-logo-new.png";
@@ -430,111 +430,45 @@ const Dashboard = () => {
                 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                 <DashboardTile
-                  icon={MessageSquare}
+                  icon={Link2}
                   title="Court Connector"
                   subtitle="Find a group"
                   notification={hasNewParticipants}
-                  badge={hasNewParticipants ? { label: "New posts" } : undefined}
-                  primaryAction={{
-                    label: "Open Court Connector",
-                    icon: ExternalLink,
-                    onClick: () => navigate("/court/connector"),
-                  }}
-                  secondaryAction={{
-                    label: "Find a group",
-                    onClick: () => navigate("/court/connector"),
-                    variant: "ghost",
-                    icon: Search,
-                  }}
-                  iconActions={[
-                    {
-                      icon: Search,
-                      tooltip: "Search courts",
-                      onClick: () => navigate("/court/connector"),
-                    },
-                    {
-                      icon: Plus,
-                      tooltip: "New post",
-                      onClick: () => navigate("/court/connector"),
-                    },
-                  ]}
+                  onClick={() => navigate("/court/connector")}
+                  ariaLabel="Open Court Connector"
                   menuActions={[
-                    {
-                      label: "Pin to top",
-                      onClick: () => navigate("/court/connector"),
-                    },
+                    { label: "Find a group", onClick: () => navigate("/court/connector"), icon: Search },
+                    { label: "New post", onClick: () => navigate("/court/connector"), icon: PlusCircle },
+                    { label: "Search", onClick: () => navigate("/court/connector"), icon: Search },
                   ]}
                   data-tour="court-connector"
                 />
 
                 <DashboardTile
-                  icon={Calendar}
+                  icon={History}
                   title="Match History"
                   subtitle="View matches"
-                  primaryAction={{
-                    label: "View Matches",
-                    icon: Activity,
-                    onClick: () => navigate("/match/history"),
-                  }}
-                  secondaryAction={{
-                    label: "Record New Match",
-                    onClick: () => navigate("/match/new"),
-                    variant: "outline",
-                    icon: Plus,
-                  }}
-                  iconActions={[
-                    {
-                      icon: Download,
-                      tooltip: "Export CSV",
-                      onClick: () => navigate("/match/history"),
-                    },
-                    {
-                      icon: Filter,
-                      tooltip: "Filter",
-                      onClick: () => navigate("/match/history"),
-                    },
-                  ]}
+                  onClick={() => navigate("/match/history")}
+                  ariaLabel="Open Match History"
                   menuActions={[
-                    {
-                      label: "Pending verifications",
-                      onClick: () => navigate("/match/pending"),
-                      icon: Bell,
-                    },
+                    { label: "Record new match", onClick: () => navigate("/match/new"), icon: PlusCircle },
+                    { label: "Filter", onClick: () => navigate("/match/history"), icon: Filter },
+                    { label: "Export CSV", onClick: () => navigate("/match/history"), icon: Download },
+                    { label: "Pending verifications", onClick: () => navigate("/match/pending"), icon: Bell },
                   ]}
                   data-tour="match-history"
                 />
 
                 <DashboardTile
-                  icon={CalendarDays}
+                  icon={Calendar}
                   title="My Events"
                   subtitle="View registrations"
-                  primaryAction={{
-                    label: "My Events",
-                    icon: Ticket,
-                    onClick: () => navigate("/events/my-calendar-registrations"),
-                  }}
-                  secondaryAction={{
-                    label: "View registrations",
-                    onClick: () => navigate("/events/my-calendar-registrations"),
-                    variant: "ghost",
-                  }}
-                  iconActions={[
-                    {
-                      icon: Ticket,
-                      tooltip: "Event tickets",
-                      onClick: () => navigate("/events/my-calendar-registrations"),
-                    },
-                    {
-                      icon: Bell,
-                      tooltip: "Notifications",
-                      onClick: () => navigate("/events/my-calendar-registrations"),
-                    },
-                  ]}
+                  onClick={() => navigate("/events/my-calendar-registrations")}
+                  ariaLabel="Open My Events"
                   menuActions={[
-                    {
-                      label: "Calendar sync",
-                      onClick: () => navigate("/events/my-calendar-registrations"),
-                    },
+                    { label: "Registrations", onClick: () => navigate("/events/my-calendar-registrations"), icon: Ticket },
+                    { label: "Notifications", onClick: () => navigate("/events/my-calendar-registrations"), icon: Bell },
+                    { label: "Calendar sync", onClick: () => navigate("/events/my-calendar-registrations"), icon: Calendar },
                   ]}
                 />
 
@@ -542,37 +476,15 @@ const Dashboard = () => {
                   icon={Trophy}
                   title="Round Robin"
                   subtitle="Create event"
-                  primaryAction={{
-                    label: "Create Event",
-                    icon: Plus,
-                    onClick: () => navigate("/round-robin/create"),
-                  }}
-                  secondaryAction={{
-                    label: "Open Kiosk Mode",
-                    onClick: () => navigate("/round-robin"),
-                    variant: "outline",
-                  }}
-                  iconActions={[
-                    {
-                      icon: Users,
-                      tooltip: "Manage players",
-                      onClick: () => navigate("/round-robin"),
-                    },
-                    {
-                      icon: Settings,
-                      tooltip: "Settings",
-                      onClick: () => navigate("/round-robin"),
-                    },
-                  ]}
+                  onClick={() => navigate("/round-robin/create")}
+                  ariaLabel="Open Round Robin"
                   menuActions={[
-                    {
-                      label: "Templates",
-                      onClick: () => navigate("/round-robin"),
-                    },
-                    {
-                      label: "How it works",
-                      onClick: () => navigate("/round-robin"),
-                    },
+                    { label: "Create event", onClick: () => navigate("/round-robin/create"), icon: PlusCircle },
+                    { label: "Templates", onClick: () => navigate("/round-robin"), icon: LayoutGrid },
+                    { label: "Open Kiosk Mode", onClick: () => navigate("/round-robin"), icon: ExternalLink },
+                    { label: "Manage players", onClick: () => navigate("/round-robin"), icon: Users },
+                    { label: "Settings", onClick: () => navigate("/round-robin"), icon: Settings },
+                    { label: "How it works", onClick: () => navigate("/round-robin"), icon: BookOpen },
                   ]}
                 />
               </div>
