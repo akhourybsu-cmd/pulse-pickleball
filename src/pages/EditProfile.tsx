@@ -16,6 +16,7 @@ import type { User } from "@supabase/supabase-js";
 import logo from "@/assets/pulse-logo-new.png";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { MFAManagement } from "@/components/auth/MFAManagement";
+import { BiometricSetup } from "@/components/auth/BiometricSetup";
 
 interface Court {
   id: string;
@@ -471,6 +472,9 @@ const EditProfile = () => {
 
           {/* MFA Management */}
           <MFAManagement />
+
+          {/* Biometric Authentication */}
+          <BiometricSetup />
 
           {/* Identity & Visuals */}
           <Card>

@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 import { MFAChallenge } from "@/components/auth/MFAChallenge";
 import { EmailMFAChallenge } from "@/components/auth/EmailMFAChallenge";
+import { BiometricLogin } from "@/components/auth/BiometricLogin";
 import pulseLogo from "@/assets/pulse-logo-new.png";
 
 const authSchema = z.object({
@@ -34,6 +35,9 @@ const Auth = () => {
   const [showEmailMFA, setShowEmailMFA] = useState(false);
   const [mfaMethod, setMfaMethod] = useState<"authenticator" | "email" | "none">("none");
   const [checkingLocation, setCheckingLocation] = useState(false);
+  const [showBiometric, setShowBiometric] = useState(false);
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [showPasswordLogin, setShowPasswordLogin] = useState(false);
   const [staySignedIn, setStaySignedIn] = useState(() => {
     // Check localStorage for persisted preference (default to true)
     const saved = localStorage.getItem('pulse_persist_session');
@@ -270,6 +274,49 @@ const Auth = () => {
     toast.info("Login cancelled");
   };
 
+  const handleBiometricSuccess = () => {
+    toast.success("Logged in successfully!");
+    navigate(redirectPath);
+  };
+
+  const checkBiometricAvailability = async () => {
+    if (!email || !isLogin) {
+      setShowBiometric(false);
+      setBiometricAvailable(false);
+      return;
+    }
+
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('biometric_enabled')
+        .eq('email', email)
+        .maybeSingle();
+
+      const hasBiometric = profile?.biometric_enabled || false;
+      const isSupported = window.PublicKeyCredential !== undefined;
+      
+      setBiometricAvailable(hasBiometric && isSupported);
+      setShowBiometric(hasBiometric && isSupported && !showPasswordLogin);
+    } catch (error) {
+      console.error('Error checking biometric:', error);
+      setBiometricAvailable(false);
+      setShowBiometric(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isLogin && email && email.includes('@')) {
+      const debounce = setTimeout(() => {
+        checkBiometricAvailability();
+      }, 500);
+      return () => clearTimeout(debounce);
+    } else {
+      setShowBiometric(false);
+      setBiometricAvailable(false);
+    }
+  }, [email, isLogin, showPasswordLogin]);
+
   return (
     <div className="min-h-screen flex items-start md:items-center justify-center bg-secondary p-4 pt-8 md:py-12">
       <div className="w-full max-w-md">
@@ -328,6 +375,28 @@ const Auth = () => {
                   </button>
                 </div>
               </form>
+            ) : showBiometric && isLogin ? (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      setShowPasswordLogin(false);
+                    }}
+                    placeholder="your@email.com"
+                  />
+                </div>
+
+                <BiometricLogin
+                  email={email}
+                  onSuccess={handleBiometricSuccess}
+                  onFallback={() => setShowPasswordLogin(true)}
+                />
+              </div>
             ) : (
               <form onSubmit={handleAuth} className="space-y-4">
                 {!isLogin && (
@@ -350,7 +419,12 @@ const Auth = () => {
                     id="email"
                     type="email"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (!isLogin) {
+                        setShowPasswordLogin(false);
+                      }
+                    }}
                     required
                     placeholder="your@email.com"
                   />

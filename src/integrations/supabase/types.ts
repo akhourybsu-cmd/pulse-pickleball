@@ -83,6 +83,36 @@ export type Database = {
         }
         Relationships: []
       }
+      biometric_credentials: {
+        Row: {
+          created_at: string
+          credential_id: string
+          device_name: string
+          id: string
+          last_used_at: string | null
+          public_key: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          credential_id: string
+          device_name: string
+          id?: string
+          last_used_at?: string | null
+          public_key: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          credential_id?: string
+          device_name?: string
+          id?: string
+          last_used_at?: string | null
+          public_key?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       calendar_event_registrations: {
         Row: {
           created_at: string
@@ -1494,6 +1524,7 @@ export type Database = {
           accessibility_needs: string | null
           avatar_url: string | null
           avg_opponent_rating: number | null
+          biometric_enabled: boolean | null
           created_at: string | null
           current_rating: number | null
           date_of_birth: string | null
@@ -1545,6 +1576,7 @@ export type Database = {
           accessibility_needs?: string | null
           avatar_url?: string | null
           avg_opponent_rating?: number | null
+          biometric_enabled?: boolean | null
           created_at?: string | null
           current_rating?: number | null
           date_of_birth?: string | null
@@ -1596,6 +1628,7 @@ export type Database = {
           accessibility_needs?: string | null
           avatar_url?: string | null
           avg_opponent_rating?: number | null
+          biometric_enabled?: boolean | null
           created_at?: string | null
           current_rating?: number | null
           date_of_birth?: string | null
