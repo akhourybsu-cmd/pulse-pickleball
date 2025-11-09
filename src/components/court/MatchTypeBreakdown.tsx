@@ -22,9 +22,7 @@ export function MatchTypeBreakdown({ courtId }: MatchTypeBreakdownProps) {
   }, [courtId]);
 
   const fetchMatchTypes = async () => {
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
+    // Get all approved, non-voided matches (all-time)
     const { data: matches } = await supabase
       .from("matches")
       .select(`
@@ -32,7 +30,6 @@ export function MatchTypeBreakdown({ courtId }: MatchTypeBreakdownProps) {
         match_participants!inner(player_id, profiles:player_id(is_test_account))
       `)
       .eq("court_id", courtId)
-      .gte("match_date", thirtyDaysAgo.toISOString().split('T')[0])
       .eq("status", "approved")
       .eq("voided", false);
 

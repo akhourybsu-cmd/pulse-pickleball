@@ -25,15 +25,11 @@ export function CourtAnalytics({ courtId }: CourtAnalyticsProps) {
   }, [courtId]);
 
   const fetchAnalytics = async () => {
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-    // Get all check-ins from last 30 days
+    // Get all check-ins (all-time)
     const { data: checkIns } = await (supabase as any)
       .from("court_checkins")
       .select("*")
-      .eq("court_id", courtId)
-      .gte("created_at", thirtyDaysAgo.toISOString());
+      .eq("court_id", courtId);
 
     if (!checkIns || checkIns.length === 0) {
       setAnalytics({
@@ -116,7 +112,7 @@ export function CourtAnalytics({ courtId }: CourtAnalyticsProps) {
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Check-ins (30d)</CardTitle>
+          <CardTitle className="text-sm font-medium">Total Check-ins</CardTitle>
           <TrendingUp className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>

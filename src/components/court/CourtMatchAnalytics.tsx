@@ -22,10 +22,7 @@ export function CourtMatchAnalytics({ courtId }: CourtMatchAnalyticsProps) {
   }, [courtId]);
 
   const fetchMatchAnalytics = async () => {
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-    // Get all approved, non-voided matches from last 30 days
+    // Get all approved, non-voided matches (all-time)
     const { data: matches } = await supabase
       .from("matches")
       .select(`
@@ -35,7 +32,6 @@ export function CourtMatchAnalytics({ courtId }: CourtMatchAnalyticsProps) {
         match_participants!inner(player_id, profiles:player_id(is_test_account))
       `)
       .eq("court_id", courtId)
-      .gte("match_date", thirtyDaysAgo.toISOString().split('T')[0])
       .eq("status", "approved")
       .eq("voided", false);
 
@@ -96,7 +92,7 @@ export function CourtMatchAnalytics({ courtId }: CourtMatchAnalyticsProps) {
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Matches (30d)</CardTitle>
+          <CardTitle className="text-sm font-medium">Total Matches</CardTitle>
           <Trophy className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>

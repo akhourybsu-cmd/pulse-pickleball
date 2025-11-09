@@ -25,10 +25,7 @@ export function CourtTopPlayers({ courtId }: CourtTopPlayersProps) {
   }, [courtId]);
 
   const fetchTopPlayers = async () => {
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-    // Get all approved, non-voided matches from last 30 days
+    // Get all approved, non-voided matches (all-time)
     const { data: matches } = await supabase
       .from("matches")
       .select(`
@@ -46,7 +43,6 @@ export function CourtTopPlayers({ courtId }: CourtTopPlayersProps) {
         )
       `)
       .eq("court_id", courtId)
-      .gte("match_date", thirtyDaysAgo.toISOString().split('T')[0])
       .eq("status", "approved")
       .eq("voided", false);
 
@@ -114,7 +110,7 @@ export function CourtTopPlayers({ courtId }: CourtTopPlayersProps) {
       <CardHeader>
         <CardTitle className="text-base sm:text-lg flex items-center gap-2">
           <Trophy className="h-4 w-4" />
-          Top Players (30 days)
+          Top Players (All-Time)
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -134,7 +130,7 @@ export function CourtTopPlayers({ courtId }: CourtTopPlayersProps) {
                 <div>
                   <p className="text-sm font-medium">{player.displayName}</p>
                   <p className="text-xs text-muted-foreground">
-                    {player.matchCount} matches
+                    {player.matchCount} match{player.matchCount !== 1 ? 'es' : ''}
                   </p>
                 </div>
               </div>

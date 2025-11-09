@@ -23,8 +23,9 @@ export function CourtMatchTrends({ courtId }: CourtMatchTrendsProps) {
   }, [courtId]);
 
   const fetchTrends = async () => {
-    const eightWeeksAgo = new Date();
-    eightWeeksAgo.setDate(eightWeeksAgo.getDate() - 56);
+    // Get matches from last 6 months for trends
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
     const { data: matches } = await supabase
       .from("matches")
@@ -36,7 +37,7 @@ export function CourtMatchTrends({ courtId }: CourtMatchTrendsProps) {
         match_participants!inner(player_id, profiles:player_id(is_test_account))
       `)
       .eq("court_id", courtId)
-      .gte("match_date", eightWeeksAgo.toISOString().split('T')[0])
+      .gte("match_date", sixMonthsAgo.toISOString().split('T')[0])
       .eq("status", "approved")
       .eq("voided", false);
 
@@ -105,7 +106,7 @@ export function CourtMatchTrends({ courtId }: CourtMatchTrendsProps) {
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base sm:text-lg">Match Activity (8 weeks)</CardTitle>
+          <CardTitle className="text-base sm:text-lg">Match Activity (6 months)</CardTitle>
           <div className="flex gap-2">
             <button
               onClick={() => setView("matches")}
