@@ -289,36 +289,37 @@ body {
   to { transform: scale(1.03); }
 }
 
-@keyframes ripple {
-  0% { transform: scale(0); opacity: 0.5; }
-  100% { transform: scale(4); opacity: 0; }
-}
-
+/* Tile hover effects */
 .tile-hover {
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.tile-hover:hover {
-  animation: tile-lift 0.2s ease forwards;
-  border-color: hsl(var(--accent-lime));
-  outline: 2px solid hsl(var(--accent-lime) / 0.2);
-  outline-offset: 2px;
+.tile-hover:hover:not(:disabled) {
+  animation: tile-lift 0.2s ease-out forwards;
+  border-color: color-mix(in srgb, var(--accent-lime) 40%, var(--tile-card-border));
 }
 
-.tile-hover:active {
+.tile-hover:active:not(:disabled) {
   transform: translateY(0);
 }
 
-.icon-halo:hover {
-  animation: icon-halo-scale 0.2s ease forwards;
+.tile-hover:focus-visible {
+  outline: 2px solid var(--accent-lime);
+  outline-offset: 2px;
 }
 
+/* Icon halo scale on tile hover */
+.tile-hover:hover:not(:disabled) .icon-halo {
+  transform: scale(1.03);
+}
+
+/* Skeleton shimmer */
 .skeleton-shimmer {
   background: linear-gradient(
     90deg,
-    hsl(var(--tile-muted)) 0%,
-    hsl(var(--tile-card-bg)) 50%,
-    hsl(var(--tile-muted)) 100%
+    var(--tile-muted) 0%,
+    color-mix(in srgb, var(--tile-card-bg) 90%, white) 50%,
+    var(--tile-muted) 100%
   );
   background-size: 200% 100%;
   animation: tile-shimmer 1.5s ease-in-out infinite;
@@ -334,10 +335,11 @@ body {
   .tile-hover,
   .icon-halo,
   .skeleton-shimmer {
-    animation: none;
+    animation: none !important;
+    transition: none !important;
   }
   
-  .tile-hover:hover {
+  .tile-hover:hover:not(:disabled) {
     transform: none;
   }
 }

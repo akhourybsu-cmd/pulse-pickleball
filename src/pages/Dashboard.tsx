@@ -436,11 +436,6 @@ const Dashboard = () => {
                   notification={hasNewParticipants}
                   onClick={() => navigate("/court/connector")}
                   ariaLabel="Open Court Connector"
-                  menuActions={[
-                    { label: "Find a group", onClick: () => navigate("/court/connector"), icon: Search },
-                    { label: "New post", onClick: () => navigate("/court/connector"), icon: PlusCircle },
-                    { label: "Search", onClick: () => navigate("/court/connector"), icon: Search },
-                  ]}
                   data-tour="court-connector"
                 />
 
@@ -450,12 +445,6 @@ const Dashboard = () => {
                   subtitle="View matches"
                   onClick={() => navigate("/match/history")}
                   ariaLabel="Open Match History"
-                  menuActions={[
-                    { label: "Record new match", onClick: () => navigate("/match/new"), icon: PlusCircle },
-                    { label: "Filter", onClick: () => navigate("/match/history"), icon: Filter },
-                    { label: "Export CSV", onClick: () => navigate("/match/history"), icon: Download },
-                    { label: "Pending verifications", onClick: () => navigate("/match/pending"), icon: Bell },
-                  ]}
                   data-tour="match-history"
                 />
 
@@ -465,11 +454,6 @@ const Dashboard = () => {
                   subtitle="View registrations"
                   onClick={() => navigate("/events/my-calendar-registrations")}
                   ariaLabel="Open My Events"
-                  menuActions={[
-                    { label: "Registrations", onClick: () => navigate("/events/my-calendar-registrations"), icon: Ticket },
-                    { label: "Notifications", onClick: () => navigate("/events/my-calendar-registrations"), icon: Bell },
-                    { label: "Calendar sync", onClick: () => navigate("/events/my-calendar-registrations"), icon: Calendar },
-                  ]}
                 />
 
                 <DashboardTile
@@ -478,14 +462,6 @@ const Dashboard = () => {
                   subtitle="Create event"
                   onClick={() => navigate("/round-robin/create")}
                   ariaLabel="Open Round Robin"
-                  menuActions={[
-                    { label: "Create event", onClick: () => navigate("/round-robin/create"), icon: PlusCircle },
-                    { label: "Templates", onClick: () => navigate("/round-robin"), icon: LayoutGrid },
-                    { label: "Open Kiosk Mode", onClick: () => navigate("/round-robin"), icon: ExternalLink },
-                    { label: "Manage players", onClick: () => navigate("/round-robin"), icon: Users },
-                    { label: "Settings", onClick: () => navigate("/round-robin"), icon: Settings },
-                    { label: "How it works", onClick: () => navigate("/round-robin"), icon: BookOpen },
-                  ]}
                 />
               </div>
             </div>
