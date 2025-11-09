@@ -34,12 +34,7 @@ export function CourtTopPlayers({ courtId }: CourtTopPlayersProps) {
         team2_score,
         match_participants!inner(
           player_id,
-          team,
-          profiles:player_id(
-            display_name,
-            avatar_url,
-            is_test_account
-          )
+          team
         )
       `)
       .eq("court_id", courtId)
@@ -50,6 +45,20 @@ export function CourtTopPlayers({ courtId }: CourtTopPlayersProps) {
       setTopPlayers([]);
       return;
     }
+
+    // Get unique player IDs
+    const playerIds = Array.from(new Set(
+      matches.flatMap((m: any) => m.match_participants.map((p: any) => p.player_id))
+    ));
+
+    // Fetch player profiles (excluding test accounts)
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, display_name, avatar_url")
+      .in("id", playerIds)
+      .is("is_test_account", null);
+
+    const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
 
     // Aggregate player stats
     const playerMap = new Map<string, { 
@@ -65,13 +74,14 @@ export function CourtTopPlayers({ courtId }: CourtTopPlayersProps) {
       const winningTeam = match.team1_score > match.team2_score ? 1 : 2;
 
       match.match_participants.forEach((p: any) => {
-        // Skip test accounts
-        if (p.profiles?.is_test_account) return;
+        // Skip if not in valid profiles (test accounts filtered out)
+        const profile = profileMap.get(p.player_id);
+        if (!profile) return;
 
         if (!playerMap.has(p.player_id)) {
           playerMap.set(p.player_id, {
-            displayName: p.profiles?.display_name || 'Unknown',
-            avatarUrl: p.profiles?.avatar_url || null,
+            displayName: profile.display_name || 'Unknown',
+            avatarUrl: profile.avatar_url || null,
             matchCount: 0,
             wins: 0,
           });
