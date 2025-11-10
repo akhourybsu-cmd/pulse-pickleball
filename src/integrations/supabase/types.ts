@@ -83,6 +83,33 @@ export type Database = {
         }
         Relationships: []
       }
+      biometric_analytics: {
+        Row: {
+          created_at: string
+          device_info: Json | null
+          error_type: string | null
+          event_type: string
+          id: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          device_info?: Json | null
+          error_type?: string | null
+          event_type: string
+          id?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          device_info?: Json | null
+          error_type?: string | null
+          event_type?: string
+          id?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       biometric_credentials: {
         Row: {
           created_at: string

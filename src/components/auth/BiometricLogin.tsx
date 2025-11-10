@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Fingerprint } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { logger } from "@/lib/logger";
 
 interface BiometricLoginProps {
   email: string;
@@ -15,6 +16,23 @@ export function BiometricLogin({ email, onSuccess, onFallback }: BiometricLoginP
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
+
+  const logAnalytics = async (eventType: string, errorType?: string) => {
+    try {
+      const deviceInfo = {
+        browser: navigator.userAgent,
+        platform: navigator.platform,
+      };
+      
+      await supabase.from('biometric_analytics').insert({
+        event_type: eventType,
+        error_type: errorType || null,
+        device_info: deviceInfo,
+      });
+    } catch (err) {
+      logger.error('Failed to log biometric analytics:', err);
+    }
+  };
 
   const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
     const bytes = new Uint8Array(buffer);
@@ -30,6 +48,8 @@ export function BiometricLogin({ email, onSuccess, onFallback }: BiometricLoginP
     setError(null);
 
     try {
+      await logAnalytics('login_attempt');
+
       // Generate a random challenge
       const challenge = new Uint8Array(32);
       crypto.getRandomValues(challenge);
@@ -87,6 +107,8 @@ export function BiometricLogin({ email, onSuccess, onFallback }: BiometricLoginP
 
           if (sessionError) throw sessionError;
 
+          await logAnalytics('login_success');
+
           toast({
             title: "Welcome back!",
             description: "Signed in with biometric authentication.",
@@ -100,19 +122,26 @@ export function BiometricLogin({ email, onSuccess, onFallback }: BiometricLoginP
       throw new Error('Failed to create session');
 
     } catch (error: any) {
-      console.error('Biometric login error:', error);
+      logger.error('Biometric login error:', error);
 
       let errorMessage = "Biometric authentication failed. Please try again or use your password.";
+      let errorType = "verification_failed";
 
       if (error.name === 'NotAllowedError') {
         errorMessage = "Authentication was cancelled.";
+        errorType = "user_cancelled";
       } else if (error.name === 'NotSupportedError') {
         errorMessage = "Biometric authentication is not available on this device.";
+        errorType = "no_hardware";
       } else if (error.message?.includes('Too many attempts')) {
         errorMessage = "Too many attempts. Please wait 5 minutes or use your password.";
+        errorType = "rate_limited";
       } else if (error.message?.includes('Network')) {
         errorMessage = "Connection error. Please check your internet and try again.";
+        errorType = "network_error";
       }
+
+      await logAnalytics('login_failed', errorType);
 
       setError(errorMessage);
       

@@ -16,6 +16,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { formatDistanceToNow } from "date-fns";
+import { logger } from "@/lib/logger";
 
 interface BiometricCredential {
   id: string;
@@ -102,6 +103,24 @@ export function BiometricSetup() {
     return btoa(binary);
   };
 
+  const logAnalytics = async (eventType: string, errorType?: string) => {
+    try {
+      const deviceInfo = {
+        browser: navigator.userAgent,
+        platform: navigator.platform,
+        device_name: getDeviceName(),
+      };
+      
+      await supabase.from('biometric_analytics').insert({
+        event_type: eventType,
+        error_type: errorType || null,
+        device_info: deviceInfo,
+      });
+    } catch (err) {
+      logger.error('Failed to log biometric analytics:', err);
+    }
+  };
+
   const handleEnroll = async () => {
     if (!isSupported) {
       toast({
@@ -115,6 +134,8 @@ export function BiometricSetup() {
     setIsLoading(true);
 
     try {
+      await logAnalytics('enrollment_started');
+
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
@@ -178,6 +199,8 @@ export function BiometricSetup() {
 
       if (profileError) throw profileError;
 
+      await logAnalytics('enrollment_success');
+
       setBiometricEnabled(true);
       await loadCredentials();
 
@@ -186,17 +209,23 @@ export function BiometricSetup() {
         description: "You can now sign in with your fingerprint or Face ID on this device.",
       });
     } catch (error: any) {
-      console.error('Enrollment error:', error);
+      logger.error('Enrollment error:', error);
       
       let errorMessage = "Failed to enable biometric login.";
+      let errorType = "verification_failed";
       
       if (error.name === 'NotAllowedError') {
         errorMessage = "Biometric authentication was cancelled. Please try again when ready.";
+        errorType = "user_cancelled";
       } else if (error.name === 'NotSupportedError') {
         errorMessage = "No biometric hardware detected on this device.";
+        errorType = "no_hardware";
       } else if (error.name === 'SecurityError') {
         errorMessage = "Security error. Make sure you're on a secure connection (HTTPS).";
+        errorType = "network_error";
       }
+
+      await logAnalytics('enrollment_failed', errorType);
 
       toast({
         title: "Enrollment Failed",

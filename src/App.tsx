@@ -61,6 +61,7 @@ import PickleballCitiMemberships from "./pages/PickleballCitiMemberships";
 import DataExport from "./pages/DataExport";
 import AdminAuditLog from "./pages/AdminAuditLog";
 import AdminTestAccounts from "./pages/AdminTestAccounts";
+import AdminBiometrics from "./pages/AdminBiometrics";
 import { RoundRobinBanner } from "@/components/RoundRobinBanner";
 
 const queryClient = new QueryClient();
@@ -102,6 +103,7 @@ const AppContent = () => {
         <Route path="/admin/marketing" element={<AdminMarketing />} />
         <Route path="/admin/audit-log" element={<AdminAuditLog />} />
         <Route path="/admin/test-accounts" element={<AdminTestAccounts />} />
+        <Route path="/admin/biometrics" element={<AdminBiometrics />} />
         <Route path="/admin/manage/:sessionId" element={<AdminManage />} />
         <Route path="/match/ticket/:ticketId" element={<MatchTicket />} />
         <Route path="/qr-checkin" element={<QRCheckIn />} />
