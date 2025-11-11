@@ -8,6 +8,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useAuthPersistence } from "@/hooks/useAuthPersistence";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import EditProfile from "./pages/EditProfile";
 import ViewProfile from "./pages/ViewProfile";
@@ -74,6 +75,7 @@ const AppContent = () => {
       <Routes>
         <Route path="/" element={<Index />} />
         <Route path="/auth" element={<Auth />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/demo" element={<DemoTour />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/profile/edit" element={<EditProfile />} />
