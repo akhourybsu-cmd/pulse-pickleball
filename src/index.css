@@ -325,6 +325,29 @@ body {
   animation: tile-shimmer 1.5s ease-in-out infinite;
 }
 
+/* Live Badge Pulse Glow */
+@keyframes pulse-green-glow {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(169, 207, 70, 0.4),
+                0 0 16px rgba(169, 207, 70, 0.2);
+    border-color: #A9CF46;
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(169, 207, 70, 0.6),
+                0 0 24px rgba(169, 207, 70, 0.3),
+                0 0 32px rgba(169, 207, 70, 0.1);
+    border-color: #A9CF46;
+  }
+}
+
+.badge-pulse-glow {
+  animation: pulse-green-glow 2s ease-in-out infinite;
+  background: #A9CF46 !important;
+  color: hsl(195, 60%, 12%) !important;
+  border: 1px solid #A9CF46 !important;
+  font-weight: 600;
+}
+
 /* Respect prefers-reduced-motion */
 @media (prefers-reduced-motion: reduce) {
   .ecg-pulse path,
@@ -334,9 +357,14 @@ body {
   .animate-shake,
   .tile-hover,
   .icon-halo,
-  .skeleton-shimmer {
+  .skeleton-shimmer,
+  .badge-pulse-glow {
     animation: none !important;
     transition: none !important;
+  }
+  
+  .badge-pulse-glow {
+    box-shadow: 0 0 8px rgba(169, 207, 70, 0.4);
   }
   
   .tile-hover:hover:not(:disabled) {

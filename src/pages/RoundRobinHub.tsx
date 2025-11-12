@@ -97,7 +97,41 @@ export default function RoundRobinHub() {
       live: "default",
       completed: "secondary",
     };
+    
+    // Add special styling for live events
+    if (status === 'live') {
+      return (
+        <div className="flex items-center gap-2">
+          <Badge 
+            variant="default" 
+            className="badge-pulse-glow"
+          >
+            LIVE
+          </Badge>
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#A9CF46] opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-[#A9CF46]"></span>
+          </span>
+        </div>
+      );
+    }
+    
     return <Badge variant={variants[status] || "outline"}>{status.toUpperCase()}</Badge>;
+  };
+
+  const getCardBackgroundClass = (status: string) => {
+    const baseClasses = "cursor-pointer hover:shadow-xl transition-all h-full";
+    
+    switch(status) {
+      case 'draft':
+        return `${baseClasses} bg-gradient-to-br from-[hsl(195,60%,97%)] to-white border-[hsl(195,60%,85%)] dark:from-[hsl(195,60%,15%)] dark:to-background dark:border-[hsl(195,60%,25%)]`;
+      case 'live':
+        return `${baseClasses} bg-gradient-to-br from-[hsl(84,54%,95%)] via-[hsl(84,54%,97%)] to-white border-[#A9CF46]/30 hover:border-[#A9CF46]/50 border-l-4 border-l-[#A9CF46] dark:from-[hsl(84,40%,18%)] dark:to-background dark:border-[#A9CF46]/40`;
+      case 'completed':
+        return `${baseClasses} bg-gradient-to-br from-slate-50 to-white border-slate-200 dark:from-slate-900 dark:to-background dark:border-slate-700`;
+      default:
+        return `${baseClasses} bg-white border-slate-200`;
+    }
   };
 
   const handleLeaveEvent = async () => {
@@ -124,11 +158,11 @@ export default function RoundRobinHub() {
 
   const EventCard = ({ event, isOrganizer }: { event: RoundRobinEvent; isOrganizer: boolean }) => (
     <motion.div
-      whileHover={{ y: -4, scale: 1.02 }}
+      whileHover={{ y: -4, scale: event.status === 'live' ? 1.03 : 1.02 }}
       transition={{ duration: 0.2 }}
     >
       <Card 
-        className="cursor-pointer hover:shadow-lg transition-all h-full border-slate-200 bg-white"
+        className={getCardBackgroundClass(event.status)}
         onClick={() => navigate(`/round-robin/${event.id}`)}
       >
         <CardHeader className="space-y-3">
