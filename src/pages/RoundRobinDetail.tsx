@@ -24,7 +24,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Play, Trophy, AlertCircle, Settings, Trash2, Ban, CheckCircle, Edit, Edit3, Bell, Monitor, ExternalLink } from "lucide-react";
+import { Play, Trophy, AlertCircle, Settings, Trash2, Ban, CheckCircle, Edit, Edit3, Bell, Monitor, ExternalLink, Share2, Users, Calendar, MapPin, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { BackToDashboard } from "@/components/BackToDashboard";
 import { format, parseISO } from "date-fns";
@@ -40,6 +40,8 @@ import { RegistrationManagement } from "@/components/round-robin/RegistrationMan
 import { z } from "zod";
 import logo from "@/assets/pulse-logo-new.png";
 import { suggestRounds } from "@/lib/roundRobinFairness";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 // Score validation schema
 const scoreSchema = z.object({
@@ -1366,6 +1368,45 @@ export default function RoundRobinDetail() {
   const hasScores = schedule.some(m => m.team1_score !== null || m.team2_score !== null);
   const currentRound = event.current_round || 1;
 
+  // Calculate progress step
+  const getCurrentStep = () => {
+    if (players.length < 4) return 1;
+    if (!hasSchedule) return 2;
+    if (event.status === 'live' || hasScores) return 3;
+    if (event.status === 'completed') return 4;
+    return 2;
+  };
+
+  const currentStep = getCurrentStep();
+
+  // Estimate rounds and time
+  const estimatedRounds = hasSchedule ? event.num_rounds : suggestRounds(players.length, event.num_courts, event.games_per_player || 3);
+  const estimatedMinutes = estimatedRounds * 12;
+
+  // Share functionality
+  const handleShareEvent = () => {
+    const eventUrl = `${window.location.origin}/round-robin/${event.id}`;
+    if (navigator.share) {
+      navigator.share({
+        title: event.name,
+        text: `Join the Round Robin event: ${event.name}`,
+        url: eventUrl,
+      }).catch(() => {
+        navigator.clipboard.writeText(eventUrl);
+        toast.success("Event link copied to clipboard!");
+      });
+    } else {
+      navigator.clipboard.writeText(eventUrl);
+      toast.success("Event link copied to clipboard!");
+    }
+  };
+
+  // Get player initials
+  const getPlayerInitials = (player: Player) => {
+    const name = player.profiles.display_name || player.profiles.full_name;
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  };
+
   return (
     <div className="min-h-screen bg-background pb-20">
       {/* Compact header banner */}
@@ -1513,8 +1554,8 @@ export default function RoundRobinDetail() {
 
       {/* Event details section below header */}
       <div className="bg-background border-b">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center gap-2 flex-wrap mb-1">
+        <div className="container max-w-[1280px] mx-auto px-4 py-4">
+          <div className="flex items-center gap-2 flex-wrap mb-2">
             <h2 className="text-xl sm:text-2xl font-bold text-foreground">{event.name}</h2>
             {event.voided && <Badge variant="destructive">Voided</Badge>}
             {event.status === "completed" && event.completed_at && (
@@ -1524,16 +1565,63 @@ export default function RoundRobinDetail() {
               </Badge>
             )}
           </div>
+
+          {/* Status Badge Strip */}
+          <div className="flex items-center gap-2 flex-wrap mb-2">
+            <Badge variant="outline" className="text-xs">
+              {event.status === 'draft' ? 'Draft' : event.status === 'live' ? 'Live' : 'Completed'}
+            </Badge>
+            <Badge variant="outline" className="text-xs">
+              <Users className="h-3 w-3 mr-1" />
+              Players: {players.length}
+            </Badge>
+            {event.location && (
+              <Badge variant="outline" className="text-xs">
+                <MapPin className="h-3 w-3 mr-1" />
+                {event.location}
+              </Badge>
+            )}
+            <Badge variant="outline" className="text-xs">
+              Format: Doubles
+            </Badge>
+            <Badge variant="outline" className="text-xs">
+              Scoring: to 11 (win by 2)
+            </Badge>
+            <Badge variant="outline" className="text-xs">
+              Rounds: {hasSchedule ? event.num_rounds : '—'}
+            </Badge>
+          </div>
+
           <div className="flex items-center gap-3 flex-wrap">
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground flex items-center gap-2">
+              <Calendar className="h-3 w-3" />
               {format(parseISO(event.date + 'T00:00:00'), 'PP')}
-              {event.location && ` • ${event.location}`}
             </p>
+            {isOrganizer && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={handleShareEvent}
+                      className="h-7 px-2"
+                    >
+                      <Share2 className="h-3 w-3 mr-1" />
+                      Share
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Share event link</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
           </div>
         </div>
       </div>
 
-      <main className="container mx-auto px-4 py-6">
+      <main className="container max-w-[1280px] mx-auto px-4 py-6">
         {isOrganizer && isEditMode && (
           <div className="mb-6">
             <EditModeBanner
@@ -1546,45 +1634,121 @@ export default function RoundRobinDetail() {
         )}
 
         {!hasSchedule && isOrganizer && (
-          <Alert className="mb-6">
+          <Alert className="mb-4">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              Schedule not generated yet. Add players and click "Generate Schedule" to begin.
+              Add or confirm players, then generate your schedule.
             </AlertDescription>
           </Alert>
         )}
 
+        {/* Progress Stepper */}
+        <div className="mb-4 px-2">
+          <div className="flex items-center justify-center gap-2 text-xs sm:text-sm">
+            <div className={`flex items-center gap-1 ${currentStep >= 1 ? 'font-semibold' : 'text-muted-foreground'}`}>
+              <div className={`w-2 h-2 rounded-full ${currentStep >= 1 ? 'bg-primary' : 'bg-muted'}`} />
+              <span className="hidden sm:inline">1 Add Players</span>
+              <span className="sm:hidden">Players</span>
+            </div>
+            <div className="h-px w-4 sm:w-8 bg-border" />
+            <div className={`flex items-center gap-1 ${currentStep >= 2 ? 'font-semibold' : 'text-muted-foreground'}`}>
+              <div className={`w-2 h-2 rounded-full ${currentStep >= 2 ? 'bg-primary' : 'bg-muted'}`} />
+              <span className="hidden sm:inline">2 Generate</span>
+              <span className="sm:hidden">Generate</span>
+            </div>
+            <div className="h-px w-4 sm:w-8 bg-border" />
+            <div className={`flex items-center gap-1 ${currentStep >= 3 ? 'font-semibold' : 'text-muted-foreground'}`}>
+              <div className={`w-2 h-2 rounded-full ${currentStep >= 3 ? 'bg-primary' : 'bg-muted'}`} />
+              <span className="hidden sm:inline">3 Play & Score</span>
+              <span className="sm:hidden">Score</span>
+            </div>
+            <div className="h-px w-4 sm:w-8 bg-border" />
+            <div className={`flex items-center gap-1 ${currentStep >= 4 ? 'font-semibold' : 'text-muted-foreground'}`}>
+              <div className={`w-2 h-2 rounded-full ${currentStep >= 4 ? 'bg-primary' : 'bg-muted'}`} />
+              <span className="hidden sm:inline">4 Standings</span>
+              <span className="sm:hidden">Done</span>
+            </div>
+          </div>
+        </div>
+
         <Tabs defaultValue="schedule" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-6">
+          <TabsList className="grid w-full grid-cols-3 mb-4">
             <TabsTrigger value="schedule">Schedule</TabsTrigger>
-            <TabsTrigger value="players">Players ({players.length})</TabsTrigger>
+            <TabsTrigger value="players" className="flex items-center gap-2">
+              <span>Players ({players.length})</span>
+              {players.length > 0 && (
+                <div className="hidden sm:flex items-center gap-1">
+                  {players.slice(0, 4).map((player) => (
+                    <Avatar key={player.id} className="h-5 w-5 border">
+                      <AvatarFallback className="text-[8px]">
+                        {getPlayerInitials(player)}
+                      </AvatarFallback>
+                    </Avatar>
+                  ))}
+                  {players.length > 4 && (
+                    <span className="text-[10px] text-muted-foreground ml-0.5">+{players.length - 4}</span>
+                  )}
+                </div>
+              )}
+            </TabsTrigger>
             <TabsTrigger value="standings">Standings</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="schedule" className="mt-6 space-y-6">
+          <TabsContent value="schedule" className="mt-4 space-y-4">
             {!hasSchedule ? (
-              <Card>
-                <CardContent className="flex flex-col items-center justify-center py-12">
-                  <Trophy className="h-12 w-12 text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground mb-4">No schedule generated</p>
+              <Card className="shadow-sm">
+                <CardContent className="flex flex-col items-center justify-center py-16 space-y-4">
+                  <Zap className="h-16 w-16 text-primary/60" />
+                  <div className="text-center space-y-2">
+                    <h3 className="text-xl font-semibold">No schedule yet</h3>
+                    <p className="text-sm text-muted-foreground max-w-md">
+                      Add or confirm players, then generate your schedule.
+                    </p>
+                    {players.length >= 4 && (
+                      <p className="text-xs text-muted-foreground">
+                        With {players.length} players you'll typically see ~{estimatedRounds} rounds (~{estimatedMinutes} min)
+                      </p>
+                    )}
+                  </div>
                   {isOrganizer && (
-                    <Button onClick={handleGenerateSchedule} disabled={!canGenerate}>
-                      Generate Schedule
-                    </Button>
+                    <div className="flex flex-col items-center gap-3 mt-4">
+                      <Button 
+                        onClick={handleGenerateSchedule} 
+                        disabled={!canGenerate}
+                        size="lg"
+                        style={{ backgroundColor: '#A9CF46' }}
+                        className="text-primary-foreground hover:opacity-90"
+                      >
+                        <Zap className="h-4 w-4 mr-2" />
+                        Generate Schedule
+                      </Button>
+                      {players.length < 4 && (
+                        <Button 
+                          variant="link" 
+                          size="sm"
+                          onClick={() => {
+                            const playersTab = document.querySelector('[value="players"]') as HTMLElement;
+                            playersTab?.click();
+                          }}
+                        >
+                          Review players
+                        </Button>
+                      )}
+                    </div>
                   )}
                 </CardContent>
               </Card>
             ) : (
               <>
                 {isOrganizer && event.status === "draft" && (
-                  <Button onClick={handleStartEvent} className="w-full mb-6">
+                  <Button onClick={handleStartEvent} className="w-full mb-4">
                     <Play className="h-4 w-4 mr-2" />
                     Start Event
                   </Button>
                 )}
 
                 {isOrganizer && !event.voided && event.status !== 'completed' && (
-                  <div className="flex gap-2 mb-6">
+                  <div className="flex gap-2 mb-4">
                     <Button 
                       variant="outline" 
                       onClick={() => setScheduleEditorOpen(true)}
@@ -1607,12 +1771,12 @@ export default function RoundRobinDetail() {
                 )}
 
                 {isOrganizer && event.status === "live" && (
-                  <Button onClick={handleCompleteEvent} className="w-full mb-6" variant="default">
+                  <Button onClick={handleCompleteEvent} className="w-full mb-4" variant="default">
                     Complete Event & Submit to Match History
                   </Button>
                 )}
 
-                <div className="space-y-8">
+                <div className="space-y-6">
                   {Array.from({ length: event.num_rounds }, (_, i) => i + 1).map((roundNo) => {
                     const allMatches = getRoundMatches(roundNo);
                     const courtMatches = allMatches.filter(m => !m.is_bye);
@@ -1640,7 +1804,7 @@ export default function RoundRobinDetail() {
                           )}
                         </div>
                         
-                        <div className="grid gap-4 md:grid-cols-2">
+                        <div className="grid gap-3 md:grid-cols-2">
                           {courtMatches.map((match) => (
                             <Card key={match.id} className={`overflow-hidden ${isFutureRound ? 'pointer-events-none' : ''}`}>
                               <CardContent className="p-4 space-y-3">
