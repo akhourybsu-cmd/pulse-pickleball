@@ -432,7 +432,7 @@ const Dashboard = () => {
               <div className="grid grid-cols-2 lg:grid-cols-4 divide-x divide-y lg:divide-y-0">
                 <button
                   onClick={() => navigate("/court/connector")}
-                  className="p-4 md:p-6 hover:bg-accent transition-colors group text-left"
+                  className="p-4 md:p-6 hover:bg-muted/50 hover:scale-[1.02] hover:shadow-md transition-all group text-left"
                   aria-label="Open Court Connector"
                   data-tour="court-connector"
                 >
@@ -455,7 +455,7 @@ const Dashboard = () => {
 
                 <button
                   onClick={() => navigate("/match/history")}
-                  className="p-4 md:p-6 hover:bg-accent transition-colors group text-left"
+                  className="p-4 md:p-6 hover:bg-muted/50 hover:scale-[1.02] hover:shadow-md transition-all group text-left"
                   aria-label="Open Match History"
                   data-tour="match-history"
                 >
@@ -470,7 +470,7 @@ const Dashboard = () => {
 
                 <button
                   onClick={() => navigate("/events/my-calendar-registrations")}
-                  className="p-4 md:p-6 hover:bg-accent transition-colors group text-left"
+                  className="p-4 md:p-6 hover:bg-muted/50 hover:scale-[1.02] hover:shadow-md transition-all group text-left"
                   aria-label="Open My Events"
                 >
                   <div className="flex flex-col items-start gap-2">
@@ -484,7 +484,7 @@ const Dashboard = () => {
 
                 <button
                   onClick={() => navigate("/round-robin")}
-                  className="p-4 md:p-6 hover:bg-accent transition-colors group text-left"
+                  className="p-4 md:p-6 hover:bg-muted/50 hover:scale-[1.02] hover:shadow-md transition-all group text-left"
                   aria-label="Open Round Robin Hub"
                 >
                   <div className="flex flex-col items-start gap-2">
