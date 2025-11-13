@@ -2,16 +2,17 @@ import { useState, useEffect } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { ArrowLeft, User, Trophy, TrendingUp, Hash, Dumbbell, Calendar } from "lucide-react";
+import { ArrowLeft, User, Trophy, Hash, MapPin, Hand, Target, Flame } from "lucide-react";
 import logo from "@/assets/pulse-logo-new.png";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { CircularProgressRing } from "@/components/profile/CircularProgressRing";
 import { PulseScoreBadge } from "@/components/profile/PulseScoreBadge";
 import { RecentMatches } from "@/components/profile/RecentMatches";
+import { PlayStyleSnapshot } from "@/components/profile/PlayStyleSnapshot";
+import { HighlightsStrip } from "@/components/profile/HighlightsStrip";
 
 interface Profile {
   id: string;
@@ -28,6 +29,10 @@ interface Profile {
   paddle_brand: string | null;
   paddle_model: string | null;
   home_court_id: string | null;
+  courts?: {
+    id: string;
+    name: string;
+  } | null;
 }
 
 interface RecentMatch {
@@ -71,7 +76,11 @@ const ViewProfile = () => {
           play_side,
           paddle_brand,
           paddle_model,
-          home_court_id
+          home_court_id,
+          courts:home_court_id (
+            id,
+            name
+          )
         `)
         .eq("id", userId)
         .single();
@@ -82,7 +91,7 @@ const ViewProfile = () => {
         return;
       }
 
-      // Fetch recent matches
+      // Fetch recent 10 matches
       const { data: matchParticipants } = await supabase
         .from("match_participants")
         .select(`
@@ -97,7 +106,7 @@ const ViewProfile = () => {
         `)
         .eq("player_id", userId)
         .order("created_at", { ascending: false })
-        .limit(3);
+        .limit(10);
 
       if (matchParticipants) {
         const formattedMatches = await Promise.all(
@@ -150,10 +159,41 @@ const ViewProfile = () => {
     fetchProfile();
   }, [userId, navigate]);
 
+  // Calculate win streak
+  const calculateWinStreak = (matches: RecentMatch[]) => {
+    let streak = 0;
+    let maxStreak = 0;
+    
+    const sorted = [...matches].sort((a, b) => 
+      new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+    
+    for (const match of sorted) {
+      if (match.result === 'W') {
+        streak++;
+        maxStreak = Math.max(maxStreak, streak);
+      } else {
+        streak = 0;
+      }
+    }
+    
+    return maxStreak > 0 ? `${maxStreak} wins` : 'No streak yet';
+  };
+
+  // Calculate days since last match
+  const getDaysSinceLastMatch = () => {
+    if (recentMatches.length === 0) return null;
+    const lastMatch = new Date(recentMatches[0].date);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - lastMatch.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-muted-foreground">Loading...</p>
+        <p className="text-muted-foreground font-sans">Loading...</p>
       </div>
     );
   }
@@ -171,6 +211,21 @@ const ViewProfile = () => {
     ? parseFloat(((profile.wins / profile.total_matches) * 100).toFixed(1))
     : 0;
 
+  const highlights = [
+    {
+      icon: <Flame className="w-6 h-6 text-[#A9CF46]" />,
+      label: "Longest Win Streak",
+      value: calculateWinStreak(recentMatches),
+      subValue: undefined
+    },
+    {
+      icon: <Hash className="w-6 h-6 text-primary" />,
+      label: "Total Matches",
+      value: String(profile.total_matches),
+      subValue: "across all courts"
+    }
+  ];
+
   return (
     <div className="min-h-screen bg-background">
       <nav className="border-b bg-secondary">
@@ -180,7 +235,7 @@ const ViewProfile = () => {
           </Link>
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            <Button variant="ghost" onClick={() => navigate("/dashboard")} className="text-white hover:text-white/90">
+            <Button variant="ghost" onClick={() => navigate("/dashboard")} className="text-white hover:text-white/90 font-sans font-medium">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Dashboard
             </Button>
@@ -189,131 +244,123 @@ const ViewProfile = () => {
       </nav>
 
       <div className="container mx-auto px-4 py-8 max-w-5xl">
-        {/* Profile Header */}
-        <Card className="mb-8 shadow-[var(--shadow-glow)] bg-gradient-to-br from-background via-background to-muted/10 border-2 border-primary/20">
-          <CardContent className="pt-6">
-            <div className="flex flex-col md:flex-row items-start gap-6">
-              <div className="flex-shrink-0">
-                {profile.avatar_url ? (
-                  <img
-                    src={profile.avatar_url}
-                    alt={displayName}
-                    className="w-24 h-24 rounded-full object-cover ring-4 ring-primary/20"
-                  />
-                ) : (
-                  <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center ring-4 ring-primary/20">
-                    <User className="w-12 h-12 text-primary" />
+        {/* Hero Profile Card - Player Banner */}
+        <Card className="mb-8 rounded-2xl shadow-lg border-t-4 border-t-[#A9CF46] bg-gradient-to-br from-background via-background to-muted/10 p-8">
+          <CardContent className="p-0">
+            <div className="flex flex-col lg:flex-row items-start gap-8">
+              {/* Left Column - Avatar + Name + Meta */}
+              <div className="flex-none flex flex-col md:flex-row lg:flex-col items-center md:items-start lg:items-center gap-4">
+                <div className="flex-shrink-0">
+                  {profile.avatar_url ? (
+                    <img
+                      src={profile.avatar_url}
+                      alt={displayName}
+                      className="w-24 h-24 rounded-full object-cover ring-4 ring-primary/20"
+                    />
+                  ) : (
+                    <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center ring-4 ring-primary/20">
+                      <User className="w-12 h-12 text-primary" />
+                    </div>
+                  )}
+                </div>
+                <div className="text-center md:text-left lg:text-center">
+                  <h1 className="text-3xl md:text-4xl font-display font-bold tracking-tight mb-2" style={{ letterSpacing: '-0.02em' }}>
+                    {displayName}
+                  </h1>
+                  <div className="flex items-center justify-center md:justify-start lg:justify-center gap-1.5 mb-2">
+                    <Trophy className="w-3.5 h-3.5 text-muted-foreground" />
+                    <PulseScoreBadge score={profile.current_rating} />
                   </div>
-                )}
+                  {profile.courts && (
+                    <div className="flex items-center justify-center md:justify-start lg:justify-center gap-1.5 text-sm text-muted-foreground font-sans">
+                      <MapPin className="w-3.5 h-3.5" />
+                      <span>Home: {profile.courts.name}</span>
+                    </div>
+                  )}
+                </div>
               </div>
-              <div className="flex-1">
-                <div className="mb-3">
-                  <h1 className="text-3xl font-bold mb-1">{displayName}</h1>
-                </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-6">
-                  <div>
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <Hash className="w-4 h-4 text-muted-foreground" />
-                      <p className="text-sm text-muted-foreground">Pulse Score</p>
-                    </div>
-                    <div className="pulse-score-container">
-                      <p className="text-2xl font-bold text-primary pulse-score-number">
-                        {profile.current_rating?.toFixed(2)}
-                      </p>
-                    </div>
-                    <div className="mt-2">
-                      <PulseScoreBadge score={profile.current_rating} />
-                    </div>
+              {/* Center Column - Compact Stats */}
+              <div className="flex-1 flex flex-col justify-center gap-6 w-full lg:pl-8">
+                <div className="flex flex-wrap justify-center lg:justify-start gap-8">
+                  <div className="text-center lg:text-left">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1 font-sans">PULSE SCORE</p>
+                    <p className="text-4xl md:text-5xl font-display font-bold text-primary" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                      {profile.current_rating?.toFixed(2)}
+                    </p>
                   </div>
-                  
-                  <div>
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <Calendar className="w-4 h-4 text-muted-foreground" />
-                      <p className="text-sm text-muted-foreground">Matches</p>
-                    </div>
-                    <p className="text-2xl font-bold">{profile.total_matches}</p>
+                  <div className="text-center lg:text-left">
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1 font-sans">MATCHES</p>
+                    <p className="text-2xl md:text-4xl font-display font-bold" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                      {profile.total_matches}
+                    </p>
                   </div>
-                  
-                  <div>
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <Trophy className="w-4 h-4 text-muted-foreground" />
-                      <p className="text-sm text-muted-foreground">Win Rate</p>
-                    </div>
-                    <div className="mt-2">
-                      <CircularProgressRing percentage={winRate} size={70} strokeWidth={6} />
-                    </div>
-                  </div>
-                  
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div className="cursor-help">
-                          <div className="flex items-center gap-1.5 mb-1">
-                            <Dumbbell className="w-4 h-4 text-muted-foreground" />
-                            <p className="text-sm text-muted-foreground">Record</p>
-                          </div>
-                          <p className="text-2xl font-bold">{profile.wins}W - {profile.losses}L</p>
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p className="text-xs">Total wins and losses across all matches</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
                 </div>
+              </div>
+
+              {/* Right Column - Win Rate Dial */}
+              <div className="flex-none flex flex-col items-center gap-3">
+                <CircularProgressRing percentage={winRate} size={120} strokeWidth={10} />
+                <p className="text-xl font-display font-bold text-center" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                  {profile.wins}W - {profile.losses}L
+                </p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Section Headers */}
-        <h2 className="text-xl font-semibold mb-4 text-muted-foreground">Performance & Gameplay</h2>
-
-        {/* Stats Grid */}
-        <div className="grid gap-6 md:grid-cols-1 mb-8">
-          <Card className="hover:shadow-md transition-shadow">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-primary" />
-                Gameplay Info
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
+        {/* Performance & Gameplay Card */}
+        <h2 className="font-display text-sm uppercase tracking-wider text-muted-foreground mb-3">
+          PERFORMANCE & GAMEPLAY
+        </h2>
+        <Card className="mb-8 rounded-lg shadow-sm border-l-2 border-l-[#A9CF46] p-4 hover:shadow-md transition-shadow">
+          <CardContent className="p-0">
+            {/* Chip-based info display */}
+            <div className="flex flex-wrap gap-2 mb-4">
               {profile.handedness && (
-                <>
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Handedness</span>
-                    <span className="font-semibold capitalize">{profile.handedness}</span>
-                  </div>
-                  <Separator />
-                </>
+                <Badge variant="outline" className="gap-1.5 px-3 py-1.5 font-sans">
+                  <Hand className="w-3.5 h-3.5" />
+                  <span className="capitalize">{profile.handedness}</span>
+                </Badge>
               )}
               {profile.play_side && (
-                <>
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Preferred Side</span>
-                    <span className="font-semibold capitalize">{profile.play_side}</span>
-                  </div>
-                  <Separator />
-                </>
+                <Badge variant="outline" className="gap-1.5 px-3 py-1.5 font-sans">
+                  <Target className="w-3.5 h-3.5" />
+                  <span className="capitalize">{profile.play_side}-dominant</span>
+                </Badge>
               )}
-              {(profile.paddle_brand || profile.paddle_model) && (
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Paddle</span>
-                  <span className="font-semibold text-right">
-                    {profile.paddle_brand} {profile.paddle_model}
-                  </span>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+            </div>
+
+            {/* Paddle info */}
+            {(profile.paddle_brand || profile.paddle_model) && (
+              <p className="text-sm text-muted-foreground font-sans mb-4">
+                Paddle: {profile.paddle_brand} {profile.paddle_model}
+              </p>
+            )}
+
+            {/* Play Style Snapshot */}
+            <PlayStyleSnapshot 
+              power={60} 
+              control={75} 
+              consistency={85} 
+            />
+          </CardContent>
+        </Card>
+
+        {/* Highlights Strip */}
+        <div className="mb-8">
+          <HighlightsStrip highlights={highlights} />
         </div>
 
-        {/* Recent Matches */}
+        {/* Recent Activity */}
         {recentMatches.length > 0 && (
           <>
-            <h2 className="text-xl font-semibold mb-4 text-muted-foreground">Recent Activity</h2>
+            <h2 className="font-display text-sm uppercase tracking-wider text-muted-foreground mb-3">
+              RECENT ACTIVITY
+              {getDaysSinceLastMatch() && (
+                <span className="font-sans normal-case"> · Last played {getDaysSinceLastMatch()} days ago</span>
+              )}
+            </h2>
             <RecentMatches matches={recentMatches} />
           </>
         )}
