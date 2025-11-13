@@ -328,12 +328,12 @@ const Dashboard = () => {
         </div>
       </nav>
 
-      {/* Pulse Header - Full Width */}
+      {/* Zone 1: Hero Section + Primary Actions */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="mb-2 md:mb-3"
+        className="mb-8"
         style={{
           background: 'linear-gradient(180deg, #E8FBD5 0%, #FFFFFF 80%)',
           borderBottom: '1px solid rgba(169, 220, 61, 0.15)',
@@ -360,7 +360,7 @@ const Dashboard = () => {
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
-                className="text-2xl md:text-4xl lg:text-5xl font-bold mb-2 md:mb-4 relative inline-block pb-2"
+                className="text-2xl md:text-4xl lg:text-5xl font-bold mb-2 md:mb-3 relative inline-block pb-2"
                 style={{
                   color: '#0E4C58',
                   letterSpacing: '0.02em',
@@ -382,34 +382,21 @@ const Dashboard = () => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.5, delay: 0.3 }}
-                className="text-sm md:text-lg leading-relaxed"
+                className="text-sm md:text-lg leading-relaxed mb-4"
                 style={{ color: '#0E4C58', opacity: 0.8 }}
               >
                 Track your pickleball journey, analyze your performance, and compete with your community
               </motion.p>
-            </div>
-          </div>
-        </div>
-      </motion.div>
-
-      <div className="container mx-auto px-4 py-3 md:py-4 md:py-6">
-        {/* MFA Prompt */}
-        <div className="mb-6">
-          <MFAPrompt />
-        </div>
-
-        <div className="mb-6 md:mb-8">
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
               
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full mb-6">
+              {/* Primary Action Buttons */}
+              <div className="flex flex-col sm:flex-row items-start gap-3 mt-4">
                 <Button 
                   size="lg" 
                   onClick={() => navigate("/match/new")}
-                  className="shadow-[var(--shadow-glow)] w-full sm:w-auto rounded-full md:text-lg md:py-6 md:px-8 pulse-glow button-ripple"
+                  className="shadow-[var(--shadow-glow)] w-full sm:w-auto"
                   data-tour="record-match"
                 >
-                  <Plus className="w-5 h-5 md:w-6 md:h-6 mr-2 flex-shrink-0" />
+                  <Plus className="w-5 h-5 mr-2 flex-shrink-0" />
                   Record New Match
                 </Button>
 
@@ -417,252 +404,293 @@ const Dashboard = () => {
                   <Button 
                     variant="secondary" 
                     size="lg" 
-                    className="w-full sm:w-auto rounded-full md:text-lg md:py-6 md:px-8 shadow-md hover:shadow-lg transition-all group"
+                    className="w-full sm:w-auto shadow-sm hover:shadow-md transition-all"
                     onClick={() => navigate(`/court/board/${homeCourtId}`)}
                   >
-                    <MapPin className="w-5 h-5 md:w-6 md:h-6 mr-2 flex-shrink-0" />
+                    <MapPin className="w-5 h-5 mr-2 flex-shrink-0" />
                     <span className="truncate">
                       Go to {homeCourtName || 'Home Court'}
                     </span>
                   </Button>
                 )}
               </div>
-                
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-                <DashboardTile
-                  icon={Link2}
-                  title="Court Connector"
-                  subtitle="Find a group"
-                  notification={hasNewParticipants}
-                  onClick={() => navigate("/court/connector")}
-                  ariaLabel="Open Court Connector"
-                  data-tour="court-connector"
-                />
-
-                <DashboardTile
-                  icon={History}
-                  title="Match History"
-                  subtitle="View matches"
-                  onClick={() => navigate("/match/history")}
-                  ariaLabel="Open Match History"
-                  data-tour="match-history"
-                />
-
-                <DashboardTile
-                  icon={Calendar}
-                  title="My Events"
-                  subtitle="View registrations"
-                  onClick={() => navigate("/events/my-calendar-registrations")}
-                  ariaLabel="Open My Events"
-                />
-
-                <DashboardTile
-                  icon={Trophy}
-                  title="Round Robin"
-                  subtitle="Create event"
-                  onClick={() => navigate("/round-robin")}
-                  ariaLabel="Open Round Robin Hub"
-                />
-              </div>
             </div>
           </div>
         </div>
+      </motion.div>
 
-        <div className="grid gap-4 md:gap-6 mb-6 md:mb-8">
-          <Card className="border-2 border-primary pulse-score-focal" data-tour="pulse-score">
-            <CardHeader className="pb-3 md:pb-4">
-              <CardDescription className="md:text-base">Live Pulse Score</CardDescription>
-              <CardTitle className="flex items-center gap-3">
-                <motion.span 
-                  className="text-5xl md:text-6xl lg:text-7xl font-bold text-primary pulse-score-number opacity-0"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.8, delay: 0.75, ease: "easeOut" }}
+      <div className="container mx-auto px-4 pb-6">
+        {/* MFA Prompt */}
+        <div className="mb-6">
+          <MFAPrompt />
+        </div>
+
+        {/* Quick Action Toolbar */}
+        <div className="mb-8">
+          <Card className="border-t-2 border-t-primary shadow-sm">
+            <CardContent className="p-0">
+              <div className="grid grid-cols-2 lg:grid-cols-4 divide-x divide-y lg:divide-y-0">
+                <button
+                  onClick={() => navigate("/court/connector")}
+                  className="p-4 md:p-6 hover:bg-accent transition-colors group text-left"
+                  aria-label="Open Court Connector"
+                  data-tour="court-connector"
                 >
-                  {profile?.current_rating?.toFixed(2) || "3.00"}
-                </motion.span>
-                <motion.svg 
-                  className="ecg-pulse flex-shrink-0 opacity-0" 
-                  width="60" 
-                  height="20" 
-                  viewBox="0 0 80 24"
-                  fill="none" 
-                  xmlns="http://www.w3.org/2000/svg"
-                  aria-hidden="true"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ duration: 0.3, delay: 1.55 }}
+                  <div className="flex flex-col items-start gap-2">
+                    <div className="flex items-center gap-2 w-full">
+                      <Link2 className="w-5 h-5 md:w-6 md:h-6 text-primary flex-shrink-0" />
+                      {hasNewParticipants && (
+                        <span className="flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-primary opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                        </span>
+                      )}
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-sm md:text-base group-hover:text-primary transition-colors">Court Connector</h3>
+                      <p className="text-xs md:text-sm text-muted-foreground">Find a group</p>
+                    </div>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => navigate("/match/history")}
+                  className="p-4 md:p-6 hover:bg-accent transition-colors group text-left"
+                  aria-label="Open Match History"
+                  data-tour="match-history"
                 >
-                  <path 
-                    d="M0 12 L20 12 L25 4 L30 20 L35 12 L80 12" 
-                    stroke="rgb(163, 230, 53)" 
-                    strokeWidth="2.5" 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round"
-                    pathLength="100"
-                  />
-                </motion.svg>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="text-sm md:text-base">
-                <span className="text-muted-foreground">Weekly snapshot (Mon): </span>
-                <span className="font-semibold">
-                  {profile?.week_start_rating?.toFixed(2) || '3.00'}
-                </span>
-                <span className={`ml-2 font-semibold ${weeklyChange > 0 ? 'text-green-500' : weeklyChange < 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
-                  ({weeklyChange > 0 ? '+' : ''}{weeklyChange.toFixed(2)})
-                </span>
+                  <div className="flex flex-col items-start gap-2">
+                    <History className="w-5 h-5 md:w-6 md:h-6 text-primary" />
+                    <div>
+                      <h3 className="font-bold text-sm md:text-base group-hover:text-primary transition-colors">Match History</h3>
+                      <p className="text-xs md:text-sm text-muted-foreground">View matches</p>
+                    </div>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => navigate("/events/my-calendar-registrations")}
+                  className="p-4 md:p-6 hover:bg-accent transition-colors group text-left"
+                  aria-label="Open My Events"
+                >
+                  <div className="flex flex-col items-start gap-2">
+                    <Calendar className="w-5 h-5 md:w-6 md:h-6 text-primary" />
+                    <div>
+                      <h3 className="font-bold text-sm md:text-base group-hover:text-primary transition-colors">My Events</h3>
+                      <p className="text-xs md:text-sm text-muted-foreground">View registrations</p>
+                    </div>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => navigate("/round-robin")}
+                  className="p-4 md:p-6 hover:bg-accent transition-colors group text-left"
+                  aria-label="Open Round Robin Hub"
+                >
+                  <div className="flex flex-col items-start gap-2">
+                    <Trophy className="w-5 h-5 md:w-6 md:h-6 text-primary" />
+                    <div>
+                      <h3 className="font-bold text-sm md:text-base group-hover:text-primary transition-colors">Round Robin</h3>
+                      <p className="text-xs md:text-sm text-muted-foreground">Create event</p>
+                    </div>
+                  </div>
+                </button>
               </div>
             </CardContent>
           </Card>
-
-          <div className="grid grid-cols-2 gap-4 md:gap-6">
-            <Card className="py-2 md:py-3">
-              <CardHeader className="pb-2 pt-3 md:pb-3 md:pt-4">
-                <CardDescription className="text-xs md:text-sm">Record</CardDescription>
-                <CardTitle className="text-3xl md:text-4xl lg:text-5xl">
-                  {profile?.wins}W - {profile?.losses}L
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="text-xs md:text-sm text-muted-foreground pb-3 md:pb-4">
-                {profile?.total_matches} {profile?.total_matches === 1 ? 'match' : 'matches'} played
-              </CardContent>
-            </Card>
-
-            <Card className="py-2 md:py-3">
-              <CardHeader className="pb-2 pt-3 md:pb-3 md:pt-4">
-                <CardDescription className="flex items-center gap-2 text-xs md:text-sm">
-                  <TrendingUp className="w-3 h-3 md:w-4 md:h-4" />
-                  Win Rate
-                </CardDescription>
-                <CardTitle className="text-3xl md:text-4xl lg:text-5xl">{winRate}%</CardTitle>
-              </CardHeader>
-            </Card>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4 md:gap-6">
-            <Card className="py-2 md:py-3">
-              <CardHeader className="pb-2 pt-3 md:pb-3 md:pt-4">
-                <CardDescription className="flex items-center gap-2 text-xs md:text-sm">
-                  <BarChart3 className="w-3 h-3 md:w-4 md:h-4" />
-                  Point Diff / Game
-                </CardDescription>
-                <CardTitle className="text-3xl md:text-4xl lg:text-5xl">
-                  {parseFloat(pointDifferentialPerGame) > 0 ? "+" : ""}{pointDifferentialPerGame}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="text-xs md:text-sm text-muted-foreground pb-3 md:pb-4">
-                For: {profile?.total_points_for || 0} • Against: {profile?.total_points_against || 0}
-              </CardContent>
-            </Card>
-
-            <Card className="py-2 md:py-3">
-              <CardHeader className="pb-2 pt-3 md:pb-3 md:pt-4">
-                <CardDescription className="text-xs md:text-sm">Avg. Opponent Rating</CardDescription>
-                <CardTitle className="text-3xl md:text-4xl lg:text-5xl">
-                  {profile?.avg_opponent_rating?.toFixed(2) || "N/A"}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="text-xs md:text-sm text-muted-foreground pb-3 md:pb-4">
-                Strength of schedule
-              </CardContent>
-            </Card>
-          </div>
         </div>
 
+        {/* Zone 2: Player Scoreboard */}
+        <div className="mb-8">
+          <Card className="border-l-4 border-l-primary shadow-sm" data-tour="pulse-score">
+            <CardContent className="p-6">
+              <div className="flex flex-col lg:flex-row lg:items-start gap-6">
+                {/* Left: Live Pulse Score */}
+                <div className="flex-1 min-w-0">
+                  <CardDescription className="text-sm md:text-base mb-2">Live Pulse Score</CardDescription>
+                  <div className="flex items-center gap-3 mb-2">
+                    <motion.span 
+                      className="text-5xl md:text-6xl lg:text-7xl font-bold text-primary pulse-score-number"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.8, delay: 0.75, ease: "easeOut" }}
+                    >
+                      {profile?.current_rating?.toFixed(2) || "3.00"}
+                    </motion.span>
+                    <motion.svg 
+                      className="ecg-pulse flex-shrink-0" 
+                      width="60" 
+                      height="20" 
+                      viewBox="0 0 80 24"
+                      fill="none" 
+                      xmlns="http://www.w3.org/2000/svg"
+                      aria-hidden="true"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.3, delay: 1.55 }}
+                    >
+                      <path 
+                        d="M0 12 L20 12 L25 4 L30 20 L35 12 L80 12" 
+                        stroke="rgb(163, 230, 53)" 
+                        strokeWidth="2.5" 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round"
+                        pathLength="100"
+                      />
+                    </motion.svg>
+                  </div>
+                  <div className="text-sm">
+                    <span className="text-muted-foreground">Weekly snapshot (Mon): </span>
+                    <span className="font-semibold">
+                      {profile?.week_start_rating?.toFixed(2) || '3.00'}
+                    </span>
+                    <span className={`ml-2 font-semibold ${weeklyChange > 0 ? 'text-green-500' : weeklyChange < 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
+                      ({weeklyChange > 0 ? '+' : ''}{weeklyChange.toFixed(2)})
+                    </span>
+                  </div>
+                </div>
+
+                {/* Right: Stats Grid */}
+                <div className="grid grid-cols-2 gap-4 lg:w-1/2">
+                  <div className="space-y-1">
+                    <CardDescription className="text-xs">Record</CardDescription>
+                    <p className="text-2xl md:text-3xl font-bold">
+                      {profile?.wins}W - {profile?.losses}L
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {profile?.total_matches} {profile?.total_matches === 1 ? 'match' : 'matches'} played
+                    </p>
+                  </div>
+
+                  <div className="space-y-1">
+                    <CardDescription className="text-xs flex items-center gap-1">
+                      <TrendingUp className="w-3 h-3" />
+                      Win Rate
+                    </CardDescription>
+                    <p className="text-2xl md:text-3xl font-bold">{winRate}%</p>
+                  </div>
+
+                  <div className="space-y-1">
+                    <CardDescription className="text-xs flex items-center gap-1">
+                      <BarChart3 className="w-3 h-3" />
+                      Point Diff / Game
+                    </CardDescription>
+                    <p className="text-2xl md:text-3xl font-bold">
+                      {parseFloat(pointDifferentialPerGame) > 0 ? "+" : ""}{pointDifferentialPerGame}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      For: {profile?.total_points_for || 0} • Against: {profile?.total_points_against || 0}
+                    </p>
+                  </div>
+
+                  <div className="space-y-1">
+                    <CardDescription className="text-xs">Avg. Opponent Rating</CardDescription>
+                    <p className="text-2xl md:text-3xl font-bold">
+                      {profile?.avg_opponent_rating?.toFixed(2) || "N/A"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Strength of schedule
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Zone 3: Secondary Tools - Smart Match, LFG, Stats by Court */}
         <div className="mb-8 space-y-6" data-tour="court-stats">
           <SmartMatch userId={user?.id || null} />
           <LFGNotifications />
           {user && <CourtStats userId={user.id} />}
         </div>
 
-        <div className="space-y-4 md:space-y-6">
-          {/* Edit Profile and Help & FAQ */}
-          <div className="grid grid-cols-2 gap-4 md:gap-6">
-            <Button
-              size="lg" 
-              variant="outline"
-              onClick={() => navigate("/profile/edit")}
-              className="md:text-lg md:py-6"
-            >
-              <UserCog className="w-5 h-5 md:w-6 md:h-6 mr-2" />
-              Edit Profile
-            </Button>
+        {/* Account & Community Band */}
+        <Card className="bg-gradient-to-br from-muted/30 to-background shadow-sm mb-8">
+          <CardContent className="p-6">
+            <div className="flex flex-col md:flex-row gap-4 items-stretch">
+              {/* Left: Edit Profile and Help & FAQ */}
+              <div className="flex-1 flex flex-col sm:flex-row gap-4">
+                <Button
+                  size="lg" 
+                  variant="outline"
+                  onClick={() => navigate("/profile/edit")}
+                  className="flex-1"
+                >
+                  <UserCog className="w-5 h-5 mr-2" />
+                  Edit Profile
+                </Button>
 
-            <Button 
-              size="lg" 
-              variant="outline"
-              onClick={() => navigate("/faq")}
-              className="md:text-lg md:py-6"
-            >
-              <HelpCircle className="w-5 h-5 md:w-6 md:h-6 mr-2" />
-              Help & FAQ
-            </Button>
-          </div>
+                <Button 
+                  size="lg" 
+                  variant="outline"
+                  onClick={() => navigate("/faq")}
+                  className="flex-1"
+                >
+                  <HelpCircle className="w-5 h-5 mr-2" />
+                  Help & FAQ
+                </Button>
+              </div>
 
-          {/* Admin buttons if admin */}
-          {isAdmin && (
-            <div className="grid gap-4 md:gap-6 md:grid-cols-2">
+              {/* Right: Invite Friends */}
               <Button 
-                size="lg" 
-                variant="outline"
-                onClick={() => navigate("/session/queue")}
-                className="md:text-lg md:py-6"
+                onClick={handleShare}
+                variant="default"
+                size="lg"
+                className="gap-2 md:w-auto shadow-[var(--shadow-glow)]"
               >
-                Session Queue (Admin)
-              </Button>
-              
-              <Button 
-                size="lg" 
-                variant="outline"
-                onClick={() => navigate("/events")}
-                data-tour="events"
-                className="md:text-lg md:py-6"
-              >
-                <CalendarDays className="w-5 h-5 md:w-6 md:h-6 mr-2" />
-                Events
+                <Share2 className="h-5 w-5" />
+                Invite Friends to Pulse
               </Button>
             </div>
-          )}
-        </div>
-
-        {/* Share Button */}
-        <div className="flex justify-center mt-8">
-          <Button 
-            onClick={handleShare}
-            variant="default"
-            size="lg"
-            className="gap-2 w-full md:w-auto shadow-[var(--shadow-glow)]"
-          >
-            <Share2 className="h-5 w-5" />
-            Invite Friends to Pulse
-          </Button>
-        </div>
+          </CardContent>
+        </Card>
 
         {/* Admin Controls */}
         {isAdmin && (
-          <div className="flex flex-col gap-3 mt-8">
-            <Button 
-              variant="default" 
-              size="lg"
-              onClick={() => navigate("/admin")}
-              className="w-full md:w-auto"
-            >
-              <Settings className="w-4 h-4 mr-2" />
-              Admin Dashboard
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={handleRefreshStats}
-              disabled={refreshing || clearing}
-              className="w-full md:w-auto"
-            >
-              <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-              Recalculate Ratings
-            </Button>
-          </div>
+          <Card className="bg-gradient-to-br from-muted/30 to-background shadow-sm mb-8">
+            <CardContent className="p-6">
+              <div className="grid gap-4 md:grid-cols-3">
+                <Button 
+                  size="lg" 
+                  variant="outline"
+                  onClick={() => navigate("/session/queue")}
+                >
+                  Session Queue (Admin)
+                </Button>
+                
+                <Button 
+                  size="lg" 
+                  variant="outline"
+                  onClick={() => navigate("/events")}
+                  data-tour="events"
+                >
+                  <CalendarDays className="w-5 h-5 mr-2" />
+                  Events
+                </Button>
+
+                <Button 
+                  variant="outline" 
+                  size="lg"
+                  onClick={handleRefreshStats}
+                  disabled={refreshing || clearing}
+                >
+                  <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+                  Recalculate Ratings
+                </Button>
+              </div>
+              
+              <Button 
+                variant="default" 
+                size="lg"
+                onClick={() => navigate("/admin")}
+                className="w-full mt-4"
+              >
+                <Settings className="w-4 h-4 mr-2" />
+                Admin Dashboard
+              </Button>
+            </CardContent>
+          </Card>
         )}
       </div>
 
