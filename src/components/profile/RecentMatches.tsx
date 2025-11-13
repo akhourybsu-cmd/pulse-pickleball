@@ -3,7 +3,9 @@ import { cn } from "@/lib/utils";
 
 interface Match {
   id: string;
-  opponent_name: string;
+  team1_players: string[];
+  team2_players: string[];
+  user_team: number;
   result: 'W' | 'L';
   score: string;
   date: string;
@@ -59,7 +61,24 @@ export const RecentMatches = ({ matches }: RecentMatchesProps) => {
                 {match.result}
               </div>
 
-              <p className="font-semibold text-sm mb-1 truncate font-sans">vs. {match.opponent_name}</p>
+              <div className="space-y-1.5 mb-2">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-medium font-sans text-muted-foreground uppercase tracking-wide">
+                    Team {match.user_team}
+                  </span>
+                </div>
+                <p className="text-xs font-sans text-foreground">
+                  {match.user_team === 1 ? match.team1_players.join(', ') : match.team2_players.join(', ')}
+                </p>
+                <div className="flex items-center gap-1.5 mt-2">
+                  <span className="text-xs font-medium font-sans text-muted-foreground uppercase tracking-wide">
+                    vs Team {match.user_team === 1 ? 2 : 1}
+                  </span>
+                </div>
+                <p className="text-xs font-sans text-foreground">
+                  {match.user_team === 1 ? match.team2_players.join(', ') : match.team1_players.join(', ')}
+                </p>
+              </div>
               <p className="text-xs text-muted-foreground font-sans mb-2" style={{ fontVariantNumeric: 'tabular-nums' }}>
                 {match.score}
               </p>

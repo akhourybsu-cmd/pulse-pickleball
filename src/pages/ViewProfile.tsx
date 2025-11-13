@@ -37,7 +37,9 @@ interface Profile {
 
 interface RecentMatch {
   id: string;
-  opponent_name: string;
+  team1_players: string[];
+  team2_players: string[];
+  user_team: number;
   result: 'W' | 'L';
   score: string;
   date: string;
@@ -91,7 +93,7 @@ const ViewProfile = () => {
         return;
       }
 
-      // Fetch recent 10 matches
+      // Fetch recent 10 matches with all participants
       const { data: matchParticipants } = await supabase
         .from("match_participants")
         .select(`
@@ -119,30 +121,43 @@ const ViewProfile = () => {
               ? match.team1_score > match.team2_score
               : match.team2_score > match.team1_score;
 
-            // Get opponent from the other team
-            const { data: opponentData } = await supabase
+            // Get all participants for this match
+            const { data: allParticipants } = await supabase
               .from("match_participants")
               .select(`
                 player_id,
+                team,
                 profiles (
                   display_name,
                   first_name,
                   last_name
                 )
               `)
-              .eq("match_id", match.id)
-              .neq("team", userTeam)
-              .limit(1)
-              .single();
+              .eq("match_id", match.id);
 
-            const opponent = opponentData?.profiles as any;
-            const opponentName = opponent?.display_name || 
-              `${opponent?.first_name || ''} ${opponent?.last_name || ''}`.trim() || 
-              'Unknown';
+            const team1Players = (allParticipants || [])
+              .filter(p => p.team === 1)
+              .map(p => {
+                const profile = p.profiles as any;
+                return profile?.display_name || 
+                  `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || 
+                  'Unknown';
+              });
+
+            const team2Players = (allParticipants || [])
+              .filter(p => p.team === 2)
+              .map(p => {
+                const profile = p.profiles as any;
+                return profile?.display_name || 
+                  `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || 
+                  'Unknown';
+              });
 
             return {
               id: match.id,
-              opponent_name: opponentName,
+              team1_players: team1Players,
+              team2_players: team2Players,
+              user_team: userTeam,
               result: won ? 'W' as const : 'L' as const,
               score: `${match.team1_score}-${match.team2_score}`,
               date: match.created_at
