@@ -333,13 +333,13 @@ const Dashboard = () => {
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="mb-0 pb-16"
+        className="mb-8"
         style={{
-          background: 'linear-gradient(180deg, #E8FBD5 0%, #FFFFFF 100%)',
+          background: 'linear-gradient(180deg, #E8FBD5 0%, #FFFFFF 80%)',
           borderBottom: '1px solid rgba(169, 220, 61, 0.15)',
         }}
       >
-        <div className="container mx-auto px-4 py-4 md:py-6">
+        <div className="container mx-auto px-4 py-6 md:py-8">
           <div className="flex items-start gap-3 md:gap-6">
             <motion.div
               initial={{ scale: 0.8, opacity: 0 }}
@@ -382,7 +382,7 @@ const Dashboard = () => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.5, delay: 0.3 }}
-                className="text-sm md:text-lg leading-snug mb-4"
+                className="text-sm md:text-lg leading-relaxed mb-4"
                 style={{ color: '#0E4C58', opacity: 0.8 }}
               >
                 Track your pickleball journey, analyze your performance, and compete with your community
@@ -425,93 +425,88 @@ const Dashboard = () => {
           <MFAPrompt />
         </div>
 
-        {/* Zone 1.5: Quick Action Toolbar */}
+        {/* Quick Action Toolbar */}
         <div className="mb-8">
-          <div className="border-t border-primary/20 bg-background rounded-md">
-            <div className="flex lg:grid lg:grid-cols-4 overflow-x-auto lg:overflow-visible snap-x snap-mandatory scroll-smooth gap-0 divide-x divide-border hide-scrollbar">
-              <button
-                onClick={() => navigate("/court/connector")}
-                className="flex-shrink-0 w-[160px] lg:w-auto p-4 md:p-6 hover:bg-accent transition-colors group text-left snap-start"
-                aria-label="Open Court Connector"
-                data-tour="court-connector"
-              >
-                <div className="flex flex-col items-start gap-2">
-                  <div className="flex items-center gap-2 w-full">
-                    <Link2 className="w-5 h-5 text-primary flex-shrink-0" />
-                    {hasNewParticipants && (
-                      <span className="flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-primary opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-                      </span>
-                    )}
+          <Card className="border-t-2 border-t-primary shadow-sm">
+            <CardContent className="p-0">
+              <div className="grid grid-cols-2 lg:grid-cols-4 divide-x divide-y lg:divide-y-0">
+                <button
+                  onClick={() => navigate("/court/connector")}
+                  className="p-4 md:p-6 hover:bg-accent transition-colors group text-left"
+                  aria-label="Open Court Connector"
+                  data-tour="court-connector"
+                >
+                  <div className="flex flex-col items-start gap-2">
+                    <div className="flex items-center gap-2 w-full">
+                      <Link2 className="w-5 h-5 md:w-6 md:h-6 text-primary flex-shrink-0" />
+                      {hasNewParticipants && (
+                        <span className="flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-primary opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                        </span>
+                      )}
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-sm md:text-base group-hover:text-primary transition-colors">Court Connector</h3>
+                      <p className="text-xs md:text-sm text-muted-foreground">Find a group</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-bold text-sm md:text-base group-hover:text-primary transition-colors group-hover:underline">Court Connector</h3>
-                    <p className="text-xs md:text-sm text-muted-foreground">Find a group</p>
-                  </div>
-                </div>
-              </button>
+                </button>
 
-              <button
-                onClick={() => navigate("/match/history")}
-                className="flex-shrink-0 w-[160px] lg:w-auto p-4 md:p-6 hover:bg-accent transition-colors group text-left snap-start"
-                aria-label="Open Match History"
-                data-tour="match-history"
-              >
-                <div className="flex flex-col items-start gap-2">
-                  <History className="w-5 h-5 text-primary" />
-                  <div>
-                    <h3 className="font-bold text-sm md:text-base group-hover:text-primary transition-colors group-hover:underline">Match History</h3>
-                    <p className="text-xs md:text-sm text-muted-foreground">View matches</p>
+                <button
+                  onClick={() => navigate("/match/history")}
+                  className="p-4 md:p-6 hover:bg-accent transition-colors group text-left"
+                  aria-label="Open Match History"
+                  data-tour="match-history"
+                >
+                  <div className="flex flex-col items-start gap-2">
+                    <History className="w-5 h-5 md:w-6 md:h-6 text-primary" />
+                    <div>
+                      <h3 className="font-bold text-sm md:text-base group-hover:text-primary transition-colors">Match History</h3>
+                      <p className="text-xs md:text-sm text-muted-foreground">View matches</p>
+                    </div>
                   </div>
-                </div>
-              </button>
+                </button>
 
-              <button
-                onClick={() => navigate("/events/my-calendar-registrations")}
-                className="flex-shrink-0 w-[160px] lg:w-auto p-4 md:p-6 hover:bg-accent transition-colors group text-left snap-start"
-                aria-label="Open My Events"
-              >
-                <div className="flex flex-col items-start gap-2">
-                  <Calendar className="w-5 h-5 text-primary" />
-                  <div>
-                    <h3 className="font-bold text-sm md:text-base group-hover:text-primary transition-colors group-hover:underline">My Events</h3>
-                    <p className="text-xs md:text-sm text-muted-foreground">View registrations</p>
+                <button
+                  onClick={() => navigate("/events/my-calendar-registrations")}
+                  className="p-4 md:p-6 hover:bg-accent transition-colors group text-left"
+                  aria-label="Open My Events"
+                >
+                  <div className="flex flex-col items-start gap-2">
+                    <Calendar className="w-5 h-5 md:w-6 md:h-6 text-primary" />
+                    <div>
+                      <h3 className="font-bold text-sm md:text-base group-hover:text-primary transition-colors">My Events</h3>
+                      <p className="text-xs md:text-sm text-muted-foreground">View registrations</p>
+                    </div>
                   </div>
-                </div>
-              </button>
+                </button>
 
-              <button
-                onClick={() => navigate("/round-robin")}
-                className="flex-shrink-0 w-[160px] lg:w-auto p-4 md:p-6 hover:bg-accent transition-colors group text-left snap-start"
-                aria-label="Open Round Robin Hub"
-              >
-                <div className="flex flex-col items-start gap-2">
-                  <Trophy className="w-5 h-5 text-primary" />
-                  <div>
-                    <h3 className="font-bold text-sm md:text-base group-hover:text-primary transition-colors group-hover:underline">Round Robin</h3>
-                    <p className="text-xs md:text-sm text-muted-foreground">Create event</p>
+                <button
+                  onClick={() => navigate("/round-robin")}
+                  className="p-4 md:p-6 hover:bg-accent transition-colors group text-left"
+                  aria-label="Open Round Robin Hub"
+                >
+                  <div className="flex flex-col items-start gap-2">
+                    <Trophy className="w-5 h-5 md:w-6 md:h-6 text-primary" />
+                    <div>
+                      <h3 className="font-bold text-sm md:text-base group-hover:text-primary transition-colors">Round Robin</h3>
+                      <p className="text-xs md:text-sm text-muted-foreground">Create event</p>
+                    </div>
                   </div>
-                </div>
-              </button>
-            </div>
-          </div>
+                </button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Zone 2: Player Scoreboard */}
-        <div className="container mx-auto px-4 mb-8">
-          <Card className="border border-border rounded-md relative -mt-12 z-10 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]" data-tour="pulse-score">
-            {/* Decorative heartbeat line */}
-            <div className="absolute top-0 left-0 right-0 h-1 overflow-hidden opacity-20">
-              <svg width="100%" height="4" preserveAspectRatio="none" viewBox="0 0 1000 4">
-                <path d="M0 2 L200 2 L210 0 L220 4 L230 2 L1000 2" stroke="#A9CF46" strokeWidth="1" fill="none" />
-              </svg>
-            </div>
-            
-            <CardContent className="p-0">
-              <div className="flex flex-col lg:flex-row">
-                {/* Left: Live Pulse Score with tinted background */}
-                <div className="flex-1 min-w-0 bg-primary/5 dark:bg-primary/10 rounded-l-md p-6 border-r border-border">
+        <div className="mb-8">
+          <Card className="border-l-4 border-l-primary shadow-sm" data-tour="pulse-score">
+            <CardContent className="p-6">
+              <div className="flex flex-col lg:flex-row lg:items-start gap-6">
+                {/* Left: Live Pulse Score */}
+                <div className="flex-1 min-w-0">
                   <CardDescription className="text-sm md:text-base mb-2">Live Pulse Score</CardDescription>
                   <div className="flex items-center gap-3 mb-2">
                     <motion.span 
@@ -553,11 +548,10 @@ const Dashboard = () => {
                       ({weeklyChange > 0 ? '+' : ''}{weeklyChange.toFixed(2)})
                     </span>
                   </div>
-                  </div>
                 </div>
 
                 {/* Right: Stats Grid */}
-                <div className="grid grid-cols-2 gap-4 lg:w-1/2 p-6 bg-background">
+                <div className="grid grid-cols-2 gap-4 lg:w-1/2">
                   <div className="space-y-1">
                     <CardDescription className="text-xs">Record</CardDescription>
                     <p className="text-2xl md:text-3xl font-bold">
@@ -598,6 +592,7 @@ const Dashboard = () => {
                       Strength of schedule
                     </p>
                   </div>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -611,46 +606,50 @@ const Dashboard = () => {
         </div>
 
         {/* Account & Community Band */}
-        <div className="bg-muted/30 border-t border-border py-4 px-6 rounded-md mb-8">
-          <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3">
-            <div className="flex flex-col sm:flex-row gap-4 flex-1">
-              <button 
-                className="text-left group flex items-center gap-2 text-sm hover:text-primary transition-colors"
-                onClick={() => navigate("/profile/edit")}
-                data-tour="edit-profile"
+        <Card className="bg-gradient-to-br from-muted/30 to-background shadow-sm mb-8">
+          <CardContent className="p-6">
+            <div className="flex flex-col md:flex-row gap-4 items-stretch">
+              {/* Left: Edit Profile and Help & FAQ */}
+              <div className="flex-1 flex flex-col sm:flex-row gap-4">
+                <Button
+                  size="lg" 
+                  variant="outline"
+                  onClick={() => navigate("/profile/edit")}
+                  className="flex-1"
+                >
+                  <UserCog className="w-5 h-5 mr-2" />
+                  Edit Profile
+                </Button>
+
+                <Button 
+                  size="lg" 
+                  variant="outline"
+                  onClick={() => navigate("/faq")}
+                  className="flex-1"
+                >
+                  <HelpCircle className="w-5 h-5 mr-2" />
+                  Help & FAQ
+                </Button>
+              </div>
+
+              {/* Right: Invite Friends */}
+              <Button 
+                onClick={handleShare}
+                variant="default"
+                size="lg"
+                className="gap-2 md:w-auto shadow-[var(--shadow-glow)]"
               >
-                <UserCog className="h-4 w-4" />
-                <span className="group-hover:underline">Edit Profile</span>
-              </button>
-              <button 
-                className="text-left group flex items-center gap-2 text-sm hover:text-primary transition-colors"
-                onClick={() => navigate("/faq")}
-              >
-                <HelpCircle className="h-4 w-4" />
-                <span className="group-hover:underline">Help & FAQ</span>
-              </button>
+                <Share2 className="h-5 w-5" />
+                Invite Friends to Pulse
+              </Button>
             </div>
-            <Button 
-              className="w-full lg:w-auto bg-primary hover:bg-primary/90 text-primary-foreground rounded-full"
-              onClick={handleShare}
-              data-tour="invite-friends"
-            >
-              <Share2 className="mr-2 h-4 w-4" />
-              Invite Friends to Pulse
-            </Button>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
         {/* Admin Controls */}
         {isAdmin && (
-          <Card className="bg-gradient-to-br from-muted/30 to-background border border-border rounded-md mb-8">
-            <CardHeader className="p-4">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Settings className="w-5 h-5 text-primary" />
-                Admin Controls
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6 pt-0">
+          <Card className="bg-gradient-to-br from-muted/30 to-background shadow-sm mb-8">
+            <CardContent className="p-6">
               <div className="grid gap-4 md:grid-cols-3">
                 <Button 
                   size="lg" 
