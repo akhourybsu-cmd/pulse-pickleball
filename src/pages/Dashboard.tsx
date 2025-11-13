@@ -393,7 +393,7 @@ const Dashboard = () => {
                 <Button 
                   size="lg" 
                   onClick={() => navigate("/match/new")}
-                  className="shadow-[var(--shadow-glow)] w-full sm:w-auto"
+                  className="shadow-[var(--shadow-glow)] w-full sm:w-auto hover:scale-105 hover:shadow-xl transition-all"
                   data-tour="record-match"
                 >
                   <Plus className="w-5 h-5 mr-2 flex-shrink-0" />
@@ -404,7 +404,7 @@ const Dashboard = () => {
                   <Button 
                     variant="secondary" 
                     size="lg" 
-                    className="w-full sm:w-auto shadow-sm hover:shadow-md transition-all"
+                    className="w-full sm:w-auto shadow-sm hover:shadow-lg hover:scale-105 transition-all"
                     onClick={() => navigate(`/court/board/${homeCourtId}`)}
                   >
                     <MapPin className="w-5 h-5 mr-2 flex-shrink-0" />
