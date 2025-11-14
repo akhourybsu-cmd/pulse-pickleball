@@ -38,6 +38,7 @@ import { AuditHistoryDialog } from "@/components/round-robin/AuditHistoryDialog"
 import { EditNotifications } from "@/components/round-robin/EditNotifications";
 import { RegistrationManagement } from "@/components/round-robin/RegistrationManagement";
 import { PlayerRoundRobinView } from "@/components/round-robin/PlayerRoundRobinView";
+import { PageHeader } from "@/components/PageHeader";
 import { z } from "zod";
 import logo from "@/assets/pulse-logo-new.png";
 import { suggestRounds } from "@/lib/roundRobinFairness";
@@ -68,6 +69,7 @@ interface Event {
   status: "draft" | "live" | "completed";
   rating_eligible: boolean;
   rating_type: "ladder" | "league" | "playoffs" | "casual";
+  format?: string;
   created_at: string;
   updated_at: string;
   completed_at: string | null;
@@ -1416,19 +1418,79 @@ export default function RoundRobinDetail() {
 
   return (
     <div className="min-h-screen bg-background">
+      <PageHeader userId={userId} />
+      
+      {isEditMode && (
+        <div className="bg-warning/20 border-b border-warning">
+          <div className="container mx-auto px-4 py-2">
+            <p className="text-sm text-warning-foreground font-medium text-center">
+              Edit Mode Active - Make changes to {event.name}
+            </p>
+          </div>
+        </div>
+      )}
+      
       <div className="pb-20">
-      {/* Compact header banner */}
-      <header className="sticky top-0 z-10 bg-secondary border-b">
-        <div className="container mx-auto px-4 py-2">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <BackToDashboard />
-              <div className="flex items-center gap-2">
-                <h1 className="text-base sm:text-lg font-semibold text-white whitespace-nowrap">Round Robin by</h1>
-                <img src={logo} alt="PULSE" className="h-[34px] sm:h-[39px] w-auto" />
+      {/* Event info banner */}
+      <div className="bg-muted/30 border-b">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div className="flex-1 min-w-[280px]">
+              <div className="flex items-center gap-2 mb-2">
+                <BackToDashboard />
+                <h1 className="text-2xl font-bold">{event.name}</h1>
+              </div>
+              
+              <div className="flex flex-wrap items-center gap-2 mb-3">
+                <Badge variant={
+                  event.status === 'live' ? 'default' : 
+                  event.status === 'completed' ? 'secondary' : 
+                  'outline'
+                }>
+                  {event.status === 'live' ? '🔴 Live' : 
+                   event.status === 'completed' ? '✓ Completed' : 
+                   '📝 Draft'}
+                </Badge>
+                {event.voided && <Badge variant="destructive">Voided</Badge>}
+                {event.rating_eligible && <Badge variant="outline">Rating Eligible</Badge>}
+                <Badge variant="outline">
+                  Format: {event.format === 'doubles' ? 'Doubles' : 'Singles'}
+                </Badge>
+                <Badge variant="outline">
+                  Rounds: {hasSchedule ? event.num_rounds : '—'}
+                </Badge>
+              </div>
+
+              <div className="flex items-center gap-3 flex-wrap">
+                <p className="text-sm text-muted-foreground flex items-center gap-2">
+                  <Calendar className="h-3 w-3" />
+                  {format(parseISO(event.date + 'T00:00:00'), 'PP')}
+                </p>
+                {isOrganizer && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={handleShareEvent}
+                          className="h-7 px-2"
+                        >
+                          <Share2 className="h-3 w-3 mr-1" />
+                          Share
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Share event link</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
               </div>
             </div>
-            <div className="flex items-center gap-2">
+
+            {/* Action buttons */}
+            <div className="flex items-center gap-2 flex-wrap">
               {!isOrganizer && isParticipant && !event.voided && 
                 event.status === 'draft' && 
                 (!event.registration_deadline || new Date() < new Date(event.registration_deadline)) && (
@@ -1436,7 +1498,6 @@ export default function RoundRobinDetail() {
                   variant="outline" 
                   size="sm"
                   onClick={() => setLeaveDialogOpen(true)}
-                  className="hidden sm:flex"
                 >
                   Leave Event
                 </Button>
@@ -1451,10 +1512,10 @@ export default function RoundRobinDetail() {
                         const kioskUrl = `/round-robin/${event.id}/kiosk`;
                         window.open(kioskUrl, '_blank', 'width=1920,height=1080');
                       }}
-                      className="hidden sm:flex bg-[hsl(var(--accent))] hover:bg-[hsl(var(--accent))]/90"
+                      className="bg-accent hover:bg-accent/90"
                     >
                       <Monitor className="h-4 w-4 mr-2" />
-                      Open Kiosk Mode
+                      Kiosk Mode
                     </Button>
                   )}
                   <Button 
@@ -1462,7 +1523,6 @@ export default function RoundRobinDetail() {
                     size="sm"
                     onClick={() => setEditDialogOpen(true)}
                     disabled={isEditMode}
-                    className="hidden sm:flex"
                   >
                     <Settings className="h-4 w-4 mr-2" />
                     Settings
@@ -1472,159 +1532,14 @@ export default function RoundRobinDetail() {
                       variant="outline" 
                       size="sm"
                       onClick={() => setCourtsRoundsOpen(true)}
-                      className="hidden sm:flex"
                     >
                       <Edit className="h-4 w-4 mr-2" />
                       Courts & Games
                     </Button>
                   )}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="icon">
-                        <Settings className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      {event.status === 'live' && (
-                        <>
-                          <DropdownMenuItem
-                            onClick={() => {
-                              const kioskUrl = `/round-robin/${event.id}/kiosk`;
-                              window.open(kioskUrl, '_blank', 'width=1920,height=1080');
-                            }}
-                          >
-                            <Monitor className="h-4 w-4 mr-2" />
-                            Open Kiosk Mode
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => {
-                              const kioskUrl = `${window.location.origin}/round-robin/${event.id}/kiosk`;
-                              navigator.clipboard.writeText(kioskUrl);
-                              toast.success("Kiosk link copied!");
-                            }}
-                          >
-                            <ExternalLink className="h-4 w-4 mr-2" />
-                            Copy Kiosk Link
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                        </>
-                      )}
-                      <DropdownMenuItem
-                        onClick={() => setEditDialogOpen(true)}
-                        className="sm:hidden"
-                      >
-                        <Settings className="h-4 w-4 mr-2" />
-                        Settings
-                      </DropdownMenuItem>
-                      {event.status !== 'completed' && (
-                        <DropdownMenuItem
-                          onClick={() => setCourtsRoundsOpen(true)}
-                          className="sm:hidden"
-                        >
-                          <Edit className="h-4 w-4 mr-2" />
-                          Courts & Rounds
-                        </DropdownMenuItem>
-                      )}
-                      {event.status !== 'completed' && <DropdownMenuSeparator className="sm:hidden" />}
-                      <DropdownMenuItem
-                        onClick={() => {
-                          setDeleteMode('void');
-                          setDeleteDialogOpen(true);
-                        }}
-                        disabled={!hasScores}
-                      >
-                        <Ban className="h-4 w-4 mr-2" />
-                        Void Event
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={() => {
-                          if (hasScores && !isAdmin) {
-                            toast.error("Only admins can hard delete events with scores. Use void instead.");
-                            return;
-                          }
-                          setDeleteMode('hard');
-                          setDeleteDialogOpen(true);
-                        }}
-                        className="text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete Event
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
                 </>
               )}
             </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Event details section below header */}
-      <div className="bg-background border-b">
-        <div className="container max-w-[1280px] mx-auto px-4 py-4">
-          <div className="flex items-center gap-2 flex-wrap mb-2">
-            <h2 className="text-xl sm:text-2xl font-bold text-foreground">{event.name}</h2>
-            {event.voided && <Badge variant="destructive">Voided</Badge>}
-            {event.status === "completed" && event.completed_at && (
-              <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
-                <CheckCircle className="h-3 w-3 mr-1" />
-                Completed {format(parseISO(event.completed_at), "MMM d, yyyy 'at' h:mm a")}
-              </Badge>
-            )}
-          </div>
-
-          {/* Status Badge Strip */}
-          <div className="flex items-center gap-2 flex-wrap mb-2">
-            <Badge variant="outline" className="text-xs">
-              {event.status === 'draft' ? 'Draft' : event.status === 'live' ? 'Live' : 'Completed'}
-            </Badge>
-            <Badge variant="outline" className="text-xs">
-              <Users className="h-3 w-3 mr-1" />
-              Players: {players.length}
-            </Badge>
-            {event.location && (
-              <Badge variant="outline" className="text-xs">
-                <MapPin className="h-3 w-3 mr-1" />
-                {event.location}
-              </Badge>
-            )}
-            <Badge variant="outline" className="text-xs">
-              Format: Doubles
-            </Badge>
-            <Badge variant="outline" className="text-xs">
-              Scoring: to 11 (win by 2)
-            </Badge>
-            <Badge variant="outline" className="text-xs">
-              Rounds: {hasSchedule ? event.num_rounds : '—'}
-            </Badge>
-          </div>
-
-          <div className="flex items-center gap-3 flex-wrap">
-            <p className="text-sm text-muted-foreground flex items-center gap-2">
-              <Calendar className="h-3 w-3" />
-              {format(parseISO(event.date + 'T00:00:00'), 'PP')}
-            </p>
-            {isOrganizer && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={handleShareEvent}
-                      className="h-7 px-2"
-                    >
-                      <Share2 className="h-3 w-3 mr-1" />
-                      Share
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Share event link</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
           </div>
         </div>
       </div>
