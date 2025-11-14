@@ -187,7 +187,7 @@ export const CourtStats = ({ userId }: CourtStatsProps) => {
             No matches played at {selectedCourt?.name || "this court"} yet
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div key={selectedCourtId} className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-fade-in">
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Matches</p>
               <p className="text-2xl font-bold">{currentStats.total_matches}</p>
