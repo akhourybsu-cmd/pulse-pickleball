@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Play, Trophy, AlertCircle, Settings, Trash2, Ban, CheckCircle, Edit, Edit3, Bell, Monitor, ExternalLink, Share2, Users, Calendar, MapPin, Zap } from "lucide-react";
 import { toast } from "sonner";
-import { BackToDashboard } from "@/components/BackToDashboard";
+
 import { format, parseISO } from "date-fns";
 import { EditEventDialog } from "@/components/round-robin/EditEventDialog";
 import { EditModeBanner } from "@/components/round-robin/EditModeBanner";
@@ -1451,8 +1451,7 @@ export default function RoundRobinDetail() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div className="flex-1 min-w-[280px]">
-              <div className="flex items-center gap-2 mb-2">
-                <BackToDashboard />
+              <div className="mb-2">
                 <h1 className="text-2xl font-bold">{event.name}</h1>
               </div>
               
