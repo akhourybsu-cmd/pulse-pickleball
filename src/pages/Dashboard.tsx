@@ -504,7 +504,7 @@ const Dashboard = () => {
         <div className="mb-8">
           <Card className="border-l-4 border-l-primary shadow-sm" data-tour="pulse-score">
             <CardContent className="p-6">
-              <div className="flex flex-col lg:flex-row lg:items-start gap-6">
+              <div className="flex flex-col lg:flex-row lg:items-center gap-6">
                 {/* Left: Live Pulse Score */}
                 <div className="flex-1 min-w-0">
                   <CardDescription className="text-sm md:text-base mb-2">Live Pulse Score</CardDescription>
