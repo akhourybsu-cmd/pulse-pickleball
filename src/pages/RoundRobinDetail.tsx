@@ -1468,7 +1468,7 @@ export default function RoundRobinDetail() {
                 {event.voided && <Badge variant="destructive">Voided</Badge>}
                 {event.rating_eligible && <Badge variant="outline">Rating Eligible</Badge>}
                 <Badge variant="outline">
-                  Format: {event.format === 'doubles' ? 'Doubles' : 'Singles'}
+                  Doubles Format
                 </Badge>
                 <Badge variant="outline">
                   Rounds: {hasSchedule ? event.num_rounds : '—'}
