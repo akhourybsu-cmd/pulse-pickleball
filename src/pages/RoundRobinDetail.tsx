@@ -1416,7 +1416,6 @@ export default function RoundRobinDetail() {
 
   return (
     <div className="min-h-screen bg-background">
-      {isEditMode && <EditModeBanner />}
       <div className="pb-20">
       {/* Compact header banner */}
       <header className="sticky top-0 z-10 bg-secondary border-b">
@@ -2192,9 +2191,10 @@ export default function RoundRobinDetail() {
             isOrganizer={isOrganizer}
           />
         </>
+      )}
       </div>
     </div>
   );
 }
 
-export default RoundRobinDetail;
+
