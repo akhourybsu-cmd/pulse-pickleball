@@ -30,6 +30,7 @@ export const CourtStats = ({ userId }: CourtStatsProps) => {
   const [selectedCourtId, setSelectedCourtId] = useState<string>("");
   const [stats, setStats] = useState<Map<string, CourtStat>>(new Map());
   const [loading, setLoading] = useState(true);
+  const [animationKey, setAnimationKey] = useState(0);
 
   useEffect(() => {
     fetchCourtsAndStats();
@@ -167,7 +168,10 @@ export const CourtStats = ({ userId }: CourtStatsProps) => {
             </CardTitle>
             <CardDescription>Your performance at different courts</CardDescription>
           </div>
-          <Select value={selectedCourtId} onValueChange={setSelectedCourtId}>
+          <Select value={selectedCourtId} onValueChange={(value) => {
+            setSelectedCourtId(value);
+            setAnimationKey(prev => prev + 1);
+          }}>
             <SelectTrigger className="w-[250px]">
               <SelectValue placeholder="Select a court" />
             </SelectTrigger>
@@ -187,7 +191,7 @@ export const CourtStats = ({ userId }: CourtStatsProps) => {
             No matches played at {selectedCourt?.name || "this court"} yet
           </div>
         ) : (
-          <div key={selectedCourtId} className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-fade-in">
+          <div key={animationKey} className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-fade-in">
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Matches</p>
               <p className="text-2xl font-bold">{currentStats.total_matches}</p>
