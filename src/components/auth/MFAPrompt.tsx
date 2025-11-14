@@ -47,8 +47,8 @@ export const MFAPrompt = () => {
   };
 
   const handleSetupLater = () => {
-    // Set dismissal for 24 hours
-    const dismissUntil = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    // Set dismissal for 3 days
+    const dismissUntil = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
     localStorage.setItem("mfa-prompt-dismissed-until", dismissUntil.toISOString());
     handleDismiss();
   };
