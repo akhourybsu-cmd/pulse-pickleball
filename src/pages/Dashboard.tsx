@@ -539,15 +539,6 @@ const Dashboard = () => {
                       />
                     </motion.svg>
                   </div>
-                  <div className="text-sm">
-                    <span className="text-muted-foreground">Weekly snapshot (Mon): </span>
-                    <span className="font-semibold">
-                      {profile?.week_start_rating?.toFixed(2) || '3.00'}
-                    </span>
-                    <span className={`ml-2 font-semibold ${weeklyChange > 0 ? 'text-green-500' : weeklyChange < 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
-                      ({weeklyChange > 0 ? '+' : ''}{weeklyChange.toFixed(2)})
-                    </span>
-                  </div>
                 </div>
 
                 {/* Right: Stats Grid */}
