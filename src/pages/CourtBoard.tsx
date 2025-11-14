@@ -15,9 +15,6 @@ import { CourtPresence } from "@/components/court/CourtPresence";
 import { CourtCheckIn } from "@/components/court/CourtCheckIn";
 import { CourtFeed } from "@/components/court/feed/CourtFeed";
 import { ActivateSessionDialog } from "@/components/court/ActivateSessionDialog";
-import { TodayAtCourtBand } from "@/components/court/TodayAtCourtBand";
-import { PlayPanel } from "@/components/court/PlayPanel";
-import { FeedPanel } from "@/components/court/FeedPanel";
 import { useToast } from "@/hooks/use-toast";
 import { MapPin, MessageSquare, Activity, LogOut, User as UserIcon, ExternalLink, Calendar, Play, Users, HelpCircle } from "lucide-react";
 import { motion } from "framer-motion";
@@ -50,11 +47,8 @@ export default function CourtBoard() {
   const [sessionQueueHelpOpen, setSessionQueueHelpOpen] = useState(false);
 
   const PICKLEBALL_CITI_ID = "836003fb-fbd7-429c-8973-67ac6766a511";
-  const MASON_FIELD_ID = "4a5d9fb8-981b-42f1-9504-595cb8f22fca";
   const TILDA_STONE_ID = "2bf21943-2efc-43fe-bab4-9bb7693d4674";
-  const CENTERLINE_PICKLEBALL_ID = "d8f3c9e1-7b4a-4d2e-9f8c-1a2b3c4d5e6f";
-  
-  const isMasonField = courtId === MASON_FIELD_ID;
+  const CENTERLINE_PICKLEBALL_ID = "d8f3c9e1-7b4a-4d2e-9f8c-1a2b3c4d5e6f"; // Replace with actual ID if different
 
   useEffect(() => {
     checkUser();
@@ -340,279 +334,228 @@ export default function CourtBoard() {
       </motion.div>
 
       <div className="container mx-auto px-4 py-6 space-y-6">
-        {/* Mason Field Beta Layout */}
-        {isMasonField && court && (
-          <>
-            <TodayAtCourtBand
-              courtName={court.name}
-              onJoinQueue={() => activeSessionId ? navigate(`/session/queue?session=${activeSessionId}`) : setActivateDialogOpen(true)}
-              onViewEvents={() => {
-                const eventsElement = document.getElementById('events-tab');
-                eventsElement?.scrollIntoView({ behavior: 'smooth' });
-              }}
-            />
-
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 max-w-7xl mx-auto">
-              <div className="lg:col-span-3">
-                <PlayPanel
-                  courtId={court.id}
-                  courtName={court.name}
-                  currentUserId={currentUserId}
-                  isAdmin={isAdmin}
-                  activeSessionId={activeSessionId}
-                  onActivateSession={() => setActivateDialogOpen(true)}
-                  onViewSession={() => navigate(`/session/queue?session=${activeSessionId}`)}
-                  onSessionQueueHelp={() => setSessionQueueHelpOpen(true)}
-                />
-              </div>
-
-              <div className="lg:col-span-2">
-                <FeedPanel
-                  courtId={court.id}
-                  courtName={court.name}
-                  currentUserId={currentUserId}
-                />
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* Original Layout for Other Courts */}
-        {!isMasonField && (
-          <>
-            {courtId === PICKLEBALL_CITI_ID && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-                className="relative overflow-hidden rounded-xl shadow-sm p-6 md:p-8"
-                style={{
-                  background: '#ffffff',
-                }}
-              >
-                <motion.h2
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.3 }}
-                  className="text-3xl md:text-4xl font-semibold text-slate-800 text-center mb-8"
-                >
-                  Join Pickleball Citi and Take Your Game to the Next Level
-                </motion.h2>
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {/* Section 1 - Our Mission */}
-                  <motion.div
-                    initial={{ opacity: 0, x: -50 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.6, delay: 0.4 }}
-                    className="space-y-3 p-6 rounded-lg border-2 border-lime-200 bg-gradient-to-br from-lime-50 to-white"
-                  >
-                    <h3 className="text-xl font-semibold text-lime-700 mb-3">Our Mission</h3>
-                    <p className="text-slate-700 leading-7 text-sm">
-                      At Pickleball Citi, our mission is to grow the game of pickleball for all ages, skill levels, and abilities by fostering an inclusive environment that promotes health, social connection, good sportsmanship, and fun.
-                    </p>
-                    <p className="text-slate-700 leading-7 text-sm">
-                      We are committed to providing a welcoming atmosphere, supporting recreational enjoyment and competitive excellence through well-organized play, and engaging the community.
-                    </p>
-                  </motion.div>
-
-                  {/* Section 2 - How We Support Players */}
-                  <motion.div
-                    initial={{ opacity: 0, x: -50 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.6, delay: 0.6 }}
-                    className="space-y-3 p-6 rounded-lg border-2 border-lime-200 bg-gradient-to-br from-lime-50 to-white"
-                  >
-                    <h3 className="text-xl font-semibold text-lime-700 mb-3">How We Support Players</h3>
-                    <p className="text-slate-700 leading-7 text-sm mb-3">
-                      We are dedicated to helping athletes of all levels reach their full potential. Our comprehensive approach includes:
-                    </p>
-                    <ul className="list-disc pl-5 space-y-1 text-slate-700 text-sm">
-                      <li>Personalized training programs</li>
-                      <li>Expert coaches with proven track records</li>
-                      <li>Recreational and competitive excellence</li>
-                      <li>Welcoming atmosphere for all levels</li>
-                      <li>Resources to achieve your goals</li>
-                    </ul>
-                  </motion.div>
-
-                  {/* Section 3 - Start Playing with Us */}
-                  <motion.div
-                    initial={{ opacity: 0, x: -50 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.6, delay: 0.8 }}
-                    className="space-y-3 p-6 rounded-lg border-2 border-lime-200 bg-gradient-to-br from-lime-50 to-white"
-                  >
-                    <h3 className="text-xl font-semibold text-lime-700 mb-3">Start Playing with Us</h3>
-                    <p className="text-slate-700 leading-7 text-sm mb-3">
-                      Ready to elevate your pickleball experience? Join us today and become part of a vibrant community.
-                    </p>
-                    <ul className="list-disc pl-5 space-y-1 text-slate-700 text-sm">
-                      <li>Year-round programming</li>
-                      <li>All skill levels welcome</li>
-                      <li>Flexible membership options</li>
-                      <li>State-of-the-art facilities</li>
-                      <li>Supportive community</li>
-                    </ul>
-                  </motion.div>
-                </div>
-              </motion.div>
-            )}
-
-            {courtId === PICKLEBALL_CITI_ID && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 1.0 }}
-                className="flex justify-center"
-              >
-                <Button
-                  asChild
-                  size="lg"
-                  className="gap-4 px-8 py-6 text-lg rounded-full shadow-lg hover:shadow-xl transition-all"
-                  style={{
-                    backgroundColor: '#B9E43B',
-                    color: '#0E4C58',
-                  }}
-                >
-                  <Link to="/memberships">
-                    <img 
-                      src={pickleballCitiLogo} 
-                      alt="Pickleball Citi" 
-                      className="h-12 w-auto"
-                    />
-                    <span className="font-semibold">View Membership Options</span>
-                  </Link>
-                </Button>
-              </motion.div>
-            )}
+        {courtId === PICKLEBALL_CITI_ID && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="relative overflow-hidden rounded-xl shadow-sm p-6 md:p-8"
+            style={{
+              background: '#ffffff',
+            }}
+          >
+            <motion.h2
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+              className="text-3xl md:text-4xl font-semibold text-slate-800 text-center mb-8"
+            >
+              Join Pickleball Citi and Take Your Game to the Next Level
+            </motion.h2>
             
-            {courtId === PICKLEBALL_CITI_ID && (
-              <div style={{ borderTop: '1px solid rgba(14, 76, 88, 0.15)', paddingTop: '1.5rem' }}>
-                <JoinableCalendarEvents courtId={courtId} />
-              </div>
-            )}
-
-            {courtId === PICKLEBALL_CITI_ID && (
-              <div style={{ borderTop: '1px solid rgba(14, 76, 88, 0.15)', paddingTop: '1.5rem', marginTop: '1.5rem' }}>
-                <JoinableRoundRobinEvents courtLocation={court.location || court.name} userId={currentUserId} />
-              </div>
-            )}
-
-            {courtId !== PICKLEBALL_CITI_ID && court && (
-              <div style={{ borderTop: '1px solid rgba(14, 76, 88, 0.15)', paddingTop: '1.5rem' }}>
-                <JoinableRoundRobinEvents courtLocation={court.location || court.name} userId={currentUserId} />
-              </div>
-            )}
-
-            {!currentUserId && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Section 1 - Our Mission */}
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6 }}
-                className="relative overflow-hidden rounded-lg p-8 md:p-12 text-center"
+                initial={{ opacity: 0, x: -50 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6, delay: 0.4 }}
+                className="space-y-3 p-6 rounded-lg border-2 border-lime-200 bg-gradient-to-br from-lime-50 to-white"
+              >
+                <h3 className="text-xl font-semibold text-lime-700 mb-3">Our Mission</h3>
+                <p className="text-slate-700 leading-7 text-sm">
+                  At Pickleball Citi, our mission is to grow the game of pickleball for all ages, skill levels, and abilities by fostering an inclusive environment that promotes health, social connection, good sportsmanship, and fun.
+                </p>
+                <p className="text-slate-700 leading-7 text-sm">
+                  We are committed to providing a welcoming atmosphere, supporting recreational enjoyment and competitive excellence through well-organized play, and engaging the community.
+                </p>
+              </motion.div>
+
+              {/* Section 2 - How We Support Players */}
+              <motion.div
+                initial={{ opacity: 0, x: -50 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6, delay: 0.6 }}
+                className="space-y-3 p-6 rounded-lg border-2 border-lime-200 bg-gradient-to-br from-lime-50 to-white"
+              >
+                <h3 className="text-xl font-semibold text-lime-700 mb-3">How We Support Players</h3>
+                <p className="text-slate-700 leading-7 text-sm mb-3">
+                  We are dedicated to helping athletes of all levels reach their full potential. Our comprehensive approach includes:
+                </p>
+                <ul className="list-disc pl-5 space-y-1 text-slate-700 text-sm">
+                  <li>Personalized training programs</li>
+                  <li>Expert coaches with proven track records</li>
+                  <li>Recreational and competitive excellence</li>
+                  <li>Welcoming atmosphere for all levels</li>
+                  <li>Resources to achieve your goals</li>
+                </ul>
+              </motion.div>
+
+              {/* Section 3 - Start Playing with Us */}
+              <motion.div
+                initial={{ opacity: 0, x: -50 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6, delay: 0.8 }}
+                className="space-y-3 p-6 rounded-lg border-2 border-lime-200 bg-gradient-to-br from-lime-50 to-white"
+              >
+                <h3 className="text-xl font-semibold text-lime-700 mb-3">Start Playing with Us</h3>
+                <p className="text-slate-700 leading-7 text-sm font-medium">
+                  Whether you're a beginner looking to learn the fundamentals or an experienced player looking to fine-tune your technique, join us today and take the first step towards becoming a better athlete!
+                </p>
+              </motion.div>
+            </div>
+          </motion.div>
+        )}
+
+        {courtId === PICKLEBALL_CITI_ID && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 1.0 }}
+            className="flex justify-center py-8"
+          >
+            <Button
+              onClick={() => navigate('/pickleball-citi-memberships')}
+              size="lg"
+              className="gap-4 px-8 py-6 text-lg rounded-full shadow-lg hover:shadow-xl transition-all"
+              style={{
+                backgroundColor: '#B9E43B',
+                color: '#0E4C58',
+              }}
+            >
+              <img 
+                src={pickleballCitiLogo} 
+                alt="Pickleball Citi" 
+                className="h-12 w-auto"
+              />
+              <span className="font-semibold">View Membership Options</span>
+            </Button>
+          </motion.div>
+        )}
+        
+        {courtId === PICKLEBALL_CITI_ID && (
+          <div style={{ borderTop: '1px solid rgba(14, 76, 88, 0.15)', paddingTop: '1.5rem' }}>
+            <JoinableCalendarEvents courtId={courtId} />
+          </div>
+        )}
+
+        {courtId === PICKLEBALL_CITI_ID && (
+          <div style={{ borderTop: '1px solid rgba(14, 76, 88, 0.15)', paddingTop: '1.5rem', marginTop: '1.5rem' }}>
+            <JoinableRoundRobinEvents courtLocation={court.location || court.name} userId={currentUserId} />
+          </div>
+        )}
+
+        {courtId !== PICKLEBALL_CITI_ID && court && (
+          <div style={{ borderTop: '1px solid rgba(14, 76, 88, 0.15)', paddingTop: '1.5rem' }}>
+            <JoinableRoundRobinEvents courtLocation={court.location || court.name} userId={currentUserId} />
+          </div>
+        )}
+
+        {!currentUserId && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="relative overflow-hidden rounded-lg p-8 md:p-12 text-center"
+            style={{
+              background: 'linear-gradient(135deg, #0E4C58 0%, #1a6b7a 100%)',
+              boxShadow: '0 10px 40px rgba(14, 76, 88, 0.2)',
+            }}
+          >
+            <div className="absolute inset-0 opacity-10">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-[#B9E43B] rounded-full blur-3xl" />
+              <div className="absolute bottom-0 left-0 w-64 h-64 bg-[#A9DC3D] rounded-full blur-3xl" />
+            </div>
+            <div className="relative z-10">
+              <h2 className="text-3xl md:text-4xl font-bold mb-4" style={{ color: '#B9E43B' }}>
+                {courtId === PICKLEBALL_CITI_ID 
+                  ? "Join the Pickleball Citi Community"
+                  : `Want to Join ${court.name} Events?`
+                }
+              </h2>
+              <p className="text-lg md:text-xl mb-6 text-white/90 max-w-2xl mx-auto">
+                {courtId === PICKLEBALL_CITI_ID
+                  ? "Connect with fellow players, join exciting events, and stay updated on everything happening at Pickleball Citi. Create your free PULSE profile today!"
+                  : "Connect with fellow players, join exciting events, and access the court feed. Create your free PULSE profile today!"
+                }
+              </p>
+              <Button
+                onClick={() => navigate(`/auth?redirect=${encodeURIComponent(window.location.pathname)}`)}
+                size="lg"
+                className="text-lg px-8 py-6"
                 style={{
-                  background: 'linear-gradient(135deg, #0E4C58 0%, #1a6b7a 100%)',
-                  boxShadow: '0 10px 40px rgba(14, 76, 88, 0.2)',
+                  backgroundColor: '#B9E43B',
+                  color: '#0E4C58',
                 }}
               >
-                <div className="absolute inset-0 opacity-10">
-                  <div className="absolute top-0 right-0 w-64 h-64 bg-[#B9E43B] rounded-full blur-3xl" />
-                  <div className="absolute bottom-0 left-0 w-64 h-64 bg-[#A9DC3D] rounded-full blur-3xl" />
-                </div>
-                <div className="relative z-10">
-                  <h2 className="text-3xl md:text-4xl font-bold mb-4" style={{ color: '#B9E43B' }}>
-                    {courtId === PICKLEBALL_CITI_ID 
-                      ? "Join the Pickleball Citi Community"
-                      : `Want to Join ${court.name} Events?`
-                    }
-                  </h2>
-                  <p className="text-lg md:text-xl mb-6 text-white/90 max-w-2xl mx-auto">
-                    {courtId === PICKLEBALL_CITI_ID
-                      ? "Connect with fellow players, join exciting events, and stay updated on everything happening at Pickleball Citi. Create your free PULSE profile today!"
-                      : "Connect with fellow players, join exciting events, and access the court feed. Create your free PULSE profile today!"
-                    }
-                  </p>
-                  <Button
-                    onClick={() => navigate(`/auth?redirect=${encodeURIComponent(window.location.pathname)}`)}
-                    size="lg"
-                    className="text-lg px-8 py-6"
-                    style={{
-                      backgroundColor: '#B9E43B',
-                      color: '#0E4C58',
-                    }}
-                  >
-                    Join Pulse Today
-                  </Button>
-                </div>
-              </motion.div>
-            )}
-
-            <div className="flex flex-col gap-3 sm:gap-4">
-              {channelId && (
-                <Card>
-                  <CardContent className="pt-4 sm:pt-6">
-                    <CourtPresence courtId={court.id} channelId={channelId} />
-                  </CardContent>
-                </Card>
-              )}
-              
-              {/* Session Queue Button */}
-              {currentUserId && courtId !== PICKLEBALL_CITI_ID && courtId !== CENTERLINE_PICKLEBALL_ID && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4 }}
-                >
-                  <Card className="border-2 border-primary/20">
-                    <CardContent className="pt-6">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                            <Users className="w-6 h-6 text-primary" />
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <h3 className="font-semibold text-lg">Session Queue</h3>
-                              <button
-                                onClick={() => setSessionQueueHelpOpen(true)}
-                                className="text-muted-foreground hover:text-foreground transition-colors"
-                                aria-label="Learn about Session Queue"
-                              >
-                                <HelpCircle className="w-5 h-5" />
-                              </button>
-                            </div>
-                            <p className="text-sm text-muted-foreground">
-                              {activeSessionId ? "Join the active session" : "Start a new session"}
-                            </p>
-                          </div>
-                        </div>
-                        {activeSessionId ? (
-                          <Button
-                            onClick={() => navigate(`/session/queue?session=${activeSessionId}`)}
-                            className="gap-2"
-                          >
-                            <Play className="w-4 h-4" />
-                            View Queue
-                          </Button>
-                        ) : (
-                          <Button
-                            onClick={() => setActivateDialogOpen(true)}
-                            variant="outline"
-                            className="gap-2"
-                          >
-                            <Play className="w-4 h-4" />
-                            Activate
-                          </Button>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              )}
+                Join Pulse Today
+              </Button>
             </div>
-          </>
+          </motion.div>
         )}
+
+        <div className="flex flex-col gap-3 sm:gap-4">
+          {channelId && (
+            <Card>
+              <CardContent className="pt-4 sm:pt-6">
+                <CourtPresence courtId={court.id} channelId={channelId} />
+              </CardContent>
+            </Card>
+          )}
+          
+          {/* Session Queue Button */}
+          {currentUserId && courtId !== PICKLEBALL_CITI_ID && courtId !== CENTERLINE_PICKLEBALL_ID && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+            >
+              <Card className="border-2 border-primary/20">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                        <Users className="w-6 h-6 text-primary" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-semibold text-lg">Session Queue</h3>
+                          <button
+                            onClick={() => setSessionQueueHelpOpen(true)}
+                            className="text-muted-foreground hover:text-foreground transition-colors"
+                            aria-label="Learn about Session Queue"
+                          >
+                            <HelpCircle className="w-5 h-5" />
+                          </button>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {activeSessionId ? "Join the active session" : "Start a new session"}
+                        </p>
+                      </div>
+                    </div>
+                    {activeSessionId ? (
+                      <Button
+                        onClick={() => navigate(`/session/queue?session=${activeSessionId}`)}
+                        className="gap-2"
+                      >
+                        <Play className="w-4 h-4" />
+                        View Queue
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={() => setActivateDialogOpen(true)}
+                        variant="outline"
+                        className="gap-2"
+                      >
+                        <Play className="w-4 h-4" />
+                        Activate
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+        </div>
 
         <Tabs defaultValue="feed" className="w-full">
           <TabsList className="grid w-full grid-cols-2 h-auto">
