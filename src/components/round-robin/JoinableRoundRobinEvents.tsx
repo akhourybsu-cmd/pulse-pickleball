@@ -9,6 +9,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
 import { useState } from "react";
+import { RoundRobinEventDetailDialog } from "./RoundRobinEventDetailDialog";
 
 interface JoinableRoundRobinEventsProps {
   courtLocation: string;
@@ -35,6 +36,7 @@ interface EnrichedEvent {
 export function JoinableRoundRobinEvents({ courtLocation, userId }: JoinableRoundRobinEventsProps) {
   const navigate = useNavigate();
   const [joiningEvent, setJoiningEvent] = useState<string | null>(null);
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
 
   const { data: events = [], refetch } = useQuery({
     queryKey: ["joinable-round-robin-events", courtLocation, userId],
@@ -243,7 +245,7 @@ export function JoinableRoundRobinEvents({ courtLocation, userId }: JoinableRoun
                       variant="outline"
                       size="sm"
                       className="flex-1"
-                      onClick={() => navigate(`/round-robin/${event.id}`)}
+                      onClick={() => setSelectedEventId(event.id)}
                     >
                       View Details
                     </Button>
@@ -271,6 +273,17 @@ export function JoinableRoundRobinEvents({ courtLocation, userId }: JoinableRoun
           );
         })}
       </div>
+
+      {/* Event Detail Modal */}
+      {selectedEventId && (
+        <RoundRobinEventDetailDialog
+          eventId={selectedEventId}
+          isOpen={!!selectedEventId}
+          onClose={() => setSelectedEventId(null)}
+          userId={userId}
+          onJoinSuccess={refetch}
+        />
+      )}
     </div>
   );
 }

@@ -37,6 +37,7 @@ import { ScoreManagementDialog } from "@/components/round-robin/ScoreManagementD
 import { AuditHistoryDialog } from "@/components/round-robin/AuditHistoryDialog";
 import { EditNotifications } from "@/components/round-robin/EditNotifications";
 import { RegistrationManagement } from "@/components/round-robin/RegistrationManagement";
+import { PlayerRoundRobinView } from "@/components/round-robin/PlayerRoundRobinView";
 import { z } from "zod";
 import logo from "@/assets/pulse-logo-new.png";
 import { suggestRounds } from "@/lib/roundRobinFairness";
@@ -1363,6 +1364,12 @@ export default function RoundRobinDetail() {
     return null;
   }
 
+  // Non-organizers see simplified view
+  if (!isOrganizer && !isAdmin) {
+    return <PlayerRoundRobinView eventId={id || ""} userId={userId} />;
+  }
+
+  // Organizers and admins see full view
   const hasSchedule = schedule.length > 0;
   const canGenerate = players.length >= 4;
   const hasScores = schedule.some(m => m.team1_score !== null || m.team2_score !== null);
@@ -1408,7 +1415,9 @@ export default function RoundRobinDetail() {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-background">
+      {isEditMode && <EditModeBanner />}
+      <div className="pb-20">
       {/* Compact header banner */}
       <header className="sticky top-0 z-10 bg-secondary border-b">
         <div className="container mx-auto px-4 py-2">
@@ -2176,13 +2185,16 @@ export default function RoundRobinDetail() {
             auditEntries={auditEntries}
           />
 
+
           <EditNotifications
             eventId={id || ""}
             userId={userId}
             isOrganizer={isOrganizer}
           />
         </>
-      )}
+      </div>
     </div>
   );
 }
+
+export default RoundRobinDetail;
