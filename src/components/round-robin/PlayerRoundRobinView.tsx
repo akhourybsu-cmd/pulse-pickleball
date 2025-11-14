@@ -7,10 +7,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
-import { Calendar, MapPin, Clock, Trophy, Users, ChevronLeft } from "lucide-react";
+import { Calendar, MapPin, Clock, Trophy, Users } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
-import logo from "@/assets/pulse-logo-new.png";
+import { PageHeader } from "@/components/PageHeader";
+import { motion } from "framer-motion";
+import { formatDateEST, formatTime12Hour } from "@/lib/utils";
 import {
   Table,
   TableBody,
@@ -277,55 +279,84 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
-        <div className="container mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-                <ChevronLeft className="h-5 w-5" />
-              </Button>
-              <img src={logo} alt="Pulse" className="h-8" />
+      {/* Standard PULSE Header */}
+      <PageHeader userId={userId} />
+
+      {/* Hero Banner with Event Info */}
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3 }}
+        className="relative border-b-2"
+        style={{
+          background: 'linear-gradient(180deg, hsl(var(--accent)) 0%, hsl(var(--background)) 80%)',
+          borderBottomColor: 'hsl(var(--primary) / 0.15)',
+        }}
+      >
+        <div className="container mx-auto py-6 px-4 md:py-8">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+            {/* Left: Title and details */}
+            <div className="space-y-2 flex-1">
+              <div className="flex items-center gap-3">
+                <Trophy className="w-5 h-5 text-primary" />
+                <div className="flex-1">
+                  <h1 
+                    className="text-3xl md:text-4xl lg:text-5xl font-bold border-l-4 pl-3 text-foreground"
+                    style={{
+                      borderLeftColor: 'hsl(var(--primary))',
+                    }}
+                  >
+                    {event.name}
+                    <motion.div
+                      initial={{ scaleX: 0 }}
+                      animate={{ scaleX: 1 }}
+                      transition={{ duration: 0.5, delay: 0.2 }}
+                      className="h-0.5 mt-1 origin-left bg-primary"
+                    />
+                  </h1>
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-3 text-base md:text-lg text-muted-foreground pl-8">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  <span>{formatDateEST(event.date, "EEEE, MMMM d, yyyy")}</span>
+                </div>
+                {event.start_time && (
+                  <>
+                    <span>•</span>
+                    <span>{formatTime12Hour(event.start_time)}</span>
+                  </>
+                )}
+                {event.location && (
+                  <>
+                    <span>•</span>
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4" />
+                      <span>{event.location}</span>
+                    </div>
+                  </>
+                )}
+              </div>
+              {event.notes && (
+                <p className="text-sm text-muted-foreground pl-8 max-w-2xl">
+                  {event.notes}
+                </p>
+              )}
+              <div className="flex items-center gap-2 pl-8 text-sm text-muted-foreground">
+                <Users className="h-4 w-4" />
+                <span>{players.length} players registered</span>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
+            
+            {/* Right: Status badge */}
+            <div>
               {getStatusBadge(event.status)}
             </div>
           </div>
         </div>
-      </header>
+      </motion.div>
 
-      {/* Event Banner */}
-      <div className="bg-gradient-to-r from-primary/10 to-primary/5 border-b">
-        <div className="container mx-auto px-4 py-6">
-          <h1 className="text-2xl md:text-3xl font-bold mb-3">{event.name}</h1>
-          <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-            <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
-              {format(parseISO(event.date), "EEEE, MMMM d, yyyy")}
-            </div>
-            {event.start_time && (
-              <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4" />
-                {event.start_time}
-              </div>
-            )}
-            {event.location && (
-              <div className="flex items-center gap-2">
-                <MapPin className="h-4 w-4" />
-                {event.location}
-              </div>
-            )}
-            {event.rating_eligible && (
-              <div className="flex items-center gap-2">
-                <Trophy className="h-4 w-4 text-primary" />
-                <span className="text-primary">Rating Eligible - {event.rating_type}</span>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content */}
+      {/* Main Content Area */}
       <div className="container mx-auto px-4 py-6">
         <Tabs defaultValue="schedule" className="space-y-6">
           <TabsList className="grid w-full grid-cols-3">
