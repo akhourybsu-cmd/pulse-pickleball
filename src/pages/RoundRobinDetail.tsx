@@ -333,6 +333,21 @@ export default function RoundRobinDetail() {
       return;
     }
 
+    // Show confirmation dialog
+    const hasExistingSchedule = schedule.length > 0;
+    const maxPossibleMatches = Math.floor(activePlayers.length / 4);
+    const matchesPerRound = Math.min(event.num_courts, maxPossibleMatches);
+    const gamesPerRoundPerPlayer = (4 * matchesPerRound) / activePlayers.length;
+    const calculatedRounds = Math.ceil((event.games_per_player || 3) / gamesPerRoundPerPlayer);
+    
+    const confirmMessage = hasExistingSchedule 
+      ? `This will DELETE the existing schedule and generate a new one.\n\nNew schedule will have:\n• ${calculatedRounds} rounds\n• ${matchesPerRound} matches per round (using ${matchesPerRound} of ${event.num_courts} courts)\n• ${event.games_per_player || 3} games per player\n\nAre you sure?`
+      : `Generate schedule with:\n• ${calculatedRounds} rounds\n• ${matchesPerRound} matches per round (using ${matchesPerRound} of ${event.num_courts} courts)\n• ${event.games_per_player || 3} games per player\n\nProceed?`;
+    
+    if (!confirm(confirmMessage)) {
+      return;
+    }
+
     try {
       const { data, error } = await supabase.functions.invoke("generate-round-robin-schedule", {
         body: {
@@ -345,7 +360,7 @@ export default function RoundRobinDetail() {
       });
 
       if (error) throw error;
-      toast.success("Schedule generated!");
+      toast.success(`Schedule generated with ${calculatedRounds} rounds!`);
       fetchEventDetails();
     } catch (error: any) {
       toast.error("Failed to generate schedule");

@@ -68,9 +68,19 @@ export default function CreateRoundRobin() {
       return { rounds: 0, totalSlots: 0, capacity: 0, fairnessWarning: null };
     }
     
+    const maxPossibleMatches = Math.floor(P / 4); // Max matches we can run with available players
+    const matchesPerRound = Math.min(C, maxPossibleMatches); // Limited by courts or players
+    const onCourtPerRound = 4 * matchesPerRound;
+    const byesPerRound = Math.max(0, P - onCourtPerRound);
+    
+    // Calculate games per round per player
+    const gamesPerRoundPerPlayer = onCourtPerRound / P;
+    
+    // Calculate rounds needed for target games per player
+    const rounds = Math.ceil(G / gamesPerRoundPerPlayer);
+    
     const totalSlots = P * G;
-    const capacity = C * 4;
-    const rounds = Math.ceil(totalSlots / capacity);
+    const capacity = onCourtPerRound;
     
     // Calculate fairness metrics
     const totalPartnerSlots = P * G; // Each game gives you 1 partner
@@ -78,7 +88,9 @@ export default function CreateRoundRobin() {
     const repeatPartnersNeeded = Math.max(0, totalPartnerSlots - uniquePartnersAvailable * rounds);
     
     let fairnessWarning = null;
-    if (repeatPartnersNeeded > 0) {
+    if (matchesPerRound < C) {
+      fairnessWarning = `Only ${matchesPerRound} of ${C} courts will be used (not enough players for all courts)`;
+    } else if (repeatPartnersNeeded > 0) {
       fairnessWarning = `Some players may have ${Math.ceil(repeatPartnersNeeded / P)} repeat partners`;
     } else if (P % 4 !== 0) {
       fairnessWarning = "Players will rotate sit-outs fairly";
