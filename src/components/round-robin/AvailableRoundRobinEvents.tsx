@@ -8,10 +8,12 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar, MapPin, Users, Clock, Trophy } from "lucide-react";
 import { format, isPast, parseISO } from "date-fns";
 import { toast } from "sonner";
+import { RoundRobinEventDetailDialog } from "./RoundRobinEventDetailDialog";
 
 export function AvailableRoundRobinEvents({ userId }: { userId: string | null }) {
   const navigate = useNavigate();
   const [joiningEvent, setJoiningEvent] = useState<string | null>(null);
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
 
   const { data: events = [], refetch } = useQuery({
     queryKey: ['available-round-robin-events', userId],
@@ -192,7 +194,7 @@ export function AvailableRoundRobinEvents({ userId }: { userId: string | null })
                   variant="outline"
                   size="sm"
                   className="flex-1"
-                  onClick={() => navigate(`/round-robin/${event.id}`)}
+                  onClick={() => setSelectedEventId(event.id)}
                 >
                   View Details
                 </Button>
@@ -214,6 +216,17 @@ export function AvailableRoundRobinEvents({ userId }: { userId: string | null })
           </Card>
         );
       })}
+
+      {/* Event Detail Modal */}
+      {selectedEventId && (
+        <RoundRobinEventDetailDialog
+          eventId={selectedEventId}
+          isOpen={!!selectedEventId}
+          onClose={() => setSelectedEventId(null)}
+          userId={userId}
+          onJoinSuccess={refetch}
+        />
+      )}
     </div>
   );
 }
