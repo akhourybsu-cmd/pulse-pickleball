@@ -54,7 +54,7 @@ const MatchConfirmation = () => {
           created_by: matchData.currentUserId,
           court_id: matchData.selectedCourt === 'other' ? null : matchData.selectedCourt,
           other_location: matchData.selectedCourt === 'other' ? matchData.otherLocation : null,
-          status: 'approved',
+          status: 'pending',
         })
         .select()
         .single();
@@ -90,11 +90,23 @@ const MatchConfirmation = () => {
 
       if (participantsError) throw participantsError;
 
-      await supabase.rpc('recalculate_all_ratings');
+      // Create approval records for all 4 players
+      const approvals = [
+        { match_id: matchDbData.id, player_id: matchData.team1Player1, approved: null },
+        { match_id: matchDbData.id, player_id: matchData.team1Player2, approved: null },
+        { match_id: matchDbData.id, player_id: matchData.team2Player1, approved: null },
+        { match_id: matchDbData.id, player_id: matchData.team2Player2, approved: null },
+      ];
+
+      const { error: approvalsError } = await supabase
+        .from("match_approvals")
+        .insert(approvals);
+
+      if (approvalsError) throw approvalsError;
 
       setTimeout(() => {
-        toast.success("Match recorded successfully!");
-        navigate("/dashboard");
+        toast.success("Match submitted for verification! All 4 players must approve before it affects ratings.");
+        navigate("/pending-matches");
       }, 1000);
     } catch (error: any) {
       const userMessage = error.message?.includes('unique') || error.message?.includes('duplicate')

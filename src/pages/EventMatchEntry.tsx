@@ -160,7 +160,7 @@ const EventMatchEntry = () => {
           team2_score: score2,
           court_id: event.location === 'other' ? null : undefined,
           other_location: event.location === 'other' ? event.other_location : null,
-          status: "approved", // Event matches are auto-approved
+          status: "pending",
         })
         .select()
         .single();
@@ -189,12 +189,25 @@ const EventMatchEntry = () => {
         return;
       }
 
-      // Recalculate ratings if eligible
-      if (ratingEligible) {
-        await supabase.rpc("recalculate_all_ratings");
+      // Create approval records for all 4 players
+      const approvals = [
+        { match_id: match.id, player_id: team1Player1, approved: null },
+        { match_id: match.id, player_id: team1Player2, approved: null },
+        { match_id: match.id, player_id: team2Player1, approved: null },
+        { match_id: match.id, player_id: team2Player2, approved: null },
+      ];
+
+      const { error: approvalsError } = await supabase
+        .from("match_approvals")
+        .insert(approvals);
+
+      if (approvalsError) {
+        console.error("Approvals error:", approvalsError);
+        toast.error("Failed to create approval records");
+        return;
       }
 
-      toast.success("Match recorded successfully!");
+      toast.success("Match submitted for verification! All 4 players must approve before it affects ratings.");
       
       // Reset form for quick entry
       setRoundNumber("");
