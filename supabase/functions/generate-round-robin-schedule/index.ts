@@ -65,15 +65,18 @@ class SeededRandom {
 
 // Calculate metrics based on games per player
 function calculateMetrics(players: number, courts: number, gamesPerPlayer: number) {
-  const possibleMatches = Math.floor(players / 4);
-  const matchesPerRound = Math.min(courts, possibleMatches);
+  const maxPossibleMatches = Math.floor(players / 4); // Max matches we can run with available players
+  const matchesPerRound = Math.min(courts, maxPossibleMatches); // Limited by courts or players
   const onCourtPerRound = 4 * matchesPerRound;
   const byesPerRound = Math.max(0, players - onCourtPerRound);
   
-  // Calculate how many rounds needed for each player to play gamesPerPlayer games
-  const totalSlots = players * gamesPerPlayer;
-  const capacity = courts * 4;
-  const rounds = Math.ceil(totalSlots / capacity);
+  // Calculate games per round per player
+  // If everyone plays: gamesPerRoundPerPlayer = 1
+  // If there are byes: gamesPerRoundPerPlayer = onCourtPerRound / players
+  const gamesPerRoundPerPlayer = onCourtPerRound / players;
+  
+  // Calculate rounds needed for target games per player
+  const rounds = Math.ceil(gamesPerPlayer / gamesPerRoundPerPlayer);
   
   const targetGames = gamesPerPlayer;
   const totalByes = rounds * byesPerRound;
