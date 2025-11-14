@@ -342,9 +342,11 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
                   {event.notes}
                 </p>
               )}
-              <div className="flex items-center gap-2 pl-8 text-sm text-muted-foreground">
+              <div className="flex items-center gap-3 pl-8 text-sm text-muted-foreground">
                 <Users className="h-4 w-4" />
                 <span>{players.length} players registered</span>
+                <span>•</span>
+                <span>Doubles Format</span>
               </div>
             </div>
             
