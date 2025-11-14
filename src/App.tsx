@@ -64,6 +64,7 @@ import AdminAuditLog from "./pages/AdminAuditLog";
 import AdminTestAccounts from "./pages/AdminTestAccounts";
 import AdminBiometrics from "./pages/AdminBiometrics";
 import { RoundRobinBanner } from "@/components/RoundRobinBanner";
+import { ScrollToTop } from "@/components/ScrollToTop";
 
 const queryClient = new QueryClient();
 
@@ -71,6 +72,7 @@ const AppContent = () => {
   useAuthPersistence();
   return (
     <>
+      <ScrollToTop />
       <RoundRobinBanner />
       <Routes>
         <Route path="/" element={<Index />} />
