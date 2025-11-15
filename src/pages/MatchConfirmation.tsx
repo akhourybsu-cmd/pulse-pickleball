@@ -6,6 +6,7 @@ import SwipeToConfirm from "@/components/SwipeToConfirm";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState } from "react";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 interface MatchData {
   team1Player1: string;
@@ -148,6 +149,7 @@ const MatchConfirmation = () => {
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back
           </Button>
+          <ThemeToggle />
         </div>
       </nav>
 

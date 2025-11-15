@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { CheckCircle } from "lucide-react";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function QRCheckIn() {
   const [searchParams] = useSearchParams();
@@ -126,7 +127,10 @@ export default function QRCheckIn() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="absolute top-4 right-4">
+          <ThemeToggle />
+        </div>
         <p className="text-muted-foreground">Loading session...</p>
       </div>
     );
@@ -134,7 +138,10 @@ export default function QRCheckIn() {
 
   if (!session) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="min-h-screen flex items-center justify-center p-4 bg-background">
+        <div className="absolute top-4 right-4">
+          <ThemeToggle />
+        </div>
         <Card className="max-w-md w-full">
           <CardHeader>
             <CardTitle>Session Not Found</CardTitle>
@@ -143,7 +150,7 @@ export default function QRCheckIn() {
             <p className="text-muted-foreground mb-4">
               This session may have ended or the link is invalid.
             </p>
-            <Button onClick={() => navigate("/dashboard")} className="w-full">
+            <Button onClick={() => navigate("/dashboard")}>
               Go to Dashboard
             </Button>
           </CardContent>
@@ -153,7 +160,10 @@ export default function QRCheckIn() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-primary/5 to-secondary/10">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
       <Card className="max-w-md w-full">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl">{session.name}</CardTitle>

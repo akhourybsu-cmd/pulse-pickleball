@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function AdminPasswordReset() {
   const navigate = useNavigate();
@@ -86,14 +87,17 @@ export default function AdminPasswordReset() {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto p-4 space-y-6">
-        <Button
-          variant="ghost"
-          onClick={() => navigate("/admin")}
-          className="gap-2"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Admin
-        </Button>
+        <div className="flex justify-between items-center">
+          <Button
+            variant="ghost"
+            onClick={() => navigate("/admin")}
+            className="gap-2"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Admin
+          </Button>
+          <ThemeToggle />
+        </div>
 
         <Card>
           <CardHeader>
