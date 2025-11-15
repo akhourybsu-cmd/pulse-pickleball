@@ -8,6 +8,7 @@ import { FullscreenToggleButton } from "@/components/kiosk/FullscreenToggleButto
 import { toast } from "sonner";
 import { Radio, Lock, Clock, Trophy } from "lucide-react";
 import pulseLogo from "@/assets/pulse-logo-new.png";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 interface Event {
   id: string;
@@ -383,45 +384,34 @@ export default function RoundRobinKiosk() {
   const isLastRound = currentRound >= event.num_rounds;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[hsl(var(--primary))] to-[hsl(var(--primary))]/80 pb-24">
-      {/* Top Header Bar */}
-      <div className="sticky top-0 z-40 bg-background/95 backdrop-blur shadow-lg border-b">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
-          {/* Pulse Branding */}
-          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#0B3F45] border border-white/10">
-            <img src={pulseLogo} alt="Pulse" className="h-[34px] w-[34px]" />
-            <span className="text-white text-sm font-semibold whitespace-nowrap">Round Robin by Pulse</span>
+    <>
+      <div className="min-h-screen bg-background flex flex-col">
+        
+        {/* Sticky Header Bar */}
+        <div className="sticky top-0 z-50 bg-card border-b border-border shadow-md px-6 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <img src={pulseLogo} alt="Pulse" className="h-10 w-auto" />
+            <div>
+              <h1 className="text-lg font-bold text-foreground">{event?.name || "Round Robin"}</h1>
+              <p className="text-sm text-muted-foreground">
+                Round {event?.current_round || 1} of {event?.num_rounds || 1}
+              </p>
+            </div>
           </div>
-
-          {/* Event Name & Round */}
-          <div className="flex items-center gap-3 flex-1 min-w-0">
-            <h1 className="text-xl font-bold text-foreground truncate">{event.name}</h1>
-            <Badge className="bg-[#0B3F45] text-white border border-white/20 whitespace-nowrap">
-              Current Round: {currentRound} / {event.num_rounds}
-            </Badge>
-          </div>
-
-          {/* LIVE Indicator */}
-          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#0B3F45] border border-[#A9CF46]/50">
-            <div className="w-2 h-2 rounded-full bg-[#A9CF46] animate-pulse-glow" />
-            <span className="text-white text-sm font-bold">LIVE</span>
-          </div>
-
-          {/* Controls */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-4">
+            <ThemeToggle />
             <FullscreenToggleButton />
-            <Button
+            <Button 
+              size="sm" 
+              variant="outline" 
               onClick={handleExitKiosk}
-              variant="ghost"
-              size="sm"
-              className="text-foreground"
+              className="gap-2"
             >
-              <Lock className="w-4 h-4 mr-2" />
-              End Kiosk
+              <Lock className="h-4 w-4" />
+              Exit Kiosk
             </Button>
           </div>
         </div>
-      </div>
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-6 py-8">
@@ -429,25 +419,25 @@ export default function RoundRobinKiosk() {
           {/* Left Panel: Current Round Courts */}
           <div className="lg:col-span-2 space-y-4">
             <div className="flex items-center gap-3">
-              <h2 className="text-3xl font-bold text-white">Current Round</h2>
-              <Badge className="bg-[#0B3F45] text-white border border-white/20 text-base px-3 py-1">
+              <h2 className="text-3xl font-bold text-foreground">Current Round</h2>
+              <Badge variant="secondary" className="text-base px-3 py-1">
                 Round {currentRound} of {event.num_rounds}
               </Badge>
             </div>
             
             <div className="grid gap-4">
               {currentRoundMatches.map((match) => (
-                <Card key={`${match.id}-${match.court_no}`} className="bg-white/95 backdrop-blur border-0 shadow-lg">
+                <Card key={`${match.id}-${match.court_no}`} className="bg-card/95 backdrop-blur border-border shadow-lg">
                   <div className="p-6">
-                    <h3 className="text-2xl font-bold text-[#083A40] mb-4">Court {match.court_no}</h3>
+                    <h3 className="text-2xl font-bold text-foreground mb-4">Court {match.court_no}</h3>
                     
                     <div className="flex items-center justify-between gap-4">
                       {/* Team A */}
                       <div className="flex-1">
-                        <div className="text-lg font-semibold text-[#083A40]">
+                        <div className="text-lg font-semibold text-foreground">
                           {getPlayerName(match.a1_profile)}
                         </div>
-                        <div className="text-lg font-semibold text-[#083A40]">
+                        <div className="text-lg font-semibold text-foreground">
                           {getPlayerName(match.a2_profile)}
                         </div>
                       </div>
@@ -456,25 +446,25 @@ export default function RoundRobinKiosk() {
                       <div className="text-center min-w-[120px]">
                         {match.team1_score !== null && match.team2_score !== null ? (
                           <div>
-                            <div className="text-sm font-medium text-[#083A40]/60 mb-1">Final</div>
-                            <div className="text-3xl font-bold text-[#083A40]">
+                            <div className="text-sm font-medium text-muted-foreground mb-1">Final</div>
+                            <div className="text-3xl font-bold text-foreground">
                               {match.team1_score} – {match.team2_score}
                             </div>
                           </div>
                         ) : (
                           <div>
-                            <div className="text-2xl font-bold text-[#0B3F45]">VS</div>
-                            <div className="text-sm font-medium text-[#0B3F45] mt-1">In Progress</div>
+                            <div className="text-2xl font-bold text-secondary-foreground">VS</div>
+                            <div className="text-sm font-medium text-secondary-foreground mt-1">In Progress</div>
                           </div>
                         )}
                       </div>
 
                       {/* Team B */}
                       <div className="flex-1 text-right">
-                        <div className="text-lg font-semibold text-[#083A40]">
+                        <div className="text-lg font-semibold text-foreground">
                           {getPlayerName(match.b1_profile)}
                         </div>
-                        <div className="text-lg font-semibold text-[#083A40]">
+                        <div className="text-lg font-semibold text-foreground">
                           {getPlayerName(match.b2_profile)}
                         </div>
                       </div>
@@ -602,19 +592,19 @@ export default function RoundRobinKiosk() {
       </div>
 
       {/* Bottom Status Ribbon */}
-      <div className="fixed bottom-0 left-0 right-0 bg-[#083A40]/90 backdrop-blur border-t border-white/10">
+      <div className="fixed bottom-0 left-0 right-0 bg-secondary/90 backdrop-blur border-t border-border">
         <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#0B3F45] border border-[#A9CF46]/50">
-              <div className="w-2 h-2 rounded-full bg-[#A9CF46] animate-pulse-glow" />
-              <span className="text-white text-sm font-bold">LIVE</span>
+            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-secondary border border-primary/50">
+              <div className="w-2 h-2 rounded-full bg-primary animate-pulse-glow" />
+              <span className="text-secondary-foreground text-sm font-bold">LIVE</span>
             </div>
-            <span className="text-white text-sm">
+            <span className="text-secondary-foreground text-sm">
               Round {currentRound} currently live on {event.num_courts === 1 ? 'Court 1' : `Courts 1–${event.num_courts}`}
             </span>
           </div>
           
-          <Badge className="bg-[#0B3F45] text-white border border-white/20">
+          <Badge variant="secondary">
             Round {currentRound} of {event.num_rounds}
           </Badge>
         </div>
@@ -637,6 +627,7 @@ export default function RoundRobinKiosk() {
           </Card>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }
