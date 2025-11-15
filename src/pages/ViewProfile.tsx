@@ -43,6 +43,7 @@ interface RecentMatch {
   result: 'W' | 'L';
   score: string;
   date: string;
+  status?: string;
 }
 
 
@@ -103,7 +104,8 @@ const ViewProfile = () => {
             id,
             team1_score,
             team2_score,
-            created_at
+            created_at,
+            status
           )
         `)
         .eq("player_id", userId)
@@ -160,7 +162,8 @@ const ViewProfile = () => {
               user_team: userTeam,
               result: won ? 'W' as const : 'L' as const,
               score: `${match.team1_score}-${match.team2_score}`,
-              date: match.created_at
+              date: match.created_at,
+              status: match.status
             };
           })
         );
