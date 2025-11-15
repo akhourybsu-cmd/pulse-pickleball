@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { UserPlus, Copy, Check, AlertTriangle } from "lucide-react";
 import { BackToDashboard } from "@/components/BackToDashboard";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function AdminTestAccounts() {
   const [loading, setLoading] = useState(false);
@@ -49,7 +50,10 @@ export default function AdminTestAccounts() {
 
   return (
     <div className="container max-w-4xl mx-auto py-8 space-y-6">
-      <BackToDashboard />
+      <div className="flex justify-between items-center">
+        <BackToDashboard />
+        <ThemeToggle />
+      </div>
       
       <div>
         <h1 className="text-3xl font-bold mb-2">Test Accounts Management</h1>

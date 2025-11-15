@@ -12,6 +12,7 @@ import { RegistrationStepDivision } from "@/components/tournament/RegistrationSt
 import { RegistrationStepTeamInfo } from "@/components/tournament/RegistrationStepTeamInfo";
 import { RegistrationStepAdditionalInfo } from "@/components/tournament/RegistrationStepAdditionalInfo";
 import { RegistrationStepReview } from "@/components/tournament/RegistrationStepReview";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 interface TournamentEvent {
   id: string;
@@ -229,7 +230,10 @@ export default function TournamentRegister() {
   if (loading) {
     return (
       <div className="container max-w-4xl py-8">
-        <BackToDashboard />
+        <div className="flex justify-between items-center">
+          <BackToDashboard />
+          <ThemeToggle />
+        </div>
         <div className="flex items-center justify-center py-12">
           <p className="text-muted-foreground">Loading registration form...</p>
         </div>
@@ -240,7 +244,10 @@ export default function TournamentRegister() {
   if (!event) {
     return (
       <div className="container max-w-4xl py-8">
-        <BackToDashboard />
+        <div className="flex justify-between items-center">
+          <BackToDashboard />
+          <ThemeToggle />
+        </div>
         <Card>
           <CardContent className="py-12 text-center">
             <p className="text-muted-foreground mb-4">Tournament not found</p>
@@ -255,7 +262,10 @@ export default function TournamentRegister() {
 
   return (
     <div className="container max-w-4xl py-8">
-      <BackToDashboard />
+      <div className="flex justify-between items-center">
+        <BackToDashboard />
+        <ThemeToggle />
+      </div>
       
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">Register for {event.name}</h1>

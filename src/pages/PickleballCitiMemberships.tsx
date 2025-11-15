@@ -5,6 +5,7 @@ import { ArrowLeft, Star, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 import logo from "@/assets/pulse-logo-new.png";
 import pickleballCitiLogo from "@/assets/pickleball-citi-logo.png";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const membershipTiers = [
   {
@@ -76,11 +77,12 @@ export default function PickleballCitiMemberships() {
 
   return (
     <div className="min-h-screen bg-background">
-      <nav className="border-b bg-secondary">
+      <nav className="border-b bg-card">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <Link to="/dashboard">
             <img src={logo} alt="PULSE Logo" className="h-[90px] w-auto cursor-pointer hover:opacity-80 transition-opacity" />
           </Link>
+          <ThemeToggle />
         </div>
       </nav>
 
