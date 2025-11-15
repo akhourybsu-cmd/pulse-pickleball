@@ -44,6 +44,7 @@ import logo from "@/assets/pulse-logo-new.png";
 import { suggestRounds } from "@/lib/roundRobinFairness";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 // Score validation schema
 const scoreSchema = z.object({

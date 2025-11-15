@@ -29,13 +29,13 @@ export function EditModeBanner({
   }
 
   return (
-    <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950">
-      <Edit className="w-4 h-4" />
+    <Alert className="border-primary bg-primary/10 dark:bg-primary/5">
+      <Edit className="w-4 h-4 text-primary" />
       <AlertDescription className="flex items-center justify-between">
-        <span>
+        <span className="text-foreground">
           You're editing <strong>{eventName}</strong>
           {hasUnsavedChanges && (
-            <span className="text-amber-600 dark:text-amber-400 ml-2">
+            <span className="text-destructive ml-2">
               (Unsaved changes)
             </span>
           )}

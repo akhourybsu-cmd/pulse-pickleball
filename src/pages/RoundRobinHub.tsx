@@ -124,13 +124,13 @@ export default function RoundRobinHub() {
     
     switch(status) {
       case 'draft':
-        return `${baseClasses} bg-gradient-to-br from-[hsl(195,60%,97%)] to-white border-[hsl(195,60%,85%)] dark:from-[hsl(195,60%,15%)] dark:to-background dark:border-[hsl(195,60%,25%)]`;
+        return `${baseClasses} bg-card/50 border-primary/30 dark:from-primary/10 dark:to-background dark:border-primary/40`;
       case 'live':
-        return `${baseClasses} bg-gradient-to-br from-[hsl(84,54%,95%)] via-[hsl(84,54%,97%)] to-white border-[#A9CF46]/30 hover:border-[#A9CF46]/50 border-l-4 border-l-[#A9CF46] dark:from-[hsl(84,40%,18%)] dark:to-background dark:border-[#A9CF46]/40`;
+        return `${baseClasses} bg-gradient-to-br from-primary/5 to-card border-primary/30 hover:border-primary/50 border-l-4 border-l-primary dark:from-primary/10 dark:to-background dark:border-primary/40`;
       case 'completed':
-        return `${baseClasses} bg-gradient-to-br from-slate-50 to-white border-slate-200 dark:from-slate-900 dark:to-background dark:border-slate-700`;
+        return `${baseClasses} bg-card border-border dark:from-muted dark:to-background dark:border-border`;
       default:
-        return `${baseClasses} bg-white border-slate-200`;
+        return `${baseClasses} bg-card border-border`;
     }
   };
 
@@ -246,7 +246,7 @@ export default function RoundRobinHub() {
   const currentEvents = activeTab === "my" ? myEvents : participatingEvents;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
+    <div className="min-h-screen bg-background">
       {/* Top Nav */}
       <header className="sticky top-0 z-10 bg-secondary border-b shadow-sm">
         <div className="container mx-auto px-4 py-3 sm:py-4">
@@ -266,7 +266,7 @@ export default function RoundRobinHub() {
         <motion.div 
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-r from-primary/5 via-primary/3 to-transparent border border-slate-200 rounded-xl p-6 lg:p-8 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4"
+          className="bg-card border border-border rounded-xl p-6 lg:p-8 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4"
         >
           <div className="space-y-1.5">
             <h2 className="text-2xl lg:text-3xl font-bold text-foreground flex items-center gap-2">
