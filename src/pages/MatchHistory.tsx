@@ -64,6 +64,7 @@ interface Match {
 const MatchHistory = () => {
   const [loading, setLoading] = useState(true);
   const [matches, setMatches] = useState<Match[]>([]);
+  const [pendingMatches, setPendingMatches] = useState<Match[]>([]);
   const [playerName, setPlayerName] = useState("");
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -139,6 +140,11 @@ const MatchHistory = () => {
     }
 
     setCurrentUserId(user?.id || null);
+
+    // Fetch pending matches for current user
+    if (user?.id && !playerId) {
+      await fetchPendingMatches(user.id);
+    }
 
     // Get player name
     const { data: profile } = await supabase
@@ -253,6 +259,127 @@ const MatchHistory = () => {
 
     setMatches(matchesWithDetails);
     setLoading(false);
+  };
+
+  const fetchPendingMatches = async (userId: string) => {
+    const { data: participantsData } = await supabase
+      .from("match_participants")
+      .select(`
+        match_id,
+        team,
+        matches!inner(
+          id,
+          match_date,
+          created_at,
+          team1_score,
+          team2_score,
+          status,
+          court_id,
+          courts(name),
+          other_location,
+          source,
+          court_no,
+          round_no
+        )
+      `)
+      .eq("player_id", userId)
+      .eq("matches.status", "pending");
+
+    if (!participantsData) {
+      setPendingMatches([]);
+      return;
+    }
+
+    const pendingMatchesWithDetails = await Promise.all(
+      participantsData.map(async (p: any) => {
+        const { data: allParticipants } = await supabase
+          .from("match_participants")
+          .select(`
+            player_id,
+            team,
+            profiles(full_name, display_name)
+          `)
+          .eq("match_id", p.match_id);
+
+        const { data: approvals } = await supabase
+          .from("match_approvals")
+          .select("player_id, approved")
+          .eq("match_id", p.match_id);
+
+        const myTeam = p.team;
+        const teammates = allParticipants?.filter(
+          part => part.team === myTeam && part.player_id !== userId
+        );
+        const opponents = allParticipants?.filter(part => part.team !== myTeam);
+        const verifiedBy = approvals?.filter(a => a.approved === true).map(a => a.player_id) || [];
+        
+        let courtName = "Unknown Court";
+        let otherLocation = null;
+        if (p.matches.other_location) {
+          courtName = p.matches.other_location;
+          otherLocation = p.matches.other_location;
+        } else if (p.matches.courts?.name) {
+          courtName = p.matches.courts.name;
+        }
+
+        return {
+          match_id: p.match_id,
+          match_date: p.matches.match_date,
+          created_at: p.matches.created_at,
+          team1_score: p.matches.team1_score,
+          team2_score: p.matches.team2_score,
+          my_team: myTeam,
+          partner_name: teammates?.[0]?.profiles?.display_name || teammates?.[0]?.profiles?.full_name || "Unknown",
+          partner_id: teammates?.[0]?.player_id || "",
+          opponent1_name: opponents?.[0]?.profiles?.display_name || opponents?.[0]?.profiles?.full_name || "Unknown",
+          opponent1_id: opponents?.[0]?.player_id || "",
+          opponent2_name: opponents?.[1]?.profiles?.display_name || opponents?.[1]?.profiles?.full_name || "Unknown",
+          opponent2_id: opponents?.[1]?.player_id || "",
+          rating_change: 0,
+          rating_after: 0,
+          court_name: courtName,
+          other_location: otherLocation,
+          won: p.team === 1 ? p.matches.team1_score > p.matches.team2_score : p.matches.team2_score > p.matches.team1_score,
+          verified_by: verifiedBy,
+          source: p.matches.source,
+          round_no: p.matches.round_no,
+          court_no: p.matches.court_no,
+        };
+      })
+    );
+
+    pendingMatchesWithDetails.sort((a, b) => {
+      if (a.match_date !== b.match_date) {
+        return b.match_date.localeCompare(a.match_date);
+      }
+      return b.created_at.localeCompare(a.created_at);
+    });
+
+    setPendingMatches(pendingMatchesWithDetails);
+  };
+
+  const handleVerifyPendingMatch = async (matchId: string) => {
+    if (!currentUserId) return;
+
+    try {
+      const { error } = await supabase
+        .from("match_approvals")
+        .update({
+          approved: true,
+          approved_at: new Date().toISOString()
+        })
+        .eq("match_id", matchId)
+        .eq("player_id", currentUserId);
+
+      if (error) throw error;
+
+      toast.success("Match verified! Will auto-approve when 2+ players verify.");
+      
+      // Refresh both lists
+      fetchMatchHistory();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to verify match");
+    }
   };
 
   const handleReportIssue = async (issueType: string) => {
@@ -438,8 +565,104 @@ const MatchHistory = () => {
       </motion.div>
 
       <div className="container mx-auto px-4 py-6 space-y-6">
+        
+        {/* Pending Matches Section - Only show for current user's own history */}
+        {!playerId && pendingMatches.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 mb-4">
+              <AlertTriangle className="w-5 h-5 text-amber-500" />
+              <h2 className="text-2xl font-bold">Pending Verification</h2>
+              <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-300">
+                {pendingMatches.length} match{pendingMatches.length !== 1 ? 'es' : ''}
+              </Badge>
+            </div>
+            <p className="text-muted-foreground text-sm mb-4">
+              These matches need your verification. Once 2+ players verify, they'll auto-approve and appear in your history.
+            </p>
+            
+            {pendingMatches.map((match, index) => {
+              const verificationCount = match.verified_by.length;
+              const hasVerified = currentUserId ? match.verified_by.includes(currentUserId) : false;
+              
+              return (
+                <motion.div
+                  key={match.match_id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: index * 0.05 }}
+                >
+                  <Card className="rounded-2xl border-2 border-amber-200 bg-amber-50/30 shadow-md">
+                    <CardHeader className="pb-3">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <CardTitle className="text-lg font-semibold">
+                            {toLocaleDateStringEST(match.match_date)}
+                          </CardTitle>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {match.court_name}
+                          </p>
+                        </div>
+                        <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300">
+                          {verificationCount}/4 verified
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="grid grid-cols-3 gap-4 items-center">
+                        <div className="text-center">
+                          <p className="font-semibold text-sm mb-1">Your Team</p>
+                          <p className="text-xs text-muted-foreground">{playerName}</p>
+                          <p className="text-xs text-muted-foreground">{match.partner_name}</p>
+                        </div>
+                        <div className="text-center">
+                          <div className="text-3xl font-bold">
+                            {match.my_team === 1 ? match.team1_score : match.team2_score}
+                            <span className="mx-2 text-muted-foreground">-</span>
+                            {match.my_team === 1 ? match.team2_score : match.team1_score}
+                          </div>
+                        </div>
+                        <div className="text-center">
+                          <p className="font-semibold text-sm mb-1">Opponents</p>
+                          <p className="text-xs text-muted-foreground">{match.opponent1_name}</p>
+                          <p className="text-xs text-muted-foreground">{match.opponent2_name}</p>
+                        </div>
+                      </div>
+                      
+                      <div className="pt-3 border-t">
+                        {hasVerified ? (
+                          <div className="flex items-center justify-center gap-2 text-sm text-green-600">
+                            <CheckCircle2 className="w-4 h-4" />
+                            <span>You've verified this match</span>
+                          </div>
+                        ) : (
+                          <Button 
+                            onClick={() => handleVerifyPendingMatch(match.match_id)}
+                            className="w-full"
+                            variant="default"
+                          >
+                            <CheckCircle2 className="w-4 h-4 mr-2" />
+                            Verify Match
+                          </Button>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
 
-        {matches.length === 0 ? (
+        {/* Divider between pending and approved */}
+        {!playerId && pendingMatches.length > 0 && matches.length > 0 && (
+          <div className="flex items-center gap-3 mb-4 mt-8">
+            <History className="w-5 h-5 text-primary" />
+            <h2 className="text-2xl font-bold">Verified Match History</h2>
+          </div>
+        )}
+
+        {/* Approved Matches Section */}
+        {matches.length === 0 && pendingMatches.length === 0 ? (
           <Card className="rounded-2xl border-2 border-border shadow-lg">
             <CardContent className="p-6 text-center text-muted-foreground">
               No match history yet
