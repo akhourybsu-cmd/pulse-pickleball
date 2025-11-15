@@ -9,6 +9,7 @@ interface Match {
   result: 'W' | 'L';
   score: string;
   date: string;
+  status?: string;
 }
 
 interface RecentMatchesProps {
@@ -27,12 +28,14 @@ export const RecentMatches = ({ matches }: RecentMatchesProps) => {
             key={i}
             className={cn(
               "w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold font-sans",
-              match.result === 'W' 
-                ? "bg-[#A9CF46] text-[#1a3a1f]" 
-                : "bg-destructive text-destructive-foreground"
+              match.status === 'pending' 
+                ? "bg-muted text-muted-foreground opacity-50 border-2 border-dashed border-muted-foreground"
+                : match.result === 'W' 
+                  ? "bg-[#A9CF46] text-[#1a3a1f]" 
+                  : "bg-destructive text-destructive-foreground"
             )}
           >
-            {match.result}
+            {match.status === 'pending' ? '?' : match.result}
           </div>
         ))}
       </div>
@@ -46,20 +49,28 @@ export const RecentMatches = ({ matches }: RecentMatchesProps) => {
               className={cn(
                 "relative flex-shrink-0 w-[200px] p-4 pt-5 rounded-lg border bg-card transition-all duration-200",
                 "hover:shadow-lg hover:scale-105",
-                match.result === 'W' 
-                  ? "border-l-4 border-l-[#A9CF46]" 
-                  : "border-l-4 border-l-destructive"
+                match.status === 'pending'
+                  ? "opacity-60 border-2 border-dashed border-muted-foreground"
+                  : match.result === 'W' 
+                    ? "border-l-4 border-l-[#A9CF46]" 
+                    : "border-l-4 border-l-destructive"
               )}
             >
               {/* W/L Badge in corner */}
-              <div className={cn(
-                "absolute -top-2 -left-2 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold font-display shadow-md",
-                match.result === 'W' 
-                  ? "bg-[#A9CF46] text-[#1a3a1f]" 
-                  : "bg-destructive text-destructive-foreground"
-              )}>
-                {match.result}
-              </div>
+              {match.status === 'pending' ? (
+                <div className="absolute -top-2 -left-2 px-2 py-1 rounded bg-muted text-muted-foreground text-xs font-semibold font-sans border border-muted-foreground">
+                  PENDING
+                </div>
+              ) : (
+                <div className={cn(
+                  "absolute -top-2 -left-2 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold font-display shadow-md",
+                  match.result === 'W' 
+                    ? "bg-[#A9CF46] text-[#1a3a1f]" 
+                    : "bg-destructive text-destructive-foreground"
+                )}>
+                  {match.result}
+                </div>
+              )}
 
               <div className="space-y-1.5 mb-2">
                 <div className="flex items-center gap-1.5">
