@@ -65,6 +65,12 @@ All colors MUST be HSL.
     --sidebar-accent-foreground: 195 60% 12%;
     --sidebar-border: 195 20% 88%;
     --sidebar-ring: 74 65% 52%;
+
+    /* Hero Banner - Light Mode */
+    --hero-bg: #F7FBF2;
+    --hero-border: rgba(166, 219, 90, 0.15);
+    --hero-heading: #0E4C58;
+    --hero-body: #0E4C58;
   }
 
   .dark {
@@ -123,6 +129,12 @@ All colors MUST be HSL.
     --sidebar-accent-foreground: 191 38% 94%;
     --sidebar-border: 0 0% 100% / 0.06;
     --sidebar-ring: 85 64% 61%;
+
+    /* Hero Banner - Dark Mode */
+    --hero-bg: #142029;
+    --hero-border: rgba(166, 219, 90, 0.1);
+    --hero-heading: #EAF3F5;
+    --hero-body: #B4C4CA;
   }
 }
 
