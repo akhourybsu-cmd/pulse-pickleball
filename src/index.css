@@ -68,61 +68,61 @@ All colors MUST be HSL.
   }
 
   .dark {
-    --background: 194 55% 30%;
-    --foreground: 74 60% 85%;
+    --background: 207 44% 10%;
+    --foreground: 191 38% 94%;
 
-    --card: 194 55% 25%;
-    --card-foreground: 74 60% 85%;
+    --card: 206 34% 12%;
+    --card-foreground: 191 38% 94%;
 
-    --popover: 194 55% 25%;
-    --popover-foreground: 74 60% 85%;
+    --popover: 206 34% 12%;
+    --popover-foreground: 191 38% 94%;
 
-    --primary: 74 65% 52%;
-    --primary-foreground: 194 60% 15%;
+    --primary: 85 64% 61%;
+    --primary-foreground: 207 44% 10%;
 
-    --secondary: 194 50% 20%;
-    --secondary-foreground: 74 60% 85%;
+    --secondary: 204 48% 8%;
+    --secondary-foreground: 191 38% 94%;
 
-    --muted: 194 40% 35%;
-    --muted-foreground: 74 30% 70%;
+    --muted: 206 34% 12%;
+    --muted-foreground: 196 19% 75%;
 
-    --accent: 74 65% 52%;
-    --accent-foreground: 194 60% 15%;
+    --accent: 85 64% 61%;
+    --accent-foreground: 207 44% 10%;
 
     --destructive: 0 62.8% 50%;
-    --destructive-foreground: 74 60% 85%;
+    --destructive-foreground: 191 38% 94%;
 
-    --border: 194 40% 40%;
-    --input: 194 40% 40%;
-    --ring: 74 65% 52%;
+    --border: 0 0% 100% / 0.06;
+    --input: 0 0% 100% / 0.06;
+    --ring: 85 64% 61%;
 
-    --gradient-hero: linear-gradient(135deg, hsl(194 60% 20%), hsl(74 65% 52%));
-    --gradient-card: linear-gradient(180deg, hsl(194 55% 25%), hsl(194 55% 22%));
+    --gradient-hero: radial-gradient(circle at top left, hsl(204 41% 14%) 0%, hsl(207 44% 10%) 80%);
+    --gradient-card: linear-gradient(180deg, hsl(206 34% 12%), hsl(207 44% 10%));
     
-    --shadow-glow: 0 0 40px hsl(74 65% 52% / 0.5);
-    --shadow-card: 0 4px 20px hsl(194 60% 10% / 0.6);
+    --shadow-glow: 0 0 40px hsl(85 64% 61% / 0.5);
+    --shadow-card: 0 4px 20px hsl(207 44% 5% / 0.6);
 
     /* Premium Dashboard Tiles - Dark Mode */
-    --accent-lime: 74 65% 52%;
-    --page-bg: 195 60% 6%;
-    --tile-card-bg: 195 50% 10%;
-    --tile-card-border: 195 30% 22%;
-    --ink-900: 0 0% 100%;
-    --ink-700: 195 10% 80%;
-    --tile-muted: 195 35% 14%;
-    --tile-shadow: 0 1px 0 hsl(195 80% 2% / 0.6), 0 8px 24px hsl(195 80% 2% / 0.28);
-    --tile-gradient-lime: linear-gradient(90deg, hsl(74 65% 52% / 0.85), transparent 70%);
+    --accent-lime: 85 64% 61%;
+    --page-bg: 207 44% 10%;
+    --tile-card-bg: 206 34% 12%;
+    --tile-card-border: 0 0% 100% / 0.08;
+    --ink-900: 191 38% 94%;
+    --ink-700: 196 19% 75%;
+    --tile-muted: 206 34% 15%;
+    --tile-shadow: 0 1px 0 hsl(207 44% 5% / 0.6), 0 8px 24px hsl(207 44% 5% / 0.28);
+    --tile-gradient-lime: linear-gradient(90deg, hsl(85 64% 61% / 0.85), transparent 70%);
     --tile-pattern-opacity: 0.03;
     --tile-pattern-color: 0 0% 100%;
 
-    --sidebar-background: 194 55% 30%;
-    --sidebar-foreground: 74 60% 85%;
-    --sidebar-primary: 74 65% 52%;
-    --sidebar-primary-foreground: 194 60% 15%;
-    --sidebar-accent: 194 50% 35%;
-    --sidebar-accent-foreground: 74 60% 85%;
-    --sidebar-border: 194 40% 40%;
-    --sidebar-ring: 74 65% 52%;
+    --sidebar-background: 204 48% 8%;
+    --sidebar-foreground: 191 38% 94%;
+    --sidebar-primary: 85 64% 61%;
+    --sidebar-primary-foreground: 207 44% 10%;
+    --sidebar-accent: 206 34% 12%;
+    --sidebar-accent-foreground: 191 38% 94%;
+    --sidebar-border: 0 0% 100% / 0.06;
+    --sidebar-ring: 85 64% 61%;
   }
 }
 
