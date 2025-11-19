@@ -335,8 +335,8 @@ const Dashboard = () => {
         transition={{ duration: 0.5 }}
         className="mb-8"
         style={{
-          background: 'linear-gradient(180deg, #E8FBD5 0%, #FFFFFF 80%)',
-          borderBottom: '1px solid rgba(169, 220, 61, 0.15)',
+          background: 'var(--hero-bg)',
+          borderBottom: '1px solid var(--hero-border)',
         }}
       >
         <div className="container mx-auto px-4 py-6 md:py-8">
@@ -350,8 +350,8 @@ const Dashboard = () => {
               <Zap 
                 className="w-8 h-8 md:w-12 md:h-12"
                 style={{ 
-                  color: '#A9DC3D',
-                  filter: 'drop-shadow(0px 2px 4px rgba(169, 220, 61, 0.3))'
+                  color: '#A6DB5A',
+                  filter: 'none'
                 }} 
               />
             </motion.div>
@@ -362,16 +362,15 @@ const Dashboard = () => {
                 transition={{ duration: 0.5, delay: 0.2 }}
                 className="text-2xl md:text-4xl lg:text-5xl font-bold mb-2 md:mb-3 relative inline-block pb-2"
                 style={{
-                  color: '#0E4C58',
+                  color: 'var(--hero-heading)',
                   letterSpacing: '0.02em',
-                  textShadow: '0px 1px 2px rgba(14, 76, 88, 0.1)',
-                  borderLeft: '3px solid #A9DC3D',
+                  borderLeft: '3px solid #A6DB5A',
                   paddingLeft: '12px',
                 }}
               >
                 Welcome back, {profile?.display_name || profile?.full_name}!
                 <motion.span
-                  className="absolute bottom-0 left-3 h-0.5 bg-gradient-to-r from-[#A9DC3D] to-transparent"
+                  className="absolute bottom-0 left-3 h-0.5 bg-gradient-to-r from-[#A6DB5A] to-transparent"
                   initial={{ width: 0 }}
                   animate={{ width: '100%' }}
                   transition={{ duration: 0.8, delay: 0.5 }}
@@ -383,7 +382,7 @@ const Dashboard = () => {
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.5, delay: 0.3 }}
                 className="text-sm md:text-lg leading-relaxed mb-4"
-                style={{ color: '#0E4C58', opacity: 0.8 }}
+                style={{ color: 'var(--hero-body)' }}
               >
                 Track your pickleball journey, analyze your performance, and compete with your community
               </motion.p>
