@@ -992,8 +992,9 @@ export default function RoundRobinDetail() {
         reason: `Courts ${newCourts > event.num_courts ? 'increased' : 'decreased'} to ${newCourts}, rounds adjusted to ${newRounds}`,
       });
 
-      // Regenerate from current round
-      const fromRound = event.current_round || 1;
+      // In draft mode, regenerate the entire schedule from round 1
+      // In active events, regenerate from current round
+      const fromRound = event.status === 'draft' ? 1 : (event.current_round || 1);
       await regenerateScheduleFromRound(fromRound);
 
       toast.success(`Courts updated to ${newCourts} (${newRounds} rounds)`);
