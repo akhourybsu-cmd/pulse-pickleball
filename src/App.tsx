@@ -92,6 +92,7 @@ const AppContent = () => {
         <Route path="/pickleballciti" element={<Navigate to="/court/board/836003fb-fbd7-429c-8973-67ac6766a511" replace />} />
         <Route path="/masonfield" element={<Navigate to="/court/board/4a5d9fb8-981b-42f1-9504-595cb8f22fca" replace />} />
         <Route path="/tildastone" element={<Navigate to="/court/board/2bf21943-2efc-43fe-bab4-9bb7693d4674" replace />} />
+        <Route path="/naymca" element={<Navigate to="/court/board/51e71be8-2212-4d46-9f83-d7f2d2af3120" replace />} />
         <Route path="/court/board/:courtId" element={<CourtBoard />} />
         <Route path="/court/feed/:postId" element={<PostDetail />} />
         <Route path="/court/history" element={<CourtHistory />} />

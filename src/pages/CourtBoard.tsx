@@ -48,7 +48,8 @@ export default function CourtBoard() {
 
   const PICKLEBALL_CITI_ID = "836003fb-fbd7-429c-8973-67ac6766a511";
   const TILDA_STONE_ID = "2bf21943-2efc-43fe-bab4-9bb7693d4674";
-  const CENTERLINE_PICKLEBALL_ID = "d8f3c9e1-7b4a-4d2e-9f8c-1a2b3c4d5e6f"; // Replace with actual ID if different
+  const CENTERLINE_PICKLEBALL_ID = "d8f3c9e1-7b4a-4d2e-9f8c-1a2b3c4d5e6f";
+  const NORTH_ATTLEBORO_YMCA_ID = "51e71be8-2212-4d46-9f83-d7f2d2af3120";
 
   useEffect(() => {
     checkUser();
@@ -444,7 +445,7 @@ export default function CourtBoard() {
           </div>
         )}
 
-        {courtId !== PICKLEBALL_CITI_ID && court && (
+        {(courtId === NORTH_ATTLEBORO_YMCA_ID || (courtId !== PICKLEBALL_CITI_ID && court)) && (
           <div style={{ borderTop: '1px solid rgba(14, 76, 88, 0.15)', paddingTop: '1.5rem' }}>
             <JoinableRoundRobinEvents courtLocation={court.location || court.name} userId={currentUserId} />
           </div>
