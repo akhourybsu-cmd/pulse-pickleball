@@ -967,12 +967,18 @@ export default function RoundRobinDetail() {
 
     try {
       const before = { num_courts: event.num_courts };
-      const after = { num_courts: newCourts };
+      
+      // Calculate new number of rounds needed with the new court count
+      const newRounds = suggestRounds(players.length, newCourts, event.games_per_player || 3);
+      const after = { num_courts: newCourts, num_rounds: newRounds };
 
-      // Update event
+      // Update event with both courts and rounds
       const { error: updateError } = await supabase
         .from("round_robin_events")
-        .update({ num_courts: newCourts })
+        .update({ 
+          num_courts: newCourts,
+          num_rounds: newRounds
+        })
         .eq("id", event.id);
 
       if (updateError) throw updateError;
@@ -983,14 +989,15 @@ export default function RoundRobinDetail() {
         editor_id: userId,
         change_type: "courts_update",
         changes: { before, after },
-        reason: `Courts ${newCourts > event.num_courts ? 'increased' : 'decreased'} to ${newCourts}`,
+        reason: `Courts ${newCourts > event.num_courts ? 'increased' : 'decreased'} to ${newCourts}, rounds adjusted to ${newRounds}`,
       });
 
       // Regenerate from current round
       const fromRound = event.current_round || 1;
       await regenerateScheduleFromRound(fromRound);
 
-      toast.success(`Courts updated to ${newCourts}`);
+      toast.success(`Courts updated to ${newCourts} (${newRounds} rounds)`);
+      await fetchEventDetails();
     } catch (error: any) {
       toast.error("Failed to update courts");
       console.error(error);
@@ -1542,7 +1549,7 @@ export default function RoundRobinDetail() {
                     <Settings className="h-4 w-4 mr-2" />
                     Settings
                   </Button>
-                  {event.status !== 'completed' && (
+                  {event.status === 'draft' && (
                     <Button 
                       variant="outline" 
                       size="sm"
