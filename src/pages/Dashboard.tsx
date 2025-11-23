@@ -600,14 +600,14 @@ const Dashboard = () => {
           <CardContent className="p-6">
             <div className="flex flex-col md:flex-row gap-4 items-stretch">
               {/* Left: Edit Profile and Help & FAQ */}
-              <div className="flex-1 flex flex-col sm:flex-row gap-3">
+              <div className="flex-1 flex flex-col sm:flex-row gap-4">
                 <Button
                   size="lg" 
                   variant="subtle"
                   onClick={() => navigate("/profile/edit")}
-                  className="flex-1 rounded-lg gap-2"
+                  className="flex-1 rounded-xl gap-1.5 h-12"
                 >
-                  <UserCog className="w-4 h-4" />
+                  <UserCog className="w-4 h-4 stroke-[2.5]" />
                   Edit Profile
                 </Button>
 
@@ -615,9 +615,9 @@ const Dashboard = () => {
                   size="lg" 
                   variant="subtle"
                   onClick={() => navigate("/faq")}
-                  className="flex-1 rounded-lg gap-2"
+                  className="flex-1 rounded-xl gap-1.5 h-12"
                 >
-                  <HelpCircle className="w-4 h-4" />
+                  <HelpCircle className="w-4 h-4 stroke-[2.5]" />
                   Help & FAQ
                 </Button>
               </div>
