@@ -1610,9 +1610,9 @@ export default function RoundRobinDetail() {
         </div>
 
         <Tabs defaultValue="schedule" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-4">
-            <TabsTrigger value="schedule">Schedule</TabsTrigger>
-            <TabsTrigger value="players" className="flex items-center gap-2">
+          <TabsList className="grid w-full grid-cols-3 mb-4 h-auto">
+            <TabsTrigger value="schedule" className="whitespace-nowrap">Schedule</TabsTrigger>
+            <TabsTrigger value="players" className="flex items-center gap-2 whitespace-nowrap">
               <span>Players ({players.length})</span>
               {players.length > 0 && (
                 <div className="hidden sm:flex items-center gap-1">
@@ -1629,7 +1629,7 @@ export default function RoundRobinDetail() {
                 </div>
               )}
             </TabsTrigger>
-            <TabsTrigger value="standings">Standings</TabsTrigger>
+            <TabsTrigger value="standings" className="whitespace-nowrap">Standings</TabsTrigger>
           </TabsList>
 
           <TabsContent value="schedule" className="mt-4 space-y-4">
