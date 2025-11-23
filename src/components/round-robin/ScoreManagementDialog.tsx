@@ -154,7 +154,7 @@ export function ScoreManagementDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={handleClose}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="max-w-[95vw] sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Score & Match Management</DialogTitle>
             <DialogDescription>
@@ -287,7 +287,7 @@ export function ScoreManagementDialog({
 
                     {selectedMatchData && (
                       <>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div className="space-y-2">
                             <Label>Team A Score</Label>
                             <Input

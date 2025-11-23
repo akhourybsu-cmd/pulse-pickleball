@@ -108,7 +108,7 @@ export function EditEventDialog({ open, onOpenChange, event, onSave, playerCount
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] flex flex-col">
+      <DialogContent className="max-w-[95vw] sm:max-w-[500px] max-h-[90vh] flex flex-col">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle>Edit Event Settings</DialogTitle>
           <DialogDescription>
@@ -127,7 +127,7 @@ export function EditEventDialog({ open, onOpenChange, event, onSave, playerCount
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="date">Event Date</Label>
               <Input
@@ -193,7 +193,7 @@ export function EditEventDialog({ open, onOpenChange, event, onSave, playerCount
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="courts">Number of Courts</Label>
               <Input
