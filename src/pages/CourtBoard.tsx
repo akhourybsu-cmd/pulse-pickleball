@@ -79,6 +79,7 @@ export default function CourtBoard() {
   };
 
   const isTildaStone = courtId === TILDA_STONE_ID;
+  const isNorthAttleboro = courtId === NORTH_ATTLEBORO_YMCA_ID;
 
   const checkUserTildaStone = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -325,7 +326,7 @@ export default function CourtBoard() {
                     style={{ color: '#0E4C58', opacity: 0.8 }}
                   >
                     {isTildaStone ? "Attleboro, MA" : `${court.city}, ${court.state}`}
-                    {!isTildaStone && court.location && ` • ${court.location}`}
+                    {!isTildaStone && !isNorthAttleboro && court.location && ` • ${court.location}`}
                   </motion.p>
                 </div>
               </>
