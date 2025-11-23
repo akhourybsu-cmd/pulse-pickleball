@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { z } from "zod";
 import { MFAChallenge } from "@/components/auth/MFAChallenge";
@@ -17,6 +18,9 @@ const authSchema = z.object({
   email: z.string().trim().email("Invalid email address").max(255, "Email too long"),
   password: z.string().min(6, "Password must be at least 6 characters").max(72, "Password too long"),
   fullName: z.string().trim().min(1, "Name is required").max(100, "Name too long").optional(),
+  state: z.enum(["Massachusetts", "Rhode Island"], {
+    errorMap: () => ({ message: "Please select your state" }),
+  }).optional(),
 });
 
 const Auth = () => {
@@ -31,10 +35,10 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [selectedState, setSelectedState] = useState<"Massachusetts" | "Rhode Island" | "">("");
   const [showMFAChallenge, setShowMFAChallenge] = useState(false);
   const [showEmailMFA, setShowEmailMFA] = useState(false);
   const [mfaMethod, setMfaMethod] = useState<"authenticator" | "email" | "none">("none");
-  const [checkingLocation, setCheckingLocation] = useState(false);
   const [showBiometric, setShowBiometric] = useState(false);
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [showPasswordLogin, setShowPasswordLogin] = useState(false);
@@ -45,82 +49,18 @@ const Auth = () => {
   });
   const navigate = useNavigate();
 
-  const checkLocationAccess = async (): Promise<boolean> => {
-    return new Promise((resolve) => {
-      if (!navigator.geolocation) {
-        toast.error("Geolocation is not supported by your browser");
-        resolve(false);
-        return;
-      }
-
-      setCheckingLocation(true);
-      
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          const { latitude, longitude } = position.coords;
-          
-          try {
-            // Call server-side validation edge function
-            const { data, error } = await supabase.functions.invoke('validate-signup-location', {
-              body: { latitude, longitude }
-            });
-
-            setCheckingLocation(false);
-
-            if (error) {
-              console.error("Location validation error:", error);
-              toast.error("Unable to verify your location. Please try again.");
-              resolve(false);
-              return;
-            }
-
-            if (data.allowed) {
-              resolve(true);
-            } else {
-              toast.error(data.message || "Account creation is only available for Massachusetts and Rhode Island residents.");
-              resolve(false);
-            }
-          } catch (error) {
-            setCheckingLocation(false);
-            console.error("Location validation error:", error);
-            toast.error("Unable to verify your location. Please try again.");
-            resolve(false);
-          }
-        },
-        (error) => {
-          setCheckingLocation(false);
-          
-          if (error.code === error.PERMISSION_DENIED) {
-            toast.error("Location permission denied. You must allow location access to create an account.");
-          } else if (error.code === error.POSITION_UNAVAILABLE) {
-            toast.error("Location information unavailable. Please enable location services.");
-          } else {
-            toast.error("Unable to retrieve your location. Please try again.");
-          }
-          
-          resolve(false);
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0
-        }
-      );
-    });
-  };
-
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      // Validate input
-      const validationResult = authSchema.safeParse({
-        email,
-        password,
-        fullName: isLogin ? undefined : fullName,
-      });
-
+      // Validate based on mode
+      const validationData = isLogin 
+        ? { email, password }
+        : { email, password, fullName, state: selectedState };
+      
+      const validationResult = authSchema.safeParse(validationData);
+      
       if (!validationResult.success) {
         const firstError = validationResult.error.errors[0];
         toast.error(firstError.message);
@@ -128,101 +68,80 @@ const Auth = () => {
         return;
       }
 
-      if (isLogin) {
-        // Save the "stay signed in" preference BEFORE login
-        localStorage.setItem('pulse_persist_session', String(staySignedIn));
-        
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: validationResult.data.email,
-          password: validationResult.data.password,
-        });
-        
-        if (error) throw error;
-        
-        // Check user's MFA preference from profile (with timeout)
-        if (data.session) {
-          try {
-            // Add timeout to prevent hanging on slow profile queries
-            const profilePromise = supabase
-              .from("profiles")
-              .select("mfa_method")
-              .eq("id", data.user?.id)
-              .maybeSingle();
-
-            const timeoutPromise = new Promise((_, reject) => 
-              setTimeout(() => reject(new Error("Profile query timeout")), 3000)
-            );
-
-            const { data: profile } = await Promise.race([profilePromise, timeoutPromise]) as any;
-
-            const userMFAMethod = profile?.mfa_method || "none";
-            setMfaMethod(userMFAMethod as "authenticator" | "email" | "none");
-
-            if (userMFAMethod === "authenticator") {
-              const { data: factors } = await supabase.auth.mfa.listFactors();
-              const hasMFA = factors?.totp?.some((factor) => factor.status === "verified");
-              
-              if (hasMFA) {
-                setShowMFAChallenge(true);
-                setLoading(false);
-                return;
-              }
-            } else if (userMFAMethod === "email") {
-              setShowEmailMFA(true);
-              setLoading(false);
-              return;
-            }
-          } catch (err) {
-            // If profile query fails or times out, skip MFA check and proceed
-            console.warn("MFA check skipped due to error:", err);
-          }
-          
-          // No MFA enabled or MFA check failed, proceed to redirect path
-          toast.success("Logged in successfully!");
-          navigate(redirectPath);
-        }
-      } else {
-        // Sign-up validation: check email and password match
+      if (!isLogin) {
+        // Signup validations
         if (email !== confirmEmail) {
-          toast.error("Email addresses do not match");
+          toast.error("Email addresses must match");
           setLoading(false);
           return;
         }
+
         if (password !== confirmPassword) {
-          toast.error("Passwords do not match");
+          toast.error("Passwords must match");
           setLoading(false);
           return;
         }
 
-        // Check location before allowing signup
-        const locationAllowed = await checkLocationAccess();
-        if (!locationAllowed) {
+        if (!selectedState) {
+          toast.error("Please select your state");
           setLoading(false);
           return;
         }
+      }
 
-        const { error } = await supabase.auth.signUp({
-          email: validationResult.data.email,
-          password: validationResult.data.password,
+      // Save "stay signed in" preference
+      localStorage.setItem('pulse_persist_session', staySignedIn.toString());
+
+      if (isLogin) {
+        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (authError) throw authError;
+
+        // Check if MFA is enabled for this user
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('mfa_method')
+          .eq('id', authData.user?.id)
+          .maybeSingle();
+
+        if (profile?.mfa_method === 'authenticator') {
+          // Need to complete MFA challenge
+          setShowMFAChallenge(true);
+          setMfaMethod('authenticator');
+          return;
+        } else if (profile?.mfa_method === 'email') {
+          setShowEmailMFA(true);
+          setMfaMethod('email');
+          return;
+        }
+
+        toast.success("Logged in successfully!");
+        navigate(redirectPath);
+      } else {
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email,
+          password,
           options: {
             data: {
-              full_name: validationResult.data.fullName,
-            },
-            emailRedirectTo: `${window.location.origin}${redirectPath}`,
-          },
+              full_name: fullName,
+              state: selectedState,
+            }
+          }
         });
-        if (error) throw error;
-        toast.success("Account created! Please check your email to verify your account.");
-        setIsLogin(true);
-        setEmail("");
-        setConfirmEmail("");
-        setPassword("");
-        setConfirmPassword("");
-        setFullName("");
+
+        if (authError) throw authError;
+
+        if (authData.user) {
+          toast.success("Account created! Welcome to PULSE!");
+          navigate(redirectPath);
+        }
       }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "An error occurred";
-      toast.error(errorMessage);
+    } catch (error: any) {
+      console.error("Auth error:", error);
+      toast.error(error.message || "Authentication failed");
     } finally {
       setLoading(false);
     }
@@ -400,17 +319,37 @@ const Auth = () => {
             ) : (
               <form onSubmit={handleAuth} className="space-y-4">
                 {!isLogin && (
-                  <div className="space-y-2">
-                    <Label htmlFor="fullName">Full Name</Label>
-                    <Input
-                      id="fullName"
-                      type="text"
-                      value={fullName}
-                      onChange={(e) => setFullName(e.target.value)}
-                      required
-                      placeholder="Enter your full name"
-                    />
-                  </div>
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="fullName">Full Name</Label>
+                      <Input
+                        id="fullName"
+                        type="text"
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        required
+                        placeholder="Enter your full name"
+                        disabled={loading}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="state">State</Label>
+                      <Select 
+                        value={selectedState} 
+                        onValueChange={(value) => setSelectedState(value as "Massachusetts" | "Rhode Island")}
+                        disabled={loading}
+                      >
+                        <SelectTrigger id="state">
+                          <SelectValue placeholder="Select your state" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Massachusetts">Massachusetts</SelectItem>
+                          <SelectItem value="Rhode Island">Rhode Island</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </>
                 )}
                 
                 <div className="space-y-2">
@@ -427,6 +366,7 @@ const Auth = () => {
                     }}
                     required
                     placeholder="your@email.com"
+                    disabled={loading}
                   />
                 </div>
 
@@ -441,6 +381,7 @@ const Auth = () => {
                       required
                       placeholder="your@email.com"
                       className={confirmEmail && email !== confirmEmail ? "border-red-500" : ""}
+                      disabled={loading}
                     />
                     {confirmEmail && email !== confirmEmail && (
                       <p className="text-xs text-red-500">Email addresses must match</p>
@@ -458,6 +399,7 @@ const Auth = () => {
                     required
                     placeholder="••••••••"
                     minLength={6}
+                    disabled={loading}
                   />
                 </div>
 
@@ -473,6 +415,7 @@ const Auth = () => {
                       placeholder="••••••••"
                       minLength={6}
                       className={confirmPassword && password !== confirmPassword ? "border-red-500" : ""}
+                      disabled={loading}
                     />
                     {confirmPassword && password !== confirmPassword && (
                       <p className="text-xs text-red-500">Passwords must match</p>
@@ -507,22 +450,9 @@ const Auth = () => {
                   </>
                 )}
 
-                <Button type="submit" className="w-full" disabled={loading || checkingLocation}>
-                  {checkingLocation ? "Checking location..." : loading ? "Loading..." : isLogin ? "Sign In" : "Sign Up"}
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? "Please wait..." : isLogin ? "Sign In" : "Sign Up"}
                 </Button>
-                
-                {!isLogin && (
-                  <div className="bg-muted/50 border border-border rounded-lg p-3 space-y-1">
-                    <p className="text-sm font-medium text-foreground">
-                      Location Verification Required
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      PULSE is designed for pickleball players in Massachusetts and Rhode Island. 
-                      Location access is only required during sign-up to verify eligibility. 
-                      You will not be asked for location access again after creating your account.
-                    </p>
-                  </div>
-                )}
 
                 <div className="text-center text-sm">
                   <button

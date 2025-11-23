@@ -1,6 +1,17 @@
 import { useState, useRef, useEffect } from "react";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 
 interface SwipeToConfirmProps {
   onConfirm: () => void;
@@ -19,8 +30,12 @@ const SwipeToConfirm = ({
   const [progress, setProgress] = useState(0);
   const [isConfirmed, setIsConfirmed] = useState(false);
   const [error, setError] = useState("");
+  const [showDesktopDialog, setShowDesktopDialog] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const handleRef = useRef<HTMLDivElement>(null);
+  
+  // Detect if device supports touch
+  const isTouchDevice = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
 
   const handleStart = (clientX: number) => {
     if (isConfirmed) return;
@@ -112,6 +127,67 @@ const SwipeToConfirm = ({
     }
   }, [onError]);
 
+  const handleDesktopConfirm = async () => {
+    setShowDesktopDialog(false);
+    setIsConfirmed(true);
+    try {
+      await onConfirm();
+    } catch (err: any) {
+      setError(err.message || "An error occurred");
+      setIsConfirmed(false);
+      if (onError) {
+        onError(err.message || "An error occurred");
+      }
+    }
+  };
+
+  // Desktop: Show button with confirmation dialog
+  if (!isTouchDevice) {
+    return (
+      <div className="space-y-2">
+        <Button
+          onClick={() => setShowDesktopDialog(true)}
+          disabled={isConfirmed}
+          className="w-full h-16 text-lg font-semibold"
+          size="lg"
+        >
+          {isConfirmed ? (
+            <>
+              <Check className="w-5 h-5 mr-2" />
+              {successText}
+            </>
+          ) : (
+            text
+          )}
+        </Button>
+
+        <AlertDialog open={showDesktopDialog} onOpenChange={setShowDesktopDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirm Match</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to confirm this match? This action will record the match results and update player ratings.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDesktopConfirm}>
+                Confirm Match
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {error && (
+          <p className="text-sm text-destructive text-center">
+            {error}
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  // Mobile/Touch: Show swipe interface
   return (
     <div className="space-y-2">
       <div

@@ -108,7 +108,7 @@ export function EditEventDialog({ open, onOpenChange, event, onSave, playerCount
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[95vw] sm:max-w-[500px] max-h-[90vh] flex flex-col">
+      <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-[500px] max-h-[90vh] flex flex-col">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle>Edit Event Settings</DialogTitle>
           <DialogDescription>

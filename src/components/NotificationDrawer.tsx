@@ -34,6 +34,7 @@ export function NotificationDrawer({
 
   const handleCardClick = (notification: Notification) => {
     onSelectNotification(notification.id);
+    onClose(); // Close drawer when notification is clicked
     console.log("Go to", notification.link);
   };
 
