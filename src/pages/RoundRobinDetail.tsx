@@ -24,7 +24,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Play, Trophy, AlertCircle, Settings, Trash2, Ban, CheckCircle, Edit, Edit3, Bell, Monitor, ExternalLink, Share2, Users, Calendar, MapPin, Zap } from "lucide-react";
+import { Play, Trophy, AlertCircle, Settings, Trash2, Ban, CheckCircle, Edit, Edit3, Bell, Monitor, ExternalLink, Share2, Users, Calendar, MapPin, Zap, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 import { format, parseISO } from "date-fns";
@@ -1551,14 +1551,37 @@ export default function RoundRobinDetail() {
                     Settings
                   </Button>
                   {event.status === 'draft' && (
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => setCourtsRoundsOpen(true)}
-                    >
-                      <Edit className="h-4 w-4 mr-2" />
-                      Courts & Games
-                    </Button>
+                    <>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setCourtsRoundsOpen(true)}
+                      >
+                        <Edit className="h-4 w-4 mr-2" />
+                        Courts & Games
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          if (!confirm("Regenerate the entire schedule from scratch? This will reset all court assignments to match current settings.")) {
+                            return;
+                          }
+                          try {
+                            toast.loading("Regenerating schedule...");
+                            await regenerateScheduleFromRound(1);
+                            await fetchEventDetails();
+                            toast.success("Schedule regenerated successfully");
+                          } catch (error: any) {
+                            toast.error("Failed to regenerate schedule");
+                            console.error(error);
+                          }
+                        }}
+                      >
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Sync Schedule
+                      </Button>
+                    </>
                   )}
                 </>
               )}
