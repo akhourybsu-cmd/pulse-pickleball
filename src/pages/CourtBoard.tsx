@@ -79,6 +79,7 @@ export default function CourtBoard() {
   };
 
   const isTildaStone = courtId === TILDA_STONE_ID;
+  const isNorthAttleboro = courtId === NORTH_ATTLEBORO_YMCA_ID;
 
   const checkUserTildaStone = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -317,16 +318,18 @@ export default function CourtBoard() {
                       style={{ display: 'block' }}
                     />
                   </motion.h1>
-                  <motion.p
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.5, delay: 0.3 }}
-                    className="text-sm md:text-lg leading-relaxed break-words"
-                    style={{ color: '#0E4C58', opacity: 0.8 }}
-                  >
-                    {isTildaStone ? "Attleboro, MA" : `${court.city}, ${court.state}`}
-                    {!isTildaStone && court.location && ` • ${court.location}`}
-                  </motion.p>
+                  {!isNorthAttleboro && (
+                    <motion.p
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ duration: 0.5, delay: 0.3 }}
+                      className="text-sm md:text-lg leading-relaxed break-words"
+                      style={{ color: '#0E4C58', opacity: 0.8 }}
+                    >
+                      {isTildaStone ? "Attleboro, MA" : `${court.city}, ${court.state}`}
+                      {!isTildaStone && court.location && ` • ${court.location}`}
+                    </motion.p>
+                  )}
                 </div>
               </>
             )}
