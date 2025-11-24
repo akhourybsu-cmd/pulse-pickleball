@@ -41,8 +41,9 @@ All colors MUST be HSL.
 
     --radius: 0.75rem;
 
-    --gradient-hero: linear-gradient(135deg, hsl(195 60% 15%), hsl(74 65% 52%));
-    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%), hsl(195 10% 98%));
+    /* Light mode gradients for depth */
+    --gradient-hero: linear-gradient(135deg, #F8FCF4 0%, #FFFFFF 100%);
+    --gradient-card: linear-gradient(180deg, #FFFFFF 0%, #F9FBFC 100%);
     
     --shadow-glow: 0 0 40px hsl(74 65% 52% / 0.3);
     --shadow-card: 0 4px 20px hsl(195 60% 12% / 0.08);
@@ -106,8 +107,9 @@ All colors MUST be HSL.
     --input: 0 0% 100% / 0.06;
     --ring: 85 64% 61%;
 
-    --gradient-hero: radial-gradient(circle at top left, hsl(204 41% 14%) 0%, hsl(207 44% 10%) 80%);
-    --gradient-card: linear-gradient(180deg, hsl(206 34% 12%), hsl(207 44% 10%));
+    /* Dark mode gradients for depth */
+    --gradient-hero: linear-gradient(135deg, #0E1013 0%, #1A1D22 100%);
+    --gradient-card: linear-gradient(180deg, #1A1D22 0%, #15171A 100%);
     
     --shadow-glow: 0 0 40px hsl(85 64% 61% / 0.5);
     --shadow-card: 0 4px 20px hsl(207 44% 5% / 0.6);
