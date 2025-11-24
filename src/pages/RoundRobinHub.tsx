@@ -120,17 +120,17 @@ export default function RoundRobinHub() {
   };
 
   const getCardBackgroundClass = (status: string) => {
-    const baseClasses = "cursor-pointer hover:shadow-xl transition-all h-full";
+    const baseClasses = "cursor-pointer hover:shadow-xl transition-all duration-300 h-full relative overflow-hidden group";
     
     switch(status) {
       case 'draft':
-        return `${baseClasses} bg-card border-border/60`;
+        return `${baseClasses} bg-gradient-to-br from-card to-card/95 border-border/60 hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)]`;
       case 'live':
-        return `${baseClasses} bg-gradient-to-br from-primary/5 to-card border-primary/30 hover:border-primary/50`;
+        return `${baseClasses} bg-gradient-to-br from-primary/5 via-card to-card/95 border-primary/30 hover:border-primary/50 hover:shadow-[0_8px_30px_rgba(169,207,70,0.25)]`;
       case 'completed':
-        return `${baseClasses} bg-card border-border`;
+        return `${baseClasses} bg-gradient-to-br from-card to-muted/30 border-border hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)]`;
       default:
-        return `${baseClasses} bg-card border-border`;
+        return `${baseClasses} bg-gradient-to-br from-card to-card/95 border-border`;
     }
   };
 
@@ -158,14 +158,20 @@ export default function RoundRobinHub() {
 
   const EventCard = ({ event, isOrganizer }: { event: RoundRobinEvent; isOrganizer: boolean }) => (
     <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
       whileHover={{ y: -4, scale: event.status === 'live' ? 1.03 : 1.02 }}
-      transition={{ duration: 0.2 }}
     >
       <Card 
         variant={event.status === 'live' ? 'pulse-accent' : 'default'}
         className={getCardBackgroundClass(event.status)}
         onClick={() => navigate(`/round-robin/${event.id}`)}
       >
+        {/* Subtle hover glow overlay */}
+        {event.status === 'live' && (
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+        )}
         <CardHeader className="space-y-3">
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1 min-w-0">
@@ -248,7 +254,12 @@ export default function RoundRobinHub() {
   const currentEvents = activeTab === "my" ? myEvents : participatingEvents;
 
   return (
-    <div className="min-h-screen bg-[hsl(var(--page-bg))]">
+    <div 
+      className="min-h-screen relative overflow-hidden"
+      style={{
+        background: 'linear-gradient(to bottom, hsl(var(--page-bg)), hsl(var(--card)))',
+      }}
+    >
       {/* Top Nav */}
       <header className="sticky top-0 z-10 bg-secondary border-b shadow-sm">
         <div className="container mx-auto px-4 py-3 sm:py-4">
@@ -263,31 +274,45 @@ export default function RoundRobinHub() {
       </header>
 
       {/* Content Container */}
-      <main className="container max-w-[1200px] mx-auto px-6 lg:px-10 py-6 space-y-6">
-        {/* Hero Strip */}
+      <main className="container max-w-[1200px] mx-auto px-6 lg:px-10 py-6 space-y-6 relative z-10">
+        {/* Hero Strip with Glow */}
         <motion.div 
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-card border border-border rounded-xl p-6 lg:p-8 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4"
+          className="relative"
         >
-          <div className="space-y-1.5">
-            <h2 className="text-2xl lg:text-3xl font-bold text-foreground flex items-center gap-2">
-              <Sparkles className="h-6 w-6 text-primary" />
-              Your Round Robin Events
-            </h2>
-            <p className="text-muted-foreground text-sm lg:text-base">
-              Create, manage, and join events for your courts.
-            </p>
-          </div>
-          <Button 
-            onClick={() => navigate("/round-robin/create")}
-            size="lg"
-            className="shrink-0 shadow-md hover:shadow-lg transition-all"
-            data-tour="create-event-btn"
+          {/* Pulse Green Glow Background */}
+          <div 
+            className="absolute inset-0 -z-10 rounded-xl blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700"
+            style={{
+              background: 'radial-gradient(circle at center, rgba(169,207,70,0.22) 0%, transparent 70%)',
+            }}
+          />
+          <div 
+            className="bg-gradient-to-br from-card via-card to-card/95 border border-border rounded-xl p-6 lg:p-8 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 shadow-sm hover:shadow-md transition-all duration-300 group"
+            style={{
+              background: 'linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--card)/0.98) 100%)',
+            }}
           >
-            <Plus className="h-5 w-5 mr-2" />
-            New Event
-          </Button>
+            <div className="space-y-1.5">
+              <h2 className="text-2xl lg:text-3xl font-bold text-foreground flex items-center gap-2">
+                <Sparkles className="h-6 w-6 text-primary" />
+                Your Round Robin Events
+              </h2>
+              <p className="text-muted-foreground text-sm lg:text-base">
+                Create, manage, and join events for your courts.
+              </p>
+            </div>
+            <Button 
+              onClick={() => navigate("/round-robin/create")}
+              size="lg"
+              className="shrink-0 shadow-md hover:shadow-lg transition-all hover:scale-105"
+              data-tour="create-event-btn"
+            >
+              <Plus className="h-5 w-5 mr-2" />
+              New Event
+            </Button>
+          </div>
         </motion.div>
 
         {/* Tab Switcher */}
@@ -339,8 +364,15 @@ export default function RoundRobinHub() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" data-tour="upcoming-events">
-                  {myEvents.map((event) => (
-                    <EventCard key={event.id} event={event} isOrganizer={true} />
+                  {myEvents.map((event, index) => (
+                    <motion.div
+                      key={event.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: index * 0.05 }}
+                    >
+                      <EventCard event={event} isOrganizer={true} />
+                    </motion.div>
                   ))}
                 </div>
               )}
@@ -372,8 +404,15 @@ export default function RoundRobinHub() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" data-tour="past-events">
-                  {participatingEvents.map((event) => (
-                    <EventCard key={event.id} event={event} isOrganizer={false} />
+                  {participatingEvents.map((event, index) => (
+                    <motion.div
+                      key={event.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: index * 0.05 }}
+                    >
+                      <EventCard event={event} isOrganizer={false} />
+                    </motion.div>
                   ))}
                 </div>
               )}
@@ -393,16 +432,24 @@ export default function RoundRobinHub() {
         </Tabs>
       </main>
 
-      {/* Floating Action Button */}
+      {/* Floating Action Button with Pulse */}
       <motion.button
         initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
+        animate={{ 
+          scale: 1,
+        }}
+        whileHover={{ scale: 1.1 }}
         transition={{ delay: 0.5, type: "spring" }}
         onClick={() => navigate("/round-robin/create")}
-        className="fixed bottom-8 right-8 h-14 w-14 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center group"
+        className="fixed bottom-8 right-8 h-14 w-14 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center group relative"
         title="Create Event"
+        style={{
+          animation: 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        }}
       >
-        <Plus className="h-6 w-6 group-hover:scale-110 transition-transform" />
+        {/* Pulsing ring effect */}
+        <span className="absolute inset-0 rounded-full bg-primary/40 animate-ping" style={{ animationDuration: '3s' }} />
+        <Plus className="h-6 w-6 group-hover:scale-110 transition-transform relative z-10" />
       </motion.button>
 
       {/* Leave Event Dialog */}
