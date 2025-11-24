@@ -110,7 +110,7 @@ const Events = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-[hsl(var(--page-bg))]">
       <nav className="border-b bg-secondary">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <Button variant="ghost" onClick={() => navigate("/dashboard")}>

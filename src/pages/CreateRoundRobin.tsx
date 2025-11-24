@@ -238,7 +238,7 @@ export default function CreateRoundRobin() {
     : name.trim() && eventDateTime && registrationDeadline && maxPlayers >= 4 && parseInt(numCourts) >= 1 && parseInt(gamesPerPlayer) >= 1;
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-[hsl(var(--page-bg))] pb-20">
       <header className="sticky top-0 z-10 bg-secondary border-b">
         <div className="container mx-auto px-4 py-3 sm:py-4">
           <div className="flex items-center justify-between gap-2 sm:gap-4">

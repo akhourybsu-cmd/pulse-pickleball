@@ -88,7 +88,7 @@ export default function Tournaments() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-[hsl(var(--page-bg))]">
       <PageHeader userId={userId} />
       
       {/* Hero Section */}
