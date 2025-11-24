@@ -76,6 +76,7 @@ export function EventTile({
 
   return (
     <Card
+      variant={event.user_status === "attending" || event.user_status === "checked_in" ? "pulse-accent" : "default"}
       className="flex-shrink-0 w-[280px] sm:w-[320px] cursor-pointer transition-all hover:shadow-lg group"
       onClick={() => onClick(event.id)}
     >
@@ -96,6 +97,7 @@ export function EventTile({
       </CardHeader>
 
       <CardContent className="space-y-4">
+        <div className="pt-3 border-t border-border/40"></div>
         <div className="space-y-2 text-sm text-muted-foreground">
           <div className="flex items-center gap-2">
             <Calendar className="w-4 h-4 flex-shrink-0" />

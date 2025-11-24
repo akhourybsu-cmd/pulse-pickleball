@@ -36,6 +36,9 @@ All colors MUST be HSL.
     --input: 195 25% 82%;
     --ring: 74 65% 52%;
 
+    /* Pulse Accent Bar for Interactive Cards */
+    --pulse-accent-bar: 4px;
+
     --radius: 0.75rem;
 
     --gradient-hero: linear-gradient(135deg, hsl(195 60% 15%), hsl(74 65% 52%));
@@ -74,6 +77,7 @@ All colors MUST be HSL.
   }
 
   .dark {
+    --page-bg: 207 44% 10%; /* Dark mode uses existing dark background */
     --background: 207 44% 10%;
     --foreground: 191 38% 94%;
 
