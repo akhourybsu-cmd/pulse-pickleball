@@ -124,11 +124,11 @@ export default function RoundRobinHub() {
     
     switch(status) {
       case 'draft':
-        return `${baseClasses} bg-card/50 border-primary/30 dark:from-primary/10 dark:to-background dark:border-primary/40`;
+        return `${baseClasses} bg-card border-border/60`;
       case 'live':
-        return `${baseClasses} bg-gradient-to-br from-primary/5 to-card border-primary/30 hover:border-primary/50 border-l-4 border-l-primary dark:from-primary/10 dark:to-background dark:border-primary/40`;
+        return `${baseClasses} bg-gradient-to-br from-primary/5 to-card border-primary/30 hover:border-primary/50`;
       case 'completed':
-        return `${baseClasses} bg-card border-border dark:from-muted dark:to-background dark:border-border`;
+        return `${baseClasses} bg-card border-border`;
       default:
         return `${baseClasses} bg-card border-border`;
     }
@@ -162,6 +162,7 @@ export default function RoundRobinHub() {
       transition={{ duration: 0.2 }}
     >
       <Card 
+        variant={event.status === 'live' ? 'pulse-accent' : 'default'}
         className={getCardBackgroundClass(event.status)}
         onClick={() => navigate(`/round-robin/${event.id}`)}
       >
@@ -177,8 +178,9 @@ export default function RoundRobinHub() {
             {getStatusBadge(event.status)}
           </div>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex gap-4 text-sm text-muted-foreground">
+          <CardContent className="space-y-3">
+            <div className="pt-3 border-t border-border/40"></div>
+            <div className="flex gap-4 text-sm text-muted-foreground">
             <div className="flex items-center gap-1.5">
               <Trophy className="h-4 w-4 shrink-0" />
               <span className="truncate">Round {event.current_round}/{event.num_rounds}</span>
@@ -246,7 +248,7 @@ export default function RoundRobinHub() {
   const currentEvents = activeTab === "my" ? myEvents : participatingEvents;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-[hsl(var(--page-bg))]">
       {/* Top Nav */}
       <header className="sticky top-0 z-10 bg-secondary border-b shadow-sm">
         <div className="container mx-auto px-4 py-3 sm:py-4">
