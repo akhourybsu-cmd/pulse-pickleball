@@ -482,7 +482,7 @@ export default function BrowseEvents() {
                         <Card className="cursor-pointer rounded-2xl border-2 border-border shadow-lg hover:shadow-[0_2px_6px_rgba(0,0,0,0.05),0_4px_12px_rgba(169,220,61,0.15)] transition-all duration-300 h-full bg-card">
                           <CardHeader className="pb-3">
                             <div className="flex items-start justify-between gap-2 mb-2">
-                              <CardTitle className="text-xl line-clamp-1">{event.name}</CardTitle>
+                              <CardTitle className="text-xl line-clamp-2 break-words">{event.name}</CardTitle>
                               {event.is_registered ? (
                                 <Badge variant={event.my_status === "confirmed" ? "default" : "secondary"}>
                                   {event.my_status === "confirmed" ? "Registered" : "Waitlisted"}

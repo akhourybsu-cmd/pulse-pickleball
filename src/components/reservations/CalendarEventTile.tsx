@@ -105,7 +105,7 @@ export function CalendarEventTile({
     >
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="font-bold text-base leading-tight flex-1 bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent group-hover:from-primary/90 group-hover:to-primary/60 transition-all">
+          <h3 className="font-bold text-base leading-tight flex-1 line-clamp-2 break-words bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent group-hover:from-primary/90 group-hover:to-primary/60 transition-all">
             {event.title}
           </h3>
           <div className="flex flex-col gap-1.5 items-end">

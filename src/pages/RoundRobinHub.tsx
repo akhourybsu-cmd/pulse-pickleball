@@ -174,8 +174,8 @@ export default function RoundRobinHub() {
         )}
         <CardHeader className="space-y-3">
           <div className="flex items-start justify-between gap-3">
-            <div className="flex-1 min-w-0">
-              <CardTitle className="text-lg truncate">{event.name}</CardTitle>
+          <div className="flex-1 min-w-0">
+              <CardTitle className="text-lg line-clamp-2 break-words">{event.name}</CardTitle>
               <CardDescription className="flex items-center gap-2 mt-2">
                 <Calendar className="h-3.5 w-3.5 shrink-0" />
                 <span className="truncate">{format(parseISO(event.date + 'T00:00:00'), 'PP')}</span>
