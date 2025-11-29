@@ -65,6 +65,7 @@ import AdminTestAccounts from "./pages/AdminTestAccounts";
 import AdminBiometrics from "./pages/AdminBiometrics";
 import { RoundRobinBanner } from "@/components/RoundRobinBanner";
 import { ScrollToTop } from "@/components/ScrollToTop";
+import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 
 const queryClient = new QueryClient();
 
@@ -74,6 +75,7 @@ const AppContent = () => {
     <>
       <ScrollToTop />
       <RoundRobinBanner />
+      <PWAInstallPrompt />
       <Routes>
         <Route path="/" element={<Index />} />
         <Route path="/auth" element={<Auth />} />
