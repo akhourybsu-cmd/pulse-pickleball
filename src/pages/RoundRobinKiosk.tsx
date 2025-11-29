@@ -353,7 +353,7 @@ export default function RoundRobinKiosk() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[hsl(var(--primary))] to-[hsl(var(--primary))]/80 flex items-center justify-center">
+      <div className="min-h-screen bg-[#1C2127] flex items-center justify-center">
         <div className="text-white text-2xl">Loading kiosk mode...</div>
       </div>
     );
@@ -361,7 +361,7 @@ export default function RoundRobinKiosk() {
 
   if (!event) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[hsl(var(--primary))] to-[hsl(var(--primary))]/80 flex items-center justify-center">
+      <div className="min-h-screen bg-[#1C2127] flex items-center justify-center">
         <div className="text-white text-2xl">Event not found</div>
       </div>
     );
@@ -369,7 +369,7 @@ export default function RoundRobinKiosk() {
 
   if (event.status === "draft") {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[hsl(var(--primary))] to-[hsl(var(--primary))]/80 flex items-center justify-center">
+      <div className="min-h-screen bg-[#1C2127] flex items-center justify-center">
         <div className="text-center text-white">
           <h1 className="text-4xl font-bold mb-4">{event.name}</h1>
           <p className="text-2xl">Event has not started yet</p>
@@ -385,15 +385,15 @@ export default function RoundRobinKiosk() {
 
   return (
     <>
-      <div className="min-h-screen bg-background flex flex-col">
+      <div className="min-h-screen bg-[#1C2127] flex flex-col">
         
         {/* Sticky Header Bar */}
-        <div className="sticky top-0 z-50 bg-secondary border-b border-border shadow-md px-6 py-3 flex items-center justify-between">
+        <div className="sticky top-0 z-50 bg-[#151a1f] border-b border-[#2a3038] shadow-xl px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <img src={pulseLogo} alt="Pulse" className="h-10 w-auto" />
             <div>
-              <h1 className="text-lg font-bold text-secondary-foreground">{event?.name || "Round Robin"}</h1>
-              <p className="text-sm text-secondary-foreground/70">
+              <h1 className="text-lg font-bold text-white">{event?.name || "Round Robin"}</h1>
+              <p className="text-sm text-gray-400">
                 Round {event?.current_round || 1} of {event?.num_rounds || 1}
               </p>
             </div>
@@ -405,7 +405,7 @@ export default function RoundRobinKiosk() {
               size="sm" 
               variant="outline" 
               onClick={handleExitKiosk}
-              className="gap-2"
+              className="gap-2 border-[#FFB627] text-[#FFB627] hover:bg-[#FFB627]/10"
             >
               <Lock className="h-4 w-4" />
               Exit Kiosk
@@ -419,25 +419,28 @@ export default function RoundRobinKiosk() {
           {/* Left Panel: Current Round Courts */}
           <div className="lg:col-span-2 space-y-4">
             <div className="flex items-center gap-3">
-              <h2 className="text-3xl font-bold text-foreground">Current Round</h2>
-              <Badge variant="secondary" className="text-base px-3 py-1">
+              <h2 className="text-3xl font-bold text-white">Current Round</h2>
+              <Badge variant="secondary" className="text-base px-3 py-1 bg-[#FFB627] text-[#151a1f] border-0">
                 Round {currentRound} of {event.num_rounds}
               </Badge>
             </div>
             
             <div className="grid gap-4">
               {currentRoundMatches.map((match) => (
-                <Card key={`${match.id}-${match.court_no}`} className="bg-card/95 backdrop-blur border-border shadow-lg">
+                <Card key={`${match.id}-${match.court_no}`} className="bg-[#23282f] backdrop-blur border-[#2a3038] shadow-xl">
                   <div className="p-6">
-                    <h3 className="text-2xl font-bold text-foreground mb-4">Court {match.court_no}</h3>
+                    <h3 className="text-2xl font-bold text-[#FFB627] mb-4 flex items-center gap-2">
+                      <div className="w-1 h-6 bg-[#FFB627] rounded-full"></div>
+                      Court {match.court_no}
+                    </h3>
                     
                     <div className="flex items-center justify-between gap-4">
                       {/* Team A */}
                       <div className="flex-1">
-                        <div className="text-lg font-semibold text-foreground">
+                        <div className="text-lg font-semibold text-white">
                           {getPlayerName(match.a1_profile)}
                         </div>
-                        <div className="text-lg font-semibold text-foreground">
+                        <div className="text-lg font-semibold text-white">
                           {getPlayerName(match.a2_profile)}
                         </div>
                       </div>
@@ -446,25 +449,25 @@ export default function RoundRobinKiosk() {
                       <div className="text-center min-w-[120px]">
                         {match.team1_score !== null && match.team2_score !== null ? (
                           <div>
-                            <div className="text-sm font-medium text-muted-foreground mb-1">Final</div>
-                            <div className="text-3xl font-bold text-foreground">
+                            <div className="text-sm font-medium text-gray-400 mb-1">Final</div>
+                            <div className="text-3xl font-bold text-white">
                               {match.team1_score} – {match.team2_score}
                             </div>
                           </div>
                         ) : (
                           <div>
-                            <div className="text-2xl font-bold text-secondary-foreground">VS</div>
-                            <div className="text-sm font-medium text-secondary-foreground mt-1">In Progress</div>
+                            <div className="text-2xl font-bold text-[#FFB627]">VS</div>
+                            <div className="text-sm font-medium text-[#FFB627] mt-1">In Progress</div>
                           </div>
                         )}
                       </div>
 
                       {/* Team B */}
                       <div className="flex-1 text-right">
-                        <div className="text-lg font-semibold text-foreground">
+                        <div className="text-lg font-semibold text-white">
                           {getPlayerName(match.b1_profile)}
                         </div>
-                        <div className="text-lg font-semibold text-foreground">
+                        <div className="text-lg font-semibold text-white">
                           {getPlayerName(match.b2_profile)}
                         </div>
                       </div>
@@ -479,9 +482,9 @@ export default function RoundRobinKiosk() {
           <div className="space-y-4">
             {/* Top 3 Leaderboard */}
             {standings.length >= 3 && (
-              <Card className="bg-white/95 backdrop-blur border-0 shadow-lg overflow-hidden">
-                <div className="bg-gradient-to-br from-amber-500 to-amber-600 p-4">
-                  <div className="flex items-center gap-2 text-white">
+              <Card className="bg-[#23282f] backdrop-blur border-[#2a3038] shadow-xl overflow-hidden">
+                <div className="bg-gradient-to-br from-[#FFB627] to-[#ff9f00] p-4">
+                  <div className="flex items-center gap-2 text-[#151a1f]">
                     <Trophy className="w-5 h-5" />
                     <h3 className="text-lg font-bold">Top 3 Leaders</h3>
                   </div>
@@ -493,30 +496,30 @@ export default function RoundRobinKiosk() {
                         key={row.player_id} 
                         className={`p-3 rounded-lg border-2 ${
                           idx === 0 
-                            ? 'bg-amber-50 border-amber-400' 
+                            ? 'bg-[#FFB627]/10 border-[#FFB627]' 
                             : idx === 1
-                            ? 'bg-slate-50 border-slate-400'
-                            : 'bg-orange-50 border-orange-400'
+                            ? 'bg-gray-500/10 border-gray-400'
+                            : 'bg-orange-500/10 border-orange-400'
                         }`}
                       >
                         <div className="flex items-center gap-3">
                           <div className={`text-2xl ${
                             idx === 0 
-                              ? 'text-amber-600' 
+                              ? 'text-[#FFB627]' 
                               : idx === 1
-                              ? 'text-slate-600'
-                              : 'text-orange-600'
+                              ? 'text-gray-400'
+                              : 'text-orange-400'
                           }`}>
                             {idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉'}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="font-semibold text-sm truncate text-[#083A40]">
+                            <div className="font-semibold text-sm truncate text-white">
                               {row.player_name}
                             </div>
                             <div className="flex gap-3 text-xs mt-1">
-                              <span className="text-green-600 font-bold">{row.wins}W</span>
-                              <span className="text-muted-foreground">{row.losses}L</span>
-                              <span className={`font-bold ${row.point_diff > 0 ? 'text-green-600' : row.point_diff < 0 ? 'text-red-600' : 'text-muted-foreground'}`}>
+                              <span className="text-[#FFB627] font-bold">{row.wins}W</span>
+                              <span className="text-gray-400">{row.losses}L</span>
+                              <span className={`font-bold ${row.point_diff > 0 ? 'text-[#FFB627]' : row.point_diff < 0 ? 'text-red-400' : 'text-gray-400'}`}>
                                 {row.point_diff > 0 ? '+' : ''}{row.point_diff}
                               </span>
                             </div>
@@ -531,11 +534,11 @@ export default function RoundRobinKiosk() {
 
             {/* Next Round Preview */}
             {!isLastRound && nextRoundMatches.length > 0 && (
-              <Card className="bg-white/95 backdrop-blur border-0 shadow-lg">
+              <Card className="bg-[#23282f] backdrop-blur border-[#2a3038] shadow-xl">
                 <div className="p-6">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-xl font-bold text-[#083A40]">Round {currentRound + 1} Preview</h3>
-                    <div className="flex items-center gap-2 text-[#083A40]/60">
+                    <h3 className="text-xl font-bold text-white">Round {currentRound + 1} Preview</h3>
+                    <div className="flex items-center gap-2 text-gray-400">
                       <Clock className="w-4 h-4" />
                       <span className="text-sm font-medium">{currentTime.toLocaleTimeString()}</span>
                     </div>
@@ -543,11 +546,11 @@ export default function RoundRobinKiosk() {
                   
                   <div className="space-y-3">
                     {nextRoundMatches.map((match) => (
-                      <div key={`next-${match.id}`} className="p-3 bg-[#F8FFF0] rounded-lg border border-[#0B3F45]/10">
-                        <div className="text-xs font-bold text-[#0B3F45] mb-1">C{match.court_no}</div>
-                        <div className="text-sm text-[#083A40]">
+                      <div key={`next-${match.id}`} className="p-3 bg-[#2a3038] rounded-lg border border-[#FFB627]/20">
+                        <div className="text-xs font-bold text-[#FFB627] mb-1">C{match.court_no}</div>
+                        <div className="text-sm text-white">
                           {getPlayerName(match.a1_profile)} / {getPlayerName(match.a2_profile)}
-                          <span className="text-[#0B3F45] mx-2">vs</span>
+                          <span className="text-gray-400 mx-2">vs</span>
                           {getPlayerName(match.b1_profile)} / {getPlayerName(match.b2_profile)}
                         </div>
                       </div>
@@ -558,19 +561,19 @@ export default function RoundRobinKiosk() {
             )}
 
             {/* Round Status */}
-            <Card className="bg-white/95 backdrop-blur border-0 shadow-lg">
+            <Card className="bg-[#23282f] backdrop-blur border-[#2a3038] shadow-xl">
               <div className="p-6">
-                <h3 className="text-xl font-bold text-[#083A40] mb-4">Round Status</h3>
+                <h3 className="text-xl font-bold text-white mb-4">Round Status</h3>
                 {allFinal ? (
                   <div className="text-center py-4">
-                    <div className="text-lg font-semibold text-[#0B3F45] mb-2">✓ All scores received</div>
+                    <div className="text-lg font-semibold text-[#FFB627] mb-2">✓ All scores received</div>
                     {!isLastRound && (
-                      <div className="text-sm text-[#083A40]/60">
+                      <div className="text-sm text-gray-400">
                         Organizer will advance to Round {currentRound + 1}
                       </div>
                     )}
                     {isLastRound && (
-                      <div className="text-sm text-[#083A40]/60">
+                      <div className="text-sm text-gray-400">
                         Event Complete!
                       </div>
                     )}
@@ -578,9 +581,9 @@ export default function RoundRobinKiosk() {
                 ) : (
                   <div className="text-center py-4">
                     <div className="flex justify-center mb-3">
-                      <div className="w-8 h-8 border-4 border-[#0B3F45]/20 border-t-[#0B3F45] rounded-full animate-spin" />
+                      <div className="w-8 h-8 border-4 border-[#FFB627]/20 border-t-[#FFB627] rounded-full animate-spin" />
                     </div>
-                    <div className="text-sm text-[#083A40]/60">
+                    <div className="text-sm text-gray-400">
                       Waiting for all scores from Round {currentRound}...
                     </div>
                   </div>
@@ -592,19 +595,19 @@ export default function RoundRobinKiosk() {
       </div>
 
       {/* Bottom Status Ribbon */}
-      <div className="fixed bottom-0 left-0 right-0 bg-secondary/90 backdrop-blur border-t border-border">
+      <div className="fixed bottom-0 left-0 right-0 bg-[#151a1f]/95 backdrop-blur border-t border-[#FFB627]">
         <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-secondary border border-primary/50">
-              <div className="w-2 h-2 rounded-full bg-primary animate-pulse-glow" />
-              <span className="text-secondary-foreground text-sm font-bold">LIVE</span>
+            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#FFB627]/20 border border-[#FFB627]">
+              <div className="w-2 h-2 rounded-full bg-[#FFB627] animate-pulse-glow" />
+              <span className="text-[#FFB627] text-sm font-bold">LIVE</span>
             </div>
-            <span className="text-secondary-foreground text-sm">
+            <span className="text-white text-sm">
               Round {currentRound} currently live on {event.num_courts === 1 ? 'Court 1' : `Courts 1–${event.num_courts}`}
             </span>
           </div>
           
-          <Badge variant="secondary">
+          <Badge variant="secondary" className="bg-[#FFB627]/10 text-[#FFB627] border-[#FFB627]/30">
             Round {currentRound} of {event.num_rounds}
           </Badge>
         </div>
@@ -612,15 +615,15 @@ export default function RoundRobinKiosk() {
 
       {/* Exit PIN Modal */}
       {pinModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <Card className="bg-white p-6 max-w-sm mx-4">
-            <h3 className="text-xl font-bold text-[#083A40] mb-2">Exit Kiosk Mode</h3>
-            <p className="text-sm text-[#083A40]/60 mb-4">Enter organizer PIN to continue</p>
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <Card className="bg-[#23282f] border-[#2a3038] p-6 max-w-sm mx-4">
+            <h3 className="text-xl font-bold text-white mb-2">Exit Kiosk Mode</h3>
+            <p className="text-sm text-gray-400 mb-4">Enter organizer PIN to continue</p>
             <div className="flex gap-2">
-              <Button onClick={() => setPinModalOpen(false)} variant="outline" className="flex-1">
+              <Button onClick={() => setPinModalOpen(false)} variant="outline" className="flex-1 border-gray-500 text-white hover:bg-gray-700">
                 Cancel
               </Button>
-              <Button onClick={handlePinSuccess} className="flex-1">
+              <Button onClick={handlePinSuccess} className="flex-1 bg-[#FFB627] text-[#151a1f] hover:bg-[#ff9f00]">
                 Confirm
               </Button>
             </div>
