@@ -388,12 +388,12 @@ export default function RoundRobinKiosk() {
       <div className="min-h-screen bg-background flex flex-col">
         
         {/* Sticky Header Bar */}
-        <div className="sticky top-0 z-50 bg-card border-b border-border shadow-md px-6 py-3 flex items-center justify-between">
+        <div className="sticky top-0 z-50 bg-secondary border-b border-border shadow-md px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <img src={pulseLogo} alt="Pulse" className="h-10 w-auto" />
             <div>
-              <h1 className="text-lg font-bold text-foreground">{event?.name || "Round Robin"}</h1>
-              <p className="text-sm text-muted-foreground">
+              <h1 className="text-lg font-bold text-secondary-foreground">{event?.name || "Round Robin"}</h1>
+              <p className="text-sm text-secondary-foreground/70">
                 Round {event?.current_round || 1} of {event?.num_rounds || 1}
               </p>
             </div>
