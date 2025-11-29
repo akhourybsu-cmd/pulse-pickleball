@@ -73,21 +73,21 @@ export const PWAInstallPrompt = () => {
           onPointerDownOutside={(e) => e.preventDefault()}
           onEscapeKeyDown={(e) => e.preventDefault()}
         >
-          <div className="flex flex-col items-center text-center space-y-6 max-w-md mx-auto">
-            {/* Logo */}
-            <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-lg">
-              <img src={pulseLogo} alt="PULSE Logo" className="w-full h-full object-cover" />
-            </div>
-
-            {/* Header */}
-            <SheetHeader className="space-y-2">
-              <SheetTitle className="text-2xl font-bold">
+          <div className="flex flex-col items-center text-center max-w-md mx-auto">
+            {/* Branded Header Strip */}
+            <div className="bg-secondary -mx-6 -mt-8 px-6 pt-8 pb-6 mb-6 rounded-t-3xl flex flex-col items-center w-[calc(100%+3rem)]">
+              <div className="w-20 h-20 rounded-2xl overflow-hidden shadow-lg bg-white/10 p-2">
+                <img src={pulseLogo} alt="PULSE Logo" className="w-full h-full object-contain" />
+              </div>
+              <SheetTitle className="text-2xl font-bold text-secondary-foreground mt-4">
                 📱 Get the PULSE App
               </SheetTitle>
-              <SheetDescription className="text-base">
-                Install PULSE on your home screen for quick access, offline use, and the best experience.
-              </SheetDescription>
-            </SheetHeader>
+            </div>
+
+            {/* Description */}
+            <SheetDescription className="text-base mb-6">
+              Install PULSE on your home screen for quick access, offline use, and the best experience.
+            </SheetDescription>
 
             {/* Actions */}
             <div className="flex flex-col w-full space-y-3">
