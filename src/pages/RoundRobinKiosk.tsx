@@ -6,9 +6,51 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { FullscreenToggleButton } from "@/components/kiosk/FullscreenToggleButton";
 import { toast } from "sonner";
-import { Radio, Lock, Clock, Trophy } from "lucide-react";
+import { Radio, Lock, Clock, Trophy, Palette } from "lucide-react";
 import pulseLogo from "@/assets/pulse-logo-new.png";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+// -- Theme Configuration
+type KioskTheme = 'proBroadcast' | 'courtGreen' | 'oceanBlue';
+
+const THEME_CONFIG = {
+  proBroadcast: {
+    name: 'Pro Broadcast',
+    bg: '#1C2127',
+    headerBg: '#151a1f',
+    cardBg: '#23282f',
+    accent: '#FFB627',
+    accentRgb: '255, 182, 39',
+    text: '#ffffff',
+    mutedText: '#9ca3af',
+  },
+  courtGreen: {
+    name: 'Court Green',
+    bg: '#0a1a0a',
+    headerBg: '#0d1f0d',
+    cardBg: '#1a2e1a',
+    accent: '#A6DB5A',
+    accentRgb: '166, 219, 90',
+    text: '#ffffff',
+    mutedText: '#94a3b8',
+  },
+  oceanBlue: {
+    name: 'Ocean Blue',
+    bg: '#0a1929',
+    headerBg: '#0d1f33',
+    cardBg: '#1a2942',
+    accent: '#3b82f6',
+    accentRgb: '59, 130, 246',
+    text: '#ffffff',
+    mutedText: '#94a3b8',
+  },
+};
 
 interface Event {
   id: string;
@@ -63,6 +105,18 @@ export default function RoundRobinKiosk() {
   const [pinModalOpen, setPinModalOpen] = useState(false);
   const [standings, setStandings] = useState<StandingsRow[]>([]);
   const [allSchedule, setAllSchedule] = useState<ScheduleMatch[]>([]);
+  
+  // Theme state with localStorage persistence
+  const [theme, setTheme] = useState<KioskTheme>(() => {
+    const saved = localStorage.getItem('kioskTheme');
+    return (saved as KioskTheme) || 'proBroadcast';
+  });
+  
+  const themeColors = THEME_CONFIG[theme];
+  
+  useEffect(() => {
+    localStorage.setItem('kioskTheme', theme);
+  }, [theme]);
 
   // Update time every second
   useEffect(() => {
@@ -353,24 +407,24 @@ export default function RoundRobinKiosk() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#1C2127] flex items-center justify-center">
-        <div className="text-white text-2xl">Loading kiosk mode...</div>
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: themeColors.bg }}>
+        <div className="text-2xl" style={{ color: themeColors.text }}>Loading kiosk mode...</div>
       </div>
     );
   }
 
   if (!event) {
     return (
-      <div className="min-h-screen bg-[#1C2127] flex items-center justify-center">
-        <div className="text-white text-2xl">Event not found</div>
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: themeColors.bg }}>
+        <div className="text-2xl" style={{ color: themeColors.text }}>Event not found</div>
       </div>
     );
   }
 
   if (event.status === "draft") {
     return (
-      <div className="min-h-screen bg-[#1C2127] flex items-center justify-center">
-        <div className="text-center text-white">
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: themeColors.bg }}>
+        <div className="text-center" style={{ color: themeColors.text }}>
           <h1 className="text-4xl font-bold mb-4">{event.name}</h1>
           <p className="text-2xl">Event has not started yet</p>
           <p className="text-xl mt-2 opacity-80">Please wait for the organizer to start the event</p>
@@ -385,27 +439,43 @@ export default function RoundRobinKiosk() {
 
   return (
     <>
-      <div className="min-h-screen bg-[#1C2127] flex flex-col">
+      <div className="min-h-screen flex flex-col" style={{ backgroundColor: themeColors.bg }}>
         
         {/* Sticky Header Bar */}
-        <div className="sticky top-0 z-50 bg-[#151a1f] border-b border-[#2a3038] shadow-xl px-6 py-3 flex items-center justify-between">
+        <div className="sticky top-0 z-50 border-b shadow-xl px-6 py-3 flex items-center justify-between" style={{ backgroundColor: themeColors.headerBg, borderColor: `rgba(${themeColors.accentRgb}, 0.2)` }}>
           <div className="flex items-center gap-4">
             <img src={pulseLogo} alt="Pulse" className="h-10 w-auto" />
             <div>
-              <h1 className="text-lg font-bold text-white">{event?.name || "Round Robin"}</h1>
-              <p className="text-sm text-gray-400">
+              <h1 className="text-lg font-bold" style={{ color: themeColors.text }}>{event?.name || "Round Robin"}</h1>
+              <p className="text-sm" style={{ color: themeColors.mutedText }}>
                 Round {event?.current_round || 1} of {event?.num_rounds || 1}
               </p>
             </div>
           </div>
           <div className="flex items-center gap-4">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" style={{ borderColor: themeColors.accent, color: themeColors.accent }}>
+                  <Palette className="w-4 h-4 mr-2" />
+                  {themeColors.name}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                {(Object.keys(THEME_CONFIG) as KioskTheme[]).map((t) => (
+                  <DropdownMenuItem key={t} onClick={() => setTheme(t)}>
+                    {THEME_CONFIG[t].name}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
             <ThemeToggle />
             <FullscreenToggleButton />
             <Button 
               size="sm" 
               variant="outline" 
               onClick={handleExitKiosk}
-              className="gap-2 border-[#FFB627] text-[#FFB627] hover:bg-[#FFB627]/10"
+              className="gap-2 hover:opacity-80"
+              style={{ borderColor: themeColors.accent, color: themeColors.accent }}
             >
               <Lock className="h-4 w-4" />
               Exit Kiosk
@@ -419,28 +489,28 @@ export default function RoundRobinKiosk() {
           {/* Left Panel: Current Round Courts */}
           <div className="lg:col-span-2 space-y-4">
             <div className="flex items-center gap-3">
-              <h2 className="text-3xl font-bold text-white">Current Round</h2>
-              <Badge variant="secondary" className="text-base px-3 py-1 bg-[#FFB627] text-[#151a1f] border-0">
+              <h2 className="text-3xl font-bold" style={{ color: themeColors.text }}>Current Round</h2>
+              <Badge variant="secondary" className="text-base px-3 py-1 border-0" style={{ backgroundColor: themeColors.accent, color: themeColors.headerBg }}>
                 Round {currentRound} of {event.num_rounds}
               </Badge>
             </div>
             
             <div className="grid gap-4">
               {currentRoundMatches.map((match) => (
-                <Card key={`${match.id}-${match.court_no}`} className="bg-[#23282f] backdrop-blur border-[#2a3038] shadow-xl">
+                <Card key={`${match.id}-${match.court_no}`} className="backdrop-blur shadow-xl" style={{ backgroundColor: themeColors.cardBg, borderColor: `rgba(${themeColors.accentRgb}, 0.2)` }}>
                   <div className="p-6">
-                    <h3 className="text-2xl font-bold text-[#FFB627] mb-4 flex items-center gap-2">
-                      <div className="w-1 h-6 bg-[#FFB627] rounded-full"></div>
+                    <h3 className="text-2xl font-bold mb-4 flex items-center gap-2" style={{ color: themeColors.accent }}>
+                      <div className="w-1 h-6 rounded-full" style={{ backgroundColor: themeColors.accent }}></div>
                       Court {match.court_no}
                     </h3>
                     
                     <div className="flex items-center justify-between gap-4">
                       {/* Team A */}
                       <div className="flex-1">
-                        <div className="text-lg font-semibold text-white">
+                        <div className="text-lg font-semibold" style={{ color: themeColors.text }}>
                           {getPlayerName(match.a1_profile)}
                         </div>
-                        <div className="text-lg font-semibold text-white">
+                        <div className="text-lg font-semibold" style={{ color: themeColors.text }}>
                           {getPlayerName(match.a2_profile)}
                         </div>
                       </div>
@@ -449,25 +519,25 @@ export default function RoundRobinKiosk() {
                       <div className="text-center min-w-[120px]">
                         {match.team1_score !== null && match.team2_score !== null ? (
                           <div>
-                            <div className="text-sm font-medium text-gray-400 mb-1">Final</div>
-                            <div className="text-3xl font-bold text-white">
+                            <div className="text-sm font-medium mb-1" style={{ color: themeColors.mutedText }}>Final</div>
+                            <div className="text-3xl font-bold" style={{ color: themeColors.text }}>
                               {match.team1_score} – {match.team2_score}
                             </div>
                           </div>
                         ) : (
                           <div>
-                            <div className="text-2xl font-bold text-[#FFB627]">VS</div>
-                            <div className="text-sm font-medium text-[#FFB627] mt-1">In Progress</div>
+                            <div className="text-2xl font-bold" style={{ color: themeColors.accent }}>VS</div>
+                            <div className="text-sm font-medium mt-1" style={{ color: themeColors.accent }}>In Progress</div>
                           </div>
                         )}
                       </div>
 
                       {/* Team B */}
                       <div className="flex-1 text-right">
-                        <div className="text-lg font-semibold text-white">
+                        <div className="text-lg font-semibold" style={{ color: themeColors.text }}>
                           {getPlayerName(match.b1_profile)}
                         </div>
-                        <div className="text-lg font-semibold text-white">
+                        <div className="text-lg font-semibold" style={{ color: themeColors.text }}>
                           {getPlayerName(match.b2_profile)}
                         </div>
                       </div>
@@ -482,9 +552,9 @@ export default function RoundRobinKiosk() {
           <div className="space-y-4">
             {/* Top 3 Leaderboard */}
             {standings.length >= 3 && (
-              <Card className="bg-[#23282f] backdrop-blur border-[#2a3038] shadow-xl overflow-hidden">
-                <div className="bg-gradient-to-br from-[#FFB627] to-[#ff9f00] p-4">
-                  <div className="flex items-center gap-2 text-[#151a1f]">
+              <Card className="backdrop-blur shadow-xl overflow-hidden" style={{ backgroundColor: themeColors.cardBg, borderColor: `rgba(${themeColors.accentRgb}, 0.2)` }}>
+                <div className="p-4" style={{ background: `linear-gradient(135deg, ${themeColors.accent}, ${themeColors.accent}dd)` }}>
+                  <div className="flex items-center gap-2" style={{ color: themeColors.headerBg }}>
                     <Trophy className="w-5 h-5" />
                     <h3 className="text-lg font-bold">Top 3 Leaders</h3>
                   </div>
@@ -494,32 +564,24 @@ export default function RoundRobinKiosk() {
                     {standings.slice(0, 3).map((row, idx) => (
                       <div 
                         key={row.player_id} 
-                        className={`p-3 rounded-lg border-2 ${
-                          idx === 0 
-                            ? 'bg-[#FFB627]/10 border-[#FFB627]' 
-                            : idx === 1
-                            ? 'bg-gray-500/10 border-gray-400'
-                            : 'bg-orange-500/10 border-orange-400'
-                        }`}
+                        className="p-3 rounded-lg border-2"
+                        style={{
+                          backgroundColor: `${themeColors.accent}${idx === 0 ? '20' : '10'}`,
+                          borderColor: idx === 0 ? themeColors.accent : idx === 1 ? '#9ca3af' : '#fb923c'
+                        }}
                       >
                         <div className="flex items-center gap-3">
-                          <div className={`text-2xl ${
-                            idx === 0 
-                              ? 'text-[#FFB627]' 
-                              : idx === 1
-                              ? 'text-gray-400'
-                              : 'text-orange-400'
-                          }`}>
+                          <div className="text-2xl" style={{ color: idx === 0 ? themeColors.accent : idx === 1 ? '#9ca3af' : '#fb923c' }}>
                             {idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉'}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="font-semibold text-sm truncate text-white">
+                            <div className="font-semibold text-sm truncate" style={{ color: themeColors.text }}>
                               {row.player_name}
                             </div>
                             <div className="flex gap-3 text-xs mt-1">
-                              <span className="text-[#FFB627] font-bold">{row.wins}W</span>
-                              <span className="text-gray-400">{row.losses}L</span>
-                              <span className={`font-bold ${row.point_diff > 0 ? 'text-[#FFB627]' : row.point_diff < 0 ? 'text-red-400' : 'text-gray-400'}`}>
+                              <span className="font-bold" style={{ color: themeColors.accent }}>{row.wins}W</span>
+                              <span style={{ color: themeColors.mutedText }}>{row.losses}L</span>
+                              <span className="font-bold" style={{ color: row.point_diff > 0 ? themeColors.accent : row.point_diff < 0 ? '#f87171' : themeColors.mutedText }}>
                                 {row.point_diff > 0 ? '+' : ''}{row.point_diff}
                               </span>
                             </div>
@@ -534,11 +596,11 @@ export default function RoundRobinKiosk() {
 
             {/* Next Round Preview */}
             {!isLastRound && nextRoundMatches.length > 0 && (
-              <Card className="bg-[#23282f] backdrop-blur border-[#2a3038] shadow-xl">
+              <Card className="backdrop-blur shadow-xl" style={{ backgroundColor: themeColors.cardBg, borderColor: `rgba(${themeColors.accentRgb}, 0.2)` }}>
                 <div className="p-6">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-xl font-bold text-white">Round {currentRound + 1} Preview</h3>
-                    <div className="flex items-center gap-2 text-gray-400">
+                    <h3 className="text-xl font-bold" style={{ color: themeColors.text }}>Round {currentRound + 1} Preview</h3>
+                    <div className="flex items-center gap-2" style={{ color: themeColors.mutedText }}>
                       <Clock className="w-4 h-4" />
                       <span className="text-sm font-medium">{currentTime.toLocaleTimeString()}</span>
                     </div>
@@ -546,11 +608,11 @@ export default function RoundRobinKiosk() {
                   
                   <div className="space-y-3">
                     {nextRoundMatches.map((match) => (
-                      <div key={`next-${match.id}`} className="p-3 bg-[#2a3038] rounded-lg border border-[#FFB627]/20">
-                        <div className="text-xs font-bold text-[#FFB627] mb-1">C{match.court_no}</div>
-                        <div className="text-sm text-white">
+                      <div key={`next-${match.id}`} className="p-3 rounded-lg" style={{ backgroundColor: `${themeColors.accent}10`, borderColor: `${themeColors.accent}40`, borderWidth: '1px', borderStyle: 'solid' }}>
+                        <div className="text-xs font-bold mb-1" style={{ color: themeColors.accent }}>C{match.court_no}</div>
+                        <div className="text-sm" style={{ color: themeColors.text }}>
                           {getPlayerName(match.a1_profile)} / {getPlayerName(match.a2_profile)}
-                          <span className="text-gray-400 mx-2">vs</span>
+                          <span className="mx-2" style={{ color: themeColors.mutedText }}>vs</span>
                           {getPlayerName(match.b1_profile)} / {getPlayerName(match.b2_profile)}
                         </div>
                       </div>
@@ -561,19 +623,19 @@ export default function RoundRobinKiosk() {
             )}
 
             {/* Round Status */}
-            <Card className="bg-[#23282f] backdrop-blur border-[#2a3038] shadow-xl">
+            <Card className="backdrop-blur shadow-xl" style={{ backgroundColor: themeColors.cardBg, borderColor: `rgba(${themeColors.accentRgb}, 0.2)` }}>
               <div className="p-6">
-                <h3 className="text-xl font-bold text-white mb-4">Round Status</h3>
+                <h3 className="text-xl font-bold mb-4" style={{ color: themeColors.text }}>Round Status</h3>
                 {allFinal ? (
                   <div className="text-center py-4">
-                    <div className="text-lg font-semibold text-[#FFB627] mb-2">✓ All scores received</div>
+                    <div className="text-lg font-semibold mb-2" style={{ color: themeColors.accent }}>✓ All scores received</div>
                     {!isLastRound && (
-                      <div className="text-sm text-gray-400">
+                      <div className="text-sm" style={{ color: themeColors.mutedText }}>
                         Organizer will advance to Round {currentRound + 1}
                       </div>
                     )}
                     {isLastRound && (
-                      <div className="text-sm text-gray-400">
+                      <div className="text-sm" style={{ color: themeColors.mutedText }}>
                         Event Complete!
                       </div>
                     )}
@@ -581,9 +643,9 @@ export default function RoundRobinKiosk() {
                 ) : (
                   <div className="text-center py-4">
                     <div className="flex justify-center mb-3">
-                      <div className="w-8 h-8 border-4 border-[#FFB627]/20 border-t-[#FFB627] rounded-full animate-spin" />
+                      <div className="w-8 h-8 border-4 rounded-full animate-spin" style={{ borderColor: `${themeColors.accent}20`, borderTopColor: themeColors.accent }} />
                     </div>
-                    <div className="text-sm text-gray-400">
+                    <div className="text-sm" style={{ color: themeColors.mutedText }}>
                       Waiting for all scores from Round {currentRound}...
                     </div>
                   </div>
@@ -595,19 +657,19 @@ export default function RoundRobinKiosk() {
       </div>
 
       {/* Bottom Status Ribbon */}
-      <div className="fixed bottom-0 left-0 right-0 bg-[#151a1f]/95 backdrop-blur border-t border-[#FFB627]">
+      <div className="fixed bottom-0 left-0 right-0 backdrop-blur" style={{ backgroundColor: `${themeColors.headerBg}f0`, borderTopColor: themeColors.accent, borderTopWidth: '1px', borderTopStyle: 'solid' }}>
         <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#FFB627]/20 border border-[#FFB627]">
-              <div className="w-2 h-2 rounded-full bg-[#FFB627] animate-pulse-glow" />
-              <span className="text-[#FFB627] text-sm font-bold">LIVE</span>
+            <div className="flex items-center gap-2 px-3 py-1 rounded-full" style={{ backgroundColor: `${themeColors.accent}30`, borderColor: themeColors.accent, borderWidth: '1px', borderStyle: 'solid' }}>
+              <div className="w-2 h-2 rounded-full animate-pulse-glow" style={{ backgroundColor: themeColors.accent }} />
+              <span className="text-sm font-bold" style={{ color: themeColors.accent }}>LIVE</span>
             </div>
-            <span className="text-white text-sm">
+            <span className="text-sm" style={{ color: themeColors.text }}>
               Round {currentRound} currently live on {event.num_courts === 1 ? 'Court 1' : `Courts 1–${event.num_courts}`}
             </span>
           </div>
           
-          <Badge variant="secondary" className="bg-[#FFB627]/10 text-[#FFB627] border-[#FFB627]/30">
+          <Badge variant="secondary" className="border" style={{ backgroundColor: `${themeColors.accent}10`, color: themeColors.accent, borderColor: `${themeColors.accent}50` }}>
             Round {currentRound} of {event.num_rounds}
           </Badge>
         </div>
@@ -616,14 +678,14 @@ export default function RoundRobinKiosk() {
       {/* Exit PIN Modal */}
       {pinModalOpen && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-          <Card className="bg-[#23282f] border-[#2a3038] p-6 max-w-sm mx-4">
-            <h3 className="text-xl font-bold text-white mb-2">Exit Kiosk Mode</h3>
-            <p className="text-sm text-gray-400 mb-4">Enter organizer PIN to continue</p>
+          <Card className="p-6 max-w-sm mx-4" style={{ backgroundColor: themeColors.cardBg, borderColor: `rgba(${themeColors.accentRgb}, 0.2)` }}>
+            <h3 className="text-xl font-bold mb-2" style={{ color: themeColors.text }}>Exit Kiosk Mode</h3>
+            <p className="text-sm mb-4" style={{ color: themeColors.mutedText }}>Enter organizer PIN to continue</p>
             <div className="flex gap-2">
-              <Button onClick={() => setPinModalOpen(false)} variant="outline" className="flex-1 border-gray-500 text-white hover:bg-gray-700">
+              <Button onClick={() => setPinModalOpen(false)} variant="outline" className="flex-1 hover:opacity-80" style={{ borderColor: themeColors.mutedText, color: themeColors.text }}>
                 Cancel
               </Button>
-              <Button onClick={handlePinSuccess} className="flex-1 bg-[#FFB627] text-[#151a1f] hover:bg-[#ff9f00]">
+              <Button onClick={handlePinSuccess} className="flex-1" style={{ backgroundColor: themeColors.accent, color: themeColors.headerBg }}>
                 Confirm
               </Button>
             </div>
