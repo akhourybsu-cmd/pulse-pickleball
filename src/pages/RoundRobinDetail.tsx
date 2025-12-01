@@ -116,6 +116,7 @@ interface StandingsRow {
   points_for: number;
   points_against: number;
   point_diff: number;
+  isRemoved?: boolean;
 }
 
 interface MatchScore {
@@ -452,7 +453,10 @@ export default function RoundRobinDetail() {
 
   const calculateStandings = (scheduleData: ScheduleMatch[], playersData: Player[]) => {
     const stats: Record<string, StandingsRow> = {};
+    const activePlayers = playersData.filter(p => p.active);
+    const removedPlayers = playersData.filter(p => !p.active);
 
+    // Initialize stats for all players (active and removed)
     playersData.forEach((p) => {
       stats[p.player_id] = {
         player_id: p.player_id,
@@ -489,17 +493,26 @@ export default function RoundRobinDetail() {
       }
     });
 
-    const standingsArray = Object.values(stats).map((s) => ({
-      ...s,
-      point_diff: s.points_for - s.points_against,
+    // Separate standings into active and removed
+    const activeStandingsArray = activePlayers.map(p => ({
+      ...stats[p.player_id],
+      point_diff: stats[p.player_id].points_for - stats[p.player_id].points_against,
     }));
 
-    standingsArray.sort((a, b) => {
+    const removedStandingsArray = removedPlayers.map(p => ({
+      ...stats[p.player_id],
+      point_diff: stats[p.player_id].points_for - stats[p.player_id].points_against,
+      isRemoved: true,
+    }));
+
+    // Sort active players normally
+    activeStandingsArray.sort((a, b) => {
       if (b.wins !== a.wins) return b.wins - a.wins;
       return b.point_diff - a.point_diff;
     });
 
-    setStandings(standingsArray);
+    // Combine: active players first, then removed (DNF) players
+    setStandings([...activeStandingsArray, ...removedStandingsArray.map(r => ({ ...r, isRemoved: true }))]);
   };
 
   const handleSaveScore = async (match: ScheduleMatch) => {
@@ -551,11 +564,17 @@ export default function RoundRobinDetail() {
   const handleCompleteEvent = async () => {
     if (!event) return;
     
-    // Check if all matches have scores
+    // Check if all matches have scores, show confirmation for partial submission
     const unscoredMatches = schedule.filter(m => !m.is_bye && (m.team1_score === null || m.team2_score === null));
+    const scoredMatches = schedule.filter(m => !m.is_bye && m.team1_score !== null && m.team2_score !== null);
+    
     if (unscoredMatches.length > 0) {
-      toast.error(`${unscoredMatches.length} match(es) still need scores before completing the event.`);
-      return;
+      const totalMatches = schedule.filter(m => !m.is_bye).length;
+      const confirmMessage = `You have ${unscoredMatches.length} unscored match(es) out of ${totalMatches} total.\n\nOnly the ${scoredMatches.length} completed match(es) will be saved to match history.\n\nContinue?`;
+      
+      if (!confirm(confirmMessage)) {
+        return;
+      }
     }
     
     try {
@@ -833,13 +852,16 @@ export default function RoundRobinDetail() {
 
       if (deleteError) throw deleteError;
 
-      // Audit entry
+      // Audit entry with removal round for DNF tracking
       await supabase.from("round_robin_audit").insert({
         event_id: event.id,
         editor_id: userId,
         change_type: "player_removed",
-        changes: { player_id: player.player_id },
-        reason: "Player removed (can rejoin later)",
+        changes: { 
+          player_id: player.player_id,
+          removed_at_round: event.current_round || 1,
+        },
+        reason: "Player removed from roster (past scores preserved)",
       });
 
       // Regenerate from current round
@@ -1937,8 +1959,8 @@ export default function RoundRobinDetail() {
           </TabsContent>
 
           <TabsContent value="standings" className="mt-6 space-y-6">
-            {/* Top 3 Leaderboard */}
-            {standings.length >= 3 && (
+            {/* Top 3 Leaderboard - only active players */}
+            {standings.filter(s => !(s as any).isRemoved).length >= 3 && (
               <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
                 <CardHeader className="pb-4">
                   <div className="flex items-center gap-2">
@@ -1948,7 +1970,7 @@ export default function RoundRobinDetail() {
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-3 gap-3">
-                    {standings.slice(0, 3).map((row, idx) => (
+                    {standings.filter(s => !(s as any).isRemoved).slice(0, 3).map((row, idx) => (
                       <div 
                         key={row.player_id} 
                         className={`relative p-4 rounded-lg border-2 ${
@@ -2020,7 +2042,7 @@ export default function RoundRobinDetail() {
                         </tr>
                       </thead>
                       <tbody>
-                        {standings.map((row, idx) => (
+                        {standings.filter(s => !(s as any).isRemoved).map((row, idx) => (
                           <tr key={row.player_id} className="border-b hover:bg-muted/50">
                             <td className="py-3 px-2">
                               <Badge variant={idx < 3 ? "default" : "outline"} className="w-8 h-8 flex items-center justify-center">
@@ -2037,6 +2059,34 @@ export default function RoundRobinDetail() {
                             </td>
                           </tr>
                         ))}
+                        
+                        {/* DNF Section for removed players */}
+                        {standings.filter(s => (s as any).isRemoved).length > 0 && (
+                          <>
+                            <tr className="bg-muted/30">
+                              <td colSpan={7} className="py-3 px-2 font-medium text-muted-foreground">
+                                Did Not Finish (DNF)
+                              </td>
+                            </tr>
+                            {standings.filter(s => (s as any).isRemoved).map((row) => (
+                              <tr key={row.player_id} className="border-b hover:bg-muted/30 opacity-60">
+                                <td className="py-3 px-2">
+                                  <Badge variant="outline" className="w-8 h-8 flex items-center justify-center bg-muted/50">
+                                    —
+                                  </Badge>
+                                </td>
+                                <td className="py-3 px-2 font-medium text-muted-foreground">{row.player_name}</td>
+                                <td className="text-center py-3 px-2 text-muted-foreground">{row.wins}</td>
+                                <td className="text-center py-3 px-2 text-muted-foreground">{row.losses}</td>
+                                <td className="text-center py-3 px-2 hidden sm:table-cell text-muted-foreground">{row.points_for}</td>
+                                <td className="text-center py-3 px-2 hidden sm:table-cell text-muted-foreground">{row.points_against}</td>
+                                <td className="text-center py-3 px-2 text-muted-foreground">
+                                  {row.point_diff > 0 ? '+' : ''}{row.point_diff}
+                                </td>
+                              </tr>
+                            ))}
+                          </>
+                        )}
                       </tbody>
                     </table>
                   </div>
