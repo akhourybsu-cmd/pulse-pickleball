@@ -33,6 +33,7 @@ interface Event {
   games_per_player?: number;
   max_players?: number;
   registration_mode?: string;
+  registration_deadline?: string | null;
 }
 
 interface EditEventDialogProps {
@@ -53,6 +54,9 @@ export function EditEventDialog({ open, onOpenChange, event, onSave, playerCount
   const [numCourts, setNumCourts] = useState(event.num_courts);
   const [gamesPerPlayer, setGamesPerPlayer] = useState(event.games_per_player || 3);
   const [maxPlayers, setMaxPlayers] = useState(event.max_players || playerCount || 8);
+  const [registrationDeadline, setRegistrationDeadline] = useState(
+    event.registration_deadline ? new Date(event.registration_deadline).toISOString().slice(0, 16) : ""
+  );
   const [saving, setSaving] = useState(false);
 
   // Calculate rounds automatically based on players, courts, and games
@@ -78,6 +82,7 @@ export function EditEventDialog({ open, onOpenChange, event, onSave, playerCount
     numCourts !== event.num_courts ||
     gamesPerPlayer !== (event.games_per_player || 3) ||
     (event.registration_mode === 'open_registration' && maxPlayers !== event.max_players) ||
+    (event.registration_mode === 'open_registration' && registrationDeadline !== (event.registration_deadline ? new Date(event.registration_deadline).toISOString().slice(0, 16) : "")) ||
     calculatedRounds !== event.num_rounds;
 
   const handleSave = async () => {
@@ -96,6 +101,13 @@ export function EditEventDialog({ open, onOpenChange, event, onSave, playerCount
       if (gamesPerPlayer !== (event.games_per_player || 3)) updates.games_per_player = gamesPerPlayer;
       if (event.registration_mode === 'open_registration' && maxPlayers !== event.max_players) {
         updates.max_players = maxPlayers;
+      }
+      if (event.registration_mode === 'open_registration' && registrationDeadline) {
+        const newDeadline = new Date(registrationDeadline).toISOString();
+        const oldDeadline = event.registration_deadline ? new Date(event.registration_deadline).toISOString().slice(0, 16) : "";
+        if (registrationDeadline !== oldDeadline) {
+          updates.registration_deadline = newDeadline;
+        }
       }
       if (calculatedRounds !== event.num_rounds) updates.num_rounds = calculatedRounds;
 
@@ -220,17 +232,33 @@ export function EditEventDialog({ open, onOpenChange, event, onSave, playerCount
           </div>
 
           {event.registration_mode === 'open_registration' && (
-            <div className="space-y-2">
-              <Label htmlFor="max-players">Number of Players</Label>
-              <Input
-                id="max-players"
-                type="number"
-                min="4"
-                max="100"
-                value={maxPlayers}
-                onChange={(e) => setMaxPlayers(parseInt(e.target.value) || 8)}
-              />
-            </div>
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="max-players">Number of Players</Label>
+                <Input
+                  id="max-players"
+                  type="number"
+                  min="4"
+                  max="100"
+                  value={maxPlayers}
+                  onChange={(e) => setMaxPlayers(parseInt(e.target.value) || 8)}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="registration-deadline">Registration Deadline</Label>
+                <Input
+                  id="registration-deadline"
+                  type="datetime-local"
+                  value={registrationDeadline}
+                  onChange={(e) => setRegistrationDeadline(e.target.value)}
+                  min={new Date().toISOString().slice(0, 16)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Players can register until this date and time
+                </p>
+              </div>
+            </>
           )}
 
           <div className="bg-muted/50 p-3 rounded-lg space-y-1">

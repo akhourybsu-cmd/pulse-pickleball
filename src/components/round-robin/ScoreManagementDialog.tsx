@@ -57,7 +57,7 @@ interface ScoreManagementDialogProps {
   onDeleteMatch: (matchId: string) => Promise<void>;
 }
 
-type ActionMode = 'edit' | 'void' | 'delete' | null;
+type ActionMode = 'enter' | 'edit' | 'void' | 'delete' | null;
 
 export function ScoreManagementDialog({
   open,
@@ -82,11 +82,17 @@ export function ScoreManagementDialog({
     !s.is_bye && (s.team1_score !== null || s.team2_score !== null)
   );
 
+  const allMatches = schedule.filter(s => !s.is_bye);
+
   const roundsWithScores = Array.from(
     new Set(scoredMatches.map(m => m.round_no))
   ).sort((a, b) => a - b);
 
-  const roundMatches = scoredMatches.filter(m => m.round_no === selectedRound);
+  const allRounds = Array.from(
+    new Set(allMatches.map(m => m.round_no))
+  ).sort((a, b) => a - b);
+
+  const roundMatches = (mode === 'enter' ? allMatches : scoredMatches).filter(m => m.round_no === selectedRound);
   const selectedMatchData = roundMatches.find(m => m.id === selectedMatch);
 
   useEffect(() => {
@@ -163,11 +169,11 @@ export function ScoreManagementDialog({
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            {scoredMatches.length === 0 ? (
+            {allMatches.length === 0 ? (
               <Alert>
                 <AlertTriangle className="w-4 h-4" />
                 <AlertDescription>
-                  No matches have been scored yet. Record scores first to manage them here.
+                  No matches in the schedule yet.
                 </AlertDescription>
               </Alert>
             ) : (
@@ -186,7 +192,7 @@ export function ScoreManagementDialog({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {roundsWithScores.map(round => (
+                      {(mode === 'enter' ? allRounds : roundsWithScores).map(round => (
                         <SelectItem key={round} value={round.toString()}>
                           Round {round}
                         </SelectItem>
@@ -200,16 +206,32 @@ export function ScoreManagementDialog({
                     <Button
                       variant="outline"
                       className="w-full justify-start h-auto py-4"
-                      onClick={() => setMode('edit')}
+                      onClick={() => setMode('enter')}
                     >
                       <Edit3 className="w-5 h-5 mr-3" />
                       <div className="text-left">
-                        <div className="font-semibold">Edit Score</div>
+                        <div className="font-semibold">Enter Scores</div>
                         <div className="text-sm text-muted-foreground">
-                          Update match score and recalculate standings
+                          Enter or update scores for any match in this round
                         </div>
                       </div>
                     </Button>
+
+                    {scoredMatches.length > 0 && (
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start h-auto py-4"
+                        onClick={() => setMode('edit')}
+                      >
+                        <Edit3 className="w-5 h-5 mr-3" />
+                        <div className="text-left">
+                          <div className="font-semibold">Edit Score</div>
+                          <div className="text-sm text-muted-foreground">
+                            Update match score and recalculate standings
+                          </div>
+                        </div>
+                      </Button>
+                    )}
 
                     <Button
                       variant="outline"
@@ -258,6 +280,84 @@ export function ScoreManagementDialog({
                         ))}
                       </div>
                     </div>
+                  </div>
+                ) : mode === 'enter' ? (
+                  <div className="space-y-4">
+                    <Alert>
+                      <Edit3 className="w-4 h-4" />
+                      <AlertDescription>
+                        Enter scores for unscored matches or update existing scores. Changes recalculate standings
+                        {ratingEligible && <> and reset match verification</>}.
+                      </AlertDescription>
+                    </Alert>
+
+                    <div className="space-y-2">
+                      <Label>Select Match</Label>
+                      <Select value={selectedMatch} onValueChange={setSelectedMatch}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Choose a match..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {roundMatches.map(match => (
+                            <SelectItem key={match.id} value={match.id}>
+                              Court {match.court_no}: {getPlayerName(match.a1_player_id)} & {getPlayerName(match.a2_player_id)} vs {getPlayerName(match.b1_player_id)} & {getPlayerName(match.b2_player_id)}
+                              {match.team1_score !== null && match.team2_score !== null && ` (${match.team1_score}-${match.team2_score})`}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {selectedMatchData && (
+                      <>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label>Team A Score</Label>
+                            <Input
+                              type="number"
+                              min="0"
+                              max="99"
+                              value={team1Score}
+                              onChange={(e) => setTeam1Score(parseInt(e.target.value) || 0)}
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              {getPlayerName(selectedMatchData.a1_player_id)} & {getPlayerName(selectedMatchData.a2_player_id)}
+                            </p>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Team B Score</Label>
+                            <Input
+                              type="number"
+                              min="0"
+                              max="99"
+                              value={team2Score}
+                              onChange={(e) => setTeam2Score(parseInt(e.target.value) || 0)}
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              {getPlayerName(selectedMatchData.b1_player_id)} & {getPlayerName(selectedMatchData.b2_player_id)}
+                            </p>
+                          </div>
+                        </div>
+
+                        {team1Score === team2Score && (
+                          <Alert variant="destructive">
+                            <AlertTriangle className="w-4 h-4" />
+                            <AlertDescription>
+                              Scores cannot be tied. Please enter different scores.
+                            </AlertDescription>
+                          </Alert>
+                        )}
+
+                        {hasScoreChanged && (
+                          <Alert>
+                            <ShieldCheck className="w-4 h-4" />
+                            <AlertDescription>
+                              <strong>Note:</strong> Verification will be reset for this match. Players will need to verify the new score.
+                            </AlertDescription>
+                          </Alert>
+                        )}
+                      </>
+                    )}
                   </div>
                 ) : mode === 'edit' ? (
                   <div className="space-y-4">
@@ -395,6 +495,14 @@ export function ScoreManagementDialog({
             <Button variant="outline" onClick={handleClose}>
               Cancel
             </Button>
+            {mode === 'enter' && (
+              <Button 
+                onClick={handleEditScore} 
+                disabled={!selectedMatch || team1Score === team2Score || loading}
+              >
+                {loading ? "Saving..." : "Save Score"}
+              </Button>
+            )}
             {mode === 'edit' && (
               <Button 
                 onClick={handleEditScore} 

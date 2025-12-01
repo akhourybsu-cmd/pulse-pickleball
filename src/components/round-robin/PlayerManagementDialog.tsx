@@ -164,9 +164,9 @@ export function PlayerManagementDialog({
             >
               <UserMinus className="w-5 h-5 mr-3" />
               <div className="text-left">
-                <div className="font-semibold">Mark Player Inactive (Early Exit)</div>
+                <div className="font-semibold">Remove Player From Roster</div>
                 <div className="text-sm text-muted-foreground">
-                  Remove player from future rounds
+                  Remove player from future rounds (past scores preserved)
                 </div>
               </div>
             </Button>
@@ -347,7 +347,7 @@ export function PlayerManagementDialog({
           )}
           {mode === 'remove' && (
             <Button onClick={handleMarkInactive} disabled={!selectedPlayer || loading} variant="destructive">
-              {loading ? "Marking Inactive..." : "Mark Inactive"}
+              {loading ? "Removing..." : "Remove From Roster"}
             </Button>
           )}
           {mode === 'substitute' && (
