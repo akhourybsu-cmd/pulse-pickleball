@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Calendar, MapPin, Clock, Trophy, Users } from "lucide-react";
+import { ScheduleRoundCarousel } from "@/components/round-robin/ScheduleRoundCarousel";
 import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
@@ -377,68 +378,77 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
                 </CardContent>
               </Card>
             ) : (
-              Object.entries(groupedSchedule).map(([roundNo, matches]) => (
-                <Card key={roundNo} className={event.current_round === Number(roundNo) ? "border-primary" : ""}>
-                  <CardHeader>
-                    <CardTitle className="flex items-center justify-between">
-                      <span>Round {roundNo}</span>
-                      {event.current_round === Number(roundNo) && (
-                        <Badge variant="default">Current Round</Badge>
-                      )}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {matches.map((match) => {
-                        const isBye =
-                          !match.a1_player_id ||
-                          !match.b1_player_id ||
-                          match.a1_player_id === match.b1_player_id;
-                        const teamAScore = match.team_a_score ?? match.team1_score ?? null;
-                        const teamBScore = match.team_b_score ?? match.team2_score ?? null;
-                        const teamAWon = match.completed && teamAScore !== null && teamBScore !== null && teamAScore > teamBScore;
-                        const teamBWon = match.completed && teamAScore !== null && teamBScore !== null && teamBScore > teamAScore;
+              <ScheduleRoundCarousel
+                totalRounds={Object.keys(groupedSchedule).length}
+                currentRound={event.current_round || 1}
+              >
+                {(roundNo) => {
+                  const matches = groupedSchedule[roundNo] || [];
+                  
+                  return (
+                    <Card className={event.current_round === roundNo ? "border-primary" : ""}>
+                      <CardHeader>
+                        <CardTitle className="flex items-center justify-between">
+                          <span>Round {roundNo}</span>
+                          {event.current_round === roundNo && (
+                            <Badge variant="default">Current Round</Badge>
+                          )}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3">
+                          {matches.map((match) => {
+                            const isBye =
+                              !match.a1_player_id ||
+                              !match.b1_player_id ||
+                              match.a1_player_id === match.b1_player_id;
+                            const teamAScore = match.team_a_score ?? match.team1_score ?? null;
+                            const teamBScore = match.team_b_score ?? match.team2_score ?? null;
+                            const teamAWon = match.completed && teamAScore !== null && teamBScore !== null && teamAScore > teamBScore;
+                            const teamBWon = match.completed && teamAScore !== null && teamBScore !== null && teamBScore > teamAScore;
 
-                        return (
-                          <div
-                            key={match.id}
-                            className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
-                          >
-                            <div className="flex items-center gap-3 flex-1">
-                              <Badge variant="outline" className="min-w-[60px] justify-center">
-                                Court {match.court_no}
-                              </Badge>
-                              {isBye ? (
-                                <div className="text-muted-foreground">
-                                  <span className="font-medium">{getPlayerName(match.a1_player_id)}</span> - BYE
+                            return (
+                              <div
+                                key={match.id}
+                                className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
+                              >
+                                <div className="flex items-center gap-3 flex-1">
+                                  <Badge variant="outline" className="min-w-[60px] justify-center">
+                                    Court {match.court_no}
+                                  </Badge>
+                                  {isBye ? (
+                                    <div className="text-muted-foreground">
+                                      <span className="font-medium">{getPlayerName(match.a1_player_id)}</span> - BYE
+                                    </div>
+                                  ) : (
+                                    <div className="flex-1 grid grid-cols-3 gap-4 items-center">
+                                      <div className={`text-sm ${teamAWon ? "font-semibold" : ""}`}>
+                                        {getPlayerName(match.a1_player_id)} / {getPlayerName(match.a2_player_id)}
+                                      </div>
+                                      <div className="text-center">
+                                        {match.completed ? (
+                                          <span className="font-mono font-semibold">
+                                            {teamAScore} - {teamBScore}
+                                          </span>
+                                        ) : (
+                                          <span className="text-muted-foreground">vs</span>
+                                        )}
+                                      </div>
+                                      <div className={`text-sm text-right ${teamBWon ? "font-semibold" : ""}`}>
+                                        {getPlayerName(match.b1_player_id)} / {getPlayerName(match.b2_player_id)}
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
-                              ) : (
-                                <div className="flex-1 grid grid-cols-3 gap-4 items-center">
-                                  <div className={`text-sm ${teamAWon ? "font-semibold" : ""}`}>
-                                    {getPlayerName(match.a1_player_id)} / {getPlayerName(match.a2_player_id)}
-                                  </div>
-                                  <div className="text-center">
-                                    {match.completed ? (
-                                      <span className="font-mono font-semibold">
-                                        {teamAScore} - {teamBScore}
-                                      </span>
-                                    ) : (
-                                      <span className="text-muted-foreground">vs</span>
-                                    )}
-                                  </div>
-                                  <div className={`text-sm text-right ${teamBWon ? "font-semibold" : ""}`}>
-                                    {getPlayerName(match.b1_player_id)} / {getPlayerName(match.b2_player_id)}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                }}
+              </ScheduleRoundCarousel>
             )}
           </TabsContent>
 

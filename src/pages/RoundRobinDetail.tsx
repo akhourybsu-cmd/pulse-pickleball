@@ -25,6 +25,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Play, Trophy, AlertCircle, Settings, Trash2, Ban, CheckCircle, Edit, Edit3, Bell, Monitor, ExternalLink, Share2, Users, Calendar, MapPin, Zap, RefreshCw } from "lucide-react";
+import { ScheduleRoundCarousel } from "@/components/round-robin/ScheduleRoundCarousel";
 import { toast } from "sonner";
 
 import { format, parseISO } from "date-fns";
@@ -1767,8 +1768,11 @@ export default function RoundRobinDetail() {
                   </Button>
                 )}
 
-                <div className="space-y-6">
-                  {Array.from({ length: event.num_rounds }, (_, i) => i + 1).map((roundNo) => {
+                <ScheduleRoundCarousel 
+                  totalRounds={event.num_rounds} 
+                  currentRound={event.current_round || 1}
+                >
+                  {(roundNo, isActiveSlide) => {
                     const allMatches = getRoundMatches(roundNo);
                     const courtMatches = allMatches.filter(m => !m.is_bye);
                     const byeMatches = allMatches.filter(m => m.is_bye);
@@ -1777,7 +1781,7 @@ export default function RoundRobinDetail() {
                     const allRoundScored = courtMatches.every(m => m.team1_score !== null && m.team2_score !== null);
                     
                     return (
-                      <div key={roundNo} className={`space-y-4 ${isFutureRound ? 'opacity-50' : ''}`}>
+                      <div className={`space-y-4 ${isFutureRound ? 'opacity-50' : ''}`}>
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <div className="h-px bg-border flex-1 w-12" />
@@ -1884,8 +1888,8 @@ export default function RoundRobinDetail() {
                         )}
                       </div>
                     );
-                  })}
-                </div>
+                  }}
+                </ScheduleRoundCarousel>
               </>
             )}
           </TabsContent>
