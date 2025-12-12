@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { TrendingUp, TrendingDown, Minus, Users, Swords, BarChart3 } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, Users, Swords, BarChart3, ChevronLeft, ChevronRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { PulseScoreBadge } from "@/components/profile/PulseScoreBadge";
 import {
@@ -9,7 +9,7 @@ import {
   CarouselItem,
   type CarouselApi,
 } from "@/components/ui/carousel";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 interface PartnerOpponentData {
   playerId: string;
@@ -49,6 +49,8 @@ export const PulseScoreCard = ({
   const [api, setApi] = useState<CarouselApi>();
   const [current, setCurrent] = useState(0);
   const [count, setCount] = useState(0);
+  const isDragging = useRef(false);
+  const startX = useRef(0);
 
   useEffect(() => {
     if (!api) return;
@@ -59,7 +61,37 @@ export const PulseScoreCard = ({
     api.on("select", () => {
       setCurrent(api.selectedScrollSnap());
     });
+
+    // Track drag state to prevent click during swipe
+    api.on("pointerDown", () => {
+      isDragging.current = false;
+      startX.current = 0;
+    });
+
+    api.on("pointerUp", () => {
+      // Small delay to let the drag state settle
+      setTimeout(() => {
+        isDragging.current = false;
+      }, 100);
+    });
   }, [api]);
+
+  const handleCardClick = () => {
+    // Only navigate if not dragging
+    if (!isDragging.current && userId) {
+      navigate(`/profile/${userId}`);
+    }
+  };
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    startX.current = e.clientX;
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (startX.current && Math.abs(e.clientX - startX.current) > 10) {
+      isDragging.current = true;
+    }
+  };
 
   const getTrendIcon = () => {
     if (weeklyChange > 0.01) return <TrendingUp className="w-4 h-4 text-primary" />;
@@ -240,23 +272,30 @@ export const PulseScoreCard = ({
       transition={{ duration: 0.5 }}
     >
       <Card 
-        className="cursor-pointer hover:shadow-lg transition-all bg-gradient-to-br from-primary/5 via-background to-secondary/10 border-l-4 border-l-primary pulse-score-focal overflow-hidden"
-        onClick={() => userId && navigate(`/profile/${userId}`)}
+        className="hover:shadow-lg transition-all bg-gradient-to-br from-primary/5 via-background to-secondary/10 border-l-4 border-l-primary pulse-score-focal overflow-hidden touch-pan-y"
         data-tour="pulse-score"
       >
-        <CardContent className="p-0">
+        <CardContent className="p-0 relative">
           <Carousel
             setApi={setApi}
             opts={{
               align: "start",
               loop: true,
+              dragFree: false,
             }}
             className="w-full"
           >
-            <CarouselContent className="-ml-0">
+            <CarouselContent 
+              className="-ml-0"
+              onPointerDown={handlePointerDown}
+              onPointerMove={handlePointerMove}
+            >
               {slides.map((slide, index) => (
-                <CarouselItem key={index} className="pl-0">
-                  <div className="p-6 md:p-8 min-h-[140px] flex items-center">
+                <CarouselItem key={index} className="pl-0 cursor-grab active:cursor-grabbing">
+                  <div 
+                    className="p-6 md:p-8 min-h-[140px] flex items-center"
+                    onClick={handleCardClick}
+                  >
                     {slide}
                   </div>
                 </CarouselItem>
@@ -264,23 +303,48 @@ export const PulseScoreCard = ({
             </CarouselContent>
           </Carousel>
           
-          {/* Dot pagination */}
-          <div className="flex justify-center gap-1.5 pb-4">
-            {Array.from({ length: count }).map((_, index) => (
-              <button
-                key={index}
-                className={`w-2 h-2 rounded-full transition-all ${
-                  index === current 
-                    ? 'bg-primary w-4' 
-                    : 'bg-muted-foreground/30 hover:bg-muted-foreground/50'
-                }`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  api?.scrollTo(index);
-                }}
-                aria-label={`Go to slide ${index + 1}`}
-              />
-            ))}
+          {/* Navigation arrows for desktop */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              api?.scrollPrev();
+            }}
+            className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-background/80 backdrop-blur-sm border border-border/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity hidden md:flex hover:bg-background"
+            aria-label="Previous slide"
+          >
+            <ChevronLeft className="w-4 h-4 text-foreground" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              api?.scrollNext();
+            }}
+            className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-background/80 backdrop-blur-sm border border-border/50 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity hidden md:flex hover:bg-background"
+            aria-label="Next slide"
+          >
+            <ChevronRight className="w-4 h-4 text-foreground" />
+          </button>
+          
+          {/* Dot pagination with swipe hint */}
+          <div className="flex flex-col items-center gap-1 pb-4">
+            <div className="flex justify-center gap-1.5">
+              {Array.from({ length: count }).map((_, index) => (
+                <button
+                  key={index}
+                  className={`w-2 h-2 rounded-full transition-all ${
+                    index === current 
+                      ? 'bg-primary w-4' 
+                      : 'bg-muted-foreground/30 hover:bg-muted-foreground/50'
+                  }`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    api?.scrollTo(index);
+                  }}
+                  aria-label={`Go to slide ${index + 1}`}
+                />
+              ))}
+            </div>
+            <span className="text-[10px] text-muted-foreground/60 md:hidden">Swipe for more stats</span>
           </div>
         </CardContent>
       </Card>
