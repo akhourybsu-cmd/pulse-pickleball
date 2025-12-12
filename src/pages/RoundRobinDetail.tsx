@@ -598,6 +598,14 @@ export default function RoundRobinDetail() {
               courtId = courtData?.id || null;
             }
             
+            // Collect all participant IDs for auto-verification
+            const participantIds = [
+              match.a1_player_id,
+              match.a2_player_id,
+              match.b1_player_id,
+              match.b2_player_id,
+            ].filter(Boolean) as string[];
+
             // Insert match (don't set event_id for round_robin as it references events table, not round_robin_events)
             const { data: matchData, error: matchError } = await supabase
               .from("matches")
@@ -613,6 +621,7 @@ export default function RoundRobinDetail() {
                 other_location: courtId ? null : event.location,
                 match_type: event.rating_type,
                 status: "approved",
+                verified_by: participantIds, // Auto-verify all participants
               })
               .select()
               .single();
