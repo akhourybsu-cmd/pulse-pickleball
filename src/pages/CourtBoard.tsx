@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { CourtHeatmap } from "@/components/court/CourtHeatmap";
@@ -11,19 +11,16 @@ import { CourtMatchAnalytics } from "@/components/court/CourtMatchAnalytics";
 import { CourtMatchTrends } from "@/components/court/CourtMatchTrends";
 import { CourtTopPlayers } from "@/components/court/CourtTopPlayers";
 import { MatchTypeBreakdown } from "@/components/court/MatchTypeBreakdown";
-import { CourtPresence } from "@/components/court/CourtPresence";
 import { CourtCheckIn } from "@/components/court/CourtCheckIn";
-import { CourtFeed } from "@/components/court/feed/CourtFeed";
-import { ActivateSessionDialog } from "@/components/court/ActivateSessionDialog";
+import { CommunityHub } from "@/components/court/feed/CommunityHub";
 import { useToast } from "@/hooks/use-toast";
-import { MapPin, MessageSquare, Activity, LogOut, User as UserIcon, ExternalLink, Calendar, Play, Users, HelpCircle } from "lucide-react";
+import { MapPin, MessageSquare, Activity, LogOut, User as UserIcon, ExternalLink, Calendar } from "lucide-react";
 import { motion } from "framer-motion";
 import logo from "@/assets/pulse-logo-new.png";
 import pickleballCitiLogo from "@/assets/pickleball-citi-logo.png";
 import { JoinableCalendarEvents } from "@/components/citi-events/JoinableCalendarEvents";
 import { JoinableRoundRobinEvents } from "@/components/round-robin/JoinableRoundRobinEvents";
 import VenueInfoCard from "@/components/VenueInfoCard";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 interface Court {
   id: string;
@@ -38,25 +35,18 @@ export default function CourtBoard() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [court, setCourt] = useState<Court | null>(null);
-  const [channelId, setChannelId] = useState<string>("");
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
-  const [activateDialogOpen, setActivateDialogOpen] = useState(false);
-  const [sessionQueueHelpOpen, setSessionQueueHelpOpen] = useState(false);
 
   const PICKLEBALL_CITI_ID = "836003fb-fbd7-429c-8973-67ac6766a511";
   const TILDA_STONE_ID = "2bf21943-2efc-43fe-bab4-9bb7693d4674";
-  const CENTERLINE_PICKLEBALL_ID = "d8f3c9e1-7b4a-4d2e-9f8c-1a2b3c4d5e6f";
   const NORTH_ATTLEBORO_YMCA_ID = "51e71be8-2212-4d46-9f83-d7f2d2af3120";
 
   useEffect(() => {
     checkUser();
     if (courtId) {
       fetchCourt();
-      fetchChannel();
-      fetchActiveSession();
     }
   }, [courtId]);
 
@@ -81,11 +71,6 @@ export default function CourtBoard() {
   const isTildaStone = courtId === TILDA_STONE_ID;
   const isNorthAttleboro = courtId === NORTH_ATTLEBORO_YMCA_ID;
 
-  const checkUserTildaStone = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    setCurrentUserId(user?.id || null);
-  };
-
   const fetchCourt = async () => {
     const { data, error } = await supabase
       .from("courts")
@@ -104,33 +89,6 @@ export default function CourtBoard() {
       setCourt(data);
     }
     setLoading(false);
-  };
-
-  const fetchChannel = async () => {
-    const { data } = await (supabase as any)
-      .from("court_channels")
-      .select("id")
-      .eq("court_id", courtId)
-      .maybeSingle();
-
-    if (data) {
-      setChannelId(data.id);
-    }
-  };
-
-  const fetchActiveSession = async () => {
-    if (!courtId) return;
-    
-    const { data } = await supabase
-      .from("sessions")
-      .select("id")
-      .eq("court_id", courtId)
-      .eq("status", "active")
-      .maybeSingle();
-    
-    if (data) {
-      setActiveSessionId(data.id);
-    }
   };
 
   if (loading) {
@@ -192,7 +150,7 @@ export default function CourtBoard() {
         </div>
       </nav>
 
-      {/* Pulse Header - Full Width */}
+      {/* Space Header */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -336,6 +294,7 @@ export default function CourtBoard() {
       </motion.div>
 
       <div className="container mx-auto px-4 py-6 space-y-6">
+        {/* Pickleball Citi Mission Section */}
         {courtId === PICKLEBALL_CITI_ID && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -356,7 +315,6 @@ export default function CourtBoard() {
             </motion.h2>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Section 1 - Our Mission */}
               <motion.div
                 initial={{ opacity: 0, x: -50 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -372,7 +330,6 @@ export default function CourtBoard() {
                 </p>
               </motion.div>
 
-              {/* Section 2 - How We Support Players */}
               <motion.div
                 initial={{ opacity: 0, x: -50 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -392,7 +349,6 @@ export default function CourtBoard() {
                 </ul>
               </motion.div>
 
-              {/* Section 3 - Start Playing with Us */}
               <motion.div
                 initial={{ opacity: 0, x: -50 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -434,6 +390,7 @@ export default function CourtBoard() {
           </motion.div>
         )}
         
+        {/* Upcoming Events - Pinned Section */}
         {courtId === PICKLEBALL_CITI_ID && (
           <div style={{ borderTop: '1px solid rgba(14, 76, 88, 0.15)', paddingTop: '1.5rem' }}>
             <JoinableCalendarEvents courtId={courtId} />
@@ -452,6 +409,7 @@ export default function CourtBoard() {
           </div>
         )}
 
+        {/* Join Pulse CTA for non-logged-in users */}
         {!currentUserId && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -495,76 +453,13 @@ export default function CourtBoard() {
           </motion.div>
         )}
 
-        <div className="flex flex-col gap-3 sm:gap-4">
-          {channelId && (
-            <Card>
-              <CardContent className="pt-4 sm:pt-6">
-                <CourtPresence courtId={court.id} channelId={channelId} />
-              </CardContent>
-            </Card>
-          )}
-          
-          {/* Session Queue Button */}
-          {currentUserId && courtId !== PICKLEBALL_CITI_ID && courtId !== CENTERLINE_PICKLEBALL_ID && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-            >
-              <Card className="border-2 border-primary/20">
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                        <Users className="w-6 h-6 text-primary" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-semibold text-lg">Session Queue</h3>
-                          <button
-                            onClick={() => setSessionQueueHelpOpen(true)}
-                            className="text-muted-foreground hover:text-foreground transition-colors"
-                            aria-label="Learn about Session Queue"
-                          >
-                            <HelpCircle className="w-5 h-5" />
-                          </button>
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          {activeSessionId ? "Join the active session" : "Start a new session"}
-                        </p>
-                      </div>
-                    </div>
-                    {activeSessionId ? (
-                      <Button
-                        onClick={() => navigate(`/session/queue?session=${activeSessionId}`)}
-                        className="gap-2"
-                      >
-                        <Play className="w-4 h-4" />
-                        View Queue
-                      </Button>
-                    ) : (
-                      <Button
-                        onClick={() => setActivateDialogOpen(true)}
-                        variant="outline"
-                        className="gap-2"
-                      >
-                        <Play className="w-4 h-4" />
-                        Activate
-                      </Button>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
-        </div>
-
-        <Tabs defaultValue="feed" className="w-full">
+        {/* Community Hub & Stats Tabs */}
+        <Tabs defaultValue="community" className="w-full">
           <TabsList className="grid w-full grid-cols-2 h-auto">
-            <TabsTrigger value="feed" className="gap-1 flex-col py-2 px-2 text-xs sm:flex-row sm:gap-2 sm:text-sm">
+            <TabsTrigger value="community" className="gap-1 flex-col py-2 px-2 text-xs sm:flex-row sm:gap-2 sm:text-sm">
               <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4" />
-              <span className="hidden sm:inline">Court Feed</span>
-              <span className="sm:hidden">Feed</span>
+              <span className="hidden sm:inline">Community Hub</span>
+              <span className="sm:hidden">Community</span>
             </TabsTrigger>
             <TabsTrigger value="stats" className="gap-1 flex-col py-2 px-2 text-xs sm:flex-row sm:gap-2 sm:text-sm">
               <Activity className="w-3 h-3 sm:w-4 sm:h-4" />
@@ -573,10 +468,10 @@ export default function CourtBoard() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="feed">
+          <TabsContent value="community">
             <Card>
               <CardContent className="pt-4 sm:pt-6">
-                <CourtFeed courtId={court.id} currentUserId={currentUserId} />
+                <CommunityHub courtId={court.id} currentUserId={currentUserId} />
               </CardContent>
             </Card>
           </TabsContent>
@@ -593,47 +488,6 @@ export default function CourtBoard() {
           </TabsContent>
         </Tabs>
       </div>
-      
-      {/* Activate Session Dialog */}
-      {court && (
-        <ActivateSessionDialog
-          open={activateDialogOpen}
-          onOpenChange={setActivateDialogOpen}
-          courtId={court.id}
-          courtName={court.name}
-          onSuccess={(sessionId) => {
-            setActiveSessionId(sessionId);
-            navigate(`/session/queue?session=${sessionId}`);
-          }}
-        />
-      )}
-
-      {/* Session Queue Help Dialog */}
-      <Dialog open={sessionQueueHelpOpen} onOpenChange={setSessionQueueHelpOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>What is Session Queue?</DialogTitle>
-            <DialogDescription className="pt-4 space-y-3 text-base">
-              <p>
-                <strong>Session Queue</strong> is a real-time court management system that helps organize pickleball play sessions at your venue.
-              </p>
-              <p>
-                <strong>How it works:</strong>
-              </p>
-              <ul className="list-disc pl-5 space-y-2">
-                <li><strong>Check In:</strong> Players check in when they arrive at the court</li>
-                <li><strong>Join a Box:</strong> Players select which court (box) they want to play on</li>
-                <li><strong>Queue Management:</strong> The system automatically tracks who's waiting and assigns players to courts</li>
-                <li><strong>Match Tracking:</strong> Once you're assigned to a match, you can enter scores and track your games</li>
-                <li><strong>Real-time Updates:</strong> Everyone sees live updates on court availability and queue positions</li>
-              </ul>
-              <p className="pt-2">
-                Perfect for open play sessions where you want organized, fair rotation across multiple courts!
-              </p>
-            </DialogDescription>
-          </DialogHeader>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

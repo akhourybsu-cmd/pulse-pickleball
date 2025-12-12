@@ -729,12 +729,19 @@ export type Database = {
           content: string
           court_id: string
           created_at: string
+          expires_at: string | null
           id: string
-          max_players: number
-          session_date: string
-          session_time: string
+          last_activity_at: string | null
+          lfg_format: string | null
+          lfg_skill_max: number | null
+          lfg_skill_min: number | null
+          max_players: number | null
+          pinned: boolean | null
+          session_date: string | null
+          session_time: string | null
           status: string
           title: string
+          type: string | null
           updated_at: string
           user_id: string
           viewed_participants_count: number | null
@@ -743,12 +750,19 @@ export type Database = {
           content: string
           court_id: string
           created_at?: string
+          expires_at?: string | null
           id?: string
-          max_players?: number
-          session_date?: string
-          session_time?: string
+          last_activity_at?: string | null
+          lfg_format?: string | null
+          lfg_skill_max?: number | null
+          lfg_skill_min?: number | null
+          max_players?: number | null
+          pinned?: boolean | null
+          session_date?: string | null
+          session_time?: string | null
           status?: string
           title: string
+          type?: string | null
           updated_at?: string
           user_id: string
           viewed_participants_count?: number | null
@@ -757,12 +771,19 @@ export type Database = {
           content?: string
           court_id?: string
           created_at?: string
+          expires_at?: string | null
           id?: string
-          max_players?: number
-          session_date?: string
-          session_time?: string
+          last_activity_at?: string | null
+          lfg_format?: string | null
+          lfg_skill_max?: number | null
+          lfg_skill_min?: number | null
+          max_players?: number | null
+          pinned?: boolean | null
+          session_date?: string | null
+          session_time?: string | null
           status?: string
           title?: string
+          type?: string | null
           updated_at?: string
           user_id?: string
           viewed_participants_count?: number | null
