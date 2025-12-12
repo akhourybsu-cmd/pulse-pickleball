@@ -39,6 +39,12 @@ interface Profile {
   avg_opponent_rating: number;
 }
 
+interface PartnerOpponentData {
+  playerId: string;
+  playerName: string;
+  matchCount: number;
+}
+
 const Dashboard = () => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -51,8 +57,97 @@ const Dashboard = () => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [homeCourtId, setHomeCourtId] = useState<string | null>(null);
+  
+  // Partner/Opponent stats
+  const [mostPlayedPartner, setMostPlayedPartner] = useState<PartnerOpponentData | null>(null);
+  const [mostFacedOpponent, setMostFacedOpponent] = useState<PartnerOpponentData | null>(null);
 
   const unreadCount = notifications.filter(n => n.unread).length;
+
+  const fetchPartnerOpponentStats = async (userId: string) => {
+    try {
+      // Get all matches the user participated in
+      const { data: userMatches, error: matchError } = await supabase
+        .from("match_participants")
+        .select(`
+          match_id,
+          team,
+          matches!inner (id, status)
+        `)
+        .eq("player_id", userId)
+        .eq("matches.status", "approved");
+
+      if (matchError || !userMatches?.length) return;
+
+      const matchIds = userMatches.map(m => m.match_id);
+      const userTeamMap = new Map(userMatches.map(m => [m.match_id, m.team]));
+
+      // Get all participants for these matches
+      const { data: allParticipants, error: participantsError } = await supabase
+        .from("match_participants")
+        .select(`
+          match_id,
+          player_id,
+          team,
+          profiles:player_id (display_name, first_name, last_name, full_name)
+        `)
+        .in("match_id", matchIds)
+        .neq("player_id", userId);
+
+      if (participantsError || !allParticipants) return;
+
+      // Count partners (same team) and opponents (different team)
+      const partnerCounts: Record<string, { count: number; name: string }> = {};
+      const opponentCounts: Record<string, { count: number; name: string }> = {};
+
+      allParticipants.forEach(p => {
+        const userTeam = userTeamMap.get(p.match_id);
+        const profile = p.profiles as any;
+        const name = profile?.display_name || profile?.full_name || 
+          `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || 'Unknown';
+        
+        if (p.team === userTeam) {
+          // Partner
+          if (!partnerCounts[p.player_id]) {
+            partnerCounts[p.player_id] = { count: 0, name };
+          }
+          partnerCounts[p.player_id].count++;
+        } else {
+          // Opponent
+          if (!opponentCounts[p.player_id]) {
+            opponentCounts[p.player_id] = { count: 0, name };
+          }
+          opponentCounts[p.player_id].count++;
+        }
+      });
+
+      // Find top partner
+      const topPartner = Object.entries(partnerCounts)
+        .sort((a, b) => b[1].count - a[1].count)[0];
+      
+      if (topPartner) {
+        setMostPlayedPartner({
+          playerId: topPartner[0],
+          playerName: topPartner[1].name,
+          matchCount: topPartner[1].count
+        });
+      }
+
+      // Find top opponent
+      const topOpponent = Object.entries(opponentCounts)
+        .sort((a, b) => b[1].count - a[1].count)[0];
+      
+      if (topOpponent) {
+        setMostFacedOpponent({
+          playerId: topOpponent[0],
+          playerName: topOpponent[1].name,
+          matchCount: topOpponent[1].count
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching partner/opponent stats:", error);
+    }
+  };
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -89,6 +184,9 @@ const Dashboard = () => {
         if (publicProfileResult.data?.home_court_id) {
           setHomeCourtId(publicProfileResult.data.home_court_id);
         }
+
+        // Fetch partner/opponent stats
+        fetchPartnerOpponentStats(user.id);
 
         setLoading(false);
       } catch (error) {
@@ -249,11 +347,19 @@ const Dashboard = () => {
         {/* MFA Prompt */}
         <MFAPrompt />
 
-        {/* 1. Hero Pulse Score Card */}
+        {/* 1. Hero Pulse Score Card with Swipeable Stats */}
         <PulseScoreCard 
           currentRating={profile?.current_rating}
           weeklyChange={weeklyChange}
           userId={user?.id}
+          wins={profile?.wins}
+          losses={profile?.losses}
+          totalMatches={profile?.total_matches}
+          pointsFor={profile?.total_points_for}
+          pointsAgainst={profile?.total_points_against}
+          avgOpponentRating={profile?.avg_opponent_rating}
+          mostPlayedPartner={mostPlayedPartner}
+          mostFacedOpponent={mostFacedOpponent}
         />
 
         {/* 2. Quick Actions Row */}
