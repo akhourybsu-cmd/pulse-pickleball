@@ -1,9 +1,8 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Share2, Copy, Settings, LogOut, Bell } from "lucide-react";
-import { toast } from "sonner";
+import { LogOut } from "lucide-react";
 import { RatingDisplay } from "./RatingDisplay";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -64,58 +63,18 @@ export const ProfileHero = ({
 
   const tier = getTier(currentRating);
 
-  const handleShare = async () => {
-    const shareData = {
-      title: "Pulse Pickleball",
-      text: `Check out my Pulse profile!`,
-      url: `https://pulsepb.com/profile/${userId}`,
-    };
-
-    try {
-      if (navigator.share) {
-        await navigator.share(shareData);
-        toast.success("Thanks for sharing!");
-      } else {
-        await navigator.clipboard.writeText(shareData.url);
-        toast.success("Profile link copied!");
-      }
-    } catch (error) {
-      if (error instanceof Error && error.name !== "AbortError") {
-        console.error("Error sharing:", error);
-      }
-    }
-  };
-
-  const handleCopyId = async () => {
-    if (userId) {
-      const shortId = `PULSE-${userId.slice(0, 6).toUpperCase()}`;
-      await navigator.clipboard.writeText(shortId);
-      toast.success("Player ID copied!");
-    }
-  };
-
   return (
     <div className="relative overflow-hidden">
-      {/* Gradient Background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary/90 to-primary/70 dark:from-primary/80 dark:via-primary/60 dark:to-secondary" />
-      
-      {/* Subtle Pattern Overlay */}
-      <div className="absolute inset-0 opacity-10">
-        <div className="absolute inset-0" style={{
-          backgroundImage: `radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)`,
-          backgroundSize: '24px 24px'
-        }} />
-      </div>
-
-      {/* Content */}
-      <div className="relative px-4 pt-4 pb-6">
-        {/* Top Navigation Row */}
-        <div className="flex items-center justify-between mb-6">
-          <img 
-            src={logo} 
-            alt="PULSE" 
-            className="h-12 w-auto brightness-0 invert opacity-90" 
-          />
+      {/* Teal Navigation Header */}
+      <nav className="bg-secondary border-b border-secondary-foreground/10">
+        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
+          <Link to="/dashboard">
+            <img 
+              src={logo} 
+              alt="PULSE" 
+              className="h-10 w-auto cursor-pointer hover:opacity-80 transition-opacity" 
+            />
+          </Link>
           <div className="flex items-center gap-2">
             <UnverifiedMatchesIndicator />
             <ThemeToggle />
@@ -127,13 +86,27 @@ export const ProfileHero = ({
               variant="ghost"
               size="icon"
               onClick={onSignOut}
-              className="text-primary-foreground/80 hover:text-primary-foreground hover:bg-white/10"
+              className="text-white hover:text-white/90 hover:bg-white/10"
             >
               <LogOut className="h-5 w-5" />
             </Button>
           </div>
         </div>
+      </nav>
 
+      {/* Gradient Background */}
+      <div className="absolute inset-0 top-[60px] bg-gradient-to-br from-primary via-primary/90 to-primary/70 dark:from-primary/80 dark:via-primary/60 dark:to-secondary" />
+      
+      {/* Subtle Pattern Overlay */}
+      <div className="absolute inset-0 top-[60px] opacity-10">
+        <div className="absolute inset-0" style={{
+          backgroundImage: `radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)`,
+          backgroundSize: '24px 24px'
+        }} />
+      </div>
+
+      {/* Content */}
+      <div className="relative px-4 pt-4 pb-6">
         {/* Profile Info */}
         <div className="flex items-start gap-4 mb-6">
           <Avatar 
@@ -172,32 +145,9 @@ export const ProfileHero = ({
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center justify-center gap-3 mb-6">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={handleShare}
-            className="bg-white/20 hover:bg-white/30 text-primary-foreground border-0"
-          >
-            <Share2 className="h-4 w-4 mr-2" />
-            Share Profile
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={handleCopyId}
-            className="bg-white/20 hover:bg-white/30 text-primary-foreground border-0"
-          >
-            <Copy className="h-4 w-4 mr-2" />
-            Copy ID
-          </Button>
-        </div>
-
         {/* Rating Display */}
         <RatingDisplay
           doublesRating={currentRating}
-          singlesRating={undefined}
           totalMatches={totalMatches}
           wins={wins}
           losses={losses}

@@ -41,17 +41,52 @@ export function JoinableRoundRobinEvents({ courtLocation, userId }: JoinableRoun
   const { data: events = [], refetch } = useQuery({
     queryKey: ["joinable-round-robin-events", courtLocation, userId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // First, find the court ID for this location
+      const { data: courtData } = await supabase
+        .from("courts")
+        .select("id, name")
+        .ilike("name", `%${courtLocation}%`)
+        .limit(1)
+        .maybeSingle();
+      
+      const courtId = courtData?.id;
+      const courtName = courtData?.name;
+
+      // Query events that match either the court ID or the location name (backwards compatibility)
+      let query = supabase
         .from("round_robin_events")
         .select("*")
         .eq("is_published", true)
         .eq("registration_mode", "open_registration")
-        .gte("registration_deadline", new Date().toISOString())
-        .ilike("location", `%${courtLocation}%`)
+        .gte("registration_deadline", new Date().toISOString());
+      
+      if (courtId) {
+        // Match by court ID or name
+        query = query.or(`location.eq.${courtId},location.ilike.%${courtLocation}%`);
+      } else {
+        // Fallback to name match only
+        query = query.ilike("location", `%${courtLocation}%`);
+      }
+      
+      const { data, error } = await query
         .order("date", { ascending: true })
         .limit(3);
       
       if (error) throw error;
+
+      // Fetch all courts for location resolution
+      const locationIds = (data || [])
+        .map(e => e.location)
+        .filter(loc => loc && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(loc));
+      
+      let courtsMap = new Map<string, string>();
+      if (locationIds.length > 0) {
+        const { data: courts } = await supabase
+          .from("courts")
+          .select("id, name")
+          .in("id", locationIds);
+        courts?.forEach(c => courtsMap.set(c.id, c.name));
+      }
 
       // Enrich with registration counts and organizer info
       const enrichedEvents: EnrichedEvent[] = await Promise.all(
@@ -85,12 +120,17 @@ export function JoinableRoundRobinEvents({ courtLocation, userId }: JoinableRoun
             .eq("id", event.organizer_id)
             .single();
 
+          // Resolve location to court name if it's a UUID
+          const resolvedLocation = event.location && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(event.location)
+            ? (courtsMap.get(event.location) || event.location)
+            : event.location;
+
           return {
             id: event.id,
             name: event.name,
             date: event.date,
             start_time: event.start_time,
-            location: event.location,
+            location: resolvedLocation,
             max_players: event.max_players,
             registration_deadline: event.registration_deadline,
             rating_eligible: event.rating_eligible,

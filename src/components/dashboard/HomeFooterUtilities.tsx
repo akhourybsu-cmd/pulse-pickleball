@@ -23,9 +23,9 @@ export const HomeFooterUtilities = ({
       {/* Main Utilities */}
       <Card className="bg-gradient-to-br from-muted/30 to-background">
         <CardContent className="p-4 md:p-6">
-          <div className="flex flex-col md:flex-row gap-3 items-stretch">
-            {/* Left: Edit Profile and Help & FAQ */}
-            <div className="flex-1 flex flex-col sm:flex-row gap-3">
+          <div className="flex flex-col gap-3">
+            {/* Top Row: Edit Profile and Help & FAQ side by side */}
+            <div className="flex gap-3">
               <Button
                 size="lg" 
                 variant="subtle"
@@ -47,12 +47,12 @@ export const HomeFooterUtilities = ({
               </Button>
             </div>
 
-            {/* Right: Invite Friends */}
+            {/* Bottom Row: Invite Friends full width */}
             <Button 
               onClick={onShare}
               variant="default"
               size="lg"
-              className="gap-2 md:w-auto shadow-[var(--shadow-glow)] h-11"
+              className="w-full gap-2 shadow-[var(--shadow-glow)] h-11"
             >
               <Share2 className="h-4 w-4" />
               Invite Friends
