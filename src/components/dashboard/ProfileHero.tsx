@@ -94,64 +94,59 @@ export const ProfileHero = ({
         </div>
       </nav>
 
-      {/* Gradient Background */}
-      <div className="absolute inset-0 top-[60px] bg-gradient-to-br from-primary via-primary/90 to-primary/70 dark:from-primary/80 dark:via-primary/60 dark:to-secondary" />
-      
-      {/* Subtle Pattern Overlay */}
-      <div className="absolute inset-0 top-[60px] opacity-10">
-        <div className="absolute inset-0" style={{
-          backgroundImage: `radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)`,
-          backgroundSize: '24px 24px'
-        }} />
-      </div>
-
-      {/* Content */}
-      <div className="relative px-4 pt-4 pb-6">
-        {/* Profile Info */}
-        <div className="flex items-start gap-4 mb-6">
-          <Avatar 
-            className="h-20 w-20 border-4 border-white/30 shadow-lg cursor-pointer hover:border-white/50 transition-colors"
-            onClick={() => navigate(`/profile/${userId}`)}
-          >
-            <AvatarImage src={avatarUrl || undefined} alt={name} />
-            <AvatarFallback className="text-xl font-bold bg-secondary text-secondary-foreground">
-              {initials}
-            </AvatarFallback>
-          </Avatar>
-          
-          <div className="flex-1 min-w-0">
-            <h1 className="text-2xl font-bold text-primary-foreground truncate">
-              {name}
-            </h1>
-            <p className="text-primary-foreground/70 text-sm">
-              {location || "Location not set"}
-            </p>
-            <Badge className={`mt-2 ${tier.color}`}>
-              {tier.name}
-            </Badge>
+      {/* Soft Hero Background - Light: soft green, Dark: deep teal with accent stripe */}
+      <div className="relative bg-[#F7FBF2] dark:bg-[#142029] border-b border-border">
+        {/* Accent stripe for dark mode */}
+        <div className="hidden dark:block absolute left-0 top-0 bottom-0 w-1 bg-primary" />
+        
+        {/* Content */}
+        <div className="px-4 pt-4 pb-6">
+          {/* Profile Info */}
+          <div className="flex items-start gap-4 mb-6">
+            <Avatar 
+              className="h-20 w-20 border-4 border-primary/30 shadow-lg cursor-pointer hover:border-primary/50 transition-colors"
+              onClick={() => navigate(`/profile/${userId}`)}
+            >
+              <AvatarImage src={avatarUrl || undefined} alt={name} />
+              <AvatarFallback className="text-xl font-bold bg-primary/20 text-primary">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+            
+            <div className="flex-1 min-w-0">
+              <h1 className="text-2xl font-bold text-foreground truncate">
+                {name}
+              </h1>
+              <p className="text-muted-foreground text-sm">
+                {location || "Location not set"}
+              </p>
+              <Badge className={`mt-2 ${tier.color}`}>
+                {tier.name}
+              </Badge>
+            </div>
           </div>
+
+          {/* Social Stats */}
+          <div className="flex items-center justify-center gap-8 mb-6">
+            <div className="text-center">
+              <p className="text-2xl font-bold text-foreground">{partnersCount}</p>
+              <p className="text-xs text-muted-foreground">Partners</p>
+            </div>
+            <div className="w-px h-8 bg-border" />
+            <div className="text-center">
+              <p className="text-2xl font-bold text-foreground">{courtsPlayed}</p>
+              <p className="text-xs text-muted-foreground">Courts Played</p>
+            </div>
+          </div>
+
+          {/* Rating Display */}
+          <RatingDisplay
+            doublesRating={currentRating}
+            totalMatches={totalMatches}
+            wins={wins}
+            losses={losses}
+          />
         </div>
-
-        {/* Social Stats */}
-        <div className="flex items-center justify-center gap-8 mb-6">
-          <div className="text-center">
-            <p className="text-2xl font-bold text-primary-foreground">{partnersCount}</p>
-            <p className="text-xs text-primary-foreground/70">Partners</p>
-          </div>
-          <div className="w-px h-8 bg-primary-foreground/20" />
-          <div className="text-center">
-            <p className="text-2xl font-bold text-primary-foreground">{courtsPlayed}</p>
-            <p className="text-xs text-primary-foreground/70">Courts Played</p>
-          </div>
-        </div>
-
-        {/* Rating Display */}
-        <RatingDisplay
-          doublesRating={currentRating}
-          totalMatches={totalMatches}
-          wins={wins}
-          losses={losses}
-        />
       </div>
     </div>
   );

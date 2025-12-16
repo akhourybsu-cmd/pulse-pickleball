@@ -125,16 +125,16 @@ export const ActivityModule = ({ userId }: ActivityModuleProps) => {
       const upcomingEvents: UpcomingEvent[] = [];
       
       if (rrEvents) {
-        // Check which events user is registered for - do it in one query
+        // Check which events user is registered for using round_robin_players table
         const eventIds = rrEvents.map(e => e.id);
         const { data: registrations } = await supabase
-          .from("round_robin_registrations" as any)
+          .from("round_robin_players")
           .select("event_id")
           .eq("player_id", userId)
-          .eq("status", "registered")
+          .eq("active", true)
           .in("event_id", eventIds);
         
-        const registeredEventIds = new Set(registrations?.map((r: any) => r.event_id) || []);
+        const registeredEventIds = new Set(registrations?.map((r) => r.event_id) || []);
         
         for (const event of rrEvents) {
           if (registeredEventIds.has(event.id)) {
