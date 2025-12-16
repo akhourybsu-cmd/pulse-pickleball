@@ -56,7 +56,7 @@ export const MatchCard = ({
           >
             {isWin ? "Win" : "Loss"}
           </span>
-          {ratingChange !== undefined && ratingChange !== 0 && (
+          {ratingChange != null && ratingChange !== 0 && (
             <span
               className={cn(
                 "text-xs font-medium",
