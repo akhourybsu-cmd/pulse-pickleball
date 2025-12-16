@@ -2,23 +2,20 @@ import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { LogOut, User as UserIcon, Trophy } from "lucide-react";
+import { Trophy, TrendingUp, Activity } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
-import logo from "@/assets/pulse-logo-new.png";
 
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { Footer } from "@/components/Footer";
 import { OnboardingTutorial } from "@/components/OnboardingTutorial";
-import { UnverifiedMatchesIndicator } from "@/components/UnverifiedMatchesIndicator";
 import { SmartMatch } from "@/components/court/SmartMatch";
 import { LFGNotifications } from "@/components/court/LFGNotifications";
 import { MFAPrompt } from "@/components/auth/MFAPrompt";
-import { NotificationBell } from "@/components/NotificationBell";
 import { NotificationDrawer, Notification } from "@/components/NotificationDrawer";
 
-// New Pulse 2.0 Dashboard Components
-import { PulseScoreCard } from "@/components/dashboard/PulseScoreCard";
+// New DUPR-inspired Dashboard Components
+import { ProfileHero } from "@/components/dashboard/ProfileHero";
 import { QuickActionsBar } from "@/components/dashboard/QuickActionsBar";
 import { ActivityModule } from "@/components/dashboard/ActivityModule";
 import { StatsByCourtCard } from "@/components/dashboard/StatsByCourtCard";
@@ -29,6 +26,7 @@ interface Profile {
   id: string;
   full_name: string;
   display_name: string | null;
+  avatar_url: string | null;
   current_rating: number;
   week_start_rating: number;
   total_matches: number;
@@ -37,6 +35,8 @@ interface Profile {
   total_points_for: number;
   total_points_against: number;
   avg_opponent_rating: number;
+  state: string | null;
+  town: string | null;
 }
 
 interface PartnerOpponentData {
@@ -59,93 +59,55 @@ const Dashboard = () => {
   const [homeCourtId, setHomeCourtId] = useState<string | null>(null);
   
   // Partner/Opponent stats
-  const [mostPlayedPartner, setMostPlayedPartner] = useState<PartnerOpponentData | null>(null);
-  const [mostFacedOpponent, setMostFacedOpponent] = useState<PartnerOpponentData | null>(null);
+  const [partnersCount, setPartnersCount] = useState(0);
+  const [courtsPlayed, setCourtsPlayed] = useState(0);
 
   const unreadCount = notifications.filter(n => n.unread).length;
 
-  const fetchPartnerOpponentStats = async (userId: string) => {
+  const fetchPartnerAndCourtStats = async (userId: string) => {
     try {
-      // Get all matches the user participated in
-      const { data: userMatches, error: matchError } = await supabase
+      // Get unique partners count
+      const { data: userMatches } = await supabase
         .from("match_participants")
-        .select(`
-          match_id,
-          team,
-          matches!inner (id, status)
-        `)
+        .select(`match_id, team, matches!inner (id, status)`)
         .eq("player_id", userId)
         .eq("matches.status", "approved");
 
-      if (matchError || !userMatches?.length) return;
+      if (userMatches?.length) {
+        const matchIds = userMatches.map(m => m.match_id);
+        const userTeamMap = new Map(userMatches.map(m => [m.match_id, m.team]));
 
-      const matchIds = userMatches.map(m => m.match_id);
-      const userTeamMap = new Map(userMatches.map(m => [m.match_id, m.team]));
+        // Get all partners (same team)
+        const { data: allParticipants } = await supabase
+          .from("match_participants")
+          .select("match_id, player_id, team")
+          .in("match_id", matchIds)
+          .neq("player_id", userId);
 
-      // Get all participants for these matches
-      const { data: allParticipants, error: participantsError } = await supabase
-        .from("match_participants")
-        .select(`
-          match_id,
-          player_id,
-          team,
-          profiles:player_id (display_name, first_name, last_name, full_name)
-        `)
-        .in("match_id", matchIds)
-        .neq("player_id", userId);
-
-      if (participantsError || !allParticipants) return;
-
-      // Count partners (same team) and opponents (different team)
-      const partnerCounts: Record<string, { count: number; name: string }> = {};
-      const opponentCounts: Record<string, { count: number; name: string }> = {};
-
-      allParticipants.forEach(p => {
-        const userTeam = userTeamMap.get(p.match_id);
-        const profile = p.profiles as any;
-        const name = profile?.display_name || profile?.full_name || 
-          `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || 'Unknown';
-        
-        if (p.team === userTeam) {
-          // Partner
-          if (!partnerCounts[p.player_id]) {
-            partnerCounts[p.player_id] = { count: 0, name };
-          }
-          partnerCounts[p.player_id].count++;
-        } else {
-          // Opponent
-          if (!opponentCounts[p.player_id]) {
-            opponentCounts[p.player_id] = { count: 0, name };
-          }
-          opponentCounts[p.player_id].count++;
+        if (allParticipants) {
+          const uniquePartners = new Set<string>();
+          allParticipants.forEach(p => {
+            if (p.team === userTeamMap.get(p.match_id)) {
+              uniquePartners.add(p.player_id);
+            }
+          });
+          setPartnersCount(uniquePartners.size);
         }
-      });
-
-      // Find top partner
-      const topPartner = Object.entries(partnerCounts)
-        .sort((a, b) => b[1].count - a[1].count)[0];
-      
-      if (topPartner) {
-        setMostPlayedPartner({
-          playerId: topPartner[0],
-          playerName: topPartner[1].name,
-          matchCount: topPartner[1].count
-        });
       }
 
-      // Find top opponent
-      const topOpponent = Object.entries(opponentCounts)
-        .sort((a, b) => b[1].count - a[1].count)[0];
-      
-      if (topOpponent) {
-        setMostFacedOpponent({
-          playerId: topOpponent[0],
-          playerName: topOpponent[1].name,
-          matchCount: topOpponent[1].count
-        });
+      // Get unique courts played
+      const { data: courtsData } = await supabase
+        .from("matches")
+        .select("court_id")
+        .in("id", userMatches?.map(m => m.match_id) || [])
+        .not("court_id", "is", null);
+
+      if (courtsData) {
+        const uniqueCourts = new Set(courtsData.map(c => c.court_id).filter(Boolean));
+        setCourtsPlayed(uniqueCourts.size);
       }
     } catch (error) {
-      console.error("Error fetching partner/opponent stats:", error);
+      console.error("Error fetching partner/court stats:", error);
     }
   };
 
@@ -185,8 +147,8 @@ const Dashboard = () => {
           setHomeCourtId(publicProfileResult.data.home_court_id);
         }
 
-        // Fetch partner/opponent stats
-        fetchPartnerOpponentStats(user.id);
+        // Fetch partner/court stats
+        fetchPartnerAndCourtStats(user.id);
 
         setLoading(false);
       } catch (error) {
@@ -267,43 +229,19 @@ const Dashboard = () => {
     }
   };
 
-  const handleShare = async () => {
-    const shareData = {
-      title: 'Pulse Pickleball',
-      text: 'Join me on Pulse - Track your pickleball journey and compete with friends!',
-      url: 'https://pulsepb.com'
-    };
-
-    try {
-      if (navigator.share) {
-        await navigator.share(shareData);
-        toast.success("Thanks for spreading the word!");
-      } else {
-        await navigator.clipboard.writeText('https://pulsepb.com');
-        toast.success("Share link copied to clipboard!");
-      }
-    } catch (error) {
-      if (error instanceof Error && error.name !== 'AbortError') {
-        console.error('Error sharing:', error);
-        toast.error("Could not share. Please try again.");
-      }
-    }
-  };
-
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[hsl(var(--page-bg))]">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <p className="text-muted-foreground">Loading...</p>
       </div>
     );
   }
 
-  const weeklyChange = profile 
-    ? profile.current_rating - profile.week_start_rating 
-    : 0;
+  // Build location string
+  const locationStr = [profile?.town, profile?.state].filter(Boolean).join(", ") || null;
 
   return (
-    <div className="min-h-screen bg-[hsl(var(--page-bg))]">
+    <div className="min-h-screen bg-background">
       {user && (
         <OnboardingTutorial 
           userId={user.id} 
@@ -311,82 +249,93 @@ const Dashboard = () => {
         />
       )}
       
-      {/* Navigation */}
-      <nav className="border-b bg-secondary">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Link to="/dashboard">
-            <img src={logo} alt="PULSE Logo" className="h-[90px] w-auto cursor-pointer hover:opacity-80 transition-opacity logo-pulse" />
-          </Link>
-          <div className="flex items-center gap-3">
-            <UnverifiedMatchesIndicator />
-            <Button 
-              variant="outline" 
-              size="icon" 
-              onClick={() => navigate(`/profile/${user?.id}`)} 
-              className="rounded-full"
-              data-tour="view-profile"
-            >
-              <UserIcon className="h-[1.2rem] w-[1.2rem]" />
-              <span className="sr-only">View Profile</span>
-            </Button>
-            <ThemeToggle />
-            <NotificationBell 
-              unreadCount={unreadCount}
-              onOpen={() => setIsDrawerOpen(true)}
-            />
-            <Button variant="secondary" size="sm" onClick={handleSignOut}>
-              <LogOut className="w-4 h-4 mr-2" />
-              Sign Out
-            </Button>
-          </div>
-        </div>
-      </nav>
+      {/* Profile Hero Header */}
+      <ProfileHero
+        userId={user?.id}
+        fullName={profile?.full_name || null}
+        displayName={profile?.display_name || null}
+        avatarUrl={profile?.avatar_url}
+        location={locationStr}
+        currentRating={profile?.current_rating}
+        totalMatches={profile?.total_matches}
+        wins={profile?.wins}
+        losses={profile?.losses}
+        partnersCount={partnersCount}
+        courtsPlayed={courtsPlayed}
+        unreadNotifications={unreadCount}
+        onNotificationOpen={() => setIsDrawerOpen(true)}
+        onSignOut={handleSignOut}
+      />
 
       {/* Main Dashboard Content */}
       <div className="container mx-auto px-4 py-6 space-y-6">
         {/* MFA Prompt */}
         <MFAPrompt />
 
-        {/* 1. Hero Pulse Score Card with Swipeable Stats */}
-        <PulseScoreCard 
-          currentRating={profile?.current_rating}
-          weeklyChange={weeklyChange}
-          userId={user?.id}
-          wins={profile?.wins}
-          losses={profile?.losses}
-          totalMatches={profile?.total_matches}
-          pointsFor={profile?.total_points_for}
-          pointsAgainst={profile?.total_points_against}
-          avgOpponentRating={profile?.avg_opponent_rating}
-          mostPlayedPartner={mostPlayedPartner}
-          mostFacedOpponent={mostFacedOpponent}
-        />
+        {/* Performance / Activity Tabs */}
+        <Tabs defaultValue="performance" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-4">
+            <TabsTrigger value="performance" className="text-sm">
+              <TrendingUp className="w-4 h-4 mr-2" />
+              Performance
+            </TabsTrigger>
+            <TabsTrigger value="activity" className="text-sm">
+              <Activity className="w-4 h-4 mr-2" />
+              Activity
+            </TabsTrigger>
+          </TabsList>
 
-        {/* 2. Quick Actions Row */}
-        <QuickActionsBar />
+          <TabsContent value="performance" className="mt-0 space-y-6">
+            {/* Quick Actions Row */}
+            <QuickActionsBar />
 
-        {/* 3. Activity Module (Tabs: Matches | Events) */}
-        <ActivityModule userId={user?.id} />
+            {/* Stats by Court (Collapsible) */}
+            <StatsByCourtCard userId={user?.id} />
 
-        {/* 4. Stats by Court (Collapsible) */}
-        <StatsByCourtCard userId={user?.id} />
+            {/* Your Spaces Preview */}
+            <SpacesPreviewRow 
+              userId={user?.id}
+              homeCourtId={homeCourtId}
+            />
 
-        {/* 5. Your Spaces Preview */}
-        <SpacesPreviewRow 
-          userId={user?.id}
-          homeCourtId={homeCourtId}
-        />
+            {/* Secondary Tools */}
+            <div className="space-y-4" data-tour="court-stats">
+              <SmartMatch userId={user?.id || null} />
+              <LFGNotifications />
+            </div>
+          </TabsContent>
 
-        {/* Secondary Tools */}
-        <div className="space-y-4" data-tour="court-stats">
-          <SmartMatch userId={user?.id || null} />
-          <LFGNotifications />
-        </div>
+          <TabsContent value="activity" className="mt-0 space-y-6">
+            {/* Activity Module (Tabs: Matches | Events) */}
+            <ActivityModule userId={user?.id} />
+          </TabsContent>
+        </Tabs>
 
-        {/* 6. Footer Utilities */}
+        {/* Footer Utilities */}
         <HomeFooterUtilities 
           isAdmin={isAdmin}
-          onShare={handleShare}
+          onShare={async () => {
+            const shareData = {
+              title: 'Pulse Pickleball',
+              text: 'Join me on Pulse - Track your pickleball journey and compete with friends!',
+              url: 'https://pulsepb.com'
+            };
+
+            try {
+              if (navigator.share) {
+                await navigator.share(shareData);
+                toast.success("Thanks for spreading the word!");
+              } else {
+                await navigator.clipboard.writeText('https://pulsepb.com');
+                toast.success("Share link copied to clipboard!");
+              }
+            } catch (error) {
+              if (error instanceof Error && error.name !== 'AbortError') {
+                console.error('Error sharing:', error);
+                toast.error("Could not share. Please try again.");
+              }
+            }
+          }}
           onRefreshStats={handleRefreshStats}
           refreshing={refreshing}
         />
