@@ -586,16 +586,23 @@ export default function RoundRobinDetail() {
         // Process all scored matches regardless of match_id (in case of re-completion)
         if (!match.is_bye && match.team1_score !== null && match.team2_score !== null) {
           try {
-            // Get court_id from event location if it matches a court name
+            // Get court_id from event location (now stores court ID directly)
             let courtId: string | null = null;
             if (event.location) {
-              const { data: courtData } = await supabase
-                .from("courts")
-                .select("id")
-                .or(`name.ilike.%${event.location}%,location.ilike.%${event.location}%`)
-                .limit(1)
-                .single();
-              courtId = courtData?.id || null;
+              // Check if location is a valid UUID (court_id) first
+              const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+              if (uuidRegex.test(event.location)) {
+                courtId = event.location;
+              } else {
+                // Fallback: try to find court by name for backwards compatibility
+                const { data: courtData } = await supabase
+                  .from("courts")
+                  .select("id")
+                  .eq("name", event.location)
+                  .limit(1)
+                  .maybeSingle();
+                courtId = courtData?.id || null;
+              }
             }
             
             // Collect all participant IDs for auto-verification

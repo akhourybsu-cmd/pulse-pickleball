@@ -381,7 +381,7 @@ export default function CreateRoundRobin() {
                 </SelectTrigger>
                 <SelectContent>
                   {courts.map((court) => (
-                    <SelectItem key={court.id} value={court.name}>
+                    <SelectItem key={court.id} value={court.id}>
                       {court.name} - {court.city}, {court.state}
                     </SelectItem>
                   ))}

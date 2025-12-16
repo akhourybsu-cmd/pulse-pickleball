@@ -11,7 +11,7 @@ import { Footer } from "@/components/Footer";
 import { OnboardingTutorial } from "@/components/OnboardingTutorial";
 import { SmartMatch } from "@/components/court/SmartMatch";
 import { LFGNotifications } from "@/components/court/LFGNotifications";
-import { MFAPrompt } from "@/components/auth/MFAPrompt";
+// MFAPrompt moved to EditProfile page
 import { NotificationDrawer, Notification } from "@/components/NotificationDrawer";
 
 // New DUPR-inspired Dashboard Components
@@ -269,8 +269,6 @@ const Dashboard = () => {
 
       {/* Main Dashboard Content */}
       <div className="container mx-auto px-4 py-6 space-y-6">
-        {/* MFA Prompt */}
-        <MFAPrompt />
 
         {/* Performance / Activity Tabs */}
         <Tabs defaultValue="performance" className="w-full">

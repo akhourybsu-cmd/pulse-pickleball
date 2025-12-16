@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Plus, CalendarPlus, Users, Trophy } from "lucide-react";
+import { Plus, CalendarSearch, MapPin, Trophy } from "lucide-react";
 
 interface QuickAction {
   label: string;
@@ -21,15 +21,15 @@ export const QuickActionsBar = () => {
       primary: true,
     },
     {
-      label: "Create",
-      sublabel: "Event",
-      icon: <CalendarPlus className="w-5 h-5" />,
-      path: "/round-robin/create",
+      label: "Browse",
+      sublabel: "Events",
+      icon: <CalendarSearch className="w-5 h-5" />,
+      path: "/events/browse",
     },
     {
-      label: "Find",
-      sublabel: "Open Play",
-      icon: <Users className="w-5 h-5" />,
+      label: "Court",
+      sublabel: "Connector",
+      icon: <MapPin className="w-5 h-5" />,
       path: "/court/connector",
     },
     {

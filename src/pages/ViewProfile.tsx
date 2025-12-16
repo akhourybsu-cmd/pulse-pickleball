@@ -11,7 +11,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { CircularProgressRing } from "@/components/profile/CircularProgressRing";
 import { PulseScoreBadge } from "@/components/profile/PulseScoreBadge";
 import { RecentMatches } from "@/components/profile/RecentMatches";
-import { PlayStyleSnapshot } from "@/components/profile/PlayStyleSnapshot";
+// PlayStyleSnapshot removed per user request
 import { HighlightsStrip } from "@/components/profile/HighlightsStrip";
 
 interface Profile {
@@ -356,12 +356,6 @@ const ViewProfile = () => {
               </p>
             )}
 
-            {/* Play Style Snapshot */}
-            <PlayStyleSnapshot 
-              power={60} 
-              control={75} 
-              consistency={85} 
-            />
           </CardContent>
         </Card>
 
