@@ -92,7 +92,7 @@ export function PageHeader({ userId }: PageHeaderProps) {
           <img 
             src={logo} 
             alt="PULSE Logo" 
-            className="h-[90px] w-auto cursor-pointer hover:opacity-80 transition-opacity" 
+            className="h-[68px] w-auto cursor-pointer hover:opacity-80 transition-opacity" 
           />
         </Link>
         <div className="flex items-center gap-3">
