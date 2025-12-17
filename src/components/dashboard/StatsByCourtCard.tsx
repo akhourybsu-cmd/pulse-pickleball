@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent } from "@/components/ui/card";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronDown, MapPin } from "lucide-react";
+import { MapPin, ChevronDown } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 interface CourtStat {
   wins: number;
   losses: number;
   total_matches: number;
-  avg_rating: number;
   points_for: number;
   points_against: number;
 }
@@ -18,7 +20,6 @@ interface StatsByCourtCardProps {
 }
 
 export const StatsByCourtCard = ({ userId }: StatsByCourtCardProps) => {
-  const [isOpen, setIsOpen] = useState(false);
   const [topCourt, setTopCourt] = useState<{ name: string; stats: CourtStat } | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -28,7 +29,6 @@ export const StatsByCourtCard = ({ userId }: StatsByCourtCardProps) => {
     const fetchStats = async () => {
       setLoading(true);
 
-      // Fetch all matches for user with court info
       const { data: participations } = await supabase
         .from("match_participants")
         .select(`
@@ -47,7 +47,6 @@ export const StatsByCourtCard = ({ userId }: StatsByCourtCardProps) => {
         return;
       }
 
-      // Aggregate stats by court
       const courtStats: Record<string, { name: string; stats: CourtStat }> = {};
 
       for (const p of participations) {
@@ -63,7 +62,6 @@ export const StatsByCourtCard = ({ userId }: StatsByCourtCardProps) => {
               wins: 0,
               losses: 0,
               total_matches: 0,
-              avg_rating: 0,
               points_for: 0,
               points_against: 0,
             },
@@ -84,7 +82,6 @@ export const StatsByCourtCard = ({ userId }: StatsByCourtCardProps) => {
         }
       }
 
-      // Find court with most matches
       let maxMatches = 0;
       let topCourtData: { name: string; stats: CourtStat } | null = null;
 
@@ -104,13 +101,7 @@ export const StatsByCourtCard = ({ userId }: StatsByCourtCardProps) => {
 
   if (loading) {
     return (
-      <Card>
-        <CardContent className="p-4">
-          <div className="animate-pulse flex items-center gap-2">
-            <div className="h-4 bg-muted rounded w-48"></div>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="animate-pulse h-10 bg-muted rounded-full w-64" />
     );
   }
 
@@ -119,51 +110,46 @@ export const StatsByCourtCard = ({ userId }: StatsByCourtCardProps) => {
   }
 
   const winRate = topCourt.stats.total_matches > 0
-    ? ((topCourt.stats.wins / topCourt.stats.total_matches) * 100).toFixed(1)
-    : "0.0";
+    ? ((topCourt.stats.wins / topCourt.stats.total_matches) * 100).toFixed(0)
+    : "0";
 
   const pointDiff = topCourt.stats.points_for - topCourt.stats.points_against;
 
   return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <Card className="overflow-hidden">
-        <CollapsibleTrigger asChild>
-          <button className="w-full p-4 flex items-center justify-between hover:bg-muted/30 transition-colors">
-            <div className="flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-primary" />
-              <span className="text-sm font-medium">
-                Your Most Played Court: <span className="text-primary">{topCourt.name}</span>
-              </span>
+    <Popover>
+      <PopoverTrigger asChild>
+        <button className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-card border border-border hover:border-primary/30 hover:shadow-sm transition-all text-sm">
+          <MapPin className="w-4 h-4 text-primary flex-shrink-0" />
+          <span className="text-muted-foreground">Most Played:</span>
+          <span className="font-medium text-foreground truncate max-w-[140px]">{topCourt.name}</span>
+          <ChevronDown className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-64 p-4" align="start">
+        <div className="space-y-3">
+          <p className="text-sm font-medium text-foreground">{topCourt.name}</p>
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <p className="text-xs text-muted-foreground">Matches</p>
+              <p className="font-bold">{topCourt.stats.total_matches}</p>
             </div>
-            <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
-          </button>
-        </CollapsibleTrigger>
-
-        <CollapsibleContent>
-          <CardContent className="pt-0 pb-4 px-4">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-2 border-t">
-              <div>
-                <p className="text-xs text-muted-foreground">Matches</p>
-                <p className="text-lg font-bold">{topCourt.stats.total_matches}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Record</p>
-                <p className="text-lg font-bold">{topCourt.stats.wins}W-{topCourt.stats.losses}L</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Win Rate</p>
-                <p className="text-lg font-bold">{winRate}%</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Point Diff</p>
-                <p className={`text-lg font-bold ${pointDiff >= 0 ? "text-primary" : "text-destructive"}`}>
-                  {pointDiff >= 0 ? "+" : ""}{pointDiff}
-                </p>
-              </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Record</p>
+              <p className="font-bold">{topCourt.stats.wins}W-{topCourt.stats.losses}L</p>
             </div>
-          </CardContent>
-        </CollapsibleContent>
-      </Card>
-    </Collapsible>
+            <div>
+              <p className="text-xs text-muted-foreground">Win Rate</p>
+              <p className="font-bold">{winRate}%</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Point Diff</p>
+              <p className={`font-bold ${pointDiff >= 0 ? "text-primary" : "text-destructive"}`}>
+                {pointDiff >= 0 ? "+" : ""}{pointDiff}
+              </p>
+            </div>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 };

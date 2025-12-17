@@ -1,102 +1,87 @@
-import { cn } from "@/lib/utils";
-
 interface RatingDisplayProps {
   doublesRating: number | undefined;
-  totalMatches?: number;
   wins?: number;
   losses?: number;
 }
 
 export const RatingDisplay = ({
   doublesRating,
-  totalMatches = 0,
   wins = 0,
   losses = 0,
 }: RatingDisplayProps) => {
+  const totalMatches = wins + losses;
   // Calculate reliability/confidence (max at 30 matches = 100%)
   const reliability = Math.min((totalMatches / 30) * 100, 100);
   const winRate = totalMatches > 0 ? Math.round((wins / totalMatches) * 100) : 0;
 
   const hasRating = doublesRating !== undefined && doublesRating > 0;
-  const circumference = 2 * Math.PI * 42; // radius = 42
+  
+  // Smaller ring: 80px (was 112px) - r=32, cx/cy=40
+  const circumference = 2 * Math.PI * 32;
   const strokeDashoffset = circumference - (reliability / 100) * circumference;
 
   return (
-    <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
-      {/* Single Doubles Rating Ring - Centered */}
-      <div className="flex justify-center mb-4">
-        <div className="flex flex-col items-center">
-          <div className="relative w-28 h-28">
-            {/* Background Circle */}
-            <svg className="w-full h-full -rotate-90">
-              <circle
-                cx="56"
-                cy="56"
-                r="42"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="8"
-                className="text-primary-foreground/20"
-              />
-              {/* Progress Circle */}
-              <circle
-                cx="56"
-                cy="56"
-                r="42"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="8"
-                strokeLinecap="round"
-                strokeDasharray={circumference}
-                strokeDashoffset={strokeDashoffset}
-                className="text-white transition-all duration-1000 ease-out"
-              />
-            </svg>
-            
-            {/* Center Content */}
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              {hasRating ? (
-                <>
-                  <span className="text-xs text-primary-foreground/70 font-medium">
-                    {Math.round(reliability)}
-                  </span>
-                  <span className="text-2xl font-bold text-primary-foreground">
-                    {doublesRating.toFixed(2)}
-                  </span>
-                </>
-              ) : (
-                <>
-                  <span className="text-xs text-primary-foreground/70 font-medium">—</span>
-                  <span className="text-xl font-bold text-primary-foreground/50">NR</span>
-                </>
-              )}
-            </div>
+    <div className="flex items-center justify-center gap-6">
+      {/* Compact Rating Ring - 80px */}
+      <div className="flex flex-col items-center">
+        <div className="relative w-20 h-20">
+          {/* Background Circle */}
+          <svg className="w-full h-full -rotate-90">
+            <circle
+              cx="40"
+              cy="40"
+              r="32"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="6"
+              className="text-border"
+            />
+            {/* Progress Circle */}
+            <circle
+              cx="40"
+              cy="40"
+              r="32"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="6"
+              strokeLinecap="round"
+              strokeDasharray={circumference}
+              strokeDashoffset={strokeDashoffset}
+              className="text-primary transition-all duration-1000 ease-out"
+            />
+          </svg>
+          
+          {/* Center Content */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            {hasRating ? (
+              <>
+                <span className="text-[10px] text-muted-foreground font-medium">
+                  {Math.round(reliability)}%
+                </span>
+                <span className="text-lg font-bold text-foreground">
+                  {doublesRating.toFixed(2)}
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="text-[10px] text-muted-foreground font-medium">—</span>
+                <span className="text-base font-bold text-muted-foreground">NR</span>
+              </>
+            )}
           </div>
-          <span className="mt-2 text-sm font-medium text-primary-foreground/80">Doubles</span>
         </div>
+        <span className="mt-1 text-xs font-medium text-muted-foreground">Doubles</span>
       </div>
-      
-      {/* Stats Row */}
-      <div className="flex items-center justify-center gap-6 pt-4 border-t border-primary-foreground/10">
-        <div className="text-center">
-          <p className="text-lg font-semibold text-primary-foreground">
-            {wins}-{losses}
-          </p>
-          <p className="text-xs text-primary-foreground/60">Record</p>
+
+      {/* Inline Stats: Record • Win Rate */}
+      <div className="flex flex-col gap-1">
+        <div className="flex items-center gap-2">
+          <span className="text-lg font-bold text-foreground">{wins}-{losses}</span>
+          <span className="text-xs text-muted-foreground">Record</span>
         </div>
-        <div className="w-px h-6 bg-primary-foreground/20" />
-        <div className="text-center">
-          <p className="text-lg font-semibold text-primary-foreground">
-            {winRate}%
-          </p>
-          <p className="text-xs text-primary-foreground/60">Win Rate</p>
-        </div>
-        <div className="w-px h-6 bg-primary-foreground/20" />
-        <div className="text-center">
-          <p className="text-lg font-semibold text-primary-foreground">
-            {totalMatches}
-          </p>
-          <p className="text-xs text-primary-foreground/60">Matches</p>
+        <div className="flex items-center gap-2">
+          <span className="text-lg font-bold text-foreground">{winRate}%</span>
+          <span className="text-xs text-muted-foreground">Win Rate</span>
         </div>
       </div>
     </div>
