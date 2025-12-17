@@ -22,37 +22,38 @@ export const HomeFooterUtilities = ({
     <div className="space-y-4">
       {/* Main Utilities */}
       <Card className="bg-gradient-to-br from-muted/30 to-background">
-        <CardContent className="p-4 md:p-6">
+        <CardContent className="p-4">
+          <p className="text-xs text-muted-foreground mb-3">Settings</p>
           <div className="flex flex-col gap-3">
-            {/* Top Row: Edit Profile and Help & FAQ side by side */}
+            {/* Top Row: Edit Profile and Help & FAQ side by side - outline style */}
             <div className="flex gap-3">
               <Button
-                size="lg" 
-                variant="subtle"
+                size="default" 
+                variant="outline"
                 onClick={() => navigate("/profile/edit")}
-                className="flex-1 rounded-xl gap-1.5 h-11"
+                className="flex-1 rounded-xl gap-2 h-10"
               >
-                <UserCog className="w-4 h-4 stroke-[2.5]" />
+                <UserCog className="w-4 h-4" />
                 Edit Profile
               </Button>
 
               <Button 
-                size="lg" 
-                variant="subtle"
+                size="default" 
+                variant="outline"
                 onClick={() => navigate("/faq")}
-                className="flex-1 rounded-xl gap-1.5 h-11"
+                className="flex-1 rounded-xl gap-2 h-10"
               >
-                <HelpCircle className="w-4 h-4 stroke-[2.5]" />
+                <HelpCircle className="w-4 h-4" />
                 Help & FAQ
               </Button>
             </div>
 
-            {/* Bottom Row: Invite Friends full width */}
+            {/* Bottom Row: Invite Friends - primary CTA */}
             <Button 
               onClick={onShare}
               variant="default"
-              size="lg"
-              className="w-full gap-2 shadow-[var(--shadow-glow)] h-11"
+              size="default"
+              className="w-full gap-2 shadow-[var(--shadow-glow)] h-10"
             >
               <Share2 className="h-4 w-4" />
               Invite Friends
@@ -64,7 +65,7 @@ export const HomeFooterUtilities = ({
       {/* Admin Controls */}
       {isAdmin && (
         <Card className="bg-gradient-to-br from-muted/30 to-background">
-          <CardContent className="p-4 md:p-6">
+          <CardContent className="p-4">
             <p className="text-xs text-muted-foreground mb-3">Admin Controls</p>
             <div className="grid gap-3 md:grid-cols-3">
               <Button 
@@ -103,9 +104,9 @@ export const HomeFooterUtilities = ({
             
             <Button 
               variant="default" 
-              size="lg"
+              size="default"
               onClick={() => navigate("/admin")}
-              className="w-full mt-3 h-11"
+              className="w-full mt-3 h-10"
             >
               <Settings className="w-4 h-4 mr-2" />
               Admin Dashboard

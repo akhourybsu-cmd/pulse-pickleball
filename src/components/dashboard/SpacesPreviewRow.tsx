@@ -24,7 +24,6 @@ export const SpacesPreviewRow = ({ userId, homeCourtId }: SpacesPreviewRowProps)
       setLoading(true);
       const spacesList: Space[] = [];
 
-      // Fetch home court if set
       if (homeCourtId) {
         const { data: homeCourt } = await supabase
           .from("courts")
@@ -41,7 +40,6 @@ export const SpacesPreviewRow = ({ userId, homeCourtId }: SpacesPreviewRowProps)
         }
       }
 
-      // Fetch recently played courts (up to 3 more)
       if (userId) {
         const { data: recentMatches } = await supabase
           .from("match_participants")
@@ -81,10 +79,13 @@ export const SpacesPreviewRow = ({ userId, homeCourtId }: SpacesPreviewRowProps)
 
   if (loading) {
     return (
-      <div className="flex gap-2 overflow-x-auto pb-2">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="animate-pulse h-12 w-32 bg-muted rounded-xl flex-shrink-0" />
-        ))}
+      <div className="space-y-2">
+        <h3 className="text-sm font-medium text-muted-foreground px-1">Your Spaces</h3>
+        <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="animate-pulse h-16 w-28 bg-muted rounded-xl flex-shrink-0 snap-start" />
+          ))}
+        </div>
       </div>
     );
   }
@@ -96,20 +97,24 @@ export const SpacesPreviewRow = ({ userId, homeCourtId }: SpacesPreviewRowProps)
   return (
     <div className="space-y-2">
       <h3 className="text-sm font-medium text-muted-foreground px-1">Your Spaces</h3>
-      <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1">
+      <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 snap-x snap-mandatory scrollbar-hide">
         {spaces.map((space) => (
           <button
             key={space.id}
             onClick={() => navigate(`/court/board/${space.id}`)}
-            className="flex items-center gap-2 px-3 py-2 rounded-xl bg-card border border-border hover:border-primary/30 hover:shadow-sm transition-all flex-shrink-0"
+            className="flex flex-col items-start gap-1 p-3 rounded-xl bg-card border border-border hover:border-primary/30 hover:shadow-sm transition-all flex-shrink-0 snap-start min-w-[112px] w-28"
           >
-            {space.isHomeCourt ? (
-              <Home className="w-4 h-4 text-primary" />
-            ) : (
-              <MapPin className="w-4 h-4 text-muted-foreground" />
-            )}
-            <span className="text-sm font-medium truncate max-w-[120px]">{space.name}</span>
-            <ChevronRight className="w-3 h-3 text-muted-foreground" />
+            <div className="flex items-center justify-between w-full">
+              {space.isHomeCourt ? (
+                <Home className="w-5 h-5 text-primary" />
+              ) : (
+                <MapPin className="w-5 h-5 text-muted-foreground" />
+              )}
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </div>
+            <span className="text-xs font-medium text-foreground truncate w-full text-left">
+              {space.name}
+            </span>
           </button>
         ))}
       </div>

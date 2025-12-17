@@ -11,10 +11,9 @@ import { Footer } from "@/components/Footer";
 import { OnboardingTutorial } from "@/components/OnboardingTutorial";
 import { SmartMatch } from "@/components/court/SmartMatch";
 import { LFGNotifications } from "@/components/court/LFGNotifications";
-// MFAPrompt moved to EditProfile page
 import { NotificationDrawer, Notification } from "@/components/NotificationDrawer";
 
-// New DUPR-inspired Dashboard Components
+// Dashboard Components
 import { ProfileHero } from "@/components/dashboard/ProfileHero";
 import { QuickActionsBar } from "@/components/dashboard/QuickActionsBar";
 import { ActivityModule } from "@/components/dashboard/ActivityModule";
@@ -66,7 +65,6 @@ const Dashboard = () => {
 
   const fetchPartnerAndCourtStats = async (userId: string) => {
     try {
-      // Get unique partners count
       const { data: userMatches } = await supabase
         .from("match_participants")
         .select(`match_id, team, matches!inner (id, status)`)
@@ -77,7 +75,6 @@ const Dashboard = () => {
         const matchIds = userMatches.map(m => m.match_id);
         const userTeamMap = new Map(userMatches.map(m => [m.match_id, m.team]));
 
-        // Get all partners (same team)
         const { data: allParticipants } = await supabase
           .from("match_participants")
           .select("match_id, player_id, team")
@@ -95,7 +92,6 @@ const Dashboard = () => {
         }
       }
 
-      // Get unique courts played
       const { data: courtsData } = await supabase
         .from("matches")
         .select("court_id")
@@ -125,7 +121,6 @@ const Dashboard = () => {
         const user = session.user;
         setUser(user);
 
-        // Fetch all data in parallel for faster loading
         const [profileResult, roleResult, publicProfileResult] = await Promise.all([
           supabase.from("profiles").select("*").eq("id", user.id).single(),
           supabase.from('user_roles').select('role').eq('user_id', user.id).eq('role', 'admin').maybeSingle(),
@@ -142,12 +137,10 @@ const Dashboard = () => {
         setProfile(profileResult.data);
         setIsAdmin(!!roleResult.data);
 
-        // Set home court info if available
         if (publicProfileResult.data?.home_court_id) {
           setHomeCourtId(publicProfileResult.data.home_court_id);
         }
 
-        // Fetch partner/court stats
         fetchPartnerAndCourtStats(user.id);
 
         setLoading(false);
@@ -237,7 +230,6 @@ const Dashboard = () => {
     );
   }
 
-  // Build location string
   const locationStr = [profile?.town, profile?.state].filter(Boolean).join(", ") || null;
 
   return (
@@ -267,8 +259,8 @@ const Dashboard = () => {
         onSignOut={handleSignOut}
       />
 
-      {/* Main Dashboard Content */}
-      <div className="container mx-auto px-4 py-6 space-y-6">
+      {/* Main Dashboard Content - 8pt spacing system */}
+      <div className="container mx-auto px-4 py-4 space-y-4">
 
         {/* Performance / Activity Tabs */}
         <Tabs defaultValue="performance" className="w-full">
@@ -283,14 +275,14 @@ const Dashboard = () => {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="performance" className="mt-0 space-y-6">
-            {/* Quick Actions Row */}
+          <TabsContent value="performance" className="mt-0 space-y-4">
+            {/* Quick Actions 2x2 Grid */}
             <QuickActionsBar />
 
-            {/* Stats by Court (Collapsible) */}
+            {/* Most Played Court Chip */}
             <StatsByCourtCard userId={user?.id} />
 
-            {/* Your Spaces Preview */}
+            {/* Your Spaces - Swipeable Cards */}
             <SpacesPreviewRow 
               userId={user?.id}
               homeCourtId={homeCourtId}
@@ -303,8 +295,7 @@ const Dashboard = () => {
             </div>
           </TabsContent>
 
-          <TabsContent value="activity" className="mt-0 space-y-6">
-            {/* Activity Module (Tabs: Matches | Events) */}
+          <TabsContent value="activity" className="mt-0 space-y-4">
             <ActivityModule userId={user?.id} />
           </TabsContent>
         </Tabs>

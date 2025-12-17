@@ -65,14 +65,14 @@ export const ProfileHero = ({
 
   return (
     <div className="relative overflow-hidden">
-      {/* Teal Navigation Header */}
+      {/* Navigation Header - Standard mobile app bar height */}
       <nav className="bg-secondary border-b border-secondary-foreground/10">
-        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <Link to="/dashboard">
             <img 
               src={logo} 
               alt="PULSE" 
-              className="h-10 w-auto cursor-pointer hover:opacity-80 transition-opacity" 
+              className="h-8 w-auto cursor-pointer hover:opacity-80 transition-opacity" 
             />
           </Link>
           <div className="flex items-center gap-2">
@@ -94,55 +94,57 @@ export const ProfileHero = ({
         </div>
       </nav>
 
-      {/* Soft Hero Background - Light: soft green, Dark: deep teal with accent stripe */}
+      {/* Compact Hero Section */}
       <div className="relative bg-[#F7FBF2] dark:bg-[#142029] border-b border-border">
         {/* Accent stripe for dark mode */}
         <div className="hidden dark:block absolute left-0 top-0 bottom-0 w-1 bg-primary" />
         
-        {/* Content */}
-        <div className="px-4 pt-4 pb-6">
-          {/* Profile Info */}
-          <div className="flex items-start gap-4 mb-6">
+        {/* Content - 8pt spacing */}
+        <div className="px-4 pt-4 pb-4">
+          {/* Compact Profile Row: Avatar + Name + Tier */}
+          <div className="flex items-center gap-4 mb-4">
             <Avatar 
-              className="h-20 w-20 border-4 border-primary/30 shadow-lg cursor-pointer hover:border-primary/50 transition-colors"
+              className="h-16 w-16 border-2 border-primary/30 shadow-md cursor-pointer hover:border-primary/50 transition-colors flex-shrink-0"
               onClick={() => navigate(`/profile/${userId}`)}
             >
               <AvatarImage src={avatarUrl || undefined} alt={name} />
-              <AvatarFallback className="text-xl font-bold bg-primary/20 text-primary">
+              <AvatarFallback className="text-lg font-bold bg-primary/20 text-primary">
                 {initials}
               </AvatarFallback>
             </Avatar>
             
             <div className="flex-1 min-w-0">
-              <h1 className="text-2xl font-bold text-foreground truncate">
+              <h1 className="text-xl font-bold text-foreground truncate">
                 {name}
               </h1>
-              <p className="text-muted-foreground text-sm">
+              <p className="text-muted-foreground text-sm truncate">
                 {location || "Location not set"}
               </p>
-              <Badge className={`mt-2 ${tier.color}`}>
+              <Badge className={`mt-1 text-xs ${tier.color}`}>
                 {tier.name}
               </Badge>
             </div>
           </div>
 
-          {/* Social Stats */}
-          <div className="flex items-center justify-center gap-8 mb-6">
+          {/* 3-Column Stat Row: Partners | Courts | Matches */}
+          <div className="grid grid-cols-3 gap-4 mb-4">
             <div className="text-center">
-              <p className="text-2xl font-bold text-foreground">{partnersCount}</p>
+              <p className="text-xl font-bold text-foreground">{partnersCount}</p>
               <p className="text-xs text-muted-foreground">Partners</p>
             </div>
-            <div className="w-px h-8 bg-border" />
+            <div className="text-center border-x border-border">
+              <p className="text-xl font-bold text-foreground">{courtsPlayed}</p>
+              <p className="text-xs text-muted-foreground">Courts</p>
+            </div>
             <div className="text-center">
-              <p className="text-2xl font-bold text-foreground">{courtsPlayed}</p>
-              <p className="text-xs text-muted-foreground">Courts Played</p>
+              <p className="text-xl font-bold text-foreground">{totalMatches || 0}</p>
+              <p className="text-xs text-muted-foreground">Matches</p>
             </div>
           </div>
 
-          {/* Rating Display */}
+          {/* Compact Rating Display */}
           <RatingDisplay
             doublesRating={currentRating}
-            totalMatches={totalMatches}
             wins={wins}
             losses={losses}
           />
