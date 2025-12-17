@@ -71,8 +71,8 @@ export const ProfileHero = ({
           <Link to="/dashboard">
             <img 
               src={logo} 
-              alt="PULSE" 
-              className="h-8 w-auto cursor-pointer hover:opacity-80 transition-opacity" 
+              alt="PULSE Logo" 
+              className="h-[90px] w-auto cursor-pointer hover:opacity-80 transition-opacity" 
             />
           </Link>
           <div className="flex items-center gap-2">
