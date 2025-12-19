@@ -2,7 +2,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { LogOut } from "lucide-react";
+import { LogOut, Users, MapPin, Trophy } from "lucide-react";
 import { RatingDisplay } from "./RatingDisplay";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -51,28 +51,28 @@ export const ProfileHero = ({
     .toUpperCase()
     .slice(0, 2);
 
-  // Determine tier based on rating
+  // Determine tier based on rating with metallic gradients
   const getTier = (rating: number | undefined) => {
-    if (!rating) return { name: "Unrated", color: "bg-muted text-muted-foreground" };
-    if (rating >= 4.5) return { name: "Diamond", color: "bg-cyan-500 text-white" };
-    if (rating >= 4.0) return { name: "Platinum", color: "bg-slate-400 text-white" };
-    if (rating >= 3.5) return { name: "Gold", color: "bg-yellow-500 text-black" };
-    if (rating >= 3.0) return { name: "Silver", color: "bg-slate-300 text-black" };
-    return { name: "Bronze", color: "bg-amber-600 text-white" };
+    if (!rating) return { name: "Unrated", className: "bg-muted text-muted-foreground" };
+    if (rating >= 4.5) return { name: "Diamond", className: "bg-gradient-to-r from-cyan-400 to-cyan-600 text-white shadow-sm" };
+    if (rating >= 4.0) return { name: "Platinum", className: "bg-gradient-to-r from-slate-300 to-slate-500 text-white shadow-sm" };
+    if (rating >= 3.5) return { name: "Gold", className: "bg-gradient-to-r from-yellow-400 to-amber-500 text-black shadow-sm" };
+    if (rating >= 3.0) return { name: "Silver", className: "bg-gradient-to-r from-slate-200 to-slate-400 text-slate-800 shadow-sm" };
+    return { name: "Bronze", className: "bg-gradient-to-r from-amber-500 to-amber-700 text-white shadow-sm" };
   };
 
   const tier = getTier(currentRating);
 
   return (
     <div className="relative overflow-hidden">
-      {/* Navigation Header - Standard mobile app bar height */}
-      <nav className="bg-secondary border-b border-secondary-foreground/10">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Link to="/dashboard">
+      {/* Navigation Header - 72px height with shadow */}
+      <nav className="bg-secondary border-b border-secondary-foreground/10 shadow-sm">
+        <div className="container mx-auto px-4 py-5 flex items-center justify-between h-[72px]">
+          <Link to="/dashboard" className="ml-2">
             <img 
               src={logo} 
               alt="PULSE Logo" 
-              className="h-[68px] w-auto cursor-pointer hover:opacity-80 transition-opacity" 
+              className="h-[75px] w-auto cursor-pointer hover:opacity-80 transition-opacity" 
             />
           </Link>
           <div className="flex items-center gap-2">
@@ -86,7 +86,7 @@ export const ProfileHero = ({
               variant="ghost"
               size="icon"
               onClick={onSignOut}
-              className="text-white hover:text-white/90 hover:bg-white/10"
+              className="text-white hover:text-white/90 hover:bg-white/10 h-[38px] w-[38px]"
             >
               <LogOut className="h-5 w-5" />
             </Button>
@@ -102,9 +102,9 @@ export const ProfileHero = ({
         {/* Content - 8pt spacing */}
         <div className="px-4 pt-4 pb-4">
           {/* Compact Profile Row: Avatar + Name + Tier */}
-          <div className="flex items-center gap-4 mb-4">
+          <div className="flex items-center gap-4 mb-6">
             <Avatar 
-              className="h-16 w-16 border-2 border-primary/30 shadow-md cursor-pointer hover:border-primary/50 transition-colors flex-shrink-0"
+              className="h-16 w-16 border-2 border-primary/30 shadow-[0_0_20px_hsl(var(--primary)/0.3)] cursor-pointer hover:border-primary/50 transition-colors flex-shrink-0"
               onClick={() => navigate(`/profile/${userId}`)}
             >
               <AvatarImage src={avatarUrl || undefined} alt={name} />
@@ -114,32 +114,47 @@ export const ProfileHero = ({
             </Avatar>
             
             <div className="flex-1 min-w-0">
-              <h1 className="text-xl font-bold text-foreground truncate">
+              <h1 className="text-[22px] font-semibold text-foreground truncate leading-tight">
                 {name}
               </h1>
-              <p className="text-muted-foreground text-sm truncate">
+              <p 
+                className="text-muted-foreground/60 text-sm truncate border-b border-dashed border-muted-foreground/30 inline-block cursor-pointer hover:text-muted-foreground transition-colors"
+                onClick={() => navigate("/profile/edit")}
+              >
                 {location || "Location not set"}
               </p>
-              <Badge className={`mt-1 text-xs ${tier.color}`}>
+              <Badge className={`mt-1.5 text-[10px] px-2 py-0.5 rounded-md ${tier.className}`}>
                 {tier.name}
               </Badge>
             </div>
           </div>
 
-          {/* 3-Column Stat Row: Partners | Courts | Matches */}
+          {/* 3-Column Stat Row with Icons: Partners | Courts | Matches */}
           <div className="grid grid-cols-3 gap-4 mb-4">
-            <div className="text-center">
+            <button 
+              onClick={() => navigate("/match/history")}
+              className="text-center hover:bg-muted/50 rounded-lg py-2 transition-colors group"
+            >
+              <Users className="w-4 h-4 text-primary/70 mx-auto mb-1 group-hover:text-primary transition-colors" />
               <p className="text-xl font-bold text-foreground">{partnersCount}</p>
               <p className="text-xs text-muted-foreground">Partners</p>
-            </div>
-            <div className="text-center border-x border-border">
+            </button>
+            <button 
+              onClick={() => navigate("/court/connector")}
+              className="text-center border-x border-border hover:bg-muted/50 rounded-lg py-2 transition-colors group"
+            >
+              <MapPin className="w-4 h-4 text-primary/70 mx-auto mb-1 group-hover:text-primary transition-colors" />
               <p className="text-xl font-bold text-foreground">{courtsPlayed}</p>
               <p className="text-xs text-muted-foreground">Courts</p>
-            </div>
-            <div className="text-center">
+            </button>
+            <button 
+              onClick={() => navigate("/match/history")}
+              className="text-center hover:bg-muted/50 rounded-lg py-2 transition-colors group"
+            >
+              <Trophy className="w-4 h-4 text-primary/70 mx-auto mb-1 group-hover:text-primary transition-colors" />
               <p className="text-xl font-bold text-foreground">{totalMatches || 0}</p>
               <p className="text-xs text-muted-foreground">Matches</p>
-            </div>
+            </button>
           </div>
 
           {/* Compact Rating Display */}

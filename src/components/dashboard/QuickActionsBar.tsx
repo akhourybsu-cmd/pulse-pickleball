@@ -16,26 +16,26 @@ export const QuickActionsBar = () => {
     {
       label: "Record",
       sublabel: "Match",
-      icon: <Plus className="w-6 h-6" />,
+      icon: <Plus className="w-7 h-7" />,
       path: "/match/new",
       primary: true,
     },
     {
       label: "Browse",
       sublabel: "Events",
-      icon: <CalendarSearch className="w-6 h-6" />,
+      icon: <CalendarSearch className="w-7 h-7" />,
       path: "/events/browse",
     },
     {
       label: "Court",
       sublabel: "Connector",
-      icon: <MapPin className="w-6 h-6" />,
+      icon: <MapPin className="w-7 h-7" />,
       path: "/court/connector",
     },
     {
       label: "Round",
       sublabel: "Robin",
-      icon: <Trophy className="w-6 h-6" />,
+      icon: <Trophy className="w-7 h-7" />,
       path: "/round-robin",
     },
   ];
@@ -49,11 +49,11 @@ export const QuickActionsBar = () => {
             key={action.path}
             onClick={() => navigate(action.path)}
             className={`
-              flex flex-col items-center justify-center gap-2 p-4 rounded-xl
-              transition-all hover:scale-[1.02] active:scale-[0.98]
-              min-h-[88px]
+              flex flex-col items-center justify-center gap-2 p-4 rounded-2xl
+              transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]
+              aspect-square
               ${action.primary 
-                ? "bg-primary text-primary-foreground shadow-[var(--shadow-glow)]" 
+                ? "bg-primary text-primary-foreground shadow-[0_0_20px_hsl(var(--primary)/0.4)] hover:shadow-[0_0_28px_hsl(var(--primary)/0.5)]" 
                 : "bg-card border border-border hover:border-primary/30 hover:shadow-sm"
               }
             `}
