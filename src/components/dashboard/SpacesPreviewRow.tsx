@@ -81,9 +81,9 @@ export const SpacesPreviewRow = ({ userId, homeCourtId }: SpacesPreviewRowProps)
     return (
       <div className="space-y-2">
         <h3 className="text-sm font-medium text-muted-foreground px-1">Your Spaces</h3>
-        <div className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory">
+        <div className="flex gap-4 overflow-x-auto pb-2 snap-x snap-mandatory">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="animate-pulse h-16 w-28 bg-muted rounded-xl flex-shrink-0 snap-start" />
+            <div key={i} className="animate-pulse h-[72px] w-28 bg-muted rounded-xl flex-shrink-0 snap-start" />
           ))}
         </div>
       </div>
@@ -97,12 +97,18 @@ export const SpacesPreviewRow = ({ userId, homeCourtId }: SpacesPreviewRowProps)
   return (
     <div className="space-y-2">
       <h3 className="text-sm font-medium text-muted-foreground px-1">Your Spaces</h3>
-      <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 snap-x snap-mandatory scrollbar-hide">
+      <div className="flex gap-4 overflow-x-auto pb-2 -mx-1 px-1 snap-x snap-mandatory scrollbar-hide scroll-smooth">
         {spaces.map((space) => (
           <button
             key={space.id}
             onClick={() => navigate(`/court/board/${space.id}`)}
-            className="flex flex-col items-start gap-1 p-3 rounded-xl bg-card border border-border hover:border-primary/30 hover:shadow-sm transition-all flex-shrink-0 snap-start min-w-[112px] w-28"
+            className={`
+              flex flex-col items-start gap-1 p-3 rounded-xl border transition-all flex-shrink-0 snap-start min-w-[112px] w-28 min-h-[72px] shadow-sm
+              ${space.isHomeCourt 
+                ? "bg-primary/5 border-primary/30 hover:border-primary/50 hover:shadow-md" 
+                : "bg-card border-border hover:border-primary/30 hover:shadow-md"
+              }
+            `}
           >
             <div className="flex items-center justify-between w-full">
               {space.isHomeCourt ? (
@@ -112,7 +118,7 @@ export const SpacesPreviewRow = ({ userId, homeCourtId }: SpacesPreviewRowProps)
               )}
               <ChevronRight className="w-4 h-4 text-muted-foreground" />
             </div>
-            <span className="text-xs font-medium text-foreground truncate w-full text-left">
+            <span className="text-xs font-semibold text-foreground truncate w-full text-left">
               {space.name}
             </span>
           </button>

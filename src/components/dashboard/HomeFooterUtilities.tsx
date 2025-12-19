@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { UserCog, HelpCircle, Share2, Settings, RefreshCw, CalendarDays } from "lucide-react";
+import { UserCog, HelpCircle, UserPlus, Settings, RefreshCw, CalendarDays } from "lucide-react";
 
 interface HomeFooterUtilitiesProps {
   isAdmin: boolean;
@@ -48,14 +48,13 @@ export const HomeFooterUtilities = ({
               </Button>
             </div>
 
-            {/* Bottom Row: Invite Friends - primary CTA */}
+            {/* Bottom Row: Invite Friends - gradient CTA */}
             <Button 
               onClick={onShare}
-              variant="default"
               size="default"
-              className="w-full gap-2 shadow-[var(--shadow-glow)] h-10"
+              className="w-full gap-2 h-11 bg-gradient-to-r from-primary to-[hsl(74_65%_62%)] hover:from-primary/90 hover:to-[hsl(74_65%_62%/0.9)] text-primary-foreground shadow-[var(--shadow-glow)]"
             >
-              <Share2 className="h-4 w-4" />
+              <UserPlus className="h-4 w-4" />
               Invite Friends
             </Button>
           </div>

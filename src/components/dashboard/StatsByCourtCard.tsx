@@ -116,40 +116,42 @@ export const StatsByCourtCard = ({ userId }: StatsByCourtCardProps) => {
   const pointDiff = topCourt.stats.points_for - topCourt.stats.points_against;
 
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <button className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-card border border-border hover:border-primary/30 hover:shadow-sm transition-all text-sm">
-          <MapPin className="w-4 h-4 text-primary flex-shrink-0" />
-          <span className="text-muted-foreground">Most Played:</span>
-          <span className="font-medium text-foreground truncate max-w-[140px]">{topCourt.name}</span>
-          <ChevronDown className="w-3 h-3 text-muted-foreground flex-shrink-0" />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent className="w-64 p-4" align="start">
-        <div className="space-y-3">
-          <p className="text-sm font-medium text-foreground">{topCourt.name}</p>
-          <div className="grid grid-cols-2 gap-3 text-sm">
-            <div>
-              <p className="text-xs text-muted-foreground">Matches</p>
-              <p className="font-bold">{topCourt.stats.total_matches}</p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Record</p>
-              <p className="font-bold">{topCourt.stats.wins}W-{topCourt.stats.losses}L</p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Win Rate</p>
-              <p className="font-bold">{winRate}%</p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Point Diff</p>
-              <p className={`font-bold ${pointDiff >= 0 ? "text-primary" : "text-destructive"}`}>
-                {pointDiff >= 0 ? "+" : ""}{pointDiff}
-              </p>
+    <div className="flex justify-center">
+      <Popover>
+        <PopoverTrigger asChild>
+          <button className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-card border border-border hover:border-primary/30 hover:bg-muted/50 hover:shadow-sm transition-all text-sm">
+            <MapPin className="w-5 h-5 text-primary flex-shrink-0" />
+            <span className="text-muted-foreground">Most Played:</span>
+            <span className="font-semibold text-foreground truncate max-w-[140px]">{topCourt.name}</span>
+            <ChevronDown className="w-4 h-4 text-muted-foreground flex-shrink-0 font-bold" />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="w-64 p-4" align="center">
+          <div className="space-y-3">
+            <p className="text-sm font-medium text-foreground">{topCourt.name}</p>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div>
+                <p className="text-xs text-muted-foreground">Matches</p>
+                <p className="font-bold">{topCourt.stats.total_matches}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Record</p>
+                <p className="font-bold">{topCourt.stats.wins}W-{topCourt.stats.losses}L</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Win Rate</p>
+                <p className="font-bold">{winRate}%</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Point Diff</p>
+                <p className={`font-bold ${pointDiff >= 0 ? "text-primary" : "text-destructive"}`}>
+                  {pointDiff >= 0 ? "+" : ""}{pointDiff}
+                </p>
+              </div>
             </div>
           </div>
-        </div>
-      </PopoverContent>
-    </Popover>
+        </PopoverContent>
+      </Popover>
+    </div>
   );
 };
