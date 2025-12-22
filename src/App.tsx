@@ -5,7 +5,12 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { ModeProvider } from "@/contexts/ModeContext";
 import { useAuthPersistence } from "@/hooks/useAuthPersistence";
+import { PlayerShell } from "@/components/layout/PlayerShell";
+import { VenueShell } from "@/components/layout/VenueShell";
+
+// Page imports
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
@@ -13,7 +18,6 @@ import Dashboard from "./pages/Dashboard";
 import EditProfile from "./pages/EditProfile";
 import ViewProfile from "./pages/ViewProfile";
 import NewMatch from "./pages/NewMatch";
-
 import PendingMatches from "./pages/PendingMatches";
 import MatchHistory from "./pages/MatchHistory";
 import CourtHistory from "./pages/CourtHistory";
@@ -52,7 +56,6 @@ import TournamentLiveView from "./pages/TournamentLiveView";
 import TournamentTeamView from "./pages/TournamentTeamView";
 import Tournaments from "./pages/Tournaments";
 import TournamentRegister from "./pages/TournamentRegister";
-
 import TournamentLanding from "./pages/TournamentLanding";
 import TournamentCustomize from "./pages/TournamentCustomize";
 import Reservations from "./pages/Reservations";
@@ -67,6 +70,19 @@ import { RoundRobinBanner } from "@/components/RoundRobinBanner";
 import { ScrollToTop } from "@/components/ScrollToTop";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 
+// Player pages
+import PlayerCoaching from "./pages/player/PlayerCoaching";
+
+// Venue pages
+import VenueOverview from "./pages/venue/VenueOverview";
+import VenueOnboarding from "./pages/venue/VenueOnboarding";
+import VenueCourts from "./pages/venue/VenueCourts";
+import VenueBookings from "./pages/venue/VenueBookings";
+import VenueEvents from "./pages/venue/VenueEvents";
+import VenueCoaching from "./pages/venue/VenueCoaching";
+import VenueStaff from "./pages/venue/VenueStaff";
+import VenueSettings from "./pages/venue/VenueSettings";
+
 const queryClient = new QueryClient();
 
 const AppContent = () => {
@@ -77,15 +93,41 @@ const AppContent = () => {
       <RoundRobinBanner />
       <PWAInstallPrompt />
       <Routes>
+        {/* Public routes */}
         <Route path="/" element={<Index />} />
         <Route path="/auth" element={<Auth />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/demo" element={<DemoTour />} />
-        <Route path="/dashboard" element={<Dashboard />} />
+
+        {/* Player routes with shell */}
+        <Route path="/player" element={<PlayerShell />}>
+          <Route index element={<Navigate to="/player/dashboard" replace />} />
+          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="events" element={<Events />} />
+          <Route path="courts" element={<CourtConnector />} />
+          <Route path="coaching" element={<PlayerCoaching />} />
+          <Route path="bookings" element={<MyCalendarRegistrations />} />
+        </Route>
+
+        {/* Venue routes with shell */}
+        <Route path="/venue" element={<VenueShell />}>
+          <Route index element={<VenueOverview />} />
+          <Route path="courts" element={<VenueCourts />} />
+          <Route path="bookings" element={<VenueBookings />} />
+          <Route path="events" element={<VenueEvents />} />
+          <Route path="coaching" element={<VenueCoaching />} />
+          <Route path="staff" element={<VenueStaff />} />
+          <Route path="settings" element={<VenueSettings />} />
+        </Route>
+        <Route path="/venue/onboarding" element={<VenueOnboarding />} />
+
+        {/* Legacy routes - redirect to new structure */}
+        <Route path="/dashboard" element={<Navigate to="/player/dashboard" replace />} />
+
+        {/* Existing routes */}
         <Route path="/profile/edit" element={<EditProfile />} />
         <Route path="/profile/:userId" element={<ViewProfile />} />
         <Route path="/match/new" element={<NewMatch />} />
-        
         <Route path="/match/pending" element={<PendingMatches />} />
         <Route path="/match/history" element={<MatchHistory />} />
         <Route path="/court/history" element={<CourtHistory />} />
@@ -97,7 +139,6 @@ const AppContent = () => {
         <Route path="/naymca" element={<Navigate to="/court/board/51e71be8-2212-4d46-9f83-d7f2d2af3120" replace />} />
         <Route path="/court/board/:courtId" element={<CourtBoard />} />
         <Route path="/court/feed/:postId" element={<PostDetail />} />
-        <Route path="/court/history" element={<CourtHistory />} />
         <Route path="/settings/courts" element={<CourtSettings />} />
         <Route path="/faq" element={<FAQ />} />
         <Route path="/session/queue" element={<SessionQueue />} />
@@ -139,7 +180,6 @@ const AppContent = () => {
         <Route path="/tournament-admin/:eventId/customize" element={<TournamentCustomize />} />
         <Route path="/tournament-admin/event/:eventId" element={<TournamentEventDetail />} />
         <Route path="/tournament-admin/division/:divisionId" element={<TournamentDivisionDetail />} />
-        {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>
     </>
@@ -154,7 +194,9 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
-            <AppContent />
+            <ModeProvider>
+              <AppContent />
+            </ModeProvider>
           </BrowserRouter>
         </ErrorBoundary>
       </TooltipProvider>
