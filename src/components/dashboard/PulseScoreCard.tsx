@@ -2,7 +2,6 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { TrendingUp, TrendingDown, Minus, Users, Swords, BarChart3, ChevronLeft, ChevronRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { PulseScoreBadge } from "@/components/profile/PulseScoreBadge";
 import {
   Carousel,
   CarouselContent,
@@ -126,9 +125,6 @@ export const PulseScoreCard = ({
           <span className={`text-sm font-medium ${getTrendColor()}`}>
             {weeklyChange > 0 ? "+" : ""}{weeklyChange.toFixed(2)} this week
           </span>
-        </div>
-        <div className="mt-2">
-          <PulseScoreBadge score={rating} />
         </div>
       </div>
       <motion.svg 

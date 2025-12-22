@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,13 +10,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { ArrowLeft, Save, UserCog, Upload, X, KeyRound, Download } from "lucide-react";
+import { ArrowLeft, Save, UserCog, Upload, X, KeyRound, Download, MapPin } from "lucide-react";
 import { motion } from "framer-motion";
 import type { User } from "@supabase/supabase-js";
 import logo from "@/assets/pulse-logo-new.png";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { MFAManagement } from "@/components/auth/MFAManagement";
 import { BiometricSetup } from "@/components/auth/BiometricSetup";
+
+const US_STATES = [
+  "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA",
+  "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD",
+  "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ",
+  "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC",
+  "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"
+];
 
 interface Court {
   id: string;
@@ -31,6 +39,8 @@ interface ProfileData {
   last_name: string | null;
   avatar_url: string | null;
   phonetic_name: string | null;
+  town: string | null;
+  state: string | null;
   notify_score_email: boolean;
   notify_score_sms: boolean;
   notify_score_push: boolean;
@@ -58,7 +68,10 @@ const EditProfile = () => {
   const [uploading, setUploading] = useState(false);
   const [resettingPassword, setResettingPassword] = useState(false);
   const [courts, setCourts] = useState<Court[]>([]);
+  const [highlightLocation, setHighlightLocation] = useState(false);
+  const locationSectionRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const [formData, setFormData] = useState<ProfileData>({
     display_name: null,
@@ -66,6 +79,8 @@ const EditProfile = () => {
     last_name: null,
     avatar_url: null,
     phonetic_name: null,
+    town: null,
+    state: null,
     notify_score_email: true,
     notify_score_sms: false,
     notify_score_push: true,
@@ -85,6 +100,16 @@ const EditProfile = () => {
     emergency_contact_phone: null,
     skill_level_self: null,
   });
+
+  // Scroll to location section if requested
+  useEffect(() => {
+    if (searchParams.get('focus') === 'location' && !loading && locationSectionRef.current) {
+      locationSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setHighlightLocation(true);
+      const timer = setTimeout(() => setHighlightLocation(false), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams, loading]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -116,6 +141,8 @@ const EditProfile = () => {
         last_name: profileData.last_name,
         avatar_url: profileData.avatar_url,
         phonetic_name: profileData.phonetic_name,
+        town: profileData.town,
+        state: profileData.state,
         notify_score_email: profileData.notify_score_email ?? true,
         notify_score_sms: profileData.notify_score_sms ?? false,
         notify_score_push: profileData.notify_score_push ?? true,
@@ -475,6 +502,50 @@ const EditProfile = () => {
 
           {/* Biometric Authentication */}
           <BiometricSetup />
+
+          {/* Location Section */}
+          <Card 
+            ref={locationSectionRef}
+            className={`transition-all duration-500 ${highlightLocation ? 'ring-2 ring-primary ring-offset-2' : ''}`}
+          >
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MapPin className="w-5 h-5 text-primary" />
+                Location
+              </CardTitle>
+              <CardDescription>Where you play most often</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="town">City</Label>
+                  <Input
+                    id="town"
+                    value={formData.town || ""}
+                    onChange={(e) => setFormData({ ...formData, town: e.target.value })}
+                    placeholder="New York"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="state">State</Label>
+                  <Select
+                    value={formData.state || ""}
+                    onValueChange={(value) => setFormData({ ...formData, state: value })}
+                  >
+                    <SelectTrigger id="state">
+                      <SelectValue placeholder="Select state..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {US_STATES.map((st) => (
+                        <SelectItem key={st} value={st}>{st}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">Your location is shown on your profile and helps other players find you</p>
+            </CardContent>
+          </Card>
 
           {/* Identity & Visuals */}
           <Card>

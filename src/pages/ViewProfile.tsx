@@ -9,7 +9,6 @@ import { ArrowLeft, User, Trophy, Hash, MapPin, Hand, Target, Flame } from "luci
 import logo from "@/assets/pulse-logo-new.png";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { CircularProgressRing } from "@/components/profile/CircularProgressRing";
-import { PulseScoreBadge } from "@/components/profile/PulseScoreBadge";
 import { RecentMatches } from "@/components/profile/RecentMatches";
 // PlayStyleSnapshot removed per user request
 import { HighlightsStrip } from "@/components/profile/HighlightsStrip";
@@ -286,8 +285,8 @@ const ViewProfile = () => {
                     {displayName}
                   </h1>
                   <div className="flex items-center justify-center md:justify-start lg:justify-center gap-1.5 mb-2">
-                    <Trophy className="w-3.5 h-3.5 text-muted-foreground" />
-                    <PulseScoreBadge score={profile.current_rating} />
+                    <Trophy className="w-3.5 h-3.5 text-primary" />
+                    <span className="text-sm font-medium text-foreground">{profile.current_rating.toFixed(2)} Rating</span>
                   </div>
                   {profile.courts && (
                     <div className="flex items-center justify-center md:justify-start lg:justify-center gap-1.5 text-sm text-muted-foreground font-sans">

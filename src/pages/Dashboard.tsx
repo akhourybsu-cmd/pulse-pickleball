@@ -265,8 +265,8 @@ const Dashboard = () => {
         {/* Desktop: Two-column split (Performance 8-col + Activity 4-col) */}
         {/* Mobile: Tabbed interface */}
         <div className="hidden lg:grid lg:grid-cols-12 lg:gap-6">
-          {/* Performance Column - 8 cols */}
-          <div className="lg:col-span-8 space-y-6">
+          {/* Left Column - Performance + Settings + Spaces */}
+          <div className="lg:col-span-7 space-y-6">
             <div className="bg-card rounded-xl border border-border p-5 shadow-sm">
               <h2 className="text-sm font-medium text-muted-foreground mb-4 flex items-center gap-2">
                 <TrendingUp className="w-4 h-4" />
@@ -275,39 +275,9 @@ const Dashboard = () => {
               
               {/* Quick Actions 2x2 Grid */}
               <QuickActionsBar />
-              
-              {/* Most Played Court */}
-              <div className="mt-6">
-                <StatsByCourtCard userId={user?.id} />
-              </div>
-              
-              {/* Your Spaces - Grid on desktop */}
-              <div className="mt-6">
-                <SpacesPreviewRow 
-                  userId={user?.id}
-                  homeCourtId={homeCourtId}
-                />
-              </div>
             </div>
             
-            {/* Secondary Tools */}
-            <div className="space-y-4" data-tour="court-stats">
-              <SmartMatch userId={user?.id || null} />
-              <LFGNotifications />
-            </div>
-          </div>
-          
-          {/* Activity Column - 4 cols */}
-          <div className="lg:col-span-4 space-y-6">
-            <div className="bg-card rounded-xl border border-border p-5 shadow-sm">
-              <h2 className="text-sm font-medium text-muted-foreground mb-4 flex items-center gap-2">
-                <Activity className="w-4 h-4" />
-                Activity
-              </h2>
-              <ActivityModule userId={user?.id} />
-            </div>
-            
-            {/* Settings - Compact utility card on desktop */}
+            {/* Settings - Compact utility card under Quick Actions */}
             <HomeFooterUtilities 
               isAdmin={isAdmin}
               onShare={async () => {
@@ -335,6 +305,36 @@ const Dashboard = () => {
               onRefreshStats={handleRefreshStats}
               refreshing={refreshing}
             />
+            
+            {/* Your Spaces */}
+            <SpacesPreviewRow 
+              userId={user?.id}
+              homeCourtId={homeCourtId}
+            />
+            
+            {/* Most Played Court */}
+            <StatsByCourtCard userId={user?.id} />
+            
+            {/* Secondary Tools */}
+            <div className="space-y-4" data-tour="court-stats">
+              <SmartMatch userId={user?.id || null} />
+              <LFGNotifications />
+            </div>
+          </div>
+          
+          {/* Right Column - Activity (fixed height scrollable) */}
+          <div className="lg:col-span-5">
+            <div className="bg-card rounded-xl border border-border shadow-sm sticky top-6">
+              <div className="p-5 pb-3 border-b border-border">
+                <h2 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <Activity className="w-4 h-4" />
+                  Activity
+                </h2>
+              </div>
+              <div className="max-h-[calc(100vh-200px)] overflow-y-auto p-5 pt-3">
+                <ActivityModule userId={user?.id} />
+              </div>
+            </div>
           </div>
         </div>
 
