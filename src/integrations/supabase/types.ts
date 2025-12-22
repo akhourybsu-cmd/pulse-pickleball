@@ -2957,6 +2957,53 @@ export type Database = {
         }
         Relationships: []
       }
+      venue_courts: {
+        Row: {
+          court_number: number
+          created_at: string | null
+          hourly_rate: number | null
+          id: string
+          is_active: boolean | null
+          name: string
+          notes: string | null
+          surface_type: string | null
+          updated_at: string | null
+          venue_id: string
+        }
+        Insert: {
+          court_number: number
+          created_at?: string | null
+          hourly_rate?: number | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          notes?: string | null
+          surface_type?: string | null
+          updated_at?: string | null
+          venue_id: string
+        }
+        Update: {
+          court_number?: number
+          created_at?: string | null
+          hourly_rate?: number | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          notes?: string | null
+          surface_type?: string | null
+          updated_at?: string | null
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venue_courts_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       venue_staff: {
         Row: {
           accepted_at: string | null
