@@ -259,75 +259,161 @@ const Dashboard = () => {
         onSignOut={handleSignOut}
       />
 
-      {/* Main Dashboard Content - 8pt spacing system */}
-      <div className="container mx-auto px-4 py-4 space-y-4">
+      {/* Main Dashboard Content - Centered container with max-width */}
+      <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-6 lg:py-8 space-y-6 lg:space-y-8">
 
-        {/* Performance / Activity Tabs */}
-        <Tabs defaultValue="performance" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-4">
-            <TabsTrigger value="performance" className="text-sm">
-              <TrendingUp className="w-4 h-4 mr-2" />
-              Performance
-            </TabsTrigger>
-            <TabsTrigger value="activity" className="text-sm">
-              <Activity className="w-4 h-4 mr-2" />
-              Activity
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="performance" className="mt-0 space-y-4">
-            {/* Quick Actions 2x2 Grid */}
-            <QuickActionsBar />
-
-            {/* Most Played Court Chip */}
-            <StatsByCourtCard userId={user?.id} />
-
-            {/* Your Spaces - Swipeable Cards */}
-            <SpacesPreviewRow 
-              userId={user?.id}
-              homeCourtId={homeCourtId}
-            />
-
+        {/* Desktop: Two-column split (Performance 8-col + Activity 4-col) */}
+        {/* Mobile: Tabbed interface */}
+        <div className="hidden lg:grid lg:grid-cols-12 lg:gap-6">
+          {/* Performance Column - 8 cols */}
+          <div className="lg:col-span-8 space-y-6">
+            <div className="bg-card rounded-xl border border-border p-5 shadow-sm">
+              <h2 className="text-sm font-medium text-muted-foreground mb-4 flex items-center gap-2">
+                <TrendingUp className="w-4 h-4" />
+                Performance
+              </h2>
+              
+              {/* Quick Actions 2x2 Grid */}
+              <QuickActionsBar />
+              
+              {/* Most Played Court */}
+              <div className="mt-6">
+                <StatsByCourtCard userId={user?.id} />
+              </div>
+              
+              {/* Your Spaces - Grid on desktop */}
+              <div className="mt-6">
+                <SpacesPreviewRow 
+                  userId={user?.id}
+                  homeCourtId={homeCourtId}
+                />
+              </div>
+            </div>
+            
             {/* Secondary Tools */}
             <div className="space-y-4" data-tour="court-stats">
               <SmartMatch userId={user?.id || null} />
               <LFGNotifications />
             </div>
-          </TabsContent>
+          </div>
+          
+          {/* Activity Column - 4 cols */}
+          <div className="lg:col-span-4 space-y-6">
+            <div className="bg-card rounded-xl border border-border p-5 shadow-sm">
+              <h2 className="text-sm font-medium text-muted-foreground mb-4 flex items-center gap-2">
+                <Activity className="w-4 h-4" />
+                Activity
+              </h2>
+              <ActivityModule userId={user?.id} />
+            </div>
+            
+            {/* Settings - Compact utility card on desktop */}
+            <HomeFooterUtilities 
+              isAdmin={isAdmin}
+              onShare={async () => {
+                const shareData = {
+                  title: 'Pulse Pickleball',
+                  text: 'Join me on Pulse - Track your pickleball journey and compete with friends!',
+                  url: 'https://pulsepb.com'
+                };
 
-          <TabsContent value="activity" className="mt-0 space-y-4">
-            <ActivityModule userId={user?.id} />
-          </TabsContent>
-        </Tabs>
+                try {
+                  if (navigator.share) {
+                    await navigator.share(shareData);
+                    toast.success("Thanks for spreading the word!");
+                  } else {
+                    await navigator.clipboard.writeText('https://pulsepb.com');
+                    toast.success("Share link copied to clipboard!");
+                  }
+                } catch (error) {
+                  if (error instanceof Error && error.name !== 'AbortError') {
+                    console.error('Error sharing:', error);
+                    toast.error("Could not share. Please try again.");
+                  }
+                }
+              }}
+              onRefreshStats={handleRefreshStats}
+              refreshing={refreshing}
+            />
+          </div>
+        </div>
 
-        {/* Footer Utilities */}
-        <HomeFooterUtilities 
-          isAdmin={isAdmin}
-          onShare={async () => {
-            const shareData = {
-              title: 'Pulse Pickleball',
-              text: 'Join me on Pulse - Track your pickleball journey and compete with friends!',
-              url: 'https://pulsepb.com'
-            };
+        {/* Mobile: Tabbed Interface */}
+        <div className="lg:hidden">
+          <Tabs defaultValue="performance" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-4 bg-muted/50 p-1 rounded-full">
+              <TabsTrigger 
+                value="performance" 
+                className="text-sm rounded-full data-[state=active]:bg-background data-[state=active]:shadow-sm"
+              >
+                <TrendingUp className="w-4 h-4 mr-2" />
+                Performance
+              </TabsTrigger>
+              <TabsTrigger 
+                value="activity" 
+                className="text-sm rounded-full data-[state=active]:bg-background data-[state=active]:shadow-sm"
+              >
+                <Activity className="w-4 h-4 mr-2" />
+                Activity
+              </TabsTrigger>
+            </TabsList>
 
-            try {
-              if (navigator.share) {
-                await navigator.share(shareData);
-                toast.success("Thanks for spreading the word!");
-              } else {
-                await navigator.clipboard.writeText('https://pulsepb.com');
-                toast.success("Share link copied to clipboard!");
-              }
-            } catch (error) {
-              if (error instanceof Error && error.name !== 'AbortError') {
-                console.error('Error sharing:', error);
-                toast.error("Could not share. Please try again.");
-              }
-            }
-          }}
-          onRefreshStats={handleRefreshStats}
-          refreshing={refreshing}
-        />
+            <TabsContent value="performance" className="mt-0 space-y-4">
+              {/* Quick Actions 2x2 Grid */}
+              <QuickActionsBar />
+
+              {/* Most Played Court Chip */}
+              <StatsByCourtCard userId={user?.id} />
+
+              {/* Your Spaces - Swipeable Cards */}
+              <SpacesPreviewRow 
+                userId={user?.id}
+                homeCourtId={homeCourtId}
+              />
+
+              {/* Secondary Tools */}
+              <div className="space-y-4" data-tour="court-stats">
+                <SmartMatch userId={user?.id || null} />
+                <LFGNotifications />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="activity" className="mt-0 space-y-4">
+              <ActivityModule userId={user?.id} />
+            </TabsContent>
+          </Tabs>
+
+          {/* Footer Utilities - Mobile */}
+          <div className="mt-6">
+            <HomeFooterUtilities 
+              isAdmin={isAdmin}
+              onShare={async () => {
+                const shareData = {
+                  title: 'Pulse Pickleball',
+                  text: 'Join me on Pulse - Track your pickleball journey and compete with friends!',
+                  url: 'https://pulsepb.com'
+                };
+
+                try {
+                  if (navigator.share) {
+                    await navigator.share(shareData);
+                    toast.success("Thanks for spreading the word!");
+                  } else {
+                    await navigator.clipboard.writeText('https://pulsepb.com');
+                    toast.success("Share link copied to clipboard!");
+                  }
+                } catch (error) {
+                  if (error instanceof Error && error.name !== 'AbortError') {
+                    console.error('Error sharing:', error);
+                    toast.error("Could not share. Please try again.");
+                  }
+                }
+              }}
+              onRefreshStats={handleRefreshStats}
+              refreshing={refreshing}
+            />
+          </div>
+        </div>
       </div>
 
       <NotificationDrawer

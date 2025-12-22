@@ -97,16 +97,20 @@ export const SpacesPreviewRow = ({ userId, homeCourtId }: SpacesPreviewRowProps)
   return (
     <div className="space-y-2">
       <h3 className="text-sm font-medium text-muted-foreground px-1">Your Spaces</h3>
-      <div className="flex gap-4 overflow-x-auto pb-2 -mx-1 px-1 snap-x snap-mandatory scrollbar-hide scroll-smooth">
+      {/* Mobile: Horizontal scroll | Desktop: Grid */}
+      <div className="flex lg:grid lg:grid-cols-4 gap-4 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0 -mx-1 px-1 lg:mx-0 lg:px-0 snap-x snap-mandatory lg:snap-none scrollbar-hide scroll-smooth">
         {spaces.map((space) => (
           <button
             key={space.id}
             onClick={() => navigate(`/court/board/${space.id}`)}
             className={`
-              flex flex-col items-start gap-1 p-3 rounded-xl border transition-all flex-shrink-0 snap-start min-w-[112px] w-28 min-h-[72px] shadow-sm
+              flex flex-col items-start gap-1.5 p-3 rounded-xl border transition-all 
+              flex-shrink-0 lg:flex-shrink snap-start 
+              min-w-[120px] lg:min-w-0 w-[120px] lg:w-full
+              min-h-[80px] shadow-sm hover:shadow-md
               ${space.isHomeCourt 
-                ? "bg-primary/5 border-primary/30 hover:border-primary/50 hover:shadow-md" 
-                : "bg-card border-border hover:border-primary/30 hover:shadow-md"
+                ? "bg-primary/5 border-primary/30 hover:border-primary/50" 
+                : "bg-card border-border hover:border-primary/30"
               }
             `}
           >
@@ -118,9 +122,12 @@ export const SpacesPreviewRow = ({ userId, homeCourtId }: SpacesPreviewRowProps)
               )}
               <ChevronRight className="w-4 h-4 text-muted-foreground" />
             </div>
-            <span className="text-xs font-semibold text-foreground truncate w-full text-left">
+            <span className="text-xs font-semibold text-foreground truncate w-full text-left leading-tight">
               {space.name}
             </span>
+            {space.isHomeCourt && (
+              <span className="text-[10px] text-primary/70">Home Court</span>
+            )}
           </button>
         ))}
       </div>
