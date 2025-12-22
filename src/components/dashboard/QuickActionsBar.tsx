@@ -43,28 +43,28 @@ export const QuickActionsBar = () => {
   return (
     <div className="space-y-2">
       <h3 className="text-sm font-medium text-muted-foreground px-1">Quick Actions</h3>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
         {actions.map((action) => (
           <button
             key={action.path}
             onClick={() => navigate(action.path)}
             className={`
-              flex flex-col items-center justify-center gap-2 p-4 rounded-2xl
+              flex flex-col items-center justify-center gap-2 p-4 rounded-xl
               transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]
-              aspect-square
+              aspect-square lg:aspect-auto lg:py-4
               ${action.primary 
-                ? "bg-primary text-primary-foreground shadow-[0_0_20px_hsl(var(--primary)/0.4)] hover:shadow-[0_0_28px_hsl(var(--primary)/0.5)]" 
-                : "bg-card border border-border hover:border-primary/30 hover:shadow-sm"
+                ? "bg-primary/10 border-2 border-primary/40 text-primary hover:bg-primary/15 hover:border-primary/60 shadow-sm" 
+                : "bg-card border border-border hover:border-primary/30 hover:bg-muted/30 hover:shadow-sm"
               }
             `}
             data-tour={action.path === "/match/new" ? "record-match" : undefined}
           >
-            <div className={action.primary ? "" : "text-primary"}>
+            <div className={action.primary ? "text-primary" : "text-primary/70"}>
               {action.icon}
             </div>
             <div className="text-center">
-              <p className="text-sm font-semibold leading-tight">{action.label}</p>
-              <p className={`text-xs leading-tight ${action.primary ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
+              <p className="text-sm font-semibold leading-tight text-foreground">{action.label}</p>
+              <p className="text-xs text-muted-foreground leading-tight">
                 {action.sublabel}
               </p>
             </div>
