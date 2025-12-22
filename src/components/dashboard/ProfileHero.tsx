@@ -1,7 +1,6 @@
 import { useNavigate, Link } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { LogOut, Users, MapPin, Trophy } from "lucide-react";
 import { RatingDisplay } from "./RatingDisplay";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -50,18 +49,6 @@ export const ProfileHero = ({
     .join("")
     .toUpperCase()
     .slice(0, 2);
-
-  // Determine tier based on rating with metallic gradients
-  const getTier = (rating: number | undefined) => {
-    if (!rating) return { name: "Unrated", className: "bg-muted text-muted-foreground" };
-    if (rating >= 4.5) return { name: "Diamond", className: "bg-gradient-to-r from-cyan-400 to-cyan-600 text-white shadow-sm" };
-    if (rating >= 4.0) return { name: "Platinum", className: "bg-gradient-to-r from-slate-300 to-slate-500 text-white shadow-sm" };
-    if (rating >= 3.5) return { name: "Gold", className: "bg-gradient-to-r from-yellow-400 to-amber-500 text-black shadow-sm" };
-    if (rating >= 3.0) return { name: "Silver", className: "bg-gradient-to-r from-slate-200 to-slate-400 text-slate-800 shadow-sm" };
-    return { name: "Bronze", className: "bg-gradient-to-r from-amber-500 to-amber-700 text-white shadow-sm" };
-  };
-
-  const tier = getTier(currentRating);
 
   return (
     <div className="relative overflow-hidden">
@@ -122,15 +109,18 @@ export const ProfileHero = ({
                     <h1 className="text-xl font-semibold text-foreground truncate leading-tight">
                       {name}
                     </h1>
-                    <p 
-                      className="text-muted-foreground/60 text-sm truncate border-b border-dashed border-muted-foreground/30 inline-block cursor-pointer hover:text-muted-foreground transition-colors"
-                      onClick={() => navigate("/profile/edit")}
-                    >
-                      {location || "Set location"}
-                    </p>
-                    <Badge className={`mt-1.5 text-[10px] px-2 py-0.5 rounded-md ${tier.className}`}>
-                      {tier.name}
-                    </Badge>
+                    {location ? (
+                      <p className="text-muted-foreground text-sm truncate">
+                        {location}
+                      </p>
+                    ) : (
+                      <button 
+                        className="text-primary/70 text-sm hover:text-primary transition-colors border-b border-dashed border-primary/30"
+                        onClick={() => navigate("/profile/edit?focus=location")}
+                      >
+                        Set location
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format } from "date-fns";
-import { Trophy, Calendar, ChevronRight, Filter } from "lucide-react";
+import { Trophy, Calendar, ChevronRight } from "lucide-react";
 import { MatchCard } from "./MatchCard";
 
 interface Match {
@@ -171,109 +170,97 @@ export const ActivityModule = ({ userId }: ActivityModuleProps) => {
 
   if (loading) {
     return (
-      <Card>
-        <CardContent className="p-6">
-          <div className="animate-pulse space-y-3">
-            <div className="h-4 bg-muted rounded w-1/3"></div>
-            <div className="h-24 bg-muted rounded"></div>
-            <div className="h-24 bg-muted rounded"></div>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="p-6">
+        <div className="animate-pulse space-y-3">
+          <div className="h-4 bg-muted rounded w-1/3"></div>
+          <div className="h-24 bg-muted rounded"></div>
+          <div className="h-24 bg-muted rounded"></div>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-lg flex items-center justify-between">
-          <span>Your Activity</span>
-          <button className="text-muted-foreground hover:text-foreground transition-colors">
-            <Filter className="w-4 h-4" />
-          </button>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="pt-0">
-        <Tabs defaultValue="matches" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-4">
-            <TabsTrigger value="matches" className="text-xs md:text-sm">
-              <Trophy className="w-3 h-3 mr-1.5" />
-              Recent Matches
-            </TabsTrigger>
-            <TabsTrigger value="events" className="text-xs md:text-sm">
-              <Calendar className="w-3 h-3 mr-1.5" />
-              Upcoming Events
-            </TabsTrigger>
-          </TabsList>
+    <div>
+      <Tabs defaultValue="matches" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 mb-4">
+          <TabsTrigger value="matches" className="text-xs md:text-sm">
+            <Trophy className="w-3 h-3 mr-1.5" />
+            Recent Matches
+          </TabsTrigger>
+          <TabsTrigger value="events" className="text-xs md:text-sm">
+            <Calendar className="w-3 h-3 mr-1.5" />
+            Upcoming Events
+          </TabsTrigger>
+        </TabsList>
 
-          <TabsContent value="matches" className="mt-0">
-            {matches.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">
-                No recent matches. Record your first match!
-              </p>
-            ) : (
-              <div className="space-y-6">
-                {Object.entries(groupedMatches).map(([month, monthMatches]) => (
-                  <div key={month}>
-                    <h3 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wider">
-                      {month}
-                    </h3>
-                    <div className="space-y-3">
-                      {monthMatches.map((match) => (
-                        <MatchCard
-                          key={match.id}
-                          id={match.id}
-                          matchDate={match.match_date}
-                          userTeam={match.userTeam}
-                          team1Score={match.team1_score}
-                          team2Score={match.team2_score}
-                          team1Players={match.team1Players}
-                          team2Players={match.team2Players}
-                          courtName={match.courtName}
-                          location={match.location}
-                          eventName={match.eventName}
-                          ratingChange={match.ratingChange}
-                          onClick={() => navigate("/match/history")}
-                        />
-                      ))}
-                    </div>
+        <TabsContent value="matches" className="mt-0">
+          {matches.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">
+              No recent matches. Record your first match!
+            </p>
+          ) : (
+            <div className="space-y-4">
+              {Object.entries(groupedMatches).map(([month, monthMatches]) => (
+                <div key={month}>
+                  <h3 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">
+                    {month}
+                  </h3>
+                  <div className="space-y-2">
+                    {monthMatches.map((match) => (
+                      <MatchCard
+                        key={match.id}
+                        id={match.id}
+                        matchDate={match.match_date}
+                        userTeam={match.userTeam}
+                        team1Score={match.team1_score}
+                        team2Score={match.team2_score}
+                        team1Players={match.team1Players}
+                        team2Players={match.team2Players}
+                        courtName={match.courtName}
+                        location={match.location}
+                        eventName={match.eventName}
+                        ratingChange={match.ratingChange}
+                        onClick={() => navigate("/match/history")}
+                      />
+                    ))}
                   </div>
-                ))}
-              </div>
-            )}
-          </TabsContent>
+                </div>
+              ))}
+            </div>
+          )}
+        </TabsContent>
 
-          <TabsContent value="events" className="mt-0">
-            {events.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">
-                No upcoming events. Join a Round Robin!
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {events.map((event) => (
-                  <button
-                    key={event.id}
-                    onClick={() => navigate(`/round-robin/${event.id}`)}
-                    className="w-full flex items-center gap-3 p-4 rounded-xl bg-card hover:bg-muted/50 transition-colors text-left border border-border"
-                  >
-                    <span className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Calendar className="w-5 h-5 text-primary" />
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{event.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {format(new Date(event.date), "EEEE, MMMM d, yyyy")}
-                        {event.location && ` • ${event.location}`}
-                      </p>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                  </button>
-                ))}
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
-      </CardContent>
-    </Card>
+        <TabsContent value="events" className="mt-0">
+          {events.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">
+              No upcoming events. Join a Round Robin!
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {events.map((event) => (
+                <button
+                  key={event.id}
+                  onClick={() => navigate(`/round-robin/${event.id}`)}
+                  className="w-full flex items-center gap-3 p-3 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors text-left border border-border"
+                >
+                  <span className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <Calendar className="w-4 h-4 text-primary" />
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{event.name}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {format(new Date(event.date), "EEE, MMM d")}
+                      {event.location && ` • ${event.location}`}
+                    </p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                </button>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 };
