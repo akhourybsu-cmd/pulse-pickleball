@@ -2957,6 +2957,113 @@ export type Database = {
         }
         Relationships: []
       }
+      venue_staff: {
+        Row: {
+          accepted_at: string | null
+          created_at: string
+          id: string
+          invited_at: string | null
+          invited_by: string | null
+          is_active: boolean | null
+          role: Database["public"]["Enums"]["venue_role"]
+          updated_at: string
+          user_id: string
+          venue_id: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string
+          id?: string
+          invited_at?: string | null
+          invited_by?: string | null
+          is_active?: boolean | null
+          role?: Database["public"]["Enums"]["venue_role"]
+          updated_at?: string
+          user_id: string
+          venue_id: string
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string
+          id?: string
+          invited_at?: string | null
+          invited_by?: string | null
+          is_active?: boolean | null
+          role?: Database["public"]["Enums"]["venue_role"]
+          updated_at?: string
+          user_id?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venue_staff_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      venues: {
+        Row: {
+          address: string | null
+          city: string | null
+          created_at: string
+          description: string | null
+          email: string | null
+          id: string
+          is_active: boolean | null
+          logo_url: string | null
+          name: string
+          owner_id: string | null
+          phone: string | null
+          slug: string | null
+          state: string | null
+          timezone: string | null
+          updated_at: string
+          website: string | null
+          zip_code: string | null
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          created_at?: string
+          description?: string | null
+          email?: string | null
+          id?: string
+          is_active?: boolean | null
+          logo_url?: string | null
+          name: string
+          owner_id?: string | null
+          phone?: string | null
+          slug?: string | null
+          state?: string | null
+          timezone?: string | null
+          updated_at?: string
+          website?: string | null
+          zip_code?: string | null
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          created_at?: string
+          description?: string | null
+          email?: string | null
+          id?: string
+          is_active?: boolean | null
+          logo_url?: string | null
+          name?: string
+          owner_id?: string | null
+          phone?: string | null
+          slug?: string | null
+          state?: string | null
+          timezone?: string | null
+          updated_at?: string
+          website?: string | null
+          zip_code?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       profiles_public: {
@@ -3104,11 +3211,31 @@ export type Database = {
         Returns: string
       }
       get_profile_email: { Args: { profile_id: string }; Returns: string }
+      get_user_venues: {
+        Args: { _user_id: string }
+        Returns: {
+          role: Database["public"]["Enums"]["venue_role"]
+          venue_id: string
+          venue_name: string
+        }[]
+      }
       get_week_start: { Args: { match_date: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
+        }
+        Returns: boolean
+      }
+      has_venue_access: {
+        Args: { _user_id: string; _venue_id: string }
+        Returns: boolean
+      }
+      has_venue_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["venue_role"]
+          _user_id: string
+          _venue_id: string
         }
         Returns: boolean
       }
@@ -3205,6 +3332,7 @@ export type Database = {
         | "live"
         | "completed"
         | "cancelled"
+      venue_role: "owner" | "manager" | "staff"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -3345,6 +3473,7 @@ export const Constants = {
         "completed",
         "cancelled",
       ],
+      venue_role: ["owner", "manager", "staff"],
     },
   },
 } as const
