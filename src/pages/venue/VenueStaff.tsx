@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useMode } from '@/contexts/ModeContext';
 import { useVenueStaff } from '@/hooks/useVenueStaff';
 import { StaffMemberCard } from '@/components/venue/StaffMemberCard';
+import { InviteStaffDialog } from '@/components/venue/InviteStaffDialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -10,8 +11,9 @@ import { supabase } from '@/integrations/supabase/client';
 
 export default function VenueStaff() {
   const { currentVenueId } = useMode();
-  const { staff, loading, updateStaffRole, removeStaff } = useVenueStaff(currentVenueId);
+  const { staff, loading, refetch, updateStaffRole, removeStaff } = useVenueStaff(currentVenueId);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [inviteOpen, setInviteOpen] = useState(false);
 
   useEffect(() => {
     const getUser = async () => {
@@ -46,11 +48,18 @@ export default function VenueStaff() {
             Manage your venue's team and permissions
           </p>
         </div>
-        <Button disabled>
+        <Button onClick={() => setInviteOpen(true)}>
           <Mail className="h-4 w-4 mr-2" />
           Invite Staff
         </Button>
       </div>
+
+      <InviteStaffDialog
+        open={inviteOpen}
+        onOpenChange={setInviteOpen}
+        venueId={currentVenueId}
+        onSuccess={refetch}
+      />
 
       {/* Role Legend */}
       <Card className="mb-6">
@@ -125,7 +134,7 @@ export default function VenueStaff() {
             <p className="text-muted-foreground mb-4">
               Invite team members to help manage your venue.
             </p>
-            <Button disabled>
+            <Button onClick={() => setInviteOpen(true)}>
               <Mail className="h-4 w-4 mr-2" />
               Invite Staff
             </Button>

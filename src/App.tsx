@@ -71,7 +71,11 @@ import { ScrollToTop } from "@/components/ScrollToTop";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 
 // Player pages
+import PlayerDashboard from "./pages/player/PlayerDashboard";
+import PlayerCourts from "./pages/player/PlayerCourts";
+import PlayerEvents from "./pages/player/PlayerEvents";
 import PlayerCoaching from "./pages/player/PlayerCoaching";
+import PlayerBookings from "./pages/player/PlayerBookings";
 
 // Venue pages
 import VenueOverview from "./pages/venue/VenueOverview";
@@ -102,11 +106,11 @@ const AppContent = () => {
         {/* Player routes with shell */}
         <Route path="/player" element={<PlayerShell />}>
           <Route index element={<Navigate to="/player/dashboard" replace />} />
-          <Route path="dashboard" element={<Dashboard />} />
-          <Route path="events" element={<Events />} />
-          <Route path="courts" element={<CourtConnector />} />
+          <Route path="dashboard" element={<PlayerDashboard />} />
+          <Route path="events" element={<PlayerEvents />} />
+          <Route path="courts" element={<PlayerCourts />} />
           <Route path="coaching" element={<PlayerCoaching />} />
-          <Route path="bookings" element={<MyCalendarRegistrations />} />
+          <Route path="bookings" element={<PlayerBookings />} />
         </Route>
 
         {/* Venue routes with shell */}
