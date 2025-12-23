@@ -16,7 +16,7 @@ import { ModeSwitcher } from '@/components/mode/ModeSwitcher';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useState } from 'react';
-import logo from '@/assets/pulse-logo-new.png';
+import pickleballPalaceLogo from '@/assets/pickleball-palace-logo.png';
 import { useMode } from '@/contexts/ModeContext';
 
 const navItems = [
@@ -41,9 +41,9 @@ function SidebarContent({ onItemClick }: { onItemClick?: () => void }) {
       <div className="p-4 border-b">
         <NavLink to="/venue" onClick={onItemClick}>
           <img 
-            src={logo} 
-            alt="PULSE Logo" 
-            className="h-10 w-auto cursor-pointer hover:opacity-80 transition-opacity logo-pulse" 
+            src={pickleballPalaceLogo} 
+            alt="Pickleball Palace" 
+            className="h-12 w-auto cursor-pointer hover:opacity-80 transition-opacity" 
           />
         </NavLink>
         {currentVenue && (
@@ -118,9 +118,9 @@ export function VenueShell() {
 
           <NavLink to="/venue">
             <img 
-              src={logo} 
-              alt="PULSE Logo" 
-              className="h-8 w-auto cursor-pointer hover:opacity-80 transition-opacity" 
+              src={pickleballPalaceLogo} 
+              alt="Pickleball Palace" 
+              className="h-10 w-auto cursor-pointer hover:opacity-80 transition-opacity" 
             />
           </NavLink>
 

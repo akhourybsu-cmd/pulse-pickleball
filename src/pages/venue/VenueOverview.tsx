@@ -9,6 +9,7 @@ import { MapPin, Calendar, Users, Plus, Settings, CalendarPlus, UserPlus, Calend
 import { useNavigate } from 'react-router-dom';
 import { Skeleton } from '@/components/ui/skeleton';
 import { isToday, isFuture } from 'date-fns';
+import pickleballPalaceLogo from '@/assets/pickleball-palace-logo.png';
 
 export default function VenueOverview() {
   const { venueAccess, currentVenueId } = useMode();
@@ -35,11 +36,18 @@ export default function VenueOverview() {
 
   return (
     <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">{currentVenue?.venue_name || 'Venue Dashboard'}</h1>
-        <p className="text-muted-foreground">
-          Welcome back! Here's what's happening at your venue.
-        </p>
+      <div className="mb-6 flex items-center gap-4">
+        <img 
+          src={pickleballPalaceLogo} 
+          alt="Pickleball Palace" 
+          className="h-14 w-auto hidden sm:block"
+        />
+        <div>
+          <h1 className="text-2xl font-bold">{currentVenue?.venue_name || 'Venue Dashboard'}</h1>
+          <p className="text-muted-foreground">
+            Welcome back! Here's what's happening at your venue.
+          </p>
+        </div>
       </div>
 
       {/* Key Metrics */}
