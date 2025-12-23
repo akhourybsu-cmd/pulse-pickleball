@@ -107,7 +107,7 @@ export function usePublicVenue(slug: string | undefined) {
 
         setCourts((courtsData || []) as VenueCourt[]);
 
-        // Fetch upcoming events
+        // Fetch upcoming events - get more events for date filtering in events tab
         const { data: eventsData } = await supabase
           .from('venue_events')
           .select('id, title, description, start_time, end_time, max_participants, current_participants, price, event_type, skill_level')
@@ -115,7 +115,7 @@ export function usePublicVenue(slug: string | undefined) {
           .eq('is_published', true)
           .gte('start_time', new Date().toISOString())
           .order('start_time')
-          .limit(6);
+          .limit(100);
 
         setEvents((eventsData || []) as VenueEvent[]);
 
