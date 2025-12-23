@@ -89,7 +89,7 @@ export default function MyBookings() {
   );
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6 pt-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Calendar className="h-6 w-6 text-primary" />
