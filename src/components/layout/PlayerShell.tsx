@@ -15,25 +15,30 @@ const navItems = [
 
 export function PlayerShell() {
   const location = useLocation();
+  
+  // Hide shell header on dashboard since it has its own ProfileHero header
+  const isDashboard = location.pathname === '/player/dashboard';
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Top Header */}
-      <header className="sticky top-0 z-50 border-b bg-card/95 backdrop-blur-sm">
-        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-          <NavLink to="/player/dashboard">
-            <img 
-              src={logo} 
-              alt="PULSE Logo" 
-              className="h-10 sm:h-12 w-auto cursor-pointer hover:opacity-80 transition-opacity logo-pulse" 
-            />
-          </NavLink>
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-            <ModeSwitcher />
+      {/* Top Header - Hidden on dashboard */}
+      {!isDashboard && (
+        <header className="sticky top-0 z-50 border-b bg-secondary/95 backdrop-blur-sm">
+          <div className="container mx-auto px-4 py-3 flex items-center justify-between">
+            <NavLink to="/player/dashboard">
+              <img 
+                src={logo} 
+                alt="PULSE Logo" 
+                className="h-10 sm:h-12 w-auto cursor-pointer hover:opacity-80 transition-opacity logo-pulse" 
+              />
+            </NavLink>
+            <div className="flex items-center gap-2">
+              <ThemeToggle />
+              <ModeSwitcher />
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
+      )}
 
       {/* Main Content */}
       <main className="flex-1 pb-20 md:pb-6">
