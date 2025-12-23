@@ -13,6 +13,8 @@ export interface PublicVenue {
   phone: string | null;
   email: string | null;
   website: string | null;
+  primary_color: string | null;
+  secondary_color: string | null;
 }
 
 export interface PublicVenueCourt {
@@ -58,7 +60,7 @@ export function usePublicVenues() {
       setLoading(true);
       const { data, error } = await supabase
         .from('venues')
-        .select('id, name, slug, address, city, state, description, logo_url, phone, email, website')
+        .select('id, name, slug, address, city, state, description, logo_url, phone, email, website, primary_color, secondary_color')
         .eq('is_active', true)
         .order('name');
 
@@ -102,7 +104,7 @@ export function usePublicVenueDetails(venueId: string | null) {
       const [venueRes, courtsRes, eventsRes, coachesRes] = await Promise.all([
         supabase
           .from('venues')
-          .select('id, name, slug, address, city, state, description, logo_url, phone, email, website')
+          .select('id, name, slug, address, city, state, description, logo_url, phone, email, website, primary_color, secondary_color')
           .eq('id', venueId)
           .eq('is_active', true)
           .single(),

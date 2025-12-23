@@ -4,6 +4,7 @@ import { MapPin, ChevronRight } from 'lucide-react';
 import { PublicVenue } from '@/hooks/usePublicVenues';
 import { FavoriteButton } from './FavoriteButton';
 import { useFavoriteVenues } from '@/hooks/useFavoriteVenues';
+import pickleballPalaceLogo from '@/assets/pickleball-palace-logo.png';
 
 interface VenueDiscoveryCardProps {
   venue: PublicVenue;
@@ -13,20 +14,42 @@ interface VenueDiscoveryCardProps {
 }
 
 export function VenueDiscoveryCard({ venue, onSelect, isFavorite, onToggleFavorite }: VenueDiscoveryCardProps) {
+  const primaryColor = venue.primary_color || '#FF6B35';
+  const logoSrc = venue.logo_url || pickleballPalaceLogo;
+
   return (
-    <Card className="hover:shadow-lg transition-shadow cursor-pointer group" onClick={() => onSelect(venue.id)}>
+    <Card 
+      className="hover:shadow-lg transition-all cursor-pointer group overflow-hidden"
+      onClick={() => onSelect(venue.id)}
+      style={{
+        borderColor: `${primaryColor}30`,
+      }}
+    >
+      {/* Branded header strip */}
+      <div 
+        className="h-2 w-full"
+        style={{ backgroundColor: primaryColor }}
+      />
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            {venue.logo_url ? (
-              <img src={venue.logo_url} alt={venue.name} className="h-12 w-12 rounded-lg object-cover" />
-            ) : (
-              <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                <MapPin className="h-6 w-6 text-primary" />
-              </div>
-            )}
+            <div 
+              className="h-14 w-14 rounded-lg flex items-center justify-center p-1.5 overflow-hidden"
+              style={{ backgroundColor: `${primaryColor}10` }}
+            >
+              <img 
+                src={logoSrc} 
+                alt={venue.name} 
+                className="h-full w-full object-contain"
+              />
+            </div>
             <div>
-              <CardTitle className="text-lg group-hover:text-primary transition-colors">{venue.name}</CardTitle>
+              <CardTitle 
+                className="text-lg transition-colors"
+                style={{ color: primaryColor }}
+              >
+                {venue.name}
+              </CardTitle>
               {venue.city && venue.state && (
                 <p className="text-sm text-muted-foreground">{venue.city}, {venue.state}</p>
               )}
@@ -39,7 +62,10 @@ export function VenueDiscoveryCard({ venue, onSelect, isFavorite, onToggleFavori
                 onToggle={onToggleFavorite}
               />
             )}
-            <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+            <ChevronRight 
+              className="h-5 w-5 transition-colors" 
+              style={{ color: primaryColor }}
+            />
           </div>
         </div>
       </CardHeader>
@@ -55,10 +81,15 @@ export function VenueDiscoveryCard({ venue, onSelect, isFavorite, onToggleFavori
           </div>
         )}
         
-        <Button variant="default" size="sm" className="w-full" onClick={(e) => {
-          e.stopPropagation();
-          onSelect(venue.id);
-        }}>
+        <Button 
+          size="sm" 
+          className="w-full text-white"
+          style={{ backgroundColor: primaryColor }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelect(venue.id);
+          }}
+        >
           View Courts & Events
         </Button>
       </CardContent>
