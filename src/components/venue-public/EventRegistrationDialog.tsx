@@ -16,6 +16,7 @@ import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { PublicVenue, VenueEvent } from '@/hooks/usePublicVenue';
+import { EventRosterView } from './EventRosterView';
 
 interface EventRegistrationDialogProps {
   open: boolean;
@@ -203,6 +204,14 @@ export function EventRegistrationDialog({
             <div>
               <Badge variant="secondary">{event.skill_level}</Badge>
             </div>
+          )}
+          
+          {/* Roster View - show who's registered */}
+          {event.current_participants > 0 && (
+            <>
+              <Separator />
+              <EventRosterView eventId={event.id} primaryColor={primaryColor} />
+            </>
           )}
           
           {event.price !== null && event.price > 0 && (

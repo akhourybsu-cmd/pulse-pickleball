@@ -17,7 +17,8 @@ import pulseLogo from "@/assets/pulse-logo-new.png";
 const authSchema = z.object({
   email: z.string().trim().email("Invalid email address").max(255, "Email too long"),
   password: z.string().min(6, "Password must be at least 6 characters").max(72, "Password too long"),
-  fullName: z.string().trim().min(1, "Name is required").max(100, "Name too long").optional(),
+  firstName: z.string().trim().min(1, "First name is required").max(50, "First name too long").optional(),
+  lastName: z.string().trim().min(1, "Last name is required").max(50, "Last name too long").optional(),
   state: z.enum(["Massachusetts", "Rhode Island"], {
     errorMap: () => ({ message: "Please select your state" }),
   }).optional(),
@@ -34,7 +35,8 @@ const Auth = () => {
   const [confirmEmail, setConfirmEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [fullName, setFullName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [selectedState, setSelectedState] = useState<"Massachusetts" | "Rhode Island" | "">("");
   const [showMFAChallenge, setShowMFAChallenge] = useState(false);
   const [showEmailMFA, setShowEmailMFA] = useState(false);
@@ -57,7 +59,7 @@ const Auth = () => {
       // Validate based on mode
       const validationData = isLogin 
         ? { email, password }
-        : { email, password, fullName, state: selectedState };
+        : { email, password, firstName, lastName, state: selectedState };
       
       const validationResult = authSchema.safeParse(validationData);
       
@@ -126,7 +128,9 @@ const Auth = () => {
           password,
           options: {
             data: {
-              full_name: fullName,
+              first_name: firstName,
+              last_name: lastName,
+              full_name: `${firstName} ${lastName}`.trim(),
               state: selectedState,
             }
           }
@@ -320,17 +324,31 @@ const Auth = () => {
               <form onSubmit={handleAuth} className="space-y-4">
                 {!isLogin && (
                   <>
-                    <div className="space-y-2">
-                      <Label htmlFor="fullName">Full Name</Label>
-                      <Input
-                        id="fullName"
-                        type="text"
-                        value={fullName}
-                        onChange={(e) => setFullName(e.target.value)}
-                        required
-                        placeholder="Enter your full name"
-                        disabled={loading}
-                      />
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label htmlFor="firstName">First Name *</Label>
+                        <Input
+                          id="firstName"
+                          type="text"
+                          value={firstName}
+                          onChange={(e) => setFirstName(e.target.value)}
+                          required
+                          placeholder="First name"
+                          disabled={loading}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="lastName">Last Name *</Label>
+                        <Input
+                          id="lastName"
+                          type="text"
+                          value={lastName}
+                          onChange={(e) => setLastName(e.target.value)}
+                          required
+                          placeholder="Last name"
+                          disabled={loading}
+                        />
+                      </div>
                     </div>
 
                     <div className="space-y-2">

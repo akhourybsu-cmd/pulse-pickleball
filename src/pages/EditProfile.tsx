@@ -276,6 +276,12 @@ const EditProfile = () => {
   const handleSave = async () => {
     if (!user?.id) return;
 
+    // Validate required fields
+    if (!formData.first_name?.trim() || !formData.last_name?.trim()) {
+      toast.error("First name and last name are required");
+      return;
+    }
+
     setSaving(true);
     try {
       const { error } = await supabase
@@ -556,22 +562,30 @@ const EditProfile = () => {
             <CardContent className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="first_name">First Name</Label>
+                  <Label htmlFor="first_name">First Name *</Label>
                   <Input
                     id="first_name"
                     value={formData.first_name || ""}
                     onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
                     placeholder="John"
+                    required
                   />
+                  {!formData.first_name?.trim() && (
+                    <p className="text-xs text-destructive">First name is required</p>
+                  )}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="last_name">Last Name</Label>
+                  <Label htmlFor="last_name">Last Name *</Label>
                   <Input
                     id="last_name"
                     value={formData.last_name || ""}
                     onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
                     placeholder="Doe"
+                    required
                   />
+                  {!formData.last_name?.trim() && (
+                    <p className="text-xs text-destructive">Last name is required</p>
+                  )}
                 </div>
               </div>
 
