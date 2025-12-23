@@ -1,8 +1,13 @@
-import { Outlet, NavLink, useLocation } from 'react-router-dom';
-import { Home, Calendar, MapPin, Search, ClipboardList } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { Home, Calendar, MapPin, Search, ClipboardList, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { ModeSwitcher } from '@/components/mode/ModeSwitcher';
+import { NotificationBell } from '@/components/NotificationBell';
+import { UnverifiedMatchesIndicator } from '@/components/UnverifiedMatchesIndicator';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
 import logo from '@/assets/pulse-logo-new.png';
 
 const navItems = [
@@ -15,33 +20,85 @@ const navItems = [
 
 export function PlayerShell() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const [user, setUser] = useState<{ id: string; avatarUrl?: string; displayName?: string } | null>(null);
   
   // Hide shell header on dashboard since it has its own ProfileHero header
   const isDashboard = location.pathname === '/player/dashboard';
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('avatar_url, display_name, full_name')
+          .eq('id', session.user.id)
+          .single();
+        
+        setUser({
+          id: session.user.id,
+          avatarUrl: profile?.avatar_url || undefined,
+          displayName: profile?.display_name || profile?.full_name || 'Player'
+        });
+      }
+    };
+    fetchUser();
+  }, []);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    navigate('/');
+  };
+
+  const initials = user?.displayName
+    ?.split(' ')
+    .map(n => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2) || 'P';
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Top Header - Hidden on dashboard */}
       {!isDashboard && (
-        <header className="sticky top-0 z-50 border-b bg-secondary/95 backdrop-blur-sm">
-          <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-            <NavLink to="/player/dashboard">
+        <header className="sticky top-0 z-50 border-b bg-secondary shadow-sm">
+          <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-4 flex items-center justify-between h-[72px]">
+            <NavLink to="/player/dashboard" className="ml-2">
               <img 
                 src={logo} 
                 alt="PULSE Logo" 
-                className="h-10 sm:h-12 w-auto cursor-pointer hover:opacity-80 transition-opacity logo-pulse" 
+                className="h-[60px] sm:h-[75px] w-auto cursor-pointer hover:opacity-80 transition-opacity" 
               />
             </NavLink>
             <div className="flex items-center gap-2">
+              <UnverifiedMatchesIndicator />
               <ThemeToggle />
-              <ModeSwitcher />
+              <NotificationBell unreadCount={0} onOpen={() => {}} />
+              <Avatar 
+                className="h-9 w-9 border-2 border-primary/30 cursor-pointer hover:border-primary/50 transition-colors"
+                onClick={() => user && navigate(`/profile/${user.id}`)}
+              >
+                <AvatarImage src={user?.avatarUrl} alt={user?.displayName} />
+                <AvatarFallback className="text-xs font-bold bg-primary/20 text-primary">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleSignOut}
+                className="text-white hover:text-white/90 hover:bg-white/10 h-[38px] w-[38px]"
+              >
+                <LogOut className="h-5 w-5" />
+              </Button>
             </div>
           </div>
         </header>
       )}
 
       {/* Main Content */}
-      <main className="flex-1 pb-20 md:pb-6">
+      <main className="flex-1 pb-24 md:pb-20">
         <Outlet />
       </main>
 

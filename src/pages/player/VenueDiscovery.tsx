@@ -51,7 +51,7 @@ export default function VenueDiscovery() {
   const otherVenues = sortedVenues.filter(v => !isFavorite(v.id));
 
   return (
-    <div className="p-6">
+    <div className="p-4 sm:p-6 pt-6">
       {/* Header with quick access links */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold flex items-center gap-2">
