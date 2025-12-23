@@ -21,7 +21,6 @@ interface PublicHomeTabProps {
   events: VenueEvent[];
   coaches: VenueCoach[];
   onNavigate: (tab: TabId) => void;
-  onBookCourt: (court: VenueCourt) => void;
   onRegisterEvent: (event: VenueEvent) => void;
 }
 
@@ -31,7 +30,6 @@ export function PublicHomeTab({
   events, 
   coaches, 
   onNavigate,
-  onBookCourt,
   onRegisterEvent
 }: PublicHomeTabProps) {
   const primaryColor = venue.primary_color || '#FF6B35';
@@ -157,7 +155,7 @@ export function PublicHomeTab({
                 <Card 
                   key={court.id} 
                   className="flex-shrink-0 w-[200px] snap-start hover:shadow-md transition-shadow cursor-pointer"
-                  onClick={() => onBookCourt(court)}
+                  onClick={() => onNavigate('schedule')}
                 >
                   <CardContent className="p-4">
                     <div 

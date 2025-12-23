@@ -78,10 +78,10 @@ export function usePublicVenue(slug: string | undefined) {
         setLoading(true);
         setError(null);
 
-        // Fetch venue by slug - using select * to get all fields including new branding ones
+        // Fetch venue by slug - including hours_of_operation for schedule view
         const { data: venueData, error: venueError } = await supabase
           .from('venues')
-          .select('id, name, slug, address, city, state, zip_code, phone, email, website, description, logo_url, is_active, owner_id, timezone, primary_color, secondary_color, banner_url, tagline, show_pulse_branding, social_facebook, social_instagram, amenities')
+          .select('id, name, slug, address, city, state, zip_code, phone, email, website, description, logo_url, is_active, owner_id, timezone, primary_color, secondary_color, banner_url, tagline, show_pulse_branding, social_facebook, social_instagram, amenities, hours_of_operation')
           .eq('slug', slug)
           .eq('is_active', true)
           .single();
