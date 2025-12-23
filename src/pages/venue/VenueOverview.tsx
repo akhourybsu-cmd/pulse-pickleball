@@ -1,21 +1,29 @@
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useMode } from '@/contexts/ModeContext';
 import { useVenueCourts } from '@/hooks/useVenueCourts';
 import { useVenueStaff } from '@/hooks/useVenueStaff';
-import { MapPin, Calendar, Users, TrendingUp, Plus, Settings, CalendarPlus, UserPlus } from 'lucide-react';
+import { useVenueBookings } from '@/hooks/useVenueBookings';
+import { useVenueEvents } from '@/hooks/useVenueEvents';
+import { MapPin, Calendar, Users, TrendingUp, Plus, Settings, CalendarPlus, UserPlus, CalendarDays } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Skeleton } from '@/components/ui/skeleton';
+import { isToday, isFuture } from 'date-fns';
 
 export default function VenueOverview() {
   const { venueAccess, currentVenueId } = useMode();
   const currentVenue = venueAccess.find(v => v.venue_id === currentVenueId);
   const { courts, loading: courtsLoading } = useVenueCourts(currentVenueId);
   const { staff, loading: staffLoading } = useVenueStaff(currentVenueId);
+  const { bookings, loading: bookingsLoading } = useVenueBookings(currentVenueId);
+  const { events, loading: eventsLoading } = useVenueEvents(currentVenueId);
   const navigate = useNavigate();
 
   const activeCourts = courts.filter(c => c.is_active).length;
-  const loading = courtsLoading || staffLoading;
+  const todayBookings = bookings.filter(b => isToday(new Date(b.start_time)) && b.status !== 'cancelled').length;
+  const upcomingEvents = events.filter(e => isFuture(new Date(e.start_time)) && e.is_published).length;
+  const loading = courtsLoading || staffLoading || bookingsLoading || eventsLoading;
 
   return (
     <div className="p-6">
@@ -46,7 +54,11 @@ export default function VenueOverview() {
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">0</div>
+            {loading ? (
+              <Skeleton className="h-8 w-12" />
+            ) : (
+              <div className="text-2xl font-bold">{todayBookings}</div>
+            )}
             <p className="text-xs text-muted-foreground">Reservations</p>
           </CardContent>
         </Card>
@@ -66,14 +78,18 @@ export default function VenueOverview() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => navigate('/venue/events')}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Utilization</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Upcoming Events</CardTitle>
+            <CalendarDays className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">—</div>
-            <p className="text-xs text-muted-foreground">Coming soon</p>
+            {loading ? (
+              <Skeleton className="h-8 w-12" />
+            ) : (
+              <div className="text-2xl font-bold">{upcomingEvents}</div>
+            )}
+            <p className="text-xs text-muted-foreground">Published events</p>
           </CardContent>
         </Card>
       </div>
