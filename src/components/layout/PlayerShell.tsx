@@ -1,5 +1,5 @@
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
-import { Home, Calendar, MapPin, GraduationCap, ClipboardList } from 'lucide-react';
+import { Home, Calendar, MapPin, Search, ClipboardList } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { ModeSwitcher } from '@/components/mode/ModeSwitcher';
@@ -7,10 +7,10 @@ import logo from '@/assets/pulse-logo-new.png';
 
 const navItems = [
   { to: '/player/dashboard', icon: Home, label: 'Home' },
-  { to: '/player/events', icon: Calendar, label: 'Events' },
+  { to: '/player/venues', icon: Search, label: 'Venues' },
+  { to: '/player/my-events', icon: Calendar, label: 'Events' },
+  { to: '/player/my-bookings', icon: ClipboardList, label: 'Bookings' },
   { to: '/player/courts', icon: MapPin, label: 'Courts' },
-  { to: '/player/coaching', icon: GraduationCap, label: 'Coaching' },
-  { to: '/player/bookings', icon: ClipboardList, label: 'Bookings' },
 ];
 
 export function PlayerShell() {
