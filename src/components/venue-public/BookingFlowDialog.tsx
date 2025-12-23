@@ -1,9 +1,8 @@
 import { useState } from 'react';
-import { format, addHours, parseISO } from 'date-fns';
+import { format, addHours } from 'date-fns';
 import { Calendar, Clock, MapPin, User, LogIn, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Dialog,
@@ -13,6 +12,13 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -29,6 +35,14 @@ interface BookingFlowDialogProps {
   isAuthenticated: boolean;
 }
 
+const DURATION_OPTIONS = [
+  { value: '1', label: '1 hour', hours: 1 },
+  { value: '1.5', label: '1.5 hours', hours: 1.5 },
+  { value: '2', label: '2 hours', hours: 2 },
+  { value: '2.5', label: '2.5 hours', hours: 2.5 },
+  { value: '3', label: '3 hours', hours: 3 },
+];
+
 export function BookingFlowDialog({ 
   open, 
   onOpenChange, 
@@ -39,15 +53,28 @@ export function BookingFlowDialog({
   isAuthenticated 
 }: BookingFlowDialogProps) {
   const [loading, setLoading] = useState(false);
-  const [customerName, setCustomerName] = useState('');
-  const [customerEmail, setCustomerEmail] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [success, setSuccess] = useState(false);
+  const [duration, setDuration] = useState('1');
   
   const navigate = useNavigate();
   const { toast } = useToast();
   
   const primaryColor = venue.primary_color || '#FF6B35';
+  
+  // Calculate end time and total price based on duration
+  const durationHours = DURATION_OPTIONS.find(d => d.value === duration)?.hours || 1;
+  const totalPrice = court?.hourly_rate ? court.hourly_rate * durationHours : 0;
+  
+  const getEndTime = () => {
+    if (!slot) return '';
+    const [hours, mins] = slot.startTime.split(':').map(Number);
+    const endHour = hours + durationHours;
+    const endMins = (durationHours % 1) * 60 + mins;
+    const finalHour = Math.floor(endHour + endMins / 60);
+    const finalMins = endMins % 60;
+    return `${finalHour.toString().padStart(2, '0')}:${finalMins.toString().padStart(2, '0')}`;
+  };
 
   const handleSubmit = async () => {
     if (!court || !date || !slot) return;
@@ -72,7 +99,7 @@ export function BookingFlowDialog({
         .single();
       
       const startTime = `${format(date, 'yyyy-MM-dd')}T${slot.startTime}:00`;
-      const endTime = `${format(date, 'yyyy-MM-dd')}T${slot.endTime}:00`;
+      const endTimeStr = `${format(date, 'yyyy-MM-dd')}T${getEndTime()}:00`;
       
       const { error } = await supabase
         .from('venue_bookings')
@@ -80,12 +107,12 @@ export function BookingFlowDialog({
           venue_id: venue.id,
           court_id: court.id,
           user_id: user.id,
-          customer_name: profile?.full_name || customerName || 'Guest',
-          customer_email: profile?.email || customerEmail,
+          customer_name: profile?.full_name || 'Guest',
+          customer_email: profile?.email || '',
           customer_phone: customerPhone || null,
           start_time: startTime,
-          end_time: endTime,
-          total_price: court.hourly_rate || 0,
+          end_time: endTimeStr,
+          total_price: totalPrice,
           status: 'confirmed',
         });
       
@@ -94,12 +121,13 @@ export function BookingFlowDialog({
       setSuccess(true);
       toast({
         title: 'Booking Confirmed!',
-        description: `${court.name} reserved for ${format(date, 'MMM d')} at ${slot.startTime}`,
+        description: `${court.name} reserved for ${format(date, 'MMM d')} at ${slot.startTime} (${durationHours} hr${durationHours > 1 ? 's' : ''})`,
       });
       
-      // Close after a moment
+      // Close after a moment and reset
       setTimeout(() => {
         setSuccess(false);
+        setDuration('1');
         onOpenChange(false);
       }, 2000);
       
@@ -168,18 +196,38 @@ export function BookingFlowDialog({
           <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
             <Clock className="w-5 h-5 text-muted-foreground" />
             <div>
-              <p className="font-medium">{slot?.startTime} - {slot?.endTime}</p>
-              <p className="text-sm text-muted-foreground">1 hour</p>
+              <p className="font-medium">{slot?.startTime} - {getEndTime()}</p>
+              <p className="text-sm text-muted-foreground">{durationHours} hour{durationHours > 1 ? 's' : ''}</p>
             </div>
+          </div>
+          
+          {/* Duration Selector */}
+          <div className="space-y-2">
+            <Label>Duration</Label>
+            <Select value={duration} onValueChange={setDuration}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {DURATION_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label} {court?.hourly_rate ? `- $${(court.hourly_rate * opt.hours).toFixed(2)}` : ''}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           
           {court?.hourly_rate && (
             <>
               <Separator />
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Total</span>
+                <div>
+                  <span className="text-muted-foreground">Total</span>
+                  <p className="text-xs text-muted-foreground">${court.hourly_rate}/hr × {durationHours}</p>
+                </div>
                 <span className="text-xl font-bold" style={{ color: primaryColor }}>
-                  ${court.hourly_rate}
+                  ${totalPrice.toFixed(2)}
                 </span>
               </div>
             </>

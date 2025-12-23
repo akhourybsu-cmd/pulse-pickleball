@@ -6,7 +6,9 @@ import { supabase } from "@/integrations/supabase/client";
 import logo from "@/assets/pulse-logo-new.png";
 import { NotificationBell } from "@/components/NotificationBell";
 import { NotificationDrawer, Notification } from "@/components/NotificationDrawer";
-import { useState, useEffect } from "react";
+import { ModeSwitcher } from "@/components/mode/ModeSwitcher";
+import { useMode } from "@/contexts/ModeContext";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 interface PageHeaderProps {
@@ -16,6 +18,7 @@ interface PageHeaderProps {
 export function PageHeader({ userId }: PageHeaderProps) {
   const navigate = useNavigate();
   const [isNotificationDrawerOpen, setIsNotificationDrawerOpen] = useState(false);
+  const { hasVenueAccess, isLoading: modeLoading } = useMode();
 
   // Fetch notifications
   const { data: notifications = [], refetch } = useQuery({
@@ -111,6 +114,7 @@ export function PageHeader({ userId }: PageHeaderProps) {
                 <UserIcon className="h-[1.2rem] w-[1.2rem]" />
                 <span className="sr-only">View Profile</span>
               </Button>
+              {!modeLoading && hasVenueAccess && <ModeSwitcher />}
             </>
           )}
           <ThemeToggle />
