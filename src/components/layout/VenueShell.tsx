@@ -8,7 +8,7 @@ import {
   Users,
   Settings,
   Menu,
-  X
+  BarChart3
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -26,6 +26,7 @@ const navItems = [
   { to: '/venue/events', icon: CalendarDays, label: 'Events' },
   { to: '/venue/coaching', icon: GraduationCap, label: 'Coaching' },
   { to: '/venue/staff', icon: Users, label: 'Staff' },
+  { to: '/venue/analytics', icon: BarChart3, label: 'Analytics' },
   { to: '/venue/settings', icon: Settings, label: 'Settings' },
 ];
 

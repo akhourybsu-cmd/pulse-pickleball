@@ -76,6 +76,9 @@ import PlayerCourts from "./pages/player/PlayerCourts";
 import PlayerEvents from "./pages/player/PlayerEvents";
 import PlayerCoaching from "./pages/player/PlayerCoaching";
 import PlayerBookings from "./pages/player/PlayerBookings";
+import VenueDiscovery from "./pages/player/VenueDiscovery";
+import MyBookings from "./pages/player/MyBookings";
+import MyEvents from "./pages/player/MyEvents";
 
 // Venue pages
 import VenueOverview from "./pages/venue/VenueOverview";
@@ -86,6 +89,7 @@ import VenueEvents from "./pages/venue/VenueEvents";
 import VenueCoaching from "./pages/venue/VenueCoaching";
 import VenueStaff from "./pages/venue/VenueStaff";
 import VenueSettings from "./pages/venue/VenueSettings";
+import VenueAnalytics from "./pages/venue/VenueAnalytics";
 
 const queryClient = new QueryClient();
 
@@ -109,8 +113,11 @@ const AppContent = () => {
           <Route path="dashboard" element={<PlayerDashboard />} />
           <Route path="events" element={<PlayerEvents />} />
           <Route path="courts" element={<PlayerCourts />} />
+          <Route path="venues" element={<VenueDiscovery />} />
           <Route path="coaching" element={<PlayerCoaching />} />
           <Route path="bookings" element={<PlayerBookings />} />
+          <Route path="my-bookings" element={<MyBookings />} />
+          <Route path="my-events" element={<MyEvents />} />
         </Route>
 
         {/* Venue routes with shell */}
@@ -122,6 +129,7 @@ const AppContent = () => {
           <Route path="coaching" element={<VenueCoaching />} />
           <Route path="staff" element={<VenueStaff />} />
           <Route path="settings" element={<VenueSettings />} />
+          <Route path="analytics" element={<VenueAnalytics />} />
         </Route>
         <Route path="/venue/onboarding" element={<VenueOnboarding />} />
 
