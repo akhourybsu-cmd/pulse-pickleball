@@ -1,24 +1,27 @@
 import { useState, useEffect } from 'react';
-import { format, addDays, startOfToday, isSameDay } from 'date-fns';
-import { ChevronLeft, ChevronRight, Clock, Check } from 'lucide-react';
+import { format, addDays, startOfToday, isSameDay, parseISO } from 'date-fns';
+import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { PublicVenue, VenueCourt } from '@/hooks/usePublicVenue';
+import { supabase } from '@/integrations/supabase/client';
+import { PublicVenue, VenueCourt, VenueEvent } from '@/hooks/usePublicVenue';
 import { useVenueAvailability, TimeSlot } from '@/hooks/useVenueAvailability';
 
 interface PublicScheduleTabProps {
   venue: PublicVenue;
   courts: VenueCourt[];
-  onSelectSlot: (court: VenueCourt, date: Date, slot: TimeSlot) => void;
+  onSelectSlot: (court: VenueCourt, date: Date, slot: TimeSlot, duration?: number) => void;
 }
 
 export function PublicScheduleTab({ venue, courts, onSelectSlot }: PublicScheduleTabProps) {
   const [selectedDate, setSelectedDate] = useState(startOfToday());
   const [selectedCourt, setSelectedCourt] = useState<VenueCourt | null>(null);
   const [dateOffset, setDateOffset] = useState(0);
+  const [dayEvents, setDayEvents] = useState<VenueEvent[]>([]);
+  const [eventsLoading, setEventsLoading] = useState(false);
   
   const primaryColor = venue.primary_color || '#FF6B35';
   const secondaryColor = venue.secondary_color || '#004E64';
@@ -34,6 +37,27 @@ export function PublicScheduleTab({ venue, courts, onSelectSlot }: PublicSchedul
     fetchAvailability(startDate, 7);
   }, [dateOffset, fetchAvailability]);
 
+  // Fetch events for selected date
+  useEffect(() => {
+    const fetchDayEvents = async () => {
+      setEventsLoading(true);
+      const dateStr = format(selectedDate, 'yyyy-MM-dd');
+      const { data } = await supabase
+        .from('venue_events')
+        .select('id, title, description, start_time, end_time, max_participants, current_participants, price, event_type, skill_level')
+        .eq('venue_id', venue.id)
+        .eq('is_published', true)
+        .gte('start_time', `${dateStr}T00:00:00`)
+        .lte('start_time', `${dateStr}T23:59:59`)
+        .order('start_time');
+      
+      setDayEvents((data || []) as VenueEvent[]);
+      setEventsLoading(false);
+    };
+    
+    fetchDayEvents();
+  }, [selectedDate, venue.id]);
+
   // Generate dates for the date picker
   const dates = Array.from({ length: 7 }, (_, i) => addDays(startOfToday(), dateOffset + i));
 
@@ -44,6 +68,17 @@ export function PublicScheduleTab({ venue, courts, onSelectSlot }: PublicSchedul
   const courtSlots = selectedCourt 
     ? dayAvailability?.courts.find(c => c.court.id === selectedCourt.id)?.slots || []
     : [];
+
+  // Get event type color
+  const getEventTypeColor = (type: string) => {
+    switch (type) {
+      case 'tournament': return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300';
+      case 'clinic': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300';
+      case 'social': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300';
+      case 'league': return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300';
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
+    }
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -121,6 +156,27 @@ export function PublicScheduleTab({ venue, courts, onSelectSlot }: PublicSchedul
           })}
         </div>
       </div>
+
+      {/* Event Pills for Selected Day */}
+      {dayEvents.length > 0 && (
+        <div className="px-4 py-3 border-b border-border">
+          <div className="flex items-center gap-2 mb-2">
+            <Calendar className="w-4 h-4 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">Events on {format(selectedDate, 'MMM d')}</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {dayEvents.map((event) => (
+              <Badge 
+                key={event.id} 
+                variant="secondary"
+                className={cn("text-xs", getEventTypeColor(event.event_type))}
+              >
+                {event.title} • {format(parseISO(event.start_time), 'h:mma')}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Time Slots */}
       <ScrollArea className="flex-1 px-4">

@@ -1,14 +1,13 @@
 import { useEffect, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { useToast } from "@/hooks/use-toast";
-import { Users, EyeOff, Eye, MapPin, Plus, Trash2, LogOut, User as UserIcon, Navigation } from "lucide-react";
+import { Users, EyeOff, Eye, MapPin, Plus, Trash2, Navigation } from "lucide-react";
 import { Footer } from "@/components/Footer";
 import { motion } from "framer-motion";
-import logo from "@/assets/pulse-logo-new.png";
+import { PageHeader } from "@/components/PageHeader";
 import {
   Dialog,
   DialogContent,
@@ -288,36 +287,9 @@ export default function CourtConnector() {
      court.state.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    navigate("/");
-  };
-
   return (
     <div className="min-h-screen bg-[hsl(var(--page-bg))]">
-      <nav className="border-b bg-secondary">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Link to="/dashboard">
-            <img src={logo} alt="PULSE Logo" className="h-[90px] w-auto cursor-pointer hover:opacity-80 transition-opacity" />
-          </Link>
-          <div className="flex items-center gap-3">
-            <Button 
-              variant="outline" 
-              size="icon" 
-              onClick={() => navigate(`/profile/${currentUserId}`)} 
-              className="rounded-full"
-            >
-              <UserIcon className="h-[1.2rem] w-[1.2rem]" />
-              <span className="sr-only">View Profile</span>
-            </Button>
-            <ThemeToggle />
-            <Button variant="secondary" size="sm" onClick={handleSignOut}>
-              <LogOut className="w-4 h-4 mr-2" />
-              Sign Out
-            </Button>
-          </div>
-        </div>
-      </nav>
+      <PageHeader userId={currentUserId} />
 
       {/* Pulse-Branded Header Section - Full Width */}
       <motion.div 

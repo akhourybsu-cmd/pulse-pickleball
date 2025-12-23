@@ -12,13 +12,12 @@ import { PublicCoachingTab } from '@/components/venue-public/PublicCoachingTab';
 import { PublicInfoTab } from '@/components/venue-public/PublicInfoTab';
 import { BookingFlowDialog } from '@/components/venue-public/BookingFlowDialog';
 import { EventRegistrationDialog } from '@/components/venue-public/EventRegistrationDialog';
+import { CoachLessonBookingDialog } from '@/components/venue-public/CoachLessonBookingDialog';
 import { TimeSlot } from '@/hooks/useVenueAvailability';
-import { useToast } from '@/hooks/use-toast';
 
 export default function PublicVenueLanding() {
   const { slug } = useParams<{ slug: string }>();
   const { venue, courts, events, coaches, loading, error } = usePublicVenue(slug);
-  const { toast } = useToast();
   
   // Auth state
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -33,6 +32,10 @@ export default function PublicVenueLanding() {
   // Event registration dialog state
   const [eventDialogOpen, setEventDialogOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<VenueEvent | null>(null);
+  
+  // Coach booking dialog state
+  const [coachDialogOpen, setCoachDialogOpen] = useState(false);
+  const [selectedCoach, setSelectedCoach] = useState<VenueCoach | null>(null);
 
   // Check auth status and fetch registrations
   useEffect(() => {
@@ -78,17 +81,8 @@ export default function PublicVenueLanding() {
   };
 
   const handleBookCoach = (coach: VenueCoach) => {
-    if (!isAuthenticated) {
-      toast({
-        title: 'Sign in required',
-        description: 'Please sign in to book a lesson',
-      });
-      return;
-    }
-    toast({
-      title: 'Coming soon',
-      description: `Contact ${coach.name} directly to book a lesson`,
-    });
+    setSelectedCoach(coach);
+    setCoachDialogOpen(true);
   };
 
   const handleRegistrationSuccess = () => {
@@ -179,6 +173,15 @@ export default function PublicVenueLanding() {
         isAuthenticated={isAuthenticated}
         isRegistered={selectedEvent ? registeredEventIds.includes(selectedEvent.id) : false}
         onSuccess={handleRegistrationSuccess}
+      />
+
+      {/* Coach Booking Dialog */}
+      <CoachLessonBookingDialog
+        open={coachDialogOpen}
+        onOpenChange={setCoachDialogOpen}
+        venue={venue}
+        coach={selectedCoach}
+        isAuthenticated={isAuthenticated}
       />
     </>
   );
