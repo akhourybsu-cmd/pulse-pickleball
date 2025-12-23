@@ -4,6 +4,7 @@ import { Home, Calendar, CalendarDays, Award, Info, Zap, ArrowLeft } from 'lucid
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { PublicVenue, VenueCourt, VenueEvent, VenueCoach } from '@/hooks/usePublicVenue';
+import pickleballPalaceLogo from '@/assets/pickleball-palace-logo.png';
 
 export type TabId = 'home' | 'schedule' | 'events' | 'coaching' | 'info';
 
@@ -29,6 +30,9 @@ export function PublicVenueShell({ venue, courts, events, coaches, children }: P
   const primaryColor = venue.primary_color || '#FF6B35';
   const secondaryColor = venue.secondary_color || '#004E64';
 
+  // Use the Pickleball Palace logo as fallback if no venue logo
+  const logoSrc = venue.logo_url || pickleballPalaceLogo;
+
   // Hide coaches tab if no coaches
   const visibleTabs = tabs.filter(tab => {
     if (tab.id === 'coaching' && coaches.length === 0) return false;
@@ -43,11 +47,15 @@ export function PublicVenueShell({ venue, courts, events, coaches, children }: P
         '--venue-secondary': secondaryColor,
       } as React.CSSProperties}
     >
-      {/* Sticky Header */}
+      {/* Sticky Header with venue branding */}
       <header 
-        className="sticky top-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border"
+        className="sticky top-0 z-50 border-b"
+        style={{
+          backgroundColor: `${primaryColor}08`,
+          borderColor: `${primaryColor}20`,
+        }}
       >
-        <div className="flex items-center justify-between px-4 h-14">
+        <div className="flex items-center justify-between px-4 h-16">
           <div className="flex items-center gap-3">
             <Button 
               variant="ghost" 
@@ -57,16 +65,11 @@ export function PublicVenueShell({ venue, courts, events, coaches, children }: P
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
-            {venue.logo_url && (
-              <img 
-                src={venue.logo_url} 
-                alt={venue.name}
-                className="h-8 w-8 rounded-lg object-cover bg-muted"
-              />
-            )}
-            <span className="font-semibold text-foreground truncate max-w-[200px]">
-              {venue.name}
-            </span>
+            <img 
+              src={logoSrc} 
+              alt={venue.name}
+              className="h-10 max-w-[180px] object-contain"
+            />
           </div>
         </div>
       </header>
