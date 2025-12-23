@@ -20,6 +20,7 @@ import { ActivityModule } from "@/components/dashboard/ActivityModule";
 import { StatsByCourtCard } from "@/components/dashboard/StatsByCourtCard";
 import { SpacesPreviewRow } from "@/components/dashboard/SpacesPreviewRow";
 import { HomeFooterUtilities } from "@/components/dashboard/HomeFooterUtilities";
+import { VenueActivitySection } from "@/components/dashboard/VenueActivitySection";
 
 interface Profile {
   id: string;
@@ -311,6 +312,9 @@ const Dashboard = () => {
               userId={user?.id}
               homeCourtId={homeCourtId}
             />
+            
+            {/* Venue Activity Section */}
+            <VenueActivitySection />
             
             {/* Most Played Court */}
             <StatsByCourtCard userId={user?.id} />
