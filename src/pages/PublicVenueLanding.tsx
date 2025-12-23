@@ -129,6 +129,7 @@ export default function PublicVenueLanding() {
                 venue={venue}
                 courts={courts}
                 onSelectSlot={handleSelectSlot}
+                isAuthenticated={isAuthenticated}
               />
             )}
             {activeTab === 'events' && (

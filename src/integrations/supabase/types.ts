@@ -3111,39 +3111,48 @@ export type Database = {
       venue_courts: {
         Row: {
           court_number: number
+          court_type: string | null
           created_at: string | null
           hourly_rate: number | null
           id: string
           is_active: boolean | null
+          is_premium: boolean | null
           linked_court_id: string | null
           name: string
           notes: string | null
+          premium_fee: number | null
           surface_type: string | null
           updated_at: string | null
           venue_id: string
         }
         Insert: {
           court_number: number
+          court_type?: string | null
           created_at?: string | null
           hourly_rate?: number | null
           id?: string
           is_active?: boolean | null
+          is_premium?: boolean | null
           linked_court_id?: string | null
           name: string
           notes?: string | null
+          premium_fee?: number | null
           surface_type?: string | null
           updated_at?: string | null
           venue_id: string
         }
         Update: {
           court_number?: number
+          court_type?: string | null
           created_at?: string | null
           hourly_rate?: number | null
           id?: string
           is_active?: boolean | null
+          is_premium?: boolean | null
           linked_court_id?: string | null
           name?: string
           notes?: string | null
+          premium_fee?: number | null
           surface_type?: string | null
           updated_at?: string | null
           venue_id?: string
