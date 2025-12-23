@@ -17,6 +17,15 @@ export interface VenueSettings {
   description: string | null;
   logo_url: string | null;
   is_active: boolean;
+  // Branding fields
+  primary_color: string | null;
+  secondary_color: string | null;
+  banner_url: string | null;
+  tagline: string | null;
+  show_pulse_branding: boolean;
+  social_facebook: string | null;
+  social_instagram: string | null;
+  amenities: string[] | null;
 }
 
 export function useVenueSettings(venueId: string | null) {
@@ -35,12 +44,13 @@ export function useVenueSettings(venueId: string | null) {
       setLoading(true);
       const { data, error } = await supabase
         .from('venues')
-        .select('id, name, slug, address, city, state, zip_code, timezone, phone, email, website, description, logo_url, is_active')
+        .select('*')
         .eq('id', venueId)
         .single();
 
       if (error) throw error;
-      setSettings(data as VenueSettings);
+      // Type assertion for new fields not yet in generated types
+      setSettings(data as unknown as VenueSettings);
     } catch (error: any) {
       console.error('Error fetching venue settings:', error);
       toast.error('Failed to load venue settings');
@@ -60,7 +70,7 @@ export function useVenueSettings(venueId: string | null) {
       setSaving(true);
       const { error } = await supabase
         .from('venues')
-        .update(updates)
+        .update(updates as any)
         .eq('id', venueId);
 
       if (error) throw error;

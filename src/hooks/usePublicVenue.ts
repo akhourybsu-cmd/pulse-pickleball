@@ -78,15 +78,18 @@ export function usePublicVenue(slug: string | undefined) {
         setLoading(true);
         setError(null);
 
-        // Fetch venue by slug
+        // Fetch venue by slug - using select * to get all fields including new branding ones
         const { data: venueData, error: venueError } = await supabase
           .from('venues')
-          .select('*')
+          .select('id, name, slug, address, city, state, zip_code, phone, email, website, description, logo_url, is_active, owner_id, timezone, primary_color, secondary_color, banner_url, tagline, show_pulse_branding, social_facebook, social_instagram, amenities')
           .eq('slug', slug)
           .eq('is_active', true)
           .single();
 
-        if (venueError) throw new Error('Venue not found');
+        if (venueError) {
+          console.error('Venue fetch error:', venueError);
+          throw new Error('Venue not found');
+        }
         
         // Type assertion since new columns aren't in generated types yet
         setVenue(venueData as unknown as PublicVenue);
