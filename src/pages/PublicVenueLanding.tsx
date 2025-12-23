@@ -63,13 +63,7 @@ export default function PublicVenueLanding() {
     return () => subscription.unsubscribe();
   }, [venue]);
 
-  // Handlers
-  const handleBookCourt = (court: VenueCourt) => {
-    setSelectedCourt(court);
-    setSelectedDate(null);
-    setSelectedSlot(null);
-    setBookingOpen(true);
-  };
+  // Handlers - removed handleBookCourt as we navigate to schedule tab instead
 
   const handleSelectSlot = (court: VenueCourt, date: Date, slot: TimeSlot) => {
     setSelectedCourt(court);
@@ -133,7 +127,6 @@ export default function PublicVenueLanding() {
                 events={events}
                 coaches={coaches}
                 onNavigate={setActiveTab}
-                onBookCourt={handleBookCourt}
                 onRegisterEvent={handleRegisterEvent}
               />
             )}
