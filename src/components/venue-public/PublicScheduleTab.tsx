@@ -1,19 +1,22 @@
 import { useState, useEffect, useMemo } from 'react';
-import { format, addDays, startOfToday, isSameDay, parseISO } from 'date-fns';
-import { Circle, ChevronRight } from 'lucide-react';
+import { format, isSameDay, parseISO } from 'date-fns';
+import { Check } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { PublicVenue, VenueCourt, VenueEvent } from '@/hooks/usePublicVenue';
 import { useVenueAvailability, TimeSlot } from '@/hooks/useVenueAvailability';
 import { DatePickerStrip } from './DatePickerStrip';
+import { OrderSummaryDialog } from './OrderSummaryDialog';
 
 interface PublicScheduleTabProps {
   venue: PublicVenue;
   courts: VenueCourt[];
   onSelectSlot: (court: VenueCourt, date: Date, slot: TimeSlot, duration?: number) => void;
+  isAuthenticated?: boolean;
 }
 
 interface AggregatedSlot {
@@ -23,11 +26,11 @@ interface AggregatedSlot {
   isPast: boolean;
 }
 
-export function PublicScheduleTab({ venue, courts, onSelectSlot }: PublicScheduleTabProps) {
-  const [selectedDate, setSelectedDate] = useState(startOfToday());
-  const [selectedSlotTime, setSelectedSlotTime] = useState<string | null>(null);
-  const [selectedCourt, setSelectedCourt] = useState<VenueCourt | null>(null);
+export function PublicScheduleTab({ venue, courts, onSelectSlot, isAuthenticated = false }: PublicScheduleTabProps) {
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedSlots, setSelectedSlots] = useState<string[]>([]);
   const [dayEvents, setDayEvents] = useState<VenueEvent[]>([]);
+  const [orderSummaryOpen, setOrderSummaryOpen] = useState(false);
   
   const primaryColor = venue.primary_color || '#FF6B35';
   
@@ -106,26 +109,35 @@ export function PublicScheduleTab({ venue, courts, onSelectSlot }: PublicSchedul
       .sort((a, b) => a.startTime.localeCompare(b.startTime));
   }, [dayAvailability, selectedDate]);
 
-  // Get courts for selected time slot
-  const selectedSlot = aggregatedSlots.find(s => s.startTime === selectedSlotTime);
-
-  // Handle slot selection
-  const handleSlotSelect = (time: string) => {
-    setSelectedSlotTime(time);
-    setSelectedCourt(null);
+  // Handle slot toggle (multi-select)
+  const handleSlotToggle = (time: string) => {
+    setSelectedSlots(prev => {
+      if (prev.includes(time)) {
+        return prev.filter(t => t !== time);
+      }
+      // Add the slot and sort to maintain order
+      const newSlots = [...prev, time].sort();
+      return newSlots;
+    });
   };
 
-  // Handle court selection and trigger booking
-  const handleCourtSelect = (court: VenueCourt) => {
-    setSelectedCourt(court);
-    const slot = dayAvailability?.courts
-      .find(c => c.court.id === court.id)?.slots
-      .find(s => s.startTime === selectedSlotTime);
+  // Get available courts for all selected slots (intersection)
+  const availableCourtsForSelection = useMemo(() => {
+    if (selectedSlots.length === 0) return [];
     
-    if (slot) {
-      onSelectSlot(court, selectedDate, slot);
-    }
-  };
+    const courtSets = selectedSlots.map(time => {
+      const slot = aggregatedSlots.find(s => s.startTime === time);
+      return new Set(slot?.availableCourts.map(c => c.id) || []);
+    });
+    
+    // Get intersection of all court sets
+    const intersection = courtSets.reduce((acc, set) => {
+      return new Set([...acc].filter(id => set.has(id)));
+    });
+    
+    // Return full court objects
+    return courts.filter(c => intersection.has(c.id));
+  }, [selectedSlots, aggregatedSlots, courts]);
 
   // Format time for display (12:30pm format)
   const formatTimeDisplay = (time: string) => {
@@ -135,6 +147,11 @@ export function PublicScheduleTab({ venue, courts, onSelectSlot }: PublicSchedul
     return `${displayHour}:${minutes.toString().padStart(2, '0')}${period}`;
   };
 
+  // Calculate total duration
+  const totalDuration = selectedSlots.length * 0.5;
+  const baseRate = courts[0]?.hourly_rate || 30;
+  const estimatedPrice = baseRate * totalDuration;
+
   return (
     <div className="flex flex-col h-full">
       {/* Date Picker Strip */}
@@ -143,8 +160,7 @@ export function PublicScheduleTab({ venue, courts, onSelectSlot }: PublicSchedul
           selectedDate={selectedDate}
           onSelectDate={(date) => {
             setSelectedDate(date);
-            setSelectedSlotTime(null);
-            setSelectedCourt(null);
+            setSelectedSlots([]);
           }}
         />
       </div>
@@ -152,9 +168,9 @@ export function PublicScheduleTab({ venue, courts, onSelectSlot }: PublicSchedul
       {/* Info Banner */}
       <div className="bg-muted/50 px-4 py-3 border-b border-border">
         <p className="text-sm text-muted-foreground">
-          {selectedSlotTime 
-            ? `Selected: ${formatTimeDisplay(selectedSlotTime)} • Choose a court below`
-            : 'Select a time slot to book a court'
+          {selectedSlots.length > 0 
+            ? `${selectedSlots.length} slot${selectedSlots.length > 1 ? 's' : ''} selected (${totalDuration} hr${totalDuration !== 1 ? 's' : ''}) • ~$${estimatedPrice.toFixed(0)}`
+            : 'Tap to select time slots (multi-select for longer sessions)'
           }
         </p>
       </div>
@@ -170,84 +186,63 @@ export function PublicScheduleTab({ venue, courts, onSelectSlot }: PublicSchedul
             <p className="text-muted-foreground">No available time slots for this day</p>
           </div>
         ) : (
-          <RadioGroup 
-            value={selectedSlotTime || ''} 
-            onValueChange={handleSlotSelect}
-            className="divide-y divide-border"
-          >
+          <div className="divide-y divide-border">
             {aggregatedSlots.map((slot) => {
-              const isSelected = selectedSlotTime === slot.startTime;
+              const isSelected = selectedSlots.includes(slot.startTime);
               const courtNames = slot.availableCourts.map(c => c.name.replace('Court ', 'C')).join('/');
               
               return (
-                <div key={slot.startTime}>
-                  <label 
-                    className={cn(
-                      "flex items-center justify-between px-4 py-4 cursor-pointer hover:bg-muted/50 transition-colors",
-                      isSelected && "bg-muted/50"
-                    )}
-                  >
-                    <div className="flex items-center gap-4">
-                      {/* Time */}
-                      <span className="text-base font-medium w-20">
-                        {formatTimeDisplay(slot.startTime)}
-                      </span>
-                      
-                      {/* Peak/Off-Peak Badge */}
-                      <Badge 
-                        variant="secondary" 
-                        className={cn(
-                          "text-xs font-medium",
-                          slot.isPeak 
-                            ? "bg-slate-800 text-white dark:bg-slate-700" 
-                            : "bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                        )}
-                      >
-                        {slot.isPeak ? 'PEAK' : 'OFF PEAK'}
-                      </Badge>
-                      
-                      {/* Available Courts */}
-                      <span className="text-sm text-muted-foreground">
-                        {slot.availableCourts.length} open court{slot.availableCourts.length !== 1 ? 's' : ''} ({courtNames})
-                      </span>
-                    </div>
-                    
-                    {/* Radio Button */}
-                    <RadioGroupItem value={slot.startTime} className="shrink-0" />
-                  </label>
-                  
-                  {/* Court Selection (shown when slot is selected) */}
-                  {isSelected && (
-                    <div className="px-4 pb-4 bg-muted/30">
-                      <p className="text-sm text-muted-foreground mb-2 pt-2">Choose a court:</p>
-                      <div className="flex flex-wrap gap-2">
-                        {slot.availableCourts.map((court) => (
-                          <button
-                            key={court.id}
-                            onClick={() => handleCourtSelect(court)}
-                            className={cn(
-                              "flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all",
-                              selectedCourt?.id === court.id
-                                ? "border-primary bg-primary/10"
-                                : "border-border bg-background hover:border-primary/50"
-                            )}
-                          >
-                            <span className="font-medium">{court.name}</span>
-                            {court.hourly_rate && (
-                              <span className="text-sm text-muted-foreground">
-                                ${court.hourly_rate}/hr
-                              </span>
-                            )}
-                            <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+                <label 
+                  key={slot.startTime}
+                  className={cn(
+                    "flex items-center justify-between px-4 py-4 cursor-pointer hover:bg-muted/50 transition-colors",
+                    isSelected && "bg-primary/5"
                   )}
-                </div>
+                >
+                  <div className="flex items-center gap-4">
+                    {/* Time */}
+                    <span className="text-base font-medium w-20">
+                      {formatTimeDisplay(slot.startTime)}
+                    </span>
+                    
+                    {/* Peak/Off-Peak Badge */}
+                    <Badge 
+                      variant="secondary" 
+                      className={cn(
+                        "text-xs font-medium",
+                        slot.isPeak 
+                          ? "bg-slate-800 text-white dark:bg-slate-700" 
+                          : "bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                      )}
+                    >
+                      {slot.isPeak ? 'PEAK' : 'OFF PEAK'}
+                    </Badge>
+                    
+                    {/* Available Courts */}
+                    <span className="text-sm text-muted-foreground hidden sm:inline">
+                      {slot.availableCourts.length} court{slot.availableCourts.length !== 1 ? 's' : ''} ({courtNames})
+                    </span>
+                  </div>
+                  
+                  {/* Larger Checkbox/Circle */}
+                  <div 
+                    className={cn(
+                      "w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all shrink-0",
+                      isSelected 
+                        ? "border-primary bg-primary" 
+                        : "border-muted-foreground/40 bg-background hover:border-primary/60"
+                    )}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleSlotToggle(slot.startTime);
+                    }}
+                  >
+                    {isSelected && <Check className="w-4 h-4 text-primary-foreground" />}
+                  </div>
+                </label>
               );
             })}
-          </RadioGroup>
+          </div>
         )}
         
         {/* Event Pills for Selected Day */}
@@ -270,9 +265,36 @@ export function PublicScheduleTab({ venue, courts, onSelectSlot }: PublicSchedul
           </div>
         )}
         
-        {/* Extra padding */}
-        <div className="h-8" />
+        {/* Extra padding for bottom button */}
+        <div className="h-24" />
       </ScrollArea>
+
+      {/* Continue Button (Fixed at bottom) */}
+      {selectedSlots.length > 0 && (
+        <div className="sticky bottom-0 p-4 bg-background border-t border-border">
+          <Button
+            className="w-full h-12 text-base font-medium"
+            onClick={() => setOrderSummaryOpen(true)}
+            style={{ backgroundColor: primaryColor }}
+          >
+            Continue to Booking • ${estimatedPrice.toFixed(0)}
+          </Button>
+        </div>
+      )}
+
+      {/* Order Summary Dialog */}
+      <OrderSummaryDialog
+        open={orderSummaryOpen}
+        onOpenChange={setOrderSummaryOpen}
+        venue={venue}
+        availableCourts={availableCourtsForSelection}
+        date={selectedDate}
+        selectedSlots={selectedSlots}
+        isAuthenticated={isAuthenticated}
+        onAddMoreTime={() => {
+          setOrderSummaryOpen(false);
+        }}
+      />
     </div>
   );
 }

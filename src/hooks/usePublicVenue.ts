@@ -33,6 +33,9 @@ export interface VenueCourt {
   is_active: boolean;
   hourly_rate: number | null;
   court_number: number | null;
+  court_type?: string;
+  premium_fee?: number;
+  is_premium?: boolean;
 }
 
 export interface VenueEvent {
@@ -97,7 +100,7 @@ export function usePublicVenue(slug: string | undefined) {
         // Fetch courts
         const { data: courtsData } = await supabase
           .from('venue_courts')
-          .select('id, name, surface_type, is_active, hourly_rate, court_number')
+          .select('id, name, surface_type, is_active, hourly_rate, court_number, court_type, premium_fee, is_premium')
           .eq('venue_id', venueData.id)
           .eq('is_active', true)
           .order('court_number');
