@@ -17,7 +17,7 @@ interface PublicVenueShellProps {
 
 const tabs: { id: TabId; label: string; icon: React.ElementType }[] = [
   { id: 'home', label: 'Home', icon: Home },
-  { id: 'schedule', label: 'Schedule', icon: Calendar },
+  { id: 'schedule', label: 'Book Court', icon: Calendar },
   { id: 'events', label: 'Events', icon: CalendarDays },
   { id: 'coaching', label: 'Coaching', icon: Award },
   { id: 'info', label: 'Info', icon: Info },
