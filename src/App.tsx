@@ -110,6 +110,7 @@ const AppContent = () => {
         
         {/* Public venue landing pages (white-label) */}
         <Route path="/v/:slug" element={<PublicVenueLanding />} />
+        <Route path="/venue/:slug" element={<PublicVenueLanding />} />
 
         {/* Player routes with shell */}
         <Route path="/player" element={<PlayerShell />}>
