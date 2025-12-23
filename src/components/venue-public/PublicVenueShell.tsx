@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Home, Calendar, CalendarDays, Award, Info, Zap, ArrowLeft } from 'lucide-react';
+import { Home, Calendar, CalendarDays, Award, Info, Zap, ArrowLeft, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { PublicVenue, VenueCourt, VenueEvent, VenueCoach } from '@/hooks/usePublicVenue';
+import { supabase } from '@/integrations/supabase/client';
 import pickleballPalaceLogo from '@/assets/pickleball-palace-logo.png';
 
 export type TabId = 'home' | 'schedule' | 'events' | 'coaching' | 'info';
@@ -26,12 +27,35 @@ const tabs: { id: TabId; label: string; icon: React.ElementType }[] = [
 
 export function PublicVenueShell({ venue, courts, events, coaches, children }: PublicVenueShellProps) {
   const [activeTab, setActiveTab] = useState<TabId>('home');
+  const [isVenueAdmin, setIsVenueAdmin] = useState(false);
   const navigate = useNavigate();
   const primaryColor = venue.primary_color || '#FF6B35';
   const secondaryColor = venue.secondary_color || '#004E64';
 
   // Use the Pickleball Palace logo as fallback if no venue logo
   const logoSrc = venue.logo_url || pickleballPalaceLogo;
+
+  // Check if current user is venue owner or staff
+  useEffect(() => {
+    const checkVenueAccess = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Check venue_staff for this venue
+      const { data: staffData } = await supabase
+        .from('venue_staff')
+        .select('id')
+        .eq('venue_id', venue.id)
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (staffData) {
+        setIsVenueAdmin(true);
+      }
+    };
+
+    checkVenueAccess();
+  }, [venue.id]);
 
   // Hide coaches tab if no coaches
   const visibleTabs = tabs.filter(tab => {
@@ -64,6 +88,20 @@ export function PublicVenueShell({ venue, courts, events, coaches, children }: P
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
+          
+          {/* Admin toggle button for venue owners/staff */}
+          {isVenueAdmin && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/venue')}
+              className="absolute right-4 top-4 gap-2"
+            >
+              <Settings className="h-4 w-4" />
+              <span className="hidden sm:inline">Admin</span>
+            </Button>
+          )}
+          
           <img 
             src={logoSrc} 
             alt={venue.name}
