@@ -2957,6 +2957,125 @@ export type Database = {
         }
         Relationships: []
       }
+      venue_bookings: {
+        Row: {
+          court_id: string
+          created_at: string
+          customer_email: string | null
+          customer_name: string
+          customer_phone: string | null
+          end_time: string
+          id: string
+          notes: string | null
+          start_time: string
+          status: string
+          total_price: number | null
+          updated_at: string
+          venue_id: string
+        }
+        Insert: {
+          court_id: string
+          created_at?: string
+          customer_email?: string | null
+          customer_name: string
+          customer_phone?: string | null
+          end_time: string
+          id?: string
+          notes?: string | null
+          start_time: string
+          status?: string
+          total_price?: number | null
+          updated_at?: string
+          venue_id: string
+        }
+        Update: {
+          court_id?: string
+          created_at?: string
+          customer_email?: string | null
+          customer_name?: string
+          customer_phone?: string | null
+          end_time?: string
+          id?: string
+          notes?: string | null
+          start_time?: string
+          status?: string
+          total_price?: number | null
+          updated_at?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venue_bookings_court_id_fkey"
+            columns: ["court_id"]
+            isOneToOne: false
+            referencedRelation: "venue_courts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "venue_bookings_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      venue_coaches: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          created_at: string
+          email: string | null
+          hourly_rate: number | null
+          id: string
+          is_active: boolean | null
+          name: string
+          phone: string | null
+          specialties: string[] | null
+          updated_at: string
+          user_id: string | null
+          venue_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          email?: string | null
+          hourly_rate?: number | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          phone?: string | null
+          specialties?: string[] | null
+          updated_at?: string
+          user_id?: string | null
+          venue_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          email?: string | null
+          hourly_rate?: number | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          phone?: string | null
+          specialties?: string[] | null
+          updated_at?: string
+          user_id?: string | null
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venue_coaches_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       venue_courts: {
         Row: {
           court_number: number
@@ -2997,6 +3116,144 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "venue_courts_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      venue_events: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          current_participants: number | null
+          description: string | null
+          end_time: string
+          event_type: string
+          id: string
+          is_published: boolean | null
+          max_participants: number | null
+          price: number | null
+          skill_level: string | null
+          start_time: string
+          title: string
+          updated_at: string
+          venue_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          current_participants?: number | null
+          description?: string | null
+          end_time: string
+          event_type?: string
+          id?: string
+          is_published?: boolean | null
+          max_participants?: number | null
+          price?: number | null
+          skill_level?: string | null
+          start_time: string
+          title: string
+          updated_at?: string
+          venue_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          current_participants?: number | null
+          description?: string | null
+          end_time?: string
+          event_type?: string
+          id?: string
+          is_published?: boolean | null
+          max_participants?: number | null
+          price?: number | null
+          skill_level?: string | null
+          start_time?: string
+          title?: string
+          updated_at?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venue_events_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      venue_lessons: {
+        Row: {
+          coach_id: string
+          court_id: string | null
+          created_at: string
+          current_students: number | null
+          description: string | null
+          end_time: string
+          id: string
+          lesson_type: string
+          max_students: number | null
+          price: number | null
+          start_time: string
+          status: string
+          title: string
+          updated_at: string
+          venue_id: string
+        }
+        Insert: {
+          coach_id: string
+          court_id?: string | null
+          created_at?: string
+          current_students?: number | null
+          description?: string | null
+          end_time: string
+          id?: string
+          lesson_type?: string
+          max_students?: number | null
+          price?: number | null
+          start_time: string
+          status?: string
+          title: string
+          updated_at?: string
+          venue_id: string
+        }
+        Update: {
+          coach_id?: string
+          court_id?: string | null
+          created_at?: string
+          current_students?: number | null
+          description?: string | null
+          end_time?: string
+          id?: string
+          lesson_type?: string
+          max_students?: number | null
+          price?: number | null
+          start_time?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venue_lessons_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "venue_coaches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "venue_lessons_court_id_fkey"
+            columns: ["court_id"]
+            isOneToOne: false
+            referencedRelation: "venue_courts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "venue_lessons_venue_id_fkey"
             columns: ["venue_id"]
             isOneToOne: false
             referencedRelation: "venues"
