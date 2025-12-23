@@ -161,6 +161,7 @@ export function PublicScheduleTab({ venue, courts, onSelectSlot, isAuthenticated
           onSelectDate={(date) => {
             setSelectedDate(date);
             setSelectedSlots([]);
+            setOrderSummaryOpen(false);
           }}
         />
       </div>
@@ -272,13 +273,28 @@ export function PublicScheduleTab({ venue, courts, onSelectSlot, isAuthenticated
       {/* Continue Button (Fixed at bottom) */}
       {selectedSlots.length > 0 && (
         <div className="sticky bottom-0 p-4 bg-background border-t border-border">
-          <Button
-            className="w-full h-12 text-base font-medium"
-            onClick={() => setOrderSummaryOpen(true)}
-            style={{ backgroundColor: primaryColor }}
-          >
-            Continue to Booking • ${estimatedPrice.toFixed(0)}
-          </Button>
+          {availableCourtsForSelection.length === 0 ? (
+            <div className="text-center">
+              <p className="text-sm text-destructive mb-2">
+                Those times aren't available on the same court. Try fewer slots or different times.
+              </p>
+              <Button
+                variant="outline"
+                className="w-full h-12"
+                onClick={() => setSelectedSlots([])}
+              >
+                Clear Selection
+              </Button>
+            </div>
+          ) : (
+            <Button
+              className="w-full h-12 text-base font-medium"
+              onClick={() => setOrderSummaryOpen(true)}
+              style={{ backgroundColor: primaryColor }}
+            >
+              Continue to Booking • ${estimatedPrice.toFixed(0)}
+            </Button>
+          )}
         </div>
       )}
 

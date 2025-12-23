@@ -60,14 +60,21 @@ export function OrderSummaryDialog({
   
   const primaryColor = venue.primary_color || '#FF6B35';
   
+  // Defensive guard: check if we have slots
+  const hasSlots = selectedSlots.length > 0;
+  
   // Sort slots chronologically
   const sortedSlots = [...selectedSlots].sort();
-  const startTime = sortedSlots[0];
-  const endTimeSlot = sortedSlots[sortedSlots.length - 1];
+  const startTime = hasSlots ? sortedSlots[0] : '00:00';
+  const endTimeSlot = hasSlots ? sortedSlots[sortedSlots.length - 1] : '00:00';
   
   // Calculate end time (add 30 min to last slot)
-  const getEndTime = (time: string) => {
+  const getEndTime = (time: string | undefined) => {
+    if (!time || typeof time !== 'string' || !time.includes(':')) {
+      return '00:30';
+    }
     const [hours, mins] = time.split(':').map(Number);
+    if (isNaN(hours) || isNaN(mins)) return '00:30';
     const totalMins = hours * 60 + mins + 30;
     const endHour = Math.floor(totalMins / 60);
     const endMins = totalMins % 60;
@@ -78,8 +85,15 @@ export function OrderSummaryDialog({
   const durationHours = selectedSlots.length * 0.5;
   
   // Format time for display (12:30pm format)
-  const formatTimeDisplay = (time: string) => {
-    const [hours, minutes] = time.split(':').map(Number);
+  const formatTimeDisplay = (time: string | undefined) => {
+    if (!time || typeof time !== 'string' || !time.includes(':')) {
+      return '--:--';
+    }
+    const parts = time.split(':').map(Number);
+    if (parts.length < 2 || isNaN(parts[0]) || isNaN(parts[1])) {
+      return '--:--';
+    }
+    const [hours, minutes] = parts;
     const period = hours >= 12 ? 'pm' : 'am';
     const displayHour = hours > 12 ? hours - 12 : hours === 0 ? 12 : hours;
     return `${displayHour}:${minutes.toString().padStart(2, '0')}${period}`;
@@ -178,6 +192,25 @@ export function OrderSummaryDialog({
             <p className="text-muted-foreground text-center">
               Your court is reserved for {format(date, 'MMMM d, yyyy')} at {formatTimeDisplay(startTime)}
             </p>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // If no slots selected, show a friendly empty state
+  if (!hasSlots) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl">Order Summary</DialogTitle>
+          </DialogHeader>
+          <div className="py-8 text-center">
+            <p className="text-muted-foreground mb-4">No time slots selected.</p>
+            <Button onClick={() => onOpenChange(false)}>
+              Go Back & Select Times
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
