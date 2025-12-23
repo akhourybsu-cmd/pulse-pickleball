@@ -3368,18 +3368,27 @@ export type Database = {
       venues: {
         Row: {
           address: string | null
+          amenities: string[] | null
+          banner_url: string | null
           city: string | null
           created_at: string
           description: string | null
           email: string | null
+          hours_of_operation: Json | null
           id: string
           is_active: boolean | null
           logo_url: string | null
           name: string
           owner_id: string | null
           phone: string | null
+          primary_color: string | null
+          secondary_color: string | null
+          show_pulse_branding: boolean | null
           slug: string | null
+          social_facebook: string | null
+          social_instagram: string | null
           state: string | null
+          tagline: string | null
           timezone: string | null
           updated_at: string
           website: string | null
@@ -3387,18 +3396,27 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          amenities?: string[] | null
+          banner_url?: string | null
           city?: string | null
           created_at?: string
           description?: string | null
           email?: string | null
+          hours_of_operation?: Json | null
           id?: string
           is_active?: boolean | null
           logo_url?: string | null
           name: string
           owner_id?: string | null
           phone?: string | null
+          primary_color?: string | null
+          secondary_color?: string | null
+          show_pulse_branding?: boolean | null
           slug?: string | null
+          social_facebook?: string | null
+          social_instagram?: string | null
           state?: string | null
+          tagline?: string | null
           timezone?: string | null
           updated_at?: string
           website?: string | null
@@ -3406,18 +3424,27 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          amenities?: string[] | null
+          banner_url?: string | null
           city?: string | null
           created_at?: string
           description?: string | null
           email?: string | null
+          hours_of_operation?: Json | null
           id?: string
           is_active?: boolean | null
           logo_url?: string | null
           name?: string
           owner_id?: string | null
           phone?: string | null
+          primary_color?: string | null
+          secondary_color?: string | null
+          show_pulse_branding?: boolean | null
           slug?: string | null
+          social_facebook?: string | null
+          social_instagram?: string | null
           state?: string | null
+          tagline?: string | null
           timezone?: string | null
           updated_at?: string
           website?: string | null

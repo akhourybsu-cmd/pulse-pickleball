@@ -90,6 +90,7 @@ import VenueCoaching from "./pages/venue/VenueCoaching";
 import VenueStaff from "./pages/venue/VenueStaff";
 import VenueSettings from "./pages/venue/VenueSettings";
 import VenueAnalytics from "./pages/venue/VenueAnalytics";
+import PublicVenueLanding from "./pages/PublicVenueLanding";
 
 const queryClient = new QueryClient();
 
@@ -106,6 +107,9 @@ const AppContent = () => {
         <Route path="/auth" element={<Auth />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/demo" element={<DemoTour />} />
+        
+        {/* Public venue landing pages (white-label) */}
+        <Route path="/v/:slug" element={<PublicVenueLanding />} />
 
         {/* Player routes with shell */}
         <Route path="/player" element={<PlayerShell />}>
