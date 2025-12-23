@@ -92,26 +92,26 @@ export default function Tournaments() {
       <PageHeader userId={userId} />
       
       {/* Hero Section */}
-      <section className="relative min-h-[300px] flex items-center justify-center overflow-hidden bg-gradient-to-br from-primary via-primary/80 to-accent">
-        <div className="absolute inset-0 bg-gradient-to-r from-primary/20 via-accent/20 to-primary/20 animate-[gradient_8s_ease_infinite] bg-[length:200%_100%]" />
+      <section className="relative min-h-[300px] flex items-center justify-center overflow-hidden bg-secondary">
+        <div className="absolute inset-0 bg-gradient-to-br from-secondary via-secondary/90 to-secondary/80" />
         
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="container mx-auto px-4 text-center relative z-10"
+          className="container mx-auto px-4 py-16 text-center relative z-10"
         >
-          <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 drop-shadow-lg">
+          <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold text-white mb-6 drop-shadow-lg">
             Find Your Next Pickleball Tournament
           </h1>
-          <p className="text-xl md:text-2xl text-white/90 mb-8 max-w-2xl mx-auto drop-shadow">
+          <p className="text-lg sm:text-xl md:text-2xl text-white/90 mb-8 max-w-2xl mx-auto drop-shadow">
             From local showdowns to major brackets — powered by Pulse
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Button 
               size="lg" 
-              className="bg-white text-primary hover:bg-white/90 hover:shadow-[0_0_20px_rgba(197,232,108,0.5)] transition-all duration-300 text-lg px-8"
+              className="bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-[0_0_20px_rgba(197,232,108,0.5)] transition-all duration-300 text-lg px-8"
               onClick={() => navigate(userId ? "/dashboard" : "/auth?redirect=/profile/edit")}
             >
               {userId ? "Go to Dashboard" : "Sign Up for Pulse"}
@@ -119,7 +119,7 @@ export default function Tournaments() {
             <Button 
               size="lg" 
               variant="outline" 
-              className="bg-transparent border-2 border-white text-white hover:bg-white hover:text-primary transition-all duration-300 text-lg px-8"
+              className="bg-transparent border-2 border-white text-white hover:bg-white hover:text-secondary transition-all duration-300 text-lg px-8"
               onClick={scrollToTournaments}
             >
               View Tournaments
@@ -130,7 +130,7 @@ export default function Tournaments() {
       </section>
 
       {/* Tournaments Section */}
-      <section id="tournaments-section" className="py-16 px-4 bg-[radial-gradient(circle_at_top_center,rgba(197,232,108,0.15),#ffffff_70%)]">
+      <section id="tournaments-section" className="py-16 px-4 bg-background">
         <div className="container mx-auto">
           <motion.h2 
             initial={{ opacity: 0, y: 20 }}
@@ -232,11 +232,34 @@ export default function Tournaments() {
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
-            className="grid md:grid-cols-2 gap-12 items-center"
+            className="space-y-12"
           >
-            <div className="space-y-6">
-              <h3 className="text-2xl font-bold mb-6 text-white">What Makes Pulse Different</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Top text content */}
+            <div className="max-w-3xl mx-auto text-center space-y-6">
+              <h2 className="text-3xl md:text-4xl font-bold text-white">Why Join Pulse?</h2>
+              <div className="space-y-4 text-white/90 text-base md:text-lg leading-relaxed">
+                <p>
+                  Pulse isn't just another app—it's your region's pickleball community, all in one place. 
+                  Whether you're looking to find your next doubles partner, join a weekend Round Robin, 
+                  or compete in a local tournament, Pulse connects you to the courts and players that matter most.
+                </p>
+                <p className="text-white font-semibold">
+                  One platform. Your local courts. Your community.
+                </p>
+              </div>
+              <Button 
+                size="lg" 
+                className="hover:shadow-[0_0_20px_rgba(197,232,108,0.4)] transition-all"
+                onClick={() => navigate(userId ? "/dashboard" : "/auth")}
+              >
+                {userId ? "Go to Dashboard" : "Create My Player Profile"}
+              </Button>
+            </div>
+            
+            {/* Feature cards */}
+            <div>
+              <h3 className="text-xl md:text-2xl font-bold mb-6 text-white text-center">What Makes Pulse Different</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 <motion.div 
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
@@ -264,7 +287,7 @@ export default function Tournaments() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: 0.3 }}
-                  className="bg-card p-6 rounded-lg shadow-sm"
+                  className="bg-card p-6 rounded-lg shadow-sm sm:col-span-2 lg:col-span-1"
                 >
                   <Trophy className="h-8 w-8 text-primary mb-3" />
                   <div className="font-semibold mb-2 text-card-foreground">Easy Round Robins</div>
@@ -272,37 +295,6 @@ export default function Tournaments() {
                 </motion.div>
               </div>
             </div>
-            
-            <motion.div 
-              initial={{ opacity: 0, x: 20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              className="space-y-6"
-            >
-              <h2 className="text-4xl font-bold text-white">Why Join Pulse?</h2>
-              <div className="space-y-4 text-white/90 text-lg leading-relaxed">
-                <p>
-                  Pulse isn't just another app—it's your region's pickleball community, all in one place. 
-                  Whether you're looking to find your next doubles partner, join a weekend Round Robin, 
-                  or compete in a local tournament, Pulse connects you to the courts and players that matter most.
-                </p>
-                <p>
-                  Track every match you play, see how you stack up on regional leaderboards, and discover 
-                  games happening at courts near you. From casual pickup games to competitive tournaments, 
-                  Pulse keeps you connected to the heartbeat of pickleball in your area.
-                </p>
-                <p className="text-white font-semibold">
-                  One platform. Your local courts. Your community.
-                </p>
-              </div>
-              <Button 
-                size="lg" 
-                className="hover:shadow-[0_0_20px_rgba(197,232,108,0.4)] transition-all"
-                onClick={() => navigate(userId ? "/dashboard" : "/auth")}
-              >
-                {userId ? "Go to Dashboard" : "Create My Player Profile"}
-              </Button>
-            </motion.div>
           </motion.div>
         </div>
       </section>
