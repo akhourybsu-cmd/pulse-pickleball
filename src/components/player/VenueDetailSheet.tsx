@@ -1,15 +1,18 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { MapPin, Phone, Mail, Globe, Calendar, Clock, DollarSign, Users, Trophy } from 'lucide-react';
+import { MapPin, Phone, Mail, Globe, Calendar, Clock, DollarSign, Users, Trophy, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
 import { usePublicVenueDetails, PublicVenue } from '@/hooks/usePublicVenues';
 import { CourtBookingDialog } from './CourtBookingDialog';
 import { CreatePlayerBookingData } from '@/hooks/usePlayerBookings';
+import { FavoriteButton } from './FavoriteButton';
+import { useFavoriteVenues } from '@/hooks/useFavoriteVenues';
 
 interface VenueDetailSheetProps {
   venueId: string | null;
@@ -20,10 +23,18 @@ interface VenueDetailSheetProps {
 }
 
 export function VenueDetailSheet({ venueId, onClose, onBook, onRegisterEvent, isEventRegistered }: VenueDetailSheetProps) {
+  const navigate = useNavigate();
   const { venue, courts, events, coaches, loading } = usePublicVenueDetails(venueId);
+  const { isFavorite, toggleFavorite } = useFavoriteVenues();
   const [bookingOpen, setBookingOpen] = useState(false);
   const [registeringEvent, setRegisteringEvent] = useState<string | null>(null);
 
+  const handleViewFullPage = () => {
+    if (venue?.slug) {
+      onClose();
+      navigate(`/v/${venue.slug}`);
+    }
+  };
   const handleRegister = async (eventId: string) => {
     setRegisteringEvent(eventId);
     try {
@@ -46,22 +57,41 @@ export function VenueDetailSheet({ venueId, onClose, onBook, onRegisterEvent, is
           ) : venue ? (
             <>
               <SheetHeader className="mb-6">
-                <div className="flex items-center gap-3">
-                  {venue.logo_url ? (
-                    <img src={venue.logo_url} alt={venue.name} className="h-14 w-14 rounded-lg object-cover" />
-                  ) : (
-                    <div className="h-14 w-14 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <MapPin className="h-7 w-7 text-primary" />
-                    </div>
-                  )}
-                  <div>
-                    <SheetTitle className="text-xl">{venue.name}</SheetTitle>
-                    {venue.city && venue.state && (
-                      <SheetDescription>{venue.city}, {venue.state}</SheetDescription>
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    {venue.logo_url ? (
+                      <img src={venue.logo_url} alt={venue.name} className="h-14 w-14 rounded-lg object-cover" />
+                    ) : (
+                      <div className="h-14 w-14 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <MapPin className="h-7 w-7 text-primary" />
+                      </div>
                     )}
+                    <div>
+                      <SheetTitle className="text-xl">{venue.name}</SheetTitle>
+                      {venue.city && venue.state && (
+                        <SheetDescription>{venue.city}, {venue.state}</SheetDescription>
+                      )}
+                    </div>
                   </div>
+                  <FavoriteButton
+                    isFavorite={isFavorite(venue.id)}
+                    onToggle={() => toggleFavorite(venue.id)}
+                  />
                 </div>
               </SheetHeader>
+
+              {/* View Full Page Button */}
+              {venue.slug && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full mb-4"
+                  onClick={handleViewFullPage}
+                >
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  View Full Venue Page
+                </Button>
+              )}
 
               {venue.description && (
                 <p className="text-sm text-muted-foreground mb-4">{venue.description}</p>

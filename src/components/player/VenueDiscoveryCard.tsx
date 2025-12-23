@@ -2,13 +2,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { MapPin, ChevronRight } from 'lucide-react';
 import { PublicVenue } from '@/hooks/usePublicVenues';
+import { FavoriteButton } from './FavoriteButton';
+import { useFavoriteVenues } from '@/hooks/useFavoriteVenues';
 
 interface VenueDiscoveryCardProps {
   venue: PublicVenue;
   onSelect: (venueId: string) => void;
+  isFavorite?: boolean;
+  onToggleFavorite?: () => Promise<boolean>;
 }
 
-export function VenueDiscoveryCard({ venue, onSelect }: VenueDiscoveryCardProps) {
+export function VenueDiscoveryCard({ venue, onSelect, isFavorite, onToggleFavorite }: VenueDiscoveryCardProps) {
   return (
     <Card className="hover:shadow-lg transition-shadow cursor-pointer group" onClick={() => onSelect(venue.id)}>
       <CardHeader className="pb-2">
@@ -28,7 +32,15 @@ export function VenueDiscoveryCard({ venue, onSelect }: VenueDiscoveryCardProps)
               )}
             </div>
           </div>
-          <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+          <div className="flex items-center gap-1">
+            {onToggleFavorite && (
+              <FavoriteButton
+                isFavorite={isFavorite || false}
+                onToggle={onToggleFavorite}
+              />
+            )}
+            <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+          </div>
         </div>
       </CardHeader>
       <CardContent>
