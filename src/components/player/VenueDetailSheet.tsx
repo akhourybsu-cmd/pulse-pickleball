@@ -96,16 +96,16 @@ export function VenueDetailSheet({ venueId, onClose, onBook, onRegisterEvent, is
 
               <Tabs defaultValue="courts" className="w-full">
                 <TabsList className="w-full">
-                  <TabsTrigger value="courts" className="flex-1">Courts ({courts.length})</TabsTrigger>
-                  <TabsTrigger value="events" className="flex-1">Events ({events.length})</TabsTrigger>
-                  <TabsTrigger value="coaching" className="flex-1">Coaching ({coaches.length})</TabsTrigger>
+                  <TabsTrigger value="courts" className="flex-1">Courts</TabsTrigger>
+                  <TabsTrigger value="events" className="flex-1">Events</TabsTrigger>
+                  <TabsTrigger value="coaching" className="flex-1">Coaching</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="courts" className="mt-4 space-y-3">
                   {courts.length > 0 ? (
                     <>
                       <Button onClick={() => setBookingOpen(true)} className="w-full">
-                        Book a Court
+                        Reserve Court Time
                       </Button>
                       {courts.map(court => (
                         <Card key={court.id}>
@@ -129,7 +129,7 @@ export function VenueDetailSheet({ venueId, onClose, onBook, onRegisterEvent, is
                       ))}
                     </>
                   ) : (
-                    <p className="text-center text-muted-foreground py-8">No courts available</p>
+                    <p className="text-center text-muted-foreground py-8">No courts listed yet. Check back soon!</p>
                   )}
                 </TabsContent>
 
@@ -181,7 +181,7 @@ export function VenueDetailSheet({ venueId, onClose, onBook, onRegisterEvent, is
                       );
                     })
                   ) : (
-                    <p className="text-center text-muted-foreground py-8">No upcoming events</p>
+                    <p className="text-center text-muted-foreground py-8">No upcoming events scheduled</p>
                   )}
                 </TabsContent>
 
@@ -217,7 +217,7 @@ export function VenueDetailSheet({ venueId, onClose, onBook, onRegisterEvent, is
                       </Card>
                     ))
                   ) : (
-                    <p className="text-center text-muted-foreground py-8">No coaches available</p>
+                    <p className="text-center text-muted-foreground py-8">No coaching available at this time</p>
                   )}
                 </TabsContent>
               </Tabs>
