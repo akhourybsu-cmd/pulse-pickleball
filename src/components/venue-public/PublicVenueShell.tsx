@@ -55,22 +55,20 @@ export function PublicVenueShell({ venue, courts, events, coaches, children }: P
           borderColor: `${primaryColor}20`,
         }}
       >
-        <div className="flex items-center justify-between px-4 h-16">
-          <div className="flex items-center gap-3">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={() => navigate(-1)}
-              className="shrink-0"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <img 
-              src={logoSrc} 
-              alt={venue.name}
-              className="h-10 max-w-[180px] object-contain"
-            />
-          </div>
+        <div className="flex flex-col items-center py-4 px-4">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => navigate(-1)}
+            className="absolute left-4 top-4"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <img 
+            src={logoSrc} 
+            alt={venue.name}
+            className="h-20 max-w-[280px] object-contain"
+          />
         </div>
       </header>
 
