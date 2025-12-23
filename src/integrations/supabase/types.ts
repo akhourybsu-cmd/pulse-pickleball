@@ -3356,6 +3356,75 @@ export type Database = {
           },
         ]
       }
+      venue_payments: {
+        Row: {
+          amount_platform_fee: number
+          amount_total: number
+          amount_venue: number
+          booking_id: string | null
+          created_at: string
+          currency: string
+          customer_email: string | null
+          customer_name: string | null
+          id: string
+          metadata: Json | null
+          status: string
+          stripe_payment_intent_id: string
+          stripe_transfer_id: string | null
+          updated_at: string
+          venue_id: string
+        }
+        Insert: {
+          amount_platform_fee?: number
+          amount_total: number
+          amount_venue: number
+          booking_id?: string | null
+          created_at?: string
+          currency?: string
+          customer_email?: string | null
+          customer_name?: string | null
+          id?: string
+          metadata?: Json | null
+          status?: string
+          stripe_payment_intent_id: string
+          stripe_transfer_id?: string | null
+          updated_at?: string
+          venue_id: string
+        }
+        Update: {
+          amount_platform_fee?: number
+          amount_total?: number
+          amount_venue?: number
+          booking_id?: string | null
+          created_at?: string
+          currency?: string
+          customer_email?: string | null
+          customer_name?: string | null
+          id?: string
+          metadata?: Json | null
+          status?: string
+          stripe_payment_intent_id?: string
+          stripe_transfer_id?: string | null
+          updated_at?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venue_payments_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "venue_bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "venue_payments_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       venue_staff: {
         Row: {
           accepted_at: string | null
@@ -3419,6 +3488,7 @@ export type Database = {
           name: string
           owner_id: string | null
           phone: string | null
+          platform_fee_percent: number | null
           primary_color: string | null
           secondary_color: string | null
           show_pulse_branding: boolean | null
@@ -3426,6 +3496,10 @@ export type Database = {
           social_facebook: string | null
           social_instagram: string | null
           state: string | null
+          stripe_account_id: string | null
+          stripe_charges_enabled: boolean | null
+          stripe_onboarding_complete: boolean | null
+          stripe_payouts_enabled: boolean | null
           tagline: string | null
           timezone: string | null
           updated_at: string
@@ -3447,6 +3521,7 @@ export type Database = {
           name: string
           owner_id?: string | null
           phone?: string | null
+          platform_fee_percent?: number | null
           primary_color?: string | null
           secondary_color?: string | null
           show_pulse_branding?: boolean | null
@@ -3454,6 +3529,10 @@ export type Database = {
           social_facebook?: string | null
           social_instagram?: string | null
           state?: string | null
+          stripe_account_id?: string | null
+          stripe_charges_enabled?: boolean | null
+          stripe_onboarding_complete?: boolean | null
+          stripe_payouts_enabled?: boolean | null
           tagline?: string | null
           timezone?: string | null
           updated_at?: string
@@ -3475,6 +3554,7 @@ export type Database = {
           name?: string
           owner_id?: string | null
           phone?: string | null
+          platform_fee_percent?: number | null
           primary_color?: string | null
           secondary_color?: string | null
           show_pulse_branding?: boolean | null
@@ -3482,6 +3562,10 @@ export type Database = {
           social_facebook?: string | null
           social_instagram?: string | null
           state?: string | null
+          stripe_account_id?: string | null
+          stripe_charges_enabled?: boolean | null
+          stripe_onboarding_complete?: boolean | null
+          stripe_payouts_enabled?: boolean | null
           tagline?: string | null
           timezone?: string | null
           updated_at?: string

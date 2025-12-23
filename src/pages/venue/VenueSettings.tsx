@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useMode } from '@/contexts/ModeContext';
 import { useVenueSettings, VenueSettings } from '@/hooks/useVenueSettings';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,6 +11,8 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Save, Building2, MapPin, Phone, Clock, Palette, ExternalLink, Instagram, Facebook } from 'lucide-react';
+import { StripeConnectCard } from '@/components/venue/StripeConnectCard';
+import { useToast } from '@/hooks/use-toast';
 const US_STATES = [
   'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
   'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
@@ -31,9 +33,28 @@ const TIMEZONES = [
 export default function VenueSettingsPage() {
   const { currentVenueId } = useMode();
   const { settings, loading, saving, updateSettings } = useVenueSettings(currentVenueId);
+  const [searchParams] = useSearchParams();
+  const { toast } = useToast();
   
   const [formData, setFormData] = useState<Partial<VenueSettings>>({});
   const [hasChanges, setHasChanges] = useState(false);
+
+  // Handle Stripe Connect redirect
+  useEffect(() => {
+    const stripeStatus = searchParams.get('stripe');
+    if (stripeStatus === 'success') {
+      toast({
+        title: "Stripe Connected",
+        description: "Your payment account has been connected successfully!",
+      });
+    } else if (stripeStatus === 'refresh') {
+      toast({
+        title: "Stripe Setup",
+        description: "Please complete your Stripe account setup.",
+        variant: "destructive",
+      });
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (settings) {
@@ -237,6 +258,14 @@ export default function VenueSettingsPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Stripe Connect - Payment Processing */}
+        {currentVenueId && (
+          <StripeConnectCard 
+            venueId={currentVenueId} 
+            currentPlatformFee={(settings as any)?.platform_fee_percent || 10}
+          />
+        )}
 
         {/* Timezone & Preferences */}
         <Card>

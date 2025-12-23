@@ -34,6 +34,18 @@ verify_jwt = false
 [functions.send-password-reset]
 verify_jwt = false
 
+[functions.stripe-connect-onboard]
+verify_jwt = true
+
+[functions.stripe-connect-status]
+verify_jwt = false
+
+[functions.create-venue-checkout]
+verify_jwt = false
+
+[functions.stripe-connect-webhook]
+verify_jwt = false
+
 [edge_runtime]
 policy = "per_worker"
 
