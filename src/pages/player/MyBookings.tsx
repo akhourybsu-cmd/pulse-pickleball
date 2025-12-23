@@ -89,13 +89,12 @@ export default function MyBookings() {
   );
 
   return (
-    <div className="p-4 sm:p-6 pt-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Calendar className="h-6 w-6 text-primary" />
-          My Court Reservations
-        </h1>
-        <p className="text-muted-foreground">View and manage your upcoming court time</p>
+    <div className="p-6">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold">My Court Reservations</h1>
+          <p className="text-muted-foreground">View and manage your upcoming court time</p>
+        </div>
       </div>
 
       {loading ? (

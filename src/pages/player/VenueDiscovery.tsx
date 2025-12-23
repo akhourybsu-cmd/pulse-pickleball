@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Search, MapPin, Calendar, ClipboardList, Heart } from 'lucide-react';
 import { usePublicVenues } from '@/hooks/usePublicVenues';
 import { usePlayerBookings } from '@/hooks/usePlayerBookings';
@@ -51,19 +50,13 @@ export default function VenueDiscovery() {
   const otherVenues = sortedVenues.filter(v => !isFavorite(v.id));
 
   return (
-    <div className="p-4 sm:p-6 pt-6">
-      {/* Header with quick access links */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <MapPin className="h-6 w-6 text-primary" />
-          Find a Place to Play
-        </h1>
-        <p className="text-muted-foreground">
-          Discover courts, clinics, and tournaments near you
-        </p>
-        
-        {/* Quick access buttons */}
-        <div className="flex flex-wrap gap-2 mt-4">
+    <div className="p-6">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold">Find a Place to Play</h1>
+          <p className="text-muted-foreground">Discover courts, clinics, and tournaments near you</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
           <Button 
             variant="outline" 
             size="sm"
