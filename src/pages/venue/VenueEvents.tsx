@@ -11,7 +11,7 @@ import { isFuture, isPast } from 'date-fns';
 
 export default function VenueEvents() {
   const { currentVenueId } = useMode();
-  const { events, loading, createEvent, deleteEvent, togglePublish } = useVenueEvents(currentVenueId);
+  const { events, loading, createEvent, deleteEvent, togglePublish, updateEvent } = useVenueEvents(currentVenueId);
   const [activeTab, setActiveTab] = useState('upcoming');
 
   if (!currentVenueId) {
@@ -90,6 +90,7 @@ export default function VenueEvents() {
                   event={event}
                   onTogglePublish={togglePublish}
                   onDelete={deleteEvent}
+                  onEdit={updateEvent}
                 />
               ))}
             </div>

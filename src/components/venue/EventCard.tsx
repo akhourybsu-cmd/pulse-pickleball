@@ -1,19 +1,26 @@
+import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Calendar, Clock, Users, DollarSign, MoreVertical, Eye, EyeOff, Trash2, Edit, Trophy, GraduationCap, PartyPopper, Medal } from 'lucide-react';
+import { Calendar, Clock, Users, DollarSign, MoreVertical, Eye, EyeOff, Trash2, Edit, Trophy, GraduationCap, PartyPopper, Medal, UserCheck } from 'lucide-react';
 import { VenueEvent } from '@/hooks/useVenueEvents';
+import { EventRegistrationsDialog } from './EventRegistrationsDialog';
+import { EditEventDialog } from './EditEventDialog';
 import { format } from 'date-fns';
 
 interface EventCardProps {
   event: VenueEvent;
   onTogglePublish: (id: string, isPublished: boolean) => void;
   onDelete: (id: string) => void;
+  onEdit: (id: string, updates: Partial<VenueEvent>) => Promise<void>;
 }
 
-export function EventCard({ event, onTogglePublish, onDelete }: EventCardProps) {
+export function EventCard({ event, onTogglePublish, onDelete, onEdit }: EventCardProps) {
+  const [registrationsOpen, setRegistrationsOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+
   const getTypeIcon = (type: string) => {
     switch (type) {
       case 'tournament': return Trophy;
@@ -108,6 +115,14 @@ export function EventCard({ event, onTogglePublish, onDelete }: EventCardProps) 
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setRegistrationsOpen(true)}>
+                <UserCheck className="h-4 w-4 mr-2" />
+                View Registrations ({event.current_participants})
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setEditOpen(true)}>
+                <Edit className="h-4 w-4 mr-2" />
+                Edit Event
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => onTogglePublish(event.id, !event.is_published)}>
                 {event.is_published ? (
                   <>
@@ -154,6 +169,20 @@ export function EventCard({ event, onTogglePublish, onDelete }: EventCardProps) 
           </DropdownMenu>
         </div>
       </CardContent>
+
+      {/* Dialogs */}
+      <EventRegistrationsDialog
+        open={registrationsOpen}
+        onOpenChange={setRegistrationsOpen}
+        eventId={event.id}
+        eventTitle={event.title}
+      />
+      <EditEventDialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        event={event}
+        onSave={onEdit}
+      />
     </Card>
   );
 }
