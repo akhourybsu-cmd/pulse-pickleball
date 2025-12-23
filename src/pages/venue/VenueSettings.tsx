@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useMode } from '@/contexts/ModeContext';
 import { useVenueSettings, VenueSettings } from '@/hooks/useVenueSettings';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,8 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, Save, Building2, MapPin, Phone, Globe, Clock } from 'lucide-react';
-
+import { Badge } from '@/components/ui/badge';
+import { Loader2, Save, Building2, MapPin, Phone, Clock, Palette, ExternalLink, Instagram, Facebook } from 'lucide-react';
 const US_STATES = [
   'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
   'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
@@ -264,16 +265,168 @@ export default function VenueSettingsPage() {
               </Select>
               <p className="text-xs text-muted-foreground">Used for booking times and event scheduling</p>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="logo_url">Logo URL</Label>
-              <Input
-                id="logo_url"
-                type="url"
-                value={formData.logo_url || ''}
-                onChange={(e) => handleChange('logo_url', e.target.value)}
-                placeholder="https://..."
+          </CardContent>
+        </Card>
+
+        {/* Branding & Customization */}
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Palette className="h-5 w-5" />
+                  Branding & Customization
+                </CardTitle>
+                <CardDescription>Customize your public venue page appearance</CardDescription>
+              </div>
+              {formData.slug && (
+                <Button variant="outline" size="sm" asChild>
+                  <Link to={`/v/${formData.slug}`} target="_blank">
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    Preview Public Page
+                  </Link>
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* Logo & Banner */}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="logo_url">Logo URL</Label>
+                  <Input
+                    id="logo_url"
+                    type="url"
+                    value={formData.logo_url || ''}
+                    onChange={(e) => handleChange('logo_url', e.target.value)}
+                    placeholder="https://..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="banner_url">Banner Image URL</Label>
+                  <Input
+                    id="banner_url"
+                    type="url"
+                    value={(formData as any).banner_url || ''}
+                    onChange={(e) => handleChange('banner_url' as any, e.target.value)}
+                    placeholder="https://..."
+                  />
+                  <p className="text-xs text-muted-foreground">Hero image for your public venue page</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="tagline">Tagline</Label>
+                  <Input
+                    id="tagline"
+                    value={(formData as any).tagline || ''}
+                    onChange={(e) => handleChange('tagline' as any, e.target.value)}
+                    placeholder="Where Champions Play"
+                    maxLength={60}
+                  />
+                </div>
+              </div>
+
+              {/* Colors */}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="primary_color">Primary Brand Color</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="primary_color"
+                      type="color"
+                      value={(formData as any).primary_color || '#FF6B35'}
+                      onChange={(e) => handleChange('primary_color' as any, e.target.value)}
+                      className="w-16 h-10 p-1 cursor-pointer"
+                    />
+                    <Input
+                      value={(formData as any).primary_color || '#FF6B35'}
+                      onChange={(e) => handleChange('primary_color' as any, e.target.value)}
+                      placeholder="#FF6B35"
+                      className="flex-1"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="secondary_color">Secondary Color</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="secondary_color"
+                      type="color"
+                      value={(formData as any).secondary_color || '#004E64'}
+                      onChange={(e) => handleChange('secondary_color' as any, e.target.value)}
+                      className="w-16 h-10 p-1 cursor-pointer"
+                    />
+                    <Input
+                      value={(formData as any).secondary_color || '#004E64'}
+                      onChange={(e) => handleChange('secondary_color' as any, e.target.value)}
+                      placeholder="#004E64"
+                      className="flex-1"
+                    />
+                  </div>
+                </div>
+                
+                {/* Color Preview */}
+                <div className="p-4 rounded-lg border">
+                  <p className="text-sm text-muted-foreground mb-2">Color Preview</p>
+                  <div className="flex gap-2">
+                    <div 
+                      className="w-16 h-8 rounded" 
+                      style={{ backgroundColor: (formData as any).primary_color || '#FF6B35' }}
+                    />
+                    <div 
+                      className="w-16 h-8 rounded" 
+                      style={{ backgroundColor: (formData as any).secondary_color || '#004E64' }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Social Links */}
+            <div className="grid md:grid-cols-2 gap-4 pt-4 border-t">
+              <div className="space-y-2">
+                <Label htmlFor="social_facebook" className="flex items-center gap-2">
+                  <Facebook className="h-4 w-4" />
+                  Facebook URL
+                </Label>
+                <Input
+                  id="social_facebook"
+                  type="url"
+                  value={(formData as any).social_facebook || ''}
+                  onChange={(e) => handleChange('social_facebook' as any, e.target.value)}
+                  placeholder="https://facebook.com/yourvenue"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="social_instagram" className="flex items-center gap-2">
+                  <Instagram className="h-4 w-4" />
+                  Instagram URL
+                </Label>
+                <Input
+                  id="social_instagram"
+                  type="url"
+                  value={(formData as any).social_instagram || ''}
+                  onChange={(e) => handleChange('social_instagram' as any, e.target.value)}
+                  placeholder="https://instagram.com/yourvenue"
+                />
+              </div>
+            </div>
+
+            {/* White Label Toggle */}
+            <div className="flex items-center justify-between pt-4 border-t">
+              <div className="space-y-0.5">
+                <Label className="flex items-center gap-2">
+                  Hide Pulse Branding
+                  <Badge variant="secondary" className="text-xs">White Label</Badge>
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Only show a subtle "Powered by Pulse" in the footer
+                </p>
+              </div>
+              <Switch
+                checked={(formData as any).show_pulse_branding === false}
+                onCheckedChange={(checked) => handleChange('show_pulse_branding' as any, !checked)}
               />
-              <p className="text-xs text-muted-foreground">URL to your venue's logo image</p>
             </div>
           </CardContent>
         </Card>
