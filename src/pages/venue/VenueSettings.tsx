@@ -70,11 +70,11 @@ export default function VenueSettingsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Venue Settings</h1>
-          <p className="text-muted-foreground">Manage your venue information and preferences</p>
+          <p className="text-muted-foreground">Customize how players see your venue</p>
         </div>
         <Button onClick={handleSave} disabled={!hasChanges || saving}>
           {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}

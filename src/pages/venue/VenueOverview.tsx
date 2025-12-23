@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useMode } from '@/contexts/ModeContext';
@@ -6,7 +5,7 @@ import { useVenueCourts } from '@/hooks/useVenueCourts';
 import { useVenueStaff } from '@/hooks/useVenueStaff';
 import { useVenueBookings } from '@/hooks/useVenueBookings';
 import { useVenueEvents } from '@/hooks/useVenueEvents';
-import { MapPin, Calendar, Users, TrendingUp, Plus, Settings, CalendarPlus, UserPlus, CalendarDays } from 'lucide-react';
+import { MapPin, Calendar, Users, Plus, Settings, CalendarPlus, UserPlus, CalendarDays, BarChart3, CheckCircle2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Skeleton } from '@/components/ui/skeleton';
 import { isToday, isFuture } from 'date-fns';
@@ -25,14 +24,26 @@ export default function VenueOverview() {
   const upcomingEvents = events.filter(e => isFuture(new Date(e.start_time)) && e.is_published).length;
   const loading = courtsLoading || staffLoading || bookingsLoading || eventsLoading;
 
+  // Calculate setup progress
+  const setupSteps = [
+    { done: activeCourts > 0, label: 'Add your courts', action: '/venue/courts' },
+    { done: events.length > 0, label: 'Create an event', action: '/venue/events' },
+    { done: staff.length > 1, label: 'Invite team members', action: '/venue/staff' },
+  ];
+  const completedSteps = setupSteps.filter(s => s.done).length;
+  const isFullySetup = completedSteps === setupSteps.length;
+
   return (
     <div className="p-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold">{currentVenue?.venue_name || 'Venue Dashboard'}</h1>
-        <p className="text-muted-foreground">Manage your venue operations</p>
+        <p className="text-muted-foreground">
+          Welcome back! Here's what's happening at your venue.
+        </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {/* Key Metrics */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
         <Card className="cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => navigate('/venue/courts')}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Courts</CardTitle>
@@ -50,7 +61,7 @@ export default function VenueOverview() {
 
         <Card className="cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => navigate('/venue/bookings')}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Bookings Today</CardTitle>
+            <CardTitle className="text-sm font-medium">Today's Bookings</CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -59,13 +70,13 @@ export default function VenueOverview() {
             ) : (
               <div className="text-2xl font-bold">{todayBookings}</div>
             )}
-            <p className="text-xs text-muted-foreground">Reservations</p>
+            <p className="text-xs text-muted-foreground">Reservations today</p>
           </CardContent>
         </Card>
 
         <Card className="cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => navigate('/venue/staff')}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Staff Members</CardTitle>
+            <CardTitle className="text-sm font-medium">Team</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -74,7 +85,7 @@ export default function VenueOverview() {
             ) : (
               <div className="text-2xl font-bold">{staff.length}</div>
             )}
-            <p className="text-xs text-muted-foreground">Team members</p>
+            <p className="text-xs text-muted-foreground">Staff members</p>
           </CardContent>
         </Card>
 
@@ -94,7 +105,8 @@ export default function VenueOverview() {
         </Card>
       </div>
 
-      <div className="mt-8 grid gap-6 md:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Quick Actions */}
         <Card>
           <CardHeader>
             <CardTitle>Quick Actions</CardTitle>
@@ -110,7 +122,11 @@ export default function VenueOverview() {
             </Button>
             <Button variant="outline" className="justify-start" onClick={() => navigate('/venue/staff')}>
               <UserPlus className="h-4 w-4 mr-2" />
-              Invite Staff
+              Invite Team Member
+            </Button>
+            <Button variant="outline" className="justify-start" onClick={() => navigate('/venue/analytics')}>
+              <BarChart3 className="h-4 w-4 mr-2" />
+              View Analytics
             </Button>
             <Button variant="outline" className="justify-start" onClick={() => navigate('/venue/settings')}>
               <Settings className="h-4 w-4 mr-2" />
@@ -119,34 +135,64 @@ export default function VenueOverview() {
           </CardContent>
         </Card>
 
+        {/* Setup Progress or Tips */}
         <Card>
           <CardHeader>
-            <CardTitle>Getting Started</CardTitle>
+            <CardTitle>{isFullySetup ? 'Tips for Success' : 'Complete Your Setup'}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium ${activeCourts > 0 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
-                {activeCourts > 0 ? '✓' : '1'}
-              </div>
-              <div>
-                <p className={`font-medium ${activeCourts > 0 ? 'text-muted-foreground line-through' : ''}`}>Set up your courts</p>
-                <p className="text-sm text-muted-foreground">Add courts with details and availability</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-muted-foreground text-sm font-medium">2</div>
-              <div>
-                <p className="font-medium">Configure booking settings</p>
-                <p className="text-sm text-muted-foreground">Set hours, pricing, and rules</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-muted-foreground text-sm font-medium">3</div>
-              <div>
-                <p className="font-medium">Invite your team</p>
-                <p className="text-sm text-muted-foreground">Add staff members to help manage</p>
-              </div>
-            </div>
+            {isFullySetup ? (
+              <>
+                <div className="flex items-center gap-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
+                    <CalendarPlus className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-medium">Host regular events</p>
+                    <p className="text-sm text-muted-foreground">Clinics and socials drive repeat visits</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
+                    <BarChart3 className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-medium">Track your analytics</p>
+                    <p className="text-sm text-muted-foreground">Identify peak times and popular offerings</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
+                    <Users className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-medium">Engage your community</p>
+                    <p className="text-sm text-muted-foreground">Players love venues that interact</p>
+                  </div>
+                </div>
+              </>
+            ) : (
+              setupSteps.map((step, i) => (
+                <div 
+                  key={i} 
+                  className="flex items-center gap-3 cursor-pointer hover:bg-muted/50 rounded-lg p-2 -mx-2 transition-colors"
+                  onClick={() => !step.done && navigate(step.action)}
+                >
+                  <div className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium ${
+                    step.done 
+                      ? 'bg-green-500/10 text-green-600' 
+                      : 'bg-muted text-muted-foreground'
+                  }`}>
+                    {step.done ? <CheckCircle2 className="h-4 w-4" /> : i + 1}
+                  </div>
+                  <div>
+                    <p className={`font-medium ${step.done ? 'text-muted-foreground line-through' : ''}`}>
+                      {step.label}
+                    </p>
+                  </div>
+                </div>
+              ))
+            )}
           </CardContent>
         </Card>
       </div>

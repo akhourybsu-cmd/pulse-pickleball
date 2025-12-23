@@ -3,11 +3,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Calendar, Clock, MapPin, X, Trophy } from 'lucide-react';
+import { Calendar, Clock, MapPin, X, Trophy, Search } from 'lucide-react';
 import { format, isFuture, isPast } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 import { useEventRegistration } from '@/hooks/useEventRegistration';
 
 export default function MyEvents() {
+  const navigate = useNavigate();
   const { registrations, loading, cancelRegistration } = useEventRegistration();
 
   const upcomingRegistrations = registrations.filter(r => 
@@ -23,7 +25,7 @@ export default function MyEvents() {
       case 'registered':
         return <Badge className="bg-green-500">Registered</Badge>;
       case 'waitlisted':
-        return <Badge variant="secondary">Waitlisted</Badge>;
+        return <Badge variant="secondary">On Waitlist</Badge>;
       case 'cancelled':
         return <Badge variant="destructive">Cancelled</Badge>;
       case 'attended':
@@ -96,9 +98,9 @@ export default function MyEvents() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Trophy className="h-6 w-6 text-primary" />
-          My Events
+          My Event Registrations
         </h1>
-        <p className="text-muted-foreground">View and manage your event registrations</p>
+        <p className="text-muted-foreground">Your clinics, tournaments, and social play events</p>
       </div>
 
       {loading ? (
@@ -124,7 +126,13 @@ export default function MyEvents() {
               <div className="text-center py-12">
                 <Trophy className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <h3 className="text-lg font-medium mb-2">No upcoming events</h3>
-                <p className="text-muted-foreground">Discover venues and register for events</p>
+                <p className="text-muted-foreground mb-4">
+                  Looking for clinics, round robins, or tournaments? Browse venues to find events near you.
+                </p>
+                <Button onClick={() => navigate('/player/venues')}>
+                  <Search className="h-4 w-4 mr-2" />
+                  Browse Events
+                </Button>
               </div>
             )}
           </TabsContent>
@@ -135,7 +143,7 @@ export default function MyEvents() {
                 <RegistrationCard key={reg.id} registration={reg} />
               ))
             ) : (
-              <p className="text-center text-muted-foreground py-8">No past events</p>
+              <p className="text-center text-muted-foreground py-8">No past events yet</p>
             )}
           </TabsContent>
 

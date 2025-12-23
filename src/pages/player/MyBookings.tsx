@@ -1,13 +1,15 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Calendar, Clock, MapPin, X } from 'lucide-react';
+import { Calendar, Clock, MapPin, X, Search } from 'lucide-react';
 import { format, isFuture, isPast } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 import { usePlayerBookings } from '@/hooks/usePlayerBookings';
 
 export default function MyBookings() {
+  const navigate = useNavigate();
   const { bookings, loading, cancelBooking } = usePlayerBookings();
 
   const upcomingBookings = bookings.filter(b => 
@@ -23,7 +25,7 @@ export default function MyBookings() {
       case 'confirmed':
         return <Badge className="bg-green-500">Confirmed</Badge>;
       case 'pending':
-        return <Badge variant="secondary">Pending</Badge>;
+        return <Badge variant="secondary">Pending Confirmation</Badge>;
       case 'cancelled':
         return <Badge variant="destructive">Cancelled</Badge>;
       case 'completed':
@@ -78,7 +80,7 @@ export default function MyBookings() {
               onClick={() => cancelBooking(booking.id)}
             >
               <X className="h-4 w-4 mr-1" />
-              Cancel Booking
+              Cancel Reservation
             </Button>
           )
         ) : null}
@@ -91,9 +93,9 @@ export default function MyBookings() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Calendar className="h-6 w-6 text-primary" />
-          My Bookings
+          My Court Reservations
         </h1>
-        <p className="text-muted-foreground">View and manage your court reservations</p>
+        <p className="text-muted-foreground">View and manage your upcoming court time</p>
       </div>
 
       {loading ? (
@@ -118,8 +120,14 @@ export default function MyBookings() {
             ) : (
               <div className="text-center py-12">
                 <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-medium mb-2">No upcoming bookings</h3>
-                <p className="text-muted-foreground">Discover venues and book a court to get started</p>
+                <h3 className="text-lg font-medium mb-2">No upcoming reservations</h3>
+                <p className="text-muted-foreground mb-4">
+                  Ready to hit the courts? Find a venue and book your next session.
+                </p>
+                <Button onClick={() => navigate('/player/venues')}>
+                  <Search className="h-4 w-4 mr-2" />
+                  Find a Venue
+                </Button>
               </div>
             )}
           </TabsContent>
@@ -130,7 +138,7 @@ export default function MyBookings() {
                 <BookingCard key={booking.id} booking={booking} />
               ))
             ) : (
-              <p className="text-center text-muted-foreground py-8">No past bookings</p>
+              <p className="text-center text-muted-foreground py-8">No past reservations yet</p>
             )}
           </TabsContent>
 
@@ -140,7 +148,7 @@ export default function MyBookings() {
                 <BookingCard key={booking.id} booking={booking} />
               ))
             ) : (
-              <p className="text-center text-muted-foreground py-8">No cancelled bookings</p>
+              <p className="text-center text-muted-foreground py-8">No cancelled reservations</p>
             )}
           </TabsContent>
         </Tabs>

@@ -43,8 +43,8 @@ export default function VenueBookings() {
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold">Bookings</h1>
-          <p className="text-muted-foreground">View and manage court reservations</p>
+          <h1 className="text-2xl font-bold">Court Reservations</h1>
+          <p className="text-muted-foreground">Manage player bookings and court schedules</p>
         </div>
         <CreateBookingDialog courts={courts} onCreateBooking={createBooking} />
       </div>
@@ -75,11 +75,11 @@ export default function VenueBookings() {
             <Card>
               <CardContent className="py-12 text-center">
                 <Calendar className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                <h3 className="font-semibold mb-2">No bookings</h3>
+                <h3 className="font-semibold mb-2">No reservations</h3>
                 <p className="text-muted-foreground text-sm">
                   {activeTab === 'upcoming' 
-                    ? 'No upcoming bookings. Create one to get started.' 
-                    : `No ${activeTab} bookings found.`}
+                    ? 'No upcoming reservations. Players can book through the Pulse app.' 
+                    : `No ${activeTab} reservations found.`}
                 </p>
               </CardContent>
             </Card>
