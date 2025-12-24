@@ -187,13 +187,6 @@ export function PublicEventsTab({ venue, events, onRegister, registeredEventIds 
         </div>
       </div>
 
-      {/* Current Visible Date Header (sticky overlay) */}
-      <div className="sticky top-[100px] z-10 bg-background border-b border-border px-4 py-3 shadow-sm">
-        <h2 className="text-lg font-semibold text-amber-600 dark:text-amber-500">
-          {getDateLabel(visibleDate)}
-        </h2>
-      </div>
-
       {/* Events List - Scrollable Container */}
       <div 
         ref={scrollContainerRef}
@@ -214,9 +207,9 @@ export function PublicEventsTab({ venue, events, onRegister, registeredEventIds 
                 }
               }}
             >
-              {/* Date Section Header */}
-              <div className="sticky top-0 z-[5] bg-muted/80 backdrop-blur-sm px-4 py-2 border-b border-border">
-                <h3 className="text-sm font-medium text-muted-foreground">
+              {/* Date Section Header - sticks below category filters */}
+              <div className="sticky top-0 z-[5] bg-muted/95 backdrop-blur-sm px-4 py-3 border-b border-border">
+                <h3 className="text-base font-semibold text-amber-600 dark:text-amber-500">
                   {getDateLabel(date)}
                 </h3>
               </div>
