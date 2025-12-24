@@ -13,8 +13,8 @@ interface LFGNotification {
   starts_at: string;
   capacity: number;
   format: string;
-  skill_min: number;
-  skill_max: number;
+  intensity: string;
+  title: string;
   court_name: string;
   court_id: string;
   rsvp_count: number;
@@ -61,8 +61,8 @@ export function LFGNotifications() {
         starts_at,
         capacity,
         format,
-        skill_min,
-        skill_max,
+        intensity,
+        title,
         court_id,
         courts!inner(id, name),
         lfg_rsvps(status, user_id)
@@ -79,8 +79,8 @@ export function LFGNotifications() {
         starts_at: post.starts_at,
         capacity: post.capacity,
         format: post.format,
-        skill_min: post.skill_min,
-        skill_max: post.skill_max,
+        intensity: post.intensity || 'casual',
+        title: post.title || '',
         court_name: post.courts.name,
         court_id: post.courts.id,
         rsvp_count: post.lfg_rsvps.filter((r: any) => r.status === 'yes').length,
@@ -168,8 +168,8 @@ export function LFGNotifications() {
               <div className="flex items-start justify-between">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <Badge variant={hasRSVPd ? "default" : "secondary"}>
-                      {notif.skill_min.toFixed(1)}-{notif.skill_max.toFixed(1)}
+                    <Badge variant={hasRSVPd ? "default" : "secondary"} className="capitalize">
+                      {notif.intensity}
                     </Badge>
                     <Badge variant="outline">{notif.format}</Badge>
                     {hasRSVPd && <Check className="w-4 h-4 text-primary" />}
