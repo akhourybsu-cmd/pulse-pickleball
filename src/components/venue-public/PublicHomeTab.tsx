@@ -8,8 +8,10 @@ import {
   Users, 
   ChevronRight,
   Award,
-  Star
+  Star,
+  ArrowLeft
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { PublicVenue, VenueCourt, VenueEvent, VenueCoach } from '@/hooks/usePublicVenue';
 import { TabId } from './PublicVenueShell';
@@ -32,21 +34,27 @@ export function PublicHomeTab({
   onNavigate,
   onRegisterEvent
 }: PublicHomeTabProps) {
+  const navigate = useNavigate();
   const primaryColor = venue.primary_color || '#FF6B35';
   const secondaryColor = venue.secondary_color || '#004E64';
 
   return (
     <div className="space-y-0">
-      {/* Hero Section */}
+      {/* Hero Section - Dark Premium Background */}
       <section 
         className="relative min-h-[50vh] flex items-center justify-center overflow-hidden"
         style={{
-          background: venue.banner_url 
-            ? `linear-gradient(to bottom, rgba(0,0,0,0.4), rgba(0,0,0,0.6)), url(${venue.banner_url}) center/cover`
-            : `linear-gradient(135deg, ${primaryColor}20, ${secondaryColor}30)`
+          background: 'linear-gradient(to bottom, #121212, #1A1A1A, #222222)'
         }}
       >
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background/80" />
+        {/* Back navigation arrow */}
+        <button 
+          onClick={() => navigate('/')}
+          className="absolute top-4 left-4 z-20 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+          aria-label="Back to dashboard"
+        >
+          <ArrowLeft className="w-5 h-5 text-white" />
+        </button>
         
         <div className="relative z-10 text-center px-4 max-w-4xl mx-auto">
           {/* Logo as primary hero element */}
@@ -62,17 +70,15 @@ export function PublicHomeTab({
             }}
           />
           
-          {/* Tagline - subdued supporting text */}
+          {/* Tagline - light text for dark background */}
           {venue.tagline && (
-            <p 
-              className="text-base md:text-lg mb-6 opacity-75"
-              style={{ color: venue.banner_url ? 'white' : secondaryColor }}
-            >
+            <p className="text-base md:text-lg mb-6 text-white/80">
               {venue.tagline}
             </p>
           )}
           
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            {/* Primary button - gold/brand fill with shadow */}
             <Button 
               size="lg" 
               className="text-base px-6"
@@ -80,20 +86,18 @@ export function PublicHomeTab({
               style={{ 
                 backgroundColor: primaryColor, 
                 color: 'white',
+                boxShadow: '0 4px 14px rgba(0,0,0,0.3)'
               }}
             >
               <Calendar className="w-5 h-5 mr-2" />
               Book a Court
             </Button>
+            {/* Secondary button - outline with light border for dark bg */}
             <Button 
               size="lg" 
               variant="outline"
-              className="text-base px-6 bg-white/90 hover:bg-white"
+              className="text-base px-6 border-white/60 text-white bg-transparent hover:bg-white/10"
               onClick={() => onNavigate('events')}
-              style={{ 
-                borderColor: secondaryColor,
-                color: secondaryColor
-              }}
             >
               View Events
             </Button>
