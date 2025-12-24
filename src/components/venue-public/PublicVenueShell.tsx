@@ -12,6 +12,7 @@ interface PublicVenueShellProps {
   courts: VenueCourt[];
   events: VenueEvent[];
   coaches: VenueCoach[];
+  initialTab?: TabId;
   children: (activeTab: TabId, setActiveTab: (tab: TabId) => void) => React.ReactNode;
 }
 
@@ -33,8 +34,8 @@ function isColorDark(hexColor: string): boolean {
   return luminance < 0.5;
 }
 
-export function PublicVenueShell({ venue, courts, events, coaches, children }: PublicVenueShellProps) {
-  const [activeTab, setActiveTab] = useState<TabId>('home');
+export function PublicVenueShell({ venue, courts, events, coaches, initialTab = 'home', children }: PublicVenueShellProps) {
+  const [activeTab, setActiveTab] = useState<TabId>(initialTab);
   const [isVenueAdmin, setIsVenueAdmin] = useState(false);
   const navigate = useNavigate();
   const primaryColor = venue.primary_color || '#FF6B35';

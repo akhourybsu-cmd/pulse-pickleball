@@ -5,8 +5,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Search, MapPin, Calendar, ClipboardList, Heart } from 'lucide-react';
 import { usePublicVenues } from '@/hooks/usePublicVenues';
-import { usePlayerBookings } from '@/hooks/usePlayerBookings';
-import { useEventRegistration } from '@/hooks/useEventRegistration';
 import { useFavoriteVenues } from '@/hooks/useFavoriteVenues';
 import { VenueDiscoveryCard } from '@/components/player/VenueDiscoveryCard';
 import { VenueDetailSheet } from '@/components/player/VenueDetailSheet';
@@ -15,8 +13,6 @@ export default function VenueDiscovery() {
   const navigate = useNavigate();
   const location = useLocation();
   const { venues, loading } = usePublicVenues();
-  const { createBooking } = usePlayerBookings();
-  const { registerForEvent, isRegistered } = useEventRegistration();
   const { favorites, isFavorite, toggleFavorite, loading: favoritesLoading } = useFavoriteVenues();
   const [search, setSearch] = useState('');
   const [selectedVenueId, setSelectedVenueId] = useState<string | null>(null);
@@ -149,12 +145,10 @@ export default function VenueDiscovery() {
         </div>
       )}
 
+      {/* VENUE DETAIL SHEET - NOW PREVIEW ONLY, NO TRANSACTIONS */}
       <VenueDetailSheet
         venueId={selectedVenueId}
         onClose={() => setSelectedVenueId(null)}
-        onBook={createBooking}
-        onRegisterEvent={registerForEvent}
-        isEventRegistered={isRegistered}
       />
     </div>
   );
