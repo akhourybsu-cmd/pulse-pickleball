@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 import { usePublicVenueDetails } from '@/hooks/usePublicVenues';
 import { FavoriteButton } from './FavoriteButton';
 import { useFavoriteVenues } from '@/hooks/useFavoriteVenues';
+import pickleballPalaceLogo from '@/assets/pickleball-palace-logo.png';
 
 interface VenueDetailSheetProps {
   venueId: string | null;
@@ -87,23 +88,18 @@ export function VenueDetailSheet({ venueId, onClose }: VenueDetailSheetProps) {
                 </svg>
               </button>
 
-              {/* PROMINENT LOGO */}
+              {/* PROMINENT LOGO - Always show with fallback */}
               <div className="flex flex-col items-center text-center">
-                {venue.logo_url ? (
-                  <img 
-                    src={venue.logo_url} 
-                    alt={venue.name} 
-                    className="h-20 w-auto max-w-[180px] object-contain mb-3"
-                  />
-                ) : (
-                  <div 
-                    className="h-20 w-20 rounded-xl flex items-center justify-center mb-3 text-2xl font-bold text-white shadow-lg"
-                    style={{ backgroundColor: primaryColor }}
-                  >
-                    {venueInitials}
-                  </div>
-                )}
-                
+                <img 
+                  src={venue.logo_url || pickleballPalaceLogo} 
+                  alt={venue.name} 
+                  className="h-20 w-auto max-w-[180px] object-contain mb-3"
+                  onError={(e) => {
+                    // Fallback to local asset if URL fails to load
+                    e.currentTarget.src = pickleballPalaceLogo;
+                  }}
+                />
+
                 <h2 className="text-lg font-bold text-foreground">{venue.name}</h2>
                 {venue.city && venue.state && (
                   <p className="text-sm text-muted-foreground">

@@ -55,9 +55,13 @@ export function VenueDiscoveryCard({ venue, onSelect, isFavorite, onToggleFavori
             src={logoSrc} 
             alt={venue.name} 
             className="h-36 max-w-[340px] object-contain"
+            onError={(e) => {
+              // Fallback to local asset if URL fails to load
+              e.currentTarget.src = pickleballPalaceLogo;
+            }}
           />
         </div>
-        
+
         {/* Location info */}
         {(venue.city || venue.address) && (
           <div 
