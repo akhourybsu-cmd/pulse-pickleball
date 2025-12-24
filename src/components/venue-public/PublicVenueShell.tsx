@@ -71,42 +71,44 @@ export function PublicVenueShell({ venue, courts, events, coaches, children }: P
         '--venue-secondary': secondaryColor,
       } as React.CSSProperties}
     >
-      {/* Sticky Header with venue branding */}
+      {/* Sticky Header with venue branding - slim and compact */}
       <header 
-        className="sticky top-0 z-50 border-b"
+        className="sticky top-0 z-50 border-b h-14"
         style={{
           backgroundColor: `${primaryColor}08`,
           borderColor: `${primaryColor}20`,
         }}
       >
-        <div className="flex flex-col items-center py-4 px-4">
+        <div className="relative flex items-center justify-center h-full px-4">
+          {/* Back button - positioned absolutely so it doesn't affect logo centering */}
           <Button 
             variant="ghost" 
             size="icon" 
             onClick={() => navigate(-1)}
-            className="absolute left-4 top-4"
+            className="absolute left-2 h-9 w-9"
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
           
-          {/* Admin toggle button for venue owners/staff */}
+          {/* Centered logo - takes up ~70-80% of header height */}
+          <img 
+            src={logoSrc} 
+            alt={venue.name}
+            className="h-10 max-w-[200px] object-contain"
+          />
+          
+          {/* Admin toggle button for venue owners/staff - positioned absolutely */}
           {isVenueAdmin && (
             <Button
               variant="outline"
               size="sm"
               onClick={() => navigate('/venue')}
-              className="absolute right-4 top-4 gap-2"
+              className="absolute right-2 gap-1.5 h-8 text-xs"
             >
-              <Settings className="h-4 w-4" />
+              <Settings className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Admin</span>
             </Button>
           )}
-          
-          <img 
-            src={logoSrc} 
-            alt={venue.name}
-            className="h-20 max-w-[280px] object-contain"
-          />
         </div>
       </header>
 
