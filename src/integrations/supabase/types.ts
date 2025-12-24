@@ -3280,6 +3280,60 @@ export type Database = {
           },
         ]
       }
+      venue_inquiries: {
+        Row: {
+          city: string | null
+          contact_name: string
+          court_count: string | null
+          created_at: string
+          current_booking_method: string | null
+          email: string
+          facility_type: string | null
+          id: string
+          message: string | null
+          phone: string | null
+          referral_source: string | null
+          state: string | null
+          status: string
+          updated_at: string
+          venue_name: string
+        }
+        Insert: {
+          city?: string | null
+          contact_name: string
+          court_count?: string | null
+          created_at?: string
+          current_booking_method?: string | null
+          email: string
+          facility_type?: string | null
+          id?: string
+          message?: string | null
+          phone?: string | null
+          referral_source?: string | null
+          state?: string | null
+          status?: string
+          updated_at?: string
+          venue_name: string
+        }
+        Update: {
+          city?: string | null
+          contact_name?: string
+          court_count?: string | null
+          created_at?: string
+          current_booking_method?: string | null
+          email?: string
+          facility_type?: string | null
+          id?: string
+          message?: string | null
+          phone?: string | null
+          referral_source?: string | null
+          state?: string | null
+          status?: string
+          updated_at?: string
+          venue_name?: string
+        }
+        Relationships: []
+      }
       venue_lessons: {
         Row: {
           coach_id: string

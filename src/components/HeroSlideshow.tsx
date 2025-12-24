@@ -37,9 +37,9 @@ const slides: Slide[] = [
   },
   {
     title: "Your Local Community",
-    subtitle: "PULSE is designed specifically for pickleball players in Southeastern Massachusetts and Rhode Island. Track your progress and compete within your regional community.",
+    subtitle: "Connect with players in your area — local play, global standards. Track your progress and compete within your regional community.",
     icon: <Trophy className="w-16 h-16 mx-auto mb-4 text-secondary" />,
-    cta: "Join Your Region"
+    cta: "Join Your Community"
   }
 ];
 

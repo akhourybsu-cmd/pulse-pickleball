@@ -55,7 +55,7 @@ export const ProfileHero = ({
       {/* Navigation Header - 72px height with shadow */}
       <nav className="bg-secondary border-b border-secondary-foreground/10 shadow-sm">
         <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-5 flex items-center justify-between h-[72px]">
-          <Link to="/dashboard" className="ml-2">
+          <Link to="/" className="ml-2">
             <img 
               src={logo} 
               alt="PULSE Logo" 
