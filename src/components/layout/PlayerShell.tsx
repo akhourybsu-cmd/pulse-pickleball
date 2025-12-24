@@ -26,6 +26,12 @@ export function PlayerShell() {
   // Hide shell header on dashboard since it has its own ProfileHero header
   const isDashboard = location.pathname === '/player/dashboard';
 
+  // Calculate active tab index for sliding indicator
+  const activeIndex = navItems.findIndex(item => 
+    location.pathname === item.to || 
+    (item.to !== '/player/dashboard' && location.pathname.startsWith(item.to))
+  );
+
   useEffect(() => {
     const fetchUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -103,7 +109,16 @@ export function PlayerShell() {
       </main>
 
       {/* Bottom Navigation - Mobile Only */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-card/95 backdrop-blur-sm md:hidden">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-card/95 backdrop-blur-sm md:hidden pb-[env(safe-area-inset-bottom)]">
+        {/* Sliding active indicator */}
+        <div
+          className="absolute top-0 h-[3px] bg-primary rounded-full transition-transform duration-[240ms] ease-out"
+          style={{
+            width: `${60 / navItems.length}%`,
+            left: `${(100 / navItems.length - 60 / navItems.length) / 2}%`,
+            transform: `translateX(${activeIndex * (100 / (60 / navItems.length))}%)`,
+          }}
+        />
         <div className="flex items-center justify-around py-2">
           {navItems.map((item) => {
             const isActive = location.pathname === item.to || 
@@ -114,13 +129,14 @@ export function PlayerShell() {
                 key={item.to}
                 to={item.to}
                 className={cn(
-                  'flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-colors min-w-[60px]',
+                  'flex flex-col items-center gap-1 px-3 py-2 rounded-lg min-w-[60px]',
+                  'transition-colors duration-[240ms] ease-out',
                   isActive 
                     ? 'text-primary' 
                     : 'text-muted-foreground hover:text-foreground'
                 )}
               >
-                <item.icon className={cn('h-5 w-5', isActive && 'text-primary')} />
+                <item.icon className={cn('h-5 w-5 transition-colors duration-[240ms] ease-out', isActive && 'text-primary')} />
                 <span className="text-xs font-medium">{item.label}</span>
               </NavLink>
             );
@@ -130,7 +146,16 @@ export function PlayerShell() {
 
       {/* Desktop Horizontal Nav */}
       <nav className="hidden md:block fixed bottom-0 left-0 right-0 z-50 border-t bg-card/95 backdrop-blur-sm">
-        <div className="container mx-auto px-4">
+        <div className="container mx-auto px-4 relative">
+          {/* Sliding active indicator for desktop */}
+          <div
+            className="absolute top-0 left-1/2 h-[3px] bg-primary rounded-full transition-transform duration-[240ms] ease-out"
+            style={{
+              width: '60px',
+              marginLeft: '-30px',
+              transform: `translateX(${(activeIndex - Math.floor(navItems.length / 2)) * 120}px)`,
+            }}
+          />
           <div className="flex items-center justify-center gap-8 py-3">
             {navItems.map((item) => {
               const isActive = location.pathname === item.to || 
@@ -141,13 +166,14 @@ export function PlayerShell() {
                   key={item.to}
                   to={item.to}
                   className={cn(
-                    'flex items-center gap-2 px-4 py-2 rounded-lg transition-colors',
+                    'flex items-center gap-2 px-4 py-2 rounded-lg',
+                    'transition-colors duration-[240ms] ease-out',
                     isActive 
                       ? 'bg-primary/10 text-primary font-medium' 
                       : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                   )}
                 >
-                  <item.icon className="h-4 w-4" />
+                  <item.icon className={cn('h-4 w-4 transition-colors duration-[240ms] ease-out')} />
                   <span className="text-sm">{item.label}</span>
                 </NavLink>
               );
