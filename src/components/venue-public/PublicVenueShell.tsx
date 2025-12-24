@@ -1,11 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Home, Calendar, CalendarDays, Award, Info, Zap, ArrowLeft, Settings } from 'lucide-react';
+import { Home, Calendar, CalendarDays, Award, Info, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 import { PublicVenue, VenueCourt, VenueEvent, VenueCoach } from '@/hooks/usePublicVenue';
 import { supabase } from '@/integrations/supabase/client';
-import pickleballPalaceLogo from '@/assets/pickleball-palace-logo.png';
 
 export type TabId = 'home' | 'schedule' | 'events' | 'coaching' | 'info';
 
@@ -42,9 +40,6 @@ export function PublicVenueShell({ venue, courts, events, coaches, children }: P
   const primaryColor = venue.primary_color || '#FF6B35';
   const secondaryColor = venue.secondary_color || '#004E64';
 
-  // Use the Pickleball Palace logo as fallback if no venue logo
-  const logoSrc = venue.logo_url || pickleballPalaceLogo;
-
   // Check if current user is venue owner or staff
   useEffect(() => {
     const checkVenueAccess = async () => {
@@ -73,12 +68,6 @@ export function PublicVenueShell({ venue, courts, events, coaches, children }: P
     return true;
   });
 
-  // Determine if secondary color is dark (for header background)
-  const isDarkSecondary = isColorDark(secondaryColor);
-  // Use secondary as header background for a branded look
-  const headerBg = secondaryColor;
-  const headerTextColor = isDarkSecondary ? '#FFFFFF' : '#1A1A1A';
-
   return (
     <div 
       className="min-h-screen flex flex-col bg-background"
@@ -87,51 +76,7 @@ export function PublicVenueShell({ venue, courts, events, coaches, children }: P
         '--venue-secondary': secondaryColor,
       } as React.CSSProperties}
     >
-      {/* Sticky Header - navigation only, fixed 60px height */}
-      <header 
-        className="sticky top-0 z-50 border-b flex-shrink-0"
-        style={{
-          height: '60px',
-          minHeight: '60px',
-          maxHeight: '60px',
-          backgroundColor: headerBg,
-          borderColor: `${primaryColor}40`,
-        }}
-      >
-        <div className="relative flex items-center justify-between h-full px-4">
-          {/* Back button */}
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => navigate(-1)}
-            className="h-9 w-9 hover:bg-white/10"
-            style={{ color: headerTextColor }}
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          
-          {/* Admin button for venue owners/staff */}
-          {isVenueAdmin ? (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate('/venue')}
-              className="gap-1.5 h-8 text-xs border-current"
-              style={{ 
-                color: primaryColor, 
-                borderColor: primaryColor,
-                backgroundColor: 'transparent'
-              }}
-            >
-              <Settings className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Admin</span>
-            </Button>
-          ) : (
-            <div className="w-9" /> 
-          )}
-        </div>
-      </header>
-      {/* Main Content */}
+      {/* Main Content - no header, content starts at top */}
       <main className="flex-1 pb-20 md:pb-6">
         {children(activeTab, setActiveTab)}
       </main>
