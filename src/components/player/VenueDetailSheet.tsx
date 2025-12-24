@@ -1,11 +1,11 @@
 import { useNavigate } from 'react-router-dom';
-import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { PeekDrawer, PeekDrawerContent, PeekDrawerTitle } from '@/components/ui/peek-drawer';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { MapPin, Phone, Mail, Globe, Calendar, Clock, DollarSign, Users, Trophy, ExternalLink, ArrowRight } from 'lucide-react';
+import { MapPin, Phone, Mail, Globe, Calendar, Clock, Users, Trophy, ExternalLink, ArrowRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { usePublicVenueDetails } from '@/hooks/usePublicVenues';
 import { FavoriteButton } from './FavoriteButton';
@@ -43,31 +43,49 @@ export function VenueDetailSheet({ venueId, onClose }: VenueDetailSheetProps) {
     : 'V';
 
   return (
-    <Sheet open={!!venueId} onOpenChange={() => onClose()}>
-      <SheetContent className="w-full sm:max-w-xl overflow-y-auto p-0">
+    <PeekDrawer open={!!venueId} onOpenChange={() => onClose()}>
+      <PeekDrawerContent className="flex flex-col" hideCloseButton>
+        {/* Hidden title for accessibility */}
+        <PeekDrawerTitle className="sr-only">
+          {venue?.name || 'Venue Details'}
+        </PeekDrawerTitle>
+        
         {loading ? (
           <div className="p-6 space-y-4">
             <Skeleton className="h-24 w-24 mx-auto rounded-xl" />
             <Skeleton className="h-6 w-48 mx-auto" />
             <Skeleton className="h-4 w-32 mx-auto" />
+            <Skeleton className="h-12 w-full rounded-full" />
             <Skeleton className="h-32 w-full" />
           </div>
         ) : venue ? (
           <>
-            {/* VENUE HEADER WITH BRANDING */}
+            {/* STICKY HEADER - Logo, Name, View Full Site CTA */}
             <div 
-              className="relative px-6 pt-8 pb-6"
+              className="sticky top-0 z-10 px-6 pt-6 pb-4"
               style={{ 
-                background: `linear-gradient(135deg, ${secondaryColor}15 0%, ${primaryColor}10 100%)` 
+                background: `linear-gradient(135deg, ${secondaryColor}15 0%, ${primaryColor}10 100%)`,
+                borderBottom: `1px solid ${primaryColor}20`
               }}
             >
-              {/* Favorite Button - Top Right */}
-              <div className="absolute top-4 right-4">
+              {/* Favorite Button - Top Right (moved from close button position) */}
+              <div className="absolute top-4 right-14">
                 <FavoriteButton
                   isFavorite={isFavorite(venue.id)}
                   onToggle={() => toggleFavorite(venue.id)}
                 />
               </div>
+
+              {/* Close Button - Top Right */}
+              <button
+                onClick={onClose}
+                className="absolute right-4 top-4 rounded-full p-2 bg-background/80 backdrop-blur-sm ring-offset-background transition-all hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              >
+                <span className="sr-only">Close</span>
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
+                </svg>
+              </button>
 
               {/* PROMINENT LOGO */}
               <div className="flex flex-col items-center text-center">
@@ -75,80 +93,101 @@ export function VenueDetailSheet({ venueId, onClose }: VenueDetailSheetProps) {
                   <img 
                     src={venue.logo_url} 
                     alt={venue.name} 
-                    className="h-20 w-auto max-w-[180px] object-contain mb-4"
+                    className="h-20 w-auto max-w-[180px] object-contain mb-3"
                   />
                 ) : (
                   <div 
-                    className="h-20 w-20 rounded-xl flex items-center justify-center mb-4 text-2xl font-bold text-white"
+                    className="h-20 w-20 rounded-xl flex items-center justify-center mb-3 text-2xl font-bold text-white shadow-lg"
                     style={{ backgroundColor: primaryColor }}
                   >
                     {venueInitials}
                   </div>
                 )}
                 
-                <h2 className="text-xl font-bold text-foreground">{venue.name}</h2>
+                <h2 className="text-lg font-bold text-foreground">{venue.name}</h2>
                 {venue.city && venue.state && (
-                  <p className="text-sm text-muted-foreground mt-1">
+                  <p className="text-sm text-muted-foreground">
                     {venue.city}, {venue.state}
                   </p>
                 )}
+
+                {/* VIEW FULL SITE - TOP PLACEMENT (Critical) */}
+                <Button 
+                  onClick={() => navigateToVenue()} 
+                  className="w-full mt-4 rounded-full text-base font-semibold shadow-lg"
+                  style={{ 
+                    backgroundColor: primaryColor,
+                    color: '#FFFFFF'
+                  }}
+                >
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  View Full Site
+                </Button>
               </div>
             </div>
 
-            {/* MAIN CONTENT */}
-            <div className="px-6 pb-6">
+            {/* SCROLLABLE CONTENT */}
+            <div className="flex-1 overflow-y-auto px-6 pb-6">
               {/* Description */}
               {venue.description && (
-                <p className="text-sm text-muted-foreground mb-4">{venue.description}</p>
+                <p className="text-sm text-muted-foreground mt-4 mb-4">{venue.description}</p>
               )}
 
               {/* Contact Info */}
-              <div className="flex flex-wrap gap-3 text-sm text-muted-foreground mb-6">
+              <div className="flex flex-wrap gap-3 text-sm text-muted-foreground mb-5">
                 {venue.address && (
                   <div className="flex items-center gap-1.5">
-                    <MapPin className="h-3.5 w-3.5" />
+                    <MapPin className="h-3.5 w-3.5" style={{ color: primaryColor }} />
                     <span>{venue.address}</span>
                   </div>
                 )}
                 {venue.phone && (
                   <div className="flex items-center gap-1.5">
-                    <Phone className="h-3.5 w-3.5" />
+                    <Phone className="h-3.5 w-3.5" style={{ color: primaryColor }} />
                     <a href={`tel:${venue.phone}`} className="hover:text-foreground transition-colors">{venue.phone}</a>
                   </div>
                 )}
                 {venue.email && (
                   <div className="flex items-center gap-1.5">
-                    <Mail className="h-3.5 w-3.5" />
+                    <Mail className="h-3.5 w-3.5" style={{ color: primaryColor }} />
                     <a href={`mailto:${venue.email}`} className="hover:text-foreground transition-colors">{venue.email}</a>
                   </div>
                 )}
                 {venue.website && (
                   <div className="flex items-center gap-1.5">
-                    <Globe className="h-3.5 w-3.5" />
+                    <Globe className="h-3.5 w-3.5" style={{ color: primaryColor }} />
                     <a href={venue.website} target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">Website</a>
                   </div>
                 )}
               </div>
 
+              {/* Divider with brand accent */}
+              <div 
+                className="h-px w-full mb-5" 
+                style={{ background: `linear-gradient(90deg, transparent, ${primaryColor}40, transparent)` }}
+              />
+
               {/* TABS - PREVIEW ONLY */}
               <Tabs defaultValue="courts" className="w-full">
-                <TabsList className="w-full">
+                <TabsList className="w-full bg-muted/50">
                   <TabsTrigger 
                     value="courts" 
-                    className="flex-1 data-[state=active]:text-primary"
-                    style={{ '--tw-text-opacity': 1 } as React.CSSProperties}
+                    className="flex-1 data-[state=active]:shadow-sm"
+                    style={{ 
+                      '--active-color': primaryColor 
+                    } as React.CSSProperties}
                   >
                     Courts
                   </TabsTrigger>
                   <TabsTrigger 
                     value="events" 
-                    className="flex-1 data-[state=active]:text-primary"
+                    className="flex-1 data-[state=active]:shadow-sm"
                   >
                     Events
                   </TabsTrigger>
                   <TabsTrigger 
                     value="coaching" 
-                    className="flex-1 data-[state=active]:text-primary"
+                    className="flex-1 data-[state=active]:shadow-sm"
                   >
                     Coaching
                   </TabsTrigger>
@@ -159,7 +198,7 @@ export function VenueDetailSheet({ venueId, onClose }: VenueDetailSheetProps) {
                   {courts.length > 0 ? (
                     <>
                       {courts.slice(0, 3).map(court => (
-                        <Card key={court.id} className="border-border/50">
+                        <Card key={court.id} className="border-border/50 hover:border-border transition-colors">
                           <CardContent className="p-4">
                             <div className="flex justify-between items-start">
                               <div>
@@ -186,8 +225,8 @@ export function VenueDetailSheet({ venueId, onClose }: VenueDetailSheetProps) {
                       {/* NAVIGATION CTA - NO TRANSACTION */}
                       <Button 
                         onClick={() => navigateToVenue('schedule')} 
-                        className="w-full mt-2"
-                        style={{ backgroundColor: primaryColor }}
+                        className="w-full mt-2 rounded-full"
+                        style={{ backgroundColor: primaryColor, color: '#FFFFFF' }}
                       >
                         Reserve Court Time
                         <ArrowRight className="w-4 h-4 ml-2" />
@@ -246,7 +285,7 @@ export function VenueDetailSheet({ venueId, onClose }: VenueDetailSheetProps) {
                       <Button 
                         variant="outline"
                         onClick={() => navigateToVenue('events')} 
-                        className="w-full mt-2"
+                        className="w-full mt-2 rounded-full"
                       >
                         View Event Details
                         <ArrowRight className="w-4 h-4 ml-2" />
@@ -262,7 +301,7 @@ export function VenueDetailSheet({ venueId, onClose }: VenueDetailSheetProps) {
                   {coaches.length > 0 ? (
                     <>
                       {coaches.slice(0, 3).map(coach => (
-                        <Card key={coach.id} className="border-border/50">
+                        <Card key={coach.id} className="border-border/50 hover:border-border transition-colors">
                           <CardContent className="p-4">
                             <div className="flex items-start gap-3">
                               {coach.avatar_url ? (
@@ -302,7 +341,7 @@ export function VenueDetailSheet({ venueId, onClose }: VenueDetailSheetProps) {
                       <Button 
                         variant="outline"
                         onClick={() => navigateToVenue('coaching')} 
-                        className="w-full mt-2"
+                        className="w-full mt-2 rounded-full"
                       >
                         Learn More About Coaching
                         <ArrowRight className="w-4 h-4 ml-2" />
@@ -313,18 +352,6 @@ export function VenueDetailSheet({ venueId, onClose }: VenueDetailSheetProps) {
                   )}
                 </TabsContent>
               </Tabs>
-
-              {/* PERSISTENT FOOTER CTA */}
-              <div className="mt-6 pt-4 border-t border-border">
-                <Button 
-                  onClick={() => navigateToVenue()} 
-                  className="w-full"
-                  style={{ backgroundColor: primaryColor }}
-                >
-                  <ExternalLink className="w-4 h-4 mr-2" />
-                  View Full Venue Page
-                </Button>
-              </div>
             </div>
           </>
         ) : (
@@ -332,7 +359,7 @@ export function VenueDetailSheet({ venueId, onClose }: VenueDetailSheetProps) {
             <p className="text-center text-muted-foreground py-8">Venue not found</p>
           </div>
         )}
-      </SheetContent>
-    </Sheet>
+      </PeekDrawerContent>
+    </PeekDrawer>
   );
 }
