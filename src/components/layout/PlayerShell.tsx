@@ -112,11 +112,10 @@ export function PlayerShell() {
       <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-card/95 backdrop-blur-sm md:hidden pb-[env(safe-area-inset-bottom)]">
         {/* Sliding active indicator */}
         <div
-          className="absolute top-0 h-[3px] bg-primary rounded-full transition-transform duration-[240ms] ease-out"
+          className="absolute top-0 h-[3px] bg-primary rounded-full transition-all duration-[240ms] ease-out"
           style={{
-            width: `${60 / navItems.length}%`,
-            left: `${(100 / navItems.length - 60 / navItems.length) / 2}%`,
-            transform: `translateX(${activeIndex * (100 / (60 / navItems.length))}%)`,
+            width: `${100 / navItems.length * 0.6}%`,
+            left: `${(100 / navItems.length) * activeIndex + (100 / navItems.length) * 0.2}%`,
           }}
         />
         <div className="flex items-center justify-around py-2">
