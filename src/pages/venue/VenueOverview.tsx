@@ -25,7 +25,7 @@ import {
   BarChart3
 } from 'lucide-react';
 import { isToday, isFuture } from 'date-fns';
-import pickleballPalaceLogo from '@/assets/pickleball-palace-logo.png';
+import { getVenueLogoSrc, getVenueLogoFallback } from '@/lib/venueBranding';
 
 export default function VenueOverview() {
   const navigate = useNavigate();
@@ -46,8 +46,8 @@ export default function VenueOverview() {
     e.is_published && (isFuture(new Date(e.start_time)) || isToday(new Date(e.start_time)))
   ).length;
 
-  // Use dynamic logo from venue record, fallback to Pickleball Palace logo
-  const logoSrc = currentVenue?.logo_url || pickleballPalaceLogo;
+  // Use centralized branding helper for reliable logo display
+  const logoSrc = getVenueLogoSrc(currentVenue?.logo_url, currentVenue?.venue_name);
 
   // Setup steps with completion status
   const setupSteps = [
@@ -67,7 +67,7 @@ export default function VenueOverview() {
           alt={currentVenue?.venue_name || "Venue"} 
           className="h-14 w-auto hidden sm:block"
           onError={(e) => {
-            e.currentTarget.src = pickleballPalaceLogo;
+            e.currentTarget.src = getVenueLogoFallback();
           }}
         />
         <div>

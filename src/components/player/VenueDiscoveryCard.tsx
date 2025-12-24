@@ -3,14 +3,7 @@ import { Button } from '@/components/ui/button';
 import { MapPin, ChevronRight } from 'lucide-react';
 import { PublicVenue } from '@/hooks/usePublicVenues';
 import { FavoriteButton } from './FavoriteButton';
-import pickleballPalaceLogo from '@/assets/pickleball-palace-logo.png';
-
-interface VenueDiscoveryCardProps {
-  venue: PublicVenue;
-  onSelect: (venueId: string) => void;
-  isFavorite?: boolean;
-  onToggleFavorite?: () => Promise<boolean>;
-}
+import { getVenueLogoSrc, getVenueLogoFallback } from '@/lib/venueBranding';
 
 // Helper to determine if a hex color is dark
 function isColorDark(hexColor: string): boolean {
@@ -22,10 +15,17 @@ function isColorDark(hexColor: string): boolean {
   return luminance < 0.5;
 }
 
+interface VenueDiscoveryCardProps {
+  venue: PublicVenue;
+  onSelect: (venueId: string) => void;
+  isFavorite?: boolean;
+  onToggleFavorite?: () => Promise<boolean>;
+}
+
 export function VenueDiscoveryCard({ venue, onSelect, isFavorite, onToggleFavorite }: VenueDiscoveryCardProps) {
   const primaryColor = venue.primary_color || '#FF6B35';
   const secondaryColor = venue.secondary_color || '#004E64';
-  const logoSrc = venue.logo_url || pickleballPalaceLogo;
+  const logoSrc = getVenueLogoSrc(venue.logo_url, venue.name, venue.slug);
   
   const isDarkTheme = isColorDark(secondaryColor);
 
@@ -56,8 +56,7 @@ export function VenueDiscoveryCard({ venue, onSelect, isFavorite, onToggleFavori
             alt={venue.name} 
             className="h-36 max-w-[340px] object-contain"
             onError={(e) => {
-              // Fallback to local asset if URL fails to load
-              e.currentTarget.src = pickleballPalaceLogo;
+              e.currentTarget.src = getVenueLogoFallback();
             }}
           />
         </div>
