@@ -30,6 +30,15 @@ const navItems = [
   { to: '/venue/settings', icon: Settings, label: 'Settings' },
 ];
 
+// Bottom nav items (subset for mobile/desktop bottom bar)
+const bottomNavItems = [
+  { to: '/venue', icon: LayoutDashboard, label: 'Overview', end: true },
+  { to: '/venue/courts', icon: MapPin, label: 'Courts' },
+  { to: '/venue/bookings', icon: Calendar, label: 'Bookings' },
+  { to: '/venue/events', icon: CalendarDays, label: 'Events' },
+  { to: '/venue/settings', icon: Settings, label: 'Settings' },
+];
+
 interface VenueTheme {
   primary: string;
   primaryForeground: string;
@@ -137,9 +146,17 @@ export function VenueShell() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { currentVenue } = useMode();
   const venueTheme = useVenueTheme();
+  const location = useLocation();
 
   // Use centralized branding helper for reliable logo display
   const logoSrc = getVenueLogoSrc(currentVenue?.logo_url, currentVenue?.venue_name);
+
+  // Calculate active tab index for sliding indicator
+  const activeIndex = bottomNavItems.findIndex(item => 
+    item.end 
+      ? location.pathname === item.to
+      : location.pathname.startsWith(item.to)
+  );
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -181,11 +198,103 @@ export function VenueShell() {
       </div>
 
       {/* Main Content */}
-      <main className="flex-1 lg:ml-64 pt-16 lg:pt-0">
+      <main className="flex-1 lg:ml-64 pt-16 lg:pt-0 pb-24 lg:pb-0">
         <div className="min-h-screen">
           <Outlet />
         </div>
       </main>
+
+      {/* Bottom Navigation - Mobile Only */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 border-t bg-card/95 backdrop-blur-sm pb-[env(safe-area-inset-bottom)]">
+        {/* Sliding active indicator */}
+        <div
+          className="absolute top-0 h-[3px] rounded-full transition-all duration-[240ms] ease-out"
+          style={{
+            backgroundColor: venueTheme.primary,
+            width: `${100 / bottomNavItems.length * 0.6}%`,
+            left: activeIndex >= 0 ? `${(100 / bottomNavItems.length) * activeIndex + (100 / bottomNavItems.length) * 0.2}%` : '0%',
+            opacity: activeIndex >= 0 ? 1 : 0,
+          }}
+        />
+        <div className="flex items-center justify-around py-2">
+          {bottomNavItems.map((item) => {
+            const isActive = item.end 
+              ? location.pathname === item.to
+              : location.pathname.startsWith(item.to);
+            
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.end}
+                className={cn(
+                  'flex flex-col items-center gap-1 px-3 py-2 rounded-lg min-w-[60px]',
+                  'transition-colors duration-[240ms] ease-out',
+                  isActive 
+                    ? 'font-medium' 
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+                style={isActive ? { color: venueTheme.primary } : undefined}
+              >
+                <item.icon 
+                  className="h-5 w-5 transition-colors duration-[240ms] ease-out"
+                  style={isActive ? { color: venueTheme.primary } : undefined}
+                />
+                <span className="text-xs font-medium">{item.label}</span>
+              </NavLink>
+            );
+          })}
+        </div>
+      </nav>
+
+      {/* Desktop Bottom Nav */}
+      <nav className="hidden lg:block fixed bottom-0 left-64 right-0 z-50 border-t bg-card/95 backdrop-blur-sm">
+        <div className="container mx-auto px-4 relative">
+          {/* Sliding active indicator for desktop */}
+          <div
+            className="absolute top-0 left-1/2 h-[3px] rounded-full transition-transform duration-[240ms] ease-out"
+            style={{
+              backgroundColor: venueTheme.primary,
+              width: '60px',
+              marginLeft: '-30px',
+              transform: activeIndex >= 0 ? `translateX(${(activeIndex - Math.floor(bottomNavItems.length / 2)) * 120}px)` : 'translateX(0)',
+              opacity: activeIndex >= 0 ? 1 : 0,
+            }}
+          />
+          <div className="flex items-center justify-center gap-8 py-3">
+            {bottomNavItems.map((item) => {
+              const isActive = item.end 
+                ? location.pathname === item.to
+                : location.pathname.startsWith(item.to);
+              
+              return (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.end}
+                  className={cn(
+                    'flex items-center gap-2 px-4 py-2 rounded-lg',
+                    'transition-colors duration-[240ms] ease-out',
+                    isActive 
+                      ? 'font-medium' 
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                  )}
+                  style={isActive ? { 
+                    backgroundColor: `${venueTheme.primary}15`,
+                    color: venueTheme.primary 
+                  } : undefined}
+                >
+                  <item.icon 
+                    className="h-4 w-4 transition-colors duration-[240ms] ease-out"
+                    style={isActive ? { color: venueTheme.primary } : undefined}
+                  />
+                  <span className="text-sm">{item.label}</span>
+                </NavLink>
+              );
+            })}
+          </div>
+        </div>
+      </nav>
     </div>
   );
 }
