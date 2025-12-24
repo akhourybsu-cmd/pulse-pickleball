@@ -1,31 +1,35 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { format } from "date-fns";
-import { Trophy, Calendar, ChevronRight } from "lucide-react";
-import { MatchCard } from "./MatchCard";
+import { format, isToday, isTomorrow, differenceInHours } from "date-fns";
+import { 
+  AlertCircle, 
+  Calendar, 
+  ChevronRight, 
+  CheckCircle2,
+  Clock,
+  Bell
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
-interface Match {
+interface ActionItem {
   id: string;
-  match_date: string;
-  team1_score: number;
-  team2_score: number;
-  userTeam: number;
-  team1Players: { id: string; name: string; initials: string }[];
-  team2Players: { id: string; name: string; initials: string }[];
-  courtName: string | null;
-  location: string | null;
-  eventName: string | null;
-  ratingChange?: number;
+  type: "verify_match" | "event_soon" | "booking_soon" | "check_in";
+  title: string;
+  description: string;
+  link: string;
+  urgency: "high" | "medium" | "low";
+  timestamp?: string;
 }
 
-interface UpcomingEvent {
+interface SystemUpdate {
   id: string;
-  name: string;
-  date: string;
-  location: string | null;
-  type: "round_robin" | "citi_event" | "calendar_event";
+  type: "match_recorded" | "event_confirmed" | "rating_updated";
+  title: string;
+  description: string;
+  timestamp: string;
+  link?: string;
 }
 
 interface ActivityModuleProps {
@@ -34,8 +38,9 @@ interface ActivityModuleProps {
 
 export const ActivityModule = ({ userId }: ActivityModuleProps) => {
   const navigate = useNavigate();
-  const [matches, setMatches] = useState<Match[]>([]);
-  const [events, setEvents] = useState<UpcomingEvent[]>([]);
+  const [actionItems, setActionItems] = useState<ActionItem[]>([]);
+  const [alerts, setAlerts] = useState<ActionItem[]>([]);
+  const [systemUpdates, setSystemUpdates] = useState<SystemUpdate[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -43,224 +48,323 @@ export const ActivityModule = ({ userId }: ActivityModuleProps) => {
 
     const fetchActivity = async () => {
       setLoading(true);
+      const actions: ActionItem[] = [];
+      const timeAlerts: ActionItem[] = [];
+      const updates: SystemUpdate[] = [];
 
-      // Fetch recent matches with full participant info
-      const { data: participations } = await supabase
+      // 1. Fetch pending match verifications (matches where user is participant but hasn't verified)
+      const { data: pendingMatches } = await supabase
         .from("match_participants")
         .select(`
-          team,
-          rating_change,
-          match:matches (
+          match_id,
+          match:matches!inner (
             id,
             match_date,
             team1_score,
             team2_score,
-            court:courts (name, city, state),
-            event:events (name)
+            status,
+            verified_by,
+            created_at
           )
         `)
         .eq("player_id", userId)
-        .order("created_at", { ascending: false })
-        .limit(10);
+        .eq("matches.status", "pending");
 
-      if (participations) {
-        const matchData: Match[] = [];
-        
-        for (const p of participations) {
-          if (!p.match) continue;
+      if (pendingMatches) {
+        for (const p of pendingMatches) {
           const match = p.match as any;
-          
-          // Get all participants for this match
-          const { data: allParticipants } = await supabase
-            .from("match_participants")
-            .select("player_id, team, player:profiles!match_participants_player_id_fkey(id, display_name, full_name, first_name, last_name)")
-            .eq("match_id", match.id);
-
-          const team1Players: { id: string; name: string; initials: string }[] = [];
-          const team2Players: { id: string; name: string; initials: string }[] = [];
-
-          allParticipants?.forEach((participant: any) => {
-            const player = participant.player;
-            const name = player?.display_name || player?.full_name || 
-              `${player?.first_name || ''} ${player?.last_name || ''}`.trim() || 'Unknown';
-            const initials = name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
-            
-            const playerData = { id: player?.id || '', name, initials };
-            
-            if (participant.team === 1) {
-              team1Players.push(playerData);
-            } else {
-              team2Players.push(playerData);
-            }
-          });
-
-          matchData.push({
-            id: match.id,
-            match_date: match.match_date,
-            team1_score: match.team1_score,
-            team2_score: match.team2_score,
-            userTeam: p.team,
-            team1Players,
-            team2Players,
-            courtName: match.court?.name || null,
-            location: match.court ? `${match.court.city}, ${match.court.state}` : null,
-            eventName: match.event?.name || null,
-            ratingChange: p.rating_change,
-          });
-        }
-        
-        setMatches(matchData);
-      }
-
-      // Fetch upcoming round robin events user is registered for
-      const { data: rrEvents } = await supabase
-        .from("round_robin_events")
-        .select("id, name, date, location, status")
-        .gte("date", new Date().toISOString().split("T")[0])
-        .in("status", ["draft", "live"])
-        .order("date", { ascending: true })
-        .limit(10);
-
-      const upcomingEvents: UpcomingEvent[] = [];
-      
-      if (rrEvents) {
-        // Check which events user is registered for using round_robin_players table
-        const eventIds = rrEvents.map(e => e.id);
-        const { data: registrations } = await supabase
-          .from("round_robin_players")
-          .select("event_id")
-          .eq("player_id", userId)
-          .eq("active", true)
-          .in("event_id", eventIds);
-        
-        const registeredEventIds = new Set(registrations?.map((r) => r.event_id) || []);
-        
-        for (const event of rrEvents) {
-          if (registeredEventIds.has(event.id)) {
-            upcomingEvents.push({
-              id: event.id,
-              name: event.name,
-              date: event.date,
-              location: event.location,
-              type: "round_robin",
+          // Check if user hasn't verified yet
+          const verifiedBy = match.verified_by || [];
+          if (!verifiedBy.includes(userId)) {
+            actions.push({
+              id: `verify-${match.id}`,
+              type: "verify_match",
+              title: "Verify Match Result",
+              description: `${match.team1_score}-${match.team2_score} on ${format(new Date(match.match_date), "MMM d")}`,
+              link: `/match/confirmation/${match.id}`,
+              urgency: "high",
+              timestamp: match.created_at,
             });
           }
         }
       }
 
-      // Sort by date
-      upcomingEvents.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-      setEvents(upcomingEvents.slice(0, 5));
+      // 2. Fetch upcoming round robin events (within 48 hours)
+      const now = new Date();
+      const in48Hours = new Date(now.getTime() + 48 * 60 * 60 * 1000);
       
+      const { data: upcomingRREvents } = await supabase
+        .from("round_robin_players")
+        .select(`
+          event:round_robin_events!inner (
+            id,
+            name,
+            date,
+            start_time,
+            location
+          )
+        `)
+        .eq("player_id", userId)
+        .eq("active", true)
+        .gte("round_robin_events.date", now.toISOString().split("T")[0])
+        .lte("round_robin_events.date", in48Hours.toISOString().split("T")[0]);
+
+      if (upcomingRREvents) {
+        for (const reg of upcomingRREvents) {
+          const event = reg.event as any;
+          const eventDate = new Date(event.date);
+          const hoursUntil = differenceInHours(eventDate, now);
+          
+          timeAlerts.push({
+            id: `event-${event.id}`,
+            type: "event_soon",
+            title: event.name,
+            description: isToday(eventDate) 
+              ? `Today${event.start_time ? ` at ${event.start_time}` : ''}`
+              : isTomorrow(eventDate)
+              ? `Tomorrow${event.start_time ? ` at ${event.start_time}` : ''}`
+              : format(eventDate, "EEE, MMM d"),
+            link: `/round-robin/${event.id}`,
+            urgency: hoursUntil < 12 ? "high" : "medium",
+            timestamp: event.date,
+          });
+        }
+      }
+
+      // 3. Fetch upcoming venue bookings (within 24 hours)
+      const in24Hours = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+      
+      const { data: upcomingBookings } = await supabase
+        .from("venue_bookings")
+        .select(`
+          id,
+          start_time,
+          venue:venues (name)
+        `)
+        .eq("user_id", userId)
+        .eq("status", "confirmed")
+        .gte("start_time", now.toISOString())
+        .lte("start_time", in24Hours.toISOString());
+
+      if (upcomingBookings) {
+        for (const booking of upcomingBookings) {
+          const startTime = new Date(booking.start_time);
+          const hoursUntil = differenceInHours(startTime, now);
+          
+          timeAlerts.push({
+            id: `booking-${booking.id}`,
+            type: "booking_soon",
+            title: "Court Reservation",
+            description: `${(booking.venue as any)?.name || 'Venue'} - ${format(startTime, "h:mm a")}`,
+            link: "/player/bookings",
+            urgency: hoursUntil < 2 ? "high" : "medium",
+            timestamp: booking.start_time,
+          });
+        }
+      }
+
+      // 4. Fetch recent system updates (last 7 days) - recently approved matches
+      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      
+      const { data: recentApprovedMatches } = await supabase
+        .from("match_participants")
+        .select(`
+          match:matches!inner (
+            id,
+            match_date,
+            team1_score,
+            team2_score,
+            status,
+            updated_at
+          ),
+          rating_change
+        `)
+        .eq("player_id", userId)
+        .eq("matches.status", "approved")
+        .gte("matches.updated_at", sevenDaysAgo.toISOString())
+        .order("created_at", { ascending: false })
+        .limit(5);
+
+      if (recentApprovedMatches) {
+        for (const p of recentApprovedMatches) {
+          const match = p.match as any;
+          updates.push({
+            id: `approved-${match.id}`,
+            type: "match_recorded",
+            title: "Match Recorded",
+            description: `${match.team1_score}-${match.team2_score}${p.rating_change ? ` (${p.rating_change > 0 ? '+' : ''}${p.rating_change.toFixed(2)})` : ''}`,
+            timestamp: match.updated_at,
+            link: "/match/history",
+          });
+        }
+      }
+
+      // 5. Fetch recent event confirmations
+      const { data: recentEventRegs } = await supabase
+        .from("round_robin_players")
+        .select(`
+          id,
+          joined_at,
+          event:round_robin_events (
+            id,
+            name,
+            date
+          )
+        `)
+        .eq("player_id", userId)
+        .eq("active", true)
+        .gte("joined_at", sevenDaysAgo.toISOString())
+        .order("joined_at", { ascending: false })
+        .limit(3);
+
+      if (recentEventRegs) {
+        for (const reg of recentEventRegs) {
+          const event = reg.event as any;
+          if (event) {
+            updates.push({
+              id: `reg-${reg.id}`,
+              type: "event_confirmed",
+              title: "Event Registration",
+              description: `Registered for ${event.name}`,
+              timestamp: reg.joined_at,
+              link: `/round-robin/${event.id}`,
+            });
+          }
+        }
+      }
+
+      // Sort by timestamp/urgency
+      actions.sort((a, b) => (a.urgency === "high" ? -1 : 1));
+      timeAlerts.sort((a, b) => new Date(a.timestamp || 0).getTime() - new Date(b.timestamp || 0).getTime());
+      updates.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+      setActionItems(actions);
+      setAlerts(timeAlerts);
+      setSystemUpdates(updates.slice(0, 5));
       setLoading(false);
     };
 
     fetchActivity();
   }, [userId]);
 
-  // Group matches by month
-  const groupedMatches = matches.reduce((acc, match) => {
-    const monthKey = format(new Date(match.match_date), "MMMM yyyy");
-    if (!acc[monthKey]) {
-      acc[monthKey] = [];
-    }
-    acc[monthKey].push(match);
-    return acc;
-  }, {} as Record<string, Match[]>);
-
   if (loading) {
     return (
-      <div className="p-6">
+      <div className="space-y-4">
         <div className="animate-pulse space-y-3">
           <div className="h-4 bg-muted rounded w-1/3"></div>
-          <div className="h-24 bg-muted rounded"></div>
-          <div className="h-24 bg-muted rounded"></div>
+          <div className="h-16 bg-muted rounded-xl"></div>
+          <div className="h-16 bg-muted rounded-xl"></div>
         </div>
       </div>
     );
   }
 
+  const hasContent = actionItems.length > 0 || alerts.length > 0 || systemUpdates.length > 0;
+
+  if (!hasContent) {
+    return (
+      <div className="text-center py-8">
+        <CheckCircle2 className="w-10 h-10 text-primary/50 mx-auto mb-3" />
+        <p className="text-sm font-medium text-foreground">All caught up!</p>
+        <p className="text-xs text-muted-foreground mt-1">
+          No pending actions or upcoming events
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <div>
-      <Tabs defaultValue="matches" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mb-4">
-          <TabsTrigger value="matches" className="text-xs md:text-sm">
-            <Trophy className="w-3 h-3 mr-1.5" />
-            Recent Matches
-          </TabsTrigger>
-          <TabsTrigger value="events" className="text-xs md:text-sm">
-            <Calendar className="w-3 h-3 mr-1.5" />
-            Upcoming Events
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="matches" className="mt-0">
-          {matches.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-8">
-              No recent matches. Record your first match!
-            </p>
-          ) : (
-            <div className="space-y-4">
-              {Object.entries(groupedMatches).map(([month, monthMatches]) => (
-                <div key={month}>
-                  <h3 className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">
-                    {month}
-                  </h3>
-                  <div className="space-y-2">
-                    {monthMatches.map((match) => (
-                      <MatchCard
-                        key={match.id}
-                        id={match.id}
-                        matchDate={match.match_date}
-                        userTeam={match.userTeam}
-                        team1Score={match.team1_score}
-                        team2Score={match.team2_score}
-                        team1Players={match.team1Players}
-                        team2Players={match.team2Players}
-                        courtName={match.courtName}
-                        location={match.location}
-                        eventName={match.eventName}
-                        ratingChange={match.ratingChange}
-                        onClick={() => navigate("/match/history")}
-                      />
-                    ))}
-                  </div>
+    <div className="space-y-5">
+      {/* Action Required Section */}
+      {actionItems.length > 0 && (
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <AlertCircle className="w-4 h-4 text-destructive" />
+            <h3 className="text-sm font-medium text-destructive">Action Required</h3>
+            <Badge variant="destructive" className="text-[10px] px-1.5 py-0">
+              {actionItems.length}
+            </Badge>
+          </div>
+          <div className="space-y-2">
+            {actionItems.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => navigate(item.link)}
+                className="w-full flex items-center gap-3 p-3 rounded-xl bg-destructive/10 hover:bg-destructive/15 border border-destructive/30 transition-colors text-left"
+              >
+                <div className="w-9 h-9 rounded-full bg-destructive/20 flex items-center justify-center flex-shrink-0">
+                  <AlertCircle className="w-4 h-4 text-destructive" />
                 </div>
-              ))}
-            </div>
-          )}
-        </TabsContent>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground">{item.title}</p>
+                  <p className="text-xs text-muted-foreground truncate">{item.description}</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-destructive flex-shrink-0" />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
-        <TabsContent value="events" className="mt-0">
-          {events.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-8">
-              No upcoming events. Join a Round Robin!
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {events.map((event) => (
-                <button
-                  key={event.id}
-                  onClick={() => navigate(`/round-robin/${event.id}`)}
-                  className="w-full flex items-center gap-3 p-3 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors text-left border border-border"
-                >
-                  <span className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <Calendar className="w-4 h-4 text-primary" />
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{event.name}</p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      {format(new Date(event.date), "EEE, MMM d")}
-                      {event.location && ` • ${event.location}`}
-                    </p>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                </button>
-              ))}
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
+      {/* Time-Sensitive Alerts */}
+      {alerts.length > 0 && (
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <Clock className="w-4 h-4 text-primary" />
+            <h3 className="text-sm font-medium text-muted-foreground">Coming Up</h3>
+          </div>
+          <div className="space-y-2">
+            {alerts.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => navigate(item.link)}
+                className="w-full flex items-center gap-3 p-3 rounded-xl bg-primary/5 hover:bg-primary/10 border border-primary/20 transition-colors text-left"
+              >
+                <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <Calendar className="w-4 h-4 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">{item.title}</p>
+                  <p className="text-xs text-muted-foreground">{item.description}</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* System Updates Feed */}
+      {systemUpdates.length > 0 && (
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <Bell className="w-4 h-4 text-muted-foreground" />
+            <h3 className="text-sm font-medium text-muted-foreground">Recent Updates</h3>
+          </div>
+          <div className="space-y-1">
+            {systemUpdates.map((update) => (
+              <button
+                key={update.id}
+                onClick={() => update.link && navigate(update.link)}
+                className="w-full flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted/50 transition-colors text-left"
+              >
+                <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                  {update.type === "match_recorded" && <CheckCircle2 className="w-3.5 h-3.5 text-primary" />}
+                  {update.type === "event_confirmed" && <Calendar className="w-3.5 h-3.5 text-primary" />}
+                  {update.type === "rating_updated" && <Bell className="w-3.5 h-3.5 text-primary" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-foreground">{update.title}</p>
+                  <p className="text-xs text-muted-foreground truncate">{update.description}</p>
+                </div>
+                <span className="text-[10px] text-muted-foreground flex-shrink-0">
+                  {format(new Date(update.timestamp), "MMM d")}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -16,6 +16,7 @@ import { NotificationDrawer, Notification } from "@/components/NotificationDrawe
 import { ProfileHero } from "@/components/dashboard/ProfileHero";
 import { QuickActionsBar } from "@/components/dashboard/QuickActionsBar";
 import { ActivityModule } from "@/components/dashboard/ActivityModule";
+import { PerformanceModule } from "@/components/dashboard/PerformanceModule";
 import { StatsByCourtCard } from "@/components/dashboard/StatsByCourtCard";
 import { SpacesPreviewRow } from "@/components/dashboard/SpacesPreviewRow";
 import { HomeFooterUtilities } from "@/components/dashboard/HomeFooterUtilities";
@@ -292,7 +293,7 @@ const Dashboard = () => {
 
         {/* Desktop: Two-column layout */}
         <div className="hidden lg:grid lg:grid-cols-12 lg:gap-6">
-          {/* Left Column - Performance */}
+          {/* Left Column - Performance (How am I doing?) */}
           <div className="lg:col-span-7 space-y-6">
             {/* Quick Actions - 2x2 Grid */}
             <QuickActionsBar />
@@ -303,19 +304,22 @@ const Dashboard = () => {
               homeCourtId={homeCourtId}
             />
             
-            {/* Performance Content - Natural flow without heavy wrapper */}
-            <div className="space-y-4">
+            {/* Performance Content - Historical & Analytical */}
+            <div className="space-y-5">
               {/* Most Played Court */}
               <StatsByCourtCard userId={user?.id} />
               
-              {/* Venue Activity Section */}
-              <VenueActivitySection />
+              {/* Match History & Trends */}
+              <PerformanceModule userId={user?.id} />
               
-              {/* Secondary Tools */}
-              <div className="space-y-3" data-tour="court-stats">
-                <SmartMatch userId={user?.id || null} />
-                <LFGNotifications />
-              </div>
+              {/* Venue History (visited venues only) */}
+              <VenueActivitySection />
+            </div>
+            
+            {/* Discovery Tools - Neutral section below Performance */}
+            <div className="space-y-3 pt-2" data-tour="court-stats">
+              <SmartMatch userId={user?.id || null} />
+              <LFGNotifications />
             </div>
             
             {/* Settings Footer - De-emphasized */}
@@ -327,7 +331,7 @@ const Dashboard = () => {
             />
           </div>
           
-          {/* Right Column - Activity */}
+          {/* Right Column - Activity (What needs my attention?) */}
           <div className="lg:col-span-5">
             <div className="bg-muted/20 rounded-xl sticky top-6">
               <div className="p-4 pb-2 border-b border-border/30">
@@ -351,16 +355,22 @@ const Dashboard = () => {
           {/* Content based on active tab */}
           {activeTab === "performance" ? (
             <div className="space-y-5">
-              {/* Most Played Court Chip */}
+              {/* Most Played Court */}
               <StatsByCourtCard userId={user?.id} />
+
+              {/* Match History & Trends */}
+              <PerformanceModule userId={user?.id} />
 
               {/* Your Spaces */}
               <SpacesPreviewRow 
                 userId={user?.id}
                 homeCourtId={homeCourtId}
               />
+              
+              {/* Venue History */}
+              <VenueActivitySection />
 
-              {/* Secondary Tools */}
+              {/* Discovery Tools */}
               <div className="space-y-3" data-tour="court-stats">
                 <SmartMatch userId={user?.id || null} />
                 <LFGNotifications />
@@ -368,6 +378,7 @@ const Dashboard = () => {
             </div>
           ) : (
             <div className="space-y-4">
+              {/* Activity: Action Required + Alerts + System Updates */}
               <ActivityModule userId={user?.id} />
             </div>
           )}
