@@ -251,30 +251,43 @@ const Index = () => {
 
             {/* CTA Section */}
             <div className="text-center space-y-4">
-              <Button 
-                size="lg"
-                onClick={() => {
-                  if (selectedMode === 'venue' && !isLoggedIn) {
-                    navigate('/venue/interest');
-                  } else {
-                    navigate(isLoggedIn 
-                      ? (selectedMode === 'player' ? "/player/dashboard" : "/venue") 
-                      : "/auth"
-                    );
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                <Button 
+                  size="lg"
+                  onClick={() => {
+                    if (selectedMode === 'venue' && !isLoggedIn) {
+                      navigate('/venue/interest');
+                    } else {
+                      navigate(isLoggedIn 
+                        ? (selectedMode === 'player' ? "/player/dashboard" : "/venue") 
+                        : "/auth"
+                      );
+                    }
+                  }}
+                  className={cn(
+                    "min-h-[48px] px-8 text-lg shadow-lg hover:shadow-xl transition-all",
+                    selectedMode === 'venue' && "bg-secondary hover:bg-secondary/90 text-white"
+                  )}
+                >
+                  {isLoggedIn 
+                    ? `Go to ${selectedMode === 'player' ? 'Player' : 'Venue'} Dashboard`
+                    : selectedMode === 'venue' 
+                      ? 'Get started with a venue today'
+                      : 'Get Started as a Player'
                   }
-                }}
-                className={cn(
-                  "min-h-[48px] px-8 text-lg shadow-lg hover:shadow-xl transition-all",
-                  selectedMode === 'venue' && "bg-secondary hover:bg-secondary/90 text-white"
+                </Button>
+                {selectedMode === 'venue' && (
+                  <Button 
+                    size="lg"
+                    variant="outline"
+                    onClick={() => navigate('/v/pickleball-palace')}
+                    className="min-h-[48px] px-8 text-lg border-secondary text-secondary hover:bg-secondary/10"
+                  >
+                    <Building2 className="w-5 h-5 mr-2" />
+                    Try Demo Venue
+                  </Button>
                 )}
-              >
-                {isLoggedIn 
-                  ? `Go to ${selectedMode === 'player' ? 'Player' : 'Venue'} Dashboard`
-                  : selectedMode === 'venue' 
-                    ? 'Get started with a venue today'
-                    : 'Get Started as a Player'
-                }
-              </Button>
+              </div>
               {!isLoggedIn && (
                 <p className="text-sm text-muted-foreground">
                   Already have an account?{' '}
