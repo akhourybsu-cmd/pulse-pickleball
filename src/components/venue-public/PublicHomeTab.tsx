@@ -68,8 +68,12 @@ export function PublicHomeTab({
               width: 'auto',
               height: 'auto',
             }}
+            onError={(e) => {
+              // Fallback to local asset if URL fails to load
+              e.currentTarget.src = pickleballPalaceLogo;
+            }}
           />
-          
+
           {/* Tagline - light text for dark background */}
           {venue.tagline && (
             <p className="text-base md:text-lg mb-6 text-white/80">

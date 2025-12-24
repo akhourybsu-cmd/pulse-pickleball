@@ -66,6 +66,9 @@ export default function VenueOverview() {
           src={logoSrc} 
           alt={currentVenue?.venue_name || "Venue"} 
           className="h-14 w-auto hidden sm:block"
+          onError={(e) => {
+            e.currentTarget.src = pickleballPalaceLogo;
+          }}
         />
         <div>
           <h1 className="text-2xl font-bold">

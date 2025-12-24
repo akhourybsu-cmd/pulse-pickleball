@@ -67,7 +67,10 @@ function SidebarContent({ onItemClick }: { onItemClick?: () => void }) {
           <img 
             src={logoSrc} 
             alt={currentVenue?.venue_name || "Venue"} 
-            className="h-12 w-auto cursor-pointer hover:opacity-80 transition-opacity" 
+            className="h-12 w-auto cursor-pointer hover:opacity-80 transition-opacity"
+            onError={(e) => {
+              e.currentTarget.src = pickleballPalaceLogo;
+            }}
           />
         </NavLink>
         {currentVenue && (
@@ -163,7 +166,10 @@ export function VenueShell() {
             <img 
               src={logoSrc} 
               alt={currentVenue?.venue_name || "Venue"} 
-              className="h-10 w-auto cursor-pointer hover:opacity-80 transition-opacity" 
+              className="h-10 w-auto cursor-pointer hover:opacity-80 transition-opacity"
+              onError={(e) => {
+                e.currentTarget.src = pickleballPalaceLogo;
+              }}
             />
           </NavLink>
 
