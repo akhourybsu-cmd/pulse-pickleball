@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +13,7 @@ import {
 import { format } from 'date-fns';
 import { PublicVenue, VenueCourt, VenueEvent, VenueCoach } from '@/hooks/usePublicVenue';
 import { TabId } from './PublicVenueShell';
+import pickleballPalaceLogo from '@/assets/pickleball-palace-logo.png';
 
 interface PublicHomeTabProps {
   venue: PublicVenue;
@@ -49,24 +49,23 @@ export function PublicHomeTab({
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background/80" />
         
         <div className="relative z-10 text-center px-4 max-w-4xl mx-auto">
-          {venue.logo_url && (
-            <img 
-              src={venue.logo_url} 
-              alt={venue.name}
-              className="h-20 w-20 md:h-28 md:w-28 mx-auto mb-4 rounded-2xl shadow-xl object-cover bg-white"
-            />
-          )}
+          {/* Logo as primary hero element */}
+          <img 
+            src={venue.logo_url || pickleballPalaceLogo} 
+            alt={venue.name}
+            className="mx-auto mb-4 object-contain"
+            style={{
+              maxHeight: '100px',
+              maxWidth: '320px',
+              width: 'auto',
+              height: 'auto',
+            }}
+          />
           
-          <h1 
-            className="text-3xl md:text-5xl font-bold mb-3"
-            style={{ color: venue.banner_url ? 'white' : secondaryColor }}
-          >
-            {venue.name}
-          </h1>
-          
+          {/* Tagline - subdued supporting text */}
           {venue.tagline && (
             <p 
-              className="text-lg md:text-xl mb-6 opacity-90"
+              className="text-base md:text-lg mb-6 opacity-75"
               style={{ color: venue.banner_url ? 'white' : secondaryColor }}
             >
               {venue.tagline}
