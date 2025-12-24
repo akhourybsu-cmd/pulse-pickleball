@@ -1,7 +1,7 @@
 import { useNavigate, Link } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { LogOut, Users, MapPin, Trophy } from "lucide-react";
+import { LogOut, Users, MapPin, Trophy, TrendingUp, Activity } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationBell } from "@/components/NotificationBell";
 import { UnverifiedMatchesIndicator } from "@/components/UnverifiedMatchesIndicator";
@@ -22,6 +22,8 @@ interface ProfileHeroProps {
   unreadNotifications?: number;
   onNotificationOpen?: () => void;
   onSignOut?: () => void;
+  activeTab?: "performance" | "activity";
+  onTabChange?: (tab: "performance" | "activity") => void;
 }
 
 export const ProfileHero = ({
@@ -39,6 +41,8 @@ export const ProfileHero = ({
   unreadNotifications = 0,
   onNotificationOpen,
   onSignOut,
+  activeTab = "performance",
+  onTabChange,
 }: ProfileHeroProps) => {
   const navigate = useNavigate();
   const name = displayName || fullName || "Player";
@@ -89,14 +93,14 @@ export const ProfileHero = ({
         {/* Accent stripe for dark mode */}
         <div className="hidden dark:block absolute left-0 top-0 bottom-0 w-1 bg-primary" />
         
-        {/* Content - Centered container */}
-        <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-5">
+        {/* Content - Centered container with increased padding */}
+        <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-6 lg:py-7">
           {/* Single unified surface with no internal card borders */}
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-5">
             {/* Row 1: Avatar + Name + Location + Stats inline */}
             <div className="flex items-center gap-4">
               <Avatar 
-                className="h-14 w-14 lg:h-16 lg:w-16 border-2 border-primary/30 shadow-[0_0_20px_hsl(var(--primary)/0.2)] cursor-pointer hover:border-primary/50 transition-colors flex-shrink-0"
+                className="h-14 w-14 lg:h-18 lg:w-18 border-2 border-primary/30 shadow-[0_0_20px_hsl(var(--primary)/0.2)] cursor-pointer hover:border-primary/50 transition-colors flex-shrink-0"
                 onClick={() => navigate(`/profile/${userId}`)}
               >
                 <AvatarImage src={avatarUrl || undefined} alt={name} />
@@ -109,7 +113,7 @@ export const ProfileHero = ({
                 <h1 className="text-lg lg:text-xl font-semibold text-foreground truncate leading-tight">
                   {name}
                 </h1>
-                <div className="flex items-center gap-3 text-sm text-muted-foreground mt-0.5">
+                <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
                   {location ? (
                     <span className="truncate">{location}</span>
                   ) : (
@@ -143,11 +147,11 @@ export const ProfileHero = ({
             {/* Subtle divider */}
             <div className="h-px bg-border/50" />
 
-            {/* Row 2: Rating + Record + Win Rate - Inline flowing layout */}
-            <div className="flex items-center gap-4 lg:gap-6">
-              {/* Rating Ring - Compact inline */}
+            {/* Row 2: Rating + Record + Win Rate - Inline flowing layout with larger sizing */}
+            <div className="flex items-center gap-5 lg:gap-6">
+              {/* Rating Ring - Larger and more prominent */}
               <div className="flex items-center gap-3">
-                <div className="relative w-12 h-12 lg:w-14 lg:h-14">
+                <div className="relative w-14 h-14 lg:w-16 lg:h-16">
                   <svg className="w-full h-full -rotate-90">
                     <defs>
                       <linearGradient id="heroRatingGradient" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -179,7 +183,7 @@ export const ProfileHero = ({
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
                     {hasRating ? (
-                      <span className="text-sm lg:text-base font-bold text-foreground">
+                      <span className="text-base lg:text-lg font-bold text-foreground">
                         {currentRating.toFixed(2)}
                       </span>
                     ) : (
@@ -187,41 +191,78 @@ export const ProfileHero = ({
                     )}
                   </div>
                 </div>
-                <span className="text-[10px] lg:text-xs font-medium text-muted-foreground">Doubles</span>
+                <span className="text-xs font-medium text-muted-foreground">Doubles</span>
               </div>
 
-              {/* Stat pills inline */}
-              <div className="flex items-center gap-3 lg:gap-4">
+              {/* Stat pills inline - Larger text */}
+              <div className="flex items-center gap-4 lg:gap-5">
                 <button 
                   onClick={() => navigate("/match/history")}
-                  className="flex items-center gap-1.5 hover:bg-background/50 px-2 py-1 rounded-lg transition-colors"
+                  className="flex items-center gap-1.5 hover:bg-background/50 px-2.5 py-1.5 rounded-lg transition-colors"
                 >
-                  <span className="text-base lg:text-lg font-semibold text-foreground">{wins}-{losses}</span>
-                  <span className="text-[10px] lg:text-xs text-muted-foreground">Record</span>
+                  <span className="text-lg lg:text-xl font-semibold text-foreground">{wins}-{losses}</span>
+                  <span className="text-xs text-muted-foreground">Record</span>
                 </button>
                 
                 <span className="text-muted-foreground/30">|</span>
                 
                 <button 
                   onClick={() => navigate("/match/history")}
-                  className="flex items-center gap-1.5 hover:bg-background/50 px-2 py-1 rounded-lg transition-colors"
+                  className="flex items-center gap-1.5 hover:bg-background/50 px-2.5 py-1.5 rounded-lg transition-colors"
                 >
-                  <span className="text-base lg:text-lg font-semibold text-foreground">{winRate}%</span>
-                  <span className="text-[10px] lg:text-xs text-muted-foreground">Win</span>
+                  <span className="text-lg lg:text-xl font-semibold text-foreground">{winRate}%</span>
+                  <span className="text-xs text-muted-foreground">Win</span>
                 </button>
                 
                 <span className="text-muted-foreground/30">|</span>
                 
                 <button 
                   onClick={() => navigate("/match/history")}
-                  className="flex items-center gap-1.5 hover:bg-background/50 px-2 py-1 rounded-lg transition-colors"
+                  className="flex items-center gap-1.5 hover:bg-background/50 px-2.5 py-1.5 rounded-lg transition-colors"
                 >
-                  <Trophy className="w-3.5 h-3.5 text-primary/70" />
-                  <span className="text-base lg:text-lg font-semibold text-foreground">{totalMatches || 0}</span>
-                  <span className="text-[10px] lg:text-xs text-muted-foreground">Matches</span>
+                  <Trophy className="w-4 h-4 text-primary/70" />
+                  <span className="text-lg lg:text-xl font-semibold text-foreground">{totalMatches || 0}</span>
+                  <span className="text-xs text-muted-foreground">Matches</span>
                 </button>
               </div>
             </div>
+
+            {/* Performance/Activity Toggle - Embedded as display mode control (Mobile only) */}
+            {onTabChange && (
+              <div className="lg:hidden">
+                <div className="h-px bg-border/50 mb-4" />
+                <div className="flex justify-center">
+                  <div className="inline-flex bg-muted/40 p-0.5 rounded-full">
+                    <button
+                      onClick={() => onTabChange("performance")}
+                      className={`
+                        flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all
+                        ${activeTab === "performance" 
+                          ? "bg-background text-foreground shadow-sm" 
+                          : "text-muted-foreground hover:text-foreground"
+                        }
+                      `}
+                    >
+                      <TrendingUp className="w-3.5 h-3.5" />
+                      Performance
+                    </button>
+                    <button
+                      onClick={() => onTabChange("activity")}
+                      className={`
+                        flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all
+                        ${activeTab === "activity" 
+                          ? "bg-background text-foreground shadow-sm" 
+                          : "text-muted-foreground hover:text-foreground"
+                        }
+                      `}
+                    >
+                      <Activity className="w-3.5 h-3.5" />
+                      Activity
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
