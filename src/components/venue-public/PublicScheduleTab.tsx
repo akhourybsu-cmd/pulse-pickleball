@@ -190,7 +190,12 @@ export function PublicScheduleTab({ venue, courts, onSelectSlot, isAuthenticated
           <div className="divide-y divide-border">
             {aggregatedSlots.map((slot) => {
               const isSelected = selectedSlots.includes(slot.startTime);
-              const courtNames = slot.availableCourts.map(c => c.name.replace('Court ', 'C')).join('/');
+              // Generate short court codes: "Championship Court 1" -> "C1", "Court 5" -> "C5"
+              const courtCodes = slot.availableCourts.map(c => {
+                const match = c.name.match(/(\d+)/);
+                return match ? `C${match[1]}` : c.name.charAt(0);
+              }).join('/');
+              const courtCount = slot.availableCourts.length;
               
               return (
                 <label 
@@ -220,8 +225,8 @@ export function PublicScheduleTab({ venue, courts, onSelectSlot, isAuthenticated
                     </Badge>
                     
                     {/* Available Courts */}
-                    <span className="text-sm text-muted-foreground hidden sm:inline">
-                      {slot.availableCourts.length} court{slot.availableCourts.length !== 1 ? 's' : ''} ({courtNames})
+                    <span className="text-sm text-muted-foreground">
+                      {courtCount} open ({courtCodes})
                     </span>
                   </div>
                   

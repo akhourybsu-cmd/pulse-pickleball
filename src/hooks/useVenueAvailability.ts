@@ -33,7 +33,7 @@ const DEFAULT_HOURS = { open: '06:00', close: '22:00' };
 function generateTimeSlots(
   openTime: string, 
   closeTime: string, 
-  slotDurationMinutes: number = 60
+  slotDurationMinutes: number = 30
 ): TimeSlot[] {
   const slots: TimeSlot[] = [];
   const [openHour, openMin] = openTime.split(':').map(Number);
