@@ -3,10 +3,13 @@ import { supabase } from '@/integrations/supabase/client';
 
 export type AppMode = 'player' | 'venue';
 
-interface VenueAccess {
+export interface VenueAccess {
   venue_id: string;
   venue_name: string;
   role: 'owner' | 'manager' | 'staff';
+  logo_url: string | null;
+  primary_color: string | null;
+  secondary_color: string | null;
 }
 
 interface ModeContextType {
@@ -18,6 +21,7 @@ interface ModeContextType {
   hasVenueAccess: boolean;
   isLoading: boolean;
   refreshVenueAccess: () => Promise<void>;
+  currentVenue: VenueAccess | undefined;
 }
 
 const ModeContext = createContext<ModeContextType | undefined>(undefined);
@@ -59,19 +63,61 @@ export function ModeProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      const { data, error } = await supabase.rpc('get_user_venues', {
+      // Get basic venue access from RPC
+      const { data: rpcData, error: rpcError } = await supabase.rpc('get_user_venues', {
         _user_id: user.id
       });
 
-      if (error) {
-        console.error('Error fetching venue access:', error);
+      if (rpcError) {
+        console.error('Error fetching venue access:', rpcError);
         setVenueAccess([]);
+        setIsLoading(false);
+        return;
+      }
+
+      if (!rpcData || rpcData.length === 0) {
+        setVenueAccess([]);
+        setIsLoading(false);
+        return;
+      }
+
+      // Fetch full venue details including branding
+      const venueIds = rpcData.map((v: any) => v.venue_id);
+      const { data: venueDetails, error: venueError } = await supabase
+        .from('venues')
+        .select('id, name, logo_url, primary_color, secondary_color')
+        .in('id', venueIds);
+
+      if (venueError) {
+        console.error('Error fetching venue details:', venueError);
+        // Fallback to basic data without branding
+        const basicAccess = rpcData.map((v: any) => ({
+          venue_id: v.venue_id,
+          venue_name: v.venue_name,
+          role: v.role as 'owner' | 'manager' | 'staff',
+          logo_url: null,
+          primary_color: null,
+          secondary_color: null
+        }));
+        setVenueAccess(basicAccess);
       } else {
-        setVenueAccess(data || []);
+        // Merge RPC data with venue details
+        const enrichedAccess = rpcData.map((v: any) => {
+          const details = venueDetails?.find((vd) => vd.id === v.venue_id);
+          return {
+            venue_id: v.venue_id,
+            venue_name: v.venue_name,
+            role: v.role as 'owner' | 'manager' | 'staff',
+            logo_url: details?.logo_url || null,
+            primary_color: details?.primary_color || null,
+            secondary_color: details?.secondary_color || null
+          };
+        });
+        setVenueAccess(enrichedAccess);
         
         // If user has venue access but no current venue selected, select the first one
-        if (data && data.length > 0 && !currentVenueId) {
-          setCurrentVenueId(data[0].venue_id);
+        if (enrichedAccess.length > 0 && !currentVenueId) {
+          setCurrentVenueId(enrichedAccess[0].venue_id);
         }
       }
     } catch (err) {
@@ -100,6 +146,7 @@ export function ModeProvider({ children }: { children: React.ReactNode }) {
   }, [isLoading, mode, venueAccess.length, setMode]);
 
   const hasVenueAccess = venueAccess.length > 0;
+  const currentVenue = venueAccess.find(v => v.venue_id === currentVenueId);
 
   return (
     <ModeContext.Provider
@@ -112,6 +159,7 @@ export function ModeProvider({ children }: { children: React.ReactNode }) {
         hasVenueAccess,
         isLoading,
         refreshVenueAccess,
+        currentVenue,
       }}
     >
       {children}

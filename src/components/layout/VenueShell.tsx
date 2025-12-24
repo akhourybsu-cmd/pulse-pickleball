@@ -15,7 +15,7 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 import { ModeSwitcher } from '@/components/mode/ModeSwitcher';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { useState } from 'react';
+import { useState, useMemo, CSSProperties } from 'react';
 import pickleballPalaceLogo from '@/assets/pickleball-palace-logo.png';
 import { useMode } from '@/contexts/ModeContext';
 
@@ -30,18 +30,42 @@ const navItems = [
   { to: '/venue/settings', icon: Settings, label: 'Settings' },
 ];
 
+interface VenueTheme {
+  primary: string;
+  primaryForeground: string;
+  secondary: string;
+}
+
+function useVenueTheme(): VenueTheme {
+  const { currentVenue } = useMode();
+  
+  return useMemo(() => ({
+    primary: currentVenue?.primary_color || '#22c55e', // fallback to default green
+    primaryForeground: '#ffffff',
+    secondary: currentVenue?.secondary_color || '#1a1a1a',
+  }), [currentVenue?.primary_color, currentVenue?.secondary_color]);
+}
+
 function SidebarContent({ onItemClick }: { onItemClick?: () => void }) {
   const location = useLocation();
-  const { venueAccess, currentVenueId } = useMode();
-  const currentVenue = venueAccess.find(v => v.venue_id === currentVenueId);
+  const { currentVenue } = useMode();
+  const venueTheme = useVenueTheme();
+
+  // Use dynamic logo from venue record, fallback to Pickleball Palace logo
+  const logoSrc = currentVenue?.logo_url || pickleballPalaceLogo;
 
   return (
     <div className="flex flex-col h-full">
       {/* Logo */}
-      <div className="p-4 border-b">
+      <div 
+        className="p-4 border-b"
+        style={{ 
+          borderBottomColor: `${venueTheme.primary}30` 
+        }}
+      >
         <NavLink to="/venue" onClick={onItemClick}>
           <img 
-            src={pickleballPalaceLogo} 
+            src={logoSrc} 
             alt={currentVenue?.venue_name || "Venue"} 
             className="h-12 w-auto cursor-pointer hover:opacity-80 transition-opacity" 
           />
@@ -49,7 +73,12 @@ function SidebarContent({ onItemClick }: { onItemClick?: () => void }) {
         {currentVenue && (
           <div className="mt-3 px-1">
             <p className="text-sm font-medium text-foreground truncate">{currentVenue.venue_name}</p>
-            <p className="text-xs text-muted-foreground capitalize">{currentVenue.role}</p>
+            <p 
+              className="text-xs capitalize"
+              style={{ color: venueTheme.primary }}
+            >
+              {currentVenue.role}
+            </p>
           </div>
         )}
       </div>
@@ -61,6 +90,11 @@ function SidebarContent({ onItemClick }: { onItemClick?: () => void }) {
             ? location.pathname === item.to
             : location.pathname.startsWith(item.to);
           
+          const activeStyle: CSSProperties = isActive ? {
+            backgroundColor: `${venueTheme.primary}15`,
+            color: venueTheme.primary,
+          } : {};
+          
           return (
             <NavLink
               key={item.to}
@@ -70,11 +104,15 @@ function SidebarContent({ onItemClick }: { onItemClick?: () => void }) {
               className={cn(
                 'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-sm',
                 isActive 
-                  ? 'bg-primary/10 text-primary font-medium' 
+                  ? 'font-medium' 
                   : 'text-muted-foreground hover:text-foreground hover:bg-muted'
               )}
+              style={activeStyle}
             >
-              <item.icon className="h-4 w-4 flex-shrink-0" />
+              <item.icon 
+                className="h-4 w-4 flex-shrink-0" 
+                style={isActive ? { color: venueTheme.primary } : undefined}
+              />
               <span>{item.label}</span>
             </NavLink>
           );
@@ -94,8 +132,11 @@ function SidebarContent({ onItemClick }: { onItemClick?: () => void }) {
 
 export function VenueShell() {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { venueAccess, currentVenueId } = useMode();
-  const currentVenue = venueAccess.find(v => v.venue_id === currentVenueId);
+  const { currentVenue } = useMode();
+  const venueTheme = useVenueTheme();
+
+  // Use dynamic logo from venue record, fallback to Pickleball Palace logo
+  const logoSrc = currentVenue?.logo_url || pickleballPalaceLogo;
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -120,7 +161,7 @@ export function VenueShell() {
 
           <NavLink to="/venue">
             <img 
-              src={pickleballPalaceLogo} 
+              src={logoSrc} 
               alt={currentVenue?.venue_name || "Venue"} 
               className="h-10 w-auto cursor-pointer hover:opacity-80 transition-opacity" 
             />
@@ -142,3 +183,6 @@ export function VenueShell() {
     </div>
   );
 }
+
+// Export the hook for use in other venue pages
+export { useVenueTheme };
