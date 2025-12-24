@@ -417,3 +417,25 @@ body {
   }
 }
 }
+
+/* Typography System - Refined, Premium Feel */
+.page-title {
+  @apply text-xl font-semibold tracking-tight text-foreground;
+  letter-spacing: -0.01em;
+}
+
+.page-subtitle {
+  @apply text-sm text-muted-foreground font-normal leading-relaxed;
+}
+
+.section-header {
+  @apply text-sm font-medium text-muted-foreground;
+}
+
+.empty-state-title {
+  @apply text-base font-medium text-foreground;
+}
+
+.empty-state-description {
+  @apply text-sm text-muted-foreground font-normal leading-relaxed;
+}

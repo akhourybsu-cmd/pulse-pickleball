@@ -92,8 +92,8 @@ export default function MyBookings() {
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold">My Court Reservations</h1>
-          <p className="text-muted-foreground">View and manage your upcoming court time</p>
+          <h1 className="text-xl font-semibold tracking-tight">My Court Reservations</h1>
+          <p className="text-sm text-muted-foreground font-normal">View and manage your upcoming court time</p>
         </div>
       </div>
 
@@ -118,9 +118,9 @@ export default function MyBookings() {
               ))
             ) : (
               <div className="text-center py-12">
-                <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-medium mb-2">No upcoming reservations</h3>
-                <p className="text-muted-foreground mb-4">
+                <Calendar className="h-10 w-10 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-base font-medium mb-2">No upcoming reservations</h3>
+                <p className="text-sm text-muted-foreground font-normal mb-4">
                   Ready to hit the courts? Find a venue and book your next session.
                 </p>
                 <Button onClick={() => navigate('/player/venues')}>

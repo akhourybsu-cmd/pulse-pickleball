@@ -49,8 +49,8 @@ export default function VenueDiscovery() {
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold">Find a Place to Play</h1>
-          <p className="text-muted-foreground">Discover courts, clinics, and tournaments near you</p>
+          <h1 className="text-xl font-semibold tracking-tight">Find a Place to Play</h1>
+          <p className="text-sm text-muted-foreground font-normal">Discover courts, clinics, and tournaments near you</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button 
@@ -137,9 +137,9 @@ export default function VenueDiscovery() {
         </div>
       ) : (
         <div className="text-center py-12">
-          <MapPin className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-medium mb-2">No venues found</h3>
-          <p className="text-muted-foreground mb-4">
+          <MapPin className="h-10 w-10 text-muted-foreground mx-auto mb-4" />
+          <h3 className="text-base font-medium mb-2">No venues found</h3>
+          <p className="text-sm text-muted-foreground font-normal mb-4">
             {search ? 'Try adjusting your search' : 'Venues will appear here once they register with Pulse'}
           </p>
         </div>

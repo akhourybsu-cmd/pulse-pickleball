@@ -212,116 +212,56 @@ export default function MyCalendarRegistrations() {
     <div className="min-h-screen bg-background">
       <PageHeader userId={session?.user?.id} />
 
-      {/* Pulse-Branded Header Section - Full Width */}
-      <motion.div 
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="relative border-b-2"
-        style={{
-          background: 'linear-gradient(180deg, #E8FBD5 0%, #FFFFFF 80%)',
-          borderBottomColor: 'rgba(169, 220, 61, 0.15)',
-        }}
-      >
-        <div className="container mx-auto py-6 px-4 md:py-8">
-          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
+      {/* Refined Header Section */}
+      <div className="border-b border-border/50 bg-muted/30">
+        <div className="container mx-auto py-6 px-4">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
             {/* Title & Subtitle */}
-            <div className="space-y-2 flex-1">
-              <motion.div 
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.6, delay: 0.1 }}
-                className="flex items-center gap-3"
-              >
-                <Calendar className="w-5 h-5 text-primary" style={{ color: '#A9DC3D' }} />
-                <h1 
-                  className="text-3xl md:text-4xl lg:text-5xl font-bold border-l-4 pl-3"
-                  style={{
-                    color: '#0E4C58',
-                    letterSpacing: '0.02em',
-                    textShadow: '0px 1px 2px rgba(169, 220, 61, 0.25)',
-                    borderLeftColor: '#A9DC3D',
-                  }}
-                >
-                  My Registered Events
-                  {/* Accent line animation */}
-                  <motion.div
-                    initial={{ scaleX: 0, opacity: 0 }}
-                    animate={{ scaleX: 1, opacity: 0.3 }}
-                    transition={{ duration: 1.5, ease: "easeInOut" }}
-                    className="h-0.5 mt-1 origin-left"
-                    style={{ backgroundColor: '#A9DC3D' }}
-                  />
-                </h1>
-              </motion.div>
-              <motion.p 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-                className="text-base md:text-lg mt-2"
-                style={{ 
-                  color: '#53797E',
-                  fontWeight: 400,
-                }}
-              >
+            <div>
+              <h1 className="text-xl font-semibold tracking-tight flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-primary" />
+                My Registered Events
+              </h1>
+              <p className="text-sm text-muted-foreground font-normal mt-1">
                 All events, lessons, and court sessions you've signed up for
-              </motion.p>
+              </p>
             </div>
 
-            {/* Buttons Card */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.5, delay: 0.3 }}
-              className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto rounded-xl p-3 shadow-sm"
-              style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.6)',
-                backdropFilter: 'blur(8px)',
-              }}
-            >
+            {/* Filter Buttons */}
+            <div className="flex flex-wrap gap-2">
               <Button
                 variant={filter === "upcoming" ? "default" : "outline"}
+                size="sm"
                 onClick={() => setFilter("upcoming")}
-                className="gap-2 transition-transform hover:scale-105"
-                style={filter === "upcoming" ? {
-                  backgroundColor: '#B9E43B',
-                  color: '#0E4C58',
-                } : {}}
+                className="gap-2"
               >
                 <Filter className="w-4 h-4" />
                 Upcoming
               </Button>
               <Button
                 variant={filter === "past" ? "default" : "outline"}
+                size="sm"
                 onClick={() => setFilter("past")}
-                className="gap-2 transition-transform hover:scale-105"
-                style={filter === "past" ? {
-                  backgroundColor: '#B9E43B',
-                  color: '#0E4C58',
-                } : {}}
+                className="gap-2"
               >
                 <Filter className="w-4 h-4" />
                 Past
               </Button>
               <Button
                 variant="outline"
+                size="sm"
                 onClick={() => window.location.href = "/events/browse"}
-                className="gap-2 whitespace-nowrap transition-transform hover:scale-105"
-                style={{
-                  borderColor: '#0E4C58',
-                  color: '#0E4C58',
-                  backgroundColor: '#FFFFFF',
-                }}
+                className="gap-2"
               >
-                <Calendar className="w-4 h-4" />
+                <CalendarPlus className="w-4 h-4" />
                 Browse Events
               </Button>
-            </motion.div>
+            </div>
           </div>
         </div>
-      </motion.div>
+      </div>
 
-      <div className="bg-gradient-to-br from-background via-muted/10 to-background py-8">
+      <div className="py-6">
         <div className="container mx-auto px-4">
 
         {/* Sort */}
@@ -341,14 +281,14 @@ export default function MyCalendarRegistrations() {
         {filteredRegistrations.length === 0 ? (
           <Card>
             <CardContent className="p-12 text-center">
-              <Calendar className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-lg font-semibold mb-2">No registrations found</h3>
-              <p className="text-muted-foreground">
+              <Calendar className="w-10 h-10 mx-auto mb-4 text-muted-foreground" />
+              <h3 className="text-base font-medium mb-2">No registrations found</h3>
+              <p className="text-sm text-muted-foreground font-normal">
                 {filter === "upcoming"
                   ? "You haven't registered for any upcoming events yet."
                   : "You don't have any past event registrations."}
               </p>
-              <div className="flex gap-3 mt-4">
+              <div className="flex justify-center gap-3 mt-4">
                 <Button
                   onClick={() => window.location.href = "/browse-events"}
                 >
