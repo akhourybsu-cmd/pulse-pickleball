@@ -5,6 +5,7 @@ import { LogOut, Users, MapPin, Trophy, TrendingUp, Activity } from "lucide-reac
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationBell } from "@/components/NotificationBell";
 import { UnverifiedMatchesIndicator } from "@/components/UnverifiedMatchesIndicator";
+import { QuickActionsBar } from "@/components/dashboard/QuickActionsBar";
 import logo from "@/assets/pulse-logo-new.png";
 
 interface ProfileHeroProps {
@@ -227,10 +228,15 @@ export const ProfileHero = ({
               </div>
             </div>
 
-            {/* Performance/Activity Toggle - Embedded as display mode control (Mobile only) */}
+            {/* Quick Actions + Performance/Activity Toggle (Mobile only) */}
             {onTabChange && (
-              <div className="lg:hidden">
-                <div className="h-px bg-border/50 mb-4" />
+              <div className="lg:hidden space-y-4">
+                <div className="h-px bg-border/50" />
+                
+                {/* Quick Actions - 2x2 Grid */}
+                <QuickActionsBar />
+                
+                {/* Performance/Activity Toggle */}
                 <div className="flex justify-center">
                   <div className="inline-flex bg-muted/40 p-0.5 rounded-full">
                     <button

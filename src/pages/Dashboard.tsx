@@ -349,9 +349,6 @@ const Dashboard = () => {
 
         {/* Mobile: Content controlled by ProfileHero toggle */}
         <div className="lg:hidden space-y-5">
-          {/* Quick Actions - 2x2 Grid - Always visible */}
-          <QuickActionsBar />
-          
           {/* Content based on active tab */}
           {activeTab === "performance" ? (
             <div className="space-y-5">
