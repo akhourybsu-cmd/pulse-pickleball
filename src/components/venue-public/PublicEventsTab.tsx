@@ -209,7 +209,7 @@ export function PublicEventsTab({ venue, events, onRegister, registeredEventIds 
             >
               {/* Date Section Header - sticks below category filters */}
               <div className="sticky top-0 z-[5] bg-muted/95 backdrop-blur-sm px-4 py-3 border-b border-border">
-                <h3 className="text-base font-semibold text-amber-600 dark:text-amber-500">
+                <h3 className="text-base font-semibold text-foreground">
                   {getDateLabel(date)}
                 </h3>
               </div>
