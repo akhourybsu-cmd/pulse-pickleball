@@ -223,6 +223,29 @@ const Dashboard = () => {
     }
   };
 
+  const handleShare = async () => {
+    const shareData = {
+      title: 'Pulse Pickleball',
+      text: 'Join me on Pulse - Track your pickleball journey and compete with friends!',
+      url: 'https://pulsepb.com'
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+        toast.success("Thanks for spreading the word!");
+      } else {
+        await navigator.clipboard.writeText('https://pulsepb.com');
+        toast.success("Share link copied to clipboard!");
+      }
+    } catch (error) {
+      if (error instanceof Error && error.name !== 'AbortError') {
+        console.error('Error sharing:', error);
+        toast.error("Could not share. Please try again.");
+      }
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -242,7 +265,7 @@ const Dashboard = () => {
         />
       )}
       
-      {/* Profile Hero Header */}
+      {/* Profile Hero Header - Unified Player Overview */}
       <ProfileHero
         userId={user?.id}
         fullName={profile?.full_name || null}
@@ -260,82 +283,56 @@ const Dashboard = () => {
         onSignOut={handleSignOut}
       />
 
-      {/* Main Dashboard Content - Centered container with max-width */}
-      <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-6 lg:py-8 space-y-6 lg:space-y-8">
+      {/* Main Dashboard Content */}
+      <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-6 lg:py-8 space-y-5">
 
-        {/* Desktop: Two-column split (Performance 8-col + Activity 4-col) */}
-        {/* Mobile: Tabbed interface */}
+        {/* Desktop: Two-column layout */}
         <div className="hidden lg:grid lg:grid-cols-12 lg:gap-6">
-          {/* Left Column - Performance + Settings + Spaces */}
-          <div className="lg:col-span-7 space-y-6">
-            <div className="bg-card rounded-xl border border-border p-5 shadow-sm">
-              <h2 className="text-sm font-medium text-muted-foreground mb-4 flex items-center gap-2">
-                <TrendingUp className="w-4 h-4" />
-                Performance
-              </h2>
-              
-              {/* Quick Actions 2x2 Grid */}
-              <QuickActionsBar />
-            </div>
+          {/* Left Column - Performance */}
+          <div className="lg:col-span-7 space-y-5">
+            {/* Quick Actions - Horizontal command strip */}
+            <QuickActionsBar />
             
-            {/* Settings - Compact utility card under Quick Actions */}
-            <HomeFooterUtilities 
-              isAdmin={isAdmin}
-              onShare={async () => {
-                const shareData = {
-                  title: 'Pulse Pickleball',
-                  text: 'Join me on Pulse - Track your pickleball journey and compete with friends!',
-                  url: 'https://pulsepb.com'
-                };
-
-                try {
-                  if (navigator.share) {
-                    await navigator.share(shareData);
-                    toast.success("Thanks for spreading the word!");
-                  } else {
-                    await navigator.clipboard.writeText('https://pulsepb.com');
-                    toast.success("Share link copied to clipboard!");
-                  }
-                } catch (error) {
-                  if (error instanceof Error && error.name !== 'AbortError') {
-                    console.error('Error sharing:', error);
-                    toast.error("Could not share. Please try again.");
-                  }
-                }
-              }}
-              onRefreshStats={handleRefreshStats}
-              refreshing={refreshing}
-            />
-            
-            {/* Your Spaces */}
+            {/* Your Spaces - Consolidated surface */}
             <SpacesPreviewRow 
               userId={user?.id}
               homeCourtId={homeCourtId}
             />
             
-            {/* Venue Activity Section */}
-            <VenueActivitySection />
-            
-            {/* Most Played Court */}
-            <StatsByCourtCard userId={user?.id} />
-            
-            {/* Secondary Tools */}
-            <div className="space-y-4" data-tour="court-stats">
-              <SmartMatch userId={user?.id || null} />
-              <LFGNotifications />
+            {/* Performance Content with subtle background */}
+            <div className="bg-muted/20 rounded-xl p-4 space-y-4">
+              {/* Most Played Court */}
+              <StatsByCourtCard userId={user?.id} />
+              
+              {/* Venue Activity Section */}
+              <VenueActivitySection />
+              
+              {/* Secondary Tools */}
+              <div className="space-y-3" data-tour="court-stats">
+                <SmartMatch userId={user?.id || null} />
+                <LFGNotifications />
+              </div>
             </div>
+            
+            {/* Settings Footer - De-emphasized */}
+            <HomeFooterUtilities 
+              isAdmin={isAdmin}
+              onShare={handleShare}
+              onRefreshStats={handleRefreshStats}
+              refreshing={refreshing}
+            />
           </div>
           
-          {/* Right Column - Activity (fixed height scrollable) */}
+          {/* Right Column - Activity */}
           <div className="lg:col-span-5">
-            <div className="bg-card rounded-xl border border-border shadow-sm sticky top-6">
-              <div className="p-5 pb-3 border-b border-border">
-                <h2 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                  <Activity className="w-4 h-4" />
+            <div className="bg-muted/20 rounded-xl sticky top-6">
+              <div className="p-4 pb-2 border-b border-border/30">
+                <h2 className="text-xs font-medium text-muted-foreground flex items-center gap-2">
+                  <Activity className="w-3.5 h-3.5" />
                   Activity
                 </h2>
               </div>
-              <div className="max-h-[calc(100vh-200px)] overflow-y-auto p-5 pt-3">
+              <div className="max-h-[calc(100vh-200px)] overflow-y-auto p-4 pt-3">
                 <ActivityModule userId={user?.id} />
               </div>
             </div>
@@ -343,80 +340,57 @@ const Dashboard = () => {
         </div>
 
         {/* Mobile: Tabbed Interface */}
-        <div className="lg:hidden">
+        <div className="lg:hidden space-y-4">
+          {/* Quick Actions - Always visible */}
+          <QuickActionsBar />
+          
           <Tabs defaultValue="performance" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-4 bg-muted/50 p-1 rounded-full">
+            <TabsList className="grid w-full grid-cols-2 bg-muted/30 p-0.5 rounded-full h-9">
               <TabsTrigger 
                 value="performance" 
-                className="text-sm rounded-full data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                className="text-xs rounded-full data-[state=active]:bg-background data-[state=active]:shadow-sm"
               >
-                <TrendingUp className="w-4 h-4 mr-2" />
+                <TrendingUp className="w-3.5 h-3.5 mr-1.5" />
                 Performance
               </TabsTrigger>
               <TabsTrigger 
                 value="activity" 
-                className="text-sm rounded-full data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                className="text-xs rounded-full data-[state=active]:bg-background data-[state=active]:shadow-sm"
               >
-                <Activity className="w-4 h-4 mr-2" />
+                <Activity className="w-3.5 h-3.5 mr-1.5" />
                 Activity
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="performance" className="mt-0 space-y-4">
-              {/* Quick Actions 2x2 Grid */}
-              <QuickActionsBar />
-
+            <TabsContent value="performance" className="mt-4 space-y-4">
               {/* Most Played Court Chip */}
               <StatsByCourtCard userId={user?.id} />
 
-              {/* Your Spaces - Swipeable Cards */}
+              {/* Your Spaces */}
               <SpacesPreviewRow 
                 userId={user?.id}
                 homeCourtId={homeCourtId}
               />
 
               {/* Secondary Tools */}
-              <div className="space-y-4" data-tour="court-stats">
+              <div className="space-y-3" data-tour="court-stats">
                 <SmartMatch userId={user?.id || null} />
                 <LFGNotifications />
               </div>
             </TabsContent>
 
-            <TabsContent value="activity" className="mt-0 space-y-4">
+            <TabsContent value="activity" className="mt-4 space-y-4">
               <ActivityModule userId={user?.id} />
             </TabsContent>
           </Tabs>
 
           {/* Footer Utilities - Mobile */}
-          <div className="mt-6">
-            <HomeFooterUtilities 
-              isAdmin={isAdmin}
-              onShare={async () => {
-                const shareData = {
-                  title: 'Pulse Pickleball',
-                  text: 'Join me on Pulse - Track your pickleball journey and compete with friends!',
-                  url: 'https://pulsepb.com'
-                };
-
-                try {
-                  if (navigator.share) {
-                    await navigator.share(shareData);
-                    toast.success("Thanks for spreading the word!");
-                  } else {
-                    await navigator.clipboard.writeText('https://pulsepb.com');
-                    toast.success("Share link copied to clipboard!");
-                  }
-                } catch (error) {
-                  if (error instanceof Error && error.name !== 'AbortError') {
-                    console.error('Error sharing:', error);
-                    toast.error("Could not share. Please try again.");
-                  }
-                }
-              }}
-              onRefreshStats={handleRefreshStats}
-              refreshing={refreshing}
-            />
-          </div>
+          <HomeFooterUtilities 
+            isAdmin={isAdmin}
+            onShare={handleShare}
+            onRefreshStats={handleRefreshStats}
+            refreshing={refreshing}
+          />
         </div>
       </div>
 

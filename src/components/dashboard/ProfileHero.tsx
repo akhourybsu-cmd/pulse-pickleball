@@ -2,7 +2,6 @@ import { useNavigate, Link } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { LogOut, Users, MapPin, Trophy } from "lucide-react";
-import { RatingDisplay } from "./RatingDisplay";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationBell } from "@/components/NotificationBell";
 import { UnverifiedMatchesIndicator } from "@/components/UnverifiedMatchesIndicator";
@@ -33,8 +32,8 @@ export const ProfileHero = ({
   location,
   currentRating,
   totalMatches,
-  wins,
-  losses,
+  wins = 0,
+  losses = 0,
   partnersCount = 0,
   courtsPlayed = 0,
   unreadNotifications = 0,
@@ -49,6 +48,10 @@ export const ProfileHero = ({
     .join("")
     .toUpperCase()
     .slice(0, 2);
+
+  const winRate = (wins + losses) > 0 ? Math.round((wins / (wins + losses)) * 100) : 0;
+  const reliability = Math.min(((totalMatches || 0) / 30) * 100, 100);
+  const hasRating = currentRating !== undefined && currentRating > 0;
 
   return (
     <div className="relative overflow-hidden">
@@ -81,98 +84,142 @@ export const ProfileHero = ({
         </div>
       </nav>
 
-      {/* Profile + Stats Section */}
-      <div className="relative bg-[#F7FBF2] dark:bg-[#142029] border-b border-border">
+      {/* Unified Player Overview Zone - Single cohesive surface */}
+      <div className="relative bg-muted/30 dark:bg-muted/10">
         {/* Accent stripe for dark mode */}
         <div className="hidden dark:block absolute left-0 top-0 bottom-0 w-1 bg-primary" />
         
         {/* Content - Centered container */}
         <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-5">
-          {/* Desktop: Two-card layout (4-col profile + 8-col stats) */}
-          {/* Mobile: Stacked layout */}
-          <div className="flex flex-col lg:flex-row lg:gap-6">
-            {/* Profile Summary Card */}
-            <div className="lg:w-1/3 mb-4 lg:mb-0">
-              <div className="bg-card rounded-xl border border-border p-4 shadow-sm h-full">
-                <div className="flex items-center gap-4">
-                  <Avatar 
-                    className="h-16 w-16 border-2 border-primary/30 shadow-[0_0_20px_hsl(var(--primary)/0.3)] cursor-pointer hover:border-primary/50 transition-colors flex-shrink-0"
-                    onClick={() => navigate(`/profile/${userId}`)}
-                  >
-                    <AvatarImage src={avatarUrl || undefined} alt={name} />
-                    <AvatarFallback className="text-lg font-bold bg-primary/20 text-primary">
-                      {initials}
-                    </AvatarFallback>
-                  </Avatar>
-                  
-                  <div className="flex-1 min-w-0">
-                    <h1 className="text-xl font-semibold text-foreground truncate leading-tight">
-                      {name}
-                    </h1>
-                    {location ? (
-                      <p className="text-muted-foreground text-sm truncate">
-                        {location}
-                      </p>
-                    ) : (
-                      <button 
-                        className="text-primary/70 text-sm hover:text-primary transition-colors border-b border-dashed border-primary/30"
-                        onClick={() => navigate("/profile/edit?focus=location")}
-                      >
-                        Set location
-                      </button>
-                    )}
-                  </div>
+          {/* Single unified surface with no internal card borders */}
+          <div className="flex flex-col gap-4">
+            {/* Row 1: Avatar + Name + Location + Stats inline */}
+            <div className="flex items-center gap-4">
+              <Avatar 
+                className="h-14 w-14 lg:h-16 lg:w-16 border-2 border-primary/30 shadow-[0_0_20px_hsl(var(--primary)/0.2)] cursor-pointer hover:border-primary/50 transition-colors flex-shrink-0"
+                onClick={() => navigate(`/profile/${userId}`)}
+              >
+                <AvatarImage src={avatarUrl || undefined} alt={name} />
+                <AvatarFallback className="text-base lg:text-lg font-bold bg-primary/20 text-primary">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+              
+              <div className="flex-1 min-w-0">
+                <h1 className="text-lg lg:text-xl font-semibold text-foreground truncate leading-tight">
+                  {name}
+                </h1>
+                <div className="flex items-center gap-3 text-sm text-muted-foreground mt-0.5">
+                  {location ? (
+                    <span className="truncate">{location}</span>
+                  ) : (
+                    <button 
+                      className="text-primary/70 hover:text-primary transition-colors border-b border-dashed border-primary/30"
+                      onClick={() => navigate("/profile/edit?focus=location")}
+                    >
+                      Set location
+                    </button>
+                  )}
+                  <span className="hidden sm:inline text-muted-foreground/50">•</span>
+                  <span className="hidden sm:inline">{partnersCount} partners</span>
+                  <span className="hidden sm:inline text-muted-foreground/50">•</span>
+                  <span className="hidden sm:inline">{courtsPlayed} courts</span>
+                </div>
+              </div>
+
+              {/* Mobile stat chips */}
+              <div className="flex sm:hidden gap-2">
+                <div className="flex items-center gap-1 bg-background/80 px-2 py-1 rounded-full text-xs">
+                  <Users className="w-3 h-3 text-primary/70" />
+                  <span className="font-medium">{partnersCount}</span>
+                </div>
+                <div className="flex items-center gap-1 bg-background/80 px-2 py-1 rounded-full text-xs">
+                  <MapPin className="w-3 h-3 text-primary/70" />
+                  <span className="font-medium">{courtsPlayed}</span>
                 </div>
               </div>
             </div>
 
-            {/* Stats Summary Card */}
-            <div className="lg:w-2/3">
-              <div className="bg-card rounded-xl border border-border p-4 shadow-sm">
-                {/* Stats Row + Rating in a compact layout */}
-                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                  {/* 3-Column Stat Row */}
-                  <div className="grid grid-cols-3 gap-2 sm:gap-4 flex-1">
-                    <button 
-                      onClick={() => navigate("/match/history")}
-                      className="text-center hover:bg-muted/50 rounded-lg py-2 px-1 transition-colors group"
-                    >
-                      <Users className="w-4 h-4 text-primary/70 mx-auto mb-1 group-hover:text-primary transition-colors" />
-                      <p className="text-lg sm:text-xl font-bold text-foreground">{partnersCount}</p>
-                      <p className="text-[10px] sm:text-xs text-muted-foreground">Partners</p>
-                    </button>
-                    <button 
-                      onClick={() => navigate("/court/connector")}
-                      className="text-center border-x border-border hover:bg-muted/50 rounded-lg py-2 px-1 transition-colors group"
-                    >
-                      <MapPin className="w-4 h-4 text-primary/70 mx-auto mb-1 group-hover:text-primary transition-colors" />
-                      <p className="text-lg sm:text-xl font-bold text-foreground">{courtsPlayed}</p>
-                      <p className="text-[10px] sm:text-xs text-muted-foreground">Courts</p>
-                    </button>
-                    <button 
-                      onClick={() => navigate("/match/history")}
-                      className="text-center hover:bg-muted/50 rounded-lg py-2 px-1 transition-colors group"
-                    >
-                      <Trophy className="w-4 h-4 text-primary/70 mx-auto mb-1 group-hover:text-primary transition-colors" />
-                      <p className="text-lg sm:text-xl font-bold text-foreground">{totalMatches || 0}</p>
-                      <p className="text-[10px] sm:text-xs text-muted-foreground">Matches</p>
-                    </button>
-                  </div>
+            {/* Subtle divider */}
+            <div className="h-px bg-border/50" />
 
-                  {/* Divider */}
-                  <div className="hidden sm:block w-px h-16 bg-border" />
-                  <div className="sm:hidden h-px w-full bg-border" />
-
-                  {/* Rating Display - Compact */}
-                  <div className="flex-shrink-0">
-                    <RatingDisplay
-                      doublesRating={currentRating}
-                      wins={wins}
-                      losses={losses}
-                      compact
+            {/* Row 2: Rating + Record + Win Rate - Inline flowing layout */}
+            <div className="flex items-center gap-4 lg:gap-6">
+              {/* Rating Ring - Compact inline */}
+              <div className="flex items-center gap-3">
+                <div className="relative w-12 h-12 lg:w-14 lg:h-14">
+                  <svg className="w-full h-full -rotate-90">
+                    <defs>
+                      <linearGradient id="heroRatingGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="hsl(var(--primary))" />
+                        <stop offset="100%" stopColor="hsl(174 60% 51%)" />
+                      </linearGradient>
+                    </defs>
+                    <circle
+                      cx="50%"
+                      cy="50%"
+                      r="40%"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="10%"
+                      className="text-border"
                     />
+                    <circle
+                      cx="50%"
+                      cy="50%"
+                      r="40%"
+                      fill="none"
+                      stroke="url(#heroRatingGradient)"
+                      strokeWidth="10%"
+                      strokeLinecap="round"
+                      strokeDasharray={`${reliability * 2.51} 251`}
+                      className="transition-all duration-1000 ease-out"
+                      style={{ filter: 'drop-shadow(0 0 4px hsl(var(--primary) / 0.4))' }}
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    {hasRating ? (
+                      <span className="text-sm lg:text-base font-bold text-foreground">
+                        {currentRating.toFixed(2)}
+                      </span>
+                    ) : (
+                      <span className="text-xs font-bold text-muted-foreground">NR</span>
+                    )}
                   </div>
                 </div>
+                <span className="text-[10px] lg:text-xs font-medium text-muted-foreground">Doubles</span>
+              </div>
+
+              {/* Stat pills inline */}
+              <div className="flex items-center gap-3 lg:gap-4">
+                <button 
+                  onClick={() => navigate("/match/history")}
+                  className="flex items-center gap-1.5 hover:bg-background/50 px-2 py-1 rounded-lg transition-colors"
+                >
+                  <span className="text-base lg:text-lg font-semibold text-foreground">{wins}-{losses}</span>
+                  <span className="text-[10px] lg:text-xs text-muted-foreground">Record</span>
+                </button>
+                
+                <span className="text-muted-foreground/30">|</span>
+                
+                <button 
+                  onClick={() => navigate("/match/history")}
+                  className="flex items-center gap-1.5 hover:bg-background/50 px-2 py-1 rounded-lg transition-colors"
+                >
+                  <span className="text-base lg:text-lg font-semibold text-foreground">{winRate}%</span>
+                  <span className="text-[10px] lg:text-xs text-muted-foreground">Win</span>
+                </button>
+                
+                <span className="text-muted-foreground/30">|</span>
+                
+                <button 
+                  onClick={() => navigate("/match/history")}
+                  className="flex items-center gap-1.5 hover:bg-background/50 px-2 py-1 rounded-lg transition-colors"
+                >
+                  <Trophy className="w-3.5 h-3.5 text-primary/70" />
+                  <span className="text-base lg:text-lg font-semibold text-foreground">{totalMatches || 0}</span>
+                  <span className="text-[10px] lg:text-xs text-muted-foreground">Matches</span>
+                </button>
               </div>
             </div>
           </div>
