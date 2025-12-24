@@ -47,21 +47,21 @@ export function VenueDiscoveryCard({ venue, onSelect, isFavorite, onToggleFavori
         </div>
       )}
       
-      {/* Logo-centric layout */}
-      <div className="relative p-6 flex flex-col items-center">
-        {/* Large centered logo */}
-        <div className="w-full flex justify-center mb-4">
+      {/* Logo-centric layout - unified background, no inner box */}
+      <div className="flex flex-col items-center px-5 pt-4 pb-5">
+        {/* Large centered logo - 45% bigger, dominant focal point */}
+        <div className="w-full flex items-center justify-center mb-3">
           <img 
             src={logoSrc} 
             alt={venue.name} 
-            className="h-20 max-w-[180px] object-contain"
+            className="h-28 max-w-[260px] object-contain"
           />
         </div>
         
         {/* Location info */}
         {(venue.city || venue.address) && (
           <div 
-            className="flex items-center gap-1 text-xs mb-4"
+            className="flex items-center gap-1.5 text-xs mb-3"
             style={{ color: isDarkTheme ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }}
           >
             <MapPin className="h-3 w-3 flex-shrink-0" />
