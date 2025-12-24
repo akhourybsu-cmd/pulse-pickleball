@@ -87,16 +87,19 @@ export function PublicVenueShell({ venue, courts, events, coaches, children }: P
         '--venue-secondary': secondaryColor,
       } as React.CSSProperties}
     >
-      {/* Sticky Header with venue branding - fixed height, logo scales within */}
+      {/* Sticky Header - fixed 72px height, logo scales within */}
       <header 
-        className="sticky top-0 z-50 border-b h-20 flex-shrink-0"
+        className="sticky top-0 z-50 border-b flex-shrink-0"
         style={{
+          height: '72px',
+          minHeight: '72px',
+          maxHeight: '72px',
           backgroundColor: headerBg,
           borderColor: `${primaryColor}40`,
         }}
       >
-        <div className="relative flex items-center justify-center h-full px-4">
-          {/* Back button - styled for contrast on dark/light backgrounds */}
+        <div className="relative flex items-center justify-center h-full px-4 overflow-hidden">
+          {/* Back button - vertically centered */}
           <Button 
             variant="ghost" 
             size="icon" 
@@ -107,11 +110,16 @@ export function PublicVenueShell({ venue, courts, events, coaches, children }: P
             <ArrowLeft className="h-5 w-5" />
           </Button>
           
-          {/* Centered logo - constrained to max 65% of header height, scales down if needed */}
+          {/* Centered logo - max 65% of header height (~47px), scales down if needed */}
           <img 
             src={logoSrc} 
             alt={venue.name}
-            className="max-h-[52px] max-w-[220px] w-auto h-auto object-contain"
+            className="w-auto object-contain"
+            style={{
+              maxHeight: '47px',
+              maxWidth: '280px',
+              height: 'auto',
+            }}
           />
           
           {/* Admin toggle button for venue owners/staff */}
