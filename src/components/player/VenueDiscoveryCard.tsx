@@ -1,9 +1,8 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { MapPin, ChevronRight } from 'lucide-react';
 import { PublicVenue } from '@/hooks/usePublicVenues';
 import { FavoriteButton } from './FavoriteButton';
-import { useFavoriteVenues } from '@/hooks/useFavoriteVenues';
 import pickleballPalaceLogo from '@/assets/pickleball-palace-logo.png';
 
 interface VenueDiscoveryCardProps {
@@ -13,86 +12,82 @@ interface VenueDiscoveryCardProps {
   onToggleFavorite?: () => Promise<boolean>;
 }
 
+// Helper to determine if a hex color is dark
+function isColorDark(hexColor: string): boolean {
+  const hex = hexColor.replace('#', '');
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance < 0.5;
+}
+
 export function VenueDiscoveryCard({ venue, onSelect, isFavorite, onToggleFavorite }: VenueDiscoveryCardProps) {
   const primaryColor = venue.primary_color || '#FF6B35';
+  const secondaryColor = venue.secondary_color || '#004E64';
   const logoSrc = venue.logo_url || pickleballPalaceLogo;
+  
+  const isDarkTheme = isColorDark(secondaryColor);
 
   return (
     <Card 
-      className="hover:shadow-lg transition-all cursor-pointer group overflow-hidden"
+      className="hover:shadow-lg transition-all cursor-pointer group overflow-hidden border-0 relative"
       onClick={() => onSelect(venue.id)}
       style={{
-        borderColor: `${primaryColor}30`,
+        backgroundColor: secondaryColor,
       }}
     >
-      {/* Branded header strip */}
-      <div 
-        className="h-2 w-full"
-        style={{ backgroundColor: primaryColor }}
-      />
-      <CardHeader className="pb-2">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-3">
-            <div 
-              className="h-14 w-14 rounded-lg flex items-center justify-center p-1.5 overflow-hidden"
-              style={{ backgroundColor: `${primaryColor}10` }}
-            >
-              <img 
-                src={logoSrc} 
-                alt={venue.name} 
-                className="h-full w-full object-contain"
-              />
-            </div>
-            <div>
-              <CardTitle 
-                className="text-lg transition-colors"
-                style={{ color: primaryColor }}
-              >
-                {venue.name}
-              </CardTitle>
-              {venue.city && venue.state && (
-                <p className="text-sm text-muted-foreground">{venue.city}, {venue.state}</p>
-              )}
-            </div>
-          </div>
-          <div className="flex items-center gap-1">
-            {onToggleFavorite && (
-              <FavoriteButton
-                isFavorite={isFavorite || false}
-                onToggle={onToggleFavorite}
-              />
-            )}
-            <ChevronRight 
-              className="h-5 w-5 transition-colors" 
-              style={{ color: primaryColor }}
-            />
-          </div>
+      {/* Favorite button in corner */}
+      {onToggleFavorite && (
+        <div className="absolute top-2 right-2 z-10">
+          <FavoriteButton
+            isFavorite={isFavorite || false}
+            onToggle={onToggleFavorite}
+          />
         </div>
-      </CardHeader>
-      <CardContent>
-        {venue.description && (
-          <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{venue.description}</p>
-        )}
+      )}
+      
+      {/* Logo-centric layout */}
+      <div className="relative p-6 flex flex-col items-center">
+        {/* Large centered logo */}
+        <div className="w-full flex justify-center mb-4">
+          <img 
+            src={logoSrc} 
+            alt={venue.name} 
+            className="h-20 max-w-[180px] object-contain"
+          />
+        </div>
         
-        {venue.address && (
-          <div className="flex items-center gap-1 text-xs text-muted-foreground mb-4">
+        {/* Location info */}
+        {(venue.city || venue.address) && (
+          <div 
+            className="flex items-center gap-1 text-xs mb-4"
+            style={{ color: isDarkTheme ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }}
+          >
             <MapPin className="h-3 w-3 flex-shrink-0" />
-            <span className="truncate">{venue.address}</span>
+            <span className="truncate">
+              {venue.city && venue.state ? `${venue.city}, ${venue.state}` : venue.address}
+            </span>
           </div>
         )}
         
+        {/* CTA Button with primary color */}
         <Button 
           size="sm" 
-          className="w-full text-white"
-          style={{ backgroundColor: primaryColor }}
+          className="w-full font-medium"
+          style={{ 
+            backgroundColor: primaryColor,
+            color: isColorDark(primaryColor) ? '#FFFFFF' : '#1A1A1A'
+          }}
           onClick={(e) => {
             e.stopPropagation();
             onSelect(venue.id);
           }}
         >
           View Courts & Events
+          <ChevronRight className="h-4 w-4 ml-1" />
         </Button>
-      </CardContent>
+      </div>
     </Card>
   );
 }
