@@ -5,6 +5,7 @@ import { useMode } from '@/contexts/ModeContext';
 import { useVenueBookings } from '@/hooks/useVenueBookings';
 import { useVenueEvents } from '@/hooks/useVenueEvents';
 import { useVenueCourts } from '@/hooks/useVenueCourts';
+import { useVenueTheme } from '@/components/layout/VenueShell';
 import { 
   DollarSign, 
   TrendingUp, 
@@ -17,16 +18,23 @@ import {
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isWithinInterval, subDays } from 'date-fns';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
 
-const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', 'hsl(var(--muted))'];
-
 export default function VenueAnalytics() {
   const { currentVenueId } = useMode();
   const { bookings, loading: bookingsLoading } = useVenueBookings(currentVenueId);
   const { events, loading: eventsLoading } = useVenueEvents(currentVenueId);
   const { courts, loading: courtsLoading } = useVenueCourts(currentVenueId);
+  const venueTheme = useVenueTheme();
   
   const loading = bookingsLoading || eventsLoading || courtsLoading;
   const today = new Date();
+
+  // Dynamic colors based on venue theme
+  const COLORS = useMemo(() => [
+    venueTheme.primary,
+    venueTheme.secondary,
+    `${venueTheme.primary}80`, // 50% opacity of primary
+    `${venueTheme.secondary}80`, // 50% opacity of secondary
+  ], [venueTheme.primary, venueTheme.secondary]);
 
   const metrics = useMemo(() => {
     const confirmedBookings = bookings.filter(b => b.status !== 'cancelled');
@@ -131,7 +139,7 @@ export default function VenueAnalytics() {
     <div className="p-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold flex items-center gap-2">
-          <BarChart3 className="h-6 w-6 text-primary" />
+          <BarChart3 className="h-6 w-6" style={{ color: venueTheme.primary }} />
           Analytics
         </h1>
         <p className="text-muted-foreground">Track your venue performance</p>
@@ -254,7 +262,7 @@ export default function VenueAnalytics() {
                         border: '1px solid hsl(var(--border))'
                       }}
                     />
-                    <Bar dataKey="bookings" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="bookings" fill={venueTheme.primary} radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -280,9 +288,9 @@ export default function VenueAnalytics() {
                     <Line 
                       type="monotone" 
                       dataKey="revenue" 
-                      stroke="hsl(var(--primary))" 
+                      stroke={venueTheme.primary} 
                       strokeWidth={2}
-                      dot={{ fill: 'hsl(var(--primary))' }}
+                      dot={{ fill: venueTheme.primary }}
                     />
                   </LineChart>
                 </ResponsiveContainer>
@@ -308,7 +316,7 @@ export default function VenueAnalytics() {
                           border: '1px solid hsl(var(--border))'
                         }}
                       />
-                      <Bar dataKey="bookings" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+                      <Bar dataKey="bookings" fill={venueTheme.primary} radius={[0, 4, 4, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </CardContent>
