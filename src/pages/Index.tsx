@@ -253,18 +253,26 @@ const Index = () => {
             <div className="text-center space-y-4">
               <Button 
                 size="lg"
-                onClick={() => navigate(isLoggedIn 
-                  ? (selectedMode === 'player' ? "/player/dashboard" : "/venue") 
-                  : "/auth"
-                )}
+                onClick={() => {
+                  if (selectedMode === 'venue' && !isLoggedIn) {
+                    navigate('/venue/interest');
+                  } else {
+                    navigate(isLoggedIn 
+                      ? (selectedMode === 'player' ? "/player/dashboard" : "/venue") 
+                      : "/auth"
+                    );
+                  }
+                }}
                 className={cn(
                   "min-h-[48px] px-8 text-lg shadow-lg hover:shadow-xl transition-all",
-                  selectedMode === 'venue' && "bg-secondary hover:bg-secondary/90"
+                  selectedMode === 'venue' && "bg-secondary hover:bg-secondary/90 text-white"
                 )}
               >
                 {isLoggedIn 
                   ? `Go to ${selectedMode === 'player' ? 'Player' : 'Venue'} Dashboard`
-                  : `Get Started as a ${selectedMode === 'player' ? 'Player' : 'Venue'}`
+                  : selectedMode === 'venue' 
+                    ? 'Get started with a venue today'
+                    : 'Get Started as a Player'
                 }
               </Button>
               {!isLoggedIn && (

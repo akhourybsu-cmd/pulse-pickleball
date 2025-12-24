@@ -91,7 +91,7 @@ import VenueStaff from "./pages/venue/VenueStaff";
 import VenueSettings from "./pages/venue/VenueSettings";
 import VenueAnalytics from "./pages/venue/VenueAnalytics";
 import PublicVenueLanding from "./pages/PublicVenueLanding";
-
+import VenueInterestForm from "./pages/VenueInterestForm";
 const queryClient = new QueryClient();
 
 const AppContent = () => {
@@ -137,6 +137,7 @@ const AppContent = () => {
           <Route path="analytics" element={<VenueAnalytics />} />
         </Route>
         <Route path="/venue/onboarding" element={<VenueOnboarding />} />
+        <Route path="/venue/interest" element={<VenueInterestForm />} />
 
         {/* Legacy routes - redirect to new structure */}
         <Route path="/dashboard" element={<Navigate to="/player/dashboard" replace />} />
