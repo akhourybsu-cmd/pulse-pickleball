@@ -87,9 +87,9 @@ export function PublicVenueShell({ venue, courts, events, coaches, children }: P
         '--venue-secondary': secondaryColor,
       } as React.CSSProperties}
     >
-      {/* Sticky Header with venue branding - uses secondary color as background */}
+      {/* Sticky Header with venue branding - fixed height, logo scales within */}
       <header 
-        className="sticky top-0 z-50 border-b h-14"
+        className="sticky top-0 z-50 border-b h-20 flex-shrink-0"
         style={{
           backgroundColor: headerBg,
           borderColor: `${primaryColor}40`,
@@ -107,11 +107,11 @@ export function PublicVenueShell({ venue, courts, events, coaches, children }: P
             <ArrowLeft className="h-5 w-5" />
           </Button>
           
-          {/* Centered logo - takes up ~70-80% of header height */}
+          {/* Centered logo - constrained to max 65% of header height, scales down if needed */}
           <img 
             src={logoSrc} 
             alt={venue.name}
-            className="h-10 max-w-[200px] object-contain"
+            className="max-h-[52px] max-w-[220px] w-auto h-auto object-contain"
           />
           
           {/* Admin toggle button for venue owners/staff */}
