@@ -39,7 +39,7 @@ export default function VenueOverview() {
       <div className="mb-6 flex items-center gap-4">
         <img 
           src={pickleballPalaceLogo} 
-          alt="Pickleball Palace" 
+          alt={currentVenue?.venue_name || "Venue"} 
           className="h-14 w-auto hidden sm:block"
         />
         <div>

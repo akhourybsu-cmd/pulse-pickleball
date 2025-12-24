@@ -42,7 +42,7 @@ function SidebarContent({ onItemClick }: { onItemClick?: () => void }) {
         <NavLink to="/venue" onClick={onItemClick}>
           <img 
             src={pickleballPalaceLogo} 
-            alt="Pickleball Palace" 
+            alt={currentVenue?.venue_name || "Venue"} 
             className="h-12 w-auto cursor-pointer hover:opacity-80 transition-opacity" 
           />
         </NavLink>
@@ -94,6 +94,8 @@ function SidebarContent({ onItemClick }: { onItemClick?: () => void }) {
 
 export function VenueShell() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { venueAccess, currentVenueId } = useMode();
+  const currentVenue = venueAccess.find(v => v.venue_id === currentVenueId);
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -119,7 +121,7 @@ export function VenueShell() {
           <NavLink to="/venue">
             <img 
               src={pickleballPalaceLogo} 
-              alt="Pickleball Palace" 
+              alt={currentVenue?.venue_name || "Venue"} 
               className="h-10 w-auto cursor-pointer hover:opacity-80 transition-opacity" 
             />
           </NavLink>
