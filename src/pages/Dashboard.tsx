@@ -2,9 +2,8 @@ import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Trophy, TrendingUp, Activity } from "lucide-react";
+import { Trophy, Activity } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 
 import { Footer } from "@/components/Footer";
@@ -61,6 +60,9 @@ const Dashboard = () => {
   // Partner/Opponent stats
   const [partnersCount, setPartnersCount] = useState(0);
   const [courtsPlayed, setCourtsPlayed] = useState(0);
+
+  // Mobile tab state - lifted to control from ProfileHero
+  const [activeTab, setActiveTab] = useState<"performance" | "activity">("performance");
 
   const unreadCount = notifications.filter(n => n.unread).length;
 
@@ -265,7 +267,7 @@ const Dashboard = () => {
         />
       )}
       
-      {/* Profile Hero Header - Unified Player Overview */}
+      {/* Profile Hero Header - Unified Player Overview with embedded toggle */}
       <ProfileHero
         userId={user?.id}
         fullName={profile?.full_name || null}
@@ -281,16 +283,18 @@ const Dashboard = () => {
         unreadNotifications={unreadCount}
         onNotificationOpen={() => setIsDrawerOpen(true)}
         onSignOut={handleSignOut}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
       />
 
       {/* Main Dashboard Content */}
-      <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-6 lg:py-8 space-y-5">
+      <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-6 lg:py-8 space-y-6">
 
         {/* Desktop: Two-column layout */}
         <div className="hidden lg:grid lg:grid-cols-12 lg:gap-6">
           {/* Left Column - Performance */}
-          <div className="lg:col-span-7 space-y-5">
-            {/* Quick Actions - Horizontal command strip */}
+          <div className="lg:col-span-7 space-y-6">
+            {/* Quick Actions - 2x2 Grid */}
             <QuickActionsBar />
             
             {/* Your Spaces - Consolidated surface */}
@@ -299,8 +303,8 @@ const Dashboard = () => {
               homeCourtId={homeCourtId}
             />
             
-            {/* Performance Content with subtle background */}
-            <div className="bg-muted/20 rounded-xl p-4 space-y-4">
+            {/* Performance Content - Natural flow without heavy wrapper */}
+            <div className="space-y-4">
               {/* Most Played Court */}
               <StatsByCourtCard userId={user?.id} />
               
@@ -339,30 +343,14 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Mobile: Tabbed Interface */}
-        <div className="lg:hidden space-y-4">
-          {/* Quick Actions - Always visible */}
+        {/* Mobile: Content controlled by ProfileHero toggle */}
+        <div className="lg:hidden space-y-5">
+          {/* Quick Actions - 2x2 Grid - Always visible */}
           <QuickActionsBar />
           
-          <Tabs defaultValue="performance" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 bg-muted/30 p-0.5 rounded-full h-9">
-              <TabsTrigger 
-                value="performance" 
-                className="text-xs rounded-full data-[state=active]:bg-background data-[state=active]:shadow-sm"
-              >
-                <TrendingUp className="w-3.5 h-3.5 mr-1.5" />
-                Performance
-              </TabsTrigger>
-              <TabsTrigger 
-                value="activity" 
-                className="text-xs rounded-full data-[state=active]:bg-background data-[state=active]:shadow-sm"
-              >
-                <Activity className="w-3.5 h-3.5 mr-1.5" />
-                Activity
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="performance" className="mt-4 space-y-4">
+          {/* Content based on active tab */}
+          {activeTab === "performance" ? (
+            <div className="space-y-5">
               {/* Most Played Court Chip */}
               <StatsByCourtCard userId={user?.id} />
 
@@ -377,12 +365,12 @@ const Dashboard = () => {
                 <SmartMatch userId={user?.id || null} />
                 <LFGNotifications />
               </div>
-            </TabsContent>
-
-            <TabsContent value="activity" className="mt-4 space-y-4">
+            </div>
+          ) : (
+            <div className="space-y-4">
               <ActivityModule userId={user?.id} />
-            </TabsContent>
-          </Tabs>
+            </div>
+          )}
 
           {/* Footer Utilities - Mobile */}
           <HomeFooterUtilities 
