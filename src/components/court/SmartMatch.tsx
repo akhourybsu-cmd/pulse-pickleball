@@ -11,8 +11,8 @@ interface LFGPost {
   court_id: string;
   starts_at: string;
   ends_at: string;
-  skill_min: number;
-  skill_max: number;
+  intensity: string;
+  title: string;
   format: string;
   capacity: number;
   notes: string | null;
@@ -54,10 +54,9 @@ export function SmartMatch({ userId }: SmartMatchProps) {
       return;
     }
 
-    const userRating = profile.current_rating;
     const now = new Date().toISOString();
 
-    // Find LFG posts that match user's skill level and are upcoming
+    // Find upcoming LFG posts (no longer filtering by skill_min/skill_max since columns were removed)
     const { data: lfgPosts } = await (supabase as any)
       .from("lfg_posts")
       .select(`
@@ -67,8 +66,6 @@ export function SmartMatch({ userId }: SmartMatchProps) {
       `)
       .eq("status", "open")
       .gte("starts_at", now)
-      .lte("skill_min", userRating + 0.5)
-      .gte("skill_max", userRating - 0.5)
       .order("starts_at", { ascending: true })
       .limit(3);
 
@@ -147,8 +144,8 @@ export function SmartMatch({ userId }: SmartMatchProps) {
               <div className="flex items-start justify-between pr-8">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <Badge variant="secondary">
-                      {lfg.skill_min.toFixed(1)}-{lfg.skill_max.toFixed(1)}
+                    <Badge variant="secondary" className="capitalize">
+                      {lfg.intensity || 'casual'}
                     </Badge>
                     <Badge variant="outline">{lfg.format}</Badge>
                   </div>
