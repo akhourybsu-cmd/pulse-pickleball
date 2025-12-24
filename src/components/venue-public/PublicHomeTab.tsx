@@ -15,7 +15,7 @@ import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { PublicVenue, VenueCourt, VenueEvent, VenueCoach } from '@/hooks/usePublicVenue';
 import { TabId } from './PublicVenueShell';
-import pickleballPalaceLogo from '@/assets/pickleball-palace-logo.png';
+import { getVenueLogoSrc, getVenueLogoFallback } from '@/lib/venueBranding';
 
 interface PublicHomeTabProps {
   venue: PublicVenue;
@@ -59,7 +59,7 @@ export function PublicHomeTab({
         <div className="relative z-10 text-center px-4 max-w-4xl mx-auto">
           {/* Logo as primary hero element */}
           <img 
-            src={venue.logo_url || pickleballPalaceLogo} 
+            src={getVenueLogoSrc(venue.logo_url, venue.name, venue.slug)} 
             alt={venue.name}
             className="mx-auto mb-4 object-contain"
             style={{
@@ -69,8 +69,7 @@ export function PublicHomeTab({
               height: 'auto',
             }}
             onError={(e) => {
-              // Fallback to local asset if URL fails to load
-              e.currentTarget.src = pickleballPalaceLogo;
+              e.currentTarget.src = getVenueLogoFallback();
             }}
           />
 

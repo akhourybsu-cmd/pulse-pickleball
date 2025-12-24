@@ -16,8 +16,8 @@ import { ModeSwitcher } from '@/components/mode/ModeSwitcher';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useState, useMemo, CSSProperties } from 'react';
-import pickleballPalaceLogo from '@/assets/pickleball-palace-logo.png';
 import { useMode } from '@/contexts/ModeContext';
+import { getVenueLogoSrc, getVenueLogoFallback } from '@/lib/venueBranding';
 
 const navItems = [
   { to: '/venue', icon: LayoutDashboard, label: 'Overview', end: true },
@@ -51,8 +51,8 @@ function SidebarContent({ onItemClick }: { onItemClick?: () => void }) {
   const { currentVenue } = useMode();
   const venueTheme = useVenueTheme();
 
-  // Use dynamic logo from venue record, fallback to Pickleball Palace logo
-  const logoSrc = currentVenue?.logo_url || pickleballPalaceLogo;
+  // Use centralized branding helper for reliable logo display
+  const logoSrc = getVenueLogoSrc(currentVenue?.logo_url, currentVenue?.venue_name);
 
   return (
     <div className="flex flex-col h-full">
@@ -69,7 +69,7 @@ function SidebarContent({ onItemClick }: { onItemClick?: () => void }) {
             alt={currentVenue?.venue_name || "Venue"} 
             className="h-12 w-auto cursor-pointer hover:opacity-80 transition-opacity"
             onError={(e) => {
-              e.currentTarget.src = pickleballPalaceLogo;
+              e.currentTarget.src = getVenueLogoFallback();
             }}
           />
         </NavLink>
@@ -138,8 +138,8 @@ export function VenueShell() {
   const { currentVenue } = useMode();
   const venueTheme = useVenueTheme();
 
-  // Use dynamic logo from venue record, fallback to Pickleball Palace logo
-  const logoSrc = currentVenue?.logo_url || pickleballPalaceLogo;
+  // Use centralized branding helper for reliable logo display
+  const logoSrc = getVenueLogoSrc(currentVenue?.logo_url, currentVenue?.venue_name);
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -168,7 +168,7 @@ export function VenueShell() {
               alt={currentVenue?.venue_name || "Venue"} 
               className="h-10 w-auto cursor-pointer hover:opacity-80 transition-opacity"
               onError={(e) => {
-                e.currentTarget.src = pickleballPalaceLogo;
+                e.currentTarget.src = getVenueLogoFallback();
               }}
             />
           </NavLink>

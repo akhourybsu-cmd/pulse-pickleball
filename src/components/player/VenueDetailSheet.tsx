@@ -10,7 +10,7 @@ import { format } from 'date-fns';
 import { usePublicVenueDetails } from '@/hooks/usePublicVenues';
 import { FavoriteButton } from './FavoriteButton';
 import { useFavoriteVenues } from '@/hooks/useFavoriteVenues';
-import pickleballPalaceLogo from '@/assets/pickleball-palace-logo.png';
+import { getVenueLogoSrc, getVenueLogoFallback } from '@/lib/venueBranding';
 
 interface VenueDetailSheetProps {
   venueId: string | null;
@@ -91,12 +91,11 @@ export function VenueDetailSheet({ venueId, onClose }: VenueDetailSheetProps) {
               {/* PROMINENT LOGO - Always show with fallback */}
               <div className="flex flex-col items-center text-center">
                 <img 
-                  src={venue.logo_url || pickleballPalaceLogo} 
+                  src={getVenueLogoSrc(venue.logo_url, venue.name, venue.slug)} 
                   alt={venue.name} 
                   className="h-20 w-auto max-w-[180px] object-contain mb-3"
                   onError={(e) => {
-                    // Fallback to local asset if URL fails to load
-                    e.currentTarget.src = pickleballPalaceLogo;
+                    e.currentTarget.src = getVenueLogoFallback();
                   }}
                 />
 
