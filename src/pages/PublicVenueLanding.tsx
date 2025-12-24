@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { usePublicVenue, VenueCourt, VenueEvent, VenueCoach } from '@/hooks/usePublicVenue';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -17,7 +17,24 @@ import { TimeSlot } from '@/hooks/useVenueAvailability';
 
 export default function PublicVenueLanding() {
   const { slug } = useParams<{ slug: string }>();
+  const [searchParams] = useSearchParams();
   const { venue, courts, events, coaches, loading, error } = usePublicVenue(slug);
+  
+  // Get initial tab from URL query params
+  const urlTab = searchParams.get('tab');
+  const urlEventId = searchParams.get('eventId');
+  const urlCoachId = searchParams.get('coachId');
+  
+  // Determine initial tab based on URL
+  const getInitialTab = (): TabId => {
+    if (urlTab === 'schedule') return 'schedule';
+    if (urlTab === 'events') return 'events';
+    if (urlTab === 'coaching') return 'coaching';
+    if (urlTab === 'info') return 'info';
+    return 'home';
+  };
+  
+  const [initialTab] = useState<TabId>(getInitialTab());
   
   // Auth state
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -66,7 +83,36 @@ export default function PublicVenueLanding() {
     return () => subscription.unsubscribe();
   }, [venue]);
 
-  // Handlers - removed handleBookCourt as we navigate to schedule tab instead
+  // Handle scroll-to behavior when deep-linking to specific event/coach
+  useEffect(() => {
+    if (!loading && venue) {
+      // Small delay to allow DOM to render
+      const scrollTimeout = setTimeout(() => {
+        if (urlEventId) {
+          const eventElement = document.getElementById(`event-${urlEventId}`);
+          if (eventElement) {
+            eventElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            eventElement.classList.add('ring-2', 'ring-primary', 'ring-offset-2');
+            setTimeout(() => {
+              eventElement.classList.remove('ring-2', 'ring-primary', 'ring-offset-2');
+            }, 2000);
+          }
+        }
+        if (urlCoachId) {
+          const coachElement = document.getElementById(`coach-${urlCoachId}`);
+          if (coachElement) {
+            coachElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            coachElement.classList.add('ring-2', 'ring-primary', 'ring-offset-2');
+            setTimeout(() => {
+              coachElement.classList.remove('ring-2', 'ring-primary', 'ring-offset-2');
+            }, 2000);
+          }
+        }
+      }, 300);
+      
+      return () => clearTimeout(scrollTimeout);
+    }
+  }, [loading, venue, urlEventId, urlCoachId]);
 
   const handleSelectSlot = (court: VenueCourt, date: Date, slot: TimeSlot) => {
     setSelectedCourt(court);
@@ -111,7 +157,13 @@ export default function PublicVenueLanding() {
 
   return (
     <>
-      <PublicVenueShell venue={venue} courts={courts} events={events} coaches={coaches}>
+      <PublicVenueShell 
+        venue={venue} 
+        courts={courts} 
+        events={events} 
+        coaches={coaches}
+        initialTab={initialTab}
+      >
         {(activeTab, setActiveTab) => (
           <>
             {activeTab === 'home' && (
