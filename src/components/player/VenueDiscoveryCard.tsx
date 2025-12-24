@@ -54,7 +54,7 @@ export function VenueDiscoveryCard({ venue, onSelect, isFavorite, onToggleFavori
           <img 
             src={logoSrc} 
             alt={venue.name} 
-            className="h-28 max-w-[260px] object-contain"
+            className="h-36 max-w-[340px] object-contain"
           />
         </div>
         
