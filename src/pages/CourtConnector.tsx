@@ -288,8 +288,8 @@ export default function CourtConnector() {
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold">Court Connector</h1>
-          <p className="text-muted-foreground">Find local courts, connect with players, and rally your next match</p>
+          <h1 className="text-xl font-semibold tracking-tight">Court Connector</h1>
+          <p className="text-sm text-muted-foreground font-normal">Find local courts, connect with players, and rally your next match</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Dialog open={addCourtDialogOpen} onOpenChange={setAddCourtDialogOpen}>
