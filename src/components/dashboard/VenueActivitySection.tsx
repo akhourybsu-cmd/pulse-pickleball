@@ -3,13 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { MapPin, Calendar, Clock, ChevronRight, Building2, Search } from 'lucide-react';
-import { format } from 'date-fns';
+import { MapPin, ChevronRight, Building2, Search } from 'lucide-react';
 import { usePlayerVenueActivity } from '@/hooks/usePlayerVenueActivity';
 
 export function VenueActivitySection() {
   const navigate = useNavigate();
-  const { venues, upcomingBookings, upcomingEvents, loading } = usePlayerVenueActivity();
+  const { venues, loading } = usePlayerVenueActivity();
 
   if (loading) {
     return (
@@ -25,7 +24,7 @@ export function VenueActivitySection() {
     );
   }
 
-  const hasActivity = venues.length > 0 || upcomingBookings.length > 0 || upcomingEvents.length > 0;
+  const hasVenues = venues.length > 0;
 
   return (
     <Card>
@@ -33,7 +32,7 @@ export function VenueActivitySection() {
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
             <Building2 className="w-4 h-4" />
-            Venues
+            Venues You've Visited
           </CardTitle>
           <Button 
             variant="ghost" 
@@ -47,55 +46,9 @@ export function VenueActivitySection() {
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Upcoming Bookings & Events */}
-        {(upcomingBookings.length > 0 || upcomingEvents.length > 0) && (
+        {/* Venues You've Visited - Historical analytics only */}
+        {hasVenues && (
           <div className="space-y-2">
-            <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Upcoming</h4>
-            {upcomingBookings.slice(0, 2).map(booking => (
-              <div 
-                key={booking.id}
-                className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-pointer"
-                onClick={() => navigate('/player/bookings')}
-              >
-                <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <Calendar className="h-5 w-5 text-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">Court Reservation</p>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Clock className="w-3 h-3" />
-                    <span>{format(new Date(booking.start_time), 'MMM d, h:mm a')}</span>
-                  </div>
-                </div>
-                <Badge variant="outline" className="text-xs">Booking</Badge>
-              </div>
-            ))}
-            {upcomingEvents.slice(0, 2).map(reg => (
-              <div 
-                key={reg.id}
-                className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors cursor-pointer"
-                onClick={() => navigate('/player/events')}
-              >
-                <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <Calendar className="h-5 w-5 text-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{reg.event?.title}</p>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Clock className="w-3 h-3" />
-                    <span>{format(new Date(reg.event?.start_time), 'MMM d, h:mm a')}</span>
-                  </div>
-                </div>
-                <Badge variant="outline" className="text-xs">Event</Badge>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Venues You've Visited */}
-        {venues.length > 0 && (
-          <div className="space-y-2">
-            <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Venues You've Visited</h4>
             {venues.slice(0, 3).map(venue => (
               <div 
                 key={venue.id}
@@ -130,7 +83,7 @@ export function VenueActivitySection() {
         )}
 
         {/* Empty State - Find Venues CTA */}
-        {!hasActivity && (
+        {!hasVenues && (
           <div className="text-center py-6">
             <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
               <MapPin className="h-6 w-6 text-primary" />
@@ -146,7 +99,7 @@ export function VenueActivitySection() {
         )}
 
         {/* View All Link */}
-        {hasActivity && (
+        {hasVenues && (
           <Button 
             variant="outline" 
             size="sm" 
