@@ -87,48 +87,36 @@ export function PublicVenueShell({ venue, courts, events, coaches, children }: P
         '--venue-secondary': secondaryColor,
       } as React.CSSProperties}
     >
-      {/* Sticky Header - fixed 72px height, logo scales within */}
+      {/* Sticky Header - navigation only, fixed 60px height */}
       <header 
         className="sticky top-0 z-50 border-b flex-shrink-0"
         style={{
-          height: '72px',
-          minHeight: '72px',
-          maxHeight: '72px',
+          height: '60px',
+          minHeight: '60px',
+          maxHeight: '60px',
           backgroundColor: headerBg,
           borderColor: `${primaryColor}40`,
         }}
       >
-        <div className="relative flex items-center justify-center h-full px-4 overflow-hidden">
-          {/* Back button - vertically centered */}
+        <div className="relative flex items-center justify-between h-full px-4">
+          {/* Back button */}
           <Button 
             variant="ghost" 
             size="icon" 
             onClick={() => navigate(-1)}
-            className="absolute left-2 h-9 w-9 hover:bg-white/10"
+            className="h-9 w-9 hover:bg-white/10"
             style={{ color: headerTextColor }}
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
           
-          {/* Centered logo - max 65% of header height (~47px), scales down if needed */}
-          <img 
-            src={logoSrc} 
-            alt={venue.name}
-            className="w-auto object-contain"
-            style={{
-              maxHeight: '47px',
-              maxWidth: '280px',
-              height: 'auto',
-            }}
-          />
-          
-          {/* Admin toggle button for venue owners/staff */}
-          {isVenueAdmin && (
+          {/* Admin button for venue owners/staff */}
+          {isVenueAdmin ? (
             <Button
               variant="outline"
               size="sm"
               onClick={() => navigate('/venue')}
-              className="absolute right-2 gap-1.5 h-8 text-xs border-current"
+              className="gap-1.5 h-8 text-xs border-current"
               style={{ 
                 color: primaryColor, 
                 borderColor: primaryColor,
@@ -138,6 +126,8 @@ export function PublicVenueShell({ venue, courts, events, coaches, children }: P
               <Settings className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Admin</span>
             </Button>
+          ) : (
+            <div className="w-9" /> 
           )}
         </div>
       </header>
