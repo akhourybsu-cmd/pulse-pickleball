@@ -263,7 +263,7 @@ export default function VenueSettingsPage() {
         {currentVenueId && (
           <StripeConnectCard 
             venueId={currentVenueId} 
-            currentPlatformFee={(settings as any)?.platform_fee_percent || 10}
+            currentPlatformFee={settings?.platform_fee_percent || 10}
           />
         )}
 
@@ -337,8 +337,8 @@ export default function VenueSettingsPage() {
                   <Input
                     id="banner_url"
                     type="url"
-                    value={(formData as any).banner_url || ''}
-                    onChange={(e) => handleChange('banner_url' as any, e.target.value)}
+                    value={formData.banner_url || ''}
+                    onChange={(e) => handleChange('banner_url', e.target.value)}
                     placeholder="https://..."
                   />
                   <p className="text-xs text-muted-foreground">Hero image for your public venue page</p>
@@ -347,8 +347,8 @@ export default function VenueSettingsPage() {
                   <Label htmlFor="tagline">Tagline</Label>
                   <Input
                     id="tagline"
-                    value={(formData as any).tagline || ''}
-                    onChange={(e) => handleChange('tagline' as any, e.target.value)}
+                    value={formData.tagline || ''}
+                    onChange={(e) => handleChange('tagline', e.target.value)}
                     placeholder="Where Champions Play"
                     maxLength={60}
                   />
@@ -363,13 +363,13 @@ export default function VenueSettingsPage() {
                     <Input
                       id="primary_color"
                       type="color"
-                      value={(formData as any).primary_color || '#FF6B35'}
-                      onChange={(e) => handleChange('primary_color' as any, e.target.value)}
+                      value={formData.primary_color || '#FF6B35'}
+                      onChange={(e) => handleChange('primary_color', e.target.value)}
                       className="w-16 h-10 p-1 cursor-pointer"
                     />
                     <Input
-                      value={(formData as any).primary_color || '#FF6B35'}
-                      onChange={(e) => handleChange('primary_color' as any, e.target.value)}
+                      value={formData.primary_color || '#FF6B35'}
+                      onChange={(e) => handleChange('primary_color', e.target.value)}
                       placeholder="#FF6B35"
                       className="flex-1"
                     />
@@ -381,13 +381,13 @@ export default function VenueSettingsPage() {
                     <Input
                       id="secondary_color"
                       type="color"
-                      value={(formData as any).secondary_color || '#004E64'}
-                      onChange={(e) => handleChange('secondary_color' as any, e.target.value)}
+                      value={formData.secondary_color || '#004E64'}
+                      onChange={(e) => handleChange('secondary_color', e.target.value)}
                       className="w-16 h-10 p-1 cursor-pointer"
                     />
                     <Input
-                      value={(formData as any).secondary_color || '#004E64'}
-                      onChange={(e) => handleChange('secondary_color' as any, e.target.value)}
+                      value={formData.secondary_color || '#004E64'}
+                      onChange={(e) => handleChange('secondary_color', e.target.value)}
                       placeholder="#004E64"
                       className="flex-1"
                     />
@@ -400,11 +400,11 @@ export default function VenueSettingsPage() {
                   <div className="flex gap-2">
                     <div 
                       className="w-16 h-8 rounded" 
-                      style={{ backgroundColor: (formData as any).primary_color || '#FF6B35' }}
+                      style={{ backgroundColor: formData.primary_color || '#FF6B35' }}
                     />
                     <div 
                       className="w-16 h-8 rounded" 
-                      style={{ backgroundColor: (formData as any).secondary_color || '#004E64' }}
+                      style={{ backgroundColor: formData.secondary_color || '#004E64' }}
                     />
                   </div>
                 </div>
@@ -421,8 +421,8 @@ export default function VenueSettingsPage() {
                 <Input
                   id="social_facebook"
                   type="url"
-                  value={(formData as any).social_facebook || ''}
-                  onChange={(e) => handleChange('social_facebook' as any, e.target.value)}
+                  value={formData.social_facebook || ''}
+                  onChange={(e) => handleChange('social_facebook', e.target.value)}
                   placeholder="https://facebook.com/yourvenue"
                 />
               </div>
@@ -434,8 +434,8 @@ export default function VenueSettingsPage() {
                 <Input
                   id="social_instagram"
                   type="url"
-                  value={(formData as any).social_instagram || ''}
-                  onChange={(e) => handleChange('social_instagram' as any, e.target.value)}
+                  value={formData.social_instagram || ''}
+                  onChange={(e) => handleChange('social_instagram', e.target.value)}
                   placeholder="https://instagram.com/yourvenue"
                 />
               </div>

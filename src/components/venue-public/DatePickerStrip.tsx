@@ -6,9 +6,10 @@ interface DatePickerStripProps {
   selectedDate: Date;
   onSelectDate: (date: Date) => void;
   numberOfDays?: number;
+  accentColor?: string;
 }
 
-export function DatePickerStrip({ selectedDate, onSelectDate, numberOfDays = 14 }: DatePickerStripProps) {
+export function DatePickerStrip({ selectedDate, onSelectDate, numberOfDays = 14, accentColor }: DatePickerStripProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const dates = Array.from({ length: numberOfDays }, (_, i) => addDays(startOfToday(), i));
 
@@ -41,11 +42,12 @@ export function DatePickerStrip({ selectedDate, onSelectDate, numberOfDays = 14 
             key={date.toISOString()}
             onClick={() => onSelectDate(date)}
             className={cn(
-              "flex-shrink-0 px-4 py-2 text-sm font-medium transition-all whitespace-nowrap",
+              "flex-shrink-0 px-4 py-2 text-sm font-medium transition-all whitespace-nowrap border-b-2",
               isSelected 
-                ? "border-b-2 border-amber-500 text-foreground" 
-                : "text-muted-foreground hover:text-foreground"
+                ? "text-foreground" 
+                : "text-muted-foreground hover:text-foreground border-transparent"
             )}
+            style={isSelected ? { borderBottomColor: accentColor || 'hsl(var(--primary))' } : undefined}
           >
             {getDateLabel(date)}
           </button>
