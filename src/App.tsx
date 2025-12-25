@@ -90,6 +90,10 @@ import VenueCoaching from "./pages/venue/VenueCoaching";
 import VenueStaff from "./pages/venue/VenueStaff";
 import VenueSettings from "./pages/venue/VenueSettings";
 import VenueAnalytics from "./pages/venue/VenueAnalytics";
+import VenueRoundRobins from "./pages/venue/VenueRoundRobins";
+import VenueCreateRoundRobin from "./pages/venue/VenueCreateRoundRobin";
+import VenueRoundRobinDetail from "./pages/venue/VenueRoundRobinDetail";
+import VenueRoundRobinKiosk from "./pages/venue/VenueRoundRobinKiosk";
 import PublicVenueLanding from "./pages/PublicVenueLanding";
 import VenueInterestForm from "./pages/VenueInterestForm";
 const queryClient = new QueryClient();
@@ -131,6 +135,9 @@ const AppContent = () => {
           <Route path="courts" element={<VenueCourts />} />
           <Route path="bookings" element={<VenueBookings />} />
           <Route path="events" element={<VenueEvents />} />
+          <Route path="round-robins" element={<VenueRoundRobins />} />
+          <Route path="round-robins/create" element={<VenueCreateRoundRobin />} />
+          <Route path="round-robins/:id" element={<VenueRoundRobinDetail />} />
           <Route path="coaching" element={<VenueCoaching />} />
           <Route path="staff" element={<VenueStaff />} />
           <Route path="settings" element={<VenueSettings />} />
@@ -138,6 +145,7 @@ const AppContent = () => {
         </Route>
         <Route path="/venue/onboarding" element={<VenueOnboarding />} />
         <Route path="/venue/interest" element={<VenueInterestForm />} />
+        <Route path="/venue/round-robins/:id/kiosk" element={<VenueRoundRobinKiosk />} />
 
         {/* Legacy routes - redirect to new structure */}
         <Route path="/dashboard" element={<Navigate to="/player/dashboard" replace />} />
