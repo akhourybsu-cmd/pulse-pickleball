@@ -82,48 +82,54 @@ export function PublicEventsTab({ venue, events, onRegister, registeredEventIds 
     return format(date, 'EEEE, MMMM d');
   };
 
-  // Handle scroll to update visible date
+  // Handle scroll to update visible date - detect which section is at the top
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (isScrollingToDate.current) return;
+    const handleScroll = () => {
+      if (isScrollingToDate.current) return;
+      
+      const containerRect = container.getBoundingClientRect();
+      let closestDate: string | null = null;
+      let closestDistance = Infinity;
+      
+      // Find the date section header closest to the top of the container
+      dateRefsMap.current.forEach((element, dateKey) => {
+        const rect = element.getBoundingClientRect();
+        // Distance from the top of the container to the top of this element
+        const distance = Math.abs(rect.top - containerRect.top);
         
-        // Find the first visible section
-        const visibleEntries = entries.filter(entry => entry.isIntersecting);
-        if (visibleEntries.length > 0) {
-          // Sort by top position to get the topmost visible section
-          const sorted = visibleEntries.sort((a, b) => {
-            const rectA = a.boundingClientRect;
-            const rectB = b.boundingClientRect;
-            return rectA.top - rectB.top;
-          });
-          
-          const topEntry = sorted[0];
-          const dateKey = topEntry.target.getAttribute('data-date');
-          if (dateKey) {
-            const date = parseISO(dateKey);
-            setVisibleDate(date);
-            setSelectedDate(date);
-          }
+        // Also check if element is at or above the container top (meaning it's sticky)
+        if (rect.top <= containerRect.top + 10 && distance < closestDistance) {
+          closestDistance = distance;
+          closestDate = dateKey;
         }
-      },
-      { 
-        root: container,
-        rootMargin: '-80px 0px -80% 0px',
-        threshold: 0
+      });
+      
+      // If no element is at the top yet, find the first visible one
+      if (!closestDate) {
+        dateRefsMap.current.forEach((element, dateKey) => {
+          const rect = element.getBoundingClientRect();
+          if (rect.top >= containerRect.top && rect.top < containerRect.bottom) {
+            if (!closestDate) closestDate = dateKey;
+          }
+        });
       }
-    );
+      
+      if (closestDate) {
+        const date = parseISO(closestDate);
+        if (!isSameDay(date, visibleDate)) {
+          setVisibleDate(date);
+          setSelectedDate(date);
+        }
+      }
+    };
     
-    // Observe all date section headers
-    dateRefsMap.current.forEach((element) => {
-      observer.observe(element);
-    });
+    container.addEventListener('scroll', handleScroll, { passive: true });
     
-    return () => observer.disconnect();
-  }, [eventsByDate]);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [visibleDate]);
 
   // Scroll to date when picker is used
   const scrollToDate = useCallback((date: Date) => {
