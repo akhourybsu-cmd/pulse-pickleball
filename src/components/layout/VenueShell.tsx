@@ -8,7 +8,8 @@ import {
   Users,
   Settings,
   Menu,
-  BarChart3
+  BarChart3,
+  Repeat
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -24,6 +25,7 @@ const navItems = [
   { to: '/venue/courts', icon: MapPin, label: 'Courts' },
   { to: '/venue/bookings', icon: Calendar, label: 'Bookings' },
   { to: '/venue/events', icon: CalendarDays, label: 'Events' },
+  { to: '/venue/round-robins', icon: Repeat, label: 'Round Robins' },
   { to: '/venue/coaching', icon: GraduationCap, label: 'Coaching' },
   { to: '/venue/staff', icon: Users, label: 'Staff' },
   { to: '/venue/analytics', icon: BarChart3, label: 'Analytics' },

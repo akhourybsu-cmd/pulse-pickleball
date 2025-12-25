@@ -381,17 +381,59 @@ export default function VenueRoundRobinDetail() {
         <TabsContent value="schedule">
           {hasSchedule ? (
             <ScheduleRoundCarousel
-              schedule={schedule}
-              numRounds={event.num_rounds}
+              totalRounds={event.num_rounds}
               currentRound={event.current_round || 1}
-              getPlayerName={getPlayerName}
-              isOrganizer={true}
-              eventStatus={event.status}
-              onScoreSubmit={async (matchId, team1Score, team2Score) => {
-                await supabase.from("round_robin_schedule").update({ team1_score: team1Score, team2_score: team2Score }).eq("id", matchId);
-                fetchEventDetails();
+            >
+              {(roundNo) => {
+                const roundMatches = schedule.filter(m => m.round_no === roundNo && !m.is_bye);
+                const currentRound = event.current_round || 1;
+                const isCurrentRound = roundNo === currentRound;
+                const isFutureRound = roundNo > currentRound;
+                
+                return (
+                  <div className={`space-y-4 ${isFutureRound ? 'opacity-50' : ''}`}>
+                    <div className="flex items-center justify-center gap-3">
+                      <div className="h-px bg-border flex-1 max-w-12" />
+                      <div className={`text-lg font-bold px-4 py-2 rounded-full ${isCurrentRound && isLive ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                        Round {roundNo}
+                        {isCurrentRound && isLive && <span className="ml-2 text-xs">(Active)</span>}
+                      </div>
+                      <div className="h-px bg-border flex-1 max-w-12" />
+                    </div>
+                    
+                    <div className="grid gap-3 md:grid-cols-2">
+                      {roundMatches.map((match) => (
+                        <Card key={match.id} className={isFutureRound ? 'pointer-events-none' : ''}>
+                          <CardContent className="p-4 space-y-3">
+                            <div className="flex items-center justify-between">
+                              <Badge variant="outline" className="font-mono">Court {match.court_no}</Badge>
+                              {match.team1_score !== null && match.team2_score !== null && (
+                                <Badge variant="secondary">Completed</Badge>
+                              )}
+                            </div>
+                            
+                            <div className="space-y-2">
+                              <div className={`flex items-center justify-between p-3 rounded-lg ${match.team1_score !== null && match.team1_score > (match.team2_score || 0) ? 'bg-primary/10 font-semibold' : 'bg-muted/50'}`}>
+                                <div className="text-sm truncate flex-1">
+                                  {getPlayerName(match.a1_player_id, match)} / {getPlayerName(match.a2_player_id, match)}
+                                </div>
+                                <div className="text-lg font-bold ml-2">{match.team1_score ?? '—'}</div>
+                              </div>
+                              <div className={`flex items-center justify-between p-3 rounded-lg ${match.team2_score !== null && match.team2_score > (match.team1_score || 0) ? 'bg-primary/10 font-semibold' : 'bg-muted/50'}`}>
+                                <div className="text-sm truncate flex-1">
+                                  {getPlayerName(match.b1_player_id, match)} / {getPlayerName(match.b2_player_id, match)}
+                                </div>
+                                <div className="text-lg font-bold ml-2">{match.team2_score ?? '—'}</div>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                );
               }}
-            />
+            </ScheduleRoundCarousel>
           ) : (
             <Card>
               <CardContent className="py-12 text-center">
@@ -473,10 +515,43 @@ export default function VenueRoundRobinDetail() {
       <PlayerManagementDialog
         open={playerManagementOpen}
         onOpenChange={setPlayerManagementOpen}
-        eventId={event.id}
         players={players}
-        eventStatus={event.status}
-        onPlayersUpdated={fetchEventDetails}
+        currentRound={event.current_round}
+        totalRounds={event.num_rounds}
+        onAddPlayer={async (playerId: string) => {
+          await supabase.from("round_robin_players").insert({ event_id: event.id, player_id: playerId });
+          fetchEventDetails();
+        }}
+        onMarkInactive={async (playerEventId: string) => {
+          await supabase.from("round_robin_players").update({ active: false }).eq("id", playerEventId);
+          fetchEventDetails();
+        }}
+        onSubstitute={async (originalPlayerId: string, newPlayerId: string, scope: 'global' | number) => {
+          // Handle substitution
+          if (scope === 'global') {
+            await supabase.from("round_robin_schedule")
+              .update({ a1_player_id: newPlayerId })
+              .eq("event_id", event.id)
+              .eq("a1_player_id", originalPlayerId)
+              .gte("round_no", event.current_round || 1);
+            await supabase.from("round_robin_schedule")
+              .update({ a2_player_id: newPlayerId })
+              .eq("event_id", event.id)
+              .eq("a2_player_id", originalPlayerId)
+              .gte("round_no", event.current_round || 1);
+            await supabase.from("round_robin_schedule")
+              .update({ b1_player_id: newPlayerId })
+              .eq("event_id", event.id)
+              .eq("b1_player_id", originalPlayerId)
+              .gte("round_no", event.current_round || 1);
+            await supabase.from("round_robin_schedule")
+              .update({ b2_player_id: newPlayerId })
+              .eq("event_id", event.id)
+              .eq("b2_player_id", originalPlayerId)
+              .gte("round_no", event.current_round || 1);
+          }
+          fetchEventDetails();
+        }}
       />
 
       <CourtsRoundsDialog
@@ -502,9 +577,21 @@ export default function VenueRoundRobinDetail() {
         open={scoreManagementOpen}
         onOpenChange={setScoreManagementOpen}
         schedule={schedule}
-        numRounds={event.num_rounds}
-        getPlayerName={getPlayerName}
-        onScoresUpdated={fetchEventDetails}
+        isAdmin={true}
+        ratingEligible={event.rating_eligible}
+        getPlayerName={(playerId) => getPlayerName(playerId)}
+        onEditScore={async (matchId: string, team1Score: number, team2Score: number) => {
+          await supabase.from("round_robin_schedule").update({ team1_score: team1Score, team2_score: team2Score }).eq("id", matchId);
+          fetchEventDetails();
+        }}
+        onVoidMatch={async (matchId: string) => {
+          await supabase.from("round_robin_schedule").update({ team1_score: null, team2_score: null }).eq("id", matchId);
+          fetchEventDetails();
+        }}
+        onDeleteMatch={async (matchId: string) => {
+          await supabase.from("round_robin_schedule").delete().eq("id", matchId);
+          fetchEventDetails();
+        }}
       />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
