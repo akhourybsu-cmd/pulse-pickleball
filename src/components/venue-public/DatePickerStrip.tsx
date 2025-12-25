@@ -43,7 +43,7 @@ export function DatePickerStrip({ selectedDate, onSelectDate, numberOfDays = 14 
             className={cn(
               "flex-shrink-0 px-4 py-2 text-sm font-medium transition-all whitespace-nowrap",
               isSelected 
-                ? "border-b-2 border-primary text-foreground" 
+                ? "border-b-2 border-amber-500 text-foreground" 
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
