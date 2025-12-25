@@ -29,7 +29,9 @@ export function PublicEventsTab({ venue, events, onRegister, registeredEventIds 
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [visibleDate, setVisibleDate] = useState(startOfToday());
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const dateRefsMap = useRef<Map<string, HTMLDivElement>>(new Map());
+  // Separate refs: sections for scrolling TO, headers for detecting which is at top
+  const sectionRefsMap = useRef<Map<string, HTMLDivElement>>(new Map());
+  const headerRefsMap = useRef<Map<string, HTMLDivElement>>(new Map());
   const isScrollingToDate = useRef(false);
   
   const primaryColor = venue.primary_color || '#FF6B35';
@@ -90,35 +92,33 @@ export function PublicEventsTab({ venue, events, onRegister, registeredEventIds 
     const handleScroll = () => {
       if (isScrollingToDate.current) return;
       
-      const containerRect = container.getBoundingClientRect();
-      let closestDate: string | null = null;
-      let closestDistance = Infinity;
+      const scrollTop = container.scrollTop;
+      let currentDateKey: string | null = null;
       
-      // Find the date section header closest to the top of the container
-      dateRefsMap.current.forEach((element, dateKey) => {
-        const rect = element.getBoundingClientRect();
-        // Distance from the top of the container to the top of this element
-        const distance = Math.abs(rect.top - containerRect.top);
+      // Find which section we're currently in based on scroll position
+      // We iterate through sections and find the one whose top is at or above scrollTop
+      const entries = Array.from(sectionRefsMap.current.entries());
+      
+      for (let i = 0; i < entries.length; i++) {
+        const [dateKey, element] = entries[i];
+        const sectionTop = element.offsetTop;
+        const nextSection = entries[i + 1];
+        const sectionBottom = nextSection ? nextSection[1].offsetTop : sectionTop + element.offsetHeight;
         
-        // Also check if element is at or above the container top (meaning it's sticky)
-        if (rect.top <= containerRect.top + 10 && distance < closestDistance) {
-          closestDistance = distance;
-          closestDate = dateKey;
+        // If scroll position is within this section (with small buffer for sticky header)
+        if (scrollTop >= sectionTop - 10 && scrollTop < sectionBottom - 10) {
+          currentDateKey = dateKey;
+          break;
         }
-      });
-      
-      // If no element is at the top yet, find the first visible one
-      if (!closestDate) {
-        dateRefsMap.current.forEach((element, dateKey) => {
-          const rect = element.getBoundingClientRect();
-          if (rect.top >= containerRect.top && rect.top < containerRect.bottom) {
-            if (!closestDate) closestDate = dateKey;
-          }
-        });
       }
       
-      if (closestDate) {
-        const date = parseISO(closestDate);
+      // Fallback to first section if at the very top
+      if (!currentDateKey && entries.length > 0 && scrollTop < 50) {
+        currentDateKey = entries[0][0];
+      }
+      
+      if (currentDateKey) {
+        const date = parseISO(currentDateKey);
         if (!isSameDay(date, visibleDate)) {
           setVisibleDate(date);
           setSelectedDate(date);
@@ -134,19 +134,14 @@ export function PublicEventsTab({ venue, events, onRegister, registeredEventIds 
   // Scroll to date when picker is used
   const scrollToDate = useCallback((date: Date) => {
     const dateKey = format(date, 'yyyy-MM-dd');
-    const element = dateRefsMap.current.get(dateKey);
+    const element = sectionRefsMap.current.get(dateKey);
     
     if (element && scrollContainerRef.current) {
       isScrollingToDate.current = true;
       
-      // Calculate scroll position with offset for sticky headers
-      const container = scrollContainerRef.current;
-      const containerTop = container.getBoundingClientRect().top;
-      const elementTop = element.getBoundingClientRect().top;
-      const scrollOffset = container.scrollTop + (elementTop - containerTop);
-      
-      container.scrollTo({
-        top: scrollOffset,
+      // Use offsetTop for accurate positioning - scrolls section to top of container
+      scrollContainerRef.current.scrollTo({
+        top: element.offsetTop,
         behavior: 'smooth'
       });
       
@@ -207,14 +202,23 @@ export function PublicEventsTab({ venue, events, onRegister, registeredEventIds 
               data-date={dateKey}
               ref={(el) => {
                 if (el) {
-                  dateRefsMap.current.set(dateKey, el);
+                  sectionRefsMap.current.set(dateKey, el);
                 } else {
-                  dateRefsMap.current.delete(dateKey);
+                  sectionRefsMap.current.delete(dateKey);
                 }
               }}
             >
               {/* Date Section Header - sticks below category filters */}
-              <div className="sticky top-0 z-[5] bg-muted/95 backdrop-blur-sm px-4 py-3 border-b border-border">
+              <div 
+                ref={(el) => {
+                  if (el) {
+                    headerRefsMap.current.set(dateKey, el);
+                  } else {
+                    headerRefsMap.current.delete(dateKey);
+                  }
+                }}
+                className="sticky top-0 z-[5] bg-muted/95 backdrop-blur-sm px-4 py-3 border-b border-border"
+              >
                 <h3 className="text-base font-semibold text-foreground">
                   {getDateLabel(date)}
                 </h3>
