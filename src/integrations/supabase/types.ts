@@ -3241,6 +3241,7 @@ export type Database = {
           is_published: boolean | null
           max_participants: number | null
           price: number | null
+          round_robin_event_id: string | null
           skill_level: string | null
           start_time: string
           title: string
@@ -3258,6 +3259,7 @@ export type Database = {
           is_published?: boolean | null
           max_participants?: number | null
           price?: number | null
+          round_robin_event_id?: string | null
           skill_level?: string | null
           start_time: string
           title: string
@@ -3275,6 +3277,7 @@ export type Database = {
           is_published?: boolean | null
           max_participants?: number | null
           price?: number | null
+          round_robin_event_id?: string | null
           skill_level?: string | null
           start_time?: string
           title?: string
@@ -3282,6 +3285,13 @@ export type Database = {
           venue_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "venue_events_round_robin_event_id_fkey"
+            columns: ["round_robin_event_id"]
+            isOneToOne: false
+            referencedRelation: "round_robin_events"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "venue_events_venue_id_fkey"
             columns: ["venue_id"]

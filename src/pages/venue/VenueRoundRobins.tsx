@@ -147,13 +147,9 @@ export default function VenueRoundRobins() {
         <div>
           <h1 className="text-2xl font-bold">Round Robins</h1>
           <p className="text-muted-foreground">
-            Manage round robin tournaments at {currentVenue?.venue_name}
+            Manage round robin tournaments at {currentVenue?.venue_name}. Create new round robins from the Events tab.
           </p>
         </div>
-        <Button onClick={() => navigate("/venue/round-robins/create")}>
-          <Plus className="h-4 w-4 mr-2" />
-          Create Round Robin
-        </Button>
       </div>
 
       {/* Tabs */}
@@ -182,11 +178,11 @@ export default function VenueRoundRobins() {
                 <Repeat className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                 <h3 className="text-lg font-medium mb-2">No Round Robins Yet</h3>
                 <p className="text-muted-foreground mb-4">
-                  Create your first round robin tournament for {currentVenue?.venue_name}
+                  Create a "Round Robin" event from the Events tab to get started
                 </p>
-                <Button onClick={() => navigate("/venue/round-robins/create")}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Round Robin
+                <Button onClick={() => navigate("/venue/events")}>
+                  <Calendar className="h-4 w-4 mr-2" />
+                  Go to Events
                 </Button>
               </CardContent>
             </Card>
@@ -226,11 +222,11 @@ export default function VenueRoundRobins() {
                 <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                 <h3 className="text-lg font-medium mb-2">No Draft Events</h3>
                 <p className="text-muted-foreground mb-4">
-                  Create a new round robin to get started
+                  Create a "Round Robin" event from the Events tab
                 </p>
-                <Button onClick={() => navigate("/venue/round-robins/create")}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Round Robin
+                <Button onClick={() => navigate("/venue/events")}>
+                  <Calendar className="h-4 w-4 mr-2" />
+                  Go to Events
                 </Button>
               </CardContent>
             </Card>

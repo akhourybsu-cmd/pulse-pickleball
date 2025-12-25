@@ -91,7 +91,6 @@ import VenueStaff from "./pages/venue/VenueStaff";
 import VenueSettings from "./pages/venue/VenueSettings";
 import VenueAnalytics from "./pages/venue/VenueAnalytics";
 import VenueRoundRobins from "./pages/venue/VenueRoundRobins";
-import VenueCreateRoundRobin from "./pages/venue/VenueCreateRoundRobin";
 import VenueRoundRobinDetail from "./pages/venue/VenueRoundRobinDetail";
 import VenueRoundRobinKiosk from "./pages/venue/VenueRoundRobinKiosk";
 import PublicVenueLanding from "./pages/PublicVenueLanding";
@@ -136,7 +135,6 @@ const AppContent = () => {
           <Route path="bookings" element={<VenueBookings />} />
           <Route path="events" element={<VenueEvents />} />
           <Route path="round-robins" element={<VenueRoundRobins />} />
-          <Route path="round-robins/create" element={<VenueCreateRoundRobin />} />
           <Route path="round-robins/:id" element={<VenueRoundRobinDetail />} />
           <Route path="coaching" element={<VenueCoaching />} />
           <Route path="staff" element={<VenueStaff />} />

@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Plus, CalendarIcon, Clock, Users, DollarSign, Trophy } from 'lucide-react';
+import { Plus, CalendarIcon, Clock, Users, DollarSign, Trophy, MapPin } from 'lucide-react';
 import { CreateEventData, VenueEvent } from '@/hooks/useVenueEvents';
 import { cn } from '@/lib/utils';
 
@@ -22,6 +22,7 @@ const EVENT_TYPES: { value: VenueEvent['event_type']; label: string; icon?: stri
   { value: 'clinic', label: 'Clinic' },
   { value: 'tournament', label: 'Tournament' },
   { value: 'league', label: 'League' },
+  { value: 'round_robin', label: 'Round Robin' },
   { value: 'other', label: 'Other' }
 ];
 
@@ -68,7 +69,8 @@ export function CreateEventDialog({ onCreateEvent }: CreateEventDialogProps) {
     max_participants: '',
     price: '',
     skill_level: 'All Levels',
-    is_published: false
+    is_published: false,
+    num_courts: 4 // For round robin events
   });
 
   // Calculate end time display
@@ -99,7 +101,8 @@ export function CreateEventDialog({ onCreateEvent }: CreateEventDialogProps) {
       max_participants: formData.max_participants ? parseInt(formData.max_participants) : undefined,
       price: formData.price ? parseFloat(formData.price) : undefined,
       skill_level: formData.skill_level || undefined,
-      is_published: formData.is_published
+      is_published: formData.is_published,
+      num_courts: formData.event_type === 'round_robin' ? formData.num_courts : undefined
     });
 
     setLoading(false);
@@ -115,7 +118,8 @@ export function CreateEventDialog({ onCreateEvent }: CreateEventDialogProps) {
         max_participants: '',
         price: '',
         skill_level: 'All Levels',
-        is_published: false
+        is_published: false,
+        num_courts: 4
       });
     }
   };
@@ -272,7 +276,37 @@ export function CreateEventDialog({ onCreateEvent }: CreateEventDialogProps) {
                   </SelectItem>
                 ))}
               </SelectContent>
-            </Select>
+          </Select>
+
+          {/* Number of Courts - Only for Round Robin */}
+          {formData.event_type === 'round_robin' && (
+            <div className="space-y-2 mt-4">
+              <Label className="flex items-center gap-1.5">
+                <MapPin className="h-3.5 w-3.5" />
+                Number of Courts
+              </Label>
+              <div className="flex flex-wrap gap-2">
+                {[2, 3, 4, 5, 6, 8].map(count => (
+                  <button
+                    key={count}
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, num_courts: count }))}
+                    className={cn(
+                      "px-3 py-1.5 rounded-full text-sm font-medium transition-all",
+                      formData.num_courts === count
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground hover:bg-muted/80"
+                    )}
+                  >
+                    {count} courts
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Configure players and schedule in the Round Robins tab after creation
+              </p>
+            </div>
+          )}
           </div>
 
           {/* Capacity and Price Row */}
