@@ -162,6 +162,7 @@ export function PublicEventsTab({ venue, events, onRegister, registeredEventIds 
         <DatePickerStrip 
           selectedDate={selectedDate}
           onSelectDate={scrollToDate}
+          accentColor={primaryColor}
         />
       </div>
 

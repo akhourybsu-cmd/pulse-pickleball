@@ -26,6 +26,8 @@ export interface VenueSettings {
   social_facebook: string | null;
   social_instagram: string | null;
   amenities: string[] | null;
+  // Platform fee
+  platform_fee_percent: number | null;
 }
 
 export function useVenueSettings(venueId: string | null) {
