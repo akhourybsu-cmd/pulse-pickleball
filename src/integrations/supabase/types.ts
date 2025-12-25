@@ -1993,6 +1993,7 @@ export type Database = {
           start_time: string | null
           status: Database["public"]["Enums"]["round_robin_status"]
           updated_at: string
+          venue_id: string | null
           void_reason: string | null
           voided: boolean | null
           voided_at: string | null
@@ -2021,6 +2022,7 @@ export type Database = {
           start_time?: string | null
           status?: Database["public"]["Enums"]["round_robin_status"]
           updated_at?: string
+          venue_id?: string | null
           void_reason?: string | null
           voided?: boolean | null
           voided_at?: string | null
@@ -2049,12 +2051,21 @@ export type Database = {
           start_time?: string | null
           status?: Database["public"]["Enums"]["round_robin_status"]
           updated_at?: string
+          venue_id?: string | null
           void_reason?: string | null
           voided?: boolean | null
           voided_at?: string | null
           voided_by?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "round_robin_events_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       round_robin_players: {
         Row: {
