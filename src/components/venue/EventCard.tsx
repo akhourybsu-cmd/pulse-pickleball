@@ -1,10 +1,11 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Calendar, Clock, Users, DollarSign, MoreVertical, Eye, EyeOff, Trash2, Edit, Trophy, GraduationCap, PartyPopper, Medal, UserCheck } from 'lucide-react';
+import { Calendar, Clock, Users, DollarSign, MoreVertical, Eye, EyeOff, Trash2, Edit, Trophy, GraduationCap, PartyPopper, Medal, UserCheck, Repeat, Settings } from 'lucide-react';
 import { VenueEvent } from '@/hooks/useVenueEvents';
 import { EventRegistrationsDialog } from './EventRegistrationsDialog';
 import { EditEventDialog } from './EditEventDialog';
@@ -18,6 +19,7 @@ interface EventCardProps {
 }
 
 export function EventCard({ event, onTogglePublish, onDelete, onEdit }: EventCardProps) {
+  const navigate = useNavigate();
   const [registrationsOpen, setRegistrationsOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
 
@@ -27,6 +29,7 @@ export function EventCard({ event, onTogglePublish, onDelete, onEdit }: EventCar
       case 'clinic': return GraduationCap;
       case 'social': return PartyPopper;
       case 'league': return Medal;
+      case 'round_robin': return Repeat;
       default: return Calendar;
     }
   };
@@ -37,6 +40,7 @@ export function EventCard({ event, onTogglePublish, onDelete, onEdit }: EventCar
       case 'clinic': return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
       case 'social': return 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20';
       case 'league': return 'bg-purple-500/10 text-purple-500 border-purple-500/20';
+      case 'round_robin': return 'bg-orange-500/10 text-orange-500 border-orange-500/20';
       default: return 'bg-muted text-muted-foreground';
     }
   };
@@ -106,6 +110,19 @@ export function EventCard({ event, onTogglePublish, onDelete, onEdit }: EventCar
                 </Badge>
               )}
             </div>
+
+            {/* Manage Round Robin Button */}
+            {event.round_robin_event_id && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => navigate(`/venue/round-robins/${event.round_robin_event_id}`)}
+                className="mt-2"
+              >
+                <Settings className="h-3.5 w-3.5 mr-1" />
+                Manage Round Robin
+              </Button>
+            )}
           </div>
 
           <DropdownMenu>
