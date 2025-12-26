@@ -96,7 +96,15 @@ import VenueRoundRobinDetail from "./pages/venue/VenueRoundRobinDetail";
 import VenueRoundRobinKiosk from "./pages/venue/VenueRoundRobinKiosk";
 import PublicVenueLanding from "./pages/PublicVenueLanding";
 import VenueInterestForm from "./pages/VenueInterestForm";
-const queryClient = new QueryClient();
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000,
+      retry: 1,
+    },
+  },
+});
 
 const AppContent = () => {
   useAuthPersistence();
