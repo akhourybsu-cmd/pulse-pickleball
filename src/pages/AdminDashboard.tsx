@@ -20,7 +20,8 @@ import {
   Swords,
   Megaphone,
   Shield,
-  Fingerprint
+  Fingerprint,
+  Zap
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import logo from "@/assets/pulse-logo-new.png";
@@ -123,16 +124,18 @@ const AdminDashboard = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <nav className="border-b bg-secondary">
+      {/* Premium Dark Header */}
+      <nav className="bg-[#0B171F] border-b border-slate-800">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Link to="/dashboard">
-            <img src={logo} alt="PULSE Logo" className="h-[90px] w-auto cursor-pointer hover:opacity-80 transition-opacity" />
+          <Link to="/dashboard" className="flex items-center gap-3">
+            <img src={logo} alt="PULSE Logo" className="h-[80px] w-auto cursor-pointer hover:opacity-90 transition-opacity" />
           </Link>
           <div className="flex items-center gap-3">
             <Button 
               variant="outline" 
               size="sm" 
               onClick={() => navigate("/dashboard")}
+              className="border-slate-600 text-slate-200 hover:bg-slate-800 hover:text-white"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Dashboard
@@ -142,20 +145,34 @@ const AdminDashboard = () => {
         </div>
       </nav>
 
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <Settings className="w-8 h-8 text-primary" />
-            <h2 className="text-3xl font-bold">Admin Control Center</h2>
+      {/* Gradient Hero Section */}
+      <div className="bg-gradient-to-b from-[#0B171F] via-[#142029] to-background py-10 px-4">
+        <div className="container mx-auto">
+          <div className="flex items-center gap-4 mb-3">
+            <div className="p-3 bg-[#A6DB5A]/20 rounded-xl">
+              <Settings className="w-8 h-8 text-[#A6DB5A]" />
+            </div>
+            <h1 className="text-3xl md:text-4xl font-bold text-white">
+              Admin Control Center
+            </h1>
           </div>
-          <p className="text-muted-foreground">Manage sessions, pairings, and system settings</p>
+          <p className="text-slate-400 ml-[68px]">
+            Manage sessions, pairings, and system settings
+          </p>
         </div>
+      </div>
 
+      <div className="container mx-auto px-4 py-8">
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate("/admin/session")}>
+          <Card 
+            className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-l-4 border-l-transparent hover:border-l-[#A6DB5A] hover:-translate-y-1" 
+            onClick={() => navigate("/admin/session")}
+          >
             <CardHeader>
               <div className="flex items-center justify-between">
-                <Calendar className="w-10 h-10 text-primary" />
+                <div className="p-2.5 bg-primary/10 rounded-lg group-hover:bg-[#A6DB5A]/20 transition-colors">
+                  <Calendar className="w-8 h-8 text-primary group-hover:text-[#A6DB5A] transition-colors" />
+                </div>
               </div>
               <CardTitle className="mt-4">Session Management</CardTitle>
               <CardDescription>
@@ -169,10 +186,15 @@ const AdminDashboard = () => {
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate("/admin/players")}>
+          <Card 
+            className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-l-4 border-l-transparent hover:border-l-[#A6DB5A] hover:-translate-y-1" 
+            onClick={() => navigate("/admin/players")}
+          >
             <CardHeader>
               <div className="flex items-center justify-between">
-                <Users className="w-10 h-10 text-primary" />
+                <div className="p-2.5 bg-primary/10 rounded-lg group-hover:bg-[#A6DB5A]/20 transition-colors">
+                  <Users className="w-8 h-8 text-primary group-hover:text-[#A6DB5A] transition-colors" />
+                </div>
               </div>
               <CardTitle className="mt-4">Player Directory</CardTitle>
               <CardDescription>
@@ -186,10 +208,15 @@ const AdminDashboard = () => {
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate("/admin/badges")}>
+          <Card 
+            className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-l-4 border-l-transparent hover:border-l-[#A6DB5A] hover:-translate-y-1" 
+            onClick={() => navigate("/admin/badges")}
+          >
             <CardHeader>
               <div className="flex items-center justify-between">
-                <Trophy className="w-10 h-10 text-primary" />
+                <div className="p-2.5 bg-primary/10 rounded-lg group-hover:bg-[#A6DB5A]/20 transition-colors">
+                  <Trophy className="w-8 h-8 text-primary group-hover:text-[#A6DB5A] transition-colors" />
+                </div>
               </div>
               <CardTitle className="mt-4">Badge Management</CardTitle>
               <CardDescription>
@@ -203,10 +230,15 @@ const AdminDashboard = () => {
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate("/admin/manage")}>
+          <Card 
+            className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-l-4 border-l-transparent hover:border-l-[#A6DB5A] hover:-translate-y-1" 
+            onClick={() => navigate("/admin/manage")}
+          >
             <CardHeader>
               <div className="flex items-center justify-between">
-                <Users className="w-10 h-10 text-secondary" />
+                <div className="p-2.5 bg-secondary/20 rounded-lg group-hover:bg-[#A6DB5A]/20 transition-colors">
+                  <Users className="w-8 h-8 text-secondary group-hover:text-[#A6DB5A] transition-colors" />
+                </div>
               </div>
               <CardTitle className="mt-4">Active Session Control</CardTitle>
               <CardDescription>
@@ -220,10 +252,15 @@ const AdminDashboard = () => {
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate("/admin/pairing")}>
+          <Card 
+            className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-l-4 border-l-transparent hover:border-l-[#A6DB5A] hover:-translate-y-1" 
+            onClick={() => navigate("/admin/pairing")}
+          >
             <CardHeader>
               <div className="flex items-center justify-between">
-                <Shuffle className="w-10 h-10 text-primary" />
+                <div className="p-2.5 bg-primary/10 rounded-lg group-hover:bg-[#A6DB5A]/20 transition-colors">
+                  <Shuffle className="w-8 h-8 text-primary group-hover:text-[#A6DB5A] transition-colors" />
+                </div>
               </div>
               <CardTitle className="mt-4">Auto Pairing System</CardTitle>
               <CardDescription>
@@ -237,10 +274,15 @@ const AdminDashboard = () => {
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate("/admin/matches")}>
+          <Card 
+            className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-l-4 border-l-transparent hover:border-l-[#A6DB5A] hover:-translate-y-1" 
+            onClick={() => navigate("/admin/matches")}
+          >
             <CardHeader>
               <div className="flex items-center justify-between">
-                <FileText className="w-10 h-10 text-primary" />
+                <div className="p-2.5 bg-primary/10 rounded-lg group-hover:bg-[#A6DB5A]/20 transition-colors">
+                  <FileText className="w-8 h-8 text-primary group-hover:text-[#A6DB5A] transition-colors" />
+                </div>
               </div>
               <CardTitle className="mt-4">Match Directory</CardTitle>
               <CardDescription>
@@ -254,10 +296,15 @@ const AdminDashboard = () => {
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate("/kiosk")}>
+          <Card 
+            className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-l-4 border-l-transparent hover:border-l-[#A6DB5A] hover:-translate-y-1" 
+            onClick={() => navigate("/kiosk")}
+          >
             <CardHeader>
               <div className="flex items-center justify-between">
-                <LayoutDashboard className="w-10 h-10 text-secondary" />
+                <div className="p-2.5 bg-secondary/20 rounded-lg group-hover:bg-[#A6DB5A]/20 transition-colors">
+                  <LayoutDashboard className="w-8 h-8 text-secondary group-hover:text-[#A6DB5A] transition-colors" />
+                </div>
               </div>
               <CardTitle className="mt-4">Kiosk Display</CardTitle>
               <CardDescription>
@@ -271,10 +318,15 @@ const AdminDashboard = () => {
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate("/tournament-admin")}>
+          <Card 
+            className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-l-4 border-l-transparent hover:border-l-[#A6DB5A] hover:-translate-y-1" 
+            onClick={() => navigate("/tournament-admin")}
+          >
             <CardHeader>
               <div className="flex items-center justify-between">
-                <Swords className="w-10 h-10 text-primary" />
+                <div className="p-2.5 bg-primary/10 rounded-lg group-hover:bg-[#A6DB5A]/20 transition-colors">
+                  <Swords className="w-8 h-8 text-primary group-hover:text-[#A6DB5A] transition-colors" />
+                </div>
               </div>
               <CardTitle className="mt-4">Tournament Portal</CardTitle>
               <CardDescription>
@@ -288,10 +340,15 @@ const AdminDashboard = () => {
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate("/qr-checkin")}>
+          <Card 
+            className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-l-4 border-l-transparent hover:border-l-[#A6DB5A] hover:-translate-y-1" 
+            onClick={() => navigate("/qr-checkin")}
+          >
             <CardHeader>
               <div className="flex items-center justify-between">
-                <QrCode className="w-10 h-10 text-primary" />
+                <div className="p-2.5 bg-primary/10 rounded-lg group-hover:bg-[#A6DB5A]/20 transition-colors">
+                  <QrCode className="w-8 h-8 text-primary group-hover:text-[#A6DB5A] transition-colors" />
+                </div>
               </div>
               <CardTitle className="mt-4">QR Check-In</CardTitle>
               <CardDescription>
@@ -305,10 +362,15 @@ const AdminDashboard = () => {
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate("/pending-matches")}>
+          <Card 
+            className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-l-4 border-l-transparent hover:border-l-[#A6DB5A] hover:-translate-y-1" 
+            onClick={() => navigate("/pending-matches")}
+          >
             <CardHeader>
               <div className="flex items-center justify-between">
-                <Trophy className="w-10 h-10 text-secondary" />
+                <div className="p-2.5 bg-secondary/20 rounded-lg group-hover:bg-[#A6DB5A]/20 transition-colors">
+                  <Trophy className="w-8 h-8 text-secondary group-hover:text-[#A6DB5A] transition-colors" />
+                </div>
               </div>
               <CardTitle className="mt-4">Pending Matches</CardTitle>
               <CardDescription>
@@ -322,10 +384,15 @@ const AdminDashboard = () => {
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => setShowSignupQR(true)}>
+          <Card 
+            className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-l-4 border-l-transparent hover:border-l-[#A6DB5A] hover:-translate-y-1" 
+            onClick={() => setShowSignupQR(true)}
+          >
             <CardHeader>
               <div className="flex items-center justify-between">
-                <UserPlus className="w-10 h-10 text-primary" />
+                <div className="p-2.5 bg-primary/10 rounded-lg group-hover:bg-[#A6DB5A]/20 transition-colors">
+                  <UserPlus className="w-8 h-8 text-primary group-hover:text-[#A6DB5A] transition-colors" />
+                </div>
               </div>
               <CardTitle className="mt-4">Sign Up QR Code</CardTitle>
               <CardDescription>
@@ -339,10 +406,15 @@ const AdminDashboard = () => {
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate("/admin/marketing")}>
+          <Card 
+            className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-l-4 border-l-transparent hover:border-l-[#A6DB5A] hover:-translate-y-1" 
+            onClick={() => navigate("/admin/marketing")}
+          >
             <CardHeader>
               <div className="flex items-center justify-between">
-                <Megaphone className="w-10 h-10 text-primary" />
+                <div className="p-2.5 bg-primary/10 rounded-lg group-hover:bg-[#A6DB5A]/20 transition-colors">
+                  <Megaphone className="w-8 h-8 text-primary group-hover:text-[#A6DB5A] transition-colors" />
+                </div>
               </div>
               <CardTitle className="mt-4">Marketing Materials</CardTitle>
               <CardDescription>
@@ -356,10 +428,15 @@ const AdminDashboard = () => {
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate("/admin/biometrics")}>
+          <Card 
+            className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-l-4 border-l-transparent hover:border-l-[#A6DB5A] hover:-translate-y-1" 
+            onClick={() => navigate("/admin/biometrics")}
+          >
             <CardHeader>
               <div className="flex items-center justify-between">
-                <Fingerprint className="w-10 h-10 text-primary" />
+                <div className="p-2.5 bg-primary/10 rounded-lg group-hover:bg-[#A6DB5A]/20 transition-colors">
+                  <Fingerprint className="w-8 h-8 text-primary group-hover:text-[#A6DB5A] transition-colors" />
+                </div>
               </div>
               <CardTitle className="mt-4">Biometric Analytics</CardTitle>
               <CardDescription>
@@ -373,10 +450,15 @@ const AdminDashboard = () => {
             </CardContent>
           </Card>
 
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => navigate("/admin/audit-log")}>
+          <Card 
+            className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-l-4 border-l-transparent hover:border-l-[#A6DB5A] hover:-translate-y-1" 
+            onClick={() => navigate("/admin/audit-log")}
+          >
             <CardHeader>
               <div className="flex items-center justify-between">
-                <Shield className="w-10 h-10 text-primary" />
+                <div className="p-2.5 bg-primary/10 rounded-lg group-hover:bg-[#A6DB5A]/20 transition-colors">
+                  <Shield className="w-8 h-8 text-primary group-hover:text-[#A6DB5A] transition-colors" />
+                </div>
               </div>
               <CardTitle className="mt-4">Admin Audit Log</CardTitle>
               <CardDescription>
@@ -391,26 +473,42 @@ const AdminDashboard = () => {
           </Card>
         </div>
 
-        <Card className="mt-8 border-primary/20">
+        <Card className="mt-8 bg-[#142029] border-slate-700/50">
           <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-            <CardDescription>Common administrative tasks</CardDescription>
+            <div className="flex items-center gap-2">
+              <Zap className="w-5 h-5 text-[#A6DB5A]" />
+              <CardTitle className="text-white">Quick Actions</CardTitle>
+            </div>
+            <CardDescription className="text-slate-400">Common administrative tasks</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex gap-3 flex-wrap">
-              <Button variant="outline" onClick={() => navigate("/admin/session")}>
+              <Button 
+                variant="outline" 
+                onClick={() => navigate("/admin/session")}
+                className="border-slate-600 text-slate-200 hover:bg-slate-700 hover:text-white hover:border-[#A6DB5A]"
+              >
                 Create New Session
               </Button>
-              <Button variant="outline" onClick={() => navigate("/match/new")}>
+              <Button 
+                variant="outline" 
+                onClick={() => navigate("/match/new")}
+                className="border-slate-600 text-slate-200 hover:bg-slate-700 hover:text-white hover:border-[#A6DB5A]"
+              >
                 Record Match
               </Button>
-              <Button variant="outline" onClick={() => navigate("/court-board")}>
+              <Button 
+                variant="outline" 
+                onClick={() => navigate("/court-board")}
+                className="border-slate-600 text-slate-200 hover:bg-slate-700 hover:text-white hover:border-[#A6DB5A]"
+              >
                 View Court Board
               </Button>
               <Button 
                 variant="outline" 
                 onClick={handleRecalculateRatings}
                 disabled={recalculating}
+                className="border-slate-600 text-slate-200 hover:bg-slate-700 hover:text-white hover:border-[#A6DB5A] disabled:opacity-50"
               >
                 {recalculating ? "Recalculating..." : "Recalculate All Ratings"}
               </Button>
