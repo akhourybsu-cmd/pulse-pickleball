@@ -118,20 +118,18 @@ export function useVenueEvents(venueId: string | null) {
             start_time: startTime,
             organizer_id: user.user.id,
             num_courts: numCourts,
-            num_rounds: numCourts * 2, // Default rounds calculation
+            num_rounds: numCourts * 2,
             location: venue?.name || 'Venue',
             status: 'draft',
             is_published: data.is_published || false,
-            games_per_player: 4,
-            points_to: 11,
-            win_by_2: true
+            games_per_player: 4
           })
           .select()
           .single();
 
         if (rrError) {
           console.error('Error creating round robin:', rrError);
-          // Still continue - venue event was created
+          toast.error(`Round robin creation failed: ${rrError.message}`);
         } else if (rrEvent) {
           // Link them
           await supabase
