@@ -67,28 +67,29 @@ function SidebarContent({ onItemClick }: { onItemClick?: () => void }) {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Logo */}
+      {/* Premium Dark Logo Section */}
       <div 
-        className="p-4 border-b"
+        className="p-4 mx-2 mt-2 rounded-lg"
         style={{ 
-          borderBottomColor: `${venueTheme.primary}30` 
+          backgroundColor: venueTheme.secondary,
+          borderBottom: `2px solid ${venueTheme.primary}40`
         }}
       >
-        <NavLink to="/venue" onClick={onItemClick}>
+        <NavLink to="/venue" onClick={onItemClick} className="block">
           <img 
             src={logoSrc} 
             alt={currentVenue?.venue_name || "Venue"} 
-            className="h-12 w-auto cursor-pointer hover:opacity-80 transition-opacity"
+            className="h-16 w-auto mx-auto cursor-pointer hover:opacity-90 transition-opacity"
             onError={(e) => {
               e.currentTarget.src = getVenueLogoFallback();
             }}
           />
         </NavLink>
         {currentVenue && (
-          <div className="mt-3 px-1">
-            <p className="text-sm font-medium text-foreground truncate">{currentVenue.venue_name}</p>
+          <div className="mt-3 text-center">
+            <p className="text-sm font-semibold text-white truncate">{currentVenue.venue_name}</p>
             <p 
-              className="text-xs capitalize"
+              className="text-xs capitalize font-medium"
               style={{ color: venueTheme.primary }}
             >
               {currentVenue.role}
@@ -167,12 +168,20 @@ export function VenueShell() {
         <SidebarContent />
       </aside>
 
-      {/* Mobile Header + Sheet */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 border-b bg-card/95 backdrop-blur-sm">
+      {/* Mobile Header + Sheet - Premium Dark */}
+      <div 
+        className="lg:hidden fixed top-0 left-0 right-0 z-50"
+        style={{ backgroundColor: venueTheme.secondary }}
+      >
+        {/* Gold accent bar */}
+        <div 
+          className="h-[3px] w-full"
+          style={{ backgroundColor: venueTheme.primary }}
+        />
         <div className="flex items-center justify-between px-4 py-3">
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon">
+              <Button variant="ghost" size="icon" className="text-white hover:bg-white/10">
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
@@ -185,7 +194,7 @@ export function VenueShell() {
             <img 
               src={logoSrc} 
               alt={currentVenue?.venue_name || "Venue"} 
-              className="h-10 w-auto cursor-pointer hover:opacity-80 transition-opacity"
+              className="h-12 w-auto cursor-pointer hover:opacity-90 transition-opacity"
               onError={(e) => {
                 e.currentTarget.src = getVenueLogoFallback();
               }}
