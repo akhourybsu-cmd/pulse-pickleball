@@ -11,7 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import logo from '@/assets/pulse-logo-new.png';
 
 const navItems = [
-  { to: '/player/dashboard', icon: Home, label: 'Home' },
+  { to: '/player/dashboard', icon: Home, label: 'Dashboard' },
   { to: '/player/venues', icon: Search, label: 'Venues' },
   { to: '/player/my-events', icon: Calendar, label: 'Events' },
   { to: '/player/my-bookings', icon: ClipboardList, label: 'Bookings' },
