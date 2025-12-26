@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMode } from '@/contexts/ModeContext';
 import { useVenueEvents } from '@/hooks/useVenueEvents';
+import { useVenueTheme } from '@/components/layout/VenueShell';
 import { CreateEventDialog } from '@/components/venue/CreateEventDialog';
 import { EventCard } from '@/components/venue/EventCard';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -12,6 +13,7 @@ import { isFuture, isPast } from 'date-fns';
 export default function VenueEvents() {
   const { currentVenueId } = useMode();
   const { events, loading, createEvent, deleteEvent, togglePublish, updateEvent } = useVenueEvents(currentVenueId);
+  const venueTheme = useVenueTheme();
   const [activeTab, setActiveTab] = useState('upcoming');
 
   if (!currentVenueId) {
@@ -42,7 +44,7 @@ export default function VenueEvents() {
           <h1 className="text-2xl font-bold">Events & Programs</h1>
           <p className="text-muted-foreground">Create clinics, socials, and tournaments to grow your player base</p>
         </div>
-        <CreateEventDialog onCreateEvent={createEvent} />
+        <CreateEventDialog onCreateEvent={createEvent} venueTheme={venueTheme} />
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">

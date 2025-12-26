@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useMode } from '@/contexts/ModeContext';
 import { useVenueStaff } from '@/hooks/useVenueStaff';
+import { useVenueTheme } from '@/components/layout/VenueShell';
 import { StaffMemberCard } from '@/components/venue/StaffMemberCard';
 import { InviteStaffDialog } from '@/components/venue/InviteStaffDialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 export default function VenueStaff() {
   const { currentVenueId } = useMode();
   const { staff, loading, refetch, updateStaffRole, removeStaff } = useVenueStaff(currentVenueId);
+  const venueTheme = useVenueTheme();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
 
@@ -48,7 +50,11 @@ export default function VenueStaff() {
             Manage your venue's team and permissions
           </p>
         </div>
-        <Button onClick={() => setInviteOpen(true)}>
+        <Button 
+          onClick={() => setInviteOpen(true)}
+          style={{ backgroundColor: venueTheme.primary }}
+          className="hover:opacity-90"
+        >
           <Mail className="h-4 w-4 mr-2" />
           Invite Staff
         </Button>
@@ -70,8 +76,11 @@ export default function VenueStaff() {
         <CardContent>
           <div className="grid gap-4 md:grid-cols-3">
             <div className="flex items-start gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
-                <Shield className="h-4 w-4 text-primary" />
+              <div 
+                className="flex h-8 w-8 items-center justify-center rounded-lg"
+                style={{ backgroundColor: `${venueTheme.primary}15` }}
+              >
+                <Shield className="h-4 w-4" style={{ color: venueTheme.primary }} />
               </div>
               <div>
                 <p className="font-medium">Owner</p>
@@ -134,7 +143,11 @@ export default function VenueStaff() {
             <p className="text-muted-foreground mb-4">
               Invite team members to help manage your venue.
             </p>
-            <Button onClick={() => setInviteOpen(true)}>
+            <Button 
+              onClick={() => setInviteOpen(true)}
+              style={{ backgroundColor: venueTheme.primary }}
+              className="hover:opacity-90"
+            >
               <Mail className="h-4 w-4 mr-2" />
               Invite Staff
             </Button>

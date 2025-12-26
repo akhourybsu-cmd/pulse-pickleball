@@ -13,8 +13,15 @@ import { Plus, CalendarIcon, Clock, Users, DollarSign, Trophy, MapPin } from 'lu
 import { CreateEventData, VenueEvent } from '@/hooks/useVenueEvents';
 import { cn } from '@/lib/utils';
 
+interface VenueTheme {
+  primary: string;
+  primaryForeground: string;
+  secondary: string;
+}
+
 interface CreateEventDialogProps {
   onCreateEvent: (data: CreateEventData) => Promise<any>;
+  venueTheme?: VenueTheme;
 }
 
 const EVENT_TYPES: { value: VenueEvent['event_type']; label: string; icon?: string }[] = [
@@ -54,7 +61,7 @@ const DURATION_OPTIONS = [
   { value: 480, label: '8 hours' },
 ];
 
-export function CreateEventDialog({ onCreateEvent }: CreateEventDialogProps) {
+export function CreateEventDialog({ onCreateEvent, venueTheme }: CreateEventDialogProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
@@ -129,7 +136,10 @@ export function CreateEventDialog({ onCreateEvent }: CreateEventDialogProps) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>
+        <Button
+          style={venueTheme ? { backgroundColor: venueTheme.primary } : undefined}
+          className={venueTheme ? "hover:opacity-90" : ""}
+        >
           <Plus className="h-4 w-4 mr-2" />
           Create Event
         </Button>
@@ -151,9 +161,15 @@ export function CreateEventDialog({ onCreateEvent }: CreateEventDialogProps) {
                   className={cn(
                     "px-3 py-1.5 rounded-full text-sm font-medium transition-all",
                     formData.event_type === type.value
-                      ? "bg-primary text-primary-foreground"
+                      ? "text-white"
                       : "bg-muted text-muted-foreground hover:bg-muted/80"
                   )}
+                  style={formData.event_type === type.value && venueTheme 
+                    ? { backgroundColor: venueTheme.primary } 
+                    : formData.event_type === type.value 
+                      ? { backgroundColor: 'hsl(var(--primary))' }
+                      : undefined
+                  }
                 >
                   {type.label}
                 </button>
@@ -253,9 +269,15 @@ export function CreateEventDialog({ onCreateEvent }: CreateEventDialogProps) {
                   className={cn(
                     "px-3 py-1.5 rounded-full text-sm font-medium transition-all",
                     formData.duration === option.value
-                      ? "bg-primary text-primary-foreground"
+                      ? "text-white"
                       : "bg-muted text-muted-foreground hover:bg-muted/80"
                   )}
+                  style={formData.duration === option.value && venueTheme 
+                    ? { backgroundColor: venueTheme.primary } 
+                    : formData.duration === option.value 
+                      ? { backgroundColor: 'hsl(var(--primary))' }
+                      : undefined
+                  }
                 >
                   {option.label}
                 </button>
@@ -294,9 +316,15 @@ export function CreateEventDialog({ onCreateEvent }: CreateEventDialogProps) {
                     className={cn(
                       "px-3 py-1.5 rounded-full text-sm font-medium transition-all",
                       formData.num_courts === count
-                        ? "bg-primary text-primary-foreground"
+                        ? "text-white"
                         : "bg-muted text-muted-foreground hover:bg-muted/80"
                     )}
+                    style={formData.num_courts === count && venueTheme 
+                      ? { backgroundColor: venueTheme.primary } 
+                      : formData.num_courts === count 
+                        ? { backgroundColor: 'hsl(var(--primary))' }
+                        : undefined
+                    }
                   >
                     {count} courts
                   </button>
@@ -362,9 +390,15 @@ export function CreateEventDialog({ onCreateEvent }: CreateEventDialogProps) {
                   className={cn(
                     "px-3 py-1.5 rounded-full text-sm font-medium transition-all",
                     formData.skill_level === level
-                      ? "bg-primary text-primary-foreground"
+                      ? "text-white"
                       : "bg-muted text-muted-foreground hover:bg-muted/80"
                   )}
+                  style={formData.skill_level === level && venueTheme 
+                    ? { backgroundColor: venueTheme.primary } 
+                    : formData.skill_level === level 
+                      ? { backgroundColor: 'hsl(var(--primary))' }
+                      : undefined
+                  }
                 >
                   {level}
                 </button>
@@ -411,7 +445,8 @@ export function CreateEventDialog({ onCreateEvent }: CreateEventDialogProps) {
             <Button 
               type="submit" 
               disabled={loading || !isFormValid}
-              className="flex-1 h-11"
+              className="flex-1 h-11 hover:opacity-90"
+              style={venueTheme ? { backgroundColor: venueTheme.primary } : undefined}
             >
               {loading ? 'Creating...' : 'Create Event'}
             </Button>
