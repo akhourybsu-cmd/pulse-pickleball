@@ -19,13 +19,18 @@ import { format, parseISO, isPast } from "date-fns";
 import { useVenueRoundRobins, VenueRoundRobinEvent } from "@/hooks/useVenueRoundRobins";
 import { useMode } from "@/contexts/ModeContext";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useVenueTheme } from "@/components/layout/VenueShell";
+import { getVenueLogoSrc, getVenueLogoFallback } from "@/lib/venueBranding";
 
 export default function VenueRoundRobins() {
   const navigate = useNavigate();
   const { events, isLoading, deleteEvent } = useVenueRoundRobins();
   const { currentVenue } = useMode();
+  const venueTheme = useVenueTheme();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [eventToDelete, setEventToDelete] = useState<string | null>(null);
+
+  const logoSrc = getVenueLogoSrc(currentVenue?.logo_url, currentVenue?.venue_name);
 
   const draftEvents = events.filter(e => e.status === "draft");
   const liveEvents = events.filter(e => e.status === "live");
@@ -36,7 +41,14 @@ export default function VenueRoundRobins() {
       case "draft":
         return <Badge variant="secondary">Draft</Badge>;
       case "live":
-        return <Badge className="bg-green-500 text-white animate-pulse">Live</Badge>;
+        return (
+          <Badge 
+            className="animate-pulse text-white"
+            style={{ backgroundColor: venueTheme.primary }}
+          >
+            Live
+          </Badge>
+        );
       case "completed":
         return <Badge variant="outline">Completed</Badge>;
       default:
@@ -58,7 +70,10 @@ export default function VenueRoundRobins() {
   };
 
   const EventCard = ({ event }: { event: VenueRoundRobinEvent }) => (
-    <Card className="hover:shadow-md transition-shadow">
+    <Card 
+      className="hover:shadow-md transition-shadow overflow-hidden"
+      style={{ borderLeftWidth: event.status === 'live' ? '4px' : undefined, borderLeftColor: event.status === 'live' ? venueTheme.primary : undefined }}
+    >
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="space-y-1">
@@ -93,6 +108,7 @@ export default function VenueRoundRobins() {
           <Button
             size="sm"
             onClick={() => navigate(`/venue/round-robins/${event.id}`)}
+            style={{ backgroundColor: venueTheme.primary, color: venueTheme.primaryForeground }}
           >
             <Settings className="h-4 w-4 mr-1" />
             Manage
@@ -103,6 +119,7 @@ export default function VenueRoundRobins() {
               size="sm"
               variant="outline"
               onClick={() => navigate(`/venue/round-robins/${event.id}/kiosk`)}
+              style={{ borderColor: venueTheme.primary, color: venueTheme.primary }}
             >
               <Monitor className="h-4 w-4 mr-1" />
               Kiosk
@@ -142,23 +159,32 @@ export default function VenueRoundRobins() {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
+      {/* Header with Venue Branding */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">Round Robins</h1>
-          <p className="text-muted-foreground">
-            Manage round robin tournaments at {currentVenue?.venue_name}. Create new round robins from the Events tab.
-          </p>
+        <div className="flex items-center gap-4">
+          <img 
+            src={logoSrc} 
+            alt={currentVenue?.venue_name || "Venue"} 
+            className="h-12 w-auto"
+            onError={(e) => { e.currentTarget.src = getVenueLogoFallback(); }}
+          />
+          <div>
+            <h1 className="text-2xl font-bold">Round Robins</h1>
+            <p className="text-muted-foreground">
+              Manage round robin tournaments at {currentVenue?.venue_name}
+            </p>
+          </div>
         </div>
       </div>
 
       {/* Tabs */}
+      {/* Tabs with venue accent */}
       <Tabs defaultValue="all" className="space-y-4">
         <TabsList>
           <TabsTrigger value="all">
             All ({events.length})
           </TabsTrigger>
-          <TabsTrigger value="live" className="gap-2">
+          <TabsTrigger value="live" className="gap-2 data-[state=active]:text-white" style={{ '--tw-ring-color': venueTheme.primary } as React.CSSProperties}>
             <Play className="h-3.5 w-3.5" />
             Live ({liveEvents.length})
           </TabsTrigger>
@@ -180,7 +206,10 @@ export default function VenueRoundRobins() {
                 <p className="text-muted-foreground mb-4">
                   Create a "Round Robin" event from the Events tab to get started
                 </p>
-                <Button onClick={() => navigate("/venue/events")}>
+                <Button 
+                  onClick={() => navigate("/venue/events")}
+                  style={{ backgroundColor: venueTheme.primary, color: venueTheme.primaryForeground }}
+                >
                   <Calendar className="h-4 w-4 mr-2" />
                   Go to Events
                 </Button>
@@ -224,7 +253,10 @@ export default function VenueRoundRobins() {
                 <p className="text-muted-foreground mb-4">
                   Create a "Round Robin" event from the Events tab
                 </p>
-                <Button onClick={() => navigate("/venue/events")}>
+                <Button 
+                  onClick={() => navigate("/venue/events")}
+                  style={{ backgroundColor: venueTheme.primary, color: venueTheme.primaryForeground }}
+                >
                   <Calendar className="h-4 w-4 mr-2" />
                   Go to Events
                 </Button>

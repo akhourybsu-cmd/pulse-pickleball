@@ -102,10 +102,8 @@ export default function VenueRoundRobinKiosk() {
   const [standings, setStandings] = useState<StandingsRow[]>([]);
   const [allSchedule, setAllSchedule] = useState<ScheduleMatch[]>([]);
   
-  const [theme, setTheme] = useState<KioskTheme>(() => {
-    const saved = localStorage.getItem('venueKioskTheme');
-    return (saved as KioskTheme) || 'venue';
-  });
+  // Default to 'venue' theme for consistent venue branding
+  const [theme, setTheme] = useState<KioskTheme>('venue');
 
   // Get venue branding
   const venueLogoSrc = getVenueLogoSrc(currentVenue?.logo_url, currentVenue?.venue_name);
@@ -316,17 +314,18 @@ export default function VenueRoundRobinKiosk() {
 
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: themeColors.bg }}>
-      {/* Header */}
-      <div className="sticky top-0 z-50 border-b shadow-xl px-6 py-3 flex items-center justify-between" style={{ backgroundColor: themeColors.headerBg, borderColor: `rgba(${themeColors.accentRgb}, 0.2)` }}>
-        <div className="flex items-center gap-4">
+      {/* Header with prominent venue branding */}
+      <div className="sticky top-0 z-50 border-b shadow-xl px-6 py-4 flex items-center justify-between" style={{ backgroundColor: themeColors.headerBg, borderColor: `rgba(${themeColors.accentRgb}, 0.3)` }}>
+        <div className="flex items-center gap-5">
           <img 
             src={venueLogoSrc} 
             alt={currentVenue?.venue_name || "Venue"} 
-            className="h-10 w-auto"
+            className="h-14 w-auto"
             onError={(e) => { e.currentTarget.src = getVenueLogoFallback(); }}
           />
-          <div>
-            <h1 className="text-lg font-bold" style={{ color: themeColors.text }}>{event.name}</h1>
+          <div className="border-l pl-5" style={{ borderColor: `rgba(${themeColors.accentRgb}, 0.3)` }}>
+            <p className="text-sm font-medium" style={{ color: themeColors.accent }}>{currentVenue?.venue_name}</p>
+            <h1 className="text-xl font-bold" style={{ color: themeColors.text }}>{event.name}</h1>
             <p className="text-sm" style={{ color: themeColors.mutedText }}>
               Round {currentRound} of {event.num_rounds}
             </p>
@@ -469,8 +468,14 @@ export default function VenueRoundRobinKiosk() {
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="border-t py-2 px-6 text-center" style={{ borderColor: `rgba(${themeColors.accentRgb}, 0.2)` }}>
+      {/* Footer with venue branding */}
+      <div className="border-t py-3 px-6 flex items-center justify-between" style={{ borderColor: `rgba(${themeColors.accentRgb}, 0.2)` }}>
+        <img 
+          src={venueLogoSrc} 
+          alt={currentVenue?.venue_name || "Venue"} 
+          className="h-6 w-auto opacity-60"
+          onError={(e) => { e.currentTarget.src = getVenueLogoFallback(); }}
+        />
         <p className="text-xs" style={{ color: themeColors.mutedText }}>
           Powered by <span style={{ color: themeColors.accent }}>Pulse</span>
         </p>

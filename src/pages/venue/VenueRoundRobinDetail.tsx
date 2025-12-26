@@ -34,6 +34,7 @@ import { ScoreManagementDialog } from "@/components/round-robin/ScoreManagementD
 import { useMode } from "@/contexts/ModeContext";
 import { getVenueLogoSrc, getVenueLogoFallback } from "@/lib/venueBranding";
 import { suggestRounds } from "@/lib/roundRobinFairness";
+import { useVenueTheme } from "@/components/layout/VenueShell";
 
 interface Event {
   id: string;
@@ -95,6 +96,7 @@ export default function VenueRoundRobinDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { currentVenue } = useMode();
+  const venueTheme = useVenueTheme();
   const [loading, setLoading] = useState(true);
   const [event, setEvent] = useState<Event | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
@@ -287,7 +289,11 @@ export default function VenueRoundRobinDetail() {
         <div className="flex-1">
           <div className="flex items-center gap-3">
             <h1 className="text-xl font-bold">{event.name}</h1>
-            <Badge variant={isLive ? "default" : isCompleted ? "secondary" : "outline"} className={isLive ? "bg-green-500 animate-pulse" : ""}>
+            <Badge 
+              variant={isLive ? "default" : isCompleted ? "secondary" : "outline"} 
+              className={isLive ? "animate-pulse text-white" : ""}
+              style={isLive ? { backgroundColor: venueTheme.primary } : undefined}
+            >
               {event.status}
             </Badge>
           </div>
@@ -297,7 +303,11 @@ export default function VenueRoundRobinDetail() {
         </div>
         <div className="flex items-center gap-2">
           {isLive && (
-            <Button variant="outline" onClick={() => navigate(`/venue/round-robins/${id}/kiosk`)}>
+            <Button 
+              variant="outline" 
+              onClick={() => navigate(`/venue/round-robins/${id}/kiosk`)}
+              style={{ borderColor: venueTheme.primary, color: venueTheme.primary }}
+            >
               <Monitor className="h-4 w-4 mr-2" />
               Kiosk
             </Button>
@@ -334,12 +344,21 @@ export default function VenueRoundRobinDetail() {
         <Card>
           <CardContent className="py-4">
             <div className="flex flex-wrap gap-3">
-              <Button onClick={handleGenerateSchedule} disabled={activePlayers.length < 4}>
+              <Button 
+                onClick={handleGenerateSchedule} 
+                disabled={activePlayers.length < 4}
+                variant="outline"
+                style={{ borderColor: venueTheme.primary, color: venueTheme.primary }}
+              >
                 <RefreshCw className="h-4 w-4 mr-2" />
                 {hasSchedule ? "Regenerate Schedule" : "Generate Schedule"}
               </Button>
               {canStart && (
-                <Button onClick={handleStartEvent} variant="default" className="bg-green-600 hover:bg-green-700">
+                <Button 
+                  onClick={handleStartEvent} 
+                  className="text-white"
+                  style={{ backgroundColor: venueTheme.primary }}
+                >
                   <Play className="h-4 w-4 mr-2" />Start Event
                 </Button>
               )}
@@ -362,7 +381,11 @@ export default function VenueRoundRobinDetail() {
                 <p className="font-medium">Round {event.current_round} of {event.num_rounds}</p>
                 <p className="text-sm text-muted-foreground">Enter scores for all matches, then advance or complete</p>
               </div>
-              <Button onClick={handleCompleteEvent} variant="default">
+              <Button 
+                onClick={handleCompleteEvent} 
+                className="text-white"
+                style={{ backgroundColor: venueTheme.primary }}
+              >
                 <CheckCircle className="h-4 w-4 mr-2" />Complete Event
               </Button>
             </div>
@@ -394,7 +417,10 @@ export default function VenueRoundRobinDetail() {
                   <div className={`space-y-4 ${isFutureRound ? 'opacity-50' : ''}`}>
                     <div className="flex items-center justify-center gap-3">
                       <div className="h-px bg-border flex-1 max-w-12" />
-                      <div className={`text-lg font-bold px-4 py-2 rounded-full ${isCurrentRound && isLive ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                      <div 
+                        className={`text-lg font-bold px-4 py-2 rounded-full ${isCurrentRound && isLive ? 'text-white' : 'bg-muted'}`}
+                        style={isCurrentRound && isLive ? { backgroundColor: venueTheme.primary } : undefined}
+                      >
                         Round {roundNo}
                         {isCurrentRound && isLive && <span className="ml-2 text-xs">(Active)</span>}
                       </div>
