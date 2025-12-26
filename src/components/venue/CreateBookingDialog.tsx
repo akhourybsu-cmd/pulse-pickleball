@@ -9,12 +9,19 @@ import { Plus } from 'lucide-react';
 import { CreateBookingData } from '@/hooks/useVenueBookings';
 import { VenueCourt } from '@/hooks/useVenueCourts';
 
+interface VenueTheme {
+  primary: string;
+  primaryForeground: string;
+  secondary: string;
+}
+
 interface CreateBookingDialogProps {
   courts: VenueCourt[];
   onCreateBooking: (data: CreateBookingData) => Promise<any>;
+  venueTheme?: VenueTheme;
 }
 
-export function CreateBookingDialog({ courts, onCreateBooking }: CreateBookingDialogProps) {
+export function CreateBookingDialog({ courts, onCreateBooking, venueTheme }: CreateBookingDialogProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -65,7 +72,10 @@ export function CreateBookingDialog({ courts, onCreateBooking }: CreateBookingDi
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>
+        <Button
+          style={venueTheme ? { backgroundColor: venueTheme.primary } : undefined}
+          className={venueTheme ? "hover:opacity-90" : ""}
+        >
           <Plus className="h-4 w-4 mr-2" />
           New Booking
         </Button>
@@ -176,7 +186,12 @@ export function CreateBookingDialog({ courts, onCreateBooking }: CreateBookingDi
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={loading || !formData.court_id || !formData.customer_name}>
+            <Button 
+              type="submit" 
+              disabled={loading || !formData.court_id || !formData.customer_name}
+              style={venueTheme ? { backgroundColor: venueTheme.primary } : undefined}
+              className={venueTheme ? "hover:opacity-90" : ""}
+            >
               {loading ? 'Creating...' : 'Create Booking'}
             </Button>
           </div>

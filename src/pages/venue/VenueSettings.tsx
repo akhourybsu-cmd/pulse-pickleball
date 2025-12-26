@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useMode } from '@/contexts/ModeContext';
 import { useVenueSettings, VenueSettings } from '@/hooks/useVenueSettings';
+import { useVenueTheme } from '@/components/layout/VenueShell';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -35,6 +36,7 @@ export default function VenueSettingsPage() {
   const { settings, loading, saving, updateSettings } = useVenueSettings(currentVenueId);
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
+  const venueTheme = useVenueTheme();
   
   const [formData, setFormData] = useState<Partial<VenueSettings>>({});
   const [hasChanges, setHasChanges] = useState(false);
@@ -98,7 +100,12 @@ export default function VenueSettingsPage() {
           <h1 className="text-2xl font-bold">Venue Settings</h1>
           <p className="text-muted-foreground">Customize how players see your venue</p>
         </div>
-        <Button onClick={handleSave} disabled={!hasChanges || saving}>
+        <Button 
+          onClick={handleSave} 
+          disabled={!hasChanges || saving}
+          style={{ backgroundColor: venueTheme.primary }}
+          className="hover:opacity-90"
+        >
           {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
           Save Changes
         </Button>

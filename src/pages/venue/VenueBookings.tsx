@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useMode } from '@/contexts/ModeContext';
 import { useVenueBookings } from '@/hooks/useVenueBookings';
 import { useVenueCourts } from '@/hooks/useVenueCourts';
+import { useVenueTheme } from '@/components/layout/VenueShell';
 import { CreateBookingDialog } from '@/components/venue/CreateBookingDialog';
 import { BookingCard } from '@/components/venue/BookingCard';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -14,6 +15,7 @@ export default function VenueBookings() {
   const { currentVenueId } = useMode();
   const { bookings, loading, updateBooking, cancelBooking, createBooking } = useVenueBookings(currentVenueId);
   const { courts } = useVenueCourts(currentVenueId);
+  const venueTheme = useVenueTheme();
   const [activeTab, setActiveTab] = useState('upcoming');
 
   if (!currentVenueId) {
@@ -46,7 +48,7 @@ export default function VenueBookings() {
           <h1 className="text-2xl font-bold">Court Reservations</h1>
           <p className="text-muted-foreground">Manage player bookings and court schedules</p>
         </div>
-        <CreateBookingDialog courts={courts} onCreateBooking={createBooking} />
+        <CreateBookingDialog courts={courts} onCreateBooking={createBooking} venueTheme={venueTheme} />
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">

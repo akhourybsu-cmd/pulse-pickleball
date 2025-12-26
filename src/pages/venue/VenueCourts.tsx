@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMode } from '@/contexts/ModeContext';
 import { useVenueCourts, VenueCourt } from '@/hooks/useVenueCourts';
+import { useVenueTheme } from '@/components/layout/VenueShell';
 import { CreateCourtDialog } from '@/components/venue/CreateCourtDialog';
 import { CourtCard } from '@/components/venue/CourtCard';
 import { EditCourtDialog } from '@/components/venue/EditCourtDialog';
@@ -11,6 +12,7 @@ import { MapPin } from 'lucide-react';
 export default function VenueCourts() {
   const { currentVenueId } = useMode();
   const { courts, loading, createCourt, updateCourt, deleteCourt } = useVenueCourts(currentVenueId);
+  const venueTheme = useVenueTheme();
   const [editingCourt, setEditingCourt] = useState<VenueCourt | null>(null);
 
   const nextCourtNumber = courts.length > 0 
@@ -42,6 +44,7 @@ export default function VenueCourts() {
           venueId={currentVenueId}
           nextCourtNumber={nextCourtNumber}
           onCreateCourt={createCourt}
+          venueTheme={venueTheme}
         />
       </div>
 
@@ -79,6 +82,7 @@ export default function VenueCourts() {
               venueId={currentVenueId}
               nextCourtNumber={1}
               onCreateCourt={createCourt}
+              venueTheme={venueTheme}
             />
           </CardContent>
         </Card>

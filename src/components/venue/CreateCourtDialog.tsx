@@ -22,13 +22,20 @@ import { Textarea } from '@/components/ui/textarea';
 import { Plus } from 'lucide-react';
 import { CreateCourtData } from '@/hooks/useVenueCourts';
 
+interface VenueTheme {
+  primary: string;
+  primaryForeground: string;
+  secondary: string;
+}
+
 interface CreateCourtDialogProps {
   venueId: string;
   nextCourtNumber: number;
   onCreateCourt: (data: CreateCourtData) => Promise<any>;
+  venueTheme?: VenueTheme;
 }
 
-export function CreateCourtDialog({ venueId, nextCourtNumber, onCreateCourt }: CreateCourtDialogProps) {
+export function CreateCourtDialog({ venueId, nextCourtNumber, onCreateCourt, venueTheme }: CreateCourtDialogProps) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -70,7 +77,10 @@ export function CreateCourtDialog({ venueId, nextCourtNumber, onCreateCourt }: C
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>
+        <Button
+          style={venueTheme ? { backgroundColor: venueTheme.primary } : undefined}
+          className={venueTheme ? "hover:opacity-90" : ""}
+        >
           <Plus className="h-4 w-4 mr-2" />
           Add Court
         </Button>
@@ -154,7 +164,12 @@ export function CreateCourtDialog({ venueId, nextCourtNumber, onCreateCourt }: C
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button 
+              type="submit" 
+              disabled={loading}
+              style={venueTheme ? { backgroundColor: venueTheme.primary } : undefined}
+              className={venueTheme ? "hover:opacity-90" : ""}
+            >
               {loading ? 'Creating...' : 'Create Court'}
             </Button>
           </DialogFooter>
