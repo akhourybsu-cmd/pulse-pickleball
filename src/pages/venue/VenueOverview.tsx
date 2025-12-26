@@ -60,25 +60,35 @@ export default function VenueOverview() {
   const isFullySetup = completedSteps === setupSteps.length;
 
   return (
-    <div className="p-6">
-      <div className="mb-6 flex items-center gap-4">
-        <img 
-          src={logoSrc} 
-          alt={currentVenue?.venue_name || "Venue"} 
-          className="h-14 w-auto hidden sm:block"
-          onError={(e) => {
-            e.currentTarget.src = getVenueLogoFallback();
-          }}
-        />
-        <div>
-          <h1 className="text-2xl font-bold">
-            {currentVenue?.venue_name || 'Venue Dashboard'}
-          </h1>
-          <p className="text-muted-foreground">
-            Welcome back! Here's what's happening at your venue.
-          </p>
+    <div>
+      {/* Premium Gradient Hero Section */}
+      <div 
+        className="-mt-0 px-6 pt-8 pb-10 mb-8"
+        style={{
+          background: `linear-gradient(to bottom, ${venueTheme.secondary}, ${venueTheme.secondary}DD, transparent)`
+        }}
+      >
+        <div className="flex items-center gap-5">
+          <img 
+            src={logoSrc} 
+            alt={currentVenue?.venue_name || "Venue"} 
+            className="h-20 w-auto hidden sm:block"
+            onError={(e) => {
+              e.currentTarget.src = getVenueLogoFallback();
+            }}
+          />
+          <div>
+            <h1 className="text-3xl md:text-4xl font-bold text-white">
+              Venue Control Center
+            </h1>
+            <p className="text-gray-300 mt-1">
+              Manage courts, events, and team for {currentVenue?.venue_name || 'your venue'}
+            </p>
+          </div>
         </div>
       </div>
+
+      <div className="px-6 pb-6">
 
       {/* Metrics Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
@@ -95,78 +105,79 @@ export default function VenueOverview() {
         ) : (
           <>
             <Card 
-              className="cursor-pointer hover:shadow-md transition-shadow"
+              className="cursor-pointer hover:shadow-lg transition-all group hover:border-l-4"
+              style={{ '--hover-border-color': venueTheme.primary } as React.CSSProperties}
               onClick={() => navigate('/venue/courts')}
             >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Courts</CardTitle>
                 <div 
-                  className="h-8 w-8 rounded-lg flex items-center justify-center"
+                  className="h-10 w-10 rounded-lg flex items-center justify-center transition-colors"
                   style={{ backgroundColor: `${venueTheme.primary}15` }}
                 >
-                  <MapPin className="h-4 w-4" style={{ color: venueTheme.primary }} />
+                  <MapPin className="h-5 w-5" style={{ color: venueTheme.primary }} />
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{activeCourts}</div>
-                <p className="text-xs text-muted-foreground">Active courts</p>
+                <div className="text-3xl font-bold" style={{ color: venueTheme.primary }}>{activeCourts}</div>
+                <p className="text-sm text-muted-foreground">Active courts</p>
               </CardContent>
             </Card>
 
             <Card 
-              className="cursor-pointer hover:shadow-md transition-shadow"
+              className="cursor-pointer hover:shadow-lg transition-all group hover:border-l-4"
               onClick={() => navigate('/venue/bookings')}
             >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Today's Bookings</CardTitle>
                 <div 
-                  className="h-8 w-8 rounded-lg flex items-center justify-center"
+                  className="h-10 w-10 rounded-lg flex items-center justify-center transition-colors"
                   style={{ backgroundColor: `${venueTheme.primary}15` }}
                 >
-                  <Calendar className="h-4 w-4" style={{ color: venueTheme.primary }} />
+                  <Calendar className="h-5 w-5" style={{ color: venueTheme.primary }} />
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{todayBookings}</div>
-                <p className="text-xs text-muted-foreground">Reservations today</p>
+                <div className="text-3xl font-bold" style={{ color: venueTheme.primary }}>{todayBookings}</div>
+                <p className="text-sm text-muted-foreground">Reservations today</p>
               </CardContent>
             </Card>
 
             <Card 
-              className="cursor-pointer hover:shadow-md transition-shadow"
+              className="cursor-pointer hover:shadow-lg transition-all group hover:border-l-4"
               onClick={() => navigate('/venue/staff')}
             >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Team</CardTitle>
                 <div 
-                  className="h-8 w-8 rounded-lg flex items-center justify-center"
+                  className="h-10 w-10 rounded-lg flex items-center justify-center transition-colors"
                   style={{ backgroundColor: `${venueTheme.primary}15` }}
                 >
-                  <Users className="h-4 w-4" style={{ color: venueTheme.primary }} />
+                  <Users className="h-5 w-5" style={{ color: venueTheme.primary }} />
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{staff.length}</div>
-                <p className="text-xs text-muted-foreground">Staff members</p>
+                <div className="text-3xl font-bold" style={{ color: venueTheme.primary }}>{staff.length}</div>
+                <p className="text-sm text-muted-foreground">Staff members</p>
               </CardContent>
             </Card>
 
             <Card 
-              className="cursor-pointer hover:shadow-md transition-shadow"
+              className="cursor-pointer hover:shadow-lg transition-all group hover:border-l-4"
               onClick={() => navigate('/venue/events')}
             >
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Upcoming Events</CardTitle>
                 <div 
-                  className="h-8 w-8 rounded-lg flex items-center justify-center"
+                  className="h-10 w-10 rounded-lg flex items-center justify-center transition-colors"
                   style={{ backgroundColor: `${venueTheme.primary}15` }}
                 >
-                  <CalendarDays className="h-4 w-4" style={{ color: venueTheme.primary }} />
+                  <CalendarDays className="h-5 w-5" style={{ color: venueTheme.primary }} />
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{upcomingEvents}</div>
-                <p className="text-xs text-muted-foreground">Published events</p>
+                <div className="text-3xl font-bold" style={{ color: venueTheme.primary }}>{upcomingEvents}</div>
+                <p className="text-sm text-muted-foreground">Published events</p>
               </CardContent>
             </Card>
           </>
@@ -174,18 +185,26 @@ export default function VenueOverview() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-        {/* Quick Actions */}
-        <Card>
+        {/* Quick Actions - Premium Dark Card */}
+        <Card 
+          className="border-0"
+          style={{ backgroundColor: venueTheme.secondary }}
+        >
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Plus className="h-5 w-5" style={{ color: venueTheme.primary }} />
+            <CardTitle className="flex items-center gap-2 text-white">
+              <div 
+                className="h-8 w-8 rounded-lg flex items-center justify-center"
+                style={{ backgroundColor: `${venueTheme.primary}25` }}
+              >
+                <Plus className="h-4 w-4" style={{ color: venueTheme.primary }} />
+              </div>
               Quick Actions
             </CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3">
             <Button 
               variant="outline" 
-              className="justify-start"
+              className="justify-start border-white/20 text-white hover:bg-white/10 hover:text-white"
               onClick={() => navigate('/venue/courts')}
             >
               <Plus className="h-4 w-4 mr-2" style={{ color: venueTheme.primary }} />
@@ -193,7 +212,7 @@ export default function VenueOverview() {
             </Button>
             <Button 
               variant="outline" 
-              className="justify-start"
+              className="justify-start border-white/20 text-white hover:bg-white/10 hover:text-white"
               onClick={() => navigate('/venue/events')}
             >
               <CalendarPlus className="h-4 w-4 mr-2" style={{ color: venueTheme.primary }} />
@@ -201,7 +220,7 @@ export default function VenueOverview() {
             </Button>
             <Button 
               variant="outline" 
-              className="justify-start"
+              className="justify-start border-white/20 text-white hover:bg-white/10 hover:text-white"
               onClick={() => navigate('/venue/staff')}
             >
               <UserPlus className="h-4 w-4 mr-2" style={{ color: venueTheme.primary }} />
@@ -209,7 +228,7 @@ export default function VenueOverview() {
             </Button>
             <Button 
               variant="outline" 
-              className="justify-start"
+              className="justify-start border-white/20 text-white hover:bg-white/10 hover:text-white"
               onClick={() => navigate('/venue/analytics')}
             >
               <BarChart3 className="h-4 w-4 mr-2" style={{ color: venueTheme.primary }} />
@@ -217,7 +236,7 @@ export default function VenueOverview() {
             </Button>
             <Button 
               variant="outline" 
-              className="justify-start"
+              className="justify-start border-white/20 text-white hover:bg-white/10 hover:text-white"
               onClick={() => navigate('/venue/settings')}
             >
               <Settings className="h-4 w-4 mr-2" style={{ color: venueTheme.primary }} />
@@ -319,6 +338,7 @@ export default function VenueOverview() {
             )}
           </CardContent>
         </Card>
+      </div>
       </div>
     </div>
   );
