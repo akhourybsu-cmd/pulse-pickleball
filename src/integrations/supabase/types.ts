@@ -929,6 +929,454 @@ export type Database = {
         }
         Relationships: []
       }
+      group_event_rsvps: {
+        Row: {
+          created_at: string | null
+          event_id: string
+          id: string
+          status: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          event_id: string
+          id?: string
+          status?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          event_id?: string
+          id?: string
+          status?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_event_rsvps_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "group_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      group_events: {
+        Row: {
+          capacity: number | null
+          court_id: string | null
+          created_at: string | null
+          created_by: string
+          custom_location: string | null
+          description: string | null
+          end_time: string | null
+          group_id: string
+          id: string
+          is_recurring: boolean | null
+          location_type: string | null
+          recurring_rule: string | null
+          skill_level_max: number | null
+          skill_level_min: number | null
+          start_time: string
+          title: string
+          updated_at: string | null
+          venue_id: string | null
+        }
+        Insert: {
+          capacity?: number | null
+          court_id?: string | null
+          created_at?: string | null
+          created_by: string
+          custom_location?: string | null
+          description?: string | null
+          end_time?: string | null
+          group_id: string
+          id?: string
+          is_recurring?: boolean | null
+          location_type?: string | null
+          recurring_rule?: string | null
+          skill_level_max?: number | null
+          skill_level_min?: number | null
+          start_time: string
+          title: string
+          updated_at?: string | null
+          venue_id?: string | null
+        }
+        Update: {
+          capacity?: number | null
+          court_id?: string | null
+          created_at?: string | null
+          created_by?: string
+          custom_location?: string | null
+          description?: string | null
+          end_time?: string | null
+          group_id?: string
+          id?: string
+          is_recurring?: boolean | null
+          location_type?: string | null
+          recurring_rule?: string | null
+          skill_level_max?: number | null
+          skill_level_min?: number | null
+          start_time?: string
+          title?: string
+          updated_at?: string | null
+          venue_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_events_court_id_fkey"
+            columns: ["court_id"]
+            isOneToOne: false
+            referencedRelation: "courts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_events_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_events_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      group_files: {
+        Row: {
+          created_at: string | null
+          file_name: string
+          file_size: number | null
+          file_type: string | null
+          file_url: string
+          group_id: string
+          id: string
+          uploader_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          file_name: string
+          file_size?: number | null
+          file_type?: string | null
+          file_url: string
+          group_id: string
+          id?: string
+          uploader_id: string
+        }
+        Update: {
+          created_at?: string | null
+          file_name?: string
+          file_size?: number | null
+          file_type?: string | null
+          file_url?: string
+          group_id?: string
+          id?: string
+          uploader_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_files_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      group_invites: {
+        Row: {
+          created_at: string | null
+          created_by: string
+          expires_at: string | null
+          group_id: string
+          id: string
+          invite_code: string | null
+          uses_remaining: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by: string
+          expires_at?: string | null
+          group_id: string
+          id?: string
+          invite_code?: string | null
+          uses_remaining?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string
+          expires_at?: string | null
+          group_id?: string
+          id?: string
+          invite_code?: string | null
+          uses_remaining?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_invites_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      group_members: {
+        Row: {
+          group_id: string
+          id: string
+          joined_at: string | null
+          last_read_at: string | null
+          role: Database["public"]["Enums"]["group_role"]
+          status: string
+          user_id: string
+        }
+        Insert: {
+          group_id: string
+          id?: string
+          joined_at?: string | null
+          last_read_at?: string | null
+          role?: Database["public"]["Enums"]["group_role"]
+          status?: string
+          user_id: string
+        }
+        Update: {
+          group_id?: string
+          id?: string
+          joined_at?: string | null
+          last_read_at?: string | null
+          role?: Database["public"]["Enums"]["group_role"]
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      group_post_comments: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          parent_comment_id: string | null
+          post_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          parent_comment_id?: string | null
+          post_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          parent_comment_id?: string | null
+          post_id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_post_comments_parent_comment_id_fkey"
+            columns: ["parent_comment_id"]
+            isOneToOne: false
+            referencedRelation: "group_post_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_post_comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "group_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      group_post_reactions: {
+        Row: {
+          created_at: string | null
+          emoji: string
+          id: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          emoji: string
+          id?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          emoji?: string
+          id?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_post_reactions_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "group_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      group_posts: {
+        Row: {
+          content: string | null
+          created_at: string | null
+          group_id: string
+          id: string
+          image_url: string | null
+          last_activity_at: string | null
+          max_players: number | null
+          pinned: boolean | null
+          poll_options: Json | null
+          session_date: string | null
+          session_time: string | null
+          title: string | null
+          type: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string | null
+          group_id: string
+          id?: string
+          image_url?: string | null
+          last_activity_at?: string | null
+          max_players?: number | null
+          pinned?: boolean | null
+          poll_options?: Json | null
+          session_date?: string | null
+          session_time?: string | null
+          title?: string | null
+          type?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string | null
+          group_id?: string
+          id?: string
+          image_url?: string | null
+          last_activity_at?: string | null
+          max_players?: number | null
+          pinned?: boolean | null
+          poll_options?: Json | null
+          session_date?: string | null
+          session_time?: string | null
+          title?: string | null
+          type?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_posts_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      groups: {
+        Row: {
+          court_id: string | null
+          cover_url: string | null
+          created_at: string | null
+          created_by: string
+          description: string | null
+          icon_url: string | null
+          id: string
+          invite_code: string | null
+          join_method: Database["public"]["Enums"]["group_join_method"]
+          member_count: number | null
+          name: string
+          settings: Json | null
+          type: Database["public"]["Enums"]["group_type"]
+          updated_at: string | null
+          venue_id: string | null
+          visibility: Database["public"]["Enums"]["group_visibility"]
+        }
+        Insert: {
+          court_id?: string | null
+          cover_url?: string | null
+          created_at?: string | null
+          created_by: string
+          description?: string | null
+          icon_url?: string | null
+          id?: string
+          invite_code?: string | null
+          join_method?: Database["public"]["Enums"]["group_join_method"]
+          member_count?: number | null
+          name: string
+          settings?: Json | null
+          type?: Database["public"]["Enums"]["group_type"]
+          updated_at?: string | null
+          venue_id?: string | null
+          visibility?: Database["public"]["Enums"]["group_visibility"]
+        }
+        Update: {
+          court_id?: string | null
+          cover_url?: string | null
+          created_at?: string | null
+          created_by?: string
+          description?: string | null
+          icon_url?: string | null
+          id?: string
+          invite_code?: string | null
+          join_method?: Database["public"]["Enums"]["group_join_method"]
+          member_count?: number | null
+          name?: string
+          settings?: Json | null
+          type?: Database["public"]["Enums"]["group_type"]
+          updated_at?: string | null
+          venue_id?: string | null
+          visibility?: Database["public"]["Enums"]["group_visibility"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "groups_court_id_fkey"
+            columns: ["court_id"]
+            isOneToOne: false
+            referencedRelation: "courts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "groups_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lfg_posts: {
         Row: {
           capacity: number
@@ -3776,6 +4224,7 @@ export type Database = {
         Args: { target_week_start: string }
         Returns: undefined
       }
+      generate_group_invite_code: { Args: never; Returns: string }
       get_emergency_contact: {
         Args: { profile_id: string }
         Returns: {
@@ -3805,6 +4254,14 @@ export type Database = {
         }[]
       }
       get_week_start: { Args: { match_date: string }; Returns: string }
+      has_group_role: {
+        Args: {
+          _group_id: string
+          _role: Database["public"]["Enums"]["group_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -3835,6 +4292,14 @@ export type Database = {
       }
       is_event_participant: {
         Args: { _event_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_group_admin: {
+        Args: { _group_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_group_member: {
+        Args: { _group_id: string; _user_id: string }
         Returns: boolean
       }
       log_admin_action: {
@@ -3907,6 +4372,15 @@ export type Database = {
     Enums: {
       app_role: "admin" | "user"
       division_status: "draft" | "active" | "completed"
+      group_join_method: "open" | "request_to_join" | "invite_only"
+      group_role: "owner" | "moderator" | "member"
+      group_type:
+        | "crew"
+        | "league"
+        | "open_play"
+        | "venue_official"
+        | "tournament"
+      group_visibility: "public" | "unlisted" | "private"
       payment_status: "unpaid" | "paid" | "refunded"
       rating_type: "ladder" | "league" | "playoffs" | "casual"
       registration_status: "pending" | "confirmed" | "waitlisted" | "cancelled"
@@ -4047,6 +4521,16 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "user"],
       division_status: ["draft", "active", "completed"],
+      group_join_method: ["open", "request_to_join", "invite_only"],
+      group_role: ["owner", "moderator", "member"],
+      group_type: [
+        "crew",
+        "league",
+        "open_play",
+        "venue_official",
+        "tournament",
+      ],
+      group_visibility: ["public", "unlisted", "private"],
       payment_status: ["unpaid", "paid", "refunded"],
       rating_type: ["ladder", "league", "playoffs", "casual"],
       registration_status: ["pending", "confirmed", "waitlisted", "cancelled"],
