@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Calendar, MapPin, Search, ClipboardList, LogOut } from 'lucide-react';
+import { Home, Calendar, Users, Search, ClipboardList, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { NotificationBell } from '@/components/NotificationBell';
@@ -15,7 +15,7 @@ const navItems = [
   { to: '/player/venues', icon: Search, label: 'Venues' },
   { to: '/player/my-events', icon: Calendar, label: 'Events' },
   { to: '/player/my-bookings', icon: ClipboardList, label: 'Bookings' },
-  { to: '/player/courts', icon: MapPin, label: 'Courts' },
+  { to: '/player/community', icon: Users, label: 'Community' },
 ];
 
 export function PlayerShell() {
