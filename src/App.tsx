@@ -93,6 +93,8 @@ const PlayerBookings = lazy(() => import("./pages/player/PlayerBookings"));
 const VenueDiscovery = lazy(() => import("./pages/player/VenueDiscovery"));
 const MyBookings = lazy(() => import("./pages/player/MyBookings"));
 const MyEvents = lazy(() => import("./pages/player/MyEvents"));
+const Community = lazy(() => import("./pages/player/Community"));
+const GroupDetail = lazy(() => import("./pages/player/GroupDetail"));
 
 // Venue pages
 const VenueOverview = lazy(() => import("./pages/venue/VenueOverview"));
@@ -149,6 +151,8 @@ const AppContent = () => {
             <Route path="bookings" element={<PlayerBookings />} />
             <Route path="my-bookings" element={<MyBookings />} />
             <Route path="my-events" element={<MyEvents />} />
+            <Route path="community" element={<Community />} />
+            <Route path="community/group/:groupId" element={<GroupDetail />} />
           </Route>
 
           {/* Venue routes with shell */}
