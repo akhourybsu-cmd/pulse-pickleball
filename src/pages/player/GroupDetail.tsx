@@ -5,11 +5,16 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { Group, GroupMember } from '@/hooks/useGroups';
+import { GroupFeed } from '@/components/community/GroupFeed';
+import { GroupSchedule } from '@/components/community/GroupSchedule';
+import { GroupLFG } from '@/components/community/GroupLFG';
+import { GroupFiles } from '@/components/community/GroupFiles';
+import { GroupMembers } from '@/components/community/GroupMembers';
 
 export default function GroupDetail() {
   const { groupId } = useParams<{ groupId: string }>();
