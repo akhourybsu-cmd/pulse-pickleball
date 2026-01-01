@@ -1166,6 +1166,41 @@ export type Database = {
           },
         ]
       }
+      group_messages: {
+        Row: {
+          content: string
+          created_at: string | null
+          group_id: string
+          id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          group_id: string
+          id?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          group_id?: string
+          id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_messages_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       group_post_comments: {
         Row: {
           content: string
@@ -1204,6 +1239,38 @@ export type Database = {
           },
           {
             foreignKeyName: "group_post_comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "group_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      group_post_participants: {
+        Row: {
+          created_at: string | null
+          id: string
+          post_id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          post_id: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          post_id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_post_participants_post_id_fkey"
             columns: ["post_id"]
             isOneToOne: false
             referencedRelation: "group_posts"
