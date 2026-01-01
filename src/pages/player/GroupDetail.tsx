@@ -27,6 +27,7 @@ export default function GroupDetail() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('feed');
   const [codeCopied, setCodeCopied] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
     if (groupId) {
@@ -44,6 +45,7 @@ export default function GroupDetail() {
         navigate('/auth');
         return;
       }
+      setCurrentUserId(user.id);
 
       // Fetch group
       const { data: groupData, error: groupError } = await supabase
@@ -242,113 +244,32 @@ export default function GroupDetail() {
 
         {/* Feed Tab */}
         <TabsContent value="feed" className="mt-6">
-          <Card className="border-dashed">
-            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-              <MessageSquare className="h-12 w-12 text-muted-foreground/50 mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No posts yet</h3>
-              <p className="text-muted-foreground max-w-sm mb-4">
-                Be the first to share an update with the group!
-              </p>
-              <Button className="gap-2">
-                <MessageSquare className="h-4 w-4" />
-                Create Post
-              </Button>
-            </CardContent>
-          </Card>
+          <GroupFeed groupId={groupId!} isAdmin={isAdmin} currentUserId={currentUserId} />
         </TabsContent>
 
         {/* Schedule Tab */}
         <TabsContent value="schedule" className="mt-6">
-          <Card className="border-dashed">
-            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-              <Calendar className="h-12 w-12 text-muted-foreground/50 mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No upcoming events</h3>
-              <p className="text-muted-foreground max-w-sm mb-4">
-                Schedule a session or event for the group.
-              </p>
-              <Button className="gap-2">
-                <Calendar className="h-4 w-4" />
-                Create Event
-              </Button>
-            </CardContent>
-          </Card>
+          <GroupSchedule groupId={groupId!} isAdmin={isAdmin} currentUserId={currentUserId} />
         </TabsContent>
 
         {/* LFG Tab */}
         <TabsContent value="lfg" className="mt-6">
-          <Card className="border-dashed">
-            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-              <Gamepad2 className="h-12 w-12 text-muted-foreground/50 mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No LFG posts</h3>
-              <p className="text-muted-foreground max-w-sm mb-4">
-                Looking for a game? Post here to find players.
-              </p>
-              <Button className="gap-2">
-                <Gamepad2 className="h-4 w-4" />
-                Post LFG
-              </Button>
-            </CardContent>
-          </Card>
+          <GroupLFG groupId={groupId!} isAdmin={isAdmin} currentUserId={currentUserId} />
         </TabsContent>
 
         {/* Files Tab */}
         <TabsContent value="files" className="mt-6">
-          <Card className="border-dashed">
-            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-              <FolderOpen className="h-12 w-12 text-muted-foreground/50 mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No files uploaded</h3>
-              <p className="text-muted-foreground max-w-sm mb-4">
-                Share documents, images, or other files with the group.
-              </p>
-              <Button className="gap-2">
-                <FolderOpen className="h-4 w-4" />
-                Upload File
-              </Button>
-            </CardContent>
-          </Card>
+          <GroupFiles groupId={groupId!} isAdmin={isAdmin} currentUserId={currentUserId} />
         </TabsContent>
 
         {/* Members Tab */}
-        <TabsContent value="members" className="mt-6 space-y-3">
-          {members.map((member: any) => {
-            const profile = member.profiles;
-            const displayName = profile?.display_name || profile?.full_name || 'Unknown';
-            const initials = displayName
-              .split(' ')
-              .map((n: string) => n[0])
-              .join('')
-              .toUpperCase()
-              .slice(0, 2);
-
-            return (
-              <Card key={member.id} className="hover:bg-muted/30 transition-colors">
-                <CardContent className="flex items-center gap-3 py-3">
-                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-semibold text-primary">
-                    {profile?.avatar_url ? (
-                      <img 
-                        src={profile.avatar_url} 
-                        alt={displayName}
-                        className="h-10 w-10 rounded-full object-cover"
-                      />
-                    ) : (
-                      initials
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium truncate">{displayName}</div>
-                    <div className="text-xs text-muted-foreground">
-                      Joined {new Date(member.joined_at).toLocaleDateString()}
-                    </div>
-                  </div>
-                  <Badge variant="secondary" className="gap-1">
-                    {member.role === 'owner' && <Crown className="h-3 w-3" />}
-                    {member.role === 'moderator' && <Shield className="h-3 w-3" />}
-                    {member.role.charAt(0).toUpperCase() + member.role.slice(1)}
-                  </Badge>
-                </CardContent>
-              </Card>
-            );
-          })}
+        <TabsContent value="members" className="mt-6">
+          <GroupMembers 
+            groupId={groupId!} 
+            isAdmin={isAdmin} 
+            isOwner={membership?.role === 'owner'} 
+            currentUserId={currentUserId} 
+          />
         </TabsContent>
       </Tabs>
     </div>
