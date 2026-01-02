@@ -16,7 +16,7 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 import { ModeSwitcher } from '@/components/mode/ModeSwitcher';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { useState, useMemo, CSSProperties } from 'react';
+import { useState, useMemo, useCallback, CSSProperties } from 'react';
 import { useMode } from '@/contexts/ModeContext';
 import { getVenueLogoSrc, getVenueLogoFallback } from '@/lib/venueBranding';
 
@@ -40,6 +40,15 @@ const bottomNavItems = [
   { to: '/venue/events', icon: CalendarDays, label: 'Events' },
   { to: '/venue/settings', icon: Settings, label: 'Settings' },
 ];
+
+// Prefetch map for route preloading on hover
+const prefetchMap: Record<string, () => Promise<unknown>> = {
+  '/venue': () => import('@/pages/venue/VenueOverview'),
+  '/venue/courts': () => import('@/pages/venue/VenueCourts'),
+  '/venue/bookings': () => import('@/pages/venue/VenueBookings'),
+  '/venue/events': () => import('@/pages/venue/VenueEvents'),
+  '/venue/settings': () => import('@/pages/venue/VenueSettings'),
+};
 
 interface VenueTheme {
   primary: string;
@@ -160,6 +169,11 @@ export function VenueShell() {
       ? location.pathname === item.to
       : location.pathname.startsWith(item.to)
   );
+  // Prefetch route on hover
+  const handlePrefetch = useCallback((to: string) => {
+    const prefetch = prefetchMap[to];
+    if (prefetch) prefetch();
+  }, []);
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -238,6 +252,7 @@ export function VenueShell() {
                 key={item.to}
                 to={item.to}
                 end={item.end}
+                onMouseEnter={() => handlePrefetch(item.to)}
                 className={cn(
                   'flex flex-col items-center gap-1 px-3 py-2 rounded-lg min-w-[60px]',
                   'transition-colors duration-[240ms] ease-out',
@@ -283,6 +298,7 @@ export function VenueShell() {
                   key={item.to}
                   to={item.to}
                   end={item.end}
+                  onMouseEnter={() => handlePrefetch(item.to)}
                   className={cn(
                     'flex items-center gap-2 px-4 py-2 rounded-lg',
                     'transition-colors duration-[240ms] ease-out',
