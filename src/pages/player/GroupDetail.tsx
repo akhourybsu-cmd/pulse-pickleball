@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, Settings, Users, MessageSquare, MessageCircle, Calendar, 
-  FolderOpen, Gamepad2, Lock, Globe, Eye, Plus, Share2, MoreVertical, Info
+  FolderOpen, Lock, Globe, Eye, Plus, Share2, MoreVertical
 } from 'lucide-react';
 import {
   Popover,
@@ -33,7 +33,7 @@ import { cn } from '@/lib/utils';
 import type { Group, GroupMember } from '@/hooks/useGroups';
 import { GroupFeed } from '@/components/community/GroupFeed';
 import { GroupSchedule } from '@/components/community/GroupSchedule';
-import { GroupLFG } from '@/components/community/GroupLFG';
+
 import { GroupFiles } from '@/components/community/GroupFiles';
 import { GroupMembers } from '@/components/community/GroupMembers';
 import { GroupChat } from '@/components/community/GroupChat';
@@ -227,10 +227,6 @@ export default function GroupDetail() {
                 <MessageSquare className="h-4 w-4 mr-2" />
                 Post Update
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => openQuickPost('lfg')}>
-                <Gamepad2 className="h-4 w-4 mr-2" />
-                Looking for Game
-              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => { setActiveTab('schedule'); }}>
                 <Calendar className="h-4 w-4 mr-2" />
                 Create Event
@@ -321,12 +317,11 @@ export default function GroupDetail() {
           setActiveTab('feed');
           setTimeout(() => document.querySelector('textarea')?.focus(), 100);
         }}
-        onViewMatches={() => setActiveTab('lfg')}
       />
 
       {/* Tabs with Labels */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="feed" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-2 min-h-[44px] data-[state=active]:font-medium">
             <MessageSquare className="h-3.5 w-3.5" />
             <span className="text-[10px] sm:text-sm">Feed</span>
@@ -334,10 +329,6 @@ export default function GroupDetail() {
           <TabsTrigger value="schedule" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-2 min-h-[44px] data-[state=active]:font-medium">
             <Calendar className="h-3.5 w-3.5" />
             <span className="text-[10px] sm:text-sm">Events</span>
-          </TabsTrigger>
-          <TabsTrigger value="lfg" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-2 min-h-[44px] data-[state=active]:font-medium">
-            <Gamepad2 className="h-3.5 w-3.5" />
-            <span className="text-[10px] sm:text-sm">LFG</span>
           </TabsTrigger>
           <TabsTrigger value="chat" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-2 min-h-[44px] data-[state=active]:font-medium">
             <MessageCircle className="h-3.5 w-3.5" />
@@ -361,9 +352,6 @@ export default function GroupDetail() {
           <GroupSchedule groupId={groupId!} isAdmin={isAdmin} currentUserId={currentUserId} />
         </TabsContent>
 
-        <TabsContent value="lfg" className="mt-4">
-          <GroupLFG groupId={groupId!} isAdmin={isAdmin} currentUserId={currentUserId} />
-        </TabsContent>
 
         <TabsContent value="chat" className="mt-4">
           <GroupChat groupId={groupId!} currentUserId={currentUserId} />

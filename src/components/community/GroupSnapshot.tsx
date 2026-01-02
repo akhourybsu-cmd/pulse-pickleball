@@ -1,4 +1,4 @@
-import { Calendar, MessageSquare, Trophy, Users } from 'lucide-react';
+import { Calendar, MessageSquare, Users } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import type { GroupMember } from '@/hooks/useGroups';
@@ -6,19 +6,17 @@ import type { GroupMember } from '@/hooks/useGroups';
 interface GroupSnapshotProps {
   members: GroupMember[];
   nextEvent?: { title: string; date: string } | null;
-  weeklyStats?: { posts: number; matches: number };
+  weeklyStats?: { posts: number };
   onCreateEvent?: () => void;
   onViewFeed?: () => void;
-  onViewMatches?: () => void;
 }
 
 export function GroupSnapshot({ 
   members, 
   nextEvent, 
-  weeklyStats = { posts: 0, matches: 0 },
+  weeklyStats = { posts: 0 },
   onCreateEvent,
   onViewFeed,
-  onViewMatches,
 }: GroupSnapshotProps) {
   // Get first 4 members for avatar stack
   const displayMembers = members.slice(0, 4);
@@ -81,13 +79,6 @@ export function GroupSnapshot({
         >
           <MessageSquare className="h-3.5 w-3.5" />
           <span>{weeklyStats.posts} posts</span>
-        </button>
-        <button 
-          onClick={onViewMatches}
-          className="flex items-center gap-1 hover:text-foreground transition-colors"
-        >
-          <Trophy className="h-3.5 w-3.5" />
-          <span>{weeklyStats.matches} matches</span>
         </button>
       </div>
     </div>
