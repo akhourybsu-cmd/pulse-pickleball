@@ -326,7 +326,7 @@ export default function GroupDetail() {
 
       {/* Tabs with Labels */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="feed" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-2 min-h-[44px] data-[state=active]:font-medium">
             <MessageSquare className="h-3.5 w-3.5" />
             <span className="text-[10px] sm:text-sm">Feed</span>
@@ -346,6 +346,10 @@ export default function GroupDetail() {
           <TabsTrigger value="members" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-2 min-h-[44px] data-[state=active]:font-medium">
             <Users className="h-3.5 w-3.5" />
             <span className="text-[10px] sm:text-sm">Members</span>
+          </TabsTrigger>
+          <TabsTrigger value="files" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-2 min-h-[44px] data-[state=active]:font-medium">
+            <FolderOpen className="h-3.5 w-3.5" />
+            <span className="text-[10px] sm:text-sm">Files</span>
           </TabsTrigger>
         </TabsList>
 
@@ -370,8 +374,13 @@ export default function GroupDetail() {
             groupId={groupId!} 
             isAdmin={isAdmin} 
             isOwner={membership?.role === 'owner'} 
-            currentUserId={currentUserId} 
+            currentUserId={currentUserId}
+            onInviteClick={() => setInviteModalOpen(true)}
           />
+        </TabsContent>
+
+        <TabsContent value="files" className="mt-4">
+          <GroupFiles groupId={groupId!} isAdmin={isAdmin} currentUserId={currentUserId} />
         </TabsContent>
       </Tabs>
 
