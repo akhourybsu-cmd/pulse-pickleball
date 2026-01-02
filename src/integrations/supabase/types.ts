@@ -1957,6 +1957,7 @@ export type Database = {
           match_format: string | null
           match_type: string | null
           other_location: string | null
+          rating_eligible: boolean | null
           round_no: number | null
           round_number: string | null
           source: string | null
@@ -1983,6 +1984,7 @@ export type Database = {
           match_format?: string | null
           match_type?: string | null
           other_location?: string | null
+          rating_eligible?: boolean | null
           round_no?: number | null
           round_number?: string | null
           source?: string | null
@@ -2009,6 +2011,7 @@ export type Database = {
           match_format?: string | null
           match_type?: string | null
           other_location?: string | null
+          rating_eligible?: boolean | null
           round_no?: number | null
           round_number?: string | null
           source?: string | null
@@ -4591,6 +4594,7 @@ export type Database = {
           match_format: string | null
           match_type: string | null
           other_location: string | null
+          rating_eligible: boolean | null
           round_no: number | null
           round_number: string | null
           source: string | null
