@@ -2,6 +2,7 @@ import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { format, startOfToday, isSameDay, parseISO, isToday, isTomorrow, addDays } from 'date-fns';
 import { MapPin, ChevronRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { PublicVenue, VenueEvent } from '@/hooks/usePublicVenue';
 import { DatePickerStrip } from './DatePickerStrip';
@@ -23,6 +24,24 @@ const CATEGORIES = [
 ];
 
 const NUMBER_OF_DAYS = 14;
+
+// Animation variants
+const staggerContainer = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.06 }
+  }
+};
+
+const eventCardVariant = {
+  hidden: { opacity: 0, x: -20 },
+  visible: { 
+    opacity: 1, 
+    x: 0,
+    transition: { duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] as const }
+  }
+};
 
 export function PublicEventsTab({ venue, events, onRegister, registeredEventIds = [] }: PublicEventsTabProps) {
   const [selectedDate, setSelectedDate] = useState(startOfToday());
@@ -172,9 +191,10 @@ export function PublicEventsTab({ venue, events, onRegister, registeredEventIds 
           {CATEGORIES.map((category) => {
             const isSelected = selectedCategory === category.id;
             return (
-              <button
+              <motion.button
                 key={category.id}
                 onClick={() => setSelectedCategory(category.id)}
+                whileTap={{ scale: 0.95 }}
                 className={cn(
                   "flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all",
                   isSelected 
@@ -183,7 +203,7 @@ export function PublicEventsTab({ venue, events, onRegister, registeredEventIds 
                 )}
               >
                 {category.label}
-              </button>
+              </motion.button>
             );
           })}
         </div>
@@ -231,7 +251,13 @@ export function PublicEventsTab({ venue, events, onRegister, registeredEventIds 
                   No events scheduled
                 </div>
               ) : (
-                <div className="divide-y divide-border">
+                <motion.div 
+                  variants={staggerContainer}
+                  initial="hidden"
+                  whileInView="visible"
+                  viewport={{ once: true, amount: 0.1 }}
+                  className="divide-y divide-border"
+                >
                   {dayEvents.map((event) => {
                     const isRegistered = registeredEventIds.includes(event.id);
                     const spotsLeft = event.max_participants 
@@ -241,10 +267,13 @@ export function PublicEventsTab({ venue, events, onRegister, registeredEventIds 
                     const isLowSpots = spotsLeft !== null && spotsLeft > 0 && spotsLeft <= 3;
                     
                     return (
-                      <button
+                      <motion.button
                         key={event.id}
+                        variants={eventCardVariant}
                         onClick={() => onRegister(event)}
-                        className="w-full px-4 py-4 text-left hover:bg-muted/50 transition-colors"
+                        whileHover={{ backgroundColor: 'rgba(var(--muted), 0.5)' }}
+                        whileTap={{ scale: 0.99 }}
+                        className="w-full px-4 py-4 text-left transition-colors"
                       >
                         {/* Top Row: Time + Status Badge */}
                         <div className="flex items-center justify-between mb-1">
@@ -259,7 +288,19 @@ export function PublicEventsTab({ venue, events, onRegister, registeredEventIds 
                           ) : isFull ? (
                             <Badge variant="outline" className="text-amber-600 border-amber-600 text-xs">WAITLIST</Badge>
                           ) : isLowSpots ? (
-                            <Badge className="bg-red-600 text-white text-xs">ONLY {spotsLeft} SPOTS LEFT</Badge>
+                            <motion.div
+                              animate={{ 
+                                boxShadow: [
+                                  '0 0 0 0 rgba(220, 38, 38, 0)',
+                                  '0 0 0 4px rgba(220, 38, 38, 0.2)',
+                                  '0 0 0 0 rgba(220, 38, 38, 0)'
+                                ]
+                              }}
+                              transition={{ duration: 2, repeat: Infinity }}
+                              className="rounded"
+                            >
+                              <Badge className="bg-red-600 text-white text-xs">ONLY {spotsLeft} SPOTS LEFT</Badge>
+                            </motion.div>
                           ) : null}
                         </div>
                         
@@ -288,10 +329,10 @@ export function PublicEventsTab({ venue, events, onRegister, registeredEventIds 
                             <ChevronRight className="w-4 h-4 text-muted-foreground" />
                           </div>
                         </div>
-                      </button>
+                      </motion.button>
                     );
                   })}
-                </div>
+                </motion.div>
               )}
             </div>
           );

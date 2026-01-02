@@ -1,5 +1,6 @@
 import { useRef, useEffect } from 'react';
 import { format, addDays, startOfToday, isSameDay, isToday, isTomorrow } from 'date-fns';
+import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
 interface DatePickerStripProps {
@@ -38,11 +39,14 @@ export function DatePickerStrip({ selectedDate, onSelectDate, numberOfDays = 14,
       {dates.map((date) => {
         const isSelected = isSameDay(date, selectedDate);
         return (
-          <button
+          <motion.button
             key={date.toISOString()}
             onClick={() => onSelectDate(date)}
+            whileTap={{ scale: 0.95 }}
+            animate={isSelected ? { scale: [1, 1.05, 1] } : { scale: 1 }}
+            transition={{ duration: 0.2 }}
             className={cn(
-              "flex-shrink-0 px-4 py-2 text-sm font-medium transition-all whitespace-nowrap border-b-2",
+              "flex-shrink-0 px-4 py-2 text-sm font-medium transition-all whitespace-nowrap border-b-2 relative",
               isSelected 
                 ? "text-foreground" 
                 : "text-muted-foreground hover:text-foreground border-transparent"
@@ -50,7 +54,16 @@ export function DatePickerStrip({ selectedDate, onSelectDate, numberOfDays = 14,
             style={isSelected ? { borderBottomColor: accentColor || 'hsl(var(--primary))' } : undefined}
           >
             {getDateLabel(date)}
-          </button>
+            {/* Selected date glow effect */}
+            {isSelected && (
+              <motion.div
+                layoutId="date-indicator"
+                className="absolute inset-0 rounded-md -z-10"
+                style={{ backgroundColor: `${accentColor || 'hsl(var(--primary))'}10` }}
+                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+              />
+            )}
+          </motion.button>
         );
       })}
     </div>
