@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Users, Trophy, Calendar, Building, Medal, Lock, Globe, Eye, UserPlus, ShieldCheck, Mail } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Users, Trophy, Calendar, Building, Medal, Lock, Globe, Eye, UserPlus, ShieldCheck, Mail, MapPin, Loader2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -13,6 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { cn } from '@/lib/utils';
+import { useUserVenues, type UserVenue } from '@/hooks/useUserVenues';
 import type { Group } from '@/hooks/useGroups';
 
 interface CreateGroupDialogProps {
@@ -24,6 +25,7 @@ interface CreateGroupDialogProps {
     type: Group['type'];
     visibility: Group['visibility'];
     join_method: Group['join_method'];
+    venue_id?: string;
   }) => Promise<Group | null>;
 }
 
@@ -50,13 +52,22 @@ const joinOptions = [
 export function CreateGroupDialog({ open, onOpenChange, onSubmit }: CreateGroupDialogProps) {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const { venues, loading: venuesLoading } = useUserVenues();
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     type: 'crew' as Group['type'],
     visibility: 'unlisted' as Group['visibility'],
     join_method: 'open' as Group['join_method'],
+    venue_id: undefined as string | undefined,
   });
+
+  // Reset venue_id when type changes away from venue_official
+  useEffect(() => {
+    if (formData.type !== 'venue_official' && formData.venue_id) {
+      setFormData(prev => ({ ...prev, venue_id: undefined }));
+    }
+  }, [formData.type]);
 
   const handleSubmit = async () => {
     if (!formData.name.trim()) return;
@@ -75,6 +86,7 @@ export function CreateGroupDialog({ open, onOpenChange, onSubmit }: CreateGroupD
         type: 'crew',
         visibility: 'unlisted',
         join_method: 'open',
+        venue_id: undefined,
       });
     }
   };
@@ -84,15 +96,42 @@ export function CreateGroupDialog({ open, onOpenChange, onSubmit }: CreateGroupD
     setStep(1);
   };
 
+  const handleTypeSelect = (type: Group['type']) => {
+    setFormData({ ...formData, type });
+  };
+
+  const handleContinueFromType = () => {
+    if (formData.type === 'venue_official') {
+      setStep(1.5); // Venue selection step
+    } else {
+      setStep(2);
+    }
+  };
+
+  const handleVenueSelect = (venue: UserVenue) => {
+    setFormData({
+      ...formData,
+      venue_id: venue.id,
+      name: formData.name || `${venue.name} Official`,
+    });
+    setStep(2);
+  };
+
+  const getStepDescription = () => {
+    if (step === 1) return 'Choose what type of group you want to create';
+    if (step === 1.5) return 'Select a venue you manage';
+    if (step === 2) return 'Set up your group details';
+    if (step === 3) return 'Configure privacy and access';
+    return '';
+  };
+
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create Group</DialogTitle>
           <DialogDescription>
-            {step === 1 && 'Choose what type of group you want to create'}
-            {step === 2 && 'Set up your group details'}
-            {step === 3 && 'Configure privacy and access'}
+            {getStepDescription()}
           </DialogDescription>
         </DialogHeader>
 
@@ -101,7 +140,7 @@ export function CreateGroupDialog({ open, onOpenChange, onSubmit }: CreateGroupD
           <div className="space-y-4">
             <RadioGroup
               value={formData.type}
-              onValueChange={(value) => setFormData({ ...formData, type: value as Group['type'] })}
+              onValueChange={(value) => handleTypeSelect(value as Group['type'])}
               className="grid gap-3"
             >
               {groupTypes.map((type) => (
@@ -129,7 +168,74 @@ export function CreateGroupDialog({ open, onOpenChange, onSubmit }: CreateGroupD
             </RadioGroup>
 
             <div className="flex justify-end pt-4">
-              <Button onClick={() => setStep(2)}>Continue</Button>
+              <Button onClick={handleContinueFromType}>Continue</Button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 1.5: Venue Selection (only for venue_official) */}
+        {step === 1.5 && (
+          <div className="space-y-4">
+            {venuesLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : venues.length === 0 ? (
+              <div className="text-center py-8 space-y-4">
+                <Building className="h-12 w-12 mx-auto text-muted-foreground" />
+                <div>
+                  <h3 className="font-medium text-foreground">No Venues Available</h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    You need to be a venue owner or manager to create an official venue group.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Select a venue to create an official group for:
+                </p>
+                {venues.map((venue) => (
+                  <button
+                    key={venue.id}
+                    type="button"
+                    onClick={() => handleVenueSelect(venue)}
+                    className={cn(
+                      'w-full flex items-center gap-4 p-4 rounded-lg border text-left transition-colors',
+                      'border-border hover:bg-muted/50 hover:border-primary/50'
+                    )}
+                  >
+                    {venue.logo_url ? (
+                      <img
+                        src={venue.logo_url}
+                        alt={venue.name}
+                        className="h-12 w-12 rounded-lg object-cover"
+                      />
+                    ) : (
+                      <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <Building className="h-6 w-6 text-primary" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-foreground truncate">{venue.name}</div>
+                      {(venue.city || venue.state) && (
+                        <div className="text-sm text-muted-foreground flex items-center gap-1 mt-0.5">
+                          <MapPin className="h-3 w-3" />
+                          {[venue.city, venue.state].filter(Boolean).join(', ')}
+                        </div>
+                      )}
+                    </div>
+                    <span className="text-xs text-muted-foreground capitalize">{venue.role}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className="flex justify-between pt-4">
+              <Button variant="outline" onClick={() => setStep(1)}>Back</Button>
+              {venues.length === 0 && (
+                <Button variant="outline" onClick={handleClose}>Cancel</Button>
+              )}
             </div>
           </div>
         )}
@@ -161,7 +267,7 @@ export function CreateGroupDialog({ open, onOpenChange, onSubmit }: CreateGroupD
             </div>
 
             <div className="flex justify-between pt-4">
-              <Button variant="outline" onClick={() => setStep(1)}>Back</Button>
+              <Button variant="outline" onClick={() => setStep(formData.type === 'venue_official' ? 1.5 : 1)}>Back</Button>
               <Button onClick={() => setStep(3)} disabled={!formData.name.trim()}>
                 Continue
               </Button>

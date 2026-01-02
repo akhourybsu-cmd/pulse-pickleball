@@ -1,9 +1,10 @@
 import { useNavigate } from 'react-router-dom';
-import { Users, Lock, Globe, Eye, Crown, Shield, ChevronRight } from 'lucide-react';
+import { Users, Lock, Globe, Eye, Crown, Shield, ChevronRight, BadgeCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Card, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { GroupWithMembership } from '@/hooks/useGroups';
 
 interface GroupCardProps {
@@ -51,6 +52,8 @@ export function GroupCard({ group, showJoinButton, onJoin, isJoining }: GroupCar
     ? <Eye className="h-3 w-3" />
     : <Globe className="h-3 w-3" />;
 
+  const isVerifiedVenue = group.type === 'venue_official' && group.is_venue_verified;
+
   // Generate initials for avatar
   const initials = group.name
     .split(' ')
@@ -92,6 +95,18 @@ export function GroupCard({ group, showJoinButton, onJoin, isJoining }: GroupCar
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <h3 className="font-semibold text-foreground truncate">{group.name}</h3>
+              {isVerifiedVenue && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <BadgeCheck className="h-4 w-4 text-amber-500 shrink-0" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Official venue group</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
               {visibilityIcon}
             </div>
             

@@ -1382,6 +1382,7 @@ export type Database = {
           icon_url: string | null
           id: string
           invite_code: string | null
+          is_venue_verified: boolean | null
           join_method: Database["public"]["Enums"]["group_join_method"]
           member_count: number | null
           name: string
@@ -1400,6 +1401,7 @@ export type Database = {
           icon_url?: string | null
           id?: string
           invite_code?: string | null
+          is_venue_verified?: boolean | null
           join_method?: Database["public"]["Enums"]["group_join_method"]
           member_count?: number | null
           name: string
@@ -1418,6 +1420,7 @@ export type Database = {
           icon_url?: string | null
           id?: string
           invite_code?: string | null
+          is_venue_verified?: boolean | null
           join_method?: Database["public"]["Enums"]["group_join_method"]
           member_count?: number | null
           name?: string
