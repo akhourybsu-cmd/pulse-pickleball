@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Home, Calendar, CalendarDays, Award, Info, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
 import { PublicVenue, VenueCourt, VenueEvent, VenueCoach } from '@/hooks/usePublicVenue';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -69,6 +70,9 @@ export function PublicVenueShell({ venue, courts, events, coaches, initialTab = 
     return true;
   });
 
+  // Get active tab index for indicator animation
+  const activeTabIndex = visibleTabs.findIndex(tab => tab.id === activeTab);
+
   return (
     <div 
       className="min-h-screen flex flex-col bg-background"
@@ -77,14 +81,37 @@ export function PublicVenueShell({ venue, courts, events, coaches, initialTab = 
         '--venue-secondary': secondaryColor,
       } as React.CSSProperties}
     >
-      {/* Main Content - no header, content starts at top */}
+      {/* Main Content with AnimatePresence for tab transitions */}
       <main className="flex-1 pb-20 md:pb-6">
-        {children(activeTab, setActiveTab)}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2, ease: 'easeInOut' }}
+          >
+            {children(activeTab, setActiveTab)}
+          </motion.div>
+        </AnimatePresence>
       </main>
 
-      {/* Mobile Bottom Navigation */}
+      {/* Mobile Bottom Navigation with sliding indicator */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border md:hidden safe-area-inset-bottom">
-        <div className="flex justify-around items-center h-16">
+        <div className="relative flex justify-around items-center h-16">
+          {/* Sliding indicator */}
+          <motion.div
+            className="absolute bottom-0 h-0.5 rounded-full"
+            style={{ 
+              backgroundColor: primaryColor,
+              width: `${100 / visibleTabs.length}%`
+            }}
+            animate={{ 
+              left: `${(activeTabIndex / visibleTabs.length) * 100}%` 
+            }}
+            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+          />
+          
           {visibleTabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -93,14 +120,19 @@ export function PublicVenueShell({ venue, courts, events, coaches, initialTab = 
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={cn(
-                  "flex flex-col items-center justify-center flex-1 h-full transition-colors",
+                  "flex flex-col items-center justify-center flex-1 h-full transition-colors relative",
                   isActive 
                     ? "text-primary" 
                     : "text-muted-foreground hover:text-foreground"
                 )}
                 style={isActive ? { color: primaryColor } : undefined}
               >
-                <Icon className="h-5 w-5 mb-1" />
+                <motion.div
+                  animate={{ scale: isActive ? 1.1 : 1 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+                >
+                  <Icon className="h-5 w-5 mb-1" />
+                </motion.div>
                 <span className="text-xs font-medium">{tab.label}</span>
               </button>
             );
@@ -108,10 +140,10 @@ export function PublicVenueShell({ venue, courts, events, coaches, initialTab = 
         </div>
       </nav>
 
-      {/* Desktop Tab Navigation (horizontal) */}
+      {/* Desktop Tab Navigation (horizontal) with sliding indicator */}
       <nav className="hidden md:block fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border">
         <div className="container mx-auto px-4">
-          <div className="flex justify-center items-center gap-2 h-14">
+          <div className="relative flex justify-center items-center gap-2 h-14">
             {visibleTabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -120,14 +152,22 @@ export function PublicVenueShell({ venue, courts, events, coaches, initialTab = 
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   className={cn(
-                    "flex items-center gap-2 px-4 py-2 rounded-full transition-colors",
+                    "flex items-center gap-2 px-4 py-2 rounded-full transition-all duration-200",
                     isActive 
-                      ? "bg-primary/10 text-primary font-medium" 
+                      ? "font-medium" 
                       : "text-muted-foreground hover:text-foreground hover:bg-muted"
                   )}
-                  style={isActive ? { color: primaryColor, backgroundColor: `${primaryColor}15` } : undefined}
+                  style={isActive ? { 
+                    color: primaryColor, 
+                    backgroundColor: `${primaryColor}15` 
+                  } : undefined}
                 >
-                  <Icon className="h-4 w-4" />
+                  <motion.div
+                    animate={{ scale: isActive ? 1.05 : 1 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+                  >
+                    <Icon className="h-4 w-4" />
+                  </motion.div>
                   <span className="text-sm">{tab.label}</span>
                 </button>
               );
@@ -138,7 +178,12 @@ export function PublicVenueShell({ venue, courts, events, coaches, initialTab = 
 
       {/* Powered by Pulse (only on home tab) */}
       {activeTab === 'home' && venue.show_pulse_branding !== false && (
-        <div className="fixed bottom-16 md:bottom-14 left-0 right-0 bg-background/95 border-t border-border py-2">
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5, duration: 0.3 }}
+          className="fixed bottom-16 md:bottom-14 left-0 right-0 bg-background/95 border-t border-border py-2"
+        >
           <div className="text-center">
             <Link 
               to="/" 
@@ -148,7 +193,7 @@ export function PublicVenueShell({ venue, courts, events, coaches, initialTab = 
               Powered by Pulse
             </Link>
           </div>
-        </div>
+        </motion.div>
       )}
     </div>
   );
