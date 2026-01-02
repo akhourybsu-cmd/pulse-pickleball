@@ -145,7 +145,9 @@ export function ReviewStep({ formData, updateFormData }: ReviewStepProps) {
 
         {/* Loser */}
         <Card className="p-4">
-          <div className="text-xs font-medium text-muted-foreground mb-2">Team 2</div>
+          <div className="text-xs font-medium text-muted-foreground mb-2">
+            {formData.winner === 1 ? 'Team 2' : 'Team 1'}
+          </div>
           <div className="space-y-1">
             {losingTeam.map((player, i) => (
               <div key={i} className="flex items-center gap-2">
