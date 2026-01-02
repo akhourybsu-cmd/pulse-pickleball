@@ -245,16 +245,16 @@ const ViewProfile = () => {
 
   return (
     <div className="min-h-screen bg-[hsl(var(--page-bg))]">
-      <nav className="border-b bg-secondary">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+      <nav className="bg-secondary border-b border-secondary-foreground/10 shadow-sm">
+        <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-5 flex items-center justify-between h-[72px]">
           <Link to="/dashboard">
-            <img src={logo} alt="PULSE Logo" className="h-[90px] w-auto cursor-pointer hover:opacity-80 transition-opacity" />
+            <img src={logo} alt="PULSE Logo" className="h-[60px] sm:h-[75px] w-auto cursor-pointer hover:opacity-80 transition-opacity" />
           </Link>
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            <Button variant="ghost" onClick={() => navigate("/dashboard")} className="text-white hover:text-white/90 font-sans font-medium">
+            <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard")} className="text-white hover:text-white/90 hover:bg-white/10 font-sans font-medium h-[38px]">
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Dashboard
+              Back
             </Button>
           </div>
         </div>
