@@ -96,11 +96,13 @@ export function GroupCard({ group, showJoinButton, onJoin, isJoining }: GroupCar
             </div>
             
             <div className="flex items-center gap-2 mt-1 flex-wrap">
-              {/* Role badge */}
-              <Badge variant="secondary" className="text-xs gap-1 px-1.5 py-0">
-                {roleIcon}
-                {roleLabel}
-              </Badge>
+              {/* Role badge - only show for members */}
+              {isMember && (
+                <Badge variant="secondary" className="text-xs gap-1 px-1.5 py-0">
+                  {roleIcon}
+                  {roleLabel}
+                </Badge>
+              )}
               
               {/* Type badge */}
               <Badge variant="outline" className={cn('text-xs px-1.5 py-0', typeColors[group.type])}>

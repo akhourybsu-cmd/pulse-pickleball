@@ -32,9 +32,10 @@ interface GroupMembersProps {
   isAdmin: boolean;
   isOwner: boolean;
   currentUserId: string | null;
+  onInviteClick?: () => void;
 }
 
-export function GroupMembers({ groupId, isAdmin, isOwner, currentUserId }: GroupMembersProps) {
+export function GroupMembers({ groupId, isAdmin, isOwner, currentUserId, onInviteClick }: GroupMembersProps) {
   const { 
     members, 
     pendingMembers, 
@@ -218,8 +219,8 @@ export function GroupMembers({ groupId, isAdmin, isOwner, currentUserId }: Group
             title="Just you for now"
             description="Invite players to grow your group and start playing together!"
             actions={[
-              { label: 'Invite Players', onClick: () => {}, icon: UserPlus },
-              { label: 'Share Link', onClick: () => {}, variant: 'outline', icon: Share2 },
+              { label: 'Invite Players', onClick: () => onInviteClick?.(), icon: UserPlus },
+              { label: 'Share Link', onClick: () => onInviteClick?.(), variant: 'outline', icon: Share2 },
             ]}
           />
         ) : (
