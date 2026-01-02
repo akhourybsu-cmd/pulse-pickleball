@@ -2,8 +2,13 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, Settings, Users, MessageSquare, MessageCircle, Calendar, 
-  FolderOpen, Gamepad2, Lock, Globe, Eye, Plus, Share2, MoreVertical 
+  FolderOpen, Gamepad2, Lock, Globe, Eye, Plus, Share2, MoreVertical, Info
 } from 'lucide-react';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -196,10 +201,7 @@ export default function GroupDetail() {
         </Button>
         
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold tracking-tight truncate">{group.name}</h1>
-            {visibilityIcon}
-          </div>
+          <h1 className="text-xl font-bold tracking-tight line-clamp-2 leading-tight">{group.name}</h1>
         </div>
 
         {/* Header Actions */}
@@ -260,9 +262,24 @@ export default function GroupDetail() {
 
       {/* About Strip with Details Drawer */}
       <div className="flex items-center gap-2 text-sm">
-        <Badge variant="outline" className="text-xs">
-          {visibilityLabel}
-        </Badge>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Badge 
+              variant="outline" 
+              className="text-xs cursor-pointer hover:bg-muted gap-1 transition-colors"
+            >
+              {group.visibility === 'private' ? <Lock className="h-3 w-3" /> : <Globe className="h-3 w-3" />}
+              {group.visibility === 'private' ? 'Private' : group.visibility === 'unlisted' ? 'Unlisted' : 'Public'}
+            </Badge>
+          </PopoverTrigger>
+          <PopoverContent className="w-56 text-sm p-3" align="start">
+            <div className="space-y-2">
+              <p className="flex justify-between"><span className="text-muted-foreground">Visibility</span><span className="font-medium">{visibilityLabel}</span></p>
+              <p className="flex justify-between"><span className="text-muted-foreground">Join</span><span className="font-medium">{group.join_method === 'open' ? 'Anyone' : 'Invite only'}</span></p>
+              <p className="flex justify-between"><span className="text-muted-foreground">Invite</span><span className="font-medium">Members can share</span></p>
+            </div>
+          </PopoverContent>
+        </Popover>
         {group.description ? (
           <Drawer>
             <DrawerTrigger asChild>
@@ -300,29 +317,34 @@ export default function GroupDetail() {
       <GroupSnapshot 
         members={members}
         onCreateEvent={() => setActiveTab('schedule')}
+        onViewFeed={() => {
+          setActiveTab('feed');
+          setTimeout(() => document.querySelector('textarea')?.focus(), 100);
+        }}
+        onViewMatches={() => setActiveTab('lfg')}
       />
 
       {/* Tabs with Labels */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="feed" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-2">
-            <MessageSquare className="h-4 w-4" />
+          <TabsTrigger value="feed" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-2 min-h-[44px] data-[state=active]:font-medium">
+            <MessageSquare className="h-3.5 w-3.5" />
             <span className="text-[10px] sm:text-sm">Feed</span>
           </TabsTrigger>
-          <TabsTrigger value="schedule" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-2">
-            <Calendar className="h-4 w-4" />
+          <TabsTrigger value="schedule" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-2 min-h-[44px] data-[state=active]:font-medium">
+            <Calendar className="h-3.5 w-3.5" />
             <span className="text-[10px] sm:text-sm">Events</span>
           </TabsTrigger>
-          <TabsTrigger value="lfg" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-2">
-            <Gamepad2 className="h-4 w-4" />
+          <TabsTrigger value="lfg" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-2 min-h-[44px] data-[state=active]:font-medium">
+            <Gamepad2 className="h-3.5 w-3.5" />
             <span className="text-[10px] sm:text-sm">LFG</span>
           </TabsTrigger>
-          <TabsTrigger value="chat" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-2">
-            <MessageCircle className="h-4 w-4" />
+          <TabsTrigger value="chat" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-2 min-h-[44px] data-[state=active]:font-medium">
+            <MessageCircle className="h-3.5 w-3.5" />
             <span className="text-[10px] sm:text-sm">Chat</span>
           </TabsTrigger>
-          <TabsTrigger value="members" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-2">
-            <Users className="h-4 w-4" />
+          <TabsTrigger value="members" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-2 min-h-[44px] data-[state=active]:font-medium">
+            <Users className="h-3.5 w-3.5" />
             <span className="text-[10px] sm:text-sm">Members</span>
           </TabsTrigger>
         </TabsList>
