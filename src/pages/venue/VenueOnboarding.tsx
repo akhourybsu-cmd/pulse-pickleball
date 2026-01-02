@@ -91,12 +91,13 @@ export default function VenueOnboarding() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4 flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-            <ArrowLeft className="h-4 w-4" />
+      <header className="bg-secondary border-b border-secondary-foreground/10 shadow-sm">
+        <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-5 flex items-center justify-between h-[72px]">
+          <img src={logo} alt="PULSE Logo" className="h-[60px] sm:h-[75px] w-auto cursor-pointer hover:opacity-80 transition-opacity" />
+          <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="h-[38px]">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back
           </Button>
-          <img src={logo} alt="PULSE Logo" className="h-10 w-auto" />
         </div>
       </header>
 

@@ -255,23 +255,23 @@ export default function PostDetail() {
 
   return (
     <div className="min-h-screen bg-background">
-      <nav className="border-b bg-secondary">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+      <nav className="bg-secondary border-b border-secondary-foreground/10 shadow-sm">
+        <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-5 flex items-center justify-between h-[72px]">
           <Link to="/dashboard">
-            <img src={logo} alt="PULSE Logo" className="h-[90px] w-auto cursor-pointer hover:opacity-80 transition-opacity" />
+            <img src={logo} alt="PULSE Logo" className="h-[60px] sm:h-[75px] w-auto cursor-pointer hover:opacity-80 transition-opacity" />
           </Link>
           <div className="flex items-center gap-3">
             <Button 
               variant="outline" 
               size="icon" 
               onClick={() => navigate(`/profile/${currentUserId}`)} 
-              className="rounded-full"
+              className="rounded-full h-[38px] w-[38px]"
             >
               <UserIcon className="h-[1.2rem] w-[1.2rem]" />
               <span className="sr-only">View Profile</span>
             </Button>
             <ThemeToggle />
-            <Button variant="secondary" size="sm" onClick={handleSignOut}>
+            <Button variant="secondary" size="sm" onClick={handleSignOut} className="h-[38px]">
               <LogOut className="w-4 h-4 mr-2" />
               Sign Out
             </Button>

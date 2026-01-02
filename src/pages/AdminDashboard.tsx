@@ -126,9 +126,9 @@ const AdminDashboard = () => {
     <div className="min-h-screen bg-background">
       {/* Premium Dark Header */}
       <nav className="bg-[#0B171F] border-b border-slate-800">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+        <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-5 flex items-center justify-between h-[72px]">
           <Link to="/dashboard" className="flex items-center gap-3">
-            <img src={logo} alt="PULSE Logo" className="h-[80px] w-auto cursor-pointer hover:opacity-90 transition-opacity" />
+            <img src={logo} alt="PULSE Logo" className="h-[60px] sm:h-[75px] w-auto cursor-pointer hover:opacity-90 transition-opacity" />
           </Link>
           <div className="flex items-center gap-3">
             <Button 
