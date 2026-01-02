@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Home, Calendar, Users, Search, ClipboardList, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -17,6 +17,15 @@ const navItems = [
   { to: '/player/my-bookings', icon: ClipboardList, label: 'Bookings' },
   { to: '/player/community', icon: Users, label: 'Community' },
 ];
+
+// Prefetch map for route preloading on hover
+const prefetchMap: Record<string, () => Promise<unknown>> = {
+  '/player/dashboard': () => import('@/pages/player/PlayerDashboard'),
+  '/player/venues': () => import('@/pages/player/VenueDiscovery'),
+  '/player/my-events': () => import('@/pages/player/MyEvents'),
+  '/player/my-bookings': () => import('@/pages/player/MyBookings'),
+  '/player/community': () => import('@/pages/player/Community'),
+};
 
 export function PlayerShell() {
   const location = useLocation();
@@ -64,6 +73,11 @@ export function PlayerShell() {
     .toUpperCase()
     .slice(0, 2) || 'P';
 
+  // Prefetch route on hover
+  const handlePrefetch = useCallback((to: string) => {
+    const prefetch = prefetchMap[to];
+    if (prefetch) prefetch();
+  }, []);
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Top Header - Hidden on dashboard */}
@@ -127,6 +141,7 @@ export function PlayerShell() {
               <NavLink
                 key={item.to}
                 to={item.to}
+                onMouseEnter={() => handlePrefetch(item.to)}
                 className={cn(
                   'flex flex-col items-center gap-1 px-3 py-2 rounded-lg min-w-[60px]',
                   'transition-colors duration-[240ms] ease-out',
@@ -164,6 +179,7 @@ export function PlayerShell() {
                 <NavLink
                   key={item.to}
                   to={item.to}
+                  onMouseEnter={() => handlePrefetch(item.to)}
                   className={cn(
                     'flex items-center gap-2 px-4 py-2 rounded-lg',
                     'transition-colors duration-[240ms] ease-out',

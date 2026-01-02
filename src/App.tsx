@@ -1,4 +1,4 @@
-import React, { Suspense, lazy } from "react";
+import React, { Suspense, lazy, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -14,6 +14,7 @@ import { RoundRobinBanner } from "@/components/RoundRobinBanner";
 import { ScrollToTop } from "@/components/ScrollToTop";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
 
 // Loading fallback component
 const PageLoader = () => (
@@ -117,6 +118,8 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 5 * 60 * 1000,
+      gcTime: 30 * 60 * 1000,
+      refetchOnWindowFocus: false,
       retry: 1,
     },
   },
@@ -124,6 +127,24 @@ const queryClient = new QueryClient({
 
 const AppContent = () => {
   useAuthPersistence();
+
+  // Listen for service worker updates and show toast
+  useEffect(() => {
+    const handleSWUpdate = () => {
+      toast('Update available', {
+        description: 'Refresh to get the latest version',
+        action: {
+          label: 'Refresh',
+          onClick: () => window.location.reload()
+        },
+        duration: Infinity
+      });
+    };
+
+    window.addEventListener('sw-update-available', handleSWUpdate);
+    return () => window.removeEventListener('sw-update-available', handleSWUpdate);
+  }, []);
+
   return (
     <>
       <ScrollToTop />

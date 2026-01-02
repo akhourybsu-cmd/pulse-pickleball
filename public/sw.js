@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'pulse-v2-' + Date.now();
+const CACHE_VERSION = 'pulse-v3';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -10,7 +10,6 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_VERSION)
       .then((cache) => cache.addAll(urlsToCache))
-      .then(() => self.skipWaiting()) // Force immediate activation
   );
 });
 
@@ -27,7 +26,7 @@ self.addEventListener('activate', (event) => {
         })
       );
     }).then(() => {
-      // Take control of all clients immediately
+      // Take control of all clients
       return self.clients.claim();
     })
   );
