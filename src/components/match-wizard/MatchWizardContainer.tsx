@@ -1,0 +1,256 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { AnimatePresence } from "framer-motion";
+import { ArrowLeft } from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
+import { MatchWizardProgress } from "./MatchWizardProgress";
+import { MatchWizardCard } from "./MatchWizardCard";
+import { MatchWizardNavigation } from "./MatchWizardNavigation";
+import { DateLocationStep } from "./steps/DateLocationStep";
+import { MatchTypeStep } from "./steps/MatchTypeStep";
+import { PlayerSelectionStep } from "./steps/PlayerSelectionStep";
+import { ScoreEntryStep } from "./steps/ScoreEntryStep";
+import { ReviewStep } from "./steps/ReviewStep";
+import { 
+  useMatchWizardSteps, 
+  getInitialFormData, 
+  MatchWizardFormData 
+} from "./hooks/useMatchWizardSteps";
+
+export function MatchWizardContainer() {
+  const navigate = useNavigate();
+  const [formData, setFormData] = useState<MatchWizardFormData>(getInitialFormData());
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [direction, setDirection] = useState<'forward' | 'backward'>('forward');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const { steps, totalSteps, isStepValid } = useMatchWizardSteps(formData);
+  const currentStep = steps[currentStepIndex];
+  const isLastStep = currentStepIndex === totalSteps - 1;
+
+  const updateFormData = <K extends keyof MatchWizardFormData>(
+    field: K,
+    value: MatchWizardFormData[K]
+  ) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const goNext = () => {
+    if (currentStepIndex < totalSteps - 1) {
+      setDirection('forward');
+      setCurrentStepIndex(prev => prev + 1);
+    }
+  };
+
+  const goBack = () => {
+    if (currentStepIndex > 0) {
+      setDirection('backward');
+      setCurrentStepIndex(prev => prev - 1);
+    }
+  };
+
+  const handleContinue = async () => {
+    if (isLastStep) {
+      await handleSubmit();
+    } else {
+      goNext();
+    }
+  };
+
+  const handleSubmit = async () => {
+    setIsSubmitting(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const slotsPerTeam = formData.matchFormat === 'singles' ? 1 : 2;
+
+      // 1. Save custom location if new
+      const locationId = formData.locationId;
+      if (formData.customLocation && !formData.customLocation.id) {
+        await supabase
+          .from('user_recent_locations')
+          .upsert({
+            user_id: user.id,
+            name: formData.customLocation.name,
+            city: formData.customLocation.city || null,
+            state: formData.customLocation.state || null,
+            used_at: new Date().toISOString(),
+          }, { onConflict: 'user_id,name' })
+      } else if (formData.customLocation?.id) {
+        // Update used_at for existing custom location
+        await supabase
+          .from('user_recent_locations')
+          .update({ used_at: new Date().toISOString() })
+          .eq('id', formData.customLocation.id);
+      }
+
+      // Determine scores based on winner
+      const team1Score = formData.winner === 1 ? formData.winnerScore : formData.loserScore;
+      const team2Score = formData.winner === 2 ? formData.winnerScore : formData.loserScore;
+
+      // 2. Create match record
+      const { data: match, error: matchError } = await supabase
+        .from('matches')
+        .insert({
+          match_date: formData.matchDate,
+          team1_score: team1Score,
+          team2_score: team2Score,
+          created_by: user.id,
+          match_type: formData.matchFormat === 'singles' ? 'singles' : 'doubles',
+          match_format: formData.matchFormat,
+          court_id: locationId,
+          status: 'pending',
+          rating_eligible: formData.updateRatings,
+        })
+        .select('id')
+        .single();
+
+      if (matchError) throw matchError;
+
+      // 3. Create guest players if any
+      const guestPlayerMap = new Map<string, string>(); // guestName -> guestPlayerId
+      
+      for (const [teamNum, team] of [[1, formData.team1], [2, formData.team2]] as const) {
+        for (const slot of (team as typeof formData.team1).slice(0, slotsPerTeam)) {
+          if (slot.isGuest && slot.guestName) {
+            const { data: guestPlayer, error: guestError } = await supabase
+              .from('guest_match_players')
+              .insert({
+                match_id: match.id,
+                display_name: slot.guestName,
+                notes: slot.guestNotes || null,
+                team: teamNum,
+              })
+              .select('id')
+              .single();
+
+            if (guestError) throw guestError;
+            guestPlayerMap.set(`${teamNum}-${slot.guestName}`, guestPlayer.id);
+          }
+        }
+      }
+
+      // 4. Create match participants
+      const participants: Array<{
+        match_id: string;
+        player_id: string | null;
+        guest_player_id: string | null;
+        team: number;
+      }> = [];
+
+      for (const [teamNum, team] of [[1, formData.team1], [2, formData.team2]] as const) {
+        for (const slot of (team as typeof formData.team1).slice(0, slotsPerTeam)) {
+          if (slot.playerId || slot.isGuest) {
+            participants.push({
+              match_id: match.id,
+              player_id: slot.isGuest ? null : slot.playerId,
+              guest_player_id: slot.isGuest && slot.guestName 
+                ? guestPlayerMap.get(`${teamNum}-${slot.guestName}`) || null 
+                : null,
+              team: teamNum,
+            });
+          }
+        }
+      }
+
+      const { error: participantsError } = await supabase
+        .from('match_participants')
+        .insert(participants);
+
+      if (participantsError) throw participantsError;
+
+      // 5. Create match approvals for real players
+      const realPlayerIds = participants
+        .filter(p => p.player_id)
+        .map(p => p.player_id!);
+
+      if (realPlayerIds.length > 0) {
+        const approvals = realPlayerIds.map(playerId => ({
+          match_id: match.id,
+          player_id: playerId,
+          approved: playerId === user.id ? true : null, // Auto-approve for creator
+          approved_at: playerId === user.id ? new Date().toISOString() : null,
+        }));
+
+        await supabase.from('match_approvals').insert(approvals);
+      }
+
+      toast.success('Match recorded successfully!');
+      navigate('/dashboard');
+    } catch (error: any) {
+      console.error('Error recording match:', error);
+      toast.error(error.message || 'Failed to record match');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const renderStep = () => {
+    switch (currentStep.id) {
+      case 'date-location':
+        return <DateLocationStep formData={formData} updateFormData={updateFormData} />;
+      case 'match-type':
+        return <MatchTypeStep formData={formData} updateFormData={updateFormData} onAutoAdvance={goNext} />;
+      case 'players':
+        return <PlayerSelectionStep formData={formData} updateFormData={updateFormData} />;
+      case 'score':
+        return <ScoreEntryStep formData={formData} updateFormData={updateFormData} />;
+      case 'review':
+        return <ReviewStep formData={formData} updateFormData={updateFormData} />;
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <div className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b">
+        <div className="max-w-lg mx-auto px-4 py-3 flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate(-1)}
+            className="h-9 w-9"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <h1 className="font-semibold">Record Match</h1>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="max-w-lg mx-auto px-4 py-6 pb-28">
+        <MatchWizardProgress
+          steps={steps}
+          currentStepIndex={currentStepIndex}
+          onBack={goBack}
+          canGoBack={currentStepIndex > 0}
+        />
+
+        <AnimatePresence mode="wait">
+          <MatchWizardCard
+            key={currentStep.id}
+            direction={direction}
+            stepId={currentStep.id}
+          >
+            {renderStep()}
+          </MatchWizardCard>
+        </AnimatePresence>
+      </div>
+
+      {/* Navigation - Skip auto-advance steps */}
+      {currentStep.id !== 'match-type' && (
+        <MatchWizardNavigation
+          onContinue={handleContinue}
+          isValid={isStepValid(currentStep.id)}
+          isLoading={isSubmitting}
+          isLastStep={isLastStep}
+        />
+      )}
+    </div>
+  );
+}

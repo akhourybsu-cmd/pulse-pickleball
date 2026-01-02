@@ -1444,6 +1444,41 @@ export type Database = {
           },
         ]
       }
+      guest_match_players: {
+        Row: {
+          created_at: string | null
+          display_name: string
+          id: string
+          match_id: string
+          notes: string | null
+          team: number
+        }
+        Insert: {
+          created_at?: string | null
+          display_name: string
+          id?: string
+          match_id: string
+          notes?: string | null
+          team: number
+        }
+        Update: {
+          created_at?: string | null
+          display_name?: string
+          id?: string
+          match_id?: string
+          notes?: string | null
+          team?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guest_match_players_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lfg_posts: {
         Row: {
           capacity: number
@@ -1725,9 +1760,10 @@ export type Database = {
       match_participants: {
         Row: {
           created_at: string | null
+          guest_player_id: string | null
           id: string
           match_id: string
-          player_id: string
+          player_id: string | null
           rating_after: number | null
           rating_before: number | null
           rating_change: number | null
@@ -1735,9 +1771,10 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          guest_player_id?: string | null
           id?: string
           match_id: string
-          player_id: string
+          player_id?: string | null
           rating_after?: number | null
           rating_before?: number | null
           rating_change?: number | null
@@ -1745,15 +1782,23 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          guest_player_id?: string | null
           id?: string
           match_id?: string
-          player_id?: string
+          player_id?: string | null
           rating_after?: number | null
           rating_before?: number | null
           rating_change?: number | null
           team?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "match_participants_guest_player_id_fkey"
+            columns: ["guest_player_id"]
+            isOneToOne: false
+            referencedRelation: "guest_match_players"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "match_participants_match_id_fkey"
             columns: ["match_id"]
@@ -1909,6 +1954,7 @@ export type Database = {
           event_id: string | null
           id: string
           match_date: string
+          match_format: string | null
           match_type: string | null
           other_location: string | null
           round_no: number | null
@@ -1934,6 +1980,7 @@ export type Database = {
           event_id?: string | null
           id?: string
           match_date: string
+          match_format?: string | null
           match_type?: string | null
           other_location?: string | null
           round_no?: number | null
@@ -1959,6 +2006,7 @@ export type Database = {
           event_id?: string | null
           id?: string
           match_date?: string
+          match_format?: string | null
           match_type?: string | null
           other_location?: string | null
           round_no?: number | null
@@ -3560,6 +3608,54 @@ export type Database = {
           },
         ]
       }
+      user_recent_locations: {
+        Row: {
+          city: string | null
+          created_at: string | null
+          id: string
+          name: string
+          state: string | null
+          use_count: number | null
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          city?: string | null
+          created_at?: string | null
+          id?: string
+          name: string
+          state?: string | null
+          use_count?: number | null
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          city?: string | null
+          created_at?: string | null
+          id?: string
+          name?: string
+          state?: string | null
+          use_count?: number | null
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_recent_locations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_recent_locations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string | null
@@ -4492,6 +4588,7 @@ export type Database = {
           event_id: string | null
           id: string
           match_date: string
+          match_format: string | null
           match_type: string | null
           other_location: string | null
           round_no: number | null
