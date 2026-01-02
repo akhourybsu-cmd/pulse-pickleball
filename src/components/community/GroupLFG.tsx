@@ -27,7 +27,8 @@ interface GroupLFGProps {
 }
 
 export function GroupLFG({ groupId, isAdmin, currentUserId }: GroupLFGProps) {
-  const { posts, loading, createPost, deletePost } = useGroupPosts(groupId);
+  const { posts, loading, createPost, deletePost, joinLfgPost, leaveLfgPost } = useGroupPosts(groupId);
+  const [joiningPostId, setJoiningPostId] = useState<string | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   
@@ -67,6 +68,16 @@ export function GroupLFG({ groupId, isAdmin, currentUserId }: GroupLFGProps) {
       resetForm();
     }
     setIsCreating(false);
+  };
+
+  const handleJoinToggle = async (post: typeof posts[0]) => {
+    setJoiningPostId(post.id);
+    if (post.user_joined) {
+      await leaveLfgPost(post.id);
+    } else {
+      await joinLfgPost(post.id);
+    }
+    setJoiningPostId(null);
   };
 
   if (loading) {
@@ -171,7 +182,13 @@ export function GroupLFG({ groupId, isAdmin, currentUserId }: GroupLFGProps) {
                   {post.max_players && (
                     <div className="flex items-center gap-1 text-muted-foreground">
                       <Users className="h-4 w-4" />
-                      {post.max_players} players needed
+                      {post.participant_count || 0}/{post.max_players} joined
+                    </div>
+                  )}
+                  {!post.max_players && (post.participant_count || 0) > 0 && (
+                    <div className="flex items-center gap-1 text-muted-foreground">
+                      <Users className="h-4 w-4" />
+                      {post.participant_count} joined
                     </div>
                   )}
                 </div>
@@ -179,9 +196,18 @@ export function GroupLFG({ groupId, isAdmin, currentUserId }: GroupLFGProps) {
 
               <CardFooter className="pt-0">
                 {!isAuthor && (
-                  <Button variant="outline" className="w-full gap-2">
+                  <Button 
+                    variant={post.user_joined ? "secondary" : "outline"} 
+                    className="w-full gap-2"
+                    onClick={() => handleJoinToggle(post)}
+                    disabled={joiningPostId === post.id}
+                  >
                     <UserPlus className="h-4 w-4" />
-                    I'm In!
+                    {joiningPostId === post.id 
+                      ? 'Loading...' 
+                      : post.user_joined 
+                        ? 'Leave' 
+                        : "I'm In!"}
                   </Button>
                 )}
               </CardFooter>

@@ -289,6 +289,77 @@ export function useGroups() {
     }
   };
 
+  const joinPublicGroup = async (groupId: string) => {
+    if (!currentUserId) {
+      toast({ title: 'Error', description: 'You must be logged in', variant: 'destructive' });
+      return null;
+    }
+
+    try {
+      // Find the group
+      const { data: group, error: findError } = await supabase
+        .from('groups')
+        .select('*')
+        .eq('id', groupId)
+        .single();
+
+      if (findError || !group) {
+        toast({ title: 'Error', description: 'Group not found', variant: 'destructive' });
+        return null;
+      }
+
+      // Check if already a member
+      const { data: existingMember } = await supabase
+        .from('group_members')
+        .select('*')
+        .eq('group_id', groupId)
+        .eq('user_id', currentUserId)
+        .single();
+
+      if (existingMember) {
+        if (existingMember.status === 'active') {
+          toast({ title: 'Already a Member', description: 'You are already in this group' });
+          return group;
+        }
+        if (existingMember.status === 'pending') {
+          toast({ title: 'Pending', description: 'Your join request is still pending' });
+          return group;
+        }
+      }
+
+      const status = group.join_method === 'request_to_join' ? 'pending' : 'active';
+
+      const { error: joinError } = await supabase
+        .from('group_members')
+        .insert({
+          group_id: groupId,
+          user_id: currentUserId,
+          role: 'member',
+          status,
+        });
+
+      if (joinError) throw joinError;
+
+      if (status === 'pending') {
+        toast({ title: 'Request Sent', description: 'Your join request has been sent to the group admins' });
+      } else {
+        toast({ title: 'Joined!', description: `Welcome to ${group.name}!` });
+        await fetchMyGroups();
+        await fetchPublicGroups();
+      }
+
+      return group;
+    } catch (error: any) {
+      console.error('Error joining group:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to join group',
+        variant: 'destructive',
+      });
+      return null;
+    }
+  };
+
   return {
     myGroups,
     publicGroups,
@@ -296,6 +367,7 @@ export function useGroups() {
     currentUserId,
     createGroup,
     joinGroupByCode,
+    joinPublicGroup,
     leaveGroup,
     refetch: fetchMyGroups,
   };

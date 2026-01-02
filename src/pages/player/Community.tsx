@@ -13,10 +13,17 @@ import { useGroups } from '@/hooks/useGroups';
 import CourtConnector from '@/pages/CourtConnector';
 
 export default function Community() {
-  const { myGroups, publicGroups, loading, createGroup, joinGroupByCode } = useGroups();
+  const { myGroups, publicGroups, loading, createGroup, joinGroupByCode, joinPublicGroup } = useGroups();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [joinDialogOpen, setJoinDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('my-groups');
+  const [joiningGroupId, setJoiningGroupId] = useState<string | null>(null);
+
+  const handleJoinPublicGroup = async (groupId: string) => {
+    setJoiningGroupId(groupId);
+    await joinPublicGroup(groupId);
+    setJoiningGroupId(null);
+  };
 
   const pendingCount = myGroups.filter(g => g.membership?.status === 'pending').length;
 
@@ -108,16 +115,22 @@ export default function Community() {
                 Public groups you can join
               </p>
               <div className="space-y-3">
-                {publicGroups.map((group) => (
-                  <GroupCard 
-                    key={group.id} 
-                    group={{
-                      ...group,
-                      membership: undefined,
-                      unread_count: 0,
-                    }} 
-                  />
-                ))}
+                {publicGroups.map((group) => {
+                  const isAlreadyMember = myGroups.some(g => g.id === group.id);
+                  return (
+                    <GroupCard 
+                      key={group.id} 
+                      group={{
+                        ...group,
+                        membership: isAlreadyMember ? myGroups.find(g => g.id === group.id)?.membership : undefined,
+                        unread_count: 0,
+                      }}
+                      showJoinButton={!isAlreadyMember}
+                      onJoin={handleJoinPublicGroup}
+                      isJoining={joiningGroupId === group.id}
+                    />
+                  );
+                })}
               </div>
             </>
           ) : (

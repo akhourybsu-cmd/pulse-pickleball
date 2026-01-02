@@ -27,6 +27,8 @@ export interface GroupPost {
   };
   reactions?: { emoji: string; count: number; user_reacted: boolean }[];
   comment_count?: number;
+  participant_count?: number;
+  user_joined?: boolean;
 }
 
 export function useGroupPosts(groupId: string | undefined) {
@@ -73,6 +75,21 @@ export function useGroupPosts(groupId: string | undefined) {
         .select('post_id')
         .in('post_id', postIds);
 
+      // Fetch participants for LFG posts
+      const { data: participantsData } = await supabase
+        .from('group_post_participants')
+        .select('post_id, user_id')
+        .in('post_id', postIds);
+
+      // Group participants by post
+      const participantsMap = new Map<string, { count: number; userJoined: boolean }>();
+      (participantsData || []).forEach(p => {
+        const existing = participantsMap.get(p.post_id) || { count: 0, userJoined: false };
+        existing.count++;
+        if (user && p.user_id === user.id) existing.userJoined = true;
+        participantsMap.set(p.post_id, existing);
+      });
+
       // Group reactions by post
       const reactionsMap = new Map<string, { emoji: string; count: number; user_reacted: boolean }[]>();
       (reactionsData || []).forEach(r => {
@@ -93,13 +110,18 @@ export function useGroupPosts(groupId: string | undefined) {
         commentCountMap.set(c.post_id, (commentCountMap.get(c.post_id) || 0) + 1);
       });
 
-      const postsWithData: GroupPost[] = (postsData || []).map(p => ({
-        ...p,
-        type: p.type as GroupPost['type'],
-        profile: profilesMap.get(p.user_id),
-        reactions: reactionsMap.get(p.id) || [],
-        comment_count: commentCountMap.get(p.id) || 0,
-      }));
+      const postsWithData: GroupPost[] = (postsData || []).map(p => {
+        const participantInfo = participantsMap.get(p.id);
+        return {
+          ...p,
+          type: p.type as GroupPost['type'],
+          profile: profilesMap.get(p.user_id),
+          reactions: reactionsMap.get(p.id) || [],
+          comment_count: commentCountMap.get(p.id) || 0,
+          participant_count: participantInfo?.count || 0,
+          user_joined: participantInfo?.userJoined || false,
+        };
+      });
 
       setPosts(postsWithData);
     } catch (error) {
@@ -265,6 +287,62 @@ export function useGroupPosts(groupId: string | undefined) {
     }
   };
 
+  const joinLfgPost = async (postId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const { error } = await supabase
+        .from('group_post_participants')
+        .insert({
+          post_id: postId,
+          user_id: user.id,
+          status: 'joined',
+        });
+
+      if (error) throw error;
+
+      toast({ title: "You're in!", description: 'You have joined this session' });
+      await fetchPosts();
+      return true;
+    } catch (error: any) {
+      console.error('Error joining LFG post:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to join',
+        variant: 'destructive',
+      });
+      return false;
+    }
+  };
+
+  const leaveLfgPost = async (postId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const { error } = await supabase
+        .from('group_post_participants')
+        .delete()
+        .eq('post_id', postId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      toast({ title: 'Left', description: 'You have left this session' });
+      await fetchPosts();
+      return true;
+    } catch (error: any) {
+      console.error('Error leaving LFG post:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to leave',
+        variant: 'destructive',
+      });
+      return false;
+    }
+  };
+
   return {
     posts,
     loading,
@@ -272,6 +350,8 @@ export function useGroupPosts(groupId: string | undefined) {
     deletePost,
     toggleReaction,
     togglePin,
+    joinLfgPost,
+    leaveLfgPost,
     refetch: fetchPosts,
   };
 }
