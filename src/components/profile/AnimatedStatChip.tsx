@@ -25,10 +25,10 @@ export const AnimatedStatChip = ({
   return (
     <div 
       className={cn(
-        "flex flex-col items-center justify-center p-3 rounded-xl transition-all duration-300",
+        "flex flex-col items-center justify-center p-2.5 rounded-xl transition-all duration-200",
         "bg-muted/30 dark:bg-muted/20 border border-border/30",
         isPrimary && "bg-primary/5 dark:bg-primary/10 border-primary/20",
-        "opacity-0 animate-fade-up",
+        "opacity-0 animate-fade-up cursor-default",
         className
       )}
       style={{ animationDelay: `${delay}ms`, animationFillMode: 'forwards' }}
@@ -38,7 +38,7 @@ export const AnimatedStatChip = ({
       </p>
       <p 
         className={cn(
-          "text-xl font-display font-bold",
+          "text-lg font-display font-bold",
           isPrimary && "text-primary"
         )}
       >
