@@ -136,13 +136,6 @@ const Index = () => {
           </Link>
           <div className="flex items-center gap-1.5 sm:gap-2">
             <ThemeToggle />
-            <Button 
-              variant="outline" 
-              onClick={() => navigate("/demo")}
-              className="text-xs sm:text-sm px-2.5 sm:px-4 h-9 sm:h-10"
-            >
-              Take a Tour
-            </Button>
             {isLoggedIn ? (
               <Button 
                 onClick={() => navigate("/player/dashboard")}
@@ -298,6 +291,20 @@ const Index = () => {
                     Sign in
                   </button>
                 </p>
+              )}
+
+              {/* Take a Tour - Below feature cards */}
+              {selectedMode === 'player' && (
+                <div className="mt-6 pt-6 border-t border-border/30">
+                  <p className="text-sm text-muted-foreground mb-3">or</p>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => navigate("/demo")}
+                    className="border-primary/30 hover:border-primary/50 hover:bg-primary/5"
+                  >
+                    Take a Tour — See the Dashboard in Action
+                  </Button>
+                </div>
               )}
             </div>
           </div>
