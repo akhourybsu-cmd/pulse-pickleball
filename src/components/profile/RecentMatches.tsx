@@ -20,66 +20,77 @@ export const RecentMatches = ({ matches }: RecentMatchesProps) => {
   if (matches.length === 0) return null;
 
   return (
-    <div className="space-y-4">
-      {/* W/L Results Strip - Horizontal scrollable */}
-      <div className="overflow-x-auto scrollbar-hide">
-        <div className="flex gap-2 pb-1 snap-x snap-mandatory">
+    <div className="space-y-3">
+      {/* W/L Results Strip - Premium horizontal scroll with snap */}
+      <div 
+        className="overflow-x-auto scrollbar-hide"
+        style={{ scrollSnapType: 'x mandatory' }}
+      >
+        <div className="flex gap-1.5 pb-1">
           {matches.map((match, i) => (
             <div 
               key={i}
               className={cn(
                 "flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center",
-                "text-xs font-bold font-display snap-center",
-                "transition-transform duration-200 hover:scale-110",
+                "text-[11px] font-bold font-display",
+                "transition-all duration-200 hover:scale-110",
+                "shadow-sm",
                 match.status === 'pending' 
-                  ? "bg-muted/50 text-muted-foreground border border-dashed border-muted-foreground/50"
+                  ? "bg-muted/60 text-muted-foreground border border-dashed border-muted-foreground/40"
                   : match.result === 'W' 
-                    ? "bg-primary text-primary-foreground shadow-sm" 
-                    : "bg-destructive text-destructive-foreground shadow-sm"
+                    ? "bg-gradient-to-br from-primary to-primary/80 text-primary-foreground" 
+                    : "bg-gradient-to-br from-destructive to-destructive/80 text-destructive-foreground"
               )}
+              style={{ scrollSnapAlign: 'center' }}
+              title={match.status === 'pending' ? 'Unconfirmed' : undefined}
             >
-              {match.status === 'pending' ? '–' : match.result}
+              {match.status === 'pending' ? '?' : match.result}
             </div>
           ))}
         </div>
       </div>
 
-      {/* Premium Match Cards */}
+      {/* Premium Match Cards with left accent stripe */}
       <ScrollArea className="w-full whitespace-nowrap">
         <div className="flex gap-3 pb-2">
           {matches.map((match, index) => (
             <div
               key={match.id}
               className={cn(
-                "relative flex-shrink-0 w-[220px] rounded-xl border bg-card",
-                "transition-all duration-200 ease-out",
+                "relative flex-shrink-0 w-[240px] rounded-xl border bg-card overflow-hidden",
+                "transition-all duration-200 ease-out cursor-pointer",
                 "hover:shadow-lg hover:scale-[1.02] hover:-translate-y-0.5",
-                "active:scale-[0.98]",
+                "active:scale-[0.98] active:opacity-95",
                 "opacity-0 animate-fade-up",
-                match.status === 'pending' && "opacity-60"
+                match.status === 'pending' && "opacity-70"
               )}
               style={{ 
-                animationDelay: `${index * 50}ms`,
+                animationDelay: `${index * 40}ms`,
                 animationFillMode: 'forwards'
               }}
             >
-              {/* Top row with result indicator */}
-              <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-border/30">
+              {/* Left accent stripe */}
+              <div 
+                className={cn(
+                  "absolute left-0 top-0 bottom-0 w-1",
+                  match.status === 'pending'
+                    ? "bg-muted-foreground/30"
+                    : match.result === 'W'
+                      ? "bg-gradient-to-b from-primary to-primary/60"
+                      : "bg-gradient-to-b from-destructive to-destructive/60"
+                )}
+              />
+
+              {/* Top row with result badge and score */}
+              <div className="flex items-center justify-between px-4 pl-5 pt-3 pb-2 border-b border-border/20">
                 <div className="flex items-center gap-2">
-                  {/* Result dot */}
-                  <div 
-                    className={cn(
-                      "w-2.5 h-2.5 rounded-full",
-                      match.status === 'pending'
-                        ? "bg-muted-foreground/50"
-                        : match.result === 'W'
-                          ? "bg-primary"
-                          : "bg-destructive"
-                    )}
-                  />
                   <span className={cn(
                     "text-sm font-display font-bold",
-                    match.status === 'pending' && "text-muted-foreground"
+                    match.status === 'pending' 
+                      ? "text-muted-foreground"
+                      : match.result === 'W' 
+                        ? "text-primary" 
+                        : "text-destructive"
                   )}>
                     {match.status === 'pending' ? 'Pending' : match.result === 'W' ? 'Victory' : 'Defeat'}
                   </span>
@@ -93,9 +104,9 @@ export const RecentMatches = ({ matches }: RecentMatchesProps) => {
               </div>
 
               {/* Teams info */}
-              <div className="px-4 py-3 space-y-2">
+              <div className="px-4 pl-5 py-3 space-y-2">
                 <div>
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">
+                  <p className="text-[9px] uppercase tracking-wider text-muted-foreground mb-0.5 font-medium">
                     Your Team
                   </p>
                   <p className="text-xs font-medium text-foreground truncate">
@@ -103,7 +114,7 @@ export const RecentMatches = ({ matches }: RecentMatchesProps) => {
                   </p>
                 </div>
                 <div>
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">
+                  <p className="text-[9px] uppercase tracking-wider text-muted-foreground mb-0.5 font-medium">
                     Opponents
                   </p>
                   <p className="text-xs text-muted-foreground truncate">
@@ -113,8 +124,8 @@ export const RecentMatches = ({ matches }: RecentMatchesProps) => {
               </div>
 
               {/* Date footer */}
-              <div className="px-4 pb-3">
-                <p className="text-[10px] text-muted-foreground/70">
+              <div className="px-4 pl-5 pb-3">
+                <p className="text-[10px] text-muted-foreground/60 font-medium">
                   {new Date(match.date).toLocaleDateString('en-US', { 
                     month: 'short', 
                     day: 'numeric',
