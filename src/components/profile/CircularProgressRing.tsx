@@ -106,12 +106,12 @@ export const CircularProgressRing = ({
       {showLabel && (
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span 
-            className="text-lg font-display font-bold"
+            className="text-base font-display font-bold"
             style={{ fontVariantNumeric: 'tabular-nums' }}
           >
             {displayValue}{labelSuffix}
           </span>
-          <span className="text-[9px] uppercase tracking-wider text-muted-foreground">
+          <span className="text-[8px] uppercase tracking-wider text-muted-foreground">
             Win Rate
           </span>
         </div>
