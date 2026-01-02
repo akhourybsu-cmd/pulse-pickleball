@@ -58,15 +58,15 @@ export function CommunityActivityFeed() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Upcoming Events Section */}
       {upcomingEvents.length > 0 && (
-        <div className="space-y-3">
+        <div className="space-y-4">
           <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
             Coming Up
           </h3>
           <ScrollArea className="w-full whitespace-nowrap">
-            <div className="flex gap-3 pb-2">
+            <div className="flex gap-4 pb-2">
               {upcomingEvents.slice(0, 5).map(event => (
                 <EventCard 
                   key={event.id} 
@@ -82,11 +82,11 @@ export function CommunityActivityFeed() {
 
       {/* Recent Posts Section */}
       {posts.length > 0 && (
-        <div className="space-y-3">
+        <div className="space-y-4">
           <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
             Recent Posts
           </h3>
-          <div className="space-y-3">
+          <div className="space-y-4">
             {posts.map(post => (
               <PostCard 
                 key={post.id} 
@@ -109,17 +109,17 @@ function EventCard({ event, onClick }: { event: ActivityEvent; onClick: () => vo
 
   return (
     <Card 
-      className="w-44 flex-shrink-0 cursor-pointer hover:bg-accent/50 transition-colors"
+      className="w-48 flex-shrink-0 cursor-pointer hover:bg-accent/30 transition-colors border-border/40"
       onClick={onClick}
     >
-      <CardContent className="p-3 space-y-2">
+      <CardContent className="p-4 space-y-2.5">
         <Badge variant="secondary" className="text-xs truncate max-w-full">
           {event.group_name}
         </Badge>
-        <p className="font-medium text-sm line-clamp-2 whitespace-normal">
+        <p className="font-medium text-sm line-clamp-2 whitespace-normal leading-relaxed">
           {event.title}
         </p>
-        <div className="space-y-1 text-xs text-muted-foreground">
+        <div className="space-y-1.5 text-xs text-muted-foreground/70">
           <div className="flex items-center gap-1.5">
             <Calendar className="h-3 w-3" />
             <span>{format(eventDate, 'EEE, MMM d')}</span>
@@ -145,19 +145,19 @@ function PostCard({ post, onClick }: { post: ActivityPost; onClick: () => void }
 
   return (
     <Card 
-      className="cursor-pointer hover:bg-accent/50 transition-colors"
+      className="cursor-pointer hover:bg-accent/30 transition-colors border-border/40"
       onClick={onClick}
     >
-      <CardContent className="p-4">
-        <div className="flex gap-3">
+      <CardContent className="p-5">
+        <div className="flex gap-4">
           <Avatar className="h-10 w-10 flex-shrink-0">
             <AvatarImage src={post.profile?.avatar_url || undefined} />
             <AvatarFallback className="text-xs">{initials}</AvatarFallback>
           </Avatar>
-          <div className="flex-1 min-w-0 space-y-1">
-            <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex-1 min-w-0 space-y-1.5">
+            <div className="flex items-center gap-2.5 flex-wrap">
               <span className="font-medium text-sm">{displayName}</span>
-              <Badge variant="outline" className="text-xs">
+              <Badge variant="outline" className="text-xs opacity-80">
                 {post.group_name}
               </Badge>
             </div>
@@ -165,11 +165,11 @@ function PostCard({ post, onClick }: { post: ActivityPost; onClick: () => void }
               <p className="font-medium text-sm">{post.title}</p>
             )}
             {post.content && (
-              <p className="text-sm text-muted-foreground line-clamp-2">
+              <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
                 {post.content}
               </p>
             )}
-            <div className="flex items-center gap-4 text-xs text-muted-foreground pt-1">
+            <div className="flex items-center gap-4 text-xs text-muted-foreground/70 pt-2">
               <span className="flex items-center gap-1">
                 <ThumbsUp className="h-3 w-3" />
                 {post.reactions_count}

@@ -26,15 +26,15 @@ export function GroupEmptyState({
   className 
 }: GroupEmptyStateProps) {
   return (
-    <Card className={cn('border-none bg-muted/30', className)}>
-      <CardContent className="flex flex-col items-center justify-center py-8 text-center">
-        <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-3">
-          <Icon className="h-6 w-6 text-muted-foreground" />
+    <Card className={cn('border-none bg-muted/20', className)}>
+      <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+        <div className="h-16 w-16 rounded-full bg-muted/50 flex items-center justify-center mb-4">
+          <Icon className="h-7 w-7 text-muted-foreground/70" />
         </div>
-        <p className="text-sm text-muted-foreground max-w-xs mb-4">{description}</p>
+        <p className="text-sm text-muted-foreground max-w-md mb-6 leading-relaxed">{description}</p>
         
         {actions.length > 0 && (
-          <div className="flex flex-wrap items-center justify-center gap-2">
+          <div className="flex flex-wrap items-center justify-center gap-3">
             {actions.map((action, index) => {
               const ActionIcon = action.icon;
               return (
