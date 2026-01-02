@@ -370,7 +370,7 @@ body {
 @keyframes fade-up {
   from { 
     opacity: 0; 
-    transform: translateY(10px); 
+    transform: translateY(12px); 
   }
   to { 
     opacity: 1; 
@@ -389,12 +389,47 @@ body {
   }
 }
 
+@keyframes hero-enter {
+  from { 
+    opacity: 0; 
+    transform: translateY(16px) scale(0.98); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0) scale(1); 
+  }
+}
+
+@keyframes stat-pop {
+  from { 
+    opacity: 0; 
+    transform: scale(0.85); 
+  }
+  to { 
+    opacity: 1; 
+    transform: scale(1); 
+  }
+}
+
+@keyframes ring-fill {
+  from { stroke-dashoffset: var(--ring-circumference); }
+  to { stroke-dashoffset: var(--ring-offset); }
+}
+
 .animate-fade-up {
-  animation: fade-up 0.4s ease-out forwards;
+  animation: fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 .animate-scale-fade-in {
-  animation: scale-fade-in 0.3s ease-out forwards;
+  animation: scale-fade-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.animate-hero-enter {
+  animation: hero-enter 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.animate-stat-pop {
+  animation: stat-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
 @media (prefers-reduced-motion: reduce) {

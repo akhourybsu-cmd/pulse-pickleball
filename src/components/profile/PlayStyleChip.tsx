@@ -9,7 +9,7 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
-import { X } from "lucide-react";
+import { X, ChevronRight } from "lucide-react";
 
 interface PlayStyleChipProps {
   icon: ReactNode;
@@ -33,17 +33,24 @@ export const PlayStyleChip = ({
         onClick={() => isInteractive && setOpen(true)}
         disabled={!isInteractive}
         className={cn(
-          "inline-flex items-center gap-2 px-3.5 py-2 rounded-lg",
-          "bg-muted/40 dark:bg-muted/30 border border-border/40",
+          "inline-flex items-center gap-2 px-3.5 py-2 rounded-xl",
+          "bg-muted/50 dark:bg-muted/30 border border-border/50",
           "text-sm font-medium text-foreground",
           "transition-all duration-200",
-          isInteractive && "hover:bg-muted/60 hover:border-border/60 active:scale-[0.98] cursor-pointer",
+          isInteractive && [
+            "hover:bg-muted/70 hover:border-border/70 hover:shadow-sm",
+            "active:scale-[0.97] active:opacity-90",
+            "cursor-pointer"
+          ],
           !isInteractive && "cursor-default",
           className
         )}
       >
-        <span className="text-muted-foreground">{icon}</span>
+        <span className="text-primary/80">{icon}</span>
         <span className="capitalize">{label}</span>
+        {isInteractive && (
+          <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/60 ml-auto" />
+        )}
       </button>
 
       {isInteractive && (
