@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Key, Users, Search, MapPin } from 'lucide-react';
+import { Plus, Key, Users, Search, Activity } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
@@ -7,10 +7,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { GroupCard } from '@/components/community/GroupCard';
 import { CreateGroupDialog } from '@/components/community/CreateGroupDialog';
 import { JoinGroupDialog } from '@/components/community/JoinGroupDialog';
+import { CommunityActivityFeed } from '@/components/community/CommunityActivityFeed';
 import { useGroups } from '@/hooks/useGroups';
-
-// Import the existing Court Connector component
-import CourtConnector from '@/pages/CourtConnector';
 
 export default function Community() {
   const { myGroups, publicGroups, loading, createGroup, joinGroupByCode, joinPublicGroup } = useGroups();
@@ -25,14 +23,12 @@ export default function Community() {
     setJoiningGroupId(null);
   };
 
-  const pendingCount = myGroups.filter(g => g.membership?.status === 'pending').length;
-
   return (
     <div className="container max-w-4xl mx-auto px-4 py-6 space-y-6">
       {/* Header */}
       <div className="space-y-1">
         <h1 className="text-2xl font-bold tracking-tight">Community</h1>
-        <p className="text-muted-foreground">Your groups, your courts, your people.</p>
+        <p className="text-muted-foreground">Your groups, your people.</p>
       </div>
 
       {/* Quick Actions */}
@@ -64,9 +60,9 @@ export default function Community() {
             <Search className="h-4 w-4" />
             Discover
           </TabsTrigger>
-          <TabsTrigger value="courts" className="gap-2">
-            <MapPin className="h-4 w-4" />
-            Courts
+          <TabsTrigger value="activity" className="gap-2">
+            <Activity className="h-4 w-4" />
+            Activity
           </TabsTrigger>
         </TabsList>
 
@@ -146,9 +142,9 @@ export default function Community() {
           )}
         </TabsContent>
 
-        {/* Courts Tab - Existing Court Connector */}
-        <TabsContent value="courts">
-          <CourtConnector />
+        {/* Activity Tab */}
+        <TabsContent value="activity">
+          <CommunityActivityFeed />
         </TabsContent>
       </Tabs>
 
