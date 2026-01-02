@@ -20,6 +20,12 @@ export interface Group {
   member_count: number;
   created_at: string;
   updated_at: string;
+  is_venue_verified?: boolean;
+  venue?: {
+    id: string;
+    name: string;
+    logo_url: string | null;
+  } | null;
 }
 
 export interface GroupMember {
@@ -151,6 +157,7 @@ export function useGroups() {
     type: Group['type'];
     visibility: Group['visibility'];
     join_method: Group['join_method'];
+    venue_id?: string;
   }) => {
     if (!currentUserId) {
       toast({ title: 'Error', description: 'You must be logged in', variant: 'destructive' });
@@ -161,7 +168,12 @@ export function useGroups() {
       const { data, error } = await supabase
         .from('groups')
         .insert({
-          ...groupData,
+          name: groupData.name,
+          description: groupData.description,
+          type: groupData.type,
+          visibility: groupData.visibility,
+          join_method: groupData.join_method,
+          venue_id: groupData.venue_id || null,
           created_by: currentUserId,
         })
         .select()
