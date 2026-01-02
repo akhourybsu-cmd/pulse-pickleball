@@ -189,7 +189,7 @@ export default function GroupDetail() {
     : 'Public Group';
 
   return (
-    <div className="container max-w-4xl mx-auto px-4 py-4 space-y-4">
+    <div className="container max-w-4xl mx-auto px-4 pt-6 pb-4 space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
         <Button 
@@ -201,7 +201,7 @@ export default function GroupDetail() {
         </Button>
         
         <div className="flex-1 min-w-0">
-          <h1 className="text-xl font-bold tracking-tight line-clamp-2 leading-tight">{group.name}</h1>
+          <h1 className="text-2xl font-bold tracking-tight line-clamp-2 leading-tight mb-1">{group.name}</h1>
         </div>
 
         {/* Header Actions */}
@@ -257,7 +257,7 @@ export default function GroupDetail() {
       </div>
 
       {/* About Strip with Details Drawer */}
-      <div className="flex items-center gap-2 text-sm">
+      <div className="flex items-center gap-3 text-sm">
         <Popover>
           <PopoverTrigger asChild>
             <Badge 
@@ -321,43 +321,42 @@ export default function GroupDetail() {
 
       {/* Tabs with Labels */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="feed" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-2 min-h-[44px] data-[state=active]:font-medium">
+        <TabsList className="grid w-full grid-cols-5 gap-1 bg-transparent p-0">
+          <TabsTrigger value="feed" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-2.5 min-h-[44px] text-muted-foreground/70 data-[state=active]:text-foreground data-[state=active]:font-medium data-[state=active]:bg-muted/50 rounded-lg transition-colors">
             <MessageSquare className="h-3.5 w-3.5" />
             <span className="text-[10px] sm:text-sm">Feed</span>
           </TabsTrigger>
-          <TabsTrigger value="schedule" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-2 min-h-[44px] data-[state=active]:font-medium">
+          <TabsTrigger value="schedule" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-2.5 min-h-[44px] text-muted-foreground/70 data-[state=active]:text-foreground data-[state=active]:font-medium data-[state=active]:bg-muted/50 rounded-lg transition-colors">
             <Calendar className="h-3.5 w-3.5" />
             <span className="text-[10px] sm:text-sm">Events</span>
           </TabsTrigger>
-          <TabsTrigger value="chat" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-2 min-h-[44px] data-[state=active]:font-medium">
+          <TabsTrigger value="chat" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-2.5 min-h-[44px] text-muted-foreground/70 data-[state=active]:text-foreground data-[state=active]:font-medium data-[state=active]:bg-muted/50 rounded-lg transition-colors">
             <MessageCircle className="h-3.5 w-3.5" />
             <span className="text-[10px] sm:text-sm">Chat</span>
           </TabsTrigger>
-          <TabsTrigger value="members" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-2 min-h-[44px] data-[state=active]:font-medium">
+          <TabsTrigger value="members" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-2.5 min-h-[44px] text-muted-foreground/70 data-[state=active]:text-foreground data-[state=active]:font-medium data-[state=active]:bg-muted/50 rounded-lg transition-colors">
             <Users className="h-3.5 w-3.5" />
             <span className="text-[10px] sm:text-sm">Members</span>
           </TabsTrigger>
-          <TabsTrigger value="files" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-2 min-h-[44px] data-[state=active]:font-medium">
+          <TabsTrigger value="files" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-2.5 min-h-[44px] text-muted-foreground/70 data-[state=active]:text-foreground data-[state=active]:font-medium data-[state=active]:bg-muted/50 rounded-lg transition-colors">
             <FolderOpen className="h-3.5 w-3.5" />
             <span className="text-[10px] sm:text-sm">Files</span>
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="feed" className="mt-4">
+        <TabsContent value="feed" className="mt-6">
           <GroupFeed groupId={groupId!} isAdmin={isAdmin} currentUserId={currentUserId} />
         </TabsContent>
 
-        <TabsContent value="schedule" className="mt-4">
+        <TabsContent value="schedule" className="mt-6">
           <GroupSchedule groupId={groupId!} isAdmin={isAdmin} currentUserId={currentUserId} />
         </TabsContent>
 
-
-        <TabsContent value="chat" className="mt-4">
+        <TabsContent value="chat" className="mt-6">
           <GroupChat groupId={groupId!} currentUserId={currentUserId} />
         </TabsContent>
 
-        <TabsContent value="members" className="mt-4">
+        <TabsContent value="members" className="mt-6">
           <GroupMembers 
             groupId={groupId!} 
             isAdmin={isAdmin} 
@@ -367,7 +366,7 @@ export default function GroupDetail() {
           />
         </TabsContent>
 
-        <TabsContent value="files" className="mt-4">
+        <TabsContent value="files" className="mt-6">
           <GroupFiles groupId={groupId!} isAdmin={isAdmin} currentUserId={currentUserId} />
         </TabsContent>
       </Tabs>

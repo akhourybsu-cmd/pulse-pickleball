@@ -75,15 +75,15 @@ export function GroupCard({ group, showJoinButton, onJoin, isJoining }: GroupCar
 
   return (
     <Card 
-      className="cursor-pointer hover:shadow-md transition-all duration-200 border-border/50"
+      className="cursor-pointer hover:bg-accent/30 hover:shadow-sm transition-all duration-200 border-border/40"
       onClick={() => navigate(`/player/community/group/${group.id}`)}
     >
-      <CardHeader className="p-4">
-        <div className="flex items-center gap-3">
+      <CardHeader className="p-5">
+        <div className="flex items-center gap-4">
           {/* Avatar */}
           <div 
             className={cn(
-              'h-12 w-12 rounded-xl flex items-center justify-center text-lg font-bold shrink-0',
+              'h-14 w-14 rounded-xl flex items-center justify-center text-lg font-bold shrink-0',
               group.icon_url ? '' : avatarColors[colorIndex]
             )}
             style={group.icon_url ? { backgroundImage: `url(${group.icon_url})`, backgroundSize: 'cover' } : undefined}
@@ -93,8 +93,8 @@ export function GroupCard({ group, showJoinButton, onJoin, isJoining }: GroupCar
 
           {/* Content */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <h3 className="font-semibold text-foreground truncate">{group.name}</h3>
+            <div className="flex items-center gap-2.5 mb-1">
+              <h3 className="font-semibold text-base text-foreground truncate leading-relaxed">{group.name}</h3>
               {isVerifiedVenue && (
                 <TooltipProvider>
                   <Tooltip>
@@ -107,25 +107,27 @@ export function GroupCard({ group, showJoinButton, onJoin, isJoining }: GroupCar
                   </Tooltip>
                 </TooltipProvider>
               )}
-              {visibilityIcon}
             </div>
             
-            <div className="flex items-center gap-2 mt-1 flex-wrap">
+            <div className="flex items-center gap-2.5 flex-wrap">
               {/* Role badge - only show for members */}
               {isMember && (
-                <Badge variant="secondary" className="text-xs gap-1 px-1.5 py-0">
+                <Badge variant="secondary" className="text-xs gap-1 px-1.5 py-0 opacity-80">
                   {roleIcon}
                   {roleLabel}
                 </Badge>
               )}
               
               {/* Type badge */}
-              <Badge variant="outline" className={cn('text-xs px-1.5 py-0', typeColors[group.type])}>
+              <Badge variant="outline" className={cn('text-xs px-1.5 py-0 opacity-80', typeColors[group.type])}>
                 {typeLabels[group.type]}
               </Badge>
 
+              {/* Visibility icon */}
+              <span className="text-muted-foreground/70">{visibilityIcon}</span>
+
               {/* Member count */}
-              <span className="text-xs text-muted-foreground flex items-center gap-1">
+              <span className="text-xs text-muted-foreground/70 flex items-center gap-1">
                 <Users className="h-3 w-3" />
                 {group.member_count}
               </span>

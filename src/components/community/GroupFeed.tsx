@@ -88,11 +88,11 @@ export function GroupFeed({ groupId, isAdmin, currentUserId }: GroupFeedProps) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {/* Compact Post Composer */}
-      <div className="bg-muted/30 rounded-lg p-3">
-        <div className="flex gap-2 items-start">
-          <Avatar className="h-8 w-8 flex-shrink-0">
+      <div className="bg-muted/20 rounded-xl p-4">
+        <div className="flex gap-3 items-start">
+          <Avatar className="h-9 w-9 flex-shrink-0">
             <AvatarFallback className="text-xs">U</AvatarFallback>
           </Avatar>
           <div className="flex-1 relative">
@@ -100,17 +100,17 @@ export function GroupFeed({ groupId, isAdmin, currentUserId }: GroupFeedProps) {
               placeholder="Post to the group..."
               value={newPostContent}
               onChange={(e) => setNewPostContent(e.target.value)}
-              className="min-h-[40px] resize-none pr-24 text-sm"
+              className="min-h-[56px] resize-none pr-24 text-sm py-3 px-4 rounded-xl bg-background border-border/40"
             />
-            <div className="absolute right-2 bottom-2 flex items-center gap-1">
-              <Button variant="ghost" size="icon" className="h-7 w-7" disabled>
-                <Image className="h-4 w-4 text-muted-foreground" />
+            <div className="absolute right-3 bottom-3 flex items-center gap-1.5">
+              <Button variant="ghost" size="icon" className="h-8 w-8" disabled>
+                <Image className="h-4 w-4 text-muted-foreground/60" />
               </Button>
               <Button 
                 onClick={handleCreatePost} 
                 disabled={!newPostContent.trim() || isPosting}
                 size="sm"
-                className="h-7 px-3 text-xs"
+                className="h-8 px-4 text-xs"
               >
                 Post
               </Button>
@@ -142,29 +142,29 @@ export function GroupFeed({ groupId, isAdmin, currentUserId }: GroupFeedProps) {
             .slice(0, 2);
 
           return (
-            <Card key={post.id} className={cn(post.pinned && 'border-primary/50 bg-primary/5')}>
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between gap-3">
+            <Card key={post.id} className={cn('border-border/40', post.pinned && 'border-primary/50 bg-primary/5')}>
+              <CardHeader className="pb-4">
+                <div className="flex items-start justify-between gap-4">
                   <div className="flex items-start gap-3 flex-1 min-w-0">
                     <Avatar className="h-10 w-10 flex-shrink-0">
                       <AvatarImage src={post.profile?.avatar_url || undefined} />
                       <AvatarFallback>{initials}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
+                      <div className="flex items-center gap-2.5 flex-wrap">
                         <span className="font-semibold text-sm">
                           {post.profile?.display_name || post.profile?.full_name || 'Unknown'}
                         </span>
                         {post.profile?.current_rating && (
-                          <Badge variant="outline" className="text-xs h-5">
+                          <Badge variant="outline" className="text-xs h-5 opacity-80">
                             {post.profile.current_rating.toFixed(2)}
                           </Badge>
                         )}
-                        <span className="text-xs text-muted-foreground">
+                        <span className="text-xs text-muted-foreground/70">
                           {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2 mt-1">
+                      <div className="flex items-center gap-2 mt-1.5">
                         {post.pinned && (
                           <Badge variant="secondary" className="gap-1 text-xs">
                             <Pin className="h-3 w-3" />
@@ -207,19 +207,19 @@ export function GroupFeed({ groupId, isAdmin, currentUserId }: GroupFeedProps) {
                 </div>
               </CardHeader>
 
-              <CardContent className="pb-3">
+              <CardContent className="pb-4">
                 {post.title && (
-                  <h3 className="font-semibold text-lg mb-2">{post.title}</h3>
+                  <h3 className="font-semibold text-lg mb-3">{post.title}</h3>
                 )}
                 {post.content && (
-                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                  <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
                     {post.content}
                   </p>
                 )}
               </CardContent>
 
-              <CardFooter className="pt-0 flex items-center justify-between">
-                <div className="flex items-center gap-1">
+              <CardFooter className="pt-2 flex items-center justify-between border-t border-border/30">
+                <div className="flex items-center gap-2">
                   {REACTION_EMOJIS.map(({ emoji }) => {
                     const reactionData = post.reactions?.find(r => r.emoji === emoji);
                     const hasReacted = reactionData?.user_reacted;
@@ -243,7 +243,7 @@ export function GroupFeed({ groupId, isAdmin, currentUserId }: GroupFeedProps) {
                 <Button 
                   variant="ghost" 
                   size="sm" 
-                  className="gap-1 text-muted-foreground"
+                  className="gap-1.5 text-muted-foreground"
                   onClick={() => setCommentsPostId(post.id)}
                 >
                   <MessageSquare className="h-4 w-4" />

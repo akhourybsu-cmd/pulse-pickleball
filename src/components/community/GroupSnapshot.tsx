@@ -23,7 +23,7 @@ export function GroupSnapshot({
   const remainingCount = Math.max(0, members.length - 4);
 
   return (
-    <div className="flex items-center gap-4 py-2 px-3 bg-muted/30 rounded-lg text-sm overflow-x-auto">
+    <div className="flex items-center gap-4 py-3 px-4 bg-muted/20 rounded-xl text-sm overflow-x-auto">
       {/* Member Avatars */}
       <div className="flex items-center gap-2 flex-shrink-0">
         <div className="flex -space-x-2">
@@ -44,11 +44,11 @@ export function GroupSnapshot({
           })}
         </div>
         {remainingCount > 0 && (
-          <span className="text-xs text-muted-foreground">+{remainingCount}</span>
+          <span className="text-xs text-muted-foreground/70">+{remainingCount}</span>
         )}
       </div>
 
-      <div className="h-4 w-px bg-border flex-shrink-0" />
+      <div className="h-5 w-px bg-border/50 flex-shrink-0" />
 
       {/* Next Event */}
       <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -69,13 +69,13 @@ export function GroupSnapshot({
         )}
       </div>
 
-      <div className="h-4 w-px bg-border flex-shrink-0" />
+      <div className="h-5 w-px bg-border/50 flex-shrink-0" />
 
       {/* Weekly Stats - Actionable */}
-      <div className="flex items-center gap-3 text-muted-foreground flex-shrink-0">
+      <div className="flex items-center gap-3 text-muted-foreground/70 flex-shrink-0">
         <button 
           onClick={onViewFeed}
-          className="flex items-center gap-1 hover:text-foreground transition-colors"
+          className="flex items-center gap-1.5 hover:text-foreground transition-colors"
         >
           <MessageSquare className="h-3.5 w-3.5" />
           <span>{weeklyStats.posts} posts</span>

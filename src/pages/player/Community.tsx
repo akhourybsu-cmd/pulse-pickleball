@@ -24,7 +24,7 @@ export default function Community() {
   };
 
   return (
-    <div className="container max-w-4xl mx-auto px-4 py-6 space-y-6">
+    <div className="container max-w-4xl mx-auto px-4 py-8 space-y-8">
       {/* Header */}
       <div className="space-y-1">
         <h1 className="text-2xl font-bold tracking-tight">Community</h1>
@@ -45,7 +45,7 @@ export default function Community() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3 mb-6">
+        <TabsList className="grid w-full grid-cols-3 mb-8">
           <TabsTrigger value="my-groups" className="gap-2">
             <Users className="h-4 w-4" />
             <span className="hidden sm:inline">My Groups</span>
@@ -67,15 +67,15 @@ export default function Community() {
         </TabsList>
 
         {/* My Groups Tab */}
-        <TabsContent value="my-groups" className="space-y-4">
+        <TabsContent value="my-groups" className="space-y-5 mt-2">
           {loading ? (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {[1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-24 w-full rounded-lg" />
+                <Skeleton key={i} className="h-28 w-full rounded-xl" />
               ))}
             </div>
           ) : myGroups.length > 0 ? (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {myGroups.map((group) => (
                 <GroupCard key={group.id} group={group} />
               ))}
@@ -104,13 +104,13 @@ export default function Community() {
         </TabsContent>
 
         {/* Discover Tab */}
-        <TabsContent value="discover" className="space-y-4">
+        <TabsContent value="discover" className="space-y-5 mt-2">
           {publicGroups.length > 0 ? (
             <>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground/70">
                 Public groups you can join
               </p>
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {publicGroups.map((group) => {
                   const isAlreadyMember = myGroups.some(g => g.id === group.id);
                   return (
@@ -143,7 +143,7 @@ export default function Community() {
         </TabsContent>
 
         {/* Activity Tab */}
-        <TabsContent value="activity">
+        <TabsContent value="activity" className="mt-2">
           <CommunityActivityFeed />
         </TabsContent>
       </Tabs>
