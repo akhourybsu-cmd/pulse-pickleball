@@ -2036,6 +2036,45 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_preferences: {
+        Row: {
+          category: string
+          created_at: string
+          email_enabled: boolean
+          id: string
+          in_app_enabled: boolean
+          push_enabled: boolean
+          quiet_hours_end: string | null
+          quiet_hours_start: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          email_enabled?: boolean
+          id?: string
+          in_app_enabled?: boolean
+          push_enabled?: boolean
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          email_enabled?: boolean
+          id?: string
+          in_app_enabled?: boolean
+          push_enabled?: boolean
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       player_badges: {
         Row: {
           badge_id: string
@@ -3454,42 +3493,72 @@ export type Database = {
       }
       user_notifications: {
         Row: {
+          actor_id: string | null
+          category: string | null
           created_at: string
           event_id: string | null
           event_type: string | null
+          expires_at: string | null
           id: string
           link: string | null
           message: string
+          metadata: Json | null
           notification_type: string
+          priority: string | null
           read: boolean
           title: string
           user_id: string
         }
         Insert: {
+          actor_id?: string | null
+          category?: string | null
           created_at?: string
           event_id?: string | null
           event_type?: string | null
+          expires_at?: string | null
           id?: string
           link?: string | null
           message: string
+          metadata?: Json | null
           notification_type: string
+          priority?: string | null
           read?: boolean
           title: string
           user_id: string
         }
         Update: {
+          actor_id?: string | null
+          category?: string | null
           created_at?: string
           event_id?: string | null
           event_type?: string | null
+          expires_at?: string | null
           id?: string
           link?: string | null
           message?: string
+          metadata?: Json | null
           notification_type?: string
+          priority?: string | null
           read?: boolean
           title?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "user_notifications_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_notifications_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
@@ -4281,6 +4350,21 @@ export type Database = {
       cleanup_expired_mfa_codes: { Args: never; Returns: undefined }
       clear_all_match_history: { Args: never; Returns: undefined }
       clear_all_match_history_authenticated: { Args: never; Returns: undefined }
+      create_notification: {
+        Args: {
+          p_actor_id?: string
+          p_category: string
+          p_expires_at?: string
+          p_link?: string
+          p_message: string
+          p_metadata?: Json
+          p_notification_type: string
+          p_priority?: string
+          p_title: string
+          p_user_id: string
+        }
+        Returns: string
+      }
       delete_old_court_posts: { Args: never; Returns: undefined }
       delete_round_robin_event: {
         Args: { p_event_id: string }

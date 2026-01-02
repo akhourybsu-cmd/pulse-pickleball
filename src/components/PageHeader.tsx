@@ -5,11 +5,11 @@ import { LogOut, User as UserIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import logo from "@/assets/pulse-logo-new.png";
 import { NotificationBell } from "@/components/NotificationBell";
-import { NotificationDrawer, Notification } from "@/components/NotificationDrawer";
+import { NotificationCenter } from "@/components/notifications/NotificationCenter";
 import { ModeSwitcher } from "@/components/mode/ModeSwitcher";
 import { useMode } from "@/contexts/ModeContext";
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useNotifications } from "@/hooks/useNotifications";
 
 interface PageHeaderProps {
   userId?: string | null;
@@ -20,72 +20,20 @@ export function PageHeader({ userId }: PageHeaderProps) {
   const [isNotificationDrawerOpen, setIsNotificationDrawerOpen] = useState(false);
   const { hasVenueAccess, isLoading: modeLoading } = useMode();
 
-  // Fetch notifications
-  const { data: notifications = [], refetch } = useQuery({
-    queryKey: ["user-notifications", userId],
-    queryFn: async () => {
-      if (!userId) return [];
-      
-      const { data, error } = await supabase
-        .from("user_notifications")
-        .select("*")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-
-      return (data || []).map((notif): Notification => ({
-        id: notif.id,
-        type: notif.notification_type === "event_reminder" ? "match" : "lfg",
-        title: notif.title,
-        message: notif.message,
-        time: new Date(notif.created_at).toLocaleString(),
-        cta: "View",
-        link: notif.link || "/dashboard",
-        unread: !notif.read
-      }));
-    },
-    enabled: !!userId,
-    refetchInterval: 60000 // Refetch every minute
-  });
-
-  const unreadCount = notifications.filter(n => n.unread).length;
+  // Use the new real-time notifications hook
+  const {
+    notifications,
+    unreadCount,
+    markAsRead,
+    markAllAsRead,
+    deleteNotification,
+    clearAll,
+    groupedByTime,
+  } = useNotifications(userId, { showToasts: true });
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     navigate("/");
-  };
-
-  const handleClearAll = async () => {
-    if (!userId) return;
-    await supabase
-      .from("user_notifications")
-      .delete()
-      .eq("user_id", userId);
-    refetch();
-  };
-
-  const handleClearOne = async (id: string) => {
-    await supabase
-      .from("user_notifications")
-      .delete()
-      .eq("id", id);
-    refetch();
-  };
-
-  const handleSelectNotification = async (id: string) => {
-    const notification = notifications.find(n => n.id === id);
-    if (!notification) return;
-
-    // Mark as read
-    await supabase
-      .from("user_notifications")
-      .update({ read: true })
-      .eq("id", id);
-    
-    refetch();
-    setIsNotificationDrawerOpen(false);
-    navigate(notification.link);
   };
 
   return (
@@ -125,13 +73,16 @@ export function PageHeader({ userId }: PageHeaderProps) {
         </div>
       </div>
 
-      <NotificationDrawer
+      <NotificationCenter
         isOpen={isNotificationDrawerOpen}
         notifications={notifications}
+        unreadCount={unreadCount}
+        groupedByTime={groupedByTime}
         onClose={() => setIsNotificationDrawerOpen(false)}
-        onClearAll={handleClearAll}
-        onClearOne={handleClearOne}
-        onSelectNotification={handleSelectNotification}
+        onMarkAsRead={markAsRead}
+        onMarkAllAsRead={markAllAsRead}
+        onDelete={deleteNotification}
+        onClearAll={clearAll}
       />
     </nav>
   );

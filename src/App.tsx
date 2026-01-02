@@ -84,6 +84,7 @@ const DataExport = lazy(() => import("./pages/DataExport"));
 const AdminAuditLog = lazy(() => import("./pages/AdminAuditLog"));
 const AdminTestAccounts = lazy(() => import("./pages/AdminTestAccounts"));
 const AdminBiometrics = lazy(() => import("./pages/AdminBiometrics"));
+const NotificationSettings = lazy(() => import("./pages/NotificationSettings"));
 
 // Player pages
 const PlayerDashboard = lazy(() => import("./pages/player/PlayerDashboard"));
@@ -236,6 +237,7 @@ const AppContent = () => {
           <Route path="/events/browse" element={<BrowseEvents />} />
           <Route path="/pickleball-citi-memberships" element={<PickleballCitiMemberships />} />
           <Route path="/profile/data-export" element={<DataExport />} />
+          <Route path="/settings/notifications" element={<NotificationSettings />} />
           <Route path="/events" element={<Events />} />
           <Route path="/events/new" element={<NewEvent />} />
           <Route path="/events/:eventId" element={<EventDetail />} />
