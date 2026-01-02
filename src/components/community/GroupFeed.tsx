@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { MessageSquare, Pin, Trash2, MoreVertical, ThumbsUp, Heart, Sparkles, Send, Image } from 'lucide-react';
+import { MessageSquare, Pin, Trash2, MoreVertical, Send, Image, BarChart3, Gamepad2, Calendar, PenSquare } from 'lucide-react';
 import { PostCommentsSheet } from './PostCommentsSheet';
+import { GroupEmptyState } from './GroupEmptyState';
 import { formatDistanceToNow } from 'date-fns';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -88,50 +89,56 @@ export function GroupFeed({ groupId, isAdmin, currentUserId }: GroupFeedProps) {
 
   return (
     <div className="space-y-4">
-      {/* Post Composer */}
+      {/* Quick Action Post Composer */}
       <Card>
-        <CardContent className="pt-4">
+        <CardContent className="pt-4 space-y-3">
           <div className="flex gap-3">
-            <Avatar className="h-10 w-10 flex-shrink-0">
+            <Avatar className="h-9 w-9 flex-shrink-0">
               <AvatarFallback>U</AvatarFallback>
             </Avatar>
-            <div className="flex-1 space-y-3">
-              <Textarea
-                placeholder="Share an update with the group..."
-                value={newPostContent}
-                onChange={(e) => setNewPostContent(e.target.value)}
-                className="min-h-[80px] resize-none"
-              />
-              <div className="flex items-center justify-between">
-                <Button variant="ghost" size="sm" className="gap-2" disabled>
-                  <Image className="h-4 w-4" />
-                  Photo
-                </Button>
-                <Button 
-                  onClick={handleCreatePost} 
-                  disabled={!newPostContent.trim() || isPosting}
-                  className="gap-2"
-                >
-                  <Send className="h-4 w-4" />
-                  Post
-                </Button>
-              </div>
+            <Textarea
+              placeholder="Post to the group..."
+              value={newPostContent}
+              onChange={(e) => setNewPostContent(e.target.value)}
+              className="min-h-[60px] resize-none flex-1"
+            />
+          </div>
+          
+          {/* Quick Action Buttons */}
+          <div className="flex items-center justify-between border-t pt-3">
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground h-8 px-2" disabled>
+                <Image className="h-4 w-4" />
+                <span className="hidden sm:inline text-xs">Photo</span>
+              </Button>
+              <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground h-8 px-2" disabled>
+                <BarChart3 className="h-4 w-4" />
+                <span className="hidden sm:inline text-xs">Poll</span>
+              </Button>
             </div>
+            <Button 
+              onClick={handleCreatePost} 
+              disabled={!newPostContent.trim() || isPosting}
+              size="sm"
+              className="gap-1.5"
+            >
+              <Send className="h-4 w-4" />
+              Post
+            </Button>
           </div>
         </CardContent>
       </Card>
 
       {/* Posts List */}
       {posts.length === 0 ? (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-            <MessageSquare className="h-12 w-12 text-muted-foreground/50 mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No posts yet</h3>
-            <p className="text-muted-foreground max-w-sm">
-              Be the first to share an update with the group!
-            </p>
-          </CardContent>
-        </Card>
+        <GroupEmptyState
+          icon={MessageSquare}
+          title="No posts yet"
+          description="Be the first to share an update with the group!"
+          actions={[
+            { label: 'Post Update', onClick: () => document.querySelector('textarea')?.focus(), icon: PenSquare },
+          ]}
+        />
       ) : (
         posts.map((post) => {
           const typeInfo = POST_TYPE_BADGES[post.type] || POST_TYPE_BADGES.feed;

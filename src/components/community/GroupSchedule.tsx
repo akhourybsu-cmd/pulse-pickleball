@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Calendar, Clock, MapPin, Users, Check, HelpCircle, X, Plus, Trash2 } from 'lucide-react';
+import { Calendar, Clock, MapPin, Users, Check, HelpCircle, X, Plus, Trash2, Sparkles } from 'lucide-react';
 import { format } from 'date-fns';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
+import { GroupEmptyState } from './GroupEmptyState';
 import {
   Dialog,
   DialogContent,
@@ -94,15 +95,15 @@ export function GroupSchedule({ groupId, isAdmin, currentUserId }: GroupSchedule
 
       {/* Events List */}
       {events.length === 0 ? (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-            <Calendar className="h-12 w-12 text-muted-foreground/50 mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No upcoming events</h3>
-            <p className="text-muted-foreground max-w-sm">
-              Schedule a session or event for the group.
-            </p>
-          </CardContent>
-        </Card>
+        <GroupEmptyState
+          icon={Calendar}
+          title="No upcoming events"
+          description="Schedule a session, round robin, or open play for the group."
+          actions={[
+            { label: 'Create Event', onClick: () => setCreateDialogOpen(true), icon: Plus },
+            { label: 'Round Robin', onClick: () => setCreateDialogOpen(true), variant: 'outline', icon: Sparkles },
+          ]}
+        />
       ) : (
         events.map((event) => {
           const startDate = new Date(event.start_time);

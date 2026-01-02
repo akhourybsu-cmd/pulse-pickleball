@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Gamepad2, Calendar, Clock, Users, Plus, Trash2, UserPlus } from 'lucide-react';
+import { Gamepad2, Calendar, Clock, Users, Plus, Trash2, UserPlus, Search } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
+import { GroupEmptyState } from './GroupEmptyState';
 import {
   Dialog,
   DialogContent,
@@ -100,15 +101,15 @@ export function GroupLFG({ groupId, isAdmin, currentUserId }: GroupLFGProps) {
 
       {/* LFG Posts List */}
       {lfgPosts.length === 0 ? (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-            <Gamepad2 className="h-12 w-12 text-muted-foreground/50 mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No LFG posts</h3>
-            <p className="text-muted-foreground max-w-sm">
-              Looking for a game? Post here to find players in the group.
-            </p>
-          </CardContent>
-        </Card>
+        <GroupEmptyState
+          icon={Gamepad2}
+          title="No one's looking for a game"
+          description="Need players? Post an LFG to find others in the group."
+          actions={[
+            { label: 'Post LFG', onClick: () => setCreateDialogOpen(true), icon: Plus },
+            { label: 'Browse Events', onClick: () => {}, variant: 'outline', icon: Search },
+          ]}
+        />
       ) : (
         lfgPosts.map((post) => {
           const isAuthor = currentUserId === post.user_id;

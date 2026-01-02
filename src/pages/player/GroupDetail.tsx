@@ -1,13 +1,29 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Settings, Users, MessageSquare, MessageCircle, Calendar, FolderOpen, Gamepad2, Lock, Globe, Eye, Crown, Shield, Copy, Check } from 'lucide-react';
+import { 
+  ArrowLeft, Settings, Users, MessageSquare, MessageCircle, Calendar, 
+  FolderOpen, Gamepad2, Lock, Globe, Eye, Plus, Share2, MoreVertical 
+} from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from '@/components/ui/drawer';
 import { cn } from '@/lib/utils';
 import type { Group, GroupMember } from '@/hooks/useGroups';
 import { GroupFeed } from '@/components/community/GroupFeed';
@@ -16,6 +32,10 @@ import { GroupLFG } from '@/components/community/GroupLFG';
 import { GroupFiles } from '@/components/community/GroupFiles';
 import { GroupMembers } from '@/components/community/GroupMembers';
 import { GroupChat } from '@/components/community/GroupChat';
+import { InviteModal } from '@/components/community/InviteModal';
+import { QuickPostComposer, type PostType } from '@/components/community/QuickPostComposer';
+import { GroupSnapshot } from '@/components/community/GroupSnapshot';
+import { useGroupPosts } from '@/hooks/useGroupPosts';
 
 export default function GroupDetail() {
   const { groupId } = useParams<{ groupId: string }>();
@@ -27,8 +47,14 @@ export default function GroupDetail() {
   const [members, setMembers] = useState<GroupMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('feed');
-  const [codeCopied, setCodeCopied] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  
+  // Modal states
+  const [inviteModalOpen, setInviteModalOpen] = useState(false);
+  const [quickPostOpen, setQuickPostOpen] = useState(false);
+  const [quickPostType, setQuickPostType] = useState<PostType>('post');
+
+  const { createPost } = useGroupPosts(groupId || '');
 
   useEffect(() => {
     if (groupId) {
@@ -112,22 +138,23 @@ export default function GroupDetail() {
     }
   };
 
-  const copyInviteCode = async () => {
-    if (!group?.invite_code) return;
-    
-    await navigator.clipboard.writeText(group.invite_code);
-    setCodeCopied(true);
-    toast({ title: 'Copied!', description: 'Invite code copied to clipboard' });
-    setTimeout(() => setCodeCopied(false), 2000);
+  const openQuickPost = (type: PostType) => {
+    setQuickPostType(type);
+    setQuickPostOpen(true);
+  };
+
+  const handleQuickPost = async (data: any) => {
+    const result = await createPost(data);
+    return !!result;
   };
 
   const isAdmin = membership?.role === 'owner' || membership?.role === 'moderator';
 
   if (loading) {
     return (
-      <div className="container max-w-4xl mx-auto px-4 py-6 space-y-6">
+      <div className="container max-w-4xl mx-auto px-4 py-6 space-y-4">
         <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-12 w-full" />
         <Skeleton className="h-64 w-full" />
       </div>
     );
@@ -150,18 +177,16 @@ export default function GroupDetail() {
     ? <Eye className="h-4 w-4" />
     : <Globe className="h-4 w-4" />;
 
-  const typeLabels: Record<string, string> = {
-    crew: 'Crew',
-    league: 'League',
-    open_play: 'Open Play',
-    venue_official: 'Venue Official',
-    tournament: 'Tournament',
-  };
+  const visibilityLabel = group.visibility === 'private' 
+    ? 'Private Group' 
+    : group.visibility === 'unlisted' 
+    ? 'Unlisted Group' 
+    : 'Public Group';
 
   return (
-    <div className="container max-w-4xl mx-auto px-4 py-6 space-y-6">
+    <div className="container max-w-4xl mx-auto px-4 py-4 space-y-4">
       {/* Header */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
         <Button 
           variant="ghost" 
           size="icon"
@@ -169,111 +194,156 @@ export default function GroupDetail() {
         >
           <ArrowLeft className="h-5 w-5" />
         </Button>
+        
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight truncate">{group.name}</h1>
+            <h1 className="text-xl font-bold tracking-tight truncate">{group.name}</h1>
             {visibilityIcon}
           </div>
-          <div className="flex items-center gap-2 mt-1 text-muted-foreground">
-            <Badge variant="outline" className="text-xs">
-              {typeLabels[group.type]}
-            </Badge>
-            <span className="text-sm flex items-center gap-1">
-              <Users className="h-3 w-3" />
-              {group.member_count} members
-            </span>
-          </div>
         </div>
-        {isAdmin && (
-          <Button variant="outline" size="icon" onClick={() => navigate(`/player/community/group/${groupId}/manage`)}>
-            <Settings className="h-5 w-5" />
-          </Button>
+
+        {/* Header Actions */}
+        <div className="flex items-center gap-1">
+          {group.invite_code && (
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={() => setInviteModalOpen(true)}
+            >
+              <Share2 className="h-5 w-5" />
+            </Button>
+          )}
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <Plus className="h-5 w-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => openQuickPost('post')}>
+                <MessageSquare className="h-4 w-4 mr-2" />
+                Post Update
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => openQuickPost('lfg')}>
+                <Gamepad2 className="h-4 w-4 mr-2" />
+                Looking for Game
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => { setActiveTab('schedule'); }}>
+                <Calendar className="h-4 w-4 mr-2" />
+                Create Event
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => openQuickPost('poll')}>
+                <MessageSquare className="h-4 w-4 mr-2" />
+                Create Poll
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {isAdmin && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <MoreVertical className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => navigate(`/player/community/group/${groupId}/manage`)}>
+                  <Settings className="h-4 w-4 mr-2" />
+                  Group Settings
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
+      </div>
+
+      {/* About Strip with Details Drawer */}
+      <div className="flex items-center gap-2 text-sm">
+        <Badge variant="outline" className="text-xs">
+          {visibilityLabel}
+        </Badge>
+        {group.description ? (
+          <Drawer>
+            <DrawerTrigger asChild>
+              <button className="text-muted-foreground hover:text-foreground transition-colors truncate max-w-[200px] sm:max-w-none text-left">
+                {group.description}
+                <span className="text-primary ml-1">View details</span>
+              </button>
+            </DrawerTrigger>
+            <DrawerContent>
+              <DrawerHeader>
+                <DrawerTitle>{group.name}</DrawerTitle>
+                <DrawerDescription>{visibilityLabel}</DrawerDescription>
+              </DrawerHeader>
+              <div className="px-4 pb-6 space-y-4">
+                <div>
+                  <h4 className="font-medium mb-1">About</h4>
+                  <p className="text-muted-foreground">{group.description || 'No description'}</p>
+                </div>
+                <div>
+                  <h4 className="font-medium mb-1">Members</h4>
+                  <p className="text-muted-foreground">{group.member_count} members</p>
+                </div>
+              </div>
+            </DrawerContent>
+          </Drawer>
+        ) : (
+          <span className="text-muted-foreground">
+            <Users className="h-3.5 w-3.5 inline mr-1" />
+            {group.member_count} members
+          </span>
         )}
       </div>
 
-      {/* Description & Invite Code */}
-      {(group.description || (isAdmin && group.invite_code)) && (
-        <Card>
-          <CardContent className="pt-4 space-y-3">
-            {group.description && (
-              <p className="text-muted-foreground">{group.description}</p>
-            )}
-            {isAdmin && group.invite_code && (
-              <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg">
-                <span className="text-sm text-muted-foreground">Invite Code:</span>
-                <code className="font-mono text-sm font-semibold text-foreground">
-                  {group.invite_code}
-                </code>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-8 w-8 ml-auto"
-                  onClick={copyInviteCode}
-                >
-                  {codeCopied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
+      {/* Group Snapshot */}
+      <GroupSnapshot 
+        members={members}
+        onCreateEvent={() => setActiveTab('schedule')}
+      />
 
-      {/* Tabs */}
+      {/* Tabs with Labels */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
-          <TabsTrigger value="feed" className="gap-1.5">
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="feed" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-2">
             <MessageSquare className="h-4 w-4" />
-            <span className="hidden sm:inline">Feed</span>
+            <span className="text-[10px] sm:text-sm">Feed</span>
           </TabsTrigger>
-          <TabsTrigger value="chat" className="gap-1.5">
-            <MessageCircle className="h-4 w-4" />
-            <span className="hidden sm:inline">Chat</span>
-          </TabsTrigger>
-          <TabsTrigger value="schedule" className="gap-1.5">
+          <TabsTrigger value="schedule" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-2">
             <Calendar className="h-4 w-4" />
-            <span className="hidden sm:inline">Schedule</span>
+            <span className="text-[10px] sm:text-sm">Events</span>
           </TabsTrigger>
-          <TabsTrigger value="lfg" className="gap-1.5">
+          <TabsTrigger value="lfg" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-2">
             <Gamepad2 className="h-4 w-4" />
-            <span className="hidden sm:inline">LFG</span>
+            <span className="text-[10px] sm:text-sm">LFG</span>
           </TabsTrigger>
-          <TabsTrigger value="files" className="gap-1.5">
-            <FolderOpen className="h-4 w-4" />
-            <span className="hidden sm:inline">Files</span>
+          <TabsTrigger value="chat" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-2">
+            <MessageCircle className="h-4 w-4" />
+            <span className="text-[10px] sm:text-sm">Chat</span>
           </TabsTrigger>
-          <TabsTrigger value="members" className="gap-1.5">
+          <TabsTrigger value="members" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-2">
             <Users className="h-4 w-4" />
-            <span className="hidden sm:inline">Members</span>
+            <span className="text-[10px] sm:text-sm">Members</span>
           </TabsTrigger>
         </TabsList>
 
-        {/* Feed Tab */}
-        <TabsContent value="feed" className="mt-6">
+        <TabsContent value="feed" className="mt-4">
           <GroupFeed groupId={groupId!} isAdmin={isAdmin} currentUserId={currentUserId} />
         </TabsContent>
 
-        {/* Chat Tab */}
-        <TabsContent value="chat" className="mt-6">
-          <GroupChat groupId={groupId!} currentUserId={currentUserId} />
-        </TabsContent>
-
-        {/* Schedule Tab */}
-        <TabsContent value="schedule" className="mt-6">
+        <TabsContent value="schedule" className="mt-4">
           <GroupSchedule groupId={groupId!} isAdmin={isAdmin} currentUserId={currentUserId} />
         </TabsContent>
 
-        {/* LFG Tab */}
-        <TabsContent value="lfg" className="mt-6">
+        <TabsContent value="lfg" className="mt-4">
           <GroupLFG groupId={groupId!} isAdmin={isAdmin} currentUserId={currentUserId} />
         </TabsContent>
 
-        {/* Files Tab */}
-        <TabsContent value="files" className="mt-6">
-          <GroupFiles groupId={groupId!} isAdmin={isAdmin} currentUserId={currentUserId} />
+        <TabsContent value="chat" className="mt-4">
+          <GroupChat groupId={groupId!} currentUserId={currentUserId} />
         </TabsContent>
 
-        {/* Members Tab */}
-        <TabsContent value="members" className="mt-6">
+        <TabsContent value="members" className="mt-4">
           <GroupMembers 
             groupId={groupId!} 
             isAdmin={isAdmin} 
@@ -282,6 +352,22 @@ export default function GroupDetail() {
           />
         </TabsContent>
       </Tabs>
+
+      {/* Invite Modal */}
+      <InviteModal
+        open={inviteModalOpen}
+        onOpenChange={setInviteModalOpen}
+        inviteCode={group.invite_code}
+        groupName={group.name}
+      />
+
+      {/* Quick Post Composer */}
+      <QuickPostComposer
+        open={quickPostOpen}
+        onOpenChange={setQuickPostOpen}
+        initialType={quickPostType}
+        onSubmit={handleQuickPost}
+      />
     </div>
   );
 }
