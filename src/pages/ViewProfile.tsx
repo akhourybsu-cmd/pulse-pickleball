@@ -1,17 +1,17 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useParams, Link } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { ArrowLeft, User, Trophy, Hash, MapPin, Hand, Target, Flame } from "lucide-react";
-import logo from "@/assets/pulse-logo-new.png";
+import { ArrowLeft, User, MapPin, Hand, Target, Flame, Hash } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { CircularProgressRing } from "@/components/profile/CircularProgressRing";
 import { RecentMatches } from "@/components/profile/RecentMatches";
-// PlayStyleSnapshot removed per user request
 import { HighlightsStrip } from "@/components/profile/HighlightsStrip";
+import { AnimatedStatChip } from "@/components/profile/AnimatedStatChip";
+import { LastPlayedBadge } from "@/components/profile/LastPlayedBadge";
+import { PlayStyleChip } from "@/components/profile/PlayStyleChip";
+import { cn } from "@/lib/utils";
 
 interface Profile {
   id: string;
@@ -194,7 +194,7 @@ const ViewProfile = () => {
       }
     }
     
-    return maxStreak > 0 ? `${maxStreak} wins` : 'No streak yet';
+    return maxStreak > 0 ? `${maxStreak} wins` : 'No streak';
   };
 
   // Calculate days since last match
@@ -209,8 +209,11 @@ const ViewProfile = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-muted-foreground font-sans">Loading...</p>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-muted-foreground">Loading profile...</p>
+        </div>
       </div>
     );
   }
@@ -230,13 +233,13 @@ const ViewProfile = () => {
 
   const highlights = [
     {
-      icon: <Flame className="w-6 h-6 text-[#A9CF46]" />,
-      label: "Longest Win Streak",
+      icon: <Flame className="w-5 h-5 text-primary" />,
+      label: "Win Streak",
       value: calculateWinStreak(recentMatches),
-      subValue: undefined
+      subValue: "longest recorded"
     },
     {
-      icon: <Hash className="w-6 h-6 text-primary" />,
+      icon: <Hash className="w-5 h-5 text-primary" />,
       label: "Total Matches",
       value: String(profile.total_matches),
       subValue: "across all courts"
@@ -244,137 +247,189 @@ const ViewProfile = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-[hsl(var(--page-bg))]">
-      <nav className="bg-secondary border-b border-secondary-foreground/10 shadow-sm">
-        <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-5 flex items-center justify-between h-[72px]">
-          <Link to="/dashboard">
-            <img src={logo} alt="PULSE Logo" className="h-[60px] sm:h-[75px] w-auto cursor-pointer hover:opacity-80 transition-opacity" />
-          </Link>
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-            <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard")} className="text-white hover:text-white/90 hover:bg-white/10 font-sans font-medium h-[38px]">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back
-            </Button>
+    <div className="min-h-screen bg-background">
+      {/* Premium Sticky Header */}
+      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b border-border/50">
+        <div className="flex items-center justify-between px-4 h-14">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => navigate(-1)} 
+            className="gap-1.5 -ml-2 text-muted-foreground hover:text-foreground active:scale-95 transition-all"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span className="hidden sm:inline">Back</span>
+          </Button>
+          <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground/50 font-medium">
+            Profile
+          </span>
+          <ThemeToggle />
+        </div>
+      </header>
+
+      <div className="px-4 py-6 max-w-lg mx-auto space-y-6">
+        {/* Premium Hero Card */}
+        <div 
+          className={cn(
+            "rounded-2xl border border-border/50 overflow-hidden",
+            "bg-gradient-to-br from-card via-card to-muted/10",
+            "dark:from-card dark:via-card dark:to-primary/5",
+            "shadow-xl dark:shadow-[0_0_40px_hsl(var(--primary)/0.08)]",
+            "opacity-0 animate-fade-up"
+          )}
+          style={{ animationDelay: '0ms', animationFillMode: 'forwards' }}
+        >
+          {/* Top section with avatar, name, and ring */}
+          <div className="p-5 pb-4">
+            <div className="flex items-start gap-4">
+              {/* Avatar */}
+              <div 
+                className="flex-shrink-0 opacity-0 animate-scale-fade-in"
+                style={{ animationDelay: '100ms', animationFillMode: 'forwards' }}
+              >
+                {profile.avatar_url ? (
+                  <img
+                    src={profile.avatar_url}
+                    alt={displayName}
+                    className="w-20 h-20 rounded-full object-cover ring-2 ring-offset-2 ring-offset-background ring-primary/60"
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center ring-2 ring-offset-2 ring-offset-background ring-primary/60">
+                    <User className="w-10 h-10 text-primary" />
+                  </div>
+                )}
+              </div>
+
+              {/* Name and meta */}
+              <div 
+                className="flex-1 min-w-0 opacity-0 animate-fade-up"
+                style={{ animationDelay: '150ms', animationFillMode: 'forwards' }}
+              >
+                <h1 className="text-2xl font-display font-bold tracking-tight truncate mb-1">
+                  {displayName}
+                </h1>
+                
+                {/* Single rating pill */}
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mb-2">
+                  <span>⭐</span>
+                  <span style={{ fontVariantNumeric: 'tabular-nums' }}>
+                    {profile.current_rating.toFixed(2)}
+                  </span>
+                  <span className="text-primary/70 text-xs">Rating</span>
+                </div>
+
+                {/* Home court */}
+                {profile.courts && (
+                  <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                    <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span className="truncate">{profile.courts.name}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Win Rate Ring */}
+              <div 
+                className="flex-shrink-0 opacity-0 animate-scale-fade-in"
+                style={{ animationDelay: '200ms', animationFillMode: 'forwards' }}
+              >
+                <CircularProgressRing percentage={winRate} size={90} strokeWidth={8} />
+              </div>
+            </div>
+          </div>
+
+          {/* Stats Grid */}
+          <div className="px-5 pb-5">
+            <div className="grid grid-cols-4 gap-2">
+              <AnimatedStatChip 
+                label="Rating" 
+                value={profile.current_rating} 
+                decimals={2}
+                isPrimary 
+                delay={250}
+              />
+              <AnimatedStatChip 
+                label="Matches" 
+                value={profile.total_matches} 
+                delay={300}
+              />
+              <AnimatedStatChip 
+                label="Win %" 
+                value={winRate} 
+                suffix="%" 
+                decimals={0}
+                delay={350}
+              />
+              <AnimatedStatChip 
+                label="Record" 
+                value={`${profile.wins}-${profile.losses}`} 
+                delay={400}
+              />
+            </div>
           </div>
         </div>
-      </nav>
 
-      <div className="container mx-auto px-4 py-8 max-w-5xl">
-        {/* Hero Profile Card - Player Banner */}
-        <Card className="mb-8 rounded-2xl shadow-lg border-t-4 border-t-[#A9CF46] bg-gradient-to-br from-background via-background to-muted/10 p-8">
-          <CardContent className="p-0">
-            <div className="flex flex-col lg:flex-row items-start gap-8">
-              {/* Left Column - Avatar + Name + Meta */}
-              <div className="flex-none flex flex-col md:flex-row lg:flex-col items-center md:items-start lg:items-center gap-4">
-                <div className="flex-shrink-0">
-                  {profile.avatar_url ? (
-                    <img
-                      src={profile.avatar_url}
-                      alt={displayName}
-                      className="w-24 h-24 rounded-full object-cover ring-4 ring-primary/20"
-                    />
-                  ) : (
-                    <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center ring-4 ring-primary/20">
-                      <User className="w-12 h-12 text-primary" />
-                    </div>
-                  )}
-                </div>
-                <div className="text-center md:text-left lg:text-center">
-                  <h1 className="text-3xl md:text-4xl font-display font-bold tracking-tight mb-2" style={{ letterSpacing: '-0.02em' }}>
-                    {displayName}
-                  </h1>
-                  <div className="flex items-center justify-center md:justify-start lg:justify-center gap-1.5 mb-2">
-                    <Trophy className="w-3.5 h-3.5 text-primary" />
-                    <span className="text-sm font-medium text-foreground">{profile.current_rating.toFixed(2)} Rating</span>
-                  </div>
-                  {profile.courts && (
-                    <div className="flex items-center justify-center md:justify-start lg:justify-center gap-1.5 text-sm text-muted-foreground font-sans">
-                      <MapPin className="w-3.5 h-3.5" />
-                      <span>Home: {profile.courts.name}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Center Column - Compact Stats */}
-              <div className="flex-1 flex flex-col justify-center gap-6 w-full lg:pl-8">
-                <div className="flex flex-wrap justify-center lg:justify-start gap-8">
-                  <div className="text-center lg:text-left">
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1 font-sans">PULSE SCORE</p>
-                    <p className="text-4xl md:text-5xl font-display font-bold text-primary" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                      {profile.current_rating?.toFixed(2)}
-                    </p>
-                  </div>
-                  <div className="text-center lg:text-left">
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground mb-1 font-sans">MATCHES</p>
-                    <p className="text-2xl md:text-4xl font-display font-bold" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                      {profile.total_matches}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Right Column - Win Rate Dial */}
-              <div className="flex-none flex flex-col items-center gap-3">
-                <CircularProgressRing percentage={winRate} size={120} strokeWidth={10} />
-                <p className="text-xl font-display font-bold text-center" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                  {profile.wins}W - {profile.losses}L
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Performance & Gameplay Card */}
-        <h2 className="font-display text-sm uppercase tracking-wider text-muted-foreground mb-3">
-          PERFORMANCE & GAMEPLAY
-        </h2>
-        <Card className="mb-8 rounded-lg shadow-sm border-l-2 border-l-[#A9CF46] p-4 hover:shadow-md transition-shadow">
-          <CardContent className="p-0">
-            {/* Chip-based info display */}
-            <div className="flex flex-wrap gap-2 mb-4">
+        {/* Play Style Chips */}
+        {(profile.handedness || profile.play_side) && (
+          <div 
+            className="opacity-0 animate-fade-up"
+            style={{ animationDelay: '300ms', animationFillMode: 'forwards' }}
+          >
+            <h2 className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-3">
+              Play Style
+            </h2>
+            <div className="flex flex-wrap gap-2">
               {profile.handedness && (
-                <Badge variant="outline" className="gap-1.5 px-3 py-1.5 font-sans">
-                  <Hand className="w-3.5 h-3.5" />
-                  <span className="capitalize">{profile.handedness}</span>
-                </Badge>
+                <PlayStyleChip 
+                  icon={<Hand className="w-4 h-4" />}
+                  label={profile.handedness}
+                  description={`This player uses their ${profile.handedness.toLowerCase()} hand as their dominant hand for shots and serves.`}
+                />
               )}
               {profile.play_side && (
-                <Badge variant="outline" className="gap-1.5 px-3 py-1.5 font-sans">
-                  <Target className="w-3.5 h-3.5" />
-                  <span className="capitalize">{profile.play_side}-dominant</span>
-                </Badge>
+                <PlayStyleChip 
+                  icon={<Target className="w-4 h-4" />}
+                  label={`${profile.play_side}-dominant`}
+                  description={`This player typically plays on the ${profile.play_side.toLowerCase()} side of the court in doubles matches.`}
+                />
               )}
             </div>
-
-            {/* Paddle info */}
             {(profile.paddle_brand || profile.paddle_model) && (
-              <p className="text-sm text-muted-foreground font-sans mb-4">
+              <p className="text-xs text-muted-foreground mt-3">
                 Paddle: {profile.paddle_brand} {profile.paddle_model}
               </p>
             )}
-
-          </CardContent>
-        </Card>
+          </div>
+        )}
 
         {/* Highlights Strip */}
-        <div className="mb-8">
+        <div 
+          className="opacity-0 animate-fade-up"
+          style={{ animationDelay: '350ms', animationFillMode: 'forwards' }}
+        >
+          <h2 className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-3">
+            Key Highlights
+          </h2>
           <HighlightsStrip highlights={highlights} />
         </div>
 
         {/* Recent Activity */}
         {recentMatches.length > 0 && (
-          <>
-            <h2 className="font-display text-sm uppercase tracking-wider text-muted-foreground mb-3">
-              RECENT ACTIVITY
-              {getDaysSinceLastMatch() && (
-                <span className="font-sans normal-case"> · Last played {getDaysSinceLastMatch()} days ago</span>
-              )}
-            </h2>
+          <div 
+            className="opacity-0 animate-fade-up"
+            style={{ animationDelay: '450ms', animationFillMode: 'forwards' }}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+                Recent Activity
+              </h2>
+              <LastPlayedBadge days={getDaysSinceLastMatch()} />
+            </div>
             <RecentMatches matches={recentMatches} />
-          </>
+          </div>
         )}
+
+        {/* Bottom padding */}
+        <div className="h-4" />
       </div>
     </div>
   );
