@@ -1,10 +1,11 @@
 import { useRef } from 'react';
-import { FolderOpen, Upload, File, FileText, Image, Trash2, Download, ExternalLink } from 'lucide-react';
+import { FolderOpen, Upload, File, FileText, Image, Trash2, Download, ExternalLink, ImagePlus } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
+import { GroupEmptyState } from './GroupEmptyState';
 import { useGroupFiles, type GroupFile } from '@/hooks/useGroupFiles';
 import { cn } from '@/lib/utils';
 
@@ -75,15 +76,15 @@ export function GroupFiles({ groupId, isAdmin, currentUserId }: GroupFilesProps)
 
       {/* Files List */}
       {files.length === 0 ? (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-            <FolderOpen className="h-12 w-12 text-muted-foreground/50 mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No files uploaded</h3>
-            <p className="text-muted-foreground max-w-sm">
-              Share documents, images, or other files with the group.
-            </p>
-          </CardContent>
-        </Card>
+        <GroupEmptyState
+          icon={FolderOpen}
+          title="No files yet"
+          description="Share documents, images, or other files with the group."
+          actions={[
+            { label: 'Upload File', onClick: () => fileInputRef.current?.click(), icon: Upload },
+            { label: 'Add Photo', onClick: () => fileInputRef.current?.click(), variant: 'outline', icon: ImagePlus },
+          ]}
+        />
       ) : (
         <div className="space-y-2">
           {files.map((file) => {

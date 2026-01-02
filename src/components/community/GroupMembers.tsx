@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Users, Crown, Shield, MoreVertical, UserMinus, ShieldPlus, ShieldMinus, Ban, Check, X } from 'lucide-react';
+import { Users, Crown, Shield, MoreVertical, UserMinus, ShieldPlus, ShieldMinus, Ban, Check, X, UserPlus, Share2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
+import { GroupEmptyState } from './GroupEmptyState';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -212,15 +213,15 @@ export function GroupMembers({ groupId, isAdmin, isOwner, currentUserId }: Group
           {members.length} Members
         </h3>
         {members.length === 0 ? (
-          <Card className="border-dashed">
-            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-              <Users className="h-12 w-12 text-muted-foreground/50 mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No members yet</h3>
-              <p className="text-muted-foreground max-w-sm">
-                Share the invite code to grow your group.
-              </p>
-            </CardContent>
-          </Card>
+          <GroupEmptyState
+            icon={Users}
+            title="Just you for now"
+            description="Invite players to grow your group and start playing together!"
+            actions={[
+              { label: 'Invite Players', onClick: () => {}, icon: UserPlus },
+              { label: 'Share Link', onClick: () => {}, variant: 'outline', icon: Share2 },
+            ]}
+          />
         ) : (
           members.map(m => renderMemberCard(m))
         )}
