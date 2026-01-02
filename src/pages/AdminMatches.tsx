@@ -188,7 +188,7 @@ const AdminMatches = () => {
           round_number: match.round_number,
           event_court_number: match.event_court_number,
           match_type: match.match_type || "league",
-          rating_eligible: true,
+          rating_eligible: match.rating_eligible ?? true,
           verified_count: match.verified_by?.length || 0,
           created_by_name: match.profiles?.display_name || match.profiles?.full_name || "Unknown",
           players: playerNames,
