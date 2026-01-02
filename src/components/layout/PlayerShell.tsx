@@ -131,11 +131,11 @@ export function PlayerShell() {
                   'flex flex-col items-center gap-1 px-3 py-2 rounded-lg min-w-[60px]',
                   'transition-colors duration-[240ms] ease-out',
                   isActive 
-                    ? 'text-primary' 
+                    ? 'text-primary/80' 
                     : 'text-muted-foreground hover:text-foreground'
                 )}
               >
-                <item.icon className={cn('h-5 w-5 transition-colors duration-[240ms] ease-out', isActive && 'text-primary')} />
+                <item.icon className={cn('h-5 w-5 transition-colors duration-[240ms] ease-out', isActive && 'text-primary/80')} />
                 <span className="text-xs font-medium">{item.label}</span>
               </NavLink>
             );

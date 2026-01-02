@@ -89,45 +89,35 @@ export function GroupFeed({ groupId, isAdmin, currentUserId }: GroupFeedProps) {
 
   return (
     <div className="space-y-4">
-      {/* Quick Action Post Composer */}
-      <Card>
-        <CardContent className="pt-4 space-y-3">
-          <div className="flex gap-3">
-            <Avatar className="h-9 w-9 flex-shrink-0">
-              <AvatarFallback>U</AvatarFallback>
-            </Avatar>
+      {/* Compact Post Composer */}
+      <div className="bg-muted/30 rounded-lg p-3">
+        <div className="flex gap-2 items-start">
+          <Avatar className="h-8 w-8 flex-shrink-0">
+            <AvatarFallback className="text-xs">U</AvatarFallback>
+          </Avatar>
+          <div className="flex-1 relative">
             <Textarea
               placeholder="Post to the group..."
               value={newPostContent}
               onChange={(e) => setNewPostContent(e.target.value)}
-              className="min-h-[60px] resize-none flex-1"
+              className="min-h-[40px] resize-none pr-24 text-sm"
             />
-          </div>
-          
-          {/* Quick Action Buttons */}
-          <div className="flex items-center justify-between border-t pt-3">
-            <div className="flex items-center gap-1">
-              <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground h-8 px-2" disabled>
-                <Image className="h-4 w-4" />
-                <span className="hidden sm:inline text-xs">Photo</span>
+            <div className="absolute right-2 bottom-2 flex items-center gap-1">
+              <Button variant="ghost" size="icon" className="h-7 w-7" disabled>
+                <Image className="h-4 w-4 text-muted-foreground" />
               </Button>
-              <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground h-8 px-2" disabled>
-                <BarChart3 className="h-4 w-4" />
-                <span className="hidden sm:inline text-xs">Poll</span>
+              <Button 
+                onClick={handleCreatePost} 
+                disabled={!newPostContent.trim() || isPosting}
+                size="sm"
+                className="h-7 px-3 text-xs"
+              >
+                Post
               </Button>
             </div>
-            <Button 
-              onClick={handleCreatePost} 
-              disabled={!newPostContent.trim() || isPosting}
-              size="sm"
-              className="gap-1.5"
-            >
-              <Send className="h-4 w-4" />
-              Post
-            </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Posts List */}
       {posts.length === 0 ? (
