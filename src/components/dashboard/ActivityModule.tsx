@@ -10,8 +10,8 @@ import {
   Clock,
   Bell
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { MatchVerificationDialog } from "./MatchVerificationDialog";
 
 interface ActionItem {
   id: string;
@@ -19,6 +19,7 @@ interface ActionItem {
   title: string;
   description: string;
   link: string;
+  matchId?: string;
   urgency: "high" | "medium" | "low";
   timestamp?: string;
 }
@@ -42,6 +43,8 @@ export const ActivityModule = ({ userId }: ActivityModuleProps) => {
   const [alerts, setAlerts] = useState<ActionItem[]>([]);
   const [systemUpdates, setSystemUpdates] = useState<SystemUpdate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [verifyDialogOpen, setVerifyDialogOpen] = useState(false);
+  const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!userId) return;
@@ -81,7 +84,8 @@ export const ActivityModule = ({ userId }: ActivityModuleProps) => {
               type: "verify_match",
               title: "Verify Match Result",
               description: `${match.team1_score}-${match.team2_score} on ${format(new Date(match.match_date), "MMM d")}`,
-              link: `/match/confirmation/${match.id}`,
+              link: `/match/history`,
+              matchId: match.id,
               urgency: "high",
               timestamp: match.created_at,
             });
@@ -273,8 +277,29 @@ export const ActivityModule = ({ userId }: ActivityModuleProps) => {
     );
   }
 
+  const handleActionClick = (item: ActionItem) => {
+    if (item.type === "verify_match" && item.matchId) {
+      setSelectedMatchId(item.matchId);
+      setVerifyDialogOpen(true);
+    } else {
+      navigate(item.link);
+    }
+  };
+
+  const handleMatchVerified = (matchId: string) => {
+    setActionItems((prev) => prev.filter((item) => item.matchId !== matchId));
+  };
+
   return (
     <div className="space-y-5">
+      {/* Match Verification Dialog */}
+      <MatchVerificationDialog
+        matchId={selectedMatchId}
+        open={verifyDialogOpen}
+        onOpenChange={setVerifyDialogOpen}
+        onVerified={handleMatchVerified}
+      />
+
       {/* Action Required Section */}
       {actionItems.length > 0 && (
         <div>
@@ -289,7 +314,7 @@ export const ActivityModule = ({ userId }: ActivityModuleProps) => {
             {actionItems.map((item) => (
               <button
                 key={item.id}
-                onClick={() => navigate(item.link)}
+                onClick={() => handleActionClick(item)}
                 className="w-full flex items-center gap-3 p-3 rounded-xl bg-destructive/10 hover:bg-destructive/15 border border-destructive/30 transition-colors text-left"
               >
                 <div className="w-9 h-9 rounded-full bg-destructive/20 flex items-center justify-center flex-shrink-0">
