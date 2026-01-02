@@ -129,10 +129,10 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <nav className="sticky top-0 z-50 border-b bg-secondary/95 backdrop-blur-sm">
-        <div className="container mx-auto px-3 sm:px-4 py-3 sm:py-4 flex items-center justify-between">
+      <nav className="sticky top-0 z-50 bg-secondary/95 backdrop-blur-sm border-b border-secondary-foreground/10 shadow-sm">
+        <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-5 flex items-center justify-between h-[72px]">
           <Link to="/">
-            <img src={logo} alt="PULSE Logo" className="h-[67px] sm:h-[90px] w-auto cursor-pointer hover:opacity-80 transition-opacity" />
+            <img src={logo} alt="PULSE Logo" className="h-[60px] sm:h-[75px] w-auto cursor-pointer hover:opacity-80 transition-opacity" />
           </Link>
           <div className="flex items-center gap-1.5 sm:gap-2">
             <ThemeToggle />

@@ -241,9 +241,9 @@ const TournamentLiveView = () => {
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       <nav className="border-b border-slate-800 bg-slate-900">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+        <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-5 flex items-center justify-between h-[72px]">
           <Link to={`/tournament/${eventId}/live`}>
-            <img src={logo} alt="PULSE Logo" className="h-[90px] w-auto cursor-pointer hover:opacity-80 transition-opacity" />
+            <img src={logo} alt="PULSE Logo" className="h-[60px] sm:h-[75px] w-auto cursor-pointer hover:opacity-80 transition-opacity" />
           </Link>
           <ThemeToggle />
         </div>
