@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -12,6 +12,7 @@ import { AnimatedStatChip } from "@/components/profile/AnimatedStatChip";
 import { LastPlayedBadge } from "@/components/profile/LastPlayedBadge";
 import { PlayStyleChip } from "@/components/profile/PlayStyleChip";
 import { cn } from "@/lib/utils";
+import logo from "@/assets/pulse-logo-new.png";
 
 interface Profile {
   id: string;
@@ -248,24 +249,21 @@ const ViewProfile = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Premium Sticky Header */}
-      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b border-border/50">
-        <div className="flex items-center justify-between px-4 h-14">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={() => navigate(-1)} 
-            className="gap-1.5 -ml-2 text-muted-foreground hover:text-foreground active:scale-95 transition-all"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span className="hidden sm:inline">Back</span>
-          </Button>
-          <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground/50 font-medium">
-            Profile
-          </span>
-          <ThemeToggle />
+      {/* PULSE Header */}
+      <nav className="bg-secondary border-b border-secondary-foreground/10 shadow-sm">
+        <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-5 flex items-center justify-between h-[72px]">
+          <Link to="/dashboard">
+            <img src={logo} alt="PULSE Logo" className="h-[60px] sm:h-[75px] w-auto cursor-pointer hover:opacity-80 transition-opacity" />
+          </Link>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="text-white hover:text-white/90 hover:bg-white/10 font-sans font-medium h-[38px]">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back
+            </Button>
+          </div>
         </div>
-      </header>
+      </nav>
 
       <div className="px-4 py-6 max-w-lg mx-auto space-y-6">
         {/* Premium Hero Card */}
