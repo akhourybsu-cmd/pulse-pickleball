@@ -20,82 +20,108 @@ export const RecentMatches = ({ matches }: RecentMatchesProps) => {
   if (matches.length === 0) return null;
 
   return (
-    <div>
-      {/* Last 10 Results Strip */}
-      <div className="flex gap-1.5 mb-4">
-        {matches.map((match, i) => (
-          <div 
-            key={i}
-            className={cn(
-              "w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold font-sans",
-              match.status === 'pending' 
-                ? "bg-muted text-muted-foreground opacity-50 border-2 border-dashed border-muted-foreground"
-                : match.result === 'W' 
-                  ? "bg-[#A9CF46] text-[#1a3a1f]" 
-                  : "bg-destructive text-destructive-foreground"
-            )}
-          >
-            {match.status === 'pending' ? '?' : match.result}
-          </div>
-        ))}
+    <div className="space-y-4">
+      {/* W/L Results Strip - Horizontal scrollable */}
+      <div className="overflow-x-auto scrollbar-hide">
+        <div className="flex gap-2 pb-1 snap-x snap-mandatory">
+          {matches.map((match, i) => (
+            <div 
+              key={i}
+              className={cn(
+                "flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center",
+                "text-xs font-bold font-display snap-center",
+                "transition-transform duration-200 hover:scale-110",
+                match.status === 'pending' 
+                  ? "bg-muted/50 text-muted-foreground border border-dashed border-muted-foreground/50"
+                  : match.result === 'W' 
+                    ? "bg-primary text-primary-foreground shadow-sm" 
+                    : "bg-destructive text-destructive-foreground shadow-sm"
+              )}
+            >
+              {match.status === 'pending' ? '–' : match.result}
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* Match Cards */}
+      {/* Premium Match Cards */}
       <ScrollArea className="w-full whitespace-nowrap">
-        <div className="flex gap-3">
-          {matches.map((match) => (
+        <div className="flex gap-3 pb-2">
+          {matches.map((match, index) => (
             <div
               key={match.id}
               className={cn(
-                "relative flex-shrink-0 w-[200px] p-4 pt-5 rounded-lg border bg-card transition-all duration-200",
-                "hover:shadow-lg hover:scale-105",
-                match.status === 'pending'
-                  ? "opacity-60 border-2 border-dashed border-muted-foreground"
-                  : match.result === 'W' 
-                    ? "border-l-4 border-l-[#A9CF46]" 
-                    : "border-l-4 border-l-destructive"
+                "relative flex-shrink-0 w-[220px] rounded-xl border bg-card",
+                "transition-all duration-200 ease-out",
+                "hover:shadow-lg hover:scale-[1.02] hover:-translate-y-0.5",
+                "active:scale-[0.98]",
+                "opacity-0 animate-fade-up",
+                match.status === 'pending' && "opacity-60"
               )}
+              style={{ 
+                animationDelay: `${index * 50}ms`,
+                animationFillMode: 'forwards'
+              }}
             >
-              {/* W/L Badge in corner */}
-              {match.status === 'pending' ? (
-                <div className="absolute -top-2 -left-2 px-2 py-1 rounded bg-muted text-muted-foreground text-xs font-semibold font-sans border border-muted-foreground">
-                  PENDING
+              {/* Top row with result indicator */}
+              <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-border/30">
+                <div className="flex items-center gap-2">
+                  {/* Result dot */}
+                  <div 
+                    className={cn(
+                      "w-2.5 h-2.5 rounded-full",
+                      match.status === 'pending'
+                        ? "bg-muted-foreground/50"
+                        : match.result === 'W'
+                          ? "bg-primary"
+                          : "bg-destructive"
+                    )}
+                  />
+                  <span className={cn(
+                    "text-sm font-display font-bold",
+                    match.status === 'pending' && "text-muted-foreground"
+                  )}>
+                    {match.status === 'pending' ? 'Pending' : match.result === 'W' ? 'Victory' : 'Defeat'}
+                  </span>
                 </div>
-              ) : (
-                <div className={cn(
-                  "absolute -top-2 -left-2 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold font-display shadow-md",
-                  match.result === 'W' 
-                    ? "bg-[#A9CF46] text-[#1a3a1f]" 
-                    : "bg-destructive text-destructive-foreground"
-                )}>
-                  {match.result}
-                </div>
-              )}
+                <span 
+                  className="text-lg font-display font-bold"
+                  style={{ fontVariantNumeric: 'tabular-nums' }}
+                >
+                  {match.score}
+                </span>
+              </div>
 
-              <div className="space-y-1.5 mb-2">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-medium font-sans text-muted-foreground uppercase tracking-wide">
-                    Team {match.user_team}
-                  </span>
+              {/* Teams info */}
+              <div className="px-4 py-3 space-y-2">
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">
+                    Your Team
+                  </p>
+                  <p className="text-xs font-medium text-foreground truncate">
+                    {match.user_team === 1 ? match.team1_players.join(' & ') : match.team2_players.join(' & ')}
+                  </p>
                 </div>
-                <p className="text-xs font-sans text-foreground">
-                  {match.user_team === 1 ? match.team1_players.join(', ') : match.team2_players.join(', ')}
-                </p>
-                <div className="flex items-center gap-1.5 mt-2">
-                  <span className="text-xs font-medium font-sans text-muted-foreground uppercase tracking-wide">
-                    vs Team {match.user_team === 1 ? 2 : 1}
-                  </span>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">
+                    Opponents
+                  </p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {match.user_team === 1 ? match.team2_players.join(' & ') : match.team1_players.join(' & ')}
+                  </p>
                 </div>
-                <p className="text-xs font-sans text-foreground">
-                  {match.user_team === 1 ? match.team2_players.join(', ') : match.team1_players.join(', ')}
+              </div>
+
+              {/* Date footer */}
+              <div className="px-4 pb-3">
+                <p className="text-[10px] text-muted-foreground/70">
+                  {new Date(match.date).toLocaleDateString('en-US', { 
+                    month: 'short', 
+                    day: 'numeric',
+                    year: 'numeric'
+                  })}
                 </p>
               </div>
-              <p className="text-xs text-muted-foreground font-sans mb-2" style={{ fontVariantNumeric: 'tabular-nums' }}>
-                {match.score}
-              </p>
-              <p className="text-xs text-muted-foreground font-sans">
-                {new Date(match.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-              </p>
             </div>
           ))}
         </div>
