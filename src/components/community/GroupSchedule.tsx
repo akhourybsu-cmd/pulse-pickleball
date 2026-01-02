@@ -4,22 +4,10 @@ import { format } from 'date-fns';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { GroupEmptyState } from './GroupEmptyState';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { useGroupEvents, type GroupEvent } from '@/hooks/useGroupEvents';
-import { cn } from '@/lib/utils';
+import { EventWizardContainer } from './event-wizard/EventWizardContainer';
+import { useGroupEvents } from '@/hooks/useGroupEvents';
 
 interface GroupScheduleProps {
   groupId: string;
@@ -28,52 +16,8 @@ interface GroupScheduleProps {
 }
 
 export function GroupSchedule({ groupId, isAdmin, currentUserId }: GroupScheduleProps) {
-  const { events, loading, createEvent, deleteEvent, updateRsvp } = useGroupEvents(groupId);
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [isCreating, setIsCreating] = useState(false);
-  
-  // Form state
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [startTime, setStartTime] = useState('');
-  const [endTime, setEndTime] = useState('');
-  const [location, setLocation] = useState('');
-  const [capacity, setCapacity] = useState('');
-
-  const resetForm = () => {
-    setTitle('');
-    setDescription('');
-    setStartDate('');
-    setStartTime('');
-    setEndTime('');
-    setLocation('');
-    setCapacity('');
-  };
-
-  const handleCreate = async () => {
-    if (!title.trim() || !startDate || !startTime) return;
-
-    setIsCreating(true);
-    const startDateTime = new Date(`${startDate}T${startTime}`).toISOString();
-    const endDateTime = endTime ? new Date(`${startDate}T${endTime}`).toISOString() : undefined;
-
-    const result = await createEvent({
-      title: title.trim(),
-      description: description.trim() || undefined,
-      start_time: startDateTime,
-      end_time: endDateTime,
-      location_type: 'custom',
-      custom_location: location.trim() || undefined,
-      capacity: capacity ? parseInt(capacity) : undefined,
-    });
-
-    if (result) {
-      setCreateDialogOpen(false);
-      resetForm();
-    }
-    setIsCreating(false);
-  };
+  const { events, loading, deleteEvent, updateRsvp } = useGroupEvents(groupId);
+  const [wizardOpen, setWizardOpen] = useState(false);
 
   if (loading) {
     return (
@@ -87,21 +31,29 @@ export function GroupSchedule({ groupId, isAdmin, currentUserId }: GroupSchedule
 
   return (
     <div className="space-y-4">
-      {/* Create Event Button */}
-      <Button onClick={() => setCreateDialogOpen(true)} className="w-full gap-2">
-        <Plus className="h-4 w-4" />
-        Create Event
-      </Button>
+      {/* Create Event Wizard or Button */}
+      {wizardOpen ? (
+        <EventWizardContainer
+          groupId={groupId}
+          onClose={() => setWizardOpen(false)}
+          onSuccess={() => setWizardOpen(false)}
+        />
+      ) : (
+        <Button onClick={() => setWizardOpen(true)} className="w-full gap-2">
+          <Plus className="h-4 w-4" />
+          Create Event
+        </Button>
+      )}
 
       {/* Events List */}
-      {events.length === 0 ? (
+      {events.length === 0 && !wizardOpen ? (
         <GroupEmptyState
           icon={Calendar}
           title="No upcoming events"
           description="Schedule a session, round robin, or open play for the group."
           actions={[
-            { label: 'Create Event', onClick: () => setCreateDialogOpen(true), icon: Plus },
-            { label: 'Round Robin', onClick: () => setCreateDialogOpen(true), variant: 'outline', icon: Sparkles },
+            { label: 'Create Event', onClick: () => setWizardOpen(true), icon: Plus },
+            { label: 'Round Robin', onClick: () => setWizardOpen(true), variant: 'outline', icon: Sparkles },
           ]}
         />
       ) : (
@@ -212,106 +164,6 @@ export function GroupSchedule({ groupId, isAdmin, currentUserId }: GroupSchedule
           );
         })
       )}
-
-      {/* Create Event Dialog */}
-      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Create Event</DialogTitle>
-            <DialogDescription>
-              Schedule a new event for the group
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="title">Event Title *</Label>
-              <Input
-                id="title"
-                placeholder="e.g., Friday Night Open Play"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea
-                id="description"
-                placeholder="What's this event about?"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="resize-none"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="date">Date *</Label>
-                <Input
-                  id="date"
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="startTime">Start Time *</Label>
-                <Input
-                  id="startTime"
-                  type="time"
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="endTime">End Time</Label>
-                <Input
-                  id="endTime"
-                  type="time"
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="capacity">Max Capacity</Label>
-                <Input
-                  id="capacity"
-                  type="number"
-                  placeholder="Unlimited"
-                  value={capacity}
-                  onChange={(e) => setCapacity(e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="location">Location</Label>
-              <Input
-                id="location"
-                placeholder="Where is this happening?"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleCreate}
-              disabled={!title.trim() || !startDate || !startTime || isCreating}
-            >
-              {isCreating ? 'Creating...' : 'Create Event'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
