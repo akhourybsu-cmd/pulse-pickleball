@@ -3,10 +3,14 @@ import { Users, Lock, Globe, Eye, Crown, Shield, ChevronRight } from 'lucide-rea
 import { cn } from '@/lib/utils';
 import { Card, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import type { GroupWithMembership } from '@/hooks/useGroups';
 
 interface GroupCardProps {
   group: GroupWithMembership;
+  showJoinButton?: boolean;
+  onJoin?: (groupId: string) => Promise<void>;
+  isJoining?: boolean;
 }
 
 const typeLabels: Record<string, string> = {
@@ -25,8 +29,9 @@ const typeColors: Record<string, string> = {
   tournament: 'bg-red-500/10 text-red-600 dark:text-red-400',
 };
 
-export function GroupCard({ group }: GroupCardProps) {
+export function GroupCard({ group, showJoinButton, onJoin, isJoining }: GroupCardProps) {
   const navigate = useNavigate();
+  const isMember = !!group.membership;
   
   const roleIcon = group.membership?.role === 'owner' 
     ? <Crown className="h-3 w-3" />
@@ -117,6 +122,20 @@ export function GroupCard({ group }: GroupCardProps) {
               <Badge className="bg-primary text-primary-foreground text-xs px-2 min-w-[20px] justify-center">
                 {group.unread_count > 99 ? '99+' : group.unread_count}
               </Badge>
+            )}
+            {/* Join button for non-members */}
+            {showJoinButton && !isMember && onJoin && (
+              <Button
+                size="sm"
+                variant="default"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onJoin(group.id);
+                }}
+                disabled={isJoining}
+              >
+                {isJoining ? 'Joining...' : group.join_method === 'request_to_join' ? 'Request' : 'Join'}
+              </Button>
             )}
             <ChevronRight className="h-5 w-5 text-muted-foreground" />
           </div>

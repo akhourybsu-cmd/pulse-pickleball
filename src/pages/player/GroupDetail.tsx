@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Settings, Users, MessageSquare, Calendar, FolderOpen, Gamepad2, Lock, Globe, Eye, Crown, Shield, Copy, Check } from 'lucide-react';
+import { ArrowLeft, Settings, Users, MessageSquare, MessageCircle, Calendar, FolderOpen, Gamepad2, Lock, Globe, Eye, Crown, Shield, Copy, Check } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -15,6 +15,7 @@ import { GroupSchedule } from '@/components/community/GroupSchedule';
 import { GroupLFG } from '@/components/community/GroupLFG';
 import { GroupFiles } from '@/components/community/GroupFiles';
 import { GroupMembers } from '@/components/community/GroupMembers';
+import { GroupChat } from '@/components/community/GroupChat';
 
 export default function GroupDetail() {
   const { groupId } = useParams<{ groupId: string }>();
@@ -219,10 +220,14 @@ export default function GroupDetail() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="feed" className="gap-1.5">
             <MessageSquare className="h-4 w-4" />
             <span className="hidden sm:inline">Feed</span>
+          </TabsTrigger>
+          <TabsTrigger value="chat" className="gap-1.5">
+            <MessageCircle className="h-4 w-4" />
+            <span className="hidden sm:inline">Chat</span>
           </TabsTrigger>
           <TabsTrigger value="schedule" className="gap-1.5">
             <Calendar className="h-4 w-4" />
@@ -245,6 +250,11 @@ export default function GroupDetail() {
         {/* Feed Tab */}
         <TabsContent value="feed" className="mt-6">
           <GroupFeed groupId={groupId!} isAdmin={isAdmin} currentUserId={currentUserId} />
+        </TabsContent>
+
+        {/* Chat Tab */}
+        <TabsContent value="chat" className="mt-6">
+          <GroupChat groupId={groupId!} currentUserId={currentUserId} />
         </TabsContent>
 
         {/* Schedule Tab */}

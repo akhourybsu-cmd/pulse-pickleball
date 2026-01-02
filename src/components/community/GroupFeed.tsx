@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { MessageSquare, Pin, Trash2, MoreVertical, ThumbsUp, Heart, Sparkles, Send, Image } from 'lucide-react';
+import { PostCommentsSheet } from './PostCommentsSheet';
 import { formatDistanceToNow } from 'date-fns';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -52,6 +53,7 @@ export function GroupFeed({ groupId, isAdmin, currentUserId }: GroupFeedProps) {
   const [newPostContent, setNewPostContent] = useState('');
   const [isPosting, setIsPosting] = useState(false);
   const [deleteDialogPost, setDeleteDialogPost] = useState<GroupPost | null>(null);
+  const [commentsPostId, setCommentsPostId] = useState<string | null>(null);
 
   const handleCreatePost = async () => {
     if (!newPostContent.trim()) return;
@@ -241,7 +243,12 @@ export function GroupFeed({ groupId, isAdmin, currentUserId }: GroupFeedProps) {
                   })}
                 </div>
 
-                <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="gap-1 text-muted-foreground"
+                  onClick={() => setCommentsPostId(post.id)}
+                >
                   <MessageSquare className="h-4 w-4" />
                   {post.comment_count || 0}
                 </Button>
@@ -271,6 +278,15 @@ export function GroupFeed({ groupId, isAdmin, currentUserId }: GroupFeedProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Comments Sheet */}
+      <PostCommentsSheet
+        open={!!commentsPostId}
+        onOpenChange={(open) => !open && setCommentsPostId(null)}
+        postId={commentsPostId || ''}
+        currentUserId={currentUserId}
+        isAdmin={isAdmin}
+      />
     </div>
   );
 }
