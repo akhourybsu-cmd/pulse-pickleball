@@ -64,8 +64,6 @@ export const CircularProgressRing = ({
     };
   }, [percentage]);
 
-  const gradientId = `ring-gradient-${size}`;
-
   return (
     <div 
       className={cn(
@@ -73,7 +71,7 @@ export const CircularProgressRing = ({
         className
       )}
       style={{
-        filter: 'drop-shadow(0 3px 12px hsl(var(--primary) / 0.3))'
+        filter: 'drop-shadow(0 2px 8px hsl(var(--primary) / 0.25))'
       }}
     >
       <svg 
@@ -81,13 +79,6 @@ export const CircularProgressRing = ({
         height={size} 
         className="transform -rotate-90"
       >
-        <defs>
-          <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="hsl(var(--primary))" />
-            <stop offset="50%" stopColor="hsl(var(--primary) / 0.8)" />
-            <stop offset="100%" stopColor="hsl(174 60% 50%)" />
-          </linearGradient>
-        </defs>
         {/* Background track */}
         <circle
           cx={size / 2}
@@ -96,15 +87,15 @@ export const CircularProgressRing = ({
           fill="none"
           stroke="hsl(var(--muted))"
           strokeWidth={strokeWidth}
-          className="opacity-40"
+          className="opacity-50"
         />
-        {/* Progress arc with gradient */}
+        {/* Progress arc */}
         <circle
           cx={size / 2}
           cy={size / 2}
           r={radius}
           fill="none"
-          stroke={`url(#${gradientId})`}
+          stroke="hsl(var(--primary))"
           strokeWidth={strokeWidth}
           strokeDasharray={circumference}
           strokeDashoffset={offset}
@@ -115,12 +106,12 @@ export const CircularProgressRing = ({
       {showLabel && (
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span 
-            className="text-base font-display font-bold"
+            className="text-lg font-display font-bold"
             style={{ fontVariantNumeric: 'tabular-nums' }}
           >
             {displayValue}{labelSuffix}
           </span>
-          <span className="text-[8px] uppercase tracking-wider text-muted-foreground font-medium">
+          <span className="text-[9px] uppercase tracking-wider text-muted-foreground">
             Win Rate
           </span>
         </div>

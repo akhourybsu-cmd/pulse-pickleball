@@ -3,7 +3,7 @@ import { useNavigate, useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { ArrowLeft, User, MapPin, Hand, Target, Flame, Hash, Trophy } from "lucide-react";
+import { ArrowLeft, User, MapPin, Hand, Target, Flame, Hash } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { CircularProgressRing } from "@/components/profile/CircularProgressRing";
 import { RecentMatches } from "@/components/profile/RecentMatches";
@@ -45,6 +45,7 @@ interface RecentMatch {
   date: string;
   status?: string;
 }
+
 
 const ViewProfile = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -248,131 +249,118 @@ const ViewProfile = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Premium Sticky Header */}
-      <nav className="sticky top-0 z-50 bg-secondary border-b border-secondary-foreground/10 shadow-sm backdrop-blur-sm">
-        <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 flex items-center justify-between h-[72px]">
-          <Link to="/dashboard" className="flex-shrink-0">
-            <img 
-              src={logo} 
-              alt="PULSE Logo" 
-              className="h-10 sm:h-12 w-auto cursor-pointer hover:opacity-80 transition-opacity" 
-            />
+      {/* PULSE Header */}
+      <nav className="bg-secondary border-b border-secondary-foreground/10 shadow-sm">
+        <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-5 flex items-center justify-between h-[72px]">
+          <Link to="/dashboard">
+            <img src={logo} alt="PULSE Logo" className="h-[60px] sm:h-[75px] w-auto cursor-pointer hover:opacity-80 transition-opacity" />
           </Link>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
             <ThemeToggle />
-            <Button 
-              variant="ghost" 
-              size="icon"
-              onClick={() => navigate(-1)} 
-              className="text-white hover:text-white/90 hover:bg-white/10 active:scale-[0.97] active:opacity-80 transition-all duration-150"
-            >
-              <ArrowLeft className="w-5 h-5" />
+            <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="text-white hover:text-white/90 hover:bg-white/10 font-sans font-medium h-[38px]">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back
             </Button>
           </div>
         </div>
       </nav>
 
-      <div className="px-4 py-5 max-w-lg mx-auto space-y-5">
-        {/* Premium Hero Card - Player Trading Card Feel */}
+      <div className="px-4 py-6 max-w-lg mx-auto space-y-6">
+        {/* Premium Hero Card */}
         <div 
           className={cn(
-            "rounded-2xl border border-border/40 overflow-hidden",
-            "bg-gradient-to-br from-card via-card to-muted/20",
-            "dark:from-card dark:via-card/95 dark:to-primary/5",
-            "shadow-xl dark:shadow-[0_0_50px_hsl(var(--primary)/0.1)]",
-            "opacity-0 animate-hero-enter"
+            "rounded-2xl border border-border/50 overflow-hidden",
+            "bg-gradient-to-br from-card via-card to-muted/10",
+            "dark:from-card dark:via-card dark:to-primary/5",
+            "shadow-xl dark:shadow-[0_0_40px_hsl(var(--primary)/0.08)]",
+            "opacity-0 animate-fade-up"
           )}
           style={{ animationDelay: '0ms', animationFillMode: 'forwards' }}
         >
-          {/* Top section - compact and premium */}
-          <div className="p-4 pb-3">
-            <div className="flex items-start gap-3">
-              {/* Avatar with gradient ring */}
+          {/* Top section with avatar, name, and ring */}
+          <div className="p-5 pb-4">
+            <div className="flex items-start gap-4">
+              {/* Avatar */}
               <div 
-                className="flex-shrink-0 relative opacity-0 animate-scale-fade-in"
-                style={{ animationDelay: '80ms', animationFillMode: 'forwards' }}
+                className="flex-shrink-0 opacity-0 animate-scale-fade-in"
+                style={{ animationDelay: '100ms', animationFillMode: 'forwards' }}
               >
-                <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary via-primary/60 to-teal-400 p-[3px]">
-                  <div className="w-full h-full rounded-full bg-background" />
-                </div>
                 {profile.avatar_url ? (
                   <img
                     src={profile.avatar_url}
                     alt={displayName}
-                    className="relative w-[72px] h-[72px] rounded-full object-cover ring-[3px] ring-transparent"
-                    style={{ 
-                      background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.6), hsl(174 60% 50%)) border-box',
-                      border: '3px solid transparent',
-                      backgroundClip: 'padding-box'
-                    }}
+                    className="w-20 h-20 rounded-full object-cover ring-2 ring-offset-2 ring-offset-background ring-primary/60"
                   />
                 ) : (
-                  <div className="relative w-[72px] h-[72px] rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border-[3px] border-primary/40">
-                    <User className="w-8 h-8 text-primary" />
+                  <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center ring-2 ring-offset-2 ring-offset-background ring-primary/60">
+                    <User className="w-10 h-10 text-primary" />
                   </div>
                 )}
               </div>
 
-              {/* Name, rating pill, and location */}
+              {/* Name and meta */}
               <div 
-                className="flex-1 min-w-0 pt-1 opacity-0 animate-fade-up"
-                style={{ animationDelay: '120ms', animationFillMode: 'forwards' }}
+                className="flex-1 min-w-0 opacity-0 animate-fade-up"
+                style={{ animationDelay: '150ms', animationFillMode: 'forwards' }}
               >
-                <h1 className="text-xl font-display font-bold tracking-tight truncate mb-1.5">
+                <h1 className="text-2xl font-display font-bold tracking-tight truncate mb-1">
                   {displayName}
                 </h1>
                 
-                {/* Compact rating pill */}
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/15 dark:bg-primary/20 text-primary text-sm font-semibold mb-2 shadow-sm">
-                  <Trophy className="w-3.5 h-3.5" />
+                {/* Single rating pill */}
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mb-2">
+                  <span>⭐</span>
                   <span style={{ fontVariantNumeric: 'tabular-nums' }}>
                     {profile.current_rating.toFixed(2)}
                   </span>
+                  <span className="text-primary/70 text-xs">Rating</span>
                 </div>
 
                 {/* Home court */}
                 {profile.courts && (
-                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <MapPin className="w-3 h-3 flex-shrink-0" />
+                  <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                    <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
                     <span className="truncate">{profile.courts.name}</span>
                   </div>
                 )}
               </div>
 
-              {/* Win Rate Ring - Smaller & Premium */}
+              {/* Win Rate Ring */}
               <div 
-                className="flex-shrink-0 opacity-0 animate-stat-pop"
+                className="flex-shrink-0 opacity-0 animate-scale-fade-in"
                 style={{ animationDelay: '200ms', animationFillMode: 'forwards' }}
               >
-                <CircularProgressRing 
-                  percentage={winRate} 
-                  size={72} 
-                  strokeWidth={7} 
-                />
+                <CircularProgressRing percentage={winRate} size={90} strokeWidth={8} />
               </div>
             </div>
           </div>
 
-          {/* Stats Row - 3 columns (removed redundant Rating) */}
-          <div className="px-4 pb-4">
-            <div className="grid grid-cols-3 gap-2">
+          {/* Stats Grid */}
+          <div className="px-5 pb-5">
+            <div className="grid grid-cols-4 gap-2">
+              <AnimatedStatChip 
+                label="Rating" 
+                value={profile.current_rating} 
+                decimals={2}
+                isPrimary 
+                delay={250}
+              />
               <AnimatedStatChip 
                 label="Matches" 
-                value={profile.total_matches}
-                isPrimary
-                delay={240}
+                value={profile.total_matches} 
+                delay={300}
               />
               <AnimatedStatChip 
                 label="Win %" 
                 value={winRate} 
                 suffix="%" 
                 decimals={0}
-                delay={280}
+                delay={350}
               />
               <AnimatedStatChip 
                 label="Record" 
                 value={`${profile.wins}-${profile.losses}`} 
-                delay={320}
+                delay={400}
               />
             </div>
           </div>
