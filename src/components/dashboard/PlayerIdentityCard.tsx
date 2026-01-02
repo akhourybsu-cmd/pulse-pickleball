@@ -59,12 +59,12 @@ export const PlayerIdentityCard = ({
         <div className="flex items-start gap-3 sm:gap-4 min-w-0 flex-1">
           {/* Avatar */}
           <Avatar 
-            className="h-16 w-16 sm:h-[72px] sm:w-[72px] ring-2 ring-primary/60 shadow-lg cursor-pointer hover:ring-primary transition-all opacity-0 animate-scale-in flex-shrink-0"
+            className="h-14 w-14 min-[360px]:h-16 min-[360px]:w-16 sm:h-[72px] sm:w-[72px] ring-2 ring-primary/60 shadow-lg cursor-pointer hover:ring-primary transition-all opacity-0 animate-scale-in flex-shrink-0"
             style={{ animationDelay: '80ms', animationFillMode: 'forwards' }}
             onClick={() => navigate(`/profile/${userId}`)}
           >
             <AvatarImage src={avatarUrl || undefined} alt={name} />
-            <AvatarFallback className="text-lg sm:text-xl font-bold bg-primary/20 text-primary">
+            <AvatarFallback className="text-base min-[360px]:text-lg sm:text-xl font-bold bg-primary/20 text-primary">
               {initials}
             </AvatarFallback>
           </Avatar>
@@ -82,7 +82,7 @@ export const PlayerIdentityCard = ({
             </h2>
             
             {/* Rating Pill */}
-            <div className="inline-flex items-center gap-1.5 bg-primary/10 text-primary rounded-full px-2.5 py-1 w-fit hover:bg-primary/15 transition-colors cursor-default">
+            <div className="inline-flex items-center gap-1.5 bg-primary/10 text-primary rounded-full px-2.5 py-1 w-fit hover:bg-primary/15 hover:scale-[0.98] active:scale-[0.96] transition-all cursor-default">
               <Star className="h-3.5 w-3.5 fill-primary" />
               <span className="text-sm font-semibold">
                 {hasRating ? `${currentRating.toFixed(2)} Rating` : "No Rating"}
@@ -109,15 +109,27 @@ export const PlayerIdentityCard = ({
         
         {/* Right: Win Rate Ring */}
         <div 
-          className="flex-shrink-0 opacity-0 animate-scale-in"
+          className="flex-shrink-0 opacity-0 animate-scale-in hidden min-[360px]:block"
           style={{ animationDelay: '160ms', animationFillMode: 'forwards' }}
         >
           <CircularProgressRing 
             percentage={winRate} 
-            size={72} 
-            strokeWidth={6}
+            size={60} 
+            strokeWidth={5}
           />
         </div>
+      </div>
+      
+      {/* Win Rate Ring - Stacked on very narrow screens */}
+      <div 
+        className="flex justify-end mt-2 opacity-0 animate-scale-in min-[360px]:hidden"
+        style={{ animationDelay: '160ms', animationFillMode: 'forwards' }}
+      >
+        <CircularProgressRing 
+          percentage={winRate} 
+          size={56} 
+          strokeWidth={5}
+        />
       </div>
       
       {/* Subtle Divider */}
