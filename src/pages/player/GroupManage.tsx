@@ -33,6 +33,7 @@ export default function GroupManage() {
   const [type, setType] = useState<GroupType>('crew');
   const [visibility, setVisibility] = useState<Group['visibility']>('unlisted');
   const [joinMethod, setJoinMethod] = useState<Group['join_method']>('open');
+  const [iconUrl, setIconUrl] = useState<string | null>(null);
   
   // Hooks
   const { settings, saving: savingSettings, updateSetting } = useGroupSettings(groupId);
@@ -87,6 +88,7 @@ export default function GroupManage() {
       setType((groupData.type as GroupType) || 'crew');
       setVisibility(groupData.visibility);
       setJoinMethod(groupData.join_method);
+      setIconUrl(groupData.icon_url);
     } catch (error) {
       console.error('Error fetching group:', error);
       toast({ title: 'Error', description: 'Failed to load group settings', variant: 'destructive' });
@@ -306,9 +308,12 @@ export default function GroupManage() {
             name={name}
             description={description}
             type={type}
+            groupId={groupId!}
+            iconUrl={iconUrl}
             onNameChange={setName}
             onDescriptionChange={setDescription}
             onTypeChange={setType}
+            onIconUrlChange={setIconUrl}
           />
         </TabsContent>
 
