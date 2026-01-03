@@ -49,6 +49,7 @@ const Auth = () => {
     const saved = localStorage.getItem('pulse_persist_session');
     return saved === null ? true : saved === 'true';
   });
+  const [tosAccepted, setTosAccepted] = useState(false);
   const navigate = useNavigate();
 
   const handleAuth = async (e: React.FormEvent) => {
@@ -86,6 +87,12 @@ const Auth = () => {
 
         if (!selectedState) {
           toast.error("Please select your state");
+          setLoading(false);
+          return;
+        }
+
+        if (!tosAccepted) {
+          toast.error("Please accept the Terms of Service and Privacy Policy");
           setLoading(false);
           return;
         }
@@ -438,6 +445,43 @@ const Auth = () => {
                     {confirmPassword && password !== confirmPassword && (
                       <p className="text-xs text-red-500">Passwords must match</p>
                     )}
+                  </div>
+                )}
+
+                {!isLogin && (
+                  <div className="flex items-start space-x-2 pt-2">
+                    <Checkbox 
+                      id="tosAccepted" 
+                      checked={tosAccepted}
+                      onCheckedChange={(checked) => setTosAccepted(checked as boolean)}
+                      disabled={loading}
+                      className="mt-0.5"
+                    />
+                    <Label 
+                      htmlFor="tosAccepted" 
+                      className="text-sm font-normal leading-relaxed cursor-pointer"
+                    >
+                      I agree to the{" "}
+                      <a 
+                        href="/changelog?tab=legal&section=terms" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        Terms of Service
+                      </a>
+                      {" "}and{" "}
+                      <a 
+                        href="/changelog?tab=legal&section=privacy" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        Privacy Policy
+                      </a>
+                    </Label>
                   </div>
                 )}
 
