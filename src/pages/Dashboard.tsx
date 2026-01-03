@@ -10,7 +10,8 @@ import { Footer } from "@/components/Footer";
 import { OnboardingTutorial } from "@/components/OnboardingTutorial";
 import { SmartMatch } from "@/components/court/SmartMatch";
 import { LFGNotifications } from "@/components/court/LFGNotifications";
-import { NotificationDrawer, Notification } from "@/components/NotificationDrawer";
+import { NotificationCenter } from "@/components/notifications/NotificationCenter";
+import { useNotifications } from "@/hooks/useNotifications";
 
 // Dashboard Components
 import { ProfileHero } from "@/components/dashboard/ProfileHero";
@@ -53,9 +54,8 @@ const Dashboard = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const navigate = useNavigate();
 
-  // Notification state
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+  // Notification state - using new real-time notification system
+  const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
   const [homeCourtId, setHomeCourtId] = useState<string | null>(null);
   
   // Partner/Opponent stats
@@ -65,7 +65,16 @@ const Dashboard = () => {
   // Mobile tab state - lifted to control from ProfileHero
   const [activeTab, setActiveTab] = useState<"performance" | "activity">("performance");
 
-  const unreadCount = notifications.filter(n => n.unread).length;
+  // Real-time notifications
+  const {
+    notifications,
+    unreadCount,
+    markAsRead,
+    markAllAsRead,
+    deleteNotification,
+    clearAll,
+    groupedByTime,
+  } = useNotifications(user?.id);
 
   const fetchPartnerAndCourtStats = async (userId: string) => {
     try {
@@ -207,25 +216,6 @@ const Dashboard = () => {
     navigate("/");
   };
 
-  const handleClearAll = () => {
-    setNotifications([]);
-  };
-
-  const handleClearOne = (id: string) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
-  };
-
-  const handleSelectNotification = (id: string) => {
-    const notification = notifications.find(n => n.id === id);
-    if (notification) {
-      setNotifications(prev => 
-        prev.map(n => n.id === id ? { ...n, unread: false } : n)
-      );
-      setIsDrawerOpen(false);
-      navigate(notification.link);
-    }
-  };
-
   const handleShare = async () => {
     const shareData = {
       title: 'Pulse Pickleball',
@@ -282,7 +272,7 @@ const Dashboard = () => {
         partnersCount={partnersCount}
         courtsPlayed={courtsPlayed}
         unreadNotifications={unreadCount}
-        onNotificationOpen={() => setIsDrawerOpen(true)}
+        onNotificationOpen={() => setIsNotificationCenterOpen(true)}
         onSignOut={handleSignOut}
         activeTab={activeTab}
         onTabChange={setActiveTab}
@@ -390,13 +380,16 @@ const Dashboard = () => {
         </div>
       </div>
 
-      <NotificationDrawer
-        isOpen={isDrawerOpen}
+      <NotificationCenter
+        isOpen={isNotificationCenterOpen}
+        onClose={() => setIsNotificationCenterOpen(false)}
         notifications={notifications}
-        onClose={() => setIsDrawerOpen(false)}
-        onClearAll={handleClearAll}
-        onClearOne={handleClearOne}
-        onSelectNotification={handleSelectNotification}
+        unreadCount={unreadCount}
+        onMarkAsRead={markAsRead}
+        onMarkAllAsRead={markAllAsRead}
+        onDelete={deleteNotification}
+        onClearAll={clearAll}
+        groupedByTime={groupedByTime}
       />
 
       {/* Special button for alexanderskhoury@gmail.com */}

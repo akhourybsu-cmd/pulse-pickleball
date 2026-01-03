@@ -4,6 +4,8 @@ import { Home, Calendar, Users, Search, ClipboardList, LogOut } from 'lucide-rea
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { NotificationBell } from '@/components/NotificationBell';
+import { NotificationCenter } from '@/components/notifications/NotificationCenter';
+import { useNotifications } from '@/hooks/useNotifications';
 import { UnverifiedMatchesIndicator } from '@/components/UnverifiedMatchesIndicator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -31,6 +33,18 @@ export function PlayerShell() {
   const location = useLocation();
   const navigate = useNavigate();
   const [user, setUser] = useState<{ id: string; avatarUrl?: string; displayName?: string } | null>(null);
+  const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
+  
+  // Real-time notifications
+  const {
+    notifications,
+    unreadCount,
+    markAsRead,
+    markAllAsRead,
+    deleteNotification,
+    clearAll,
+    groupedByTime,
+  } = useNotifications(user?.id);
   
   // Hide shell header on dashboard since it has its own ProfileHero header
   const isDashboard = location.pathname === '/player/dashboard';
@@ -94,7 +108,7 @@ export function PlayerShell() {
             <div className="flex items-center gap-2">
               <UnverifiedMatchesIndicator />
               <ThemeToggle />
-              <NotificationBell unreadCount={0} onOpen={() => {}} />
+              <NotificationBell unreadCount={unreadCount} onOpen={() => setIsNotificationCenterOpen(true)} />
               <Avatar 
                 className="h-9 w-9 border-2 border-primary/30 cursor-pointer hover:border-primary/50 transition-colors"
                 onClick={() => user && navigate(`/profile/${user.id}`)}
@@ -116,6 +130,19 @@ export function PlayerShell() {
           </div>
         </header>
       )}
+
+      {/* Notification Center */}
+      <NotificationCenter
+        isOpen={isNotificationCenterOpen}
+        onClose={() => setIsNotificationCenterOpen(false)}
+        notifications={notifications}
+        unreadCount={unreadCount}
+        onMarkAsRead={markAsRead}
+        onMarkAllAsRead={markAllAsRead}
+        onDelete={deleteNotification}
+        onClearAll={clearAll}
+        groupedByTime={groupedByTime}
+      />
 
       {/* Main Content */}
       <main className="flex-1 pb-24 md:pb-20">
