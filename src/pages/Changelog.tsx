@@ -1,10 +1,10 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-  ArrowLeft, 
   Sparkles, 
   ChevronDown, 
   ChevronUp, 
@@ -14,7 +14,7 @@ import {
   Cookie,
   Server
 } from "lucide-react";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { PageHeader } from "@/components/PageHeader";
 import { Footer } from "@/components/Footer";
 import { APP_VERSION } from "@/config/version";
 import { changelog } from "@/data/changelogData";
@@ -26,8 +26,26 @@ import { motion, AnimatePresence } from "framer-motion";
 
 export default function Changelog() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const [userId, setUserId] = useState<string | null>(null);
   const [expandedVersions, setExpandedVersions] = useState<Set<string>>(new Set([changelog[0]?.version]));
-  const [legalSection, setLegalSection] = useState<string>("privacy");
+  
+  // Handle URL params for direct linking to legal sections
+  const tabParam = searchParams.get('tab');
+  const sectionParam = searchParams.get('section');
+  const [legalSection, setLegalSection] = useState<string>(sectionParam || "privacy");
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUserId(session?.user?.id ?? null);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+      setUserId(session?.user?.id ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const toggleVersion = (version: string) => {
     setExpandedVersions(prev => {
@@ -68,16 +86,7 @@ export default function Changelog() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      {/* Header */}
-      <div className="border-b bg-secondary/30 sticky top-0 z-10 backdrop-blur-sm">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Button variant="ghost" onClick={() => navigate(-1)}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back
-          </Button>
-          <ThemeToggle />
-        </div>
-      </div>
+      <PageHeader userId={userId} />
 
       <div className="flex-1 container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
@@ -102,7 +111,7 @@ export default function Changelog() {
           </div>
 
           {/* Tabs */}
-          <Tabs defaultValue="changelog" className="w-full">
+          <Tabs defaultValue={tabParam === "legal" ? "legal" : "changelog"} className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-8">
               <TabsTrigger value="changelog" className="flex items-center gap-2">
                 <History className="h-4 w-4" />
