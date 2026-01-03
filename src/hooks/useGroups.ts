@@ -36,6 +36,7 @@ export interface GroupMember {
   status: string;
   last_read_at: string;
   joined_at: string;
+  display_order?: number;
   profile?: {
     display_name: string | null;
     full_name: string;
@@ -99,6 +100,7 @@ export function useGroups() {
             status: m.status,
             last_read_at: m.last_read_at,
             joined_at: m.joined_at,
+            display_order: m.display_order ?? 0,
           },
         }));
 
@@ -115,8 +117,11 @@ export function useGroups() {
         }
       }
 
-      // Sort: groups with unread first, then by recent activity
+      // Sort by custom order first, then by unread, then by activity
       groups.sort((a, b) => {
+        const orderA = a.membership?.display_order ?? 999;
+        const orderB = b.membership?.display_order ?? 999;
+        if (orderA !== orderB) return orderA - orderB;
         if ((a.unread_count || 0) > 0 && (b.unread_count || 0) === 0) return -1;
         if ((a.unread_count || 0) === 0 && (b.unread_count || 0) > 0) return 1;
         return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
@@ -372,6 +377,32 @@ export function useGroups() {
     }
   };
 
+  const updateGroupOrder = async (orderedGroups: GroupWithMembership[]) => {
+    if (!currentUserId) return;
+
+    // Optimistic update
+    setMyGroups(orderedGroups);
+
+    try {
+      // Batch update display_order for all groups
+      const updates = orderedGroups.map((group, index) => ({
+        id: group.membership!.id,
+        display_order: index,
+      }));
+
+      for (const update of updates) {
+        await supabase
+          .from('group_members')
+          .update({ display_order: update.display_order })
+          .eq('id', update.id);
+      }
+    } catch (error) {
+      console.error('Error updating group order:', error);
+      // Revert on error
+      await fetchMyGroups();
+    }
+  };
+
   return {
     myGroups,
     publicGroups,
@@ -381,6 +412,7 @@ export function useGroups() {
     joinGroupByCode,
     joinPublicGroup,
     leaveGroup,
+    updateGroupOrder,
     refetch: fetchMyGroups,
   };
 }

@@ -1130,6 +1130,7 @@ export type Database = {
       }
       group_members: {
         Row: {
+          display_order: number | null
           group_id: string
           id: string
           joined_at: string | null
@@ -1139,6 +1140,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          display_order?: number | null
           group_id: string
           id?: string
           joined_at?: string | null
@@ -1148,6 +1150,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          display_order?: number | null
           group_id?: string
           id?: string
           joined_at?: string | null
