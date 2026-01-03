@@ -5,13 +5,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { GroupCard } from '@/components/community/GroupCard';
+import { ReorderableGroupList } from '@/components/community/ReorderableGroupList';
 import { CreateGroupDialog } from '@/components/community/CreateGroupDialog';
 import { JoinGroupDialog } from '@/components/community/JoinGroupDialog';
 import { CommunityActivityFeed } from '@/components/community/CommunityActivityFeed';
 import { useGroups } from '@/hooks/useGroups';
 
 export default function Community() {
-  const { myGroups, publicGroups, loading, createGroup, joinGroupByCode, joinPublicGroup } = useGroups();
+  const { myGroups, publicGroups, loading, createGroup, joinGroupByCode, joinPublicGroup, updateGroupOrder } = useGroups();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [joinDialogOpen, setJoinDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('my-groups');
@@ -75,11 +76,10 @@ export default function Community() {
               ))}
             </div>
           ) : myGroups.length > 0 ? (
-            <div className="space-y-4">
-              {myGroups.map((group) => (
-                <GroupCard key={group.id} group={group} />
-              ))}
-            </div>
+            <ReorderableGroupList 
+              groups={myGroups} 
+              onReorder={updateGroupOrder} 
+            />
           ) : (
             <Card className="border-dashed">
               <CardContent className="flex flex-col items-center justify-center py-12 text-center">
