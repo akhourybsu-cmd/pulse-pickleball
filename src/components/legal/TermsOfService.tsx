@@ -1,169 +1,373 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { FileText, UserCheck, AlertTriangle, Scale, Ban, Gavel } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { 
+  FileText, 
+  UserCheck, 
+  AlertTriangle, 
+  Scale, 
+  Ban, 
+  Gavel, 
+  Users, 
+  MessageSquare,
+  Shield,
+  Building2,
+  RefreshCw,
+  Globe,
+  Mail,
+  BarChart3
+} from "lucide-react";
 
 export const TermsOfService = () => {
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-primary/10">
-              <FileText className="h-5 w-5 text-primary" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <FileText className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <CardTitle>Terms of Service</CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">Last updated: January 3, 2026</p>
+              </div>
             </div>
-            <div>
-              <CardTitle>Terms of Service</CardTitle>
-              <p className="text-sm text-muted-foreground mt-1">Last updated: January 3, 2026</p>
-            </div>
+            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+              App Store Ready
+            </Badge>
           </div>
         </CardHeader>
         <CardContent>
           <p className="text-muted-foreground mb-6">
-            Welcome to PULSE! These Terms of Service ("Terms") govern your use of the PULSE pickleball rating and community platform. By creating an account or using PULSE, you agree to these Terms.
+            Welcome to PULSE. These Terms of Service ("Terms") govern your access to and use of the PULSE platform, including our mobile applications, websites, features, and services (collectively, the "Service").
+          </p>
+          <p className="text-muted-foreground mb-6">
+            By creating an account or using PULSE, you agree to these Terms. If you do not agree, please do not use the Service.
           </p>
 
           <Accordion type="single" collapsible className="w-full">
+            {/* 1. Eligibility */}
             <AccordionItem value="eligibility">
               <AccordionTrigger className="text-left">
                 <div className="flex items-center gap-2">
                   <UserCheck className="h-4 w-4 text-primary" />
-                  <span>Account Eligibility & Responsibilities</span>
+                  <span>1. Eligibility</span>
                 </div>
               </AccordionTrigger>
               <AccordionContent className="text-muted-foreground space-y-4">
-                <div>
-                  <h4 className="font-medium text-foreground mb-2">Eligibility</h4>
-                  <ul className="list-disc list-inside space-y-1">
-                    <li>You must be at least 13 years old to use PULSE</li>
-                    <li>Users under 18 require parental or guardian consent</li>
-                    <li>You must provide accurate and complete registration information</li>
-                  </ul>
-                </div>
-                <div>
-                  <h4 className="font-medium text-foreground mb-2">Account Security</h4>
-                  <ul className="list-disc list-inside space-y-1">
-                    <li>You are responsible for maintaining the security of your account</li>
-                    <li>Do not share your login credentials with others</li>
-                    <li>Notify us immediately if you suspect unauthorized access</li>
-                    <li>You are responsible for all activity under your account</li>
-                  </ul>
-                </div>
-                <div>
-                  <h4 className="font-medium text-foreground mb-2">Accurate Information</h4>
-                  <p>You agree to report match results accurately and honestly. Intentionally misreporting scores or match outcomes may result in account suspension or termination.</p>
-                </div>
+                <p>
+                  You must be at least 13 years old to use PULSE. If you are under 18, you must have permission from a parent or legal guardian.
+                </p>
+                <p>
+                  By using PULSE, you confirm that you meet these requirements.
+                </p>
               </AccordionContent>
             </AccordionItem>
 
-            <AccordionItem value="conduct">
+            {/* 2. Account Responsibilities */}
+            <AccordionItem value="account">
               <AccordionTrigger className="text-left">
                 <div className="flex items-center gap-2">
-                  <Scale className="h-4 w-4 text-primary" />
-                  <span>Community Guidelines</span>
+                  <Shield className="h-4 w-4 text-primary" />
+                  <span>2. Account Responsibilities</span>
                 </div>
               </AccordionTrigger>
               <AccordionContent className="text-muted-foreground space-y-4">
-                <p>PULSE is built on sportsmanship and community. When using PULSE, you agree to:</p>
-                <ul className="list-disc list-inside space-y-2">
-                  <li><strong>Be Respectful:</strong> Treat all players with respect, both on and off the court</li>
-                  <li><strong>Play Fair:</strong> Report accurate match results and don't manipulate ratings</li>
-                  <li><strong>Be Honest:</strong> Don't create fake accounts or impersonate others</li>
-                  <li><strong>Communicate Appropriately:</strong> Keep messages and posts respectful and relevant</li>
-                  <li><strong>Respect Privacy:</strong> Don't share other players' personal information without consent</li>
-                </ul>
+                <div>
+                  <h4 className="font-medium text-foreground mb-2">You are responsible for:</h4>
+                  <ul className="list-disc list-inside space-y-1">
+                    <li>Maintaining the confidentiality of your account</li>
+                    <li>All activity that occurs under your account</li>
+                    <li>Providing accurate and up-to-date information</li>
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="font-medium text-foreground mb-2">You may not:</h4>
+                  <ul className="list-disc list-inside space-y-1">
+                    <li>Impersonate another person</li>
+                    <li>Create accounts for others without permission</li>
+                    <li>Use PULSE for fraudulent or misleading purposes</li>
+                  </ul>
+                </div>
+                <p className="text-sm italic">
+                  We reserve the right to suspend or terminate accounts that violate these Terms.
+                </p>
               </AccordionContent>
             </AccordionItem>
 
+            {/* 3. Match Results, Ratings, and Statistics */}
+            <AccordionItem value="ratings">
+              <AccordionTrigger className="text-left">
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4 text-primary" />
+                  <span>3. Match Results, Ratings & Statistics</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="text-muted-foreground space-y-4">
+                <p>PULSE allows users to record matches, scores, and gameplay data.</p>
+                <div>
+                  <h4 className="font-medium text-foreground mb-2">You acknowledge and agree that:</h4>
+                  <ul className="list-disc list-inside space-y-1">
+                    <li>Ratings and statistics are estimates, not guarantees of skill</li>
+                    <li>Match results are entered by users and may contain errors</li>
+                    <li>PULSE is not responsible for disputes arising from incorrect or disputed match data</li>
+                    <li>Ratings, rankings, and analytics are provided for informational and recreational purposes only</li>
+                  </ul>
+                </div>
+                <p className="text-sm italic">
+                  PULSE may adjust rating algorithms, formulas, or display methods at any time.
+                </p>
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* 4. Community, Groups, and User Conduct */}
+            <AccordionItem value="community">
+              <AccordionTrigger className="text-left">
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4 text-primary" />
+                  <span>4. Community, Groups & User Conduct</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="text-muted-foreground space-y-4">
+                <p>PULSE includes community features such as groups, posts, chats, and comments.</p>
+                <div>
+                  <h4 className="font-medium text-foreground mb-2">By participating, you agree to:</h4>
+                  <ul className="list-disc list-inside space-y-1">
+                    <li>Be respectful and courteous</li>
+                    <li>Avoid harassment, hate speech, threats, or abusive behavior</li>
+                    <li>Avoid spam, scams, or unauthorized promotions</li>
+                    <li>Follow applicable laws and local regulations</li>
+                  </ul>
+                </div>
+                <p>
+                  Group owners and moderators may establish additional rules for their groups.
+                </p>
+                <div>
+                  <h4 className="font-medium text-foreground mb-2">PULSE reserves the right to:</h4>
+                  <ul className="list-disc list-inside space-y-1">
+                    <li>Remove content</li>
+                    <li>Suspend or remove users</li>
+                    <li>Remove or disable groups that violate these Terms or create a negative experience for others</li>
+                  </ul>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* 5. User-Generated Content */}
+            <AccordionItem value="content">
+              <AccordionTrigger className="text-left">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4 text-primary" />
+                  <span>5. User-Generated Content</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="text-muted-foreground space-y-4">
+                <p>
+                  You retain ownership of content you post on PULSE (including text, images, and messages).
+                </p>
+                <div>
+                  <h4 className="font-medium text-foreground mb-2">By posting content, you grant PULSE a non-exclusive, worldwide, royalty-free license to:</h4>
+                  <ul className="list-disc list-inside space-y-1">
+                    <li>Host, store, display, and distribute your content</li>
+                    <li>Use it as necessary to operate and improve the Service</li>
+                  </ul>
+                </div>
+                <p>
+                  You represent that you have the rights to any content you post and that it does not infringe on others' rights.
+                </p>
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* 6. Venues, Events, and Third Parties */}
+            <AccordionItem value="venues">
+              <AccordionTrigger className="text-left">
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-primary" />
+                  <span>6. Venues, Events & Third Parties</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="text-muted-foreground space-y-4">
+                <p>PULSE may display or facilitate information about venues, events, leagues, or third-party services.</p>
+                <div>
+                  <h4 className="font-medium text-foreground mb-2">You understand that:</h4>
+                  <ul className="list-disc list-inside space-y-1">
+                    <li>PULSE does not operate or control third-party venues or events unless explicitly stated</li>
+                    <li>Participation in events or use of venues is at your own risk</li>
+                    <li>PULSE is not responsible for injuries, cancellations, disputes, or losses related to third-party activities</li>
+                  </ul>
+                </div>
+                <p className="text-sm italic">
+                  "Official" or "Verified" labels do not imply endorsement unless explicitly stated.
+                </p>
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* 7. Prohibited Uses */}
             <AccordionItem value="prohibited">
               <AccordionTrigger className="text-left">
                 <div className="flex items-center gap-2">
                   <Ban className="h-4 w-4 text-primary" />
-                  <span>Prohibited Activities</span>
+                  <span>7. Prohibited Uses</span>
                 </div>
               </AccordionTrigger>
               <AccordionContent className="text-muted-foreground space-y-4">
-                <p>The following activities are strictly prohibited:</p>
-                <ul className="list-disc list-inside space-y-2">
-                  <li>Rating manipulation through fake matches or collusion</li>
-                  <li>Creating multiple accounts to circumvent suspensions or manipulate rankings</li>
-                  <li>Harassment, bullying, or threatening behavior toward other users</li>
-                  <li>Posting spam, malware, or malicious content</li>
-                  <li>Attempting to access other users' accounts or data</li>
-                  <li>Using PULSE for any illegal purpose</li>
-                  <li>Scraping or automated data collection without authorization</li>
+                <p>You may not use PULSE to:</p>
+                <ul className="list-disc list-inside space-y-1">
+                  <li>Violate laws or regulations</li>
+                  <li>Harass, threaten, or abuse others</li>
+                  <li>Upload malicious code or attempt to disrupt the Service</li>
+                  <li>Collect data about other users without permission</li>
+                  <li>Misrepresent scores, results, or identities</li>
+                </ul>
+                <p className="text-sm italic">
+                  Violation of these rules may result in suspension or termination.
+                </p>
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* 8. Suspension and Termination */}
+            <AccordionItem value="suspension">
+              <AccordionTrigger className="text-left">
+                <div className="flex items-center gap-2">
+                  <Gavel className="h-4 w-4 text-primary" />
+                  <span>8. Suspension & Termination</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="text-muted-foreground space-y-4">
+                <div>
+                  <h4 className="font-medium text-foreground mb-2">We may suspend or terminate your access to PULSE at any time, with or without notice, if:</h4>
+                  <ul className="list-disc list-inside space-y-1">
+                    <li>You violate these Terms</li>
+                    <li>Your behavior harms other users or the platform</li>
+                    <li>Required by law or safety concerns</li>
+                  </ul>
+                </div>
+                <p>
+                  You may stop using PULSE at any time by closing your account.
+                </p>
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* 9. Disclaimer of Warranties */}
+            <AccordionItem value="disclaimer">
+              <AccordionTrigger className="text-left">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-primary" />
+                  <span>9. Disclaimer of Warranties</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="text-muted-foreground space-y-4">
+                <p>PULSE is provided "as is" and "as available."</p>
+                <div>
+                  <h4 className="font-medium text-foreground mb-2">We make no warranties regarding:</h4>
+                  <ul className="list-disc list-inside space-y-1">
+                    <li>Accuracy of ratings or match data</li>
+                    <li>Availability or reliability of the Service</li>
+                    <li>Fitness for a particular purpose</li>
+                  </ul>
+                </div>
+                <p className="text-sm italic">
+                  Use of the Service is at your own risk.
+                </p>
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* 10. Limitation of Liability */}
+            <AccordionItem value="liability">
+              <AccordionTrigger className="text-left">
+                <div className="flex items-center gap-2">
+                  <Scale className="h-4 w-4 text-primary" />
+                  <span>10. Limitation of Liability</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="text-muted-foreground space-y-4">
+                <p>To the maximum extent permitted by law:</p>
+                <ul className="list-disc list-inside space-y-1">
+                  <li>PULSE shall not be liable for indirect, incidental, or consequential damages</li>
+                  <li>PULSE is not liable for disputes between users</li>
+                  <li>PULSE is not liable for injuries, losses, or damages related to gameplay, venues, or events</li>
+                </ul>
+                <p>
+                  Our total liability will not exceed the amount you paid to PULSE in the past 12 months, if any.
+                </p>
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* 11. Indemnification */}
+            <AccordionItem value="indemnification">
+              <AccordionTrigger className="text-left">
+                <div className="flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-primary" />
+                  <span>11. Indemnification</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="text-muted-foreground space-y-4">
+                <p>You agree to indemnify and hold harmless PULSE from any claims, damages, or expenses arising from:</p>
+                <ul className="list-disc list-inside space-y-1">
+                  <li>Your use of the Service</li>
+                  <li>Your content</li>
+                  <li>Your violation of these Terms</li>
                 </ul>
               </AccordionContent>
             </AccordionItem>
 
-            <AccordionItem value="ip">
+            {/* 12. Changes to These Terms */}
+            <AccordionItem value="changes">
               <AccordionTrigger className="text-left">
                 <div className="flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-primary" />
-                  <span>Intellectual Property</span>
+                  <RefreshCw className="h-4 w-4 text-primary" />
+                  <span>12. Changes to These Terms</span>
                 </div>
               </AccordionTrigger>
               <AccordionContent className="text-muted-foreground space-y-4">
-                <div>
-                  <h4 className="font-medium text-foreground mb-2">Our Content</h4>
-                  <p>PULSE, including its logo, design, rating algorithms, and software, is owned by us and protected by intellectual property laws. You may not copy, modify, or distribute our content without permission.</p>
-                </div>
-                <div>
-                  <h4 className="font-medium text-foreground mb-2">Your Content</h4>
-                  <p>You retain ownership of content you post (photos, comments, etc.). By posting content, you grant PULSE a license to display and use that content within the platform to provide our services.</p>
-                </div>
+                <p>We may update these Terms from time to time. When we do:</p>
+                <ul className="list-disc list-inside space-y-1">
+                  <li>We will update the "Last updated" date</li>
+                  <li>Continued use of PULSE constitutes acceptance of the revised Terms</li>
+                </ul>
               </AccordionContent>
             </AccordionItem>
 
-            <AccordionItem value="disclaimers">
+            {/* 13. Governing Law */}
+            <AccordionItem value="governing">
               <AccordionTrigger className="text-left">
                 <div className="flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4 text-primary" />
-                  <span>Disclaimers & Limitations</span>
+                  <Globe className="h-4 w-4 text-primary" />
+                  <span>13. Governing Law</span>
                 </div>
               </AccordionTrigger>
               <AccordionContent className="text-muted-foreground space-y-4">
-                <div>
-                  <h4 className="font-medium text-foreground mb-2">Service Availability</h4>
-                  <p>PULSE is provided "as is" without warranties. We strive for high availability but cannot guarantee uninterrupted service. We may modify or discontinue features at any time.</p>
-                </div>
-                <div>
-                  <h4 className="font-medium text-foreground mb-2">Physical Activity</h4>
-                  <p>PULSE facilitates connections between players but is not responsible for injuries, accidents, or incidents that occur during pickleball activities. Play at your own risk and within your physical capabilities.</p>
-                </div>
-                <div>
-                  <h4 className="font-medium text-foreground mb-2">Limitation of Liability</h4>
-                  <p>To the maximum extent permitted by law, PULSE shall not be liable for indirect, incidental, or consequential damages arising from your use of the platform.</p>
-                </div>
+                <p>
+                  These Terms are governed by the laws of the United States and the applicable state or jurisdiction where PULSE operates, without regard to conflict of law principles.
+                </p>
               </AccordionContent>
             </AccordionItem>
 
-            <AccordionItem value="termination">
+            {/* 14. Contact */}
+            <AccordionItem value="contact">
               <AccordionTrigger className="text-left">
                 <div className="flex items-center gap-2">
-                  <Gavel className="h-4 w-4 text-primary" />
-                  <span>Termination & Disputes</span>
+                  <Mail className="h-4 w-4 text-primary" />
+                  <span>14. Contact</span>
                 </div>
               </AccordionTrigger>
               <AccordionContent className="text-muted-foreground space-y-4">
-                <div>
-                  <h4 className="font-medium text-foreground mb-2">Account Termination</h4>
-                  <ul className="list-disc list-inside space-y-1">
-                    <li>You may delete your account at any time through your profile settings</li>
-                    <li>We may suspend or terminate accounts that violate these Terms</li>
-                    <li>Upon termination, your right to use PULSE ceases immediately</li>
-                  </ul>
-                </div>
-                <div>
-                  <h4 className="font-medium text-foreground mb-2">Dispute Resolution</h4>
-                  <p>Any disputes arising from these Terms shall first be addressed through good-faith negotiation. If unresolved, disputes shall be settled through binding arbitration in accordance with applicable laws.</p>
-                </div>
-                <div>
-                  <h4 className="font-medium text-foreground mb-2">Changes to Terms</h4>
-                  <p>We may update these Terms from time to time. Continued use of PULSE after changes constitutes acceptance of the new Terms. We will notify users of significant changes.</p>
-                </div>
+                <p>
+                  If you have questions about these Terms, please contact us through the in-app support system or submit a request through your profile settings. We will respond within a reasonable timeframe.
+                </p>
               </AccordionContent>
             </AccordionItem>
           </Accordion>
+
+          {/* Compliance Footer */}
+          <div className="mt-8 pt-6 border-t">
+            <div className="flex flex-wrap gap-2 justify-center">
+              <Badge variant="secondary" className="text-xs">COPPA Compliant</Badge>
+              <Badge variant="secondary" className="text-xs">App Store Ready</Badge>
+              <Badge variant="secondary" className="text-xs">Play Store Ready</Badge>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>
