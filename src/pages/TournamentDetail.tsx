@@ -170,10 +170,7 @@ export default function TournamentDetail() {
         {!isPaid && isOwner && (
           <LockedTournamentBanner
             tournamentName={tournament.name}
-            divisionsCount={divisions.length}
             paymentStatus={tournament.payment_status as "draft" | "pending" | "failed"}
-            onContinuePayment={handleContinueToPayment}
-            isLoading={checkoutLoading}
           />
         )}
 

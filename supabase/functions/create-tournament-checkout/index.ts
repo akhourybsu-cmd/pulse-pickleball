@@ -70,11 +70,23 @@ serve(async (req) => {
 
     logStep("Tournament verified", { 
       name: tournament.name, 
-      divisions_count: tournament.divisions_count,
       payment_status: tournament.payment_status 
     });
 
-    const divisionsCount = tournament.divisions_count || 0;
+    // Count actual divisions from tournaments_divisions table
+    const { count: actualDivisionsCount, error: countError } = await supabaseClient
+      .from("tournaments_divisions")
+      .select("*", { count: "exact", head: true })
+      .eq("event_id", tournament_id);
+
+    if (countError) {
+      logStep("Error counting divisions", { error: countError.message });
+      throw new Error("Failed to count divisions");
+    }
+
+    const divisionsCount = actualDivisionsCount || 0;
+    logStep("Divisions count from table", { divisionsCount });
+
     if (divisionsCount === 0) {
       throw new Error("Please add at least one division before checkout");
     }
