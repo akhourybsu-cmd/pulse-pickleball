@@ -313,7 +313,7 @@ export function TournamentWizard() {
         <div className="mb-8">
           <Button
             variant="ghost"
-            onClick={() => navigate("/tournament-admin")}
+            onClick={() => navigate("/tournaments")}
             className="mb-4"
           >
             <ChevronLeft className="h-4 w-4 mr-2" />

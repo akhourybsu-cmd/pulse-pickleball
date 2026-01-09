@@ -317,7 +317,7 @@ export default function TournamentEventDetail() {
                       <Card 
                         key={division.id}
                         className="cursor-pointer hover:border-primary transition-colors"
-                        onClick={() => navigate(`/tournament-admin/division/${division.id}`)}
+                        onClick={() => navigate(`/tournament-admin/event/${eventId}/division/${division.id}`)}
                       >
                         <CardHeader>
                           <div className="flex items-start justify-between">

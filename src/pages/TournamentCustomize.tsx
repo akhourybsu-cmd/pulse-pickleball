@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -47,9 +47,15 @@ interface VenueDetail {
 }
 
 export default function TournamentCustomize() {
-  const { eventId } = useParams();
+  const { eventId, id } = useParams(); // id is for new portal route, eventId for admin route
   const navigate = useNavigate();
+  const location = useLocation();
   const [loading, setLoading] = useState(true);
+  
+  // Determine which system we're in based on the route
+  const isNewPortal = location.pathname.startsWith('/tournaments/');
+  const actualEventId = id || eventId; // Use id from new portal or eventId from admin
+  const getBackRoute = () => isNewPortal ? `/tournaments/${actualEventId}` : '/tournament-admin';
   const [saving, setSaving] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [eventName, setEventName] = useState("");
@@ -98,21 +104,21 @@ export default function TournamentCustomize() {
     if (userId) {
       fetchData();
     }
-  }, [userId, eventId]);
+  }, [userId, actualEventId]);
 
   const fetchData = async () => {
-    if (!eventId) return;
+    if (!actualEventId) return;
 
     // Check if user is admin or event creator
     const { data: eventData } = await supabase
       .from("tournaments_events")
       .select("name, created_by")
-      .eq("id", eventId)
+      .eq("id", actualEventId)
       .single();
 
     if (!eventData) {
       toast.error("Event not found");
-      navigate("/tournament-admin");
+      navigate(getBackRoute());
       return;
     }
 
@@ -131,7 +137,7 @@ export default function TournamentCustomize() {
 
     if (!isAdmin && !isCreator) {
       toast.error("You don't have permission to customize this event");
-      navigate("/tournament-admin");
+      navigate(getBackRoute());
       return;
     }
 
@@ -139,7 +145,7 @@ export default function TournamentCustomize() {
     const { data: customData } = await supabase
       .from("tournament_customization")
       .select("*")
-      .eq("event_id", eventId)
+      .eq("event_id", actualEventId)
       .maybeSingle();
 
     if (customData) {
@@ -175,7 +181,7 @@ export default function TournamentCustomize() {
   const uploadFile = async (file: File, path: string) => {
     const fileExt = file.name.split('.').pop();
     const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
-    const filePath = `${eventId}/${path}/${fileName}`;
+    const filePath = `${actualEventId}/${path}/${fileName}`;
 
     const { error: uploadError, data } = await supabase.storage
       .from('tournament-assets')
@@ -210,12 +216,12 @@ export default function TournamentCustomize() {
   };
 
   const handleSave = async () => {
-    if (!eventId) return;
+    if (!actualEventId) return;
 
     setSaving(true);
     try {
       const customizationData = {
-        event_id: eventId,
+        event_id: actualEventId,
         is_published: isPublished,
         hero_image_url: heroImageUrl || null,
         hero_overlay_color: heroOverlayColor,
@@ -465,7 +471,7 @@ Your participation helps us give back. Let's rally together for a great cause!`
     );
   }
 
-  const publicUrl = `${window.location.origin}/tournament/${eventId}`;
+  const publicUrl = `${window.location.origin}/tournament/${actualEventId}`;
 
   return (
     <div className="min-h-screen bg-background">
