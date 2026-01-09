@@ -3240,10 +3240,14 @@ export type Database = {
           created_at: string
           created_by: string
           description: string | null
+          divisions_count: number | null
           end_date: string
           id: string
+          is_public: boolean | null
           location: string | null
           name: string
+          paid_at: string | null
+          payment_status: string | null
           public_view_enabled: boolean
           registration_close_date: string | null
           registration_enabled: boolean | null
@@ -3251,6 +3255,7 @@ export type Database = {
           registration_open_date: string | null
           start_date: string
           status: Database["public"]["Enums"]["tournament_status"]
+          stripe_checkout_session_id: string | null
           updated_at: string
           waitlist_enabled: boolean | null
         }
@@ -3258,10 +3263,14 @@ export type Database = {
           created_at?: string
           created_by: string
           description?: string | null
+          divisions_count?: number | null
           end_date: string
           id?: string
+          is_public?: boolean | null
           location?: string | null
           name: string
+          paid_at?: string | null
+          payment_status?: string | null
           public_view_enabled?: boolean
           registration_close_date?: string | null
           registration_enabled?: boolean | null
@@ -3269,6 +3278,7 @@ export type Database = {
           registration_open_date?: string | null
           start_date: string
           status?: Database["public"]["Enums"]["tournament_status"]
+          stripe_checkout_session_id?: string | null
           updated_at?: string
           waitlist_enabled?: boolean | null
         }
@@ -3276,10 +3286,14 @@ export type Database = {
           created_at?: string
           created_by?: string
           description?: string | null
+          divisions_count?: number | null
           end_date?: string
           id?: string
+          is_public?: boolean | null
           location?: string | null
           name?: string
+          paid_at?: string | null
+          payment_status?: string | null
           public_view_enabled?: boolean
           registration_close_date?: string | null
           registration_enabled?: boolean | null
@@ -3287,6 +3301,7 @@ export type Database = {
           registration_open_date?: string | null
           start_date?: string
           status?: Database["public"]["Enums"]["tournament_status"]
+          stripe_checkout_session_id?: string | null
           updated_at?: string
           waitlist_enabled?: boolean | null
         }
