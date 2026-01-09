@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Calendar, MapPin, Users, Trophy, Settings, Plus } from "lucide-react";
+import { ArrowLeft, Calendar, MapPin, Users, Trophy, Settings } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LockedTournamentBanner } from "@/components/tournament/LockedTournamentBanner";
 import { OrderSummaryCard } from "@/components/tournament/OrderSummaryCard";
+import { DivisionManager } from "@/components/tournament/DivisionManager";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Footer } from "@/components/Footer";
 import { format } from "date-fns";
@@ -27,16 +28,19 @@ interface Tournament {
   divisions_count: number;
   payment_status: string;
   created_by: string;
+  paid_divisions_count: number;
 }
 
 interface Division {
   id: string;
   name: string;
   format: string | null;
+  skill_level?: string | null;
 }
 
 export default function TournamentDetail() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
@@ -50,6 +54,34 @@ export default function TournamentDetail() {
       fetchTournament();
     }
   }, [id]);
+
+  // Handle division purchase success callback
+  useEffect(() => {
+    if (searchParams.get("division_purchased") === "true") {
+      // Increment paid_divisions_count in the database
+      handleDivisionPurchaseSuccess();
+      // Clear the URL param
+      searchParams.delete("division_purchased");
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams]);
+
+  const handleDivisionPurchaseSuccess = async () => {
+    if (!id) return;
+    
+    const { error } = await supabase
+      .from("tournaments_events")
+      .update({ paid_divisions_count: (tournament?.paid_divisions_count || 3) + 1 })
+      .eq("id", id);
+
+    if (!error) {
+      toast({
+        title: "Division slot purchased!",
+        description: "You can now add another division to your tournament.",
+      });
+      fetchTournament();
+    }
+  };
 
   const fetchTournament = async () => {
     setLoading(true);
@@ -236,39 +268,50 @@ export default function TournamentDetail() {
             </TabsList>
 
             <TabsContent value="divisions" className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold">Divisions</h2>
-                <Button size="sm" className="gap-2 bg-gradient-to-r from-primary to-accent hover:opacity-90">
-                  <Plus className="h-4 w-4" />
-                  Add Division
-                </Button>
-              </div>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {divisions.map((division, index) => (
-                  <motion.div
-                    key={division.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                    whileHover={{ y: -2 }}
-                  >
-                    <Card className="hover:shadow-lg hover:border-primary/30 transition-all duration-300 cursor-pointer">
-                      <CardHeader>
-                        <CardTitle className="text-lg">{division.name}</CardTitle>
-                        <CardDescription>
-                          {division.format && <span className="capitalize">{division.format}</span>}
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Users className="h-4 w-4" />
-                          <span>0 teams registered</span>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                ))}
-              </div>
+              <DivisionManager
+                divisions={divisions}
+                paidDivisionsCount={tournament.paid_divisions_count || 3}
+                tournamentId={tournament.id}
+                onAddDivision={async (division) => {
+                  const { error } = await supabase.from("tournaments_divisions").insert({
+                    event_id: tournament.id,
+                    name: division.name,
+                    skill_level: division.skill_level,
+                    format: division.format,
+                  });
+                  if (!error) {
+                    fetchTournament();
+                    return true;
+                  }
+                  toast({ title: "Error", description: error.message, variant: "destructive" });
+                  return false;
+                }}
+                onUpdateDivision={async (id, updates) => {
+                  const { error } = await supabase
+                    .from("tournaments_divisions")
+                    .update(updates)
+                    .eq("id", id);
+                  if (!error) {
+                    fetchTournament();
+                    return true;
+                  }
+                  toast({ title: "Error", description: error.message, variant: "destructive" });
+                  return false;
+                }}
+                onDeleteDivision={async (id) => {
+                  const { error } = await supabase
+                    .from("tournaments_divisions")
+                    .delete()
+                    .eq("id", id);
+                  if (!error) {
+                    fetchTournament();
+                    return true;
+                  }
+                  toast({ title: "Error", description: error.message, variant: "destructive" });
+                  return false;
+                }}
+                onRefresh={fetchTournament}
+              />
             </TabsContent>
 
             <TabsContent value="registrations">
