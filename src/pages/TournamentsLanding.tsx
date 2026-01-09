@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Plus, Search, Trophy, Users, Calendar, ArrowRight } from "lucide-react";
+import { Plus, Search, Trophy, Users, Calendar, ArrowRight, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -86,6 +86,17 @@ export default function TournamentsLanding() {
     t.location?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "paid":
+        return <Badge className="bg-primary/20 text-primary border-primary/30">Active</Badge>;
+      case "draft":
+        return <Badge variant="secondary">Draft</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Navigation */}
@@ -97,7 +108,7 @@ export default function TournamentsLanding() {
           <div className="flex items-center gap-4">
             <ThemeToggle />
             {user ? (
-              <Button onClick={handleCreateTournament}>
+              <Button onClick={handleCreateTournament} className="shadow-[0_0_20px_rgba(169,207,70,0.3)]">
                 <Plus className="mr-2 h-4 w-4" />
                 Create Tournament
               </Button>
@@ -113,12 +124,17 @@ export default function TournamentsLanding() {
 
       {/* My Tournaments Section (if logged in) */}
       {user && myTournaments.length > 0 && (
-        <section className="py-16 bg-secondary/30">
+        <section className="py-16 bg-gradient-to-b from-secondary/50 to-background">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between mb-8">
-              <h2 className="text-2xl font-bold">My Tournaments</h2>
-              <Button variant="ghost" onClick={() => navigate("/tournament-admin")}>
-                View All <ArrowRight className="ml-2 h-4 w-4" />
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
+                  <Trophy className="h-5 w-5 text-primary" />
+                </div>
+                <h2 className="text-2xl font-bold">My Tournaments</h2>
+              </div>
+              <Button variant="ghost" onClick={() => navigate("/tournament-admin")} className="gap-2">
+                View All <ArrowRight className="h-4 w-4" />
               </Button>
             </div>
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -128,17 +144,15 @@ export default function TournamentsLanding() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.1 }}
+                  whileHover={{ y: -4, scale: 1.02 }}
+                  className="cursor-pointer"
+                  onClick={() => navigate(`/tournaments/${tournament.id}`)}
                 >
-                  <Card
-                    className="cursor-pointer hover:shadow-lg transition-all hover:border-primary/50"
-                    onClick={() => navigate(`/tournaments/${tournament.id}`)}
-                  >
+                  <Card className="h-full bg-gradient-to-br from-card to-card/80 border-border/50 hover:border-primary/50 hover:shadow-[0_0_30px_rgba(169,207,70,0.15)] transition-all duration-300">
                     <CardHeader>
                       <div className="flex items-start justify-between">
                         <CardTitle className="text-lg">{tournament.name}</CardTitle>
-                        <Badge variant={tournament.status === "paid" ? "default" : "secondary"}>
-                          {tournament.status}
-                        </Badge>
+                        {getStatusBadge(tournament.status)}
                       </div>
                       <CardDescription className="space-y-1">
                         {tournament.location && (
@@ -166,63 +180,90 @@ export default function TournamentsLanding() {
       )}
 
       {/* Browse Tournaments Section */}
-      <section className="py-16">
+      <section id="browse-tournaments" className="py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-4">Browse Tournaments</h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
+            <motion.h2 
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="text-3xl font-bold mb-4"
+            >
+              Browse Tournaments
+            </motion.h2>
+            <motion.p 
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.1 }}
+              className="text-muted-foreground max-w-2xl mx-auto"
+            >
               Find and register for upcoming pickleball tournaments in your area
-            </p>
+            </motion.p>
           </div>
 
           {/* Search */}
-          <div className="max-w-md mx-auto mb-8">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.2 }}
+            className="max-w-md mx-auto mb-10"
+          >
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search tournaments..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
+                className="pl-11 h-12 bg-card/50 border-border/50 focus:border-primary/50 rounded-xl"
               />
             </div>
-          </div>
+          </motion.div>
 
           {loading ? (
             <div className="flex justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
           ) : filteredTournaments.length === 0 ? (
-            <Card className="max-w-md mx-auto">
-              <CardContent className="py-12 text-center">
-                <Trophy className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No tournaments found</h3>
-                <p className="text-muted-foreground mb-4">
-                  Be the first to create a tournament!
-                </p>
-                <Button onClick={handleCreateTournament}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create Tournament
-                </Button>
-              </CardContent>
-            </Card>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+            >
+              <Card className="max-w-md mx-auto bg-gradient-to-br from-card to-muted/30 border-border/50">
+                <CardContent className="py-12 text-center">
+                  <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4 shadow-[0_0_30px_rgba(169,207,70,0.2)]">
+                    <Trophy className="h-8 w-8 text-primary" />
+                  </div>
+                  <h3 className="text-lg font-semibold mb-2">No tournaments found</h3>
+                  <p className="text-muted-foreground mb-6">
+                    Be the first to create a tournament!
+                  </p>
+                  <Button onClick={handleCreateTournament} className="shadow-[0_0_20px_rgba(169,207,70,0.3)]">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Create Tournament
+                  </Button>
+                </CardContent>
+              </Card>
+            </motion.div>
           ) : (
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {filteredTournaments.map((tournament, index) => (
                 <motion.div
                   key={tournament.id}
                   initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
                   transition={{ delay: index * 0.1 }}
+                  whileHover={{ y: -4, scale: 1.02 }}
+                  className="cursor-pointer"
+                  onClick={() => navigate(`/tournaments/${tournament.id}`)}
                 >
-                  <Card
-                    className="cursor-pointer hover:shadow-lg transition-all hover:border-primary/50 h-full"
-                    onClick={() => navigate(`/tournaments/${tournament.id}`)}
-                  >
+                  <Card className="h-full bg-gradient-to-br from-card to-card/80 border-border/50 hover:border-primary/50 hover:shadow-[0_0_30px_rgba(169,207,70,0.15)] transition-all duration-300">
                     <CardHeader>
                       <div className="flex items-start justify-between">
                         <CardTitle className="text-lg">{tournament.name}</CardTitle>
-                        <Badge variant="outline">
+                        <Badge variant="outline" className="bg-primary/10 border-primary/30 text-primary">
                           {tournament.divisions_count} divisions
                         </Badge>
                       </div>
@@ -254,13 +295,35 @@ export default function TournamentsLanding() {
       </section>
 
       {/* Pricing Section */}
-      <section className="py-16 bg-secondary/30">
+      <section className="py-16 bg-gradient-to-b from-secondary/30 to-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-4">Host Your Tournament</h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              className="inline-flex items-center gap-2 bg-primary/15 text-primary px-4 py-2 rounded-full mb-6 border border-primary/30"
+            >
+              <Sparkles className="h-4 w-4" />
+              <span className="text-sm font-medium">Simple Pricing</span>
+            </motion.div>
+            <motion.h2 
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="text-3xl font-bold mb-4"
+            >
+              Host Your Tournament
+            </motion.h2>
+            <motion.p 
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.1 }}
+              className="text-muted-foreground max-w-2xl mx-auto"
+            >
               Simple, transparent pricing to host professional tournaments
-            </p>
+            </motion.p>
           </div>
           <PricingShowcase onGetStarted={handleCreateTournament} />
         </div>
