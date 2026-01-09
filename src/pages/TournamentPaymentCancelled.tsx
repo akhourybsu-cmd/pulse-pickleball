@@ -35,7 +35,7 @@ export default function TournamentPaymentCancelled() {
                 initial={{ scale: 0.8, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ delay: 0.1 }}
-                className="mx-auto w-20 h-20 rounded-2xl bg-muted flex items-center justify-center"
+                className="mx-auto w-20 h-20 rounded-2xl bg-muted/50 border border-border/50 flex items-center justify-center"
               >
                 <XCircle className="h-10 w-10 text-muted-foreground" />
               </motion.div>

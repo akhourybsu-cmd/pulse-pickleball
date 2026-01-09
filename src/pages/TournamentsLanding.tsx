@@ -124,7 +124,7 @@ export default function TournamentsLanding() {
 
       {/* My Tournaments Section (if logged in) */}
       {user && myTournaments.length > 0 && (
-        <section className="py-16 bg-gradient-to-b from-secondary/50 to-background">
+        <section className="py-16 bg-gradient-to-b from-muted/50 to-background">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-3">
@@ -295,7 +295,7 @@ export default function TournamentsLanding() {
       </section>
 
       {/* Pricing Section */}
-      <section className="py-16 bg-gradient-to-b from-secondary/30 to-background">
+      <section className="py-16 bg-gradient-to-b from-muted/30 to-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <motion.div
