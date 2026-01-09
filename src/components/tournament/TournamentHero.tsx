@@ -1,7 +1,8 @@
 import { motion } from "framer-motion";
-import { Trophy, Users, ArrowRight, Sparkles } from "lucide-react";
+import { Trophy, Users, ArrowRight, Sparkles, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
+import CountUp from "react-countup";
 
 interface TournamentHeroProps {
   onCreateClick?: () => void;
@@ -16,13 +17,13 @@ export function TournamentHero({ onCreateClick, stats = { tournaments: 50, playe
   const navigate = useNavigate();
 
   return (
-    <section className="relative overflow-hidden py-20 px-4">
-      {/* Animated background elements */}
+    <section className="relative overflow-hidden py-20 md:py-28 px-4 bg-gradient-to-br from-secondary via-secondary/95 to-secondary">
+      {/* Animated background glow orbs */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <motion.div
-          className="absolute -top-1/2 -right-1/4 w-[600px] h-[600px] bg-primary/10 rounded-full blur-3xl"
+          className="absolute -top-1/4 -right-1/4 w-[700px] h-[700px] bg-primary/20 rounded-full blur-[120px]"
           animate={{
-            scale: [1, 1.1, 1],
+            scale: [1, 1.2, 1],
             opacity: [0.3, 0.5, 0.3],
           }}
           transition={{
@@ -32,13 +33,25 @@ export function TournamentHero({ onCreateClick, stats = { tournaments: 50, playe
           }}
         />
         <motion.div
-          className="absolute -bottom-1/2 -left-1/4 w-[500px] h-[500px] bg-accent/10 rounded-full blur-3xl"
+          className="absolute -bottom-1/4 -left-1/4 w-[600px] h-[600px] bg-accent/15 rounded-full blur-[100px]"
           animate={{
             scale: [1.1, 1, 1.1],
-            opacity: [0.3, 0.5, 0.3],
+            opacity: [0.2, 0.4, 0.2],
           }}
           transition={{
             duration: 10,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+        />
+        <motion.div
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-primary/10 rounded-full blur-[80px]"
+          animate={{
+            scale: [1, 1.15, 1],
+            opacity: [0.2, 0.35, 0.2],
+          }}
+          transition={{
+            duration: 12,
             repeat: Infinity,
             ease: "easeInOut",
           }}
@@ -52,37 +65,52 @@ export function TournamentHero({ onCreateClick, stats = { tournaments: 50, playe
           transition={{ duration: 0.6 }}
           className="text-center"
         >
-          {/* Badge */}
+          {/* Premium Badge with pulse glow */}
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.2 }}
-            className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full mb-6"
+            className="inline-flex items-center gap-2 bg-primary/15 text-primary px-5 py-2.5 rounded-full mb-8 border border-primary/30 shadow-[0_0_20px_rgba(169,207,70,0.2)]"
           >
             <Sparkles className="h-4 w-4" />
-            <span className="text-sm font-medium">Premium Tournament Platform</span>
+            <span className="text-sm font-semibold tracking-wide">Premium Tournament Platform</span>
           </motion.div>
 
-          {/* Main heading */}
-          <h1 className="text-4xl md:text-6xl font-bold mb-6 leading-tight">
+          {/* Main heading with gradient accent */}
+          <motion.h1 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight text-white"
+          >
             Host Professional
             <br />
-            <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-primary via-primary to-accent bg-clip-text text-transparent">
               Tournaments
             </span>
-          </h1>
+          </motion.h1>
 
-          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
+          <motion.p 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="text-lg md:text-xl text-white/70 max-w-2xl mx-auto mb-10"
+          >
             Create, manage, and run tournaments with automated brackets, live scoring,
             and seamless player registration. Everything you need in one place.
-          </p>
+          </motion.p>
 
-          {/* CTAs */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
+          {/* CTAs with glow effect */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            className="flex flex-col sm:flex-row gap-4 justify-center mb-16"
+          >
             <Button
               onClick={onCreateClick || (() => navigate("/tournaments/new"))}
               size="lg"
-              className="bg-gradient-to-r from-primary to-accent hover:opacity-90 gap-2 text-lg px-8"
+              className="bg-gradient-to-r from-primary to-accent hover:opacity-90 gap-2 text-lg px-8 shadow-[0_0_30px_rgba(169,207,70,0.4)] transition-all hover:shadow-[0_0_40px_rgba(169,207,70,0.5)]"
             >
               <Trophy className="h-5 w-5" />
               Create Tournament
@@ -96,38 +124,55 @@ export function TournamentHero({ onCreateClick, stats = { tournaments: 50, playe
                   behavior: "smooth",
                 });
               }}
-              className="gap-2 text-lg px-8"
+              className="gap-2 text-lg px-8 border-white/20 text-white hover:bg-white/10 hover:text-white"
             >
               <Users className="h-5 w-5" />
               Browse Tournaments
             </Button>
-          </div>
+          </motion.div>
 
-          {/* Stats */}
+          {/* Stats in elevated card */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="grid grid-cols-3 gap-6 max-w-lg mx-auto"
+            transition={{ delay: 0.6 }}
+            className="bg-card/80 backdrop-blur-md border border-border/50 rounded-2xl p-6 md:p-8 max-w-xl mx-auto shadow-xl"
           >
-            <div className="text-center">
-              <div className="text-3xl md:text-4xl font-bold text-primary">
-                {stats.tournaments}+
+            <div className="grid grid-cols-3 gap-6">
+              <div className="text-center">
+                <div className="text-3xl md:text-4xl font-bold text-primary">
+                  <CountUp end={stats.tournaments} duration={2.5} suffix="+" />
+                </div>
+                <div className="text-sm text-muted-foreground mt-1">Tournaments</div>
               </div>
-              <div className="text-sm text-muted-foreground">Tournaments</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl md:text-4xl font-bold text-primary">
-                {stats.players}+
+              <div className="text-center border-x border-border/50">
+                <div className="text-3xl md:text-4xl font-bold text-primary">
+                  <CountUp end={stats.players} duration={2.5} suffix="+" />
+                </div>
+                <div className="text-sm text-muted-foreground mt-1">Players</div>
               </div>
-              <div className="text-sm text-muted-foreground">Players</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl md:text-4xl font-bold text-primary">
-                {stats.divisions}+
+              <div className="text-center">
+                <div className="text-3xl md:text-4xl font-bold text-primary">
+                  <CountUp end={stats.divisions} duration={2.5} suffix="+" />
+                </div>
+                <div className="text-sm text-muted-foreground mt-1">Divisions</div>
               </div>
-              <div className="text-sm text-muted-foreground">Divisions</div>
             </div>
+          </motion.div>
+
+          {/* Scroll indicator */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1 }}
+            className="mt-12"
+          >
+            <motion.div
+              animate={{ y: [0, 8, 0] }}
+              transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+            >
+              <ChevronDown className="h-6 w-6 mx-auto text-white/40" />
+            </motion.div>
           </motion.div>
         </motion.div>
       </div>

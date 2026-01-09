@@ -137,64 +137,64 @@ export function TournamentWizard() {
             className="space-y-6"
           >
             <div className="space-y-2">
-              <Label htmlFor="name">Tournament Name *</Label>
+              <Label htmlFor="name" className="text-sm font-medium">Tournament Name *</Label>
               <Input
                 id="name"
                 placeholder="Summer Championship 2025"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="bg-background/50"
+                className="bg-background/50 border-border/50 focus:border-primary/50 h-12"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="start-date">Start Date</Label>
+                <Label htmlFor="start-date" className="text-sm font-medium">Start Date</Label>
                 <Input
                   id="start-date"
                   type="date"
                   value={formData.startDate}
                   onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                  className="bg-background/50"
+                  className="bg-background/50 border-border/50 focus:border-primary/50 h-12"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="end-date">End Date</Label>
+                <Label htmlFor="end-date" className="text-sm font-medium">End Date</Label>
                 <Input
                   id="end-date"
                   type="date"
                   value={formData.endDate}
                   onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
                   min={formData.startDate}
-                  className="bg-background/50"
+                  className="bg-background/50 border-border/50 focus:border-primary/50 h-12"
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="location">Location</Label>
+              <Label htmlFor="location" className="text-sm font-medium">Location</Label>
               <Input
                 id="location"
                 placeholder="Diamond Hill Courts, Cumberland, RI"
                 value={formData.location}
                 onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                className="bg-background/50"
+                className="bg-background/50 border-border/50 focus:border-primary/50 h-12"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="description" className="text-sm font-medium">Description</Label>
               <Textarea
                 id="description"
                 placeholder="Tournament details, rules, or additional information..."
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 rows={4}
-                className="bg-background/50"
+                className="bg-background/50 border-border/50 focus:border-primary/50"
               />
             </div>
 
-            <div className="flex items-center justify-between p-4 bg-card/50 rounded-lg border border-border/50">
+            <div className="flex items-center justify-between p-4 bg-gradient-to-r from-card/80 to-muted/30 rounded-xl border border-border/50">
               <div>
                 <Label htmlFor="public" className="font-medium">Public Tournament</Label>
                 <p className="text-sm text-muted-foreground">
@@ -238,8 +238,11 @@ export function TournamentWizard() {
             className="grid md:grid-cols-2 gap-6"
           >
             <div className="space-y-6">
-              <div className="bg-card/50 border border-border/50 rounded-lg p-6">
-                <h3 className="font-semibold mb-4">Tournament Details</h3>
+              <div className="bg-gradient-to-br from-card/80 to-muted/30 backdrop-blur-sm border border-border/50 rounded-xl p-6">
+                <h3 className="font-semibold mb-4 flex items-center gap-2">
+                  <Trophy className="h-4 w-4 text-primary" />
+                  Tournament Details
+                </h3>
                 <dl className="space-y-3 text-sm">
                   <div className="flex justify-between">
                     <dt className="text-muted-foreground">Name</dt>
@@ -264,13 +267,18 @@ export function TournamentWizard() {
                 </dl>
               </div>
 
-              <div className="bg-card/50 border border-border/50 rounded-lg p-6">
-                <h3 className="font-semibold mb-4">Divisions ({divisions.length})</h3>
+              <div className="bg-gradient-to-br from-card/80 to-muted/30 backdrop-blur-sm border border-border/50 rounded-xl p-6">
+                <h3 className="font-semibold mb-4 flex items-center gap-2">
+                  <Layers className="h-4 w-4 text-primary" />
+                  Divisions ({divisions.length})
+                </h3>
                 {divisions.length > 0 ? (
                   <ul className="space-y-2">
                     {divisions.map((div) => (
-                      <li key={div.id} className="flex items-center gap-2 text-sm">
-                        <Check className="h-4 w-4 text-primary" />
+                      <li key={div.id} className="flex items-center gap-2 text-sm p-2 bg-background/50 rounded-lg">
+                        <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center">
+                          <Check className="h-3 w-3 text-primary" />
+                        </div>
                         <span>{div.name}</span>
                         {div.skill_level && (
                           <span className="text-muted-foreground">({div.skill_level})</span>
@@ -317,8 +325,8 @@ export function TournamentWizard() {
           </p>
         </div>
 
-        {/* Stepper */}
-        <div className="mb-8">
+        {/* Stepper with glass-morphism */}
+        <div className="mb-8 bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-4">
           <div className="flex items-center justify-between">
             {STEPS.map((step, index) => {
               const Icon = step.icon;
@@ -327,10 +335,12 @@ export function TournamentWizard() {
 
               return (
                 <div key={step.id} className="flex items-center">
-                  <div
-                    className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all ${
+                  <motion.div
+                    animate={isActive ? { scale: [1, 1.05, 1] } : {}}
+                    transition={{ duration: 0.5, repeat: isActive ? Infinity : 0, repeatDelay: 2 }}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-full transition-all ${
                       isActive
-                        ? "bg-primary text-primary-foreground"
+                        ? "bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-[0_0_20px_rgba(169,207,70,0.3)]"
                         : isCompleted
                         ? "bg-primary/20 text-primary"
                         : "bg-muted text-muted-foreground"
@@ -342,11 +352,11 @@ export function TournamentWizard() {
                       <Icon className="h-5 w-5" />
                     )}
                     <span className="font-medium hidden sm:inline">{step.label}</span>
-                  </div>
+                  </motion.div>
                   {index < STEPS.length - 1 && (
                     <div
-                      className={`h-0.5 w-12 mx-2 ${
-                        isCompleted ? "bg-primary" : "bg-muted"
+                      className={`h-0.5 w-12 mx-2 rounded-full transition-all ${
+                        isCompleted ? "bg-gradient-to-r from-primary to-accent" : "bg-muted"
                       }`}
                     />
                   )}
@@ -357,7 +367,7 @@ export function TournamentWizard() {
         </div>
 
         {/* Step Content */}
-        <div className="bg-card/30 backdrop-blur-sm border border-border/50 rounded-2xl p-6 md:p-8">
+        <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-6 md:p-8">
           <AnimatePresence mode="wait">
             {renderStep()}
           </AnimatePresence>
@@ -382,7 +392,7 @@ export function TournamentWizard() {
                 (currentStep === 0 && (!formData.name.trim() || isCreating)) ||
                 (currentStep === 1 && divisions.length === 0)
               }
-              className="gap-2"
+              className="gap-2 bg-gradient-to-r from-primary to-accent hover:opacity-90"
             >
               {isCreating ? "Creating..." : "Continue"}
               <ChevronRight className="h-4 w-4" />
@@ -392,17 +402,17 @@ export function TournamentWizard() {
 
         {/* Mobile sticky footer for Review step */}
         {currentStep === 2 && (
-          <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/80 backdrop-blur-sm border-t border-border md:hidden">
+          <div className="fixed bottom-0 left-0 right-0 p-4 bg-background/90 backdrop-blur-md border-t border-border/50 md:hidden">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm text-muted-foreground">Total</span>
-              <span className="font-bold text-lg">
+              <span className="font-bold text-lg text-primary">
                 ${29 + Math.max(0, divisions.length - 3) * 9}
               </span>
             </div>
             <Button
               onClick={handleCheckout}
               disabled={isCheckingOut || divisions.length === 0}
-              className="w-full"
+              className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90 shadow-[0_0_20px_rgba(169,207,70,0.3)]"
               size="lg"
             >
               {isCheckingOut ? "Processing..." : "Pay & Unlock Tournament"}
