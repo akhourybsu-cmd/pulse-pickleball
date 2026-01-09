@@ -143,7 +143,7 @@ export function TournamentWizard() {
                 placeholder="Summer Championship 2025"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="bg-background/50 border-border/50 focus:border-primary/50 h-12"
+                className="bg-card border-border/50 focus:border-primary/50 h-12"
               />
             </div>
 
@@ -155,7 +155,7 @@ export function TournamentWizard() {
                   type="date"
                   value={formData.startDate}
                   onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                  className="bg-background/50 border-border/50 focus:border-primary/50 h-12"
+                  className="bg-card border-border/50 focus:border-primary/50 h-12"
                 />
               </div>
               <div className="space-y-2">
@@ -166,7 +166,7 @@ export function TournamentWizard() {
                   value={formData.endDate}
                   onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
                   min={formData.startDate}
-                  className="bg-background/50 border-border/50 focus:border-primary/50 h-12"
+                  className="bg-card border-border/50 focus:border-primary/50 h-12"
                 />
               </div>
             </div>
@@ -178,7 +178,7 @@ export function TournamentWizard() {
                 placeholder="Diamond Hill Courts, Cumberland, RI"
                 value={formData.location}
                 onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                className="bg-background/50 border-border/50 focus:border-primary/50 h-12"
+                className="bg-card border-border/50 focus:border-primary/50 h-12"
               />
             </div>
 
@@ -190,7 +190,7 @@ export function TournamentWizard() {
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 rows={4}
-                className="bg-background/50 border-border/50 focus:border-primary/50"
+                className="bg-card border-border/50 focus:border-primary/50"
               />
             </div>
 

@@ -146,7 +146,7 @@ export function DivisionCardEditor({
                     </span>
                   )}
                   {division.format && (
-                    <span className="bg-muted px-2 py-0.5 rounded-md capitalize text-muted-foreground">
+                    <span className="bg-muted/70 border border-border/50 px-2 py-0.5 rounded-md capitalize text-muted-foreground">
                       {division.format}
                     </span>
                   )}

@@ -115,16 +115,16 @@ export function PricingShowcase({ onGetStarted }: PricingShowcaseProps) {
             </div>
 
             <div className="space-y-3">
-              <div className="flex justify-between text-sm p-3 bg-background/50 rounded-lg border border-border/30">
-                <span>4 divisions</span>
+              <div className="flex justify-between text-sm p-3 bg-muted/50 rounded-lg border border-border/50">
+                <span className="text-foreground">4 divisions</span>
                 <span className="font-semibold text-primary">$38 total</span>
               </div>
-              <div className="flex justify-between text-sm p-3 bg-background/50 rounded-lg border border-border/30">
-                <span>6 divisions</span>
+              <div className="flex justify-between text-sm p-3 bg-muted/50 rounded-lg border border-border/50">
+                <span className="text-foreground">6 divisions</span>
                 <span className="font-semibold text-primary">$56 total</span>
               </div>
-              <div className="flex justify-between text-sm p-3 bg-background/50 rounded-lg border border-border/30">
-                <span>10 divisions</span>
+              <div className="flex justify-between text-sm p-3 bg-muted/50 rounded-lg border border-border/50">
+                <span className="text-foreground">10 divisions</span>
                 <span className="font-semibold text-primary">$92 total</span>
               </div>
             </div>

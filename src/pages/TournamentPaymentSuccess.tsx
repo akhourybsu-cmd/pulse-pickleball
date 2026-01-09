@@ -79,7 +79,7 @@ export default function TournamentPaymentSuccess() {
             <CardContent className="p-8 text-center space-y-6">
               {status === "verifying" && (
                 <>
-                  <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                  <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center">
                     <Loader2 className="h-8 w-8 text-primary animate-spin" />
                   </div>
                   <div className="space-y-2">
@@ -97,7 +97,7 @@ export default function TournamentPaymentSuccess() {
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     transition={{ type: "spring", stiffness: 200, damping: 15 }}
-                    className="mx-auto w-20 h-20 rounded-full bg-green-500/10 flex items-center justify-center"
+                    className="mx-auto w-20 h-20 rounded-full bg-green-500/10 border border-green-500/20 flex items-center justify-center"
                   >
                     <CheckCircle2 className="h-10 w-10 text-green-500" />
                   </motion.div>
@@ -129,7 +129,7 @@ export default function TournamentPaymentSuccess() {
 
               {status === "pending" && (
                 <>
-                  <div className="mx-auto w-16 h-16 rounded-full bg-yellow-500/10 flex items-center justify-center">
+                  <div className="mx-auto w-16 h-16 rounded-full bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center">
                     <Loader2 className="h-8 w-8 text-yellow-500 animate-spin" />
                   </div>
                   <div className="space-y-2">
