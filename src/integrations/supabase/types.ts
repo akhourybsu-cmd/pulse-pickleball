@@ -3247,6 +3247,7 @@ export type Database = {
           location: string | null
           name: string
           paid_at: string | null
+          paid_divisions_count: number | null
           payment_status: string | null
           public_view_enabled: boolean
           registration_close_date: string | null
@@ -3270,6 +3271,7 @@ export type Database = {
           location?: string | null
           name: string
           paid_at?: string | null
+          paid_divisions_count?: number | null
           payment_status?: string | null
           public_view_enabled?: boolean
           registration_close_date?: string | null
@@ -3293,6 +3295,7 @@ export type Database = {
           location?: string | null
           name?: string
           paid_at?: string | null
+          paid_divisions_count?: number | null
           payment_status?: string | null
           public_view_enabled?: boolean
           registration_close_date?: string | null
