@@ -24,7 +24,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Play, Trophy, AlertCircle, Settings, Trash2, Ban, CheckCircle, Edit, Edit3, Bell, Monitor, ExternalLink, Share2, Users, Calendar, MapPin, Zap, RefreshCw } from "lucide-react";
+import { Play, Trophy, AlertCircle, Settings, Trash2, Ban, CheckCircle, Edit, Edit3, Bell, Monitor, ExternalLink, Share2, Users, Calendar, MapPin, Zap, RefreshCw, Medal, Clock } from "lucide-react";
+import { motion } from "framer-motion";
 import { ScheduleRoundCarousel } from "@/components/round-robin/ScheduleRoundCarousel";
 import { toast } from "sonner";
 
@@ -1418,14 +1419,38 @@ export default function RoundRobinDetail() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="text-center"
+        >
+          <div className="relative h-16 w-16 mx-auto mb-4">
+            <div className="absolute inset-0 rounded-full border-4 border-primary/20"></div>
+            <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-primary animate-spin"></div>
+          </div>
+          <p className="text-muted-foreground font-medium">Loading event...</p>
+        </motion.div>
       </div>
     );
   }
 
   if (!event) {
-    return null;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center"
+        >
+          <Trophy className="h-16 w-16 mx-auto mb-4 text-muted-foreground/50" />
+          <p className="text-muted-foreground mb-4">Event not found</p>
+          <Button onClick={() => navigate("/round-robin")} variant="outline">
+            Go Back
+          </Button>
+        </motion.div>
+      </div>
+    );
   }
 
   // Non-organizers see simplified view
@@ -1493,40 +1518,76 @@ export default function RoundRobinDetail() {
       )}
       
       <div className="pb-20">
-      {/* Event info banner */}
-      <div className="bg-muted/30 border-b">
-        <div className="container mx-auto px-4 py-4">
+      {/* Premium Event Info Banner */}
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="relative overflow-hidden border-b border-border/50"
+      >
+        {/* Animated gradient background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-background to-secondary/10" />
+        <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+        
+        <div className="container relative mx-auto px-4 py-6">
           <div className="flex items-start justify-between gap-4 flex-wrap">
-            <div className="flex-1 min-w-[280px]">
-              <div className="mb-2">
-                <h1 className="text-2xl font-bold">{event.name}</h1>
+            <motion.div 
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.1 }}
+              className="flex-1 min-w-[280px]"
+            >
+              <div className="mb-3">
+                <h1 className="text-2xl md:text-3xl font-bold text-foreground">{event.name}</h1>
+                <motion.div
+                  initial={{ scaleX: 0 }}
+                  animate={{ scaleX: 1 }}
+                  transition={{ duration: 0.5, delay: 0.3 }}
+                  className="h-1 w-20 mt-2 origin-left bg-gradient-to-r from-primary to-primary/50 rounded-full"
+                />
               </div>
               
-              <div className="flex flex-wrap items-center gap-2 mb-3">
-                <Badge variant={
-                  event.status === 'live' ? 'default' : 
-                  event.status === 'completed' ? 'secondary' : 
-                  'outline'
-                }>
-                  {event.status === 'live' ? '🔴 Live' : 
-                   event.status === 'completed' ? '✓ Completed' : 
-                   '📝 Draft'}
-                </Badge>
+              <div className="flex flex-wrap items-center gap-2 mb-4">
+                {event.status === 'live' ? (
+                  <Badge className="bg-primary text-primary-foreground shadow-[0_0_12px_rgba(197,232,108,0.5)]">
+                    <span className="mr-2 relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+                    </span>
+                    LIVE
+                  </Badge>
+                ) : event.status === 'completed' ? (
+                  <Badge className="bg-secondary text-secondary-foreground">
+                    <Trophy className="h-3 w-3 mr-1" />
+                    COMPLETED
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="text-muted-foreground">DRAFT</Badge>
+                )}
                 {event.voided && <Badge variant="destructive">Voided</Badge>}
-                {event.rating_eligible && <Badge variant="outline">Rating Eligible</Badge>}
-                <Badge variant="outline">
+                {event.rating_eligible && (
+                  <Badge variant="outline" className="border-primary/50 text-primary">
+                    Rating Eligible
+                  </Badge>
+                )}
+                <Badge variant="outline" className="bg-muted/50">
                   Doubles Format
                 </Badge>
-                <Badge variant="outline">
+                <Badge variant="outline" className="bg-muted/50">
                   Rounds: {hasSchedule ? event.num_rounds : '—'}
                 </Badge>
               </div>
 
-              <div className="flex items-center gap-3 flex-wrap">
-                <p className="text-sm text-muted-foreground flex items-center gap-2">
-                  <Calendar className="h-3 w-3" />
-                  {format(parseISO(event.date + 'T00:00:00'), 'PP')}
-                </p>
+              <div className="flex items-center gap-4 flex-wrap">
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-card/80 backdrop-blur-sm border border-border/50 text-sm">
+                  <Calendar className="h-4 w-4 text-primary" />
+                  <span>{format(parseISO(event.date + 'T00:00:00'), 'PP')}</span>
+                </div>
+                {event.start_time && (
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-card/80 backdrop-blur-sm border border-border/50 text-sm">
+                    <Clock className="h-4 w-4 text-primary" />
+                    <span>{event.start_time}</span>
+                  </div>
+                )}
                 {isOrganizer && (
                   <TooltipProvider>
                     <Tooltip>
@@ -1535,9 +1596,9 @@ export default function RoundRobinDetail() {
                           variant="ghost" 
                           size="sm" 
                           onClick={handleShareEvent}
-                          className="h-7 px-2"
+                          className="h-8 px-3 hover:bg-primary/10"
                         >
-                          <Share2 className="h-3 w-3 mr-1" />
+                          <Share2 className="h-4 w-4 mr-1" />
                           Share
                         </Button>
                       </TooltipTrigger>
@@ -1548,10 +1609,15 @@ export default function RoundRobinDetail() {
                   </TooltipProvider>
                 )}
               </div>
-            </div>
+            </motion.div>
 
             {/* Action buttons */}
-            <div className="flex items-center gap-2 flex-wrap">
+            <motion.div 
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2 }}
+              className="flex items-center gap-2 flex-wrap"
+            >
               {!isOrganizer && isParticipant && !event.voided && 
                 event.status === 'draft' && 
                 (!event.registration_deadline || new Date() < new Date(event.registration_deadline)) && (
@@ -1559,6 +1625,7 @@ export default function RoundRobinDetail() {
                   variant="outline" 
                   size="sm"
                   onClick={() => setLeaveDialogOpen(true)}
+                  className="border-destructive/50 text-destructive hover:bg-destructive/10"
                 >
                   Leave Event
                 </Button>
@@ -1567,13 +1634,12 @@ export default function RoundRobinDetail() {
                 <>
                   {event.status === 'live' && (
                     <Button 
-                      variant="default" 
                       size="sm"
                       onClick={() => {
                         const kioskUrl = `/round-robin/${event.id}/kiosk`;
                         window.open(kioskUrl, '_blank', 'width=1920,height=1080');
                       }}
-                      className="bg-accent hover:bg-accent/90"
+                      className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20"
                     >
                       <Monitor className="h-4 w-4 mr-2" />
                       Kiosk Mode
@@ -1584,6 +1650,7 @@ export default function RoundRobinDetail() {
                     size="sm"
                     onClick={() => setEditDialogOpen(true)}
                     disabled={isEditMode}
+                    className="hover:bg-muted/80"
                   >
                     <Settings className="h-4 w-4 mr-2" />
                     Settings
@@ -1594,6 +1661,7 @@ export default function RoundRobinDetail() {
                         variant="outline" 
                         size="sm"
                         onClick={() => setCourtsRoundsOpen(true)}
+                        className="hover:bg-muted/80"
                       >
                         <Edit className="h-4 w-4 mr-2" />
                         Courts & Games
@@ -1615,6 +1683,7 @@ export default function RoundRobinDetail() {
                             console.error(error);
                           }
                         }}
+                        className="hover:bg-muted/80"
                       >
                         <RefreshCw className="h-4 w-4 mr-2" />
                         Sync Schedule
@@ -1623,10 +1692,10 @@ export default function RoundRobinDetail() {
                   )}
                 </>
               )}
-            </div>
+            </motion.div>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       <main className="container max-w-[1280px] mx-auto px-4 py-6">
         {isOrganizer && isEditMode && (
@@ -1649,63 +1718,78 @@ export default function RoundRobinDetail() {
           </Alert>
         )}
 
-        {/* Progress Stepper */}
-        <div className="mb-4 px-2">
-          <div className="flex items-center justify-center gap-2 text-xs sm:text-sm">
-            <div className={`flex items-center gap-1 ${currentStep >= 1 ? 'font-semibold' : 'text-muted-foreground'}`}>
-              <div className={`w-2 h-2 rounded-full ${currentStep >= 1 ? 'bg-primary' : 'bg-muted'}`} />
-              <span className="hidden sm:inline">1 Add Players</span>
+        {/* Premium Progress Stepper */}
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="mb-6 px-2"
+        >
+          <div className="flex items-center justify-center gap-2 text-xs sm:text-sm p-3 rounded-xl bg-card/80 backdrop-blur-sm border border-border/50 shadow-sm max-w-2xl mx-auto">
+            <div className={`flex items-center gap-2 ${currentStep >= 1 ? 'font-semibold' : 'text-muted-foreground'}`}>
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all ${currentStep >= 1 ? 'bg-primary text-primary-foreground shadow-[0_0_8px_rgba(197,232,108,0.4)]' : 'bg-muted text-muted-foreground'}`}>1</div>
+              <span className="hidden sm:inline">Add Players</span>
               <span className="sm:hidden">Players</span>
             </div>
-            <div className="h-px w-4 sm:w-8 bg-border" />
-            <div className={`flex items-center gap-1 ${currentStep >= 2 ? 'font-semibold' : 'text-muted-foreground'}`}>
-              <div className={`w-2 h-2 rounded-full ${currentStep >= 2 ? 'bg-primary' : 'bg-muted'}`} />
-              <span className="hidden sm:inline">2 Generate</span>
+            <div className={`h-px w-6 sm:w-10 transition-colors ${currentStep >= 2 ? 'bg-primary' : 'bg-border'}`} />
+            <div className={`flex items-center gap-2 ${currentStep >= 2 ? 'font-semibold' : 'text-muted-foreground'}`}>
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all ${currentStep >= 2 ? 'bg-primary text-primary-foreground shadow-[0_0_8px_rgba(197,232,108,0.4)]' : 'bg-muted text-muted-foreground'}`}>2</div>
+              <span className="hidden sm:inline">Generate</span>
               <span className="sm:hidden">Generate</span>
             </div>
-            <div className="h-px w-4 sm:w-8 bg-border" />
-            <div className={`flex items-center gap-1 ${currentStep >= 3 ? 'font-semibold' : 'text-muted-foreground'}`}>
-              <div className={`w-2 h-2 rounded-full ${currentStep >= 3 ? 'bg-primary' : 'bg-muted'}`} />
-              <span className="hidden sm:inline">3 Play & Score</span>
+            <div className={`h-px w-6 sm:w-10 transition-colors ${currentStep >= 3 ? 'bg-primary' : 'bg-border'}`} />
+            <div className={`flex items-center gap-2 ${currentStep >= 3 ? 'font-semibold' : 'text-muted-foreground'}`}>
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all ${currentStep >= 3 ? 'bg-primary text-primary-foreground shadow-[0_0_8px_rgba(197,232,108,0.4)]' : 'bg-muted text-muted-foreground'}`}>3</div>
+              <span className="hidden sm:inline">Play & Score</span>
               <span className="sm:hidden">Score</span>
             </div>
-            <div className="h-px w-4 sm:w-8 bg-border" />
-            <div className={`flex items-center gap-1 ${currentStep >= 4 ? 'font-semibold' : 'text-muted-foreground'}`}>
-              <div className={`w-2 h-2 rounded-full ${currentStep >= 4 ? 'bg-primary' : 'bg-muted'}`} />
-              <span className="hidden sm:inline">4 Standings</span>
+            <div className={`h-px w-6 sm:w-10 transition-colors ${currentStep >= 4 ? 'bg-primary' : 'bg-border'}`} />
+            <div className={`flex items-center gap-2 ${currentStep >= 4 ? 'font-semibold' : 'text-muted-foreground'}`}>
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all ${currentStep >= 4 ? 'bg-primary text-primary-foreground shadow-[0_0_8px_rgba(197,232,108,0.4)]' : 'bg-muted text-muted-foreground'}`}>4</div>
+              <span className="hidden sm:inline">Standings</span>
               <span className="sm:hidden">Done</span>
             </div>
           </div>
-        </div>
+        </motion.div>
 
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+        >
         <Tabs defaultValue="schedule" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-4 h-auto">
-            <TabsTrigger value="schedule" className="whitespace-nowrap">Schedule</TabsTrigger>
-            <TabsTrigger value="players" className="flex items-center gap-2 whitespace-nowrap">
-              <span>Players ({players.length})</span>
-              {players.length > 0 && (
-                <div className="hidden sm:flex items-center gap-1">
-                  {players.slice(0, 4).map((player) => (
-                    <Avatar key={player.id} className="h-5 w-5 border">
-                      <AvatarFallback className="text-[8px]">
-                        {getPlayerInitials(player)}
-                      </AvatarFallback>
-                    </Avatar>
-                  ))}
-                  {players.length > 4 && (
-                    <span className="text-[10px] text-muted-foreground ml-0.5">+{players.length - 4}</span>
-                  )}
-                </div>
-              )}
+          {/* Premium Tab List */}
+          <TabsList className="w-full max-w-md mx-auto grid grid-cols-3 mb-6 p-1 bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl shadow-sm h-auto">
+            <TabsTrigger 
+              value="schedule" 
+              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md rounded-lg transition-all py-2"
+            >
+              <Calendar className="h-4 w-4 mr-2" />
+              Schedule
             </TabsTrigger>
-            <TabsTrigger value="standings" className="whitespace-nowrap">Standings</TabsTrigger>
+            <TabsTrigger 
+              value="players" 
+              className="flex items-center gap-2 whitespace-nowrap data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md rounded-lg transition-all py-2"
+            >
+              <Users className="h-4 w-4 mr-1" />
+              <span>Players ({players.length})</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="standings" 
+              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md rounded-lg transition-all py-2"
+            >
+              <Trophy className="h-4 w-4 mr-2" />
+              Standings
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="schedule" className="mt-4 space-y-4">
             {!hasSchedule ? (
-              <Card className="shadow-sm">
+              <Card className="border-dashed border-2 bg-gradient-to-br from-card to-muted/30">
                 <CardContent className="flex flex-col items-center justify-center py-16 space-y-4">
-                  <Zap className="h-16 w-16 text-primary/60" />
+                  <div className="p-4 rounded-full bg-primary/10 border border-primary/20">
+                    <Zap className="h-12 w-12 text-primary" />
+                  </div>
                   <div className="text-center space-y-2">
                     <h3 className="text-xl font-semibold">No schedule yet</h3>
                     <p className="text-sm text-muted-foreground max-w-md">
@@ -1723,8 +1807,7 @@ export default function RoundRobinDetail() {
                         onClick={handleGenerateSchedule} 
                         disabled={!canGenerate}
                         size="lg"
-                        style={{ backgroundColor: '#A9CF46' }}
-                        className="text-primary-foreground hover:opacity-90"
+                        className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20"
                       >
                         <Zap className="h-4 w-4 mr-2" />
                         Generate Schedule
@@ -1748,7 +1831,10 @@ export default function RoundRobinDetail() {
             ) : (
               <>
                 {isOrganizer && event.status === "draft" && (
-                  <Button onClick={handleStartEvent} className="w-full mb-4">
+                  <Button 
+                    onClick={handleStartEvent} 
+                    className="w-full mb-4 bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20"
+                  >
                     <Play className="h-4 w-4 mr-2" />
                     Start Event
                   </Button>
@@ -1759,7 +1845,7 @@ export default function RoundRobinDetail() {
                     <Button 
                       variant="outline" 
                       onClick={() => setScheduleEditorOpen(true)}
-                      className="flex-1"
+                      className="flex-1 hover:bg-muted/80"
                     >
                       <Edit className="h-4 w-4 mr-2" />
                       Edit Schedule
@@ -1768,7 +1854,7 @@ export default function RoundRobinDetail() {
                       <Button 
                         variant="outline" 
                         onClick={() => setScoreManagementOpen(true)}
-                        className="flex-1"
+                        className="flex-1 hover:bg-muted/80"
                       >
                         <Edit3 className="h-4 w-4 mr-2" />
                         Manage Scores
@@ -1778,7 +1864,11 @@ export default function RoundRobinDetail() {
                 )}
 
                 {isOrganizer && event.status === "live" && (
-                  <Button onClick={handleCompleteEvent} className="w-full mb-4" variant="default">
+                  <Button 
+                    onClick={handleCompleteEvent} 
+                    className="w-full mb-4 bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20"
+                  >
+                    <CheckCircle className="h-4 w-4 mr-2" />
                     Complete Event & Submit to Match History
                   </Button>
                 )}
@@ -1797,91 +1887,125 @@ export default function RoundRobinDetail() {
                     
                     return (
                       <div className={`space-y-4 ${isFutureRound ? 'opacity-50' : ''}`}>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="h-px bg-border flex-1 w-12" />
-                            <div className={`text-lg font-bold px-4 py-2 rounded-full ${isCurrentRound && event.status === 'live' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
-                              Round {roundNo}
-                              {isCurrentRound && event.status === 'live' && <span className="ml-2 text-xs">(Active)</span>}
-                            </div>
-                            <div className="h-px bg-border flex-1 w-12" />
+                        <div className="flex items-center justify-center gap-3">
+                          <div className="h-px bg-border flex-1 max-w-12" />
+                          <div 
+                            className={`text-lg font-bold px-5 py-2.5 rounded-full transition-all ${
+                              isCurrentRound && event.status === 'live' 
+                                ? 'bg-primary text-primary-foreground shadow-[0_0_20px_rgba(197,232,108,0.4)]' 
+                                : 'bg-muted'
+                            }`}
+                          >
+                            Round {roundNo}
+                            {isCurrentRound && event.status === 'live' && <span className="ml-2 text-xs opacity-90">(Active)</span>}
                           </div>
+                          <div className="h-px bg-border flex-1 max-w-12" />
                           {isOrganizer && event.status === "live" && isCurrentRound && allRoundScored && roundNo < event.num_rounds && (
-                            <Button size="sm" onClick={() => handleCloseRound(roundNo)}>
+                            <Button 
+                              size="sm" 
+                              onClick={() => handleCloseRound(roundNo)}
+                              className="bg-secondary text-secondary-foreground hover:bg-secondary/90"
+                            >
                               <CheckCircle className="h-4 w-4 mr-2" />
                               Close Round
                             </Button>
                           )}
                         </div>
                         
-                        <div className="grid gap-3 md:grid-cols-2">
-                          {courtMatches.map((match) => (
-                            <Card key={match.id} className={`overflow-hidden ${isFutureRound ? 'pointer-events-none' : ''}`}>
-                              <CardContent className="p-4 space-y-3">
-                                <div className="flex items-center justify-between">
-                                  <Badge variant="outline" className="font-mono">Court {match.court_no}</Badge>
-                                  {match.team1_score !== null && match.team2_score !== null && (
-                                    <Badge variant="secondary">Completed</Badge>
-                                  )}
-                                </div>
-                                
-                                <div className="space-y-2">
-                                  <div className={`flex items-center justify-between p-3 rounded-lg ${match.team1_score !== null && match.team1_score > (match.team2_score || 0) ? 'bg-primary/10 font-semibold' : 'bg-muted/50'}`}>
-                                    <div className="text-sm">
-                                      {getPlayerName(match.a1_player_id, match)} / {getPlayerName(match.a2_player_id, match)}
+                        <div className="grid gap-4 md:grid-cols-2">
+                          {courtMatches.map((match, idx) => {
+                            const isCompleted = match.team1_score !== null && match.team2_score !== null;
+                            const team1Won = isCompleted && match.team1_score! > match.team2_score!;
+                            const team2Won = isCompleted && match.team2_score! > match.team1_score!;
+
+                            return (
+                              <motion.div
+                                key={match.id}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: idx * 0.05 }}
+                              >
+                                <Card className={`overflow-hidden transition-all hover:shadow-md ${
+                                  isFutureRound ? 'pointer-events-none' : ''
+                                } ${isCompleted ? 'bg-gradient-to-r from-card to-muted/30' : ''}`}>
+                                  <CardContent className="p-4 space-y-3">
+                                    <div className="flex items-center justify-between">
+                                      <Badge variant="outline" className="font-mono bg-muted/50">Court {match.court_no}</Badge>
+                                      {isCompleted && (
+                                        <Badge variant="secondary" className="text-xs">
+                                          <CheckCircle className="h-3 w-3 mr-1" />
+                                          Completed
+                                        </Badge>
+                                      )}
                                     </div>
-                                    {match.team1_score !== null ? (
-                                      <div className="text-lg font-bold">{match.team1_score}</div>
-                                    ) : isOrganizer && event.status === "live" && isCurrentRound ? (
-                                      <Input
-                                        type="number"
-                                        min="0"
-                                        max="99"
-                                        className="w-16 h-8 text-center"
-                                        placeholder="0"
-                                        value={scores[match.id]?.team1_score ?? ''}
-                                        onChange={(e) => handleScoreChange(match.id, 'team1', e.target.value)}
-                                      />
-                                    ) : (
-                                      <div className="text-muted-foreground">—</div>
-                                    )}
-                                  </div>
-                                  
-                                  <div className={`flex items-center justify-between p-3 rounded-lg ${match.team2_score !== null && match.team2_score > (match.team1_score || 0) ? 'bg-primary/10 font-semibold' : 'bg-muted/50'}`}>
-                                    <div className="text-sm">
-                                      {getPlayerName(match.b1_player_id, match)} / {getPlayerName(match.b2_player_id, match)}
+                                    
+                                    <div className="space-y-2">
+                                      <div className={`flex items-center justify-between p-3 rounded-xl transition-colors ${
+                                        team1Won 
+                                          ? 'bg-primary/15 border border-primary/30' 
+                                          : 'bg-muted/50'
+                                      }`}>
+                                        <div className={`text-sm truncate flex-1 ${team1Won ? 'font-semibold' : ''}`}>
+                                          {getPlayerName(match.a1_player_id, match)} / {getPlayerName(match.a2_player_id, match)}
+                                        </div>
+                                        {match.team1_score !== null ? (
+                                          <div className={`text-xl font-bold font-mono ml-2 ${team1Won ? 'text-primary' : ''}`}>{match.team1_score}</div>
+                                        ) : isOrganizer && event.status === "live" && isCurrentRound ? (
+                                          <Input
+                                            type="number"
+                                            min="0"
+                                            max="99"
+                                            className="w-16 h-8 text-center ml-2"
+                                            placeholder="0"
+                                            value={scores[match.id]?.team1_score ?? ''}
+                                            onChange={(e) => handleScoreChange(match.id, 'team1', e.target.value)}
+                                          />
+                                        ) : (
+                                          <div className="text-muted-foreground ml-2">—</div>
+                                        )}
+                                      </div>
+                                      
+                                      <div className={`flex items-center justify-between p-3 rounded-xl transition-colors ${
+                                        team2Won 
+                                          ? 'bg-primary/15 border border-primary/30' 
+                                          : 'bg-muted/50'
+                                      }`}>
+                                        <div className={`text-sm truncate flex-1 ${team2Won ? 'font-semibold' : ''}`}>
+                                          {getPlayerName(match.b1_player_id, match)} / {getPlayerName(match.b2_player_id, match)}
+                                        </div>
+                                        {match.team2_score !== null ? (
+                                          <div className={`text-xl font-bold font-mono ml-2 ${team2Won ? 'text-primary' : ''}`}>{match.team2_score}</div>
+                                        ) : isOrganizer && event.status === "live" && isCurrentRound ? (
+                                          <Input
+                                            type="number"
+                                            min="0"
+                                            max="99"
+                                            className="w-16 h-8 text-center ml-2"
+                                            placeholder="0"
+                                            value={scores[match.id]?.team2_score ?? ''}
+                                            onChange={(e) => handleScoreChange(match.id, 'team2', e.target.value)}
+                                          />
+                                        ) : (
+                                          <div className="text-muted-foreground ml-2">—</div>
+                                        )}
+                                      </div>
                                     </div>
-                                    {match.team2_score !== null ? (
-                                      <div className="text-lg font-bold">{match.team2_score}</div>
-                                    ) : isOrganizer && event.status === "live" && isCurrentRound ? (
-                                      <Input
-                                        type="number"
-                                        min="0"
-                                        max="99"
-                                        className="w-16 h-8 text-center"
-                                        placeholder="0"
-                                        value={scores[match.id]?.team2_score ?? ''}
-                                        onChange={(e) => handleScoreChange(match.id, 'team2', e.target.value)}
-                                      />
-                                    ) : (
-                                      <div className="text-muted-foreground">—</div>
+                                    
+                                    {isOrganizer && event.status === "live" && isCurrentRound && match.team1_score === null && (
+                                      <Button
+                                        onClick={() => handleSaveScore(match)}
+                                        disabled={savingScore === match.id}
+                                        size="sm"
+                                        className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+                                      >
+                                        {savingScore === match.id ? "Saving..." : "Save Score"}
+                                      </Button>
                                     )}
-                                  </div>
-                                </div>
-                                
-                                {isOrganizer && event.status === "live" && isCurrentRound && match.team1_score === null && (
-                                  <Button
-                                    onClick={() => handleSaveScore(match)}
-                                    disabled={savingScore === match.id}
-                                    size="sm"
-                                    className="w-full"
-                                  >
-                                    {savingScore === match.id ? "Saving..." : "Save Score"}
-                                  </Button>
-                                )}
-                              </CardContent>
-                            </Card>
-                          ))}
+                                  </CardContent>
+                                </Card>
+                              </motion.div>
+                            );
+                          })}
                         </div>
 
                         {byeMatches.length > 0 && (
@@ -2114,6 +2238,7 @@ export default function RoundRobinDetail() {
             </Card>
           </TabsContent>
         </Tabs>
+        </motion.div>
       </main>
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
