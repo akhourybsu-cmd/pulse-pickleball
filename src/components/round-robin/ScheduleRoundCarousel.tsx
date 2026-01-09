@@ -3,11 +3,10 @@ import {
   Carousel,
   CarouselContent,
   CarouselItem,
-  CarouselPrevious,
-  CarouselNext,
   type CarouselApi,
 } from "@/components/ui/carousel";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { motion } from "framer-motion";
 
 interface ScheduleRoundCarouselProps {
   totalRounds: number;
@@ -50,36 +49,51 @@ export function ScheduleRoundCarousel({
   if (totalRounds === 0) return null;
 
   return (
-    <div className="space-y-4">
-      {/* Round Indicator & Navigation Dots */}
+    <motion.div 
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className="space-y-4"
+    >
+      {/* Premium Round Indicator & Navigation */}
       <div className="flex items-center justify-center gap-4">
         <button
           onClick={() => carouselApi?.scrollPrev()}
           disabled={currentSlide === 0}
-          className="p-1.5 rounded-full bg-muted hover:bg-muted/80 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          className="p-2 rounded-full bg-card border border-border hover:bg-accent hover:border-primary/30 disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-md"
           aria-label="Previous round"
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
         
-        <div className="flex items-center gap-3">
-          <span className="text-sm font-medium">
-            Round {currentSlide + 1} of {totalRounds}
+        <div className="flex items-center gap-4 px-4 py-2 rounded-full bg-card/80 backdrop-blur-sm border border-border/50 shadow-sm">
+          <span className="text-sm font-semibold text-foreground">
+            Round {currentSlide + 1} <span className="text-muted-foreground font-normal">of {totalRounds}</span>
           </span>
           
-          {/* Dot indicators */}
-          <div className="flex gap-1.5">
+          {/* Premium Dot indicators */}
+          <div className="flex gap-2">
             {Array.from({ length: totalRounds }).map((_, i) => (
               <button
                 key={i}
                 onClick={() => carouselApi?.scrollTo(i)}
-                className={`h-2 w-2 rounded-full transition-colors ${
+                className={`relative h-2.5 w-2.5 rounded-full transition-all duration-300 ${
                   i === currentSlide
-                    ? "bg-primary"
-                    : "bg-muted-foreground/30 hover:bg-muted-foreground/50"
+                    ? "bg-primary shadow-[0_0_8px_rgba(197,232,108,0.6)] scale-110"
+                    : i === currentRound - 1
+                    ? "bg-primary/50 ring-1 ring-primary/30"
+                    : "bg-muted-foreground/25 hover:bg-muted-foreground/40"
                 }`}
                 aria-label={`Go to round ${i + 1}`}
-              />
+              >
+                {i === currentSlide && (
+                  <motion.span
+                    layoutId="activeRoundIndicator"
+                    className="absolute inset-0 rounded-full bg-primary"
+                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                  />
+                )}
+              </button>
             ))}
           </div>
         </div>
@@ -87,7 +101,7 @@ export function ScheduleRoundCarousel({
         <button
           onClick={() => carouselApi?.scrollNext()}
           disabled={currentSlide === totalRounds - 1}
-          className="p-1.5 rounded-full bg-muted hover:bg-muted/80 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          className="p-2 rounded-full bg-card border border-border hover:bg-accent hover:border-primary/30 disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200 shadow-sm hover:shadow-md"
           aria-label="Next round"
         >
           <ChevronRight className="h-4 w-4" />
@@ -103,11 +117,17 @@ export function ScheduleRoundCarousel({
         <CarouselContent className="-ml-0">
           {Array.from({ length: totalRounds }, (_, i) => i + 1).map((roundNo) => (
             <CarouselItem key={roundNo} className="pl-0">
-              {children(roundNo, roundNo === currentSlide + 1)}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.2 }}
+              >
+                {children(roundNo, roundNo === currentSlide + 1)}
+              </motion.div>
             </CarouselItem>
           ))}
         </CarouselContent>
       </Carousel>
-    </div>
+    </motion.div>
   );
 }
