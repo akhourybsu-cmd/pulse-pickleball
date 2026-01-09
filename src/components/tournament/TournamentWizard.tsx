@@ -108,7 +108,7 @@ export function TournamentWizard() {
     try {
       const url = await initiateCheckout(tournamentId);
       if (url) {
-        window.open(url, "_blank");
+        window.location.href = url;
       }
     } finally {
       setIsCheckingOut(false);

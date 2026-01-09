@@ -215,7 +215,7 @@ export default function TournamentRegister() {
         description: "You'll receive a confirmation email shortly.",
       });
 
-      navigate("/events/my-calendar-registrations");
+      navigate(`/tournament/${eventId}`);
     } catch (error: any) {
       toast({
         title: "Registration failed",
