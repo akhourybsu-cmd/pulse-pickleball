@@ -76,6 +76,11 @@ const Tournaments = lazy(() => import("./pages/Tournaments"));
 const TournamentRegister = lazy(() => import("./pages/TournamentRegister"));
 const TournamentLanding = lazy(() => import("./pages/TournamentLanding"));
 const TournamentCustomize = lazy(() => import("./pages/TournamentCustomize"));
+const TournamentNew = lazy(() => import("./pages/TournamentNew"));
+const TournamentDetail = lazy(() => import("./pages/TournamentDetail"));
+const TournamentPaymentSuccess = lazy(() => import("./pages/TournamentPaymentSuccess"));
+const TournamentPaymentCancelled = lazy(() => import("./pages/TournamentPaymentCancelled"));
+const TournamentsLanding = lazy(() => import("./pages/TournamentsLanding"));
 const Reservations = lazy(() => import("./pages/Reservations"));
 const MyCalendarRegistrations = lazy(() => import("./pages/MyCalendarRegistrations"));
 const BrowseEvents = lazy(() => import("./pages/BrowseEvents"));
@@ -246,7 +251,11 @@ const AppContent = () => {
           <Route path="/round-robin/create" element={<CreateRoundRobin />} />
           <Route path="/round-robin/:id" element={<RoundRobinDetail />} />
           <Route path="/round-robin/:id/kiosk" element={<RoundRobinKiosk />} />
-          <Route path="/tournaments" element={<Tournaments />} />
+          <Route path="/tournaments" element={<TournamentsLanding />} />
+          <Route path="/tournaments/new" element={<TournamentNew />} />
+          <Route path="/tournaments/:id" element={<TournamentDetail />} />
+          <Route path="/tournaments/:id/payment-success" element={<TournamentPaymentSuccess />} />
+          <Route path="/tournaments/:id/payment-cancelled" element={<TournamentPaymentCancelled />} />
           <Route path="/tournament/:slug" element={<TournamentLanding />} />
           <Route path="/tournament/:eventId/register" element={<TournamentRegister />} />
           <Route path="/my-registrations" element={<MyCalendarRegistrations />} />

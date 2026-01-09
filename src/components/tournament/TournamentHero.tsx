@@ -4,14 +4,15 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 
 interface TournamentHeroProps {
-  stats: {
+  onCreateClick?: () => void;
+  stats?: {
     tournaments: number;
     players: number;
     divisions: number;
   };
 }
 
-export function TournamentHero({ stats }: TournamentHeroProps) {
+export function TournamentHero({ onCreateClick, stats = { tournaments: 50, players: 1200, divisions: 150 } }: TournamentHeroProps) {
   const navigate = useNavigate();
 
   return (
@@ -79,7 +80,7 @@ export function TournamentHero({ stats }: TournamentHeroProps) {
           {/* CTAs */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
             <Button
-              onClick={() => navigate("/tournaments/new")}
+              onClick={onCreateClick || (() => navigate("/tournaments/new"))}
               size="lg"
               className="bg-gradient-to-r from-primary to-accent hover:opacity-90 gap-2 text-lg px-8"
             >

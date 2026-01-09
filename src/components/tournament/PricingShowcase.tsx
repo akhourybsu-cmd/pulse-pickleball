@@ -12,7 +12,11 @@ const FEATURES = [
   "Email notifications",
 ];
 
-export function PricingShowcase() {
+interface PricingShowcaseProps {
+  onGetStarted?: () => void;
+}
+
+export function PricingShowcase({ onGetStarted }: PricingShowcaseProps) {
   const navigate = useNavigate();
 
   return (
@@ -77,7 +81,7 @@ export function PricingShowcase() {
             </ul>
 
             <Button
-              onClick={() => navigate("/tournaments/new")}
+              onClick={onGetStarted || (() => navigate("/tournaments/new"))}
               className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90"
               size="lg"
             >
