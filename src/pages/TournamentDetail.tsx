@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
@@ -51,6 +52,7 @@ interface Division {
   name: string;
   format: string | null;
   skill_level?: string | null;
+  team_count?: number;
 }
 
 export default function TournamentDetail() {
@@ -128,7 +130,28 @@ export default function TournamentDetail() {
       .eq("event_id", id)
       .order("created_at", { ascending: true });
 
-    setDivisions(divisionsData || []);
+    // Fetch team counts per division
+    const divisionIds = (divisionsData || []).map(d => d.id);
+    let teamCounts: Record<string, number> = {};
+    
+    if (divisionIds.length > 0) {
+      const { data: teamsData } = await supabase
+        .from("tournaments_teams")
+        .select("division_id")
+        .in("division_id", divisionIds);
+      
+      (teamsData || []).forEach(team => {
+        teamCounts[team.division_id] = (teamCounts[team.division_id] || 0) + 1;
+      });
+    }
+
+    // Merge team counts into divisions
+    const divisionsWithCounts = (divisionsData || []).map(div => ({
+      ...div,
+      team_count: teamCounts[div.id] || 0,
+    }));
+
+    setDivisions(divisionsWithCounts);
     setLoading(false);
   };
 
@@ -486,6 +509,90 @@ export default function TournamentDetail() {
             <TabsContent value="settings">
               <div className="space-y-6">
                 <TournamentHealthCard eventId={id!} divisionsCount={divisions.length} />
+
+                {/* Registration Settings */}
+                <Card className="bg-gradient-to-br from-card to-muted/30 border-border/50">
+                  <CardHeader>
+                    <CardTitle>Registration Settings</CardTitle>
+                    <CardDescription>
+                      Configure how players register for your tournament
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-1">
+                        <Label htmlFor="registration-enabled">Enable Registration</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Allow players to register for this tournament
+                        </p>
+                      </div>
+                      <Switch
+                        id="registration-enabled"
+                        checked={tournament.registration_enabled}
+                        onCheckedChange={(checked) => handleUpdateTournament({ registration_enabled: checked })}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-1">
+                        <Label htmlFor="waitlist-enabled">Enable Waitlist</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Allow players to join a waitlist when divisions are full
+                        </p>
+                      </div>
+                      <Switch
+                        id="waitlist-enabled"
+                        checked={tournament.waitlist_enabled}
+                        onCheckedChange={(checked) => handleUpdateTournament({ waitlist_enabled: checked })}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-border/50">
+                      <div className="space-y-2">
+                        <Label htmlFor="reg-open-date">Registration Opens</Label>
+                        <Input
+                          id="reg-open-date"
+                          type="date"
+                          value={tournament.registration_open_date?.split('T')[0] || ''}
+                          onChange={(e) => handleUpdateTournament({ 
+                            registration_open_date: e.target.value || null 
+                          })}
+                          className="bg-card"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="reg-close-date">Registration Closes</Label>
+                        <Input
+                          id="reg-close-date"
+                          type="date"
+                          value={tournament.registration_close_date?.split('T')[0] || ''}
+                          onChange={(e) => handleUpdateTournament({ 
+                            registration_close_date: e.target.value || null 
+                          })}
+                          className="bg-card"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2 pt-4 border-t border-border/50">
+                      <Label htmlFor="reg-fee">Registration Fee ($)</Label>
+                      <Input
+                        id="reg-fee"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={tournament.registration_fee || 0}
+                        onChange={(e) => handleUpdateTournament({ 
+                          registration_fee: parseFloat(e.target.value) || 0 
+                        })}
+                        className="bg-card max-w-[200px]"
+                      />
+                      <p className="text-sm text-muted-foreground">
+                        Fee charged per team registration
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
 
                 <Card className="bg-gradient-to-br from-card to-muted/30 border-border/50">
                   <CardHeader>

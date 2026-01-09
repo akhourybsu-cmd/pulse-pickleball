@@ -27,6 +27,7 @@ interface Division {
   name: string;
   format: string | null;
   skill_level?: string | null;
+  team_count?: number;
 }
 
 interface DivisionManagerProps {
@@ -48,6 +49,12 @@ const SKILL_LEVELS = [
 ];
 
 const FORMATS = [
+  { value: "round_robin", label: "Round Robin" },
+  { value: "single_elimination", label: "Single Elimination" },
+  { value: "double_elimination", label: "Double Elimination" },
+];
+
+const GAME_TYPES = [
   { value: "singles", label: "Singles" },
   { value: "doubles", label: "Doubles" },
   { value: "mixed", label: "Mixed Doubles" },
@@ -220,7 +227,7 @@ export function DivisionManager({
                   </div>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground pt-1">
                     <Users className="h-3.5 w-3.5" />
-                    <span>0 teams registered</span>
+                    <span>{division.team_count ?? 0} team{(division.team_count ?? 0) !== 1 ? 's' : ''} registered</span>
                   </div>
                 </div>
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
