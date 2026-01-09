@@ -1,6 +1,6 @@
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { XCircle, ArrowLeft, CreditCard } from "lucide-react";
+import { XCircle, ArrowLeft, CreditCard, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -29,23 +29,49 @@ export default function TournamentPaymentCancelled() {
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.3 }}
         >
-          <Card className="overflow-hidden">
+          <Card className="overflow-hidden border-0 shadow-2xl">
             <CardContent className="p-8 text-center space-y-6">
-              <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center">
-                <XCircle className="h-8 w-8 text-muted-foreground" />
-              </div>
+              <motion.div 
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.1 }}
+                className="mx-auto w-20 h-20 rounded-2xl bg-muted flex items-center justify-center"
+              >
+                <XCircle className="h-10 w-10 text-muted-foreground" />
+              </motion.div>
               
-              <div className="space-y-2">
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="space-y-2"
+              >
                 <h1 className="text-2xl font-bold">Payment Cancelled</h1>
                 <p className="text-muted-foreground">
                   No worries! Your tournament has been saved as a draft. You can complete the payment whenever you're ready.
                 </p>
-              </div>
+              </motion.div>
 
-              <div className="pt-4 space-y-3">
+              {/* Reassurance */}
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="flex items-center justify-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-xl px-4 py-3"
+              >
+                <FileText className="h-4 w-4" />
+                <span>Your tournament setup is safely saved</span>
+              </motion.div>
+
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+                className="pt-4 space-y-3"
+              >
                 <Button
                   size="lg"
-                  className="w-full"
+                  className="w-full bg-primary hover:bg-primary/90 shadow-[0_0_20px_rgba(169,207,70,0.3)]"
                   onClick={() => navigate(`/tournaments/${id}`)}
                 >
                   <CreditCard className="mr-2 h-5 w-5" />
@@ -59,7 +85,7 @@ export default function TournamentPaymentCancelled() {
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Back to Tournaments
                 </Button>
-              </div>
+              </motion.div>
             </CardContent>
           </Card>
         </motion.div>
