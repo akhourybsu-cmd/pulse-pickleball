@@ -1,19 +1,13 @@
 import { motion } from "framer-motion";
-import { Trophy, Users, ArrowRight, Sparkles, ChevronDown } from "lucide-react";
+import { Trophy, ArrowRight, Sparkles, ChevronDown, Shield, Zap, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import CountUp from "react-countup";
 
 interface TournamentHeroProps {
   onCreateClick?: () => void;
-  stats?: {
-    tournaments: number;
-    players: number;
-    divisions: number;
-  };
 }
 
-export function TournamentHero({ onCreateClick, stats = { tournaments: 50, players: 1200, divisions: 150 } }: TournamentHeroProps) {
+export function TournamentHero({ onCreateClick }: TournamentHeroProps) {
   const navigate = useNavigate();
 
   return (
@@ -110,7 +104,7 @@ export function TournamentHero({ onCreateClick, stats = { tournaments: 50, playe
             <Button
               onClick={onCreateClick || (() => navigate("/tournaments/new"))}
               size="lg"
-              className="bg-gradient-to-r from-primary to-accent hover:opacity-90 gap-2 text-lg px-8 shadow-[0_0_30px_rgba(169,207,70,0.4)] transition-all hover:shadow-[0_0_40px_rgba(169,207,70,0.5)]"
+              className="bg-gradient-to-r from-primary to-accent hover:opacity-90 gap-2 text-lg px-8 shadow-[0_0_30px_rgba(169,207,70,0.4)] transition-all hover:shadow-[0_0_40px_rgba(169,207,70,0.5)] text-primary-foreground"
             >
               <Trophy className="h-5 w-5" />
               Create Tournament
@@ -124,14 +118,13 @@ export function TournamentHero({ onCreateClick, stats = { tournaments: 50, playe
                   behavior: "smooth",
                 });
               }}
-              className="gap-2 text-lg px-8 border-white/20 text-white hover:bg-white/10 hover:text-white"
+              className="gap-2 text-lg px-8 bg-white/10 border-white/30 text-white hover:bg-white/20 hover:text-white hover:border-white/50"
             >
-              <Users className="h-5 w-5" />
               Browse Tournaments
             </Button>
           </motion.div>
 
-          {/* Stats in elevated card */}
+          {/* Features in elevated card */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -140,22 +133,25 @@ export function TournamentHero({ onCreateClick, stats = { tournaments: 50, playe
           >
             <div className="grid grid-cols-3 gap-6">
               <div className="text-center">
-                <div className="text-3xl md:text-4xl font-bold text-primary">
-                  <CountUp end={stats.tournaments} duration={2.5} suffix="+" />
+                <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center mx-auto mb-2">
+                  <Zap className="h-5 w-5 text-primary" />
                 </div>
-                <div className="text-sm text-muted-foreground mt-1">Tournaments</div>
+                <div className="text-sm font-medium text-foreground">Automated</div>
+                <div className="text-xs text-muted-foreground">Brackets</div>
               </div>
               <div className="text-center border-x border-border/50">
-                <div className="text-3xl md:text-4xl font-bold text-primary">
-                  <CountUp end={stats.players} duration={2.5} suffix="+" />
+                <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center mx-auto mb-2">
+                  <BarChart3 className="h-5 w-5 text-primary" />
                 </div>
-                <div className="text-sm text-muted-foreground mt-1">Players</div>
+                <div className="text-sm font-medium text-foreground">Live</div>
+                <div className="text-xs text-muted-foreground">Scoring</div>
               </div>
               <div className="text-center">
-                <div className="text-3xl md:text-4xl font-bold text-primary">
-                  <CountUp end={stats.divisions} duration={2.5} suffix="+" />
+                <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center mx-auto mb-2">
+                  <Shield className="h-5 w-5 text-primary" />
                 </div>
-                <div className="text-sm text-muted-foreground mt-1">Divisions</div>
+                <div className="text-sm font-medium text-foreground">Secure</div>
+                <div className="text-xs text-muted-foreground">Registration</div>
               </div>
             </div>
           </motion.div>
