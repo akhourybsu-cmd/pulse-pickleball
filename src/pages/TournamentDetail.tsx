@@ -88,17 +88,27 @@ export default function TournamentDetail() {
 
   const handleContinueToPayment = async () => {
     if (!tournament) return;
+
+    // Check divisions count before attempting checkout
+    if (divisions.length === 0) {
+      toast({
+        title: "Add divisions first",
+        description: "Please add at least one division before checkout",
+        variant: "destructive",
+      });
+      return;
+    }
     
     setCheckoutLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
       const response = await supabase.functions.invoke("create-tournament-checkout", {
         body: { tournament_id: tournament.id },
       });
 
-      if (response.error) {
-        throw new Error(response.error.message);
+      // Handle error from edge function response body
+      if (response.error || response.data?.error) {
+        const errorMessage = response.error?.message || response.data?.error || "Could not start payment process";
+        throw new Error(errorMessage);
       }
 
       if (response.data?.url) {
