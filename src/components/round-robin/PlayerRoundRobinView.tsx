@@ -7,9 +7,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
-import { Calendar, MapPin, Clock, Trophy, Users } from "lucide-react";
+import { Calendar, MapPin, Clock, Trophy, Users, Search, Medal, Target, TrendingUp } from "lucide-react";
 import { ScheduleRoundCarousel } from "@/components/round-robin/ScheduleRoundCarousel";
-import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
 import { motion } from "framer-motion";
@@ -230,14 +229,28 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
   };
 
   const getStatusBadge = (status: string) => {
-    const styles = {
-      draft: "bg-muted text-muted-foreground",
-      live: "bg-primary text-primary-foreground",
-      completed: "bg-secondary text-secondary-foreground",
-    };
+    if (status === "live") {
+      return (
+        <Badge className="bg-primary text-primary-foreground shadow-[0_0_12px_rgba(197,232,108,0.5)] animate-pulse">
+          <span className="mr-2 relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+          </span>
+          LIVE
+        </Badge>
+      );
+    }
+    if (status === "completed") {
+      return (
+        <Badge className="bg-secondary text-secondary-foreground">
+          <Trophy className="h-3 w-3 mr-1" />
+          COMPLETED
+        </Badge>
+      );
+    }
     return (
-      <Badge className={styles[status as keyof typeof styles] || styles.draft}>
-        {status.toUpperCase()}
+      <Badge variant="outline" className="text-muted-foreground">
+        DRAFT
       </Badge>
     );
   };
@@ -257,10 +270,17 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading event...</p>
-        </div>
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="text-center"
+        >
+          <div className="relative h-16 w-16 mx-auto mb-4">
+            <div className="absolute inset-0 rounded-full border-4 border-primary/20"></div>
+            <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-primary animate-spin"></div>
+          </div>
+          <p className="text-muted-foreground font-medium">Loading event...</p>
+        </motion.div>
       </div>
     );
   }
@@ -268,12 +288,17 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
   if (!event) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-muted-foreground">Event not found</p>
-          <Button className="mt-4" onClick={() => navigate(-1)}>
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center"
+        >
+          <Trophy className="h-16 w-16 mx-auto mb-4 text-muted-foreground/50" />
+          <p className="text-muted-foreground mb-4">Event not found</p>
+          <Button onClick={() => navigate(-1)} variant="outline">
             Go Back
           </Button>
-        </div>
+        </motion.div>
       </div>
     );
   }
@@ -283,253 +308,368 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
       {/* Standard PULSE Header */}
       <PageHeader userId={userId} />
 
-      {/* Hero Banner with Event Info */}
+      {/* Premium Hero Banner */}
       <motion.div 
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ duration: 0.3 }}
-        className="relative border-b-2"
-        style={{
-          background: 'linear-gradient(180deg, hsl(var(--accent)) 0%, hsl(var(--background)) 80%)',
-          borderBottomColor: 'hsl(var(--primary) / 0.15)',
-        }}
+        transition={{ duration: 0.4 }}
+        className="relative overflow-hidden border-b border-border/50"
       >
-        <div className="container mx-auto py-6 px-4 md:py-8">
-          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+        {/* Animated gradient background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-background to-secondary/10" />
+        <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-64 h-64 bg-secondary/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
+        
+        <div className="container relative mx-auto py-8 px-4 md:py-12">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
             {/* Left: Title and details */}
-            <div className="space-y-2 flex-1">
+            <motion.div 
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.1 }}
+              className="space-y-4 flex-1"
+            >
               <div className="flex items-center gap-3">
-                <Trophy className="w-5 h-5 text-primary" />
+                <div className="p-2 rounded-xl bg-primary/10 border border-primary/20">
+                  <Trophy className="w-6 h-6 text-primary" />
+                </div>
                 <div className="flex-1">
-                  <h1 
-                    className="text-3xl md:text-4xl lg:text-5xl font-bold border-l-4 pl-3 text-foreground"
-                    style={{
-                      borderLeftColor: 'hsl(var(--primary))',
-                    }}
-                  >
+                  <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-foreground">
                     {event.name}
-                    <motion.div
-                      initial={{ scaleX: 0 }}
-                      animate={{ scaleX: 1 }}
-                      transition={{ duration: 0.5, delay: 0.2 }}
-                      className="h-0.5 mt-1 origin-left bg-primary"
-                    />
                   </h1>
+                  <motion.div
+                    initial={{ scaleX: 0 }}
+                    animate={{ scaleX: 1 }}
+                    transition={{ duration: 0.5, delay: 0.3 }}
+                    className="h-1 w-24 mt-2 origin-left bg-gradient-to-r from-primary to-primary/50 rounded-full"
+                  />
                 </div>
               </div>
-              <div className="flex flex-wrap items-center gap-3 text-base md:text-lg text-muted-foreground pl-8">
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
+
+              {/* Info pills */}
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-card/80 backdrop-blur-sm border border-border/50 text-sm">
+                  <Calendar className="h-4 w-4 text-primary" />
                   <span>{formatDateEST(event.date, "EEEE, MMMM d, yyyy")}</span>
                 </div>
                 {event.start_time && (
-                  <>
-                    <span>•</span>
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-card/80 backdrop-blur-sm border border-border/50 text-sm">
+                    <Clock className="h-4 w-4 text-primary" />
                     <span>{formatTime12Hour(event.start_time)}</span>
-                  </>
+                  </div>
                 )}
                 {event.location && (
-                  <>
-                    <span>•</span>
-                    <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4" />
-                      <span>{event.location}</span>
-                    </div>
-                  </>
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-card/80 backdrop-blur-sm border border-border/50 text-sm">
+                    <MapPin className="h-4 w-4 text-primary" />
+                    <span>{event.location}</span>
+                  </div>
                 )}
               </div>
+
               {event.notes && (
-                <p className="text-sm text-muted-foreground pl-8 max-w-2xl">
+                <p className="text-sm text-muted-foreground max-w-2xl leading-relaxed">
                   {event.notes}
                 </p>
               )}
-              <div className="flex items-center gap-3 pl-8 text-sm text-muted-foreground">
-                <Users className="h-4 w-4" />
-                <span>{players.length} players registered</span>
-                <span>•</span>
-                <span>Doubles Format</span>
+
+              <div className="flex items-center gap-4 text-sm">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Users className="h-4 w-4" />
+                  <span className="font-medium text-foreground">{players.length}</span> players
+                </div>
+                <div className="h-4 w-px bg-border" />
+                <span className="text-muted-foreground">Doubles Format</span>
               </div>
-            </div>
+            </motion.div>
             
             {/* Right: Status badge */}
-            <div>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.2 }}
+            >
               {getStatusBadge(event.status)}
-            </div>
+            </motion.div>
           </div>
         </div>
       </motion.div>
 
       {/* Main Content Area */}
-      <div className="container mx-auto px-4 py-6">
-        <Tabs defaultValue="schedule" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="schedule">Schedule</TabsTrigger>
-            <TabsTrigger value="players">Players</TabsTrigger>
-            <TabsTrigger value="standings">Standings</TabsTrigger>
-          </TabsList>
+      <div className="container mx-auto px-4 py-8">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+        >
+          <Tabs defaultValue="schedule" className="space-y-6">
+            {/* Premium Tab List */}
+            <TabsList className="w-full max-w-md mx-auto grid grid-cols-3 p-1 bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl shadow-sm">
+              <TabsTrigger 
+                value="schedule" 
+                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md rounded-lg transition-all"
+              >
+                <Calendar className="h-4 w-4 mr-2" />
+                Schedule
+              </TabsTrigger>
+              <TabsTrigger 
+                value="players"
+                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md rounded-lg transition-all"
+              >
+                <Users className="h-4 w-4 mr-2" />
+                Players
+              </TabsTrigger>
+              <TabsTrigger 
+                value="standings"
+                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md rounded-lg transition-all"
+              >
+                <Trophy className="h-4 w-4 mr-2" />
+                Standings
+              </TabsTrigger>
+            </TabsList>
 
-          {/* Schedule Tab */}
-          <TabsContent value="schedule" className="space-y-4">
-            {Object.keys(groupedSchedule).length === 0 ? (
-              <Card>
-                <CardContent className="p-12 text-center text-muted-foreground">
-                  <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Schedule not yet generated</p>
+            {/* Schedule Tab */}
+            <TabsContent value="schedule" className="space-y-4">
+              {Object.keys(groupedSchedule).length === 0 ? (
+                <Card className="border-dashed">
+                  <CardContent className="p-12 text-center">
+                    <div className="p-4 rounded-full bg-muted/50 w-fit mx-auto mb-4">
+                      <Calendar className="h-12 w-12 text-muted-foreground/50" />
+                    </div>
+                    <h3 className="text-lg font-semibold mb-2">Schedule not yet generated</h3>
+                    <p className="text-muted-foreground">The organizer will generate the schedule soon.</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <ScheduleRoundCarousel
+                  totalRounds={Object.keys(groupedSchedule).length}
+                  currentRound={event.current_round || 1}
+                >
+                  {(roundNo) => {
+                    const matches = groupedSchedule[roundNo] || [];
+                    const isCurrentRound = event.current_round === roundNo;
+                    
+                    return (
+                      <Card className={`transition-all duration-300 ${isCurrentRound ? "border-primary shadow-[0_0_20px_rgba(197,232,108,0.15)]" : "border-border/50"}`}>
+                        <CardHeader className="pb-4">
+                          <CardTitle className="flex items-center justify-between">
+                            <span className="text-xl">Round {roundNo}</span>
+                            {isCurrentRound && event.status === "live" && (
+                              <Badge className="bg-primary text-primary-foreground shadow-[0_0_8px_rgba(197,232,108,0.4)]">
+                                Current Round
+                              </Badge>
+                            )}
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-3">
+                            {matches.map((match, idx) => {
+                              const isBye =
+                                !match.a1_player_id ||
+                                !match.b1_player_id ||
+                                match.a1_player_id === match.b1_player_id;
+                              const teamAScore = match.team_a_score ?? match.team1_score ?? null;
+                              const teamBScore = match.team_b_score ?? match.team2_score ?? null;
+                              const teamAWon = match.completed && teamAScore !== null && teamBScore !== null && teamAScore > teamBScore;
+                              const teamBWon = match.completed && teamAScore !== null && teamBScore !== null && teamBScore > teamAScore;
+
+                              return (
+                                <motion.div
+                                  key={match.id}
+                                  initial={{ opacity: 0, y: 10 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  transition={{ delay: idx * 0.05 }}
+                                  className={`p-4 rounded-xl border transition-all ${
+                                    match.completed 
+                                      ? "bg-gradient-to-r from-card to-muted/30 border-border" 
+                                      : "bg-card border-border/50 hover:border-border"
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-4">
+                                    <Badge 
+                                      variant="outline" 
+                                      className="min-w-[70px] justify-center font-mono text-xs bg-muted/50"
+                                    >
+                                      Court {match.court_no}
+                                    </Badge>
+                                    
+                                    {isBye ? (
+                                      <div className="text-muted-foreground italic">
+                                        <span className="font-medium text-foreground">{getPlayerName(match.a1_player_id)}</span> — BYE
+                                      </div>
+                                    ) : (
+                                      <div className="flex-1 grid grid-cols-[1fr_auto_1fr] gap-4 items-center">
+                                        <div className={`text-sm ${teamAWon ? "font-semibold text-primary" : ""}`}>
+                                          {getPlayerName(match.a1_player_id)} / {getPlayerName(match.a2_player_id)}
+                                        </div>
+                                        <div className="text-center">
+                                          {match.completed ? (
+                                            <div className="flex items-center gap-2">
+                                              <span className={`text-lg font-mono font-bold ${teamAWon ? "text-primary" : "text-muted-foreground"}`}>
+                                                {teamAScore}
+                                              </span>
+                                              <span className="text-muted-foreground">-</span>
+                                              <span className={`text-lg font-mono font-bold ${teamBWon ? "text-primary" : "text-muted-foreground"}`}>
+                                                {teamBScore}
+                                              </span>
+                                            </div>
+                                          ) : (
+                                            <span className="text-muted-foreground text-sm">vs</span>
+                                          )}
+                                        </div>
+                                        <div className={`text-sm text-right ${teamBWon ? "font-semibold text-primary" : ""}`}>
+                                          {getPlayerName(match.b1_player_id)} / {getPlayerName(match.b2_player_id)}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                </motion.div>
+                              );
+                            })}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  }}
+                </ScheduleRoundCarousel>
+              )}
+            </TabsContent>
+
+            {/* Players Tab */}
+            <TabsContent value="players" className="space-y-4">
+              <div className="relative max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search players..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 bg-card/80 backdrop-blur-sm border-border/50 focus:border-primary focus:ring-primary/20"
+                />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredPlayers.map((player, idx) => {
+                  const playerStats = standings.find((s) => s.playerId === player.player_id);
+                  return (
+                    <motion.div
+                      key={player.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: idx * 0.03 }}
+                    >
+                      <Card className="group hover:shadow-md hover:border-primary/30 transition-all duration-300">
+                        <CardContent className="p-4">
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-12 w-12 ring-2 ring-primary/10 group-hover:ring-primary/30 transition-all">
+                              <AvatarFallback className="bg-gradient-to-br from-primary/20 to-secondary/20 text-foreground font-semibold">
+                                {getInitials(player.profiles?.display_name || player.profiles?.full_name || "?")}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium truncate">
+                                {player.profiles?.display_name || player.profiles?.full_name}
+                              </div>
+                              <div className="text-sm text-muted-foreground">
+                                {playerStats ? (
+                                  <span className="flex items-center gap-2">
+                                    <span>{playerStats.gamesPlayed} games</span>
+                                    <span>•</span>
+                                    <span className="text-primary">{playerStats.wins}W</span>
+                                    <span>-</span>
+                                    <span className="text-destructive">{playerStats.losses}L</span>
+                                  </span>
+                                ) : (
+                                  "No games yet"
+                                )}
+                              </div>
+                            </div>
+                            {player.registration_status === "waitlisted" && (
+                              <Badge variant="outline" className="text-xs">Waitlist</Badge>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </TabsContent>
+
+            {/* Standings Tab */}
+            <TabsContent value="standings">
+              <Card className="overflow-hidden">
+                <CardHeader className="bg-gradient-to-r from-card to-muted/30 border-b border-border/50">
+                  <CardTitle className="flex items-center gap-2">
+                    <Trophy className="h-5 w-5 text-primary" />
+                    Event Standings
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/30 hover:bg-muted/30">
+                        <TableHead className="w-16 text-center font-semibold">Rank</TableHead>
+                        <TableHead className="font-semibold">Player</TableHead>
+                        <TableHead className="text-center font-semibold">
+                          <span className="text-primary">W</span>
+                        </TableHead>
+                        <TableHead className="text-center font-semibold">
+                          <span className="text-destructive">L</span>
+                        </TableHead>
+                        <TableHead className="text-center font-semibold">PF</TableHead>
+                        <TableHead className="text-center font-semibold">PA</TableHead>
+                        <TableHead className="text-center font-semibold">+/-</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {standings.map((row, index) => {
+                        const isCurrentUser = row.playerId === userId;
+                        const isTopThree = index < 3;
+                        const diff = row.pointsFor - row.pointsAgainst;
+                        
+                        return (
+                          <TableRow 
+                            key={row.playerId} 
+                            className={`transition-colors ${
+                              isCurrentUser 
+                                ? "bg-primary/10 hover:bg-primary/15" 
+                                : isTopThree 
+                                ? "bg-secondary/5 hover:bg-secondary/10" 
+                                : ""
+                            }`}
+                          >
+                            <TableCell className="text-center">
+                              {index === 0 ? (
+                                <Medal className="h-5 w-5 text-yellow-500 mx-auto" />
+                              ) : index === 1 ? (
+                                <Medal className="h-5 w-5 text-gray-400 mx-auto" />
+                              ) : index === 2 ? (
+                                <Medal className="h-5 w-5 text-amber-700 mx-auto" />
+                              ) : (
+                                <span className="font-medium text-muted-foreground">{index + 1}</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="font-medium">
+                              {row.playerName}
+                              {isCurrentUser && (
+                                <Badge variant="outline" className="ml-2 text-xs">You</Badge>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-center font-semibold text-primary">{row.wins}</TableCell>
+                            <TableCell className="text-center font-semibold text-destructive">{row.losses}</TableCell>
+                            <TableCell className="text-center text-muted-foreground">{row.pointsFor}</TableCell>
+                            <TableCell className="text-center text-muted-foreground">{row.pointsAgainst}</TableCell>
+                            <TableCell className={`text-center font-semibold ${diff > 0 ? "text-primary" : diff < 0 ? "text-destructive" : "text-muted-foreground"}`}>
+                              {diff > 0 ? "+" : ""}{diff}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
                 </CardContent>
               </Card>
-            ) : (
-              <ScheduleRoundCarousel
-                totalRounds={Object.keys(groupedSchedule).length}
-                currentRound={event.current_round || 1}
-              >
-                {(roundNo) => {
-                  const matches = groupedSchedule[roundNo] || [];
-                  
-                  return (
-                    <Card className={event.current_round === roundNo ? "border-primary" : ""}>
-                      <CardHeader>
-                        <CardTitle className="flex items-center justify-between">
-                          <span>Round {roundNo}</span>
-                          {event.current_round === roundNo && (
-                            <Badge variant="default">Current Round</Badge>
-                          )}
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-3">
-                          {matches.map((match) => {
-                            const isBye =
-                              !match.a1_player_id ||
-                              !match.b1_player_id ||
-                              match.a1_player_id === match.b1_player_id;
-                            const teamAScore = match.team_a_score ?? match.team1_score ?? null;
-                            const teamBScore = match.team_b_score ?? match.team2_score ?? null;
-                            const teamAWon = match.completed && teamAScore !== null && teamBScore !== null && teamAScore > teamBScore;
-                            const teamBWon = match.completed && teamAScore !== null && teamBScore !== null && teamBScore > teamAScore;
-
-                            return (
-                              <div
-                                key={match.id}
-                                className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
-                              >
-                                <div className="flex items-center gap-3 flex-1">
-                                  <Badge variant="outline" className="min-w-[60px] justify-center">
-                                    Court {match.court_no}
-                                  </Badge>
-                                  {isBye ? (
-                                    <div className="text-muted-foreground">
-                                      <span className="font-medium">{getPlayerName(match.a1_player_id)}</span> - BYE
-                                    </div>
-                                  ) : (
-                                    <div className="flex-1 grid grid-cols-3 gap-4 items-center">
-                                      <div className={`text-sm ${teamAWon ? "font-semibold" : ""}`}>
-                                        {getPlayerName(match.a1_player_id)} / {getPlayerName(match.a2_player_id)}
-                                      </div>
-                                      <div className="text-center">
-                                        {match.completed ? (
-                                          <span className="font-mono font-semibold">
-                                            {teamAScore} - {teamBScore}
-                                          </span>
-                                        ) : (
-                                          <span className="text-muted-foreground">vs</span>
-                                        )}
-                                      </div>
-                                      <div className={`text-sm text-right ${teamBWon ? "font-semibold" : ""}`}>
-                                        {getPlayerName(match.b1_player_id)} / {getPlayerName(match.b2_player_id)}
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                }}
-              </ScheduleRoundCarousel>
-            )}
-          </TabsContent>
-
-          {/* Players Tab */}
-          <TabsContent value="players" className="space-y-4">
-            <div className="flex gap-2">
-              <Input
-                placeholder="Search players..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="max-w-sm"
-              />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredPlayers.map((player) => {
-                const playerStats = standings.find((s) => s.playerId === player.player_id);
-                return (
-                  <Card key={player.id}>
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-12 w-12">
-                          <AvatarFallback>
-                            {getInitials(player.profiles?.display_name || player.profiles?.full_name || "?")}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium truncate">
-                            {player.profiles?.display_name || player.profiles?.full_name}
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            {playerStats ? `${playerStats.gamesPlayed} games • ${playerStats.wins}-${playerStats.losses}` : "No games yet"}
-                          </div>
-                        </div>
-                        {player.registration_status === "waitlisted" && (
-                          <Badge variant="outline" className="text-xs">Waitlist</Badge>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          </TabsContent>
-
-          {/* Standings Tab */}
-          <TabsContent value="standings">
-            <Card>
-              <CardHeader>
-                <CardTitle>Event Standings</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-12">Rank</TableHead>
-                      <TableHead>Player</TableHead>
-                      <TableHead className="text-center">W</TableHead>
-                      <TableHead className="text-center">L</TableHead>
-                      <TableHead className="text-center">PF</TableHead>
-                      <TableHead className="text-center">PA</TableHead>
-                      <TableHead className="text-center">Diff</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {standings.map((row, index) => (
-                      <TableRow key={row.playerId} className={row.playerId === userId ? "bg-primary/5" : ""}>
-                        <TableCell className="font-medium">{index + 1}</TableCell>
-                        <TableCell>{row.playerName}</TableCell>
-                        <TableCell className="text-center">{row.wins}</TableCell>
-                        <TableCell className="text-center">{row.losses}</TableCell>
-                        <TableCell className="text-center">{row.pointsFor}</TableCell>
-                        <TableCell className="text-center">{row.pointsAgainst}</TableCell>
-                        <TableCell className="text-center">{row.pointsFor - row.pointsAgainst}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+            </TabsContent>
+          </Tabs>
+        </motion.div>
       </div>
     </div>
   );
