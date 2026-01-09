@@ -257,7 +257,7 @@ export default function TournamentsLanding() {
                   transition={{ delay: index * 0.1 }}
                   whileHover={{ y: -4, scale: 1.02 }}
                   className="cursor-pointer"
-                  onClick={() => navigate(`/tournaments/${tournament.id}`)}
+                  onClick={() => navigate(`/tournament/${tournament.id}`)}
                 >
                   <Card className="h-full bg-gradient-to-br from-card to-card/80 border-border/50 hover:border-primary/50 hover:shadow-[0_0_30px_rgba(169,207,70,0.15)] transition-all duration-300">
                     <CardHeader>
