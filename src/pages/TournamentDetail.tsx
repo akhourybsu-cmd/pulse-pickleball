@@ -17,6 +17,8 @@ import { DivisionManager } from "@/components/tournament/DivisionManager";
 import { RegistrationsPanel } from "@/components/tournament/RegistrationsPanel";
 import { CourtManagementPanel } from "@/components/tournament/CourtManagementPanel";
 import { EditTournamentDialog } from "@/components/tournament/EditTournamentDialog";
+import { TournamentHealthCard } from "@/components/tournament/TournamentHealthCard";
+import { CheckInDashboard } from "@/components/tournament/CheckInDashboard";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Footer } from "@/components/Footer";
 import { format } from "date-fns";
@@ -371,6 +373,7 @@ export default function TournamentDetail() {
             <TabsList className="bg-card/50 border border-border/50 p-1 flex-wrap h-auto">
               <TabsTrigger value="divisions" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Divisions</TabsTrigger>
               <TabsTrigger value="registrations" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Registrations</TabsTrigger>
+              <TabsTrigger value="checkin" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Check-In</TabsTrigger>
               <TabsTrigger value="courts" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Courts</TabsTrigger>
               <TabsTrigger value="customize" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Customize</TabsTrigger>
               <TabsTrigger value="settings" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Settings</TabsTrigger>
@@ -427,6 +430,10 @@ export default function TournamentDetail() {
               <RegistrationsPanel eventId={id!} divisions={divisions} />
             </TabsContent>
 
+            <TabsContent value="checkin">
+              <CheckInDashboard eventId={id!} divisions={divisions} />
+            </TabsContent>
+
             <TabsContent value="courts">
               <CourtManagementPanel eventId={id!} />
             </TabsContent>
@@ -478,6 +485,8 @@ export default function TournamentDetail() {
 
             <TabsContent value="settings">
               <div className="space-y-6">
+                <TournamentHealthCard eventId={id!} divisionsCount={divisions.length} />
+
                 <Card className="bg-gradient-to-br from-card to-muted/30 border-border/50">
                   <CardHeader>
                     <CardTitle>Public View</CardTitle>

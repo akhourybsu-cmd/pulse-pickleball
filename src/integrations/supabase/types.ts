@@ -3059,6 +3059,8 @@ export type Database = {
         Row: {
           additional_info: Json | null
           captain_user_id: string
+          check_in_notes: string | null
+          checked_in_at: string | null
           created_at: string
           division_id: string
           event_id: string
@@ -3074,6 +3076,8 @@ export type Database = {
         Insert: {
           additional_info?: Json | null
           captain_user_id: string
+          check_in_notes?: string | null
+          checked_in_at?: string | null
           created_at?: string
           division_id: string
           event_id: string
@@ -3089,6 +3093,8 @@ export type Database = {
         Update: {
           additional_info?: Json | null
           captain_user_id?: string
+          check_in_notes?: string | null
+          checked_in_at?: string | null
           created_at?: string
           division_id?: string
           event_id?: string
@@ -3316,7 +3322,13 @@ export type Database = {
           completed_at: string | null
           court_id: string | null
           created_at: string
+          dispute_notes: string | null
+          dispute_resolved_at: string | null
+          dispute_resolved_by: string | null
+          disputed: boolean | null
           division_id: string
+          forfeit_reason: string | null
+          forfeit_team_id: string | null
           id: string
           match_number: number
           notes: string | null
@@ -3337,7 +3349,13 @@ export type Database = {
           completed_at?: string | null
           court_id?: string | null
           created_at?: string
+          dispute_notes?: string | null
+          dispute_resolved_at?: string | null
+          dispute_resolved_by?: string | null
+          disputed?: boolean | null
           division_id: string
+          forfeit_reason?: string | null
+          forfeit_team_id?: string | null
           id?: string
           match_number: number
           notes?: string | null
@@ -3358,7 +3376,13 @@ export type Database = {
           completed_at?: string | null
           court_id?: string | null
           created_at?: string
+          dispute_notes?: string | null
+          dispute_resolved_at?: string | null
+          dispute_resolved_by?: string | null
+          disputed?: boolean | null
           division_id?: string
+          forfeit_reason?: string | null
+          forfeit_team_id?: string | null
           id?: string
           match_number?: number
           notes?: string | null
@@ -3387,6 +3411,13 @@ export type Database = {
             columns: ["division_id"]
             isOneToOne: false
             referencedRelation: "tournaments_divisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tournaments_matches_forfeit_team_id_fkey"
+            columns: ["forfeit_team_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments_teams"
             referencedColumns: ["id"]
           },
           {

@@ -6,11 +6,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Loader2, Play, Trophy, MapPin, Edit, FileText, Trash2, AlertCircle, CheckCircle2, PlayCircle, Zap, Calendar, Clock } from "lucide-react";
+import { Loader2, Play, Trophy, MapPin, Edit, FileText, Trash2, AlertCircle, CheckCircle2, PlayCircle, Zap, Calendar, Clock, Flag, AlertTriangle } from "lucide-react";
 import { ScoreEntryDialog } from "./ScoreEntryDialog";
 import { CourtAssignmentDialog } from "./CourtAssignmentDialog";
 import { BulkOperationsDialog } from "./BulkOperationsDialog";
 import { BulkSchedulerDialog } from "./BulkSchedulerDialog";
+import { ForfeitDialog } from "./ForfeitDialog";
+import { DisputeDialog } from "./DisputeDialog";
 
 // Component to show score edit tooltip with editor info
 function ScoreEditedTooltip({ scoreEditedBy, scoreEditedAt }: { scoreEditedBy: string | null, scoreEditedAt: string }) {
@@ -67,6 +69,10 @@ interface Match {
   notes: string | null;
   score_edited_at: string | null;
   score_edited_by: string | null;
+  forfeit_team_id: string | null;
+  forfeit_reason: string | null;
+  disputed: boolean | null;
+  dispute_notes: string | null;
   team1: { team_name: string };
   team2: { team_name: string };
   court: { court_number: number; court_name: string | null } | null;
@@ -98,6 +104,8 @@ export function MatchesPanel({ divisionId, refreshKey, divisionStatus }: Matches
   const [autoAssigning, setAutoAssigning] = useState(false);
   const [isBulkDialogOpen, setIsBulkDialogOpen] = useState(false);
   const [isSchedulerDialogOpen, setIsSchedulerDialogOpen] = useState(false);
+  const [isForfeitDialogOpen, setIsForfeitDialogOpen] = useState(false);
+  const [isDisputeDialogOpen, setIsDisputeDialogOpen] = useState(false);
   const [courts, setCourts] = useState<any[]>([]);
 
 
@@ -199,6 +207,16 @@ export function MatchesPanel({ divisionId, refreshKey, divisionStatus }: Matches
   const handleChangeCourt = (match: Match) => {
     setSelectedMatch(match);
     setIsCourtDialogOpen(true);
+  };
+
+  const handleForfeit = (match: Match) => {
+    setSelectedMatch(match);
+    setIsForfeitDialogOpen(true);
+  };
+
+  const handleDispute = (match: Match) => {
+    setSelectedMatch(match);
+    setIsDisputeDialogOpen(true);
   };
 
   const handleDeleteMatch = async (match: Match) => {
@@ -580,24 +598,44 @@ export function MatchesPanel({ divisionId, refreshKey, divisionStatus }: Matches
                     </>
                   )}
                   {match.status === "in_progress" && (
-                    <Button
-                      variant="default"
-                      size="sm"
-                      onClick={() => handleEnterScore(match)}
-                    >
-                      <Trophy className="h-4 w-4 mr-1" />
-                      Enter Score
-                    </Button>
+                    <>
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => handleEnterScore(match)}
+                      >
+                        <Trophy className="h-4 w-4 mr-1" />
+                        Enter Score
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleForfeit(match)}
+                      >
+                        <Flag className="h-4 w-4 mr-1" />
+                        Forfeit
+                      </Button>
+                    </>
                   )}
                   {match.status === "completed" && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEnterScore(match)}
-                    >
-                      <Edit className="h-4 w-4 mr-1" />
-                      Edit Score
-                    </Button>
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEnterScore(match)}
+                      >
+                        <Edit className="h-4 w-4 mr-1" />
+                        Edit Score
+                      </Button>
+                      <Button
+                        variant={match.disputed ? "default" : "ghost"}
+                        size="sm"
+                        onClick={() => handleDispute(match)}
+                        className={match.disputed ? "bg-amber-500 hover:bg-amber-600" : ""}
+                      >
+                        <AlertTriangle className="h-4 w-4" />
+                      </Button>
+                    </>
                   )}
                   {match.status !== "completed" && divisionStatus !== "completed" && (
                     <AlertDialog>
@@ -665,6 +703,20 @@ export function MatchesPanel({ divisionId, refreshKey, divisionStatus }: Matches
         divisionId={divisionId}
         matches={matches}
         courts={courts}
+        onSuccess={fetchMatches}
+      />
+
+      <ForfeitDialog
+        open={isForfeitDialogOpen}
+        onOpenChange={setIsForfeitDialogOpen}
+        match={selectedMatch}
+        onSuccess={fetchMatches}
+      />
+
+      <DisputeDialog
+        open={isDisputeDialogOpen}
+        onOpenChange={setIsDisputeDialogOpen}
+        match={selectedMatch}
         onSuccess={fetchMatches}
       />
     </>

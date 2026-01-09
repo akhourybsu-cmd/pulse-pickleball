@@ -3,7 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2 } from "lucide-react";
+import { Loader2, Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface Standing {
   team_id: string;
@@ -24,6 +25,7 @@ interface StandingsPanelProps {
 export function StandingsPanel({ divisionId, refreshKey }: StandingsPanelProps) {
   const { toast } = useToast();
   const [standings, setStandings] = useState<Standing[]>([]);
+  const [tiebreakInfo, setTiebreakInfo] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -107,18 +109,26 @@ export function StandingsPanel({ divisionId, refreshKey }: StandingsPanelProps) 
     });
 
     // Sort with proper tie-breaking: wins → head-to-head → point differential
+    const tiebreakReasons = new Map<string, string>();
     const sortedStandings = Array.from(standingsMap.values()).sort((a, b) => {
       // 1. Sort by wins (descending)
       if (b.wins !== a.wins) return b.wins - a.wins;
 
       // 2. If tied in wins, check head-to-head
       const h2hResult = calculateHeadToHead(a.team_id, b.team_id, matches || []);
-      if (h2hResult !== 0) return h2hResult;
+      if (h2hResult !== 0) {
+        tiebreakReasons.set(a.team_id, h2hResult < 0 ? `Won H2H vs ${b.team_name}` : `Lost H2H vs ${b.team_name}`);
+        return h2hResult;
+      }
 
       // 3. If still tied, use point differential
+      if (b.point_diff !== a.point_diff) {
+        tiebreakReasons.set(a.team_id, `Point diff: ${a.point_diff > 0 ? '+' : ''}${a.point_diff}`);
+      }
       return b.point_diff - a.point_diff;
     });
 
+    setTiebreakInfo(tiebreakReasons);
     setStandings(sortedStandings);
     setLoading(false);
   };
@@ -190,7 +200,21 @@ export function StandingsPanel({ divisionId, refreshKey }: StandingsPanelProps) 
               {standings.map((standing, index) => (
                 <TableRow key={standing.team_id}>
                   <TableCell className="font-medium">{index + 1}</TableCell>
-                  <TableCell className="font-medium">{standing.team_name}</TableCell>
+                  <TableCell className="font-medium">
+                    {standing.team_name}
+                    {tiebreakInfo.has(standing.team_id) && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Info className="h-3.5 w-3.5 inline ml-1.5 text-muted-foreground cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="text-sm">{tiebreakInfo.get(standing.team_id)}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                  </TableCell>
                   <TableCell className="text-center">{standing.wins}</TableCell>
                   <TableCell className="text-center">{standing.losses}</TableCell>
                   <TableCell className="text-center">{standing.points_for}</TableCell>
