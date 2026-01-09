@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Trash2, Edit2, Layers, Sparkles, Users } from "lucide-react";
+import { Plus, Trash2, Edit2, Layers, Sparkles, Users, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -61,6 +62,7 @@ export function DivisionManager({
   onDeleteDivision,
   onRefresh,
 }: DivisionManagerProps) {
+  const navigate = useNavigate();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isPurchaseOpen, setIsPurchaseOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -70,6 +72,10 @@ export function DivisionManager({
     format: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleDivisionClick = (divisionId: string) => {
+    navigate(`/tournaments/${tournamentId}/divisions/${divisionId}`);
+  };
 
   const currentCount = divisions.length;
   const isAtLimit = currentCount >= paidDivisionsCount;
@@ -191,11 +197,15 @@ export function DivisionManager({
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ delay: index * 0.05 }}
               whileHover={{ y: -2 }}
-              className="bg-gradient-to-br from-card to-muted/30 border border-border/50 rounded-xl p-4 group hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300"
+              className="bg-gradient-to-br from-card to-muted/30 border border-border/50 rounded-xl p-4 group hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 cursor-pointer"
+              onClick={() => handleDivisionClick(division.id)}
             >
               <div className="flex items-start justify-between">
-                <div className="space-y-2">
-                  <h4 className="font-semibold">{division.name}</h4>
+                <div className="space-y-2 flex-1">
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-semibold">{division.name}</h4>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
                   <div className="flex flex-wrap gap-2 text-sm">
                     {division.skill_level && (
                       <span className="bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded-md text-xs">
@@ -217,7 +227,10 @@ export function DivisionManager({
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => handleOpenEdit(division)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleOpenEdit(division);
+                    }}
                     className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
                   >
                     <Edit2 className="h-4 w-4" />
@@ -225,7 +238,10 @@ export function DivisionManager({
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => onDeleteDivision(division.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDeleteDivision(division.id);
+                    }}
                     className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
                   >
                     <Trash2 className="h-4 w-4" />

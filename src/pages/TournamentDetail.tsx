@@ -1,16 +1,22 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Calendar, MapPin, Users, Trophy, Settings } from "lucide-react";
+import { ArrowLeft, Calendar, MapPin, Users, Trophy, Settings, Edit, Trash2, ExternalLink, Copy, Palette } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { LockedTournamentBanner } from "@/components/tournament/LockedTournamentBanner";
 import { OrderSummaryCard } from "@/components/tournament/OrderSummaryCard";
 import { DivisionManager } from "@/components/tournament/DivisionManager";
+import { RegistrationsPanel } from "@/components/tournament/RegistrationsPanel";
+import { CourtManagementPanel } from "@/components/tournament/CourtManagementPanel";
+import { EditTournamentDialog } from "@/components/tournament/EditTournamentDialog";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Footer } from "@/components/Footer";
 import { format } from "date-fns";
@@ -23,12 +29,19 @@ interface Tournament {
   location: string | null;
   start_date: string;
   end_date: string;
-  status: string;
+  status: "draft" | "upcoming" | "live" | "completed" | "cancelled";
   is_public: boolean;
   divisions_count: number;
   payment_status: string;
   created_by: string;
   paid_divisions_count: number;
+  public_view_enabled: boolean;
+  registration_enabled: boolean;
+  registration_open_date: string | null;
+  registration_close_date: string | null;
+  registration_fee: number;
+  waitlist_enabled: boolean;
+  created_at: string;
 }
 
 interface Division {
@@ -48,6 +61,7 @@ export default function TournamentDetail() {
   const [divisions, setDivisions] = useState<Division[]>([]);
   const [isOwner, setIsOwner] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -58,9 +72,7 @@ export default function TournamentDetail() {
   // Handle division purchase success callback
   useEffect(() => {
     if (searchParams.get("division_purchased") === "true") {
-      // Increment paid_divisions_count in the database
       handleDivisionPurchaseSuccess();
-      // Clear the URL param
       searchParams.delete("division_purchased");
       setSearchParams(searchParams, { replace: true });
     }
@@ -118,10 +130,83 @@ export default function TournamentDetail() {
     setLoading(false);
   };
 
+  const handleUpdateTournament = async (updates: Partial<Tournament>) => {
+    const { error } = await supabase
+      .from("tournaments_events")
+      .update(updates)
+      .eq("id", id);
+
+    if (error) {
+      toast({
+        title: "Error updating tournament",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Tournament updated",
+        description: "Changes saved successfully",
+      });
+      fetchTournament();
+    }
+  };
+
+  const handleDeleteTournament = async () => {
+    const { error } = await supabase
+      .from("tournaments_events")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      toast({
+        title: "Error deleting tournament",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Tournament deleted",
+        description: "The tournament has been removed",
+      });
+      navigate("/tournaments");
+    }
+  };
+
+  const handleTogglePublicView = async (enabled: boolean) => {
+    const { error } = await supabase
+      .from("tournaments_events")
+      .update({ public_view_enabled: enabled })
+      .eq("id", id);
+
+    if (error) {
+      toast({
+        title: "Error updating public view",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: enabled ? "Public view enabled" : "Public view disabled",
+        description: enabled 
+          ? "Anyone with the link can now view live scores" 
+          : "Public viewing has been disabled",
+      });
+      fetchTournament();
+    }
+  };
+
+  const copyPublicUrl = () => {
+    const url = `${window.location.origin}/tournament/${id}/live`;
+    navigator.clipboard.writeText(url);
+    toast({
+      title: "Link copied",
+      description: "Public view URL copied to clipboard",
+    });
+  };
+
   const handleContinueToPayment = async () => {
     if (!tournament) return;
 
-    // Check divisions count before attempting checkout
     if (divisions.length === 0) {
       toast({
         title: "Add divisions first",
@@ -137,7 +222,6 @@ export default function TournamentDetail() {
         body: { tournament_id: tournament.id },
       });
 
-      // Handle error from edge function response body
       if (response.error || response.data?.error) {
         const errorMessage = response.error?.message || response.data?.error || "Could not start payment process";
         throw new Error(errorMessage);
@@ -245,10 +329,34 @@ export default function TournamentDetail() {
               </div>
             </div>
             {isPaid && isOwner && (
-              <Button variant="outline" className="gap-2">
-                <Settings className="h-4 w-4" />
-                Settings
-              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setIsEditDialogOpen(true)} className="gap-2">
+                  <Edit className="h-4 w-4" />
+                  Edit
+                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" className="gap-2">
+                      <Trash2 className="h-4 w-4" />
+                      Delete
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete Tournament?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will permanently delete "{tournament.name}" and all associated data. This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleDeleteTournament} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        Delete Tournament
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
             )}
           </div>
 
@@ -260,11 +368,12 @@ export default function TournamentDetail() {
         {/* Main Content */}
         {isPaid ? (
           <Tabs defaultValue="divisions" className="space-y-6">
-            <TabsList className="bg-card/50 border border-border/50 p-1">
+            <TabsList className="bg-card/50 border border-border/50 p-1 flex-wrap h-auto">
               <TabsTrigger value="divisions" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Divisions</TabsTrigger>
               <TabsTrigger value="registrations" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Registrations</TabsTrigger>
-              <TabsTrigger value="schedule" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Schedule</TabsTrigger>
-              <TabsTrigger value="brackets" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Brackets</TabsTrigger>
+              <TabsTrigger value="courts" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Courts</TabsTrigger>
+              <TabsTrigger value="customize" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Customize</TabsTrigger>
+              <TabsTrigger value="settings" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Settings</TabsTrigger>
             </TabsList>
 
             <TabsContent value="divisions" className="space-y-4">
@@ -286,11 +395,11 @@ export default function TournamentDetail() {
                   toast({ title: "Error", description: error.message, variant: "destructive" });
                   return false;
                 }}
-                onUpdateDivision={async (id, updates) => {
+                onUpdateDivision={async (divId, updates) => {
                   const { error } = await supabase
                     .from("tournaments_divisions")
                     .update(updates)
-                    .eq("id", id);
+                    .eq("id", divId);
                   if (!error) {
                     fetchTournament();
                     return true;
@@ -298,11 +407,11 @@ export default function TournamentDetail() {
                   toast({ title: "Error", description: error.message, variant: "destructive" });
                   return false;
                 }}
-                onDeleteDivision={async (id) => {
+                onDeleteDivision={async (divId) => {
                   const { error } = await supabase
                     .from("tournaments_divisions")
                     .delete()
-                    .eq("id", id);
+                    .eq("id", divId);
                   if (!error) {
                     fetchTournament();
                     return true;
@@ -315,54 +424,141 @@ export default function TournamentDetail() {
             </TabsContent>
 
             <TabsContent value="registrations">
+              <RegistrationsPanel eventId={id!} divisions={divisions} />
+            </TabsContent>
+
+            <TabsContent value="courts">
+              <CourtManagementPanel eventId={id!} />
+            </TabsContent>
+
+            <TabsContent value="customize">
               <Card className="bg-gradient-to-br from-card to-muted/30 border-border/50">
                 <CardHeader>
-                  <CardTitle>Registrations</CardTitle>
-                  <CardDescription>Manage team and player registrations</CardDescription>
+                  <div className="flex items-center gap-2">
+                    <Palette className="h-5 w-5 text-primary" />
+                    <CardTitle>Customize Public Landing Page</CardTitle>
+                  </div>
+                  <CardDescription>
+                    Design a custom landing page for players to learn about your tournament before registering
+                  </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="text-center py-8">
-                    <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                      <Users className="h-6 w-6 text-primary" />
-                    </div>
-                    <p className="text-muted-foreground">Registration management coming soon...</p>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">
+                      Create a beautiful, branded landing page featuring:
+                    </p>
+                    <ul className="text-sm text-muted-foreground space-y-1 ml-4 list-disc">
+                      <li>Custom hero banner and tagline</li>
+                      <li>Event description with rich text and images</li>
+                      <li>Venue information and map</li>
+                      <li>Sponsor logos and partner links</li>
+                      <li>Tournament policies and contact details</li>
+                    </ul>
+                  </div>
+                  <div className="pt-4 flex gap-3 flex-wrap">
+                    <Button 
+                      onClick={() => navigate(`/tournaments/${id}/customize`)}
+                      size="lg"
+                    >
+                      <Palette className="mr-2 h-4 w-4" />
+                      Open Customization Panel
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      size="lg"
+                      onClick={() => window.open(`/tournament/${id}`, '_blank')}
+                    >
+                      <ExternalLink className="mr-2 h-4 w-4" />
+                      Preview Landing Page
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
             </TabsContent>
 
-            <TabsContent value="schedule">
-              <Card className="bg-gradient-to-br from-card to-muted/30 border-border/50">
-                <CardHeader>
-                  <CardTitle>Schedule</CardTitle>
-                  <CardDescription>Manage tournament schedule and courts</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center py-8">
-                    <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                      <Calendar className="h-6 w-6 text-primary" />
+            <TabsContent value="settings">
+              <div className="space-y-6">
+                <Card className="bg-gradient-to-br from-card to-muted/30 border-border/50">
+                  <CardHeader>
+                    <CardTitle>Public View</CardTitle>
+                    <CardDescription>
+                      Allow anyone with the link to view live scores and standings
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-1">
+                        <Label htmlFor="public-view">Enable Public View</Label>
+                        <p className="text-sm text-muted-foreground">
+                          When enabled, anyone can view live match scores and team standings
+                        </p>
+                      </div>
+                      <Switch
+                        id="public-view"
+                        checked={tournament.public_view_enabled}
+                        onCheckedChange={handleTogglePublicView}
+                      />
                     </div>
-                    <p className="text-muted-foreground">Schedule management coming soon...</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
+                    
+                    {tournament.public_view_enabled && (
+                      <div className="pt-4 border-t border-border/50 space-y-3">
+                        <div>
+                          <p className="text-sm font-medium mb-2">Public Live View URL</p>
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              readOnly
+                              value={`${window.location.origin}/tournament/${id}/live`}
+                              className="flex-1 px-3 py-2 text-sm bg-muted rounded-md border border-border/50"
+                            />
+                            <Button variant="outline" size="sm" onClick={copyPublicUrl}>
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => window.open(`/tournament/${id}/live`, '_blank')}
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
 
-            <TabsContent value="brackets">
-              <Card className="bg-gradient-to-br from-card to-muted/30 border-border/50">
-                <CardHeader>
-                  <CardTitle>Brackets</CardTitle>
-                  <CardDescription>View and manage tournament brackets</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center py-8">
-                    <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                      <Trophy className="h-6 w-6 text-primary" />
+                <Card className="bg-gradient-to-br from-card to-muted/30 border-border/50">
+                  <CardHeader>
+                    <CardTitle>Tournament Details</CardTitle>
+                    <CardDescription>
+                      View tournament information and metadata
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-sm font-medium">Status</p>
+                        <p className="text-sm text-muted-foreground capitalize">{tournament.status}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">Payment Status</p>
+                        <p className="text-sm text-muted-foreground capitalize">{tournament.payment_status}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">Division Slots</p>
+                        <p className="text-sm text-muted-foreground">{divisions.length} of {tournament.paid_divisions_count} used</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">Created</p>
+                        <p className="text-sm text-muted-foreground">
+                          {format(new Date(tournament.created_at), "MMM d, yyyy 'at' h:mm a")}
+                        </p>
+                      </div>
                     </div>
-                    <p className="text-muted-foreground">Bracket management coming soon...</p>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </div>
             </TabsContent>
           </Tabs>
         ) : (
@@ -405,6 +601,15 @@ export default function TournamentDetail() {
       </div>
 
       <Footer />
+
+      {tournament && (
+        <EditTournamentDialog
+          open={isEditDialogOpen}
+          onOpenChange={setIsEditDialogOpen}
+          event={tournament}
+          onSave={handleUpdateTournament}
+        />
+      )}
     </div>
   );
 }
