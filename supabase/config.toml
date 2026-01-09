@@ -46,6 +46,12 @@ verify_jwt = false
 [functions.stripe-connect-webhook]
 verify_jwt = false
 
+[functions.create-tournament-checkout]
+verify_jwt = false
+
+[functions.tournament-stripe-webhook]
+verify_jwt = false
+
 [edge_runtime]
 policy = "per_worker"
 
