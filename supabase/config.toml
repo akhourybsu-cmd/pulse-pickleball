@@ -63,3 +63,9 @@ policy = "per_worker"
 name = "send-event-reminders"
 schedule = "*/10 * * * *"
 function_name = "send-event-reminders"
+
+# Process waitlist promotions every 5 minutes
+[[edge_runtime.cron]]
+name = "process-waitlist"
+schedule = "*/5 * * * *"
+function_name = "process-waitlist"
