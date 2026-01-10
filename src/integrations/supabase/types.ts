@@ -3534,6 +3534,7 @@ export type Database = {
           description: string | null
           divisions_count: number | null
           end_date: string
+          external_registration_url: string | null
           id: string
           is_public: boolean | null
           location: string | null
@@ -3546,10 +3547,15 @@ export type Database = {
           registration_enabled: boolean | null
           registration_fee: number | null
           registration_open_date: string | null
+          slug: string | null
           start_date: string
           status: Database["public"]["Enums"]["tournament_status"]
           stripe_checkout_session_id: string | null
           updated_at: string
+          venue_id: string | null
+          visibility:
+            | Database["public"]["Enums"]["tournament_visibility"]
+            | null
           waitlist_enabled: boolean | null
         }
         Insert: {
@@ -3558,6 +3564,7 @@ export type Database = {
           description?: string | null
           divisions_count?: number | null
           end_date: string
+          external_registration_url?: string | null
           id?: string
           is_public?: boolean | null
           location?: string | null
@@ -3570,10 +3577,15 @@ export type Database = {
           registration_enabled?: boolean | null
           registration_fee?: number | null
           registration_open_date?: string | null
+          slug?: string | null
           start_date: string
           status?: Database["public"]["Enums"]["tournament_status"]
           stripe_checkout_session_id?: string | null
           updated_at?: string
+          venue_id?: string | null
+          visibility?:
+            | Database["public"]["Enums"]["tournament_visibility"]
+            | null
           waitlist_enabled?: boolean | null
         }
         Update: {
@@ -3582,6 +3594,7 @@ export type Database = {
           description?: string | null
           divisions_count?: number | null
           end_date?: string
+          external_registration_url?: string | null
           id?: string
           is_public?: boolean | null
           location?: string | null
@@ -3594,13 +3607,26 @@ export type Database = {
           registration_enabled?: boolean | null
           registration_fee?: number | null
           registration_open_date?: string | null
+          slug?: string | null
           start_date?: string
           status?: Database["public"]["Enums"]["tournament_status"]
           stripe_checkout_session_id?: string | null
           updated_at?: string
+          venue_id?: string | null
+          visibility?:
+            | Database["public"]["Enums"]["tournament_visibility"]
+            | null
           waitlist_enabled?: boolean | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tournaments_events_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tournaments_matches: {
         Row: {
@@ -4816,6 +4842,7 @@ export type Database = {
           hours_of_operation: Json | null
           id: string
           is_active: boolean | null
+          is_published: boolean | null
           logo_url: string | null
           name: string
           onboarding_completed: boolean | null
@@ -4854,6 +4881,7 @@ export type Database = {
           hours_of_operation?: Json | null
           id?: string
           is_active?: boolean | null
+          is_published?: boolean | null
           logo_url?: string | null
           name: string
           onboarding_completed?: boolean | null
@@ -4892,6 +4920,7 @@ export type Database = {
           hours_of_operation?: Json | null
           id?: string
           is_active?: boolean | null
+          is_published?: boolean | null
           logo_url?: string | null
           name?: string
           onboarding_completed?: boolean | null
@@ -5190,6 +5219,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      has_venue_tournament_role: {
+        Args: { _user_id: string; _venue_id: string }
+        Returns: boolean
+      }
       insert_mfa_code: {
         Args: {
           p_code: string
@@ -5311,8 +5344,9 @@ export type Database = {
         | "live"
         | "completed"
         | "cancelled"
+      tournament_visibility: "public" | "unlisted" | "private"
       venue_activation_state: "claimed" | "pending" | "active" | "suspended"
-      venue_role: "owner" | "manager" | "staff"
+      venue_role: "owner" | "manager" | "staff" | "organizer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -5466,8 +5500,9 @@ export const Constants = {
         "completed",
         "cancelled",
       ],
+      tournament_visibility: ["public", "unlisted", "private"],
       venue_activation_state: ["claimed", "pending", "active", "suspended"],
-      venue_role: ["owner", "manager", "staff"],
+      venue_role: ["owner", "manager", "staff", "organizer"],
     },
   },
 } as const
