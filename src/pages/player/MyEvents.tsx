@@ -6,36 +6,59 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Calendar, Clock, MapPin, X, Trophy, Search } from 'lucide-react';
 import { format, isFuture, isPast } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
-import { useEventRegistration } from '@/hooks/useEventRegistration';
+import { useMyEventRegistrations, RegistrationStatus } from '@/hooks/useEventRegistrations';
+
+interface EventRegistration {
+  id: string;
+  event_id: string;
+  user_id: string;
+  status: RegistrationStatus;
+  registered_at: string | null;
+  event?: {
+    id: string;
+    title: string;
+    start_time: string;
+    end_time: string;
+    event_type: string;
+    venue_id: string | null;
+    host_venue_id: string | null;
+  } | null;
+}
 
 export default function MyEvents() {
   const navigate = useNavigate();
-  const { registrations, loading, cancelRegistration } = useEventRegistration();
+  const { registrations, isLoading, cancelRegistration } = useMyEventRegistrations();
 
-  const upcomingRegistrations = registrations.filter(r => 
+  const typedRegistrations = registrations as EventRegistration[];
+
+  const upcomingRegistrations = typedRegistrations.filter(r => 
     r.event && isFuture(new Date(r.event.start_time)) && r.status !== 'cancelled'
   );
-  const pastRegistrations = registrations.filter(r => 
-    r.event && (isPast(new Date(r.event.end_time)) || r.status === 'attended')
+  const pastRegistrations = typedRegistrations.filter(r => 
+    r.event && isPast(new Date(r.event.end_time))
   );
-  const cancelledRegistrations = registrations.filter(r => r.status === 'cancelled');
+  const cancelledRegistrations = typedRegistrations.filter(r => r.status === 'cancelled');
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: RegistrationStatus) => {
     switch (status) {
-      case 'registered':
-        return <Badge className="bg-green-500">Registered</Badge>;
+      case 'confirmed':
+        return <Badge className="bg-green-500">Confirmed</Badge>;
+      case 'pending':
+        return <Badge variant="secondary">Pending</Badge>;
       case 'waitlisted':
         return <Badge variant="secondary">On Waitlist</Badge>;
       case 'cancelled':
         return <Badge variant="destructive">Cancelled</Badge>;
-      case 'attended':
-        return <Badge variant="outline">Attended</Badge>;
+      case 'checked_in':
+        return <Badge variant="outline">Checked In</Badge>;
+      case 'no_show':
+        return <Badge variant="destructive">No Show</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
   };
 
-  const RegistrationCard = ({ registration }: { registration: typeof registrations[0] }) => {
+  const RegistrationCard = ({ registration }: { registration: EventRegistration }) => {
     const event = registration.event;
     if (!event) return null;
 
@@ -45,7 +68,7 @@ export default function MyEvents() {
           <div className="flex justify-between items-start mb-3">
             <div>
               <h4 className="font-medium">{event.title}</h4>
-              <p className="text-sm text-muted-foreground">{event.venue?.name || 'Venue'}</p>
+              <p className="text-sm text-muted-foreground">Event</p>
             </div>
             <div className="flex flex-col items-end gap-1">
               {getStatusBadge(registration.status)}
@@ -64,25 +87,15 @@ export default function MyEvents() {
                 {format(new Date(event.start_time), 'h:mm a')} - {format(new Date(event.end_time), 'h:mm a')}
               </span>
             </div>
-            {event.venue?.address && (
-              <div className="flex items-center gap-2">
-                <MapPin className="h-3 w-3" />
-                <span>{event.venue.address}</span>
-              </div>
-            )}
           </div>
 
-          {event.price && event.price > 0 && (
-            <p className="text-sm font-medium mb-3">${event.price}</p>
-          )}
-
-          {(registration.status === 'registered' || registration.status === 'waitlisted') && 
+          {(registration.status === 'confirmed' || registration.status === 'waitlisted' || registration.status === 'pending') && 
             isFuture(new Date(event.start_time)) && (
             <Button
               variant="outline"
               size="sm"
               className="w-full text-destructive hover:text-destructive"
-              onClick={() => cancelRegistration(registration.id)}
+              onClick={() => cancelRegistration.mutate(registration.id)}
             >
               <X className="h-4 w-4 mr-1" />
               Cancel Registration
@@ -102,7 +115,7 @@ export default function MyEvents() {
         </div>
       </div>
 
-      {loading ? (
+      {isLoading ? (
         <div className="space-y-4">
           {[1, 2, 3].map(i => (
             <Skeleton key={i} className="h-40" />

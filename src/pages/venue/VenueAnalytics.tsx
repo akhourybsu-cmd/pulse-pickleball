@@ -6,6 +6,7 @@ import { useVenueBookings } from '@/hooks/useVenueBookings';
 import { useVenueEvents } from '@/hooks/useVenueEvents';
 import { useVenueCourts } from '@/hooks/useVenueCourts';
 import { useVenueTheme } from '@/components/layout/VenueShell';
+import { AnalyticsExport } from '@/components/venue/AnalyticsExport';
 import { 
   DollarSign, 
   TrendingUp, 
@@ -357,6 +358,11 @@ export default function VenueAnalytics() {
               </Card>
             )}
           </div>
+
+          {/* Export Section */}
+          {currentVenueId && (
+            <AnalyticsExport venueId={currentVenueId} className="mt-8" />
+          )}
         </>
       )}
     </div>
