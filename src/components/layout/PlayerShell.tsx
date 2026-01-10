@@ -14,8 +14,8 @@ import logo from '@/assets/pulse-logo-new.png';
 
 const navItems = [
   { to: '/player/dashboard', icon: Home, label: 'Dashboard' },
-  { to: '/player/venues', icon: Search, label: 'Venues' },
-  { to: '/player/my-events', icon: Calendar, label: 'Events' },
+  { to: '/player/find', icon: Search, label: 'Find' },
+  { to: '/player/my-events', icon: Calendar, label: 'My Events' },
   { to: '/player/my-bookings', icon: ClipboardList, label: 'Bookings' },
   { to: '/player/community', icon: Users, label: 'Community' },
 ];
@@ -23,7 +23,7 @@ const navItems = [
 // Prefetch map for route preloading on hover
 const prefetchMap: Record<string, () => Promise<unknown>> = {
   '/player/dashboard': () => import('@/pages/player/PlayerDashboard'),
-  '/player/venues': () => import('@/pages/player/VenueDiscovery'),
+  '/player/find': () => import('@/pages/player/FindEvents'),
   '/player/my-events': () => import('@/pages/player/MyEvents'),
   '/player/my-bookings': () => import('@/pages/player/MyBookings'),
   '/player/community': () => import('@/pages/player/Community'),

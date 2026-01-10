@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Plus, Trophy } from "lucide-react";
+import { Plus, Calendar } from "lucide-react";
 
 interface QuickAction {
   label: string;
@@ -13,15 +13,15 @@ export const QuickActionsBar = () => {
 
   const actions: QuickAction[] = [
     {
-      label: "Record Match",
-      icon: <Plus className="w-5 h-5" />,
-      path: "/match/new",
+      label: "Find Events",
+      icon: <Calendar className="w-5 h-5" />,
+      path: "/player/find",
       primary: true,
     },
     {
-      label: "Round Robin",
-      icon: <Trophy className="w-5 h-5" />,
-      path: "/round-robin",
+      label: "Record Match",
+      icon: <Plus className="w-5 h-5" />,
+      path: "/match/new",
     },
   ];
 
@@ -39,7 +39,7 @@ export const QuickActionsBar = () => {
               : "bg-background border border-border text-foreground hover:bg-muted/50 hover:border-primary/30"
             }
           `}
-          data-tour={action.path === "/match/new" ? "record-match" : undefined}
+          data-tour={action.path === "/player/find" ? "find-events" : action.path === "/match/new" ? "record-match" : undefined}
         >
           <span className={action.primary ? "text-primary-foreground" : "text-primary/70"}>
             {action.icon}
