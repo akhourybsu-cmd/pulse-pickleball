@@ -1182,6 +1182,33 @@ export type Database = {
         }
         Relationships: []
       }
+      feature_entitlements: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          feature_key: string
+          id: string
+          limit_value: number | null
+          tier: Database["public"]["Enums"]["subscription_tier"]
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          feature_key: string
+          id?: string
+          limit_value?: number | null
+          tier: Database["public"]["Enums"]["subscription_tier"]
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          feature_key?: string
+          id?: string
+          limit_value?: number | null
+          tier?: Database["public"]["Enums"]["subscription_tier"]
+        }
+        Relationships: []
+      }
       group_event_rsvps: {
         Row: {
           created_at: string | null
@@ -4709,6 +4736,56 @@ export type Database = {
           },
         ]
       }
+      venue_subscriptions: {
+        Row: {
+          cancel_at_period_end: boolean | null
+          created_at: string
+          current_period_end: string | null
+          current_period_start: string | null
+          id: string
+          status: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          tier: Database["public"]["Enums"]["subscription_tier"]
+          updated_at: string
+          venue_id: string
+        }
+        Insert: {
+          cancel_at_period_end?: boolean | null
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          tier?: Database["public"]["Enums"]["subscription_tier"]
+          updated_at?: string
+          venue_id: string
+        }
+        Update: {
+          cancel_at_period_end?: boolean | null
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          tier?: Database["public"]["Enums"]["subscription_tier"]
+          updated_at?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venue_subscriptions_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: true
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       venues: {
         Row: {
           activation_state:
@@ -5212,6 +5289,7 @@ export type Database = {
       rating_type: "ladder" | "league" | "playoffs" | "casual"
       registration_status: "pending" | "confirmed" | "waitlisted" | "cancelled"
       round_robin_status: "draft" | "live" | "completed"
+      subscription_tier: "free" | "plus" | "pro" | "enterprise"
       tournament_status:
         | "draft"
         | "upcoming"
@@ -5365,6 +5443,7 @@ export const Constants = {
       rating_type: ["ladder", "league", "playoffs", "casual"],
       registration_status: ["pending", "confirmed", "waitlisted", "cancelled"],
       round_robin_status: ["draft", "live", "completed"],
+      subscription_tier: ["free", "plus", "pro", "enterprise"],
       tournament_status: [
         "draft",
         "upcoming",
