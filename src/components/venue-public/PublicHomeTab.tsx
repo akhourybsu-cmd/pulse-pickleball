@@ -18,6 +18,7 @@ import CountUp from 'react-countup';
 import { PublicVenue, VenueCourt, VenueEvent, VenueCoach } from '@/hooks/usePublicVenue';
 import { TabId } from './PublicVenueShell';
 import { getVenueLogoSrc, getVenueLogoFallback } from '@/lib/venueBranding';
+import { FollowButton } from '@/components/venue/FollowButton';
 
 interface PublicHomeTabProps {
   venue: PublicVenue;
@@ -81,17 +82,31 @@ export function PublicHomeTab({
           background: 'linear-gradient(to bottom, #121212, #1A1A1A, #222222)'
         }}
       >
-        {/* Back navigation arrow */}
-        <motion.button 
-          initial={{ opacity: 0, x: -10 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.2, duration: 0.3 }}
-          onClick={() => navigate('/')}
-          className="absolute top-4 left-4 z-20 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors"
-          aria-label="Back to dashboard"
-        >
-          <ArrowLeft className="w-5 h-5 text-white" />
-        </motion.button>
+        {/* Back navigation and Follow button */}
+        <div className="absolute top-4 left-4 right-4 z-20 flex items-center justify-between">
+          <motion.button 
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2, duration: 0.3 }}
+            onClick={() => navigate('/')}
+            className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+            aria-label="Back to dashboard"
+          >
+            <ArrowLeft className="w-5 h-5 text-white" />
+          </motion.button>
+          
+          <motion.div
+            initial={{ opacity: 0, x: 10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2, duration: 0.3 }}
+          >
+            <FollowButton 
+              venueId={venue.id} 
+              variant="outline"
+              className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+            />
+          </motion.div>
+        </div>
         
         <div className="relative z-10 text-center px-4 max-w-4xl mx-auto">
           {/* Logo as primary hero element with scale-in animation */}
