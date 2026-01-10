@@ -4497,16 +4497,21 @@ export type Database = {
           court_count: string | null
           created_at: string
           current_booking_method: string | null
+          current_setup: string | null
           email: string
+          event_volume: string | null
           facility_type: string | null
           id: string
           message: string | null
           phone: string | null
+          primary_goals: string[] | null
           referral_source: string | null
           state: string | null
           status: string
+          timeline: string | null
           updated_at: string
           venue_name: string
+          venue_type: string | null
         }
         Insert: {
           city?: string | null
@@ -4514,16 +4519,21 @@ export type Database = {
           court_count?: string | null
           created_at?: string
           current_booking_method?: string | null
+          current_setup?: string | null
           email: string
+          event_volume?: string | null
           facility_type?: string | null
           id?: string
           message?: string | null
           phone?: string | null
+          primary_goals?: string[] | null
           referral_source?: string | null
           state?: string | null
           status?: string
+          timeline?: string | null
           updated_at?: string
           venue_name: string
+          venue_type?: string | null
         }
         Update: {
           city?: string | null
@@ -4531,16 +4541,21 @@ export type Database = {
           court_count?: string | null
           created_at?: string
           current_booking_method?: string | null
+          current_setup?: string | null
           email?: string
+          event_volume?: string | null
           facility_type?: string | null
           id?: string
           message?: string | null
           phone?: string | null
+          primary_goals?: string[] | null
           referral_source?: string | null
           state?: string | null
           status?: string
+          timeline?: string | null
           updated_at?: string
           venue_name?: string
+          venue_type?: string | null
         }
         Relationships: []
       }

@@ -122,7 +122,7 @@ const VenueRoundRobins = lazy(() => import("./pages/venue/VenueRoundRobins"));
 const VenueRoundRobinDetail = lazy(() => import("./pages/venue/VenueRoundRobinDetail"));
 const VenueRoundRobinKiosk = lazy(() => import("./pages/venue/VenueRoundRobinKiosk"));
 const PublicVenueLanding = lazy(() => import("./pages/PublicVenueLanding"));
-const VenueInterestForm = lazy(() => import("./pages/VenueInterestForm"));
+const VenueInterestWizard = lazy(() => import("./pages/VenueInterestWizard"));
 const PlayersLanding = lazy(() => import("./pages/PlayersLanding"));
 const VenuesLanding = lazy(() => import("./pages/VenuesLanding"));
 
@@ -259,7 +259,7 @@ const AppContent = () => {
           <Route path="/venue/onboarding/complete" element={
             <AuthGuard><VenueGuard allowOnboarding><VenueOnboardingComplete /></VenueGuard></AuthGuard>
           } />
-          <Route path="/venue/interest" element={<VenueInterestForm />} />
+          <Route path="/venue/interest" element={<VenueInterestWizard />} />
           <Route path="/venue/round-robins/:id/kiosk" element={<VenueRoundRobinKiosk />} />
 
           {/* Legacy routes - redirect to new structure */}
