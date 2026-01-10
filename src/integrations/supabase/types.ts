@@ -4299,6 +4299,8 @@ export type Database = {
           is_active: boolean | null
           logo_url: string | null
           name: string
+          onboarding_completed: boolean | null
+          onboarding_step: string | null
           owner_id: string | null
           phone: string | null
           platform_fee_percent: number | null
@@ -4332,6 +4334,8 @@ export type Database = {
           is_active?: boolean | null
           logo_url?: string | null
           name: string
+          onboarding_completed?: boolean | null
+          onboarding_step?: string | null
           owner_id?: string | null
           phone?: string | null
           platform_fee_percent?: number | null
@@ -4365,6 +4369,8 @@ export type Database = {
           is_active?: boolean | null
           logo_url?: string | null
           name?: string
+          onboarding_completed?: boolean | null
+          onboarding_step?: string | null
           owner_id?: string | null
           phone?: string | null
           platform_fee_percent?: number | null

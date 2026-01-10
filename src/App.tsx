@@ -129,6 +129,12 @@ const OnboardingFirstMatch = lazy(() => import("./pages/onboarding/FirstMatch"))
 const OnboardingRatingReveal = lazy(() => import("./pages/onboarding/RatingReveal"));
 const OnboardingComplete = lazy(() => import("./pages/onboarding/Complete"));
 
+// Venue onboarding pages
+const VenueOnboardingProfile = lazy(() => import("./pages/venue/onboarding/VenueOnboardingProfile"));
+const VenueOnboardingFirstEvent = lazy(() => import("./pages/venue/onboarding/VenueOnboardingFirstEvent"));
+const VenueOnboardingShare = lazy(() => import("./pages/venue/onboarding/VenueOnboardingShare"));
+const VenueOnboardingComplete = lazy(() => import("./pages/venue/onboarding/VenueOnboardingComplete"));
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -215,6 +221,10 @@ const AppContent = () => {
             <Route path="analytics" element={<VenueAnalytics />} />
           </Route>
           <Route path="/venue/onboarding" element={<VenueOnboarding />} />
+          <Route path="/venue/onboarding/profile" element={<VenueOnboardingProfile />} />
+          <Route path="/venue/onboarding/first-event" element={<VenueOnboardingFirstEvent />} />
+          <Route path="/venue/onboarding/share" element={<VenueOnboardingShare />} />
+          <Route path="/venue/onboarding/complete" element={<VenueOnboardingComplete />} />
           <Route path="/venue/interest" element={<VenueInterestForm />} />
           <Route path="/venue/round-robins/:id/kiosk" element={<VenueRoundRobinKiosk />} />
 
