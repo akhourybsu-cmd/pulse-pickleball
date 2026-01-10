@@ -905,6 +905,7 @@ export type Database = {
       }
       event_registrations: {
         Row: {
+          auto_expired: boolean | null
           cancelled_at: string | null
           checked_in_at: string | null
           confirmed_at: string | null
@@ -912,6 +913,8 @@ export type Database = {
           id: string
           notes: string | null
           promoted_at: string | null
+          promotion_deadline: string | null
+          promotion_notified_at: string | null
           registered_at: string | null
           status: string
           team_id: string | null
@@ -920,6 +923,7 @@ export type Database = {
           waitlist_position: number | null
         }
         Insert: {
+          auto_expired?: boolean | null
           cancelled_at?: string | null
           checked_in_at?: string | null
           confirmed_at?: string | null
@@ -927,6 +931,8 @@ export type Database = {
           id?: string
           notes?: string | null
           promoted_at?: string | null
+          promotion_deadline?: string | null
+          promotion_notified_at?: string | null
           registered_at?: string | null
           status?: string
           team_id?: string | null
@@ -935,6 +941,7 @@ export type Database = {
           waitlist_position?: number | null
         }
         Update: {
+          auto_expired?: boolean | null
           cancelled_at?: string | null
           checked_in_at?: string | null
           confirmed_at?: string | null
@@ -942,6 +949,8 @@ export type Database = {
           id?: string
           notes?: string | null
           promoted_at?: string | null
+          promotion_deadline?: string | null
+          promotion_notified_at?: string | null
           registered_at?: string | null
           status?: string
           team_id?: string | null
@@ -1208,6 +1217,94 @@ export type Database = {
           tier?: Database["public"]["Enums"]["subscription_tier"]
         }
         Relationships: []
+      }
+      financial_transactions: {
+        Row: {
+          amount_cents: number
+          created_at: string | null
+          created_by: string | null
+          currency: string | null
+          event_id: string | null
+          failure_reason: string | null
+          id: string
+          metadata: Json | null
+          notes: string | null
+          registration_id: string | null
+          status: string
+          stripe_payment_intent_id: string | null
+          stripe_payout_id: string | null
+          stripe_refund_id: string | null
+          stripe_transfer_id: string | null
+          transaction_type: string
+          updated_at: string | null
+          user_id: string | null
+          venue_id: string | null
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string | null
+          event_id?: string | null
+          failure_reason?: string | null
+          id?: string
+          metadata?: Json | null
+          notes?: string | null
+          registration_id?: string | null
+          status?: string
+          stripe_payment_intent_id?: string | null
+          stripe_payout_id?: string | null
+          stripe_refund_id?: string | null
+          stripe_transfer_id?: string | null
+          transaction_type: string
+          updated_at?: string | null
+          user_id?: string | null
+          venue_id?: string | null
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string | null
+          event_id?: string | null
+          failure_reason?: string | null
+          id?: string
+          metadata?: Json | null
+          notes?: string | null
+          registration_id?: string | null
+          status?: string
+          stripe_payment_intent_id?: string | null
+          stripe_payout_id?: string | null
+          stripe_refund_id?: string | null
+          stripe_transfer_id?: string | null
+          transaction_type?: string
+          updated_at?: string | null
+          user_id?: string | null
+          venue_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_transactions_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "unified_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_transactions_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "v_browse_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_transactions_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       group_event_rsvps: {
         Row: {
@@ -4212,6 +4309,59 @@ export type Database = {
         }
         Relationships: []
       }
+      venue_announcements: {
+        Row: {
+          channels: string[] | null
+          created_at: string | null
+          created_by: string
+          id: string
+          message: string
+          recipient_count: number | null
+          scheduled_for: string | null
+          sent_at: string | null
+          target_audience: string | null
+          title: string
+          updated_at: string | null
+          venue_id: string
+        }
+        Insert: {
+          channels?: string[] | null
+          created_at?: string | null
+          created_by: string
+          id?: string
+          message: string
+          recipient_count?: number | null
+          scheduled_for?: string | null
+          sent_at?: string | null
+          target_audience?: string | null
+          title: string
+          updated_at?: string | null
+          venue_id: string
+        }
+        Update: {
+          channels?: string[] | null
+          created_at?: string | null
+          created_by?: string
+          id?: string
+          message?: string
+          recipient_count?: number | null
+          scheduled_for?: string | null
+          sent_at?: string | null
+          target_audience?: string | null
+          title?: string
+          updated_at?: string | null
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venue_announcements_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       venue_bookings: {
         Row: {
           court_id: string
@@ -4589,6 +4739,44 @@ export type Database = {
             foreignKeyName: "venue_facility_details_venue_id_fkey"
             columns: ["venue_id"]
             isOneToOne: true
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      venue_followers: {
+        Row: {
+          followed_at: string | null
+          id: string
+          notify_announcements: boolean | null
+          notify_new_events: boolean | null
+          notify_schedule_changes: boolean | null
+          user_id: string
+          venue_id: string
+        }
+        Insert: {
+          followed_at?: string | null
+          id?: string
+          notify_announcements?: boolean | null
+          notify_new_events?: boolean | null
+          notify_schedule_changes?: boolean | null
+          user_id: string
+          venue_id: string
+        }
+        Update: {
+          followed_at?: string | null
+          id?: string
+          notify_announcements?: boolean | null
+          notify_new_events?: boolean | null
+          notify_schedule_changes?: boolean | null
+          user_id?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venue_followers_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
             referencedRelation: "venues"
             referencedColumns: ["id"]
           },
@@ -5173,6 +5361,54 @@ export type Database = {
         }
         Relationships: []
       }
+      waitlist_settings: {
+        Row: {
+          auto_promote: boolean | null
+          charge_on_promotion: boolean | null
+          created_at: string | null
+          event_id: string
+          id: string
+          notify_on_promotion: boolean | null
+          promotion_window_hours: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          auto_promote?: boolean | null
+          charge_on_promotion?: boolean | null
+          created_at?: string | null
+          event_id: string
+          id?: string
+          notify_on_promotion?: boolean | null
+          promotion_window_hours?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          auto_promote?: boolean | null
+          charge_on_promotion?: boolean | null
+          created_at?: string | null
+          event_id?: string
+          id?: string
+          notify_on_promotion?: boolean | null
+          promotion_window_hours?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "waitlist_settings_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: true
+            referencedRelation: "unified_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "waitlist_settings_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: true
+            referencedRelation: "v_browse_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       profiles_public: {
@@ -5417,6 +5653,10 @@ export type Database = {
           venue_name: string
         }[]
       }
+      get_venue_follower_count: {
+        Args: { p_venue_id: string }
+        Returns: number
+      }
       get_week_start: { Args: { match_date: string }; Returns: string }
       has_group_role: {
         Args: {
@@ -5479,6 +5719,7 @@ export type Database = {
         }
         Returns: string
       }
+      promote_from_waitlist: { Args: { p_event_id: string }; Returns: string }
       recalculate_all_player_stats: { Args: never; Returns: undefined }
       recalculate_all_ratings: { Args: never; Returns: undefined }
       recalculate_all_ratings_authenticated: { Args: never; Returns: undefined }
