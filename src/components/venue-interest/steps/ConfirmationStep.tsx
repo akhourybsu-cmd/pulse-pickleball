@@ -21,20 +21,20 @@ export function ConfirmationStep({ dynamicMessage }: ConfirmationStepProps) {
 
       <div className="space-y-3 w-full max-w-xs">
         <Button
-          onClick={() => navigate("/venues")}
+          onClick={() => navigate("/venue/create-fast")}
           className="w-full"
           size="lg"
         >
-          Explore Pulse for Venues
+          Create Your Venue Now
           <ArrowRight className="h-4 w-4 ml-2" />
         </Button>
 
         <Button
           variant="ghost"
-          onClick={() => navigate("/")}
+          onClick={() => navigate("/venues")}
           className="w-full"
         >
-          Return to Home
+          Explore Pulse for Venues
         </Button>
       </div>
     </div>
