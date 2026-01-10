@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Building2, Palette, ChevronRight, Check, Upload, Globe, MapPin } from "lucide-react";
+import { ArrowLeft, Building2, Palette, ChevronRight, Check, Globe, MapPin, Gift } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Footer } from "@/components/Footer";
+import { FreePlanBenefitsList } from "@/components/venue/FreePlanBenefitsList";
 import logo from "@/assets/pulse-logo-new.png";
 
 const US_STATES = [
@@ -34,6 +35,7 @@ interface FormData {
 const STEPS = [
   { id: "basics", label: "Basics", icon: Building2 },
   { id: "branding", label: "Branding", icon: Palette },
+  { id: "confirm", label: "Confirm", icon: Gift },
 ];
 
 export default function CreateVenueFast() {
@@ -122,12 +124,12 @@ export default function CreateVenueFast() {
       }
 
       toast({
-        title: "Venue created!",
-        description: "Your venue profile is ready. Now create your first tournament!",
+        title: "Your free venue is ready!",
+        description: "Create your first event to get started.",
       });
 
-      // Navigate to venue tournaments page with a prompt to create first tournament
-      navigate(`/tournaments/new?venueId=${venue.id}`);
+      // Navigate to Venue Manager Overview
+      navigate("/venue");
     } catch (error: any) {
       console.error("Error creating venue:", error);
       toast({
@@ -225,6 +227,9 @@ export default function CreateVenueFast() {
                 {currentStep === 1 && (
                   <Step2Branding formData={formData} updateField={updateField} />
                 )}
+                {currentStep === 2 && (
+                  <Step3Confirm venueName={formData.name} />
+                )}
               </motion.div>
             </AnimatePresence>
           </CardContent>
@@ -252,8 +257,9 @@ export default function CreateVenueFast() {
             <Button
               onClick={handleSubmit}
               disabled={!isStep1Valid || isSubmitting}
+              className="bg-emerald-600 hover:bg-emerald-700"
             >
-              {isSubmitting ? "Creating..." : "Create Venue"}
+              {isSubmitting ? "Creating..." : "Create My Free Venue"}
               <ChevronRight className="ml-2 h-4 w-4" />
             </Button>
           )}
@@ -397,6 +403,34 @@ function Step2Branding({
             className="mt-1.5 min-h-[100px]"
           />
         </div>
+      </div>
+    </div>
+  );
+}
+
+function Step3Confirm({ venueName }: { venueName: string }) {
+  return (
+    <div className="space-y-6">
+      <div className="text-center mb-6">
+        <div className="inline-flex items-center justify-center h-12 w-12 rounded-full bg-emerald-500/10 mb-4">
+          <Gift className="h-6 w-6 text-emerald-600" />
+        </div>
+        <h2 className="text-xl font-semibold mb-1">Welcome to Your Free Venue Plan</h2>
+        <p className="text-sm text-muted-foreground">
+          Everything you need to host events on Pulse
+        </p>
+      </div>
+
+      <div className="bg-muted/30 rounded-lg p-5 border border-border/50">
+        <h3 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground mb-4">
+          Included with your Free Plan
+        </h3>
+        <FreePlanBenefitsList showMicrocopy />
+      </div>
+
+      <div className="text-center text-sm text-muted-foreground border-t border-border/50 pt-4">
+        Advanced venue tools and services may be available in the future. 
+        You'll always be able to upgrade when it makes sense for your venue.
       </div>
     </div>
   );

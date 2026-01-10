@@ -13,6 +13,7 @@ export interface VenueAccess {
   primary_color: string | null;
   secondary_color: string | null;
   activation_state: VenueActivationState | null;
+  is_published: boolean;
 }
 
 interface ModeContextType {
@@ -88,7 +89,7 @@ export function ModeProvider({ children }: { children: React.ReactNode }) {
       const venueIds = rpcData.map((v: any) => v.venue_id);
       const { data: venueDetails, error: venueError } = await supabase
         .from('venues')
-        .select('id, name, logo_url, primary_color, secondary_color, activation_state')
+        .select('id, name, logo_url, primary_color, secondary_color, activation_state, is_published')
         .in('id', venueIds);
 
       if (venueError) {
@@ -101,7 +102,8 @@ export function ModeProvider({ children }: { children: React.ReactNode }) {
           logo_url: null,
           primary_color: null,
           secondary_color: null,
-          activation_state: null
+          activation_state: null,
+          is_published: false
         }));
         setVenueAccess(basicAccess);
       } else {
@@ -115,7 +117,8 @@ export function ModeProvider({ children }: { children: React.ReactNode }) {
             logo_url: details?.logo_url || null,
             primary_color: details?.primary_color || null,
             secondary_color: details?.secondary_color || null,
-            activation_state: (details?.activation_state as VenueActivationState) || null
+            activation_state: (details?.activation_state as VenueActivationState) || null,
+            is_published: details?.is_published ?? false
           };
         });
         setVenueAccess(enrichedAccess);

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,6 +11,9 @@ import { useVenueEvents } from '@/hooks/useVenueEvents';
 import { useVenueOnboarding } from '@/hooks/useVenueOnboarding';
 import { useVenueTheme } from '@/components/layout/VenueShell';
 import { VenueWelcomeModal } from '@/components/venue-onboarding/VenueWelcomeModal';
+import { PlanBadge } from '@/components/venue/PlanBadge';
+import { VenueStatusBadge } from '@/components/venue/VenueStatusBadge';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { 
   MapPin, 
   Calendar, 
@@ -24,7 +28,13 @@ import {
   CalendarPlus,
   UserPlus,
   Settings,
-  BarChart3
+  BarChart3,
+  Trophy,
+  Users2,
+  ChevronRight,
+  Building2,
+  Eye,
+  Zap
 } from 'lucide-react';
 import { isToday, isFuture } from 'date-fns';
 import { getVenueLogoSrc, getVenueLogoFallback } from '@/lib/venueBranding';
@@ -44,6 +54,7 @@ export default function VenueOverview() {
     advanceStep, 
     skipOnboarding 
   } = useVenueOnboarding();
+  const [futureToolsOpen, setFutureToolsOpen] = useState(false);
 
   const loading = courtsLoading || staffLoading || bookingsLoading || eventsLoading;
 
@@ -57,6 +68,7 @@ export default function VenueOverview() {
 
   // Use centralized branding helper for reliable logo display
   const logoSrc = getVenueLogoSrc(currentVenue?.logo_url, currentVenue?.venue_name);
+  const isPublished = currentVenue?.is_published ?? false;
 
   // Setup steps with completion status
   const setupSteps = [
@@ -67,6 +79,9 @@ export default function VenueOverview() {
 
   const completedSteps = setupSteps.filter(s => s.done).length;
   const isFullySetup = completedSteps === setupSteps.length;
+
+  // Check if this is a "new" venue (no events created yet)
+  const isNewVenue = events.length === 0;
 
   return (
     <>
@@ -90,7 +105,7 @@ export default function VenueOverview() {
           background: `linear-gradient(to bottom, ${venueTheme.secondary}, ${venueTheme.secondary}DD, transparent)`
         }}
       >
-        <div className="flex items-center gap-5">
+        <div className="flex items-start gap-5">
           <img 
             src={logoSrc} 
             alt={currentVenue?.venue_name || "Venue"} 
@@ -99,18 +114,58 @@ export default function VenueOverview() {
               e.currentTarget.src = getVenueLogoFallback();
             }}
           />
-          <div>
+          <div className="flex-1">
+            <div className="flex flex-wrap items-center gap-2 mb-2">
+              <PlanBadge tier="free" />
+              <VenueStatusBadge isPublished={isPublished} />
+            </div>
             <h1 className="text-3xl md:text-4xl font-bold text-white">
-              Venue Control Center
+              {currentVenue?.venue_name || 'Venue Control Center'}
             </h1>
             <p className="text-gray-300 mt-1">
-              Manage courts, events, and team for {currentVenue?.venue_name || 'your venue'}
+              Manage courts, events, and team
             </p>
           </div>
         </div>
       </div>
 
       <div className="px-6 pb-6">
+
+      {/* New Venue: Create First Event CTA */}
+      {isNewVenue && (
+        <Card className="mb-8 border-2 border-primary/30 bg-gradient-to-br from-primary/5 to-transparent">
+          <CardContent className="pt-6">
+            <div className="flex flex-col md:flex-row md:items-center gap-6">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <Trophy className="h-5 w-5 text-primary" />
+                  <h3 className="text-lg font-semibold">Ready to host your first event?</h3>
+                </div>
+                <p className="text-muted-foreground mb-4">
+                  Create tournaments at standard pricing or free Round Robins to engage your community.
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  <Button 
+                    onClick={() => navigate(`/tournaments/new?venueId=${currentVenueId}`)}
+                    className="gap-2"
+                  >
+                    <Trophy className="h-4 w-4" />
+                    Create Your First Tournament
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    onClick={() => navigate('/venue/events')}
+                    className="gap-2"
+                  >
+                    <Users2 className="h-4 w-4" />
+                    Create a Round Robin (Free)
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Metrics Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
@@ -206,7 +261,7 @@ export default function VenueOverview() {
         )}
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {/* Quick Actions - Premium Dark Card */}
         <Card 
           className="border-0"
@@ -267,13 +322,80 @@ export default function VenueOverview() {
           </CardContent>
         </Card>
 
+        {/* What You Get on Free Plan */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5" style={{ color: venueTheme.primary }} />
+              What You Get on the Free Plan
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center gap-3">
+              <div 
+                className="flex h-8 w-8 items-center justify-center rounded-full"
+                style={{ backgroundColor: `${venueTheme.primary}15` }}
+              >
+                <Building2 className="h-4 w-4" style={{ color: venueTheme.primary }} />
+              </div>
+              <div>
+                <p className="font-medium">Venue profile & listing</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div 
+                className="flex h-8 w-8 items-center justify-center rounded-full"
+                style={{ backgroundColor: `${venueTheme.primary}15` }}
+              >
+                <Trophy className="h-4 w-4" style={{ color: venueTheme.primary }} />
+              </div>
+              <div>
+                <p className="font-medium">Tournaments at standard pricing</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div 
+                className="flex h-8 w-8 items-center justify-center rounded-full"
+                style={{ backgroundColor: `${venueTheme.primary}15` }}
+              >
+                <Users2 className="h-4 w-4" style={{ color: venueTheme.primary }} />
+              </div>
+              <div>
+                <p className="font-medium">Unlimited Round Robins</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div 
+                className="flex h-8 w-8 items-center justify-center rounded-full"
+                style={{ backgroundColor: `${venueTheme.primary}15` }}
+              >
+                <Eye className="h-4 w-4" style={{ color: venueTheme.primary }} />
+              </div>
+              <div>
+                <p className="font-medium">Event visibility & discovery</p>
+              </div>
+            </div>
+
+            {/* Future Upgrades - Collapsed */}
+            <Collapsible open={futureToolsOpen} onOpenChange={setFutureToolsOpen}>
+              <CollapsibleTrigger className="flex items-center gap-2 w-full pt-3 mt-3 border-t border-border/50 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                <ChevronRight className={`h-4 w-4 transition-transform ${futureToolsOpen ? 'rotate-90' : ''}`} />
+                Advanced tools coming later
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pt-3 pl-6 text-sm text-muted-foreground">
+                We're working on advanced venue tools. You'll be notified when they're available.
+              </CollapsibleContent>
+            </Collapsible>
+          </CardContent>
+        </Card>
+
         {/* Setup Progress or Tips */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               {isFullySetup ? (
                 <>
-                  <Sparkles className="h-5 w-5" style={{ color: venueTheme.primary }} />
+                  <Zap className="h-5 w-5" style={{ color: venueTheme.primary }} />
                   Tips for Success
                 </>
               ) : (
