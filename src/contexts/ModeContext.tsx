@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 
 export type AppMode = 'player' | 'venue';
 
+export type VenueActivationState = 'claimed' | 'pending' | 'active' | 'suspended';
+
 export interface VenueAccess {
   venue_id: string;
   venue_name: string;
@@ -10,6 +12,7 @@ export interface VenueAccess {
   logo_url: string | null;
   primary_color: string | null;
   secondary_color: string | null;
+  activation_state: VenueActivationState | null;
 }
 
 interface ModeContextType {
@@ -81,11 +84,11 @@ export function ModeProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      // Fetch full venue details including branding
+      // Fetch full venue details including branding and activation state
       const venueIds = rpcData.map((v: any) => v.venue_id);
       const { data: venueDetails, error: venueError } = await supabase
         .from('venues')
-        .select('id, name, logo_url, primary_color, secondary_color')
+        .select('id, name, logo_url, primary_color, secondary_color, activation_state')
         .in('id', venueIds);
 
       if (venueError) {
@@ -97,7 +100,8 @@ export function ModeProvider({ children }: { children: React.ReactNode }) {
           role: v.role as 'owner' | 'manager' | 'staff',
           logo_url: null,
           primary_color: null,
-          secondary_color: null
+          secondary_color: null,
+          activation_state: null
         }));
         setVenueAccess(basicAccess);
       } else {
@@ -110,7 +114,8 @@ export function ModeProvider({ children }: { children: React.ReactNode }) {
             role: v.role as 'owner' | 'manager' | 'staff',
             logo_url: details?.logo_url || null,
             primary_color: details?.primary_color || null,
-            secondary_color: details?.secondary_color || null
+            secondary_color: details?.secondary_color || null,
+            activation_state: (details?.activation_state as VenueActivationState) || null
           };
         });
         setVenueAccess(enrichedAccess);

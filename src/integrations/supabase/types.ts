@@ -2224,6 +2224,7 @@ export type Database = {
           team1_score: number
           team2_score: number
           updated_at: string | null
+          verification_status: string | null
           verified_by: string[] | null
           void_reason: string | null
           voided: boolean | null
@@ -2251,6 +2252,7 @@ export type Database = {
           team1_score: number
           team2_score: number
           updated_at?: string | null
+          verification_status?: string | null
           verified_by?: string[] | null
           void_reason?: string | null
           voided?: boolean | null
@@ -2278,6 +2280,7 @@ export type Database = {
           team1_score?: number
           team2_score?: number
           updated_at?: string | null
+          verification_status?: string | null
           verified_by?: string[] | null
           void_reason?: string | null
           voided?: boolean | null
@@ -2499,6 +2502,7 @@ export type Database = {
           phone_number: string | null
           phonetic_name: string | null
           play_side: string | null
+          player_state: Database["public"]["Enums"]["player_state"] | null
           pronouns: string | null
           shirt_size: string | null
           skill_level_self: string | null
@@ -2551,6 +2555,7 @@ export type Database = {
           phone_number?: string | null
           phonetic_name?: string | null
           play_side?: string | null
+          player_state?: Database["public"]["Enums"]["player_state"] | null
           pronouns?: string | null
           shirt_size?: string | null
           skill_level_self?: string | null
@@ -2603,6 +2608,7 @@ export type Database = {
           phone_number?: string | null
           phonetic_name?: string | null
           play_side?: string | null
+          player_state?: Database["public"]["Enums"]["player_state"] | null
           pronouns?: string | null
           shirt_size?: string | null
           skill_level_self?: string | null
@@ -4705,6 +4711,9 @@ export type Database = {
       }
       venues: {
         Row: {
+          activation_state:
+            | Database["public"]["Enums"]["venue_activation_state"]
+            | null
           address: string | null
           amenities: string[] | null
           banner_url: string | null
@@ -4740,6 +4749,9 @@ export type Database = {
           zip_code: string | null
         }
         Insert: {
+          activation_state?:
+            | Database["public"]["Enums"]["venue_activation_state"]
+            | null
           address?: string | null
           amenities?: string[] | null
           banner_url?: string | null
@@ -4775,6 +4787,9 @@ export type Database = {
           zip_code?: string | null
         }
         Update: {
+          activation_state?:
+            | Database["public"]["Enums"]["venue_activation_state"]
+            | null
           address?: string | null
           amenities?: string[] | null
           banner_url?: string | null
@@ -5154,6 +5169,7 @@ export type Database = {
           team1_score: number
           team2_score: number
           updated_at: string | null
+          verification_status: string | null
           verified_by: string[] | null
           void_reason: string | null
           voided: boolean | null
@@ -5185,7 +5201,14 @@ export type Database = {
         | "venue_official"
         | "tournament"
       group_visibility: "public" | "unlisted" | "private"
+      match_source:
+        | "manual"
+        | "round_robin"
+        | "tournament"
+        | "league"
+        | "import"
       payment_status: "unpaid" | "paid" | "refunded"
+      player_state: "onboarding" | "active" | "inactive"
       rating_type: "ladder" | "league" | "playoffs" | "casual"
       registration_status: "pending" | "confirmed" | "waitlisted" | "cancelled"
       round_robin_status: "draft" | "live" | "completed"
@@ -5195,6 +5218,7 @@ export type Database = {
         | "live"
         | "completed"
         | "cancelled"
+      venue_activation_state: "claimed" | "pending" | "active" | "suspended"
       venue_role: "owner" | "manager" | "staff"
     }
     CompositeTypes: {
@@ -5335,7 +5359,9 @@ export const Constants = {
         "tournament",
       ],
       group_visibility: ["public", "unlisted", "private"],
+      match_source: ["manual", "round_robin", "tournament", "league", "import"],
       payment_status: ["unpaid", "paid", "refunded"],
+      player_state: ["onboarding", "active", "inactive"],
       rating_type: ["ladder", "league", "playoffs", "casual"],
       registration_status: ["pending", "confirmed", "waitlisted", "cancelled"],
       round_robin_status: ["draft", "live", "completed"],
@@ -5346,6 +5372,7 @@ export const Constants = {
         "completed",
         "cancelled",
       ],
+      venue_activation_state: ["claimed", "pending", "active", "suspended"],
       venue_role: ["owner", "manager", "staff"],
     },
   },
