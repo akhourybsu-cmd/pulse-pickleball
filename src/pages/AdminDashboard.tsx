@@ -21,7 +21,8 @@ import {
   Megaphone,
   Shield,
   Fingerprint,
-  Zap
+  Zap,
+  Activity
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import logo from "@/assets/pulse-logo-new.png";
@@ -467,7 +468,28 @@ const AdminDashboard = () => {
             </CardHeader>
             <CardContent>
               <Button className="w-full" variant="secondary">
-                View Audit Log
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card 
+            className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-l-4 border-l-transparent hover:border-l-[#A6DB5A] hover:-translate-y-1" 
+            onClick={() => navigate("/admin/system-health")}
+          >
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="p-2.5 bg-primary/10 rounded-lg group-hover:bg-[#A6DB5A]/20 transition-colors">
+                  <Activity className="w-8 h-8 text-primary group-hover:text-[#A6DB5A] transition-colors" />
+                </div>
+              </div>
+              <CardTitle className="mt-4">System Health</CardTitle>
+              <CardDescription>
+                Monitor data integrity and run health checks on the platform
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button className="w-full" variant="secondary">
+                View Health Status
               </Button>
             </CardContent>
           </Card>

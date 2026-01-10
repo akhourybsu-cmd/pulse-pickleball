@@ -11,9 +11,17 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Save, Building2, MapPin, Phone, Clock, Palette, ExternalLink, Instagram, Facebook } from 'lucide-react';
+import { Loader2, Save, Building2, MapPin, Phone, Clock, Palette, ExternalLink, Instagram, Facebook, CreditCard } from 'lucide-react';
 import { StripeConnectCard } from '@/components/venue/StripeConnectCard';
+import { SubscriptionManagement, VenuePricing } from '@/components/monetization';
+import { useSubscription } from '@/hooks/useSubscription';
 import { useToast } from '@/hooks/use-toast';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 const US_STATES = [
   'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
   'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
@@ -37,13 +45,17 @@ export default function VenueSettingsPage() {
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const venueTheme = useVenueTheme();
+  const { tier } = useSubscription({ venueId: currentVenueId });
   
   const [formData, setFormData] = useState<Partial<VenueSettings>>({});
   const [hasChanges, setHasChanges] = useState(false);
+  const [showPricingDialog, setShowPricingDialog] = useState(false);
 
-  // Handle Stripe Connect redirect
+  // Handle Stripe Connect and subscription redirects
   useEffect(() => {
     const stripeStatus = searchParams.get('stripe');
+    const subscriptionStatus = searchParams.get('subscription');
+    
     if (stripeStatus === 'success') {
       toast({
         title: "Stripe Connected",
@@ -53,6 +65,19 @@ export default function VenueSettingsPage() {
       toast({
         title: "Stripe Setup",
         description: "Please complete your Stripe account setup.",
+        variant: "destructive",
+      });
+    }
+    
+    if (subscriptionStatus === 'success') {
+      toast({
+        title: "Subscription Activated",
+        description: "Your subscription has been activated successfully!",
+      });
+    } else if (subscriptionStatus === 'canceled') {
+      toast({
+        title: "Subscription Canceled",
+        description: "You can upgrade anytime from the settings page.",
         variant: "destructive",
       });
     }
@@ -266,6 +291,14 @@ export default function VenueSettingsPage() {
           </CardContent>
         </Card>
 
+        {/* Subscription Management */}
+        {currentVenueId && (
+          <SubscriptionManagement 
+            venueId={currentVenueId}
+            onUpgrade={() => setShowPricingDialog(true)}
+          />
+        )}
+
         {/* Stripe Connect - Payment Processing */}
         {currentVenueId && (
           <StripeConnectCard 
@@ -467,6 +500,22 @@ export default function VenueSettingsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Pricing Dialog */}
+      <Dialog open={showPricingDialog} onOpenChange={setShowPricingDialog}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl">Choose Your Plan</DialogTitle>
+          </DialogHeader>
+          {currentVenueId && (
+            <VenuePricing 
+              venueId={currentVenueId} 
+              currentTier={tier}
+              onSubscriptionChange={() => setShowPricingDialog(false)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

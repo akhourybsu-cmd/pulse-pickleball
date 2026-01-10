@@ -91,6 +91,7 @@ const DataExport = lazy(() => import("./pages/DataExport"));
 const AdminAuditLog = lazy(() => import("./pages/AdminAuditLog"));
 const AdminTestAccounts = lazy(() => import("./pages/AdminTestAccounts"));
 const AdminBiometrics = lazy(() => import("./pages/AdminBiometrics"));
+const AdminSystemHealth = lazy(() => import("./pages/AdminSystemHealth"));
 const NotificationSettings = lazy(() => import("./pages/NotificationSettings"));
 
 // Player pages
@@ -290,6 +291,7 @@ const AppContent = () => {
           <Route path="/admin/audit-log" element={<AdminAuditLog />} />
           <Route path="/admin/test-accounts" element={<AdminTestAccounts />} />
           <Route path="/admin/biometrics" element={<AdminBiometrics />} />
+          <Route path="/admin/system-health" element={<AdminSystemHealth />} />
           <Route path="/admin/manage/:sessionId" element={<AdminManage />} />
           <Route path="/match/ticket/:ticketId" element={<MatchTicket />} />
           <Route path="/qr-checkin" element={<QRCheckIn />} />
