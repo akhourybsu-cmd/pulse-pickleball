@@ -23,10 +23,10 @@ export const OnboardingWelcome = ({
   if (!isOpen) return null;
 
   const checklistItems = [
-    { label: "Complete your profile", completed: hasCompletedProfile, current: !hasCompletedProfile },
-    { label: "Record your first match", completed: hasFirstMatch, current: hasCompletedProfile && !hasFirstMatch },
+    { label: "Set up your profile", completed: hasCompletedProfile, current: !hasCompletedProfile },
+    { label: "Find an event or record a match", completed: hasFirstMatch, current: hasCompletedProfile && !hasFirstMatch },
     { label: "See your Pulse Rating", completed: false, current: hasFirstMatch },
-    { label: "Explore what's next", completed: false },
+    { label: "You're ready!", completed: false },
   ];
 
   return (

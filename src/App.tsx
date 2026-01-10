@@ -103,6 +103,7 @@ const PlayerBookings = lazy(() => import("./pages/player/PlayerBookings"));
 const VenueDiscovery = lazy(() => import("./pages/player/VenueDiscovery"));
 const MyBookings = lazy(() => import("./pages/player/MyBookings"));
 const MyEvents = lazy(() => import("./pages/player/MyEvents"));
+const FindEvents = lazy(() => import("./pages/player/FindEvents"));
 const Community = lazy(() => import("./pages/player/Community"));
 const GroupDetail = lazy(() => import("./pages/player/GroupDetail"));
 const GroupManage = lazy(() => import("./pages/player/GroupManage"));
@@ -209,6 +210,7 @@ const AppContent = () => {
           }>
             <Route index element={<Navigate to="/player/dashboard" replace />} />
             <Route path="dashboard" element={<PlayerDashboard />} />
+            <Route path="find" element={<FindEvents />} />
             <Route path="events" element={<PlayerEvents />} />
             <Route path="courts" element={<PlayerCourts />} />
             <Route path="venues" element={<VenueDiscovery />} />
