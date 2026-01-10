@@ -3,17 +3,18 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { Search, MapPin, Calendar, ClipboardList, Heart } from 'lucide-react';
+import { Search, Calendar, ClipboardList, Heart } from 'lucide-react';
 import { usePublicVenues } from '@/hooks/usePublicVenues';
 import { useFavoriteVenues } from '@/hooks/useFavoriteVenues';
 import { VenueDiscoveryCard } from '@/components/player/VenueDiscoveryCard';
 import { VenueDetailSheet } from '@/components/player/VenueDetailSheet';
+import { NoVenuesEmptyState, NoSearchResultsEmptyState } from '@/components/empty-states';
 
 export default function VenueDiscovery() {
   const navigate = useNavigate();
   const location = useLocation();
   const { venues, loading } = usePublicVenues();
-  const { favorites, isFavorite, toggleFavorite, loading: favoritesLoading } = useFavoriteVenues();
+  const { isFavorite, toggleFavorite, loading: favoritesLoading } = useFavoriteVenues();
   const [search, setSearch] = useState('');
   const [selectedVenueId, setSelectedVenueId] = useState<string | null>(null);
 
@@ -44,6 +45,78 @@ export default function VenueDiscovery() {
 
   const favoriteVenues = sortedVenues.filter(v => isFavorite(v.id));
   const otherVenues = sortedVenues.filter(v => !isFavorite(v.id));
+
+  const renderContent = () => {
+    if (loading || favoritesLoading) {
+      return (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3, 4, 5, 6].map(i => (
+            <Skeleton key={i} className="h-48" />
+          ))}
+        </div>
+      );
+    }
+
+    if (filteredVenues.length === 0 && search) {
+      return (
+        <NoSearchResultsEmptyState 
+          searchTerm={search} 
+          onClear={() => setSearch('')} 
+        />
+      );
+    }
+
+    if (filteredVenues.length === 0) {
+      return <NoVenuesEmptyState />;
+    }
+
+    return (
+      <div className="space-y-6">
+        {/* Favorite Venues Section */}
+        {favoriteVenues.length > 0 && (
+          <div>
+            <h2 className="text-sm font-medium text-muted-foreground flex items-center gap-2 mb-3">
+              <Heart className="w-4 h-4 text-red-500 fill-red-500" />
+              Favorite Venues
+            </h2>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {favoriteVenues.map(venue => (
+                <VenueDiscoveryCard
+                  key={venue.id}
+                  venue={venue}
+                  onSelect={setSelectedVenueId}
+                  isFavorite={true}
+                  onToggleFavorite={() => toggleFavorite(venue.id)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* All Other Venues */}
+        {otherVenues.length > 0 && (
+          <div>
+            {favoriteVenues.length > 0 && (
+              <h2 className="text-sm font-medium text-muted-foreground mb-3">
+                All Venues
+              </h2>
+            )}
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {otherVenues.map(venue => (
+                <VenueDiscoveryCard
+                  key={venue.id}
+                  venue={venue}
+                  onSelect={setSelectedVenueId}
+                  isFavorite={false}
+                  onToggleFavorite={() => toggleFavorite(venue.id)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="p-6">
@@ -84,66 +157,7 @@ export default function VenueDiscovery() {
         />
       </div>
 
-      {loading || favoritesLoading ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3, 4, 5, 6].map(i => (
-            <Skeleton key={i} className="h-48" />
-          ))}
-        </div>
-      ) : filteredVenues.length > 0 ? (
-        <div className="space-y-6">
-          {/* Favorite Venues Section */}
-          {favoriteVenues.length > 0 && (
-            <div>
-              <h2 className="text-sm font-medium text-muted-foreground flex items-center gap-2 mb-3">
-                <Heart className="w-4 h-4 text-red-500 fill-red-500" />
-                Favorite Venues
-              </h2>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {favoriteVenues.map(venue => (
-                  <VenueDiscoveryCard
-                    key={venue.id}
-                    venue={venue}
-                    onSelect={setSelectedVenueId}
-                    isFavorite={true}
-                    onToggleFavorite={() => toggleFavorite(venue.id)}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* All Other Venues */}
-          {otherVenues.length > 0 && (
-            <div>
-              {favoriteVenues.length > 0 && (
-                <h2 className="text-sm font-medium text-muted-foreground mb-3">
-                  All Venues
-                </h2>
-              )}
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {otherVenues.map(venue => (
-                  <VenueDiscoveryCard
-                    key={venue.id}
-                    venue={venue}
-                    onSelect={setSelectedVenueId}
-                    isFavorite={false}
-                    onToggleFavorite={() => toggleFavorite(venue.id)}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="text-center py-12">
-          <MapPin className="h-10 w-10 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-base font-medium mb-2">No venues found</h3>
-          <p className="text-sm text-muted-foreground font-normal mb-4">
-            {search ? 'Try adjusting your search' : 'Venues will appear here once they register with Pulse'}
-          </p>
-        </div>
-      )}
+      {renderContent()}
 
       {/* VENUE DETAIL SHEET - NOW PREVIEW ONLY, NO TRANSACTIONS */}
       <VenueDetailSheet
