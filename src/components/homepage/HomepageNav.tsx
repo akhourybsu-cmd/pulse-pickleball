@@ -2,8 +2,9 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Menu, X } from "lucide-react";
+import { Menu } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import logo from "@/assets/pulse-logo-new.png";
 
 interface HomepageNavProps {
   isLoggedIn: boolean;
@@ -42,16 +43,15 @@ export const HomepageNav = ({ isLoggedIn, userMode }: HomepageNavProps) => {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <nav className="container mx-auto flex h-16 items-center justify-between px-4">
+    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-secondary/95 backdrop-blur supports-[backdrop-filter]:bg-secondary/80">
+      <nav className="container mx-auto flex h-[72px] items-center justify-between px-4">
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-2">
-          <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-secondary">
-            <span className="text-primary-foreground font-bold text-lg">P</span>
-          </div>
-          <span className="font-display text-xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-            PULSE
-          </span>
+        <Link to="/">
+          <img 
+            src={logo} 
+            alt="PULSE Logo" 
+            className="h-[60px] sm:h-[70px] w-auto cursor-pointer hover:opacity-80 transition-opacity" 
+          />
         </Link>
 
         {/* Desktop Navigation */}
