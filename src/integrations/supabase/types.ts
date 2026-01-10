@@ -4516,6 +4516,84 @@ export type Database = {
           },
         ]
       }
+      venue_facility_details: {
+        Row: {
+          amenity_food_nearby: boolean | null
+          amenity_parking: boolean | null
+          amenity_pro_shop: boolean | null
+          amenity_restrooms: boolean | null
+          amenity_seating: boolean | null
+          amenity_water: boolean | null
+          beginner_friendly: boolean | null
+          climate_controlled: boolean | null
+          court_count: number | null
+          has_lighting: boolean | null
+          location_type:
+            | Database["public"]["Enums"]["court_location_type"]
+            | null
+          offers_open_play: boolean | null
+          open_play_notes: string | null
+          programs_notes: string | null
+          surface_type: Database["public"]["Enums"]["court_surface_type"] | null
+          updated_at: string | null
+          venue_id: string
+        }
+        Insert: {
+          amenity_food_nearby?: boolean | null
+          amenity_parking?: boolean | null
+          amenity_pro_shop?: boolean | null
+          amenity_restrooms?: boolean | null
+          amenity_seating?: boolean | null
+          amenity_water?: boolean | null
+          beginner_friendly?: boolean | null
+          climate_controlled?: boolean | null
+          court_count?: number | null
+          has_lighting?: boolean | null
+          location_type?:
+            | Database["public"]["Enums"]["court_location_type"]
+            | null
+          offers_open_play?: boolean | null
+          open_play_notes?: string | null
+          programs_notes?: string | null
+          surface_type?:
+            | Database["public"]["Enums"]["court_surface_type"]
+            | null
+          updated_at?: string | null
+          venue_id: string
+        }
+        Update: {
+          amenity_food_nearby?: boolean | null
+          amenity_parking?: boolean | null
+          amenity_pro_shop?: boolean | null
+          amenity_restrooms?: boolean | null
+          amenity_seating?: boolean | null
+          amenity_water?: boolean | null
+          beginner_friendly?: boolean | null
+          climate_controlled?: boolean | null
+          court_count?: number | null
+          has_lighting?: boolean | null
+          location_type?:
+            | Database["public"]["Enums"]["court_location_type"]
+            | null
+          offers_open_play?: boolean | null
+          open_play_notes?: string | null
+          programs_notes?: string | null
+          surface_type?:
+            | Database["public"]["Enums"]["court_surface_type"]
+            | null
+          updated_at?: string | null
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venue_facility_details_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: true
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       venue_inquiries: {
         Row: {
           city: string | null
@@ -4661,6 +4739,44 @@ export type Database = {
           },
         ]
       }
+      venue_media: {
+        Row: {
+          caption: string | null
+          created_at: string | null
+          id: string
+          media_type: string | null
+          media_url: string
+          sort_order: number | null
+          venue_id: string
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string | null
+          id?: string
+          media_type?: string | null
+          media_url: string
+          sort_order?: number | null
+          venue_id: string
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string | null
+          id?: string
+          media_type?: string | null
+          media_url?: string
+          sort_order?: number | null
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venue_media_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       venue_payments: {
         Row: {
           amount_platform_fee: number
@@ -4730,6 +4846,47 @@ export type Database = {
           },
         ]
       }
+      venue_settings: {
+        Row: {
+          allow_player_posts: boolean | null
+          event_sort_mode: string | null
+          featured_event_id: string | null
+          show_amenities: boolean | null
+          show_facility_details: boolean | null
+          show_gallery: boolean | null
+          updated_at: string | null
+          venue_id: string
+        }
+        Insert: {
+          allow_player_posts?: boolean | null
+          event_sort_mode?: string | null
+          featured_event_id?: string | null
+          show_amenities?: boolean | null
+          show_facility_details?: boolean | null
+          show_gallery?: boolean | null
+          updated_at?: string | null
+          venue_id: string
+        }
+        Update: {
+          allow_player_posts?: boolean | null
+          event_sort_mode?: string | null
+          featured_event_id?: string | null
+          show_amenities?: boolean | null
+          show_facility_details?: boolean | null
+          show_gallery?: boolean | null
+          updated_at?: string | null
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venue_settings_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: true
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       venue_staff: {
         Row: {
           accepted_at: string | null
@@ -4739,6 +4896,7 @@ export type Database = {
           invited_by: string | null
           is_active: boolean | null
           role: Database["public"]["Enums"]["venue_role"]
+          status: Database["public"]["Enums"]["membership_status"] | null
           updated_at: string
           user_id: string
           venue_id: string
@@ -4751,6 +4909,7 @@ export type Database = {
           invited_by?: string | null
           is_active?: boolean | null
           role?: Database["public"]["Enums"]["venue_role"]
+          status?: Database["public"]["Enums"]["membership_status"] | null
           updated_at?: string
           user_id: string
           venue_id: string
@@ -4763,6 +4922,7 @@ export type Database = {
           invited_by?: string | null
           is_active?: boolean | null
           role?: Database["public"]["Enums"]["venue_role"]
+          status?: Database["public"]["Enums"]["membership_status"] | null
           updated_at?: string
           user_id?: string
           venue_id?: string
@@ -4833,16 +4993,30 @@ export type Database = {
             | Database["public"]["Enums"]["venue_activation_state"]
             | null
           address: string | null
+          address_line1: string | null
+          address_line2: string | null
+          allow_follow: boolean | null
           amenities: string[] | null
           banner_url: string | null
           city: string | null
+          country: string | null
+          cover_focal_point:
+            | Database["public"]["Enums"]["cover_focal_point"]
+            | null
+          cover_image_url: string | null
           created_at: string
+          cta_primary_label: string | null
+          cta_secondary_label: string | null
           description: string | null
           email: string | null
+          facebook_url: string | null
           hours_of_operation: Json | null
           id: string
+          instagram_url: string | null
           is_active: boolean | null
           is_published: boolean | null
+          is_searchable: boolean | null
+          logo_shape: Database["public"]["Enums"]["venue_logo_shape"] | null
           logo_url: string | null
           name: string
           onboarding_completed: boolean | null
@@ -4857,14 +5031,22 @@ export type Database = {
           social_facebook: string | null
           social_instagram: string | null
           state: string | null
+          status: Database["public"]["Enums"]["venue_status"] | null
           stripe_account_id: string | null
           stripe_charges_enabled: boolean | null
           stripe_onboarding_complete: boolean | null
           stripe_payouts_enabled: boolean | null
           tagline: string | null
+          tiktok_url: string | null
           timezone: string | null
           updated_at: string
+          venue_type: Database["public"]["Enums"]["venue_type"] | null
+          visibility: Database["public"]["Enums"]["venue_visibility"] | null
           website: string | null
+          website_url: string | null
+          welcome_headline: string | null
+          welcome_message: string | null
+          x_url: string | null
           zip_code: string | null
         }
         Insert: {
@@ -4872,16 +5054,30 @@ export type Database = {
             | Database["public"]["Enums"]["venue_activation_state"]
             | null
           address?: string | null
+          address_line1?: string | null
+          address_line2?: string | null
+          allow_follow?: boolean | null
           amenities?: string[] | null
           banner_url?: string | null
           city?: string | null
+          country?: string | null
+          cover_focal_point?:
+            | Database["public"]["Enums"]["cover_focal_point"]
+            | null
+          cover_image_url?: string | null
           created_at?: string
+          cta_primary_label?: string | null
+          cta_secondary_label?: string | null
           description?: string | null
           email?: string | null
+          facebook_url?: string | null
           hours_of_operation?: Json | null
           id?: string
+          instagram_url?: string | null
           is_active?: boolean | null
           is_published?: boolean | null
+          is_searchable?: boolean | null
+          logo_shape?: Database["public"]["Enums"]["venue_logo_shape"] | null
           logo_url?: string | null
           name: string
           onboarding_completed?: boolean | null
@@ -4896,14 +5092,22 @@ export type Database = {
           social_facebook?: string | null
           social_instagram?: string | null
           state?: string | null
+          status?: Database["public"]["Enums"]["venue_status"] | null
           stripe_account_id?: string | null
           stripe_charges_enabled?: boolean | null
           stripe_onboarding_complete?: boolean | null
           stripe_payouts_enabled?: boolean | null
           tagline?: string | null
+          tiktok_url?: string | null
           timezone?: string | null
           updated_at?: string
+          venue_type?: Database["public"]["Enums"]["venue_type"] | null
+          visibility?: Database["public"]["Enums"]["venue_visibility"] | null
           website?: string | null
+          website_url?: string | null
+          welcome_headline?: string | null
+          welcome_message?: string | null
+          x_url?: string | null
           zip_code?: string | null
         }
         Update: {
@@ -4911,16 +5115,30 @@ export type Database = {
             | Database["public"]["Enums"]["venue_activation_state"]
             | null
           address?: string | null
+          address_line1?: string | null
+          address_line2?: string | null
+          allow_follow?: boolean | null
           amenities?: string[] | null
           banner_url?: string | null
           city?: string | null
+          country?: string | null
+          cover_focal_point?:
+            | Database["public"]["Enums"]["cover_focal_point"]
+            | null
+          cover_image_url?: string | null
           created_at?: string
+          cta_primary_label?: string | null
+          cta_secondary_label?: string | null
           description?: string | null
           email?: string | null
+          facebook_url?: string | null
           hours_of_operation?: Json | null
           id?: string
+          instagram_url?: string | null
           is_active?: boolean | null
           is_published?: boolean | null
+          is_searchable?: boolean | null
+          logo_shape?: Database["public"]["Enums"]["venue_logo_shape"] | null
           logo_url?: string | null
           name?: string
           onboarding_completed?: boolean | null
@@ -4935,14 +5153,22 @@ export type Database = {
           social_facebook?: string | null
           social_instagram?: string | null
           state?: string | null
+          status?: Database["public"]["Enums"]["venue_status"] | null
           stripe_account_id?: string | null
           stripe_charges_enabled?: boolean | null
           stripe_onboarding_complete?: boolean | null
           stripe_payouts_enabled?: boolean | null
           tagline?: string | null
+          tiktok_url?: string | null
           timezone?: string | null
           updated_at?: string
+          venue_type?: Database["public"]["Enums"]["venue_type"] | null
+          visibility?: Database["public"]["Enums"]["venue_visibility"] | null
           website?: string | null
+          website_url?: string | null
+          welcome_headline?: string | null
+          welcome_message?: string | null
+          x_url?: string | null
           zip_code?: string | null
         }
         Relationships: []
@@ -5316,6 +5542,9 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user"
+      court_location_type: "indoor" | "outdoor" | "mixed"
+      court_surface_type: "hard" | "wood" | "sport_court" | "clay" | "other"
+      cover_focal_point: "top" | "center"
       division_status: "draft" | "active" | "completed"
       group_join_method: "open" | "request_to_join" | "invite_only"
       group_role: "owner" | "moderator" | "member"
@@ -5332,6 +5561,7 @@ export type Database = {
         | "tournament"
         | "league"
         | "import"
+      membership_status: "active" | "invited" | "pending"
       payment_status: "unpaid" | "paid" | "refunded"
       player_state: "onboarding" | "active" | "inactive"
       rating_type: "ladder" | "league" | "playoffs" | "casual"
@@ -5346,7 +5576,16 @@ export type Database = {
         | "cancelled"
       tournament_visibility: "public" | "unlisted" | "private"
       venue_activation_state: "claimed" | "pending" | "active" | "suspended"
+      venue_logo_shape: "circle" | "square"
       venue_role: "owner" | "manager" | "staff" | "organizer"
+      venue_status: "draft" | "published"
+      venue_type:
+        | "recreation_center"
+        | "private_club"
+        | "public_courts"
+        | "tournament_organizer"
+        | "other"
+      venue_visibility: "public" | "unlisted"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -5475,6 +5714,9 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user"],
+      court_location_type: ["indoor", "outdoor", "mixed"],
+      court_surface_type: ["hard", "wood", "sport_court", "clay", "other"],
+      cover_focal_point: ["top", "center"],
       division_status: ["draft", "active", "completed"],
       group_join_method: ["open", "request_to_join", "invite_only"],
       group_role: ["owner", "moderator", "member"],
@@ -5487,6 +5729,7 @@ export const Constants = {
       ],
       group_visibility: ["public", "unlisted", "private"],
       match_source: ["manual", "round_robin", "tournament", "league", "import"],
+      membership_status: ["active", "invited", "pending"],
       payment_status: ["unpaid", "paid", "refunded"],
       player_state: ["onboarding", "active", "inactive"],
       rating_type: ["ladder", "league", "playoffs", "casual"],
@@ -5502,7 +5745,17 @@ export const Constants = {
       ],
       tournament_visibility: ["public", "unlisted", "private"],
       venue_activation_state: ["claimed", "pending", "active", "suspended"],
+      venue_logo_shape: ["circle", "square"],
       venue_role: ["owner", "manager", "staff", "organizer"],
+      venue_status: ["draft", "published"],
+      venue_type: [
+        "recreation_center",
+        "private_club",
+        "public_courts",
+        "tournament_organizer",
+        "other",
+      ],
+      venue_visibility: ["public", "unlisted"],
     },
   },
 } as const
