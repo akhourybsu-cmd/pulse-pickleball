@@ -10,6 +10,7 @@ import { Loader2, CreditCard, Settings, RefreshCw, AlertTriangle } from "lucide-
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useSubscription, FEATURE_KEYS } from "@/hooks/useSubscription";
+import { useVenueUsage } from "@/hooks/useVenueUsage";
 import { TIER_INFO } from "@/lib/monetization";
 import { LimitIndicator } from "./UpgradePrompt";
 import { format } from "date-fns";
@@ -30,6 +31,8 @@ export function SubscriptionManagement({ venueId, onUpgrade }: SubscriptionManag
     isPaid,
     getFeatureLimit,
   } = useSubscription({ venueId });
+
+  const { usage, isLoading: usageLoading } = useVenueUsage({ venueId });
 
   const tierInfo = TIER_INFO[tier];
 
@@ -72,7 +75,9 @@ export function SubscriptionManagement({ venueId, onUpgrade }: SubscriptionManag
     }
   };
 
-  if (subLoading) {
+  const isLoading = subLoading || usageLoading;
+
+  if (isLoading) {
     return (
       <Card>
         <CardContent className="flex items-center justify-center py-8">
@@ -126,7 +131,7 @@ export function SubscriptionManagement({ venueId, onUpgrade }: SubscriptionManag
           <h4 className="text-sm font-medium">Usage</h4>
           
           <LimitIndicator
-            current={0} // TODO: Fetch actual count
+            current={usage.eventsThisMonth}
             limit={getFeatureLimit(FEATURE_KEYS.MAX_EVENTS_PER_MONTH)}
             label="Events this month"
             showUpgrade={!isPaid}
@@ -135,7 +140,7 @@ export function SubscriptionManagement({ venueId, onUpgrade }: SubscriptionManag
           />
 
           <LimitIndicator
-            current={0} // TODO: Fetch actual count
+            current={usage.totalCourts}
             limit={getFeatureLimit(FEATURE_KEYS.MAX_COURTS)}
             label="Courts"
             showUpgrade={!isPaid}
@@ -144,7 +149,7 @@ export function SubscriptionManagement({ venueId, onUpgrade }: SubscriptionManag
           />
 
           <LimitIndicator
-            current={0} // TODO: Fetch actual count
+            current={usage.totalCoaches}
             limit={getFeatureLimit(FEATURE_KEYS.MAX_COACHES)}
             label="Coaches"
             showUpgrade={!isPaid}
