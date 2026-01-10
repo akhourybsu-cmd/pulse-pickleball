@@ -113,6 +113,11 @@ const GroupManage = lazy(() => import("./pages/player/GroupManage"));
 // Venue pages
 const VenueOverview = lazy(() => import("./pages/venue/VenueOverview"));
 const VenueOnboarding = lazy(() => import("./pages/venue/VenueOnboarding"));
+const VenueProfile = lazy(() => import("./pages/venue/VenueProfile"));
+const VenueBranding = lazy(() => import("./pages/venue/VenueBranding"));
+const VenueFacility = lazy(() => import("./pages/venue/VenueFacility"));
+const VenueMedia = lazy(() => import("./pages/venue/VenueMedia"));
+const VenueCommunity = lazy(() => import("./pages/venue/VenueCommunity"));
 const VenueCourts = lazy(() => import("./pages/venue/VenueCourts"));
 const VenueBookings = lazy(() => import("./pages/venue/VenueBookings"));
 const VenueEvents = lazy(() => import("./pages/venue/VenueEvents"));
@@ -235,6 +240,11 @@ const AppContent = () => {
             </AuthGuard>
           }>
             <Route index element={<VenueOverview />} />
+            <Route path="profile" element={<VenueProfile />} />
+            <Route path="branding" element={<VenueBranding />} />
+            <Route path="facility" element={<VenueFacility />} />
+            <Route path="media" element={<VenueMedia />} />
+            <Route path="community" element={<VenueCommunity />} />
             <Route path="courts" element={<VenueCourts />} />
             <Route path="bookings" element={<VenueBookings />} />
             <Route path="events" element={<VenueEvents />} />

@@ -21,16 +21,18 @@ import { useState, useMemo, useCallback, CSSProperties } from 'react';
 import { useMode } from '@/contexts/ModeContext';
 import { getVenueLogoSrc, getVenueLogoFallback } from '@/lib/venueBranding';
 
+import { Palette, Building2, Image } from 'lucide-react';
+
 const navItems = [
   { to: '/venue', icon: LayoutDashboard, label: 'Overview', end: true },
-  { to: '/venue/courts', icon: MapPin, label: 'Courts' },
-  { to: '/venue/bookings', icon: Calendar, label: 'Bookings' },
-  { to: '/venue/events', icon: CalendarDays, label: 'Events' },
+  { to: '/venue/profile', icon: Building2, label: 'Profile' },
+  { to: '/venue/branding', icon: Palette, label: 'Branding' },
+  { to: '/venue/facility', icon: MapPin, label: 'Facility' },
+  { to: '/venue/media', icon: Image, label: 'Media' },
   { to: '/venue/tournaments', icon: Trophy, label: 'Tournaments' },
   { to: '/venue/round-robins', icon: Repeat, label: 'Round Robins' },
-  { to: '/venue/coaching', icon: GraduationCap, label: 'Coaching' },
+  { to: '/venue/events', icon: CalendarDays, label: 'Events' },
   { to: '/venue/staff', icon: Users, label: 'Staff' },
-  { to: '/venue/analytics', icon: BarChart3, label: 'Analytics' },
   { to: '/venue/settings', icon: Settings, label: 'Settings' },
 ];
 
