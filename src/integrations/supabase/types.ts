@@ -845,6 +845,127 @@ export type Database = {
         }
         Relationships: []
       }
+      event_instruction: {
+        Row: {
+          coach_id: string | null
+          created_at: string | null
+          equipment_provided: boolean | null
+          event_id: string
+          focus_areas: string[] | null
+          id: string
+          instructor_id: string | null
+          instructor_name: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          coach_id?: string | null
+          created_at?: string | null
+          equipment_provided?: boolean | null
+          event_id: string
+          focus_areas?: string[] | null
+          id?: string
+          instructor_id?: string | null
+          instructor_name?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          coach_id?: string | null
+          created_at?: string | null
+          equipment_provided?: boolean | null
+          event_id?: string
+          focus_areas?: string[] | null
+          id?: string
+          instructor_id?: string | null
+          instructor_name?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_instruction_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "venue_coaches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_instruction_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: true
+            referencedRelation: "unified_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_instruction_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: true
+            referencedRelation: "v_browse_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_registrations: {
+        Row: {
+          cancelled_at: string | null
+          checked_in_at: string | null
+          confirmed_at: string | null
+          event_id: string
+          id: string
+          notes: string | null
+          promoted_at: string | null
+          registered_at: string | null
+          status: string
+          team_id: string | null
+          team_role: string | null
+          user_id: string
+          waitlist_position: number | null
+        }
+        Insert: {
+          cancelled_at?: string | null
+          checked_in_at?: string | null
+          confirmed_at?: string | null
+          event_id: string
+          id?: string
+          notes?: string | null
+          promoted_at?: string | null
+          registered_at?: string | null
+          status?: string
+          team_id?: string | null
+          team_role?: string | null
+          user_id: string
+          waitlist_position?: number | null
+        }
+        Update: {
+          cancelled_at?: string | null
+          checked_in_at?: string | null
+          confirmed_at?: string | null
+          event_id?: string
+          id?: string
+          notes?: string | null
+          promoted_at?: string | null
+          registered_at?: string | null
+          status?: string
+          team_id?: string | null
+          team_role?: string | null
+          user_id?: string
+          waitlist_position?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_registrations_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "unified_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_registrations_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "v_browse_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_reminders_sent: {
         Row: {
           event_id: string
@@ -868,6 +989,138 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      event_round_robin: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          current_round: number | null
+          event_id: string
+          format: string | null
+          games_per_player: number | null
+          id: string
+          num_courts: number
+          num_rounds: number | null
+          registration_deadline: string | null
+          registration_mode: string | null
+          updated_at: string | null
+          void_reason: string | null
+          voided: boolean | null
+          voided_at: string | null
+          voided_by: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          current_round?: number | null
+          event_id: string
+          format?: string | null
+          games_per_player?: number | null
+          id?: string
+          num_courts?: number
+          num_rounds?: number | null
+          registration_deadline?: string | null
+          registration_mode?: string | null
+          updated_at?: string | null
+          void_reason?: string | null
+          voided?: boolean | null
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          current_round?: number | null
+          event_id?: string
+          format?: string | null
+          games_per_player?: number | null
+          id?: string
+          num_courts?: number
+          num_rounds?: number | null
+          registration_deadline?: string | null
+          registration_mode?: string | null
+          updated_at?: string | null
+          void_reason?: string | null
+          voided?: boolean | null
+          voided_at?: string | null
+          voided_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_round_robin_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: true
+            referencedRelation: "unified_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_round_robin_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: true
+            referencedRelation: "v_browse_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_tournament: {
+        Row: {
+          created_at: string | null
+          divisions_count: number | null
+          event_id: string
+          id: string
+          payment_status: string | null
+          public_view_enabled: boolean | null
+          registration_close_date: string | null
+          registration_enabled: boolean | null
+          registration_fee: number | null
+          registration_open_date: string | null
+          stripe_checkout_session_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          divisions_count?: number | null
+          event_id: string
+          id?: string
+          payment_status?: string | null
+          public_view_enabled?: boolean | null
+          registration_close_date?: string | null
+          registration_enabled?: boolean | null
+          registration_fee?: number | null
+          registration_open_date?: string | null
+          stripe_checkout_session_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          divisions_count?: number | null
+          event_id?: string
+          id?: string
+          payment_status?: string | null
+          public_view_enabled?: boolean | null
+          registration_close_date?: string | null
+          registration_enabled?: boolean | null
+          registration_fee?: number | null
+          registration_open_date?: string | null
+          stripe_checkout_session_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_tournament_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: true
+            referencedRelation: "unified_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_tournament_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: true
+            referencedRelation: "v_browse_events"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       events: {
         Row: {
@@ -3535,6 +3788,171 @@ export type Database = {
           },
         ]
       }
+      unified_events: {
+        Row: {
+          court_id: string | null
+          created_at: string | null
+          created_by: string
+          current_participants: number | null
+          description: string | null
+          end_time: string | null
+          event_type: string
+          host_court_id: string | null
+          host_group_id: string | null
+          host_type: string
+          host_user_id: string | null
+          host_venue_id: string | null
+          id: string
+          is_published: boolean | null
+          is_recurring: boolean | null
+          legacy_id: string | null
+          legacy_table: string | null
+          location_address: string | null
+          location_name: string | null
+          location_type: string | null
+          max_participants: number | null
+          notes: string | null
+          price: number | null
+          price_label: string | null
+          rating_eligible: boolean | null
+          rating_type: string | null
+          recurrence_rule: string | null
+          series_id: string | null
+          skill_level: string | null
+          skill_level_max: number | null
+          skill_level_min: number | null
+          start_time: string
+          status: string | null
+          timezone: string | null
+          title: string
+          updated_at: string | null
+          venue_id: string | null
+          visibility: string | null
+          waitlist_enabled: boolean | null
+          waitlist_max: number | null
+        }
+        Insert: {
+          court_id?: string | null
+          created_at?: string | null
+          created_by: string
+          current_participants?: number | null
+          description?: string | null
+          end_time?: string | null
+          event_type: string
+          host_court_id?: string | null
+          host_group_id?: string | null
+          host_type: string
+          host_user_id?: string | null
+          host_venue_id?: string | null
+          id?: string
+          is_published?: boolean | null
+          is_recurring?: boolean | null
+          legacy_id?: string | null
+          legacy_table?: string | null
+          location_address?: string | null
+          location_name?: string | null
+          location_type?: string | null
+          max_participants?: number | null
+          notes?: string | null
+          price?: number | null
+          price_label?: string | null
+          rating_eligible?: boolean | null
+          rating_type?: string | null
+          recurrence_rule?: string | null
+          series_id?: string | null
+          skill_level?: string | null
+          skill_level_max?: number | null
+          skill_level_min?: number | null
+          start_time: string
+          status?: string | null
+          timezone?: string | null
+          title: string
+          updated_at?: string | null
+          venue_id?: string | null
+          visibility?: string | null
+          waitlist_enabled?: boolean | null
+          waitlist_max?: number | null
+        }
+        Update: {
+          court_id?: string | null
+          created_at?: string | null
+          created_by?: string
+          current_participants?: number | null
+          description?: string | null
+          end_time?: string | null
+          event_type?: string
+          host_court_id?: string | null
+          host_group_id?: string | null
+          host_type?: string
+          host_user_id?: string | null
+          host_venue_id?: string | null
+          id?: string
+          is_published?: boolean | null
+          is_recurring?: boolean | null
+          legacy_id?: string | null
+          legacy_table?: string | null
+          location_address?: string | null
+          location_name?: string | null
+          location_type?: string | null
+          max_participants?: number | null
+          notes?: string | null
+          price?: number | null
+          price_label?: string | null
+          rating_eligible?: boolean | null
+          rating_type?: string | null
+          recurrence_rule?: string | null
+          series_id?: string | null
+          skill_level?: string | null
+          skill_level_max?: number | null
+          skill_level_min?: number | null
+          start_time?: string
+          status?: string | null
+          timezone?: string | null
+          title?: string
+          updated_at?: string | null
+          venue_id?: string | null
+          visibility?: string | null
+          waitlist_enabled?: boolean | null
+          waitlist_max?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "unified_events_court_id_fkey"
+            columns: ["court_id"]
+            isOneToOne: false
+            referencedRelation: "courts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "unified_events_host_court_id_fkey"
+            columns: ["host_court_id"]
+            isOneToOne: false
+            referencedRelation: "courts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "unified_events_host_group_id_fkey"
+            columns: ["host_group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "unified_events_host_venue_id_fkey"
+            columns: ["host_venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "unified_events_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_availability: {
         Row: {
           created_at: string | null
@@ -4456,6 +4874,79 @@ export type Database = {
             columns: ["home_court_id"]
             isOneToOne: false
             referencedRelation: "courts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_browse_events: {
+        Row: {
+          confirmed_count: number | null
+          court_id: string | null
+          created_at: string | null
+          current_participants: number | null
+          description: string | null
+          display_location: string | null
+          end_time: string | null
+          event_type: string | null
+          host_court_id: string | null
+          host_group_id: string | null
+          host_name: string | null
+          host_type: string | null
+          host_user_id: string | null
+          host_venue_id: string | null
+          id: string | null
+          is_published: boolean | null
+          location_address: string | null
+          location_name: string | null
+          location_type: string | null
+          max_participants: number | null
+          price: number | null
+          price_label: string | null
+          rating_eligible: boolean | null
+          skill_level: string | null
+          start_time: string | null
+          status: string | null
+          timezone: string | null
+          title: string | null
+          venue_id: string | null
+          visibility: string | null
+          waitlist_count: number | null
+          waitlist_enabled: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "unified_events_court_id_fkey"
+            columns: ["court_id"]
+            isOneToOne: false
+            referencedRelation: "courts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "unified_events_host_court_id_fkey"
+            columns: ["host_court_id"]
+            isOneToOne: false
+            referencedRelation: "courts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "unified_events_host_group_id_fkey"
+            columns: ["host_group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "unified_events_host_venue_id_fkey"
+            columns: ["host_venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "unified_events_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
             referencedColumns: ["id"]
           },
         ]
