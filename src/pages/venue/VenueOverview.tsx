@@ -7,7 +7,9 @@ import { useVenueCourts } from '@/hooks/useVenueCourts';
 import { useVenueStaff } from '@/hooks/useVenueStaff';
 import { useVenueBookings } from '@/hooks/useVenueBookings';
 import { useVenueEvents } from '@/hooks/useVenueEvents';
+import { useVenueOnboarding } from '@/hooks/useVenueOnboarding';
 import { useVenueTheme } from '@/components/layout/VenueShell';
+import { VenueWelcomeModal } from '@/components/venue-onboarding/VenueWelcomeModal';
 import { 
   MapPin, 
   Calendar, 
@@ -35,6 +37,13 @@ export default function VenueOverview() {
   const { bookings, loading: bookingsLoading } = useVenueBookings(currentVenueId);
   const { events, loading: eventsLoading } = useVenueEvents(currentVenueId);
   const venueTheme = useVenueTheme();
+  const { 
+    showWelcome, 
+    setShowWelcome, 
+    venueName, 
+    advanceStep, 
+    skipOnboarding 
+  } = useVenueOnboarding();
 
   const loading = courtsLoading || staffLoading || bookingsLoading || eventsLoading;
 
@@ -60,7 +69,20 @@ export default function VenueOverview() {
   const isFullySetup = completedSteps === setupSteps.length;
 
   return (
-    <div>
+    <>
+      <VenueWelcomeModal
+        open={showWelcome}
+        onOpenChange={setShowWelcome}
+        venueName={venueName}
+        onGetStarted={() => {
+          setShowWelcome(false);
+          advanceStep();
+        }}
+        onSkip={() => {
+          skipOnboarding();
+        }}
+      />
+      <div>
       {/* Premium Gradient Hero Section */}
       <div 
         className="-mt-0 px-6 pt-8 pb-10 mb-8"
@@ -341,5 +363,6 @@ export default function VenueOverview() {
       </div>
       </div>
     </div>
+    </>
   );
 }
