@@ -120,6 +120,7 @@ const VenueRoundRobinDetail = lazy(() => import("./pages/venue/VenueRoundRobinDe
 const VenueRoundRobinKiosk = lazy(() => import("./pages/venue/VenueRoundRobinKiosk"));
 const PublicVenueLanding = lazy(() => import("./pages/PublicVenueLanding"));
 const VenueInterestForm = lazy(() => import("./pages/VenueInterestForm"));
+const PlayersLanding = lazy(() => import("./pages/PlayersLanding"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -164,6 +165,7 @@ const AppContent = () => {
           <Route path="/auth" element={<Auth />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/demo" element={<DemoTour />} />
+          <Route path="/players" element={<PlayersLanding />} />
           
           {/* Public venue landing pages (white-label) */}
           <Route path="/v/:slug" element={<PublicVenueLanding />} />
