@@ -8,20 +8,22 @@ import { cn } from '@/lib/utils';
 
 interface PublishReadinessCardProps {
   readiness: PublishReadinessResult;
-  isPublished: boolean;
-  onPublish: () => void;
-  onUnpublish: () => void;
+  isPublished?: boolean;
+  onPublish?: () => void;
+  onUnpublish?: () => void;
   saving?: boolean;
-  venueTheme?: { primary: string };
+  venueTheme?: { primary: string; secondary?: string };
+  compact?: boolean;
 }
 
 export function PublishReadinessCard({
   readiness,
-  isPublished,
+  isPublished = false,
   onPublish,
   onUnpublish,
   saving,
-  venueTheme
+  venueTheme,
+  compact = false
 }: PublishReadinessCardProps) {
   const { isReady, requiredItems, recommendedItems, completionPercentage, missingRequired } = readiness;
 
@@ -41,25 +43,27 @@ export function PublishReadinessCard({
               }
             </CardDescription>
           </div>
-          {isPublished ? (
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={onUnpublish}
-              disabled={saving}
-            >
-              Unpublish
-            </Button>
-          ) : (
-            <Button
-              size="sm"
-              onClick={onPublish}
-              disabled={!isReady || saving}
-              style={isReady && venueTheme ? { backgroundColor: venueTheme.primary } : undefined}
-              className={cn(!isReady && 'opacity-50 cursor-not-allowed')}
-            >
-              {saving ? 'Publishing...' : 'Publish Venue'}
-            </Button>
+          {onPublish && onUnpublish && (
+            isPublished ? (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={onUnpublish}
+                disabled={saving}
+              >
+                Unpublish
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                onClick={onPublish}
+                disabled={!isReady || saving}
+                style={isReady && venueTheme ? { backgroundColor: venueTheme.primary } : undefined}
+                className={cn(!isReady && 'opacity-50 cursor-not-allowed')}
+              >
+                {saving ? 'Publishing...' : 'Publish Venue'}
+              </Button>
+            )
           )}
         </div>
       </CardHeader>

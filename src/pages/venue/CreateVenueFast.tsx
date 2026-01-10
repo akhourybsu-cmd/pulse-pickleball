@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Building2, Palette, ChevronRight, Check, Globe, MapPin, Gift } from "lucide-react";
+import { ArrowLeft, Building2, Palette, ChevronRight, Check, Globe, MapPin, Gift, Target } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Footer } from "@/components/Footer";
 import { FreePlanBenefitsList } from "@/components/venue/FreePlanBenefitsList";
+import { VenueGoalsStep } from "@/components/venue/VenueGoalsStep";
 import logo from "@/assets/pulse-logo-new.png";
 
 const US_STATES = [
@@ -30,10 +31,12 @@ interface FormData {
   description: string;
   logoUrl: string;
   coverImageUrl: string;
+  goals: string[];
 }
 
 const STEPS = [
   { id: "basics", label: "Basics", icon: Building2 },
+  { id: "goals", label: "Goals", icon: Target },
   { id: "branding", label: "Branding", icon: Palette },
   { id: "confirm", label: "Confirm", icon: Gift },
 ];
@@ -52,10 +55,20 @@ export default function CreateVenueFast() {
     description: "",
     logoUrl: "",
     coverImageUrl: "",
+    goals: [],
   });
 
   const updateField = <K extends keyof FormData>(field: K, value: FormData[K]) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const toggleGoal = (goalId: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      goals: prev.goals.includes(goalId)
+        ? prev.goals.filter(g => g !== goalId)
+        : [...prev.goals, goalId]
+    }));
   };
 
   const isStep1Valid = formData.name.trim().length > 0;
@@ -225,9 +238,15 @@ export default function CreateVenueFast() {
                   <Step1Basics formData={formData} updateField={updateField} />
                 )}
                 {currentStep === 1 && (
-                  <Step2Branding formData={formData} updateField={updateField} />
+                  <VenueGoalsStep 
+                    selectedGoals={formData.goals} 
+                    onToggleGoal={toggleGoal} 
+                  />
                 )}
                 {currentStep === 2 && (
+                  <Step2Branding formData={formData} updateField={updateField} />
+                )}
+                {currentStep === 3 && (
                   <Step3Confirm venueName={formData.name} />
                 )}
               </motion.div>
