@@ -145,7 +145,7 @@ export function useVenueFollow(venueId: string | undefined) {
     if (followStatus) {
       await unfollowMutation.mutateAsync();
     } else {
-      await followMutation.mutateAsync();
+      await followMutation.mutateAsync(undefined);
     }
   };
 
@@ -206,18 +206,8 @@ export function useVenueFollowers(venueId: string | undefined) {
     queryFn: async () => {
       if (!venueId) return { count: 0, followers: [] };
 
-      // Get count using a simple count query
-      const { data: countData, error: countError } = await supabase
-        .from('venue_followers')
-        .select('id', { count: 'exact', head: true })
-        .eq('venue_id', venueId);
-
-      if (countError) {
-        console.error('Error getting follower count:', countError);
-      }
-
-      // Get recent followers with profile info
-      const { data, error } = await supabase
+      // Get recent followers with profile info (also get count)
+      const { data, error, count } = await supabase
         .from('venue_followers')
         .select(`
           *,
@@ -226,19 +216,19 @@ export function useVenueFollowers(venueId: string | undefined) {
             display_name,
             avatar_url
           )
-        `)
+        `, { count: 'exact' })
         .eq('venue_id', venueId)
         .order('followed_at', { ascending: false })
         .limit(50);
 
       if (error) {
         console.error('Error fetching followers:', error);
-        return { count: count || 0, followers: [] };
+        return { count: 0, followers: [] };
       }
 
       return {
         count: count || 0,
-        followers: data,
+        followers: data || [],
       };
     },
     enabled: !!venueId,
