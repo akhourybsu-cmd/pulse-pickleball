@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Save, Users, MessageSquare, Image, MapPin, Settings2 } from 'lucide-react';
-
+import { AnnouncementComposer } from '@/components/venue/AnnouncementComposer';
 export default function VenueCommunity() {
   const { currentVenueId } = useMode();
   const { displaySettings, loading: loadingDisplay, saving: savingDisplay, updateSettings: updateDisplaySettings } = useVenueDisplaySettings(currentVenueId);
@@ -184,6 +184,11 @@ export default function VenueCommunity() {
             )}
           </CardContent>
         </Card>
+
+        {/* Announcements - Send to Followers */}
+        {currentVenueId && (
+          <AnnouncementComposer venueId={currentVenueId} className="lg:col-span-2" />
+        )}
       </div>
     </div>
   );

@@ -14,7 +14,7 @@ enabled = true
 verify_jwt = false
 
 [functions.delete-old-posts]
-verify_jwt = true
+verify_jwt = false
 
 [functions.calculate-badges]
 verify_jwt = true
@@ -23,9 +23,6 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.verify-mfa-code]
-verify_jwt = false
-
-[functions.validate-signup-location]
 verify_jwt = false
 
 [functions.send-event-reminders]
@@ -55,6 +52,15 @@ verify_jwt = false
 [functions.subscription-webhook]
 verify_jwt = false
 
+[functions.process-waitlist]
+verify_jwt = false
+
+[functions.cleanup-old-messages]
+verify_jwt = false
+
+[functions.send-venue-announcement]
+verify_jwt = true
+
 [edge_runtime]
 policy = "per_worker"
 
@@ -69,3 +75,15 @@ function_name = "send-event-reminders"
 name = "process-waitlist"
 schedule = "*/5 * * * *"
 function_name = "process-waitlist"
+
+# Clean up old channel messages every 6 hours
+[[edge_runtime.cron]]
+name = "cleanup-old-messages"
+schedule = "0 */6 * * *"
+function_name = "cleanup-old-messages"
+
+# Delete old court posts daily at 3 AM
+[[edge_runtime.cron]]
+name = "delete-old-posts"
+schedule = "0 3 * * *"
+function_name = "delete-old-posts"
