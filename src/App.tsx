@@ -9,6 +9,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ModeProvider } from "@/contexts/ModeContext";
 import { useAuthPersistence } from "@/hooks/useAuthPersistence";
 import { PlayerShell } from "@/components/layout/PlayerShell";
+import { AuthGuard, VenueGuard } from "@/components/guards";
 import { VenueShell } from "@/components/layout/VenueShell";
 import { RoundRobinBanner } from "@/components/RoundRobinBanner";
 import { ScrollToTop } from "@/components/ScrollToTop";
@@ -181,18 +182,30 @@ const AppContent = () => {
           <Route path="/players" element={<PlayersLanding />} />
           <Route path="/venues" element={<VenuesLanding />} />
           
-          {/* Onboarding routes */}
-          <Route path="/onboarding/profile" element={<OnboardingProfileSetup />} />
-          <Route path="/onboarding/first-match" element={<OnboardingFirstMatch />} />
-          <Route path="/onboarding/rating" element={<OnboardingRatingReveal />} />
-          <Route path="/onboarding/complete" element={<OnboardingComplete />} />
+          {/* Onboarding routes - require auth but allow onboarding state */}
+          <Route path="/onboarding/profile" element={
+            <AuthGuard allowOnboarding><OnboardingProfileSetup /></AuthGuard>
+          } />
+          <Route path="/onboarding/first-match" element={
+            <AuthGuard allowOnboarding><OnboardingFirstMatch /></AuthGuard>
+          } />
+          <Route path="/onboarding/rating" element={
+            <AuthGuard allowOnboarding><OnboardingRatingReveal /></AuthGuard>
+          } />
+          <Route path="/onboarding/complete" element={
+            <AuthGuard allowOnboarding><OnboardingComplete /></AuthGuard>
+          } />
           
           {/* Public venue landing pages (white-label) */}
           <Route path="/v/:slug" element={<PublicVenueLanding />} />
           <Route path="/venue/:slug" element={<PublicVenueLanding />} />
 
-          {/* Player routes with shell */}
-          <Route path="/player" element={<PlayerShell />}>
+          {/* Player routes with shell - require auth */}
+          <Route path="/player" element={
+            <AuthGuard>
+              <PlayerShell />
+            </AuthGuard>
+          }>
             <Route index element={<Navigate to="/player/dashboard" replace />} />
             <Route path="dashboard" element={<PlayerDashboard />} />
             <Route path="events" element={<PlayerEvents />} />
@@ -207,8 +220,14 @@ const AppContent = () => {
             <Route path="community/group/:groupId/manage" element={<GroupManage />} />
           </Route>
 
-          {/* Venue routes with shell */}
-          <Route path="/venue" element={<VenueShell />}>
+          {/* Venue routes with shell - require auth + venue access */}
+          <Route path="/venue" element={
+            <AuthGuard>
+              <VenueGuard>
+                <VenueShell />
+              </VenueGuard>
+            </AuthGuard>
+          }>
             <Route index element={<VenueOverview />} />
             <Route path="courts" element={<VenueCourts />} />
             <Route path="bookings" element={<VenueBookings />} />
@@ -220,11 +239,23 @@ const AppContent = () => {
             <Route path="settings" element={<VenueSettings />} />
             <Route path="analytics" element={<VenueAnalytics />} />
           </Route>
-          <Route path="/venue/onboarding" element={<VenueOnboarding />} />
-          <Route path="/venue/onboarding/profile" element={<VenueOnboardingProfile />} />
-          <Route path="/venue/onboarding/first-event" element={<VenueOnboardingFirstEvent />} />
-          <Route path="/venue/onboarding/share" element={<VenueOnboardingShare />} />
-          <Route path="/venue/onboarding/complete" element={<VenueOnboardingComplete />} />
+          
+          {/* Venue onboarding routes - require auth but allow any venue state */}
+          <Route path="/venue/onboarding" element={
+            <AuthGuard><VenueOnboarding /></AuthGuard>
+          } />
+          <Route path="/venue/onboarding/profile" element={
+            <AuthGuard><VenueGuard allowOnboarding><VenueOnboardingProfile /></VenueGuard></AuthGuard>
+          } />
+          <Route path="/venue/onboarding/first-event" element={
+            <AuthGuard><VenueGuard allowOnboarding><VenueOnboardingFirstEvent /></VenueGuard></AuthGuard>
+          } />
+          <Route path="/venue/onboarding/share" element={
+            <AuthGuard><VenueGuard allowOnboarding><VenueOnboardingShare /></VenueGuard></AuthGuard>
+          } />
+          <Route path="/venue/onboarding/complete" element={
+            <AuthGuard><VenueGuard allowOnboarding><VenueOnboardingComplete /></VenueGuard></AuthGuard>
+          } />
           <Route path="/venue/interest" element={<VenueInterestForm />} />
           <Route path="/venue/round-robins/:id/kiosk" element={<VenueRoundRobinKiosk />} />
 
