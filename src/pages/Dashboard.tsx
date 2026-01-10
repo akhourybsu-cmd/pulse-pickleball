@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -7,7 +7,7 @@ import { Trophy, Activity } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 
 import { Footer } from "@/components/Footer";
-import { OnboardingTutorial } from "@/components/OnboardingTutorial";
+import { OnboardingWelcome } from "@/components/onboarding";
 import { SmartMatch } from "@/components/court/SmartMatch";
 import { LFGNotifications } from "@/components/court/LFGNotifications";
 import { NotificationCenter } from "@/components/notifications/NotificationCenter";
@@ -64,6 +64,9 @@ const Dashboard = () => {
 
   // Mobile tab state - lifted to control from ProfileHero
   const [activeTab, setActiveTab] = useState<"performance" | "activity">("performance");
+  
+  // Onboarding welcome modal
+  const [showOnboardingWelcome, setShowOnboardingWelcome] = useState(false);
 
   // Real-time notifications
   const {
@@ -149,6 +152,11 @@ const Dashboard = () => {
 
         setProfile(profileResult.data);
         setIsAdmin(!!roleResult.data);
+
+        // Show onboarding welcome for new users
+        if (!profileResult.data.tutorial_completed && (profileResult.data.total_matches || 0) === 0) {
+          setShowOnboardingWelcome(true);
+        }
 
         if (publicProfileResult.data?.home_court_id) {
           setHomeCourtId(publicProfileResult.data.home_court_id);
@@ -252,9 +260,19 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-background">
       {user && (
-        <OnboardingTutorial 
-          userId={user.id} 
-          onComplete={() => console.log('Tutorial completed')}
+        <OnboardingWelcome 
+          isOpen={showOnboardingWelcome}
+          onClose={() => setShowOnboardingWelcome(false)}
+          onStart={() => {
+            setShowOnboardingWelcome(false);
+            navigate('/onboarding/profile');
+          }}
+          onSkip={async () => {
+            setShowOnboardingWelcome(false);
+            await supabase.from('profiles').update({ tutorial_completed: true }).eq('id', user.id);
+          }}
+          hasCompletedProfile={!!(profile?.display_name || profile?.full_name)}
+          hasFirstMatch={(profile?.total_matches || 0) > 0}
         />
       )}
       

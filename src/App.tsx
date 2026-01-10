@@ -123,6 +123,12 @@ const VenueInterestForm = lazy(() => import("./pages/VenueInterestForm"));
 const PlayersLanding = lazy(() => import("./pages/PlayersLanding"));
 const VenuesLanding = lazy(() => import("./pages/VenuesLanding"));
 
+// Onboarding pages
+const OnboardingProfileSetup = lazy(() => import("./pages/onboarding/ProfileSetup"));
+const OnboardingFirstMatch = lazy(() => import("./pages/onboarding/FirstMatch"));
+const OnboardingRatingReveal = lazy(() => import("./pages/onboarding/RatingReveal"));
+const OnboardingComplete = lazy(() => import("./pages/onboarding/Complete"));
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -168,6 +174,12 @@ const AppContent = () => {
           <Route path="/demo" element={<DemoTour />} />
           <Route path="/players" element={<PlayersLanding />} />
           <Route path="/venues" element={<VenuesLanding />} />
+          
+          {/* Onboarding routes */}
+          <Route path="/onboarding/profile" element={<OnboardingProfileSetup />} />
+          <Route path="/onboarding/first-match" element={<OnboardingFirstMatch />} />
+          <Route path="/onboarding/rating" element={<OnboardingRatingReveal />} />
+          <Route path="/onboarding/complete" element={<OnboardingComplete />} />
           
           {/* Public venue landing pages (white-label) */}
           <Route path="/v/:slug" element={<PublicVenueLanding />} />
