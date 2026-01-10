@@ -7,13 +7,17 @@ export interface VenueSettings {
   name: string;
   slug: string | null;
   address: string | null;
+  address_line1: string | null;
+  address_line2: string | null;
   city: string | null;
   state: string | null;
   zip_code: string | null;
+  country: string | null;
   timezone: string | null;
   phone: string | null;
   email: string | null;
   website: string | null;
+  website_url: string | null;
   description: string | null;
   logo_url: string | null;
   is_active: boolean;
@@ -21,13 +25,31 @@ export interface VenueSettings {
   primary_color: string | null;
   secondary_color: string | null;
   banner_url: string | null;
+  cover_image_url: string | null;
+  logo_shape: string | null;
+  cover_focal_point: string | null;
   tagline: string | null;
   show_pulse_branding: boolean;
   social_facebook: string | null;
   social_instagram: string | null;
+  instagram_url: string | null;
+  facebook_url: string | null;
+  x_url: string | null;
+  tiktok_url: string | null;
   amenities: string[] | null;
   // Platform fee
   platform_fee_percent: number | null;
+  // Venue type and status
+  venue_type: string | null;
+  visibility: string | null;
+  status: string | null;
+  is_searchable: boolean;
+  allow_follow: boolean;
+  // Welcome/CTA fields
+  welcome_headline: string | null;
+  welcome_message: string | null;
+  cta_primary_label: string | null;
+  cta_secondary_label: string | null;
 }
 
 export function useVenueSettings(venueId: string | null) {

@@ -10,9 +10,11 @@ import { useVenueBookings } from '@/hooks/useVenueBookings';
 import { useVenueEvents } from '@/hooks/useVenueEvents';
 import { useVenueOnboarding } from '@/hooks/useVenueOnboarding';
 import { useVenueTheme } from '@/components/layout/VenueShell';
+import { usePublishReadiness } from '@/hooks/usePublishReadiness';
 import { VenueWelcomeModal } from '@/components/venue-onboarding/VenueWelcomeModal';
 import { PlanBadge } from '@/components/venue/PlanBadge';
 import { VenueStatusBadge } from '@/components/venue/VenueStatusBadge';
+import { PublishReadinessCard } from '@/components/venue/PublishReadinessCard';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { 
   MapPin, 
@@ -47,9 +49,58 @@ export default function VenueOverview() {
   const { bookings, loading: bookingsLoading } = useVenueBookings(currentVenueId);
   const { events, loading: eventsLoading } = useVenueEvents(currentVenueId);
   const venueTheme = useVenueTheme();
+  
+  // Map currentVenue to the format expected by usePublishReadiness
+  const venueForReadiness = currentVenue ? {
+    id: currentVenueId || '',
+    name: currentVenue.venue_name || '',
+    slug: null,
+    address: null,
+    address_line1: null,
+    address_line2: null,
+    city: null,
+    state: null,
+    zip_code: null,
+    country: null,
+    timezone: null,
+    phone: null,
+    email: null,
+    website: null,
+    website_url: null,
+    description: null,
+    logo_url: currentVenue.logo_url || null,
+    is_active: true,
+    primary_color: currentVenue.primary_color || null,
+    secondary_color: currentVenue.secondary_color || null,
+    banner_url: null,
+    cover_image_url: null,
+    logo_shape: null,
+    cover_focal_point: null,
+    tagline: null,
+    show_pulse_branding: true,
+    social_facebook: null,
+    social_instagram: null,
+    instagram_url: null,
+    facebook_url: null,
+    x_url: null,
+    tiktok_url: null,
+    amenities: null,
+    platform_fee_percent: null,
+    venue_type: null,
+    visibility: null,
+    status: null,
+    is_searchable: true,
+    allow_follow: true,
+    welcome_headline: null,
+    welcome_message: null,
+    cta_primary_label: null,
+    cta_secondary_label: null,
+  } : null;
+  
+  const publishReadiness = usePublishReadiness(venueForReadiness);
   const { 
     showWelcome, 
-    setShowWelcome, 
+    setShowWelcome,
     venueName, 
     advanceStep, 
     skipOnboarding 
@@ -165,6 +216,16 @@ export default function VenueOverview() {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Publish Readiness Card - Show when not fully ready */}
+      {!publishReadiness.isReady && (
+        <div className="mb-8">
+          <PublishReadinessCard 
+            readiness={publishReadiness} 
+            venueTheme={venueTheme}
+          />
+        </div>
       )}
 
       {/* Metrics Cards */}
