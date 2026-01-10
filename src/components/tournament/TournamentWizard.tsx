@@ -28,7 +28,11 @@ interface WizardFormData {
   isPublic: boolean;
 }
 
-export function TournamentWizard() {
+interface TournamentWizardProps {
+  venueId?: string;
+}
+
+export function TournamentWizard({ venueId }: TournamentWizardProps) {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(0);
   const [direction, setDirection] = useState(1);
@@ -84,6 +88,7 @@ export function TournamentWizard() {
         start_date: formData.startDate || undefined,
         end_date: formData.endDate || undefined,
         is_public: formData.isPublic,
+        venue_id: venueId,
       });
 
       if (id) {

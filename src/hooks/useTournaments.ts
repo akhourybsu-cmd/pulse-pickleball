@@ -194,6 +194,7 @@ export async function createTournament(data: {
   start_date?: string;
   end_date?: string;
   is_public?: boolean;
+  venue_id?: string;
 }): Promise<string | null> {
   try {
     const { data: userData } = await supabase.auth.getUser();
@@ -214,6 +215,7 @@ export async function createTournament(data: {
         status: "draft",
         payment_status: "draft",
         created_by: userData.user.id,
+        venue_id: data.venue_id || null,
       })
       .select("id")
       .single();
