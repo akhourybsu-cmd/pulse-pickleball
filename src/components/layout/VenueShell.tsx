@@ -9,7 +9,8 @@ import {
   Settings,
   Menu,
   BarChart3,
-  Repeat
+  Repeat,
+  Trophy
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -25,6 +26,7 @@ const navItems = [
   { to: '/venue/courts', icon: MapPin, label: 'Courts' },
   { to: '/venue/bookings', icon: Calendar, label: 'Bookings' },
   { to: '/venue/events', icon: CalendarDays, label: 'Events' },
+  { to: '/venue/tournaments', icon: Trophy, label: 'Tournaments' },
   { to: '/venue/round-robins', icon: Repeat, label: 'Round Robins' },
   { to: '/venue/coaching', icon: GraduationCap, label: 'Coaching' },
   { to: '/venue/staff', icon: Users, label: 'Staff' },
@@ -36,7 +38,7 @@ const navItems = [
 const bottomNavItems = [
   { to: '/venue', icon: LayoutDashboard, label: 'Overview', end: true },
   { to: '/venue/courts', icon: MapPin, label: 'Courts' },
-  { to: '/venue/bookings', icon: Calendar, label: 'Bookings' },
+  { to: '/venue/tournaments', icon: Trophy, label: 'Tournaments' },
   { to: '/venue/events', icon: CalendarDays, label: 'Events' },
   { to: '/venue/settings', icon: Settings, label: 'Settings' },
 ];

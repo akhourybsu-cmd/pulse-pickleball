@@ -116,6 +116,7 @@ const VenueOnboarding = lazy(() => import("./pages/venue/VenueOnboarding"));
 const VenueCourts = lazy(() => import("./pages/venue/VenueCourts"));
 const VenueBookings = lazy(() => import("./pages/venue/VenueBookings"));
 const VenueEvents = lazy(() => import("./pages/venue/VenueEvents"));
+const VenueTournaments = lazy(() => import("./pages/venue/VenueTournaments"));
 const VenueCoaching = lazy(() => import("./pages/venue/VenueCoaching"));
 const VenueStaff = lazy(() => import("./pages/venue/VenueStaff"));
 const VenueSettings = lazy(() => import("./pages/venue/VenueSettings"));
@@ -237,6 +238,7 @@ const AppContent = () => {
             <Route path="courts" element={<VenueCourts />} />
             <Route path="bookings" element={<VenueBookings />} />
             <Route path="events" element={<VenueEvents />} />
+            <Route path="tournaments" element={<VenueTournaments />} />
             <Route path="round-robins" element={<VenueRoundRobins />} />
             <Route path="round-robins/:id" element={<VenueRoundRobinDetail />} />
             <Route path="coaching" element={<VenueCoaching />} />
