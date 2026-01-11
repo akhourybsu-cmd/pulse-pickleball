@@ -5,10 +5,12 @@ export type AppMode = 'player' | 'venue';
 
 export type VenueActivationState = 'claimed' | 'pending' | 'active' | 'suspended';
 
+export type VenueRole = 'owner' | 'manager' | 'organizer' | 'staff';
+
 export interface VenueAccess {
   venue_id: string;
   venue_name: string;
-  role: 'owner' | 'manager' | 'staff';
+  role: VenueRole;
   logo_url: string | null;
   primary_color: string | null;
   secondary_color: string | null;
@@ -22,10 +24,12 @@ interface ModeContextType {
   venueAccess: VenueAccess[];
   currentVenueId: string | null;
   setCurrentVenueId: (id: string | null) => void;
+  activeVenueRole: VenueRole | null;
   hasVenueAccess: boolean;
   isLoading: boolean;
   refreshVenueAccess: () => Promise<void>;
   currentVenue: VenueAccess | undefined;
+  setActiveVenue: (venueId: string | null) => void;
 }
 
 const ModeContext = createContext<ModeContextType | undefined>(undefined);
@@ -57,6 +61,16 @@ export function ModeProvider({ children }: { children: React.ReactNode }) {
       localStorage.removeItem(VENUE_STORAGE_KEY);
     }
   }, []);
+
+  // Combined helper: sets venue ID and switches to venue mode
+  const setActiveVenue = useCallback((venueId: string | null) => {
+    if (venueId) {
+      setCurrentVenueId(venueId);
+      setMode('venue');
+    } else {
+      setMode('player');
+    }
+  }, [setCurrentVenueId, setMode]);
 
   const refreshVenueAccess = useCallback(async () => {
     try {
@@ -98,7 +112,7 @@ export function ModeProvider({ children }: { children: React.ReactNode }) {
         const basicAccess = rpcData.map((v: any) => ({
           venue_id: v.venue_id,
           venue_name: v.venue_name,
-          role: v.role as 'owner' | 'manager' | 'staff',
+          role: v.role as VenueRole,
           logo_url: null,
           primary_color: null,
           secondary_color: null,
@@ -113,7 +127,7 @@ export function ModeProvider({ children }: { children: React.ReactNode }) {
           return {
             venue_id: v.venue_id,
             venue_name: v.venue_name,
-            role: v.role as 'owner' | 'manager' | 'staff',
+            role: v.role as VenueRole,
             logo_url: details?.logo_url || null,
             primary_color: details?.primary_color || null,
             secondary_color: details?.secondary_color || null,
@@ -123,8 +137,15 @@ export function ModeProvider({ children }: { children: React.ReactNode }) {
         });
         setVenueAccess(enrichedAccess);
         
-        // If user has venue access but no current venue selected, select the first one
-        if (enrichedAccess.length > 0 && !currentVenueId) {
+        // Validate currentVenueId - if it no longer exists in access list, clear it
+        if (currentVenueId && !enrichedAccess.some(v => v.venue_id === currentVenueId)) {
+          if (enrichedAccess.length > 0) {
+            setCurrentVenueId(enrichedAccess[0].venue_id);
+          } else {
+            setCurrentVenueId(null);
+          }
+        } else if (enrichedAccess.length > 0 && !currentVenueId) {
+          // If user has venue access but no current venue selected, select the first one
           setCurrentVenueId(enrichedAccess[0].venue_id);
         }
       }
@@ -155,6 +176,7 @@ export function ModeProvider({ children }: { children: React.ReactNode }) {
 
   const hasVenueAccess = venueAccess.length > 0;
   const currentVenue = venueAccess.find(v => v.venue_id === currentVenueId);
+  const activeVenueRole = currentVenue?.role ?? null;
 
   return (
     <ModeContext.Provider
@@ -164,10 +186,12 @@ export function ModeProvider({ children }: { children: React.ReactNode }) {
         venueAccess,
         currentVenueId,
         setCurrentVenueId,
+        activeVenueRole,
         hasVenueAccess,
         isLoading,
         refreshVenueAccess,
         currentVenue,
+        setActiveVenue,
       }}
     >
       {children}
