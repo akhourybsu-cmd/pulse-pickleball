@@ -32,7 +32,15 @@ export interface PermissionResult {
 // VENUE PERMISSIONS
 // =============================================================================
 
-export type VenueRole = 'owner' | 'manager' | 'staff' | null;
+export type VenueRole = 'owner' | 'manager' | 'organizer' | 'staff' | null;
+
+// Role hierarchy for permission checks (higher = more permissions)
+export const VENUE_ROLE_HIERARCHY: Record<Exclude<VenueRole, null>, number> = {
+  owner: 100,
+  manager: 80,
+  organizer: 60,
+  staff: 40,
+};
 
 export async function getVenueRole(userId: string, venueId: string): Promise<VenueRole> {
   // Check if owner
@@ -57,6 +65,27 @@ export async function getVenueRole(userId: string, venueId: string): Promise<Ven
   return null;
 }
 
+/**
+ * Check if user can view a venue
+ * Returns true if venue is public OR user is a member
+ */
+export async function canViewVenue(venueId: string, userId: string | null): Promise<boolean> {
+  // Check if venue is published (public)
+  const { data: venue } = await supabase
+    .from('venues')
+    .select('is_published')
+    .eq('id', venueId)
+    .single();
+
+  if (venue?.is_published) return true;
+
+  // If not public, check if user has access
+  if (!userId) return false;
+
+  const role = await getVenueRole(userId, venueId);
+  return role !== null;
+}
+
 export function canManageVenue(role: VenueRole): boolean {
   return role === 'owner' || role === 'manager';
 }
@@ -69,12 +98,28 @@ export function canManageVenueStaff(role: VenueRole): boolean {
   return role === 'owner';
 }
 
+/**
+ * Check if user can operate events (create, edit, manage scores)
+ * Includes: owner, manager, organizer, staff (scorekeeper)
+ */
+export function canOperateEvents(role: VenueRole): boolean {
+  return role === 'owner' || role === 'manager' || role === 'organizer' || role === 'staff';
+}
+
 export function canCreateVenueEvents(role: VenueRole): boolean {
-  return role === 'owner' || role === 'manager' || role === 'staff';
+  return role === 'owner' || role === 'manager' || role === 'organizer';
 }
 
 export function canDeleteVenue(role: VenueRole): boolean {
   return role === 'owner';
+}
+
+/**
+ * Get the minimum role required for an action
+ */
+export function hasMinimumRole(userRole: VenueRole, requiredRole: VenueRole): boolean {
+  if (!userRole || !requiredRole) return false;
+  return VENUE_ROLE_HIERARCHY[userRole] >= VENUE_ROLE_HIERARCHY[requiredRole];
 }
 
 // =============================================================================

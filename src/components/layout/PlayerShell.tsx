@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import logo from '@/assets/pulse-logo-new.png';
+import { VenueModeBanner } from '@/components/mode/VenueModeBanner';
 
 const navItems = [
   { to: '/player/dashboard', icon: Home, label: 'Dashboard' },
@@ -143,6 +144,9 @@ export function PlayerShell() {
         onClearAll={clearAll}
         groupedByTime={groupedByTime}
       />
+
+      {/* Venue Mode Banner - shows when in venue mode on player routes */}
+      <VenueModeBanner />
 
       {/* Main Content */}
       <main className="flex-1 pb-24 md:pb-20">
