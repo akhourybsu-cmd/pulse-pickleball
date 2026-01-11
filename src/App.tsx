@@ -274,6 +274,7 @@ const AppContent = () => {
             <AuthGuard><VenueGuard allowOnboarding><VenueOnboardingComplete /></VenueGuard></AuthGuard>
           } />
           <Route path="/venue/interest" element={<VenueInterestWizard />} />
+          <Route path="/venue/create-fast" element={<AuthGuard><CreateVenueFast /></AuthGuard>} />
           <Route path="/venue/round-robins/:id/kiosk" element={<VenueRoundRobinKiosk />} />
 
           {/* Legacy routes - redirect to new structure */}

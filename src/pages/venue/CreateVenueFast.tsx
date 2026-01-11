@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Building2, Palette, ChevronRight, Check, Globe, MapPin, Gift, Target } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useMode } from "@/contexts/ModeContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -44,6 +45,7 @@ const STEPS = [
 export default function CreateVenueFast() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { refreshVenueAccess, setCurrentVenueId, setMode } = useMode();
   const [currentStep, setCurrentStep] = useState(0);
   const [direction, setDirection] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -138,11 +140,16 @@ export default function CreateVenueFast() {
 
       toast({
         title: "Your free venue is ready!",
-        description: "Create your first event to get started.",
+        description: "Let's complete your venue setup.",
       });
 
-      // Navigate to Venue Manager Overview
-      navigate("/venue");
+      // Refresh venue access, set current venue, switch to venue mode
+      await refreshVenueAccess();
+      setCurrentVenueId(venue.id);
+      setMode("venue");
+
+      // Navigate to venue onboarding to complete setup
+      navigate("/venue/onboarding/profile");
     } catch (error: any) {
       console.error("Error creating venue:", error);
       toast({
