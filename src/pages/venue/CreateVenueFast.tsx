@@ -283,7 +283,6 @@ export default function CreateVenueFast() {
             <Button
               onClick={handleSubmit}
               disabled={!isStep1Valid || isSubmitting}
-              className="bg-emerald-600 hover:bg-emerald-700"
             >
               {isSubmitting ? "Creating..." : "Create My Free Venue"}
               <ChevronRight className="ml-2 h-4 w-4" />
