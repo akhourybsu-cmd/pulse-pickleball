@@ -112,7 +112,7 @@ const GroupManage = lazy(() => import("./pages/player/GroupManage"));
 
 // Venue pages
 const VenueOverview = lazy(() => import("./pages/venue/VenueOverview"));
-const VenueOnboarding = lazy(() => import("./pages/venue/VenueOnboarding"));
+// VenueOnboarding removed - deprecated in favor of CreateVenueFast
 const VenueProfile = lazy(() => import("./pages/venue/VenueProfile"));
 const VenueBranding = lazy(() => import("./pages/venue/VenueBranding"));
 const VenueFacility = lazy(() => import("./pages/venue/VenueFacility"));
@@ -258,9 +258,8 @@ const AppContent = () => {
           </Route>
           
           {/* Venue onboarding routes - require auth but allow any venue state */}
-          <Route path="/venue/onboarding" element={
-            <AuthGuard><VenueOnboarding /></AuthGuard>
-          } />
+          {/* Legacy /venue/onboarding redirects to new flow */}
+          <Route path="/venue/onboarding" element={<Navigate to="/venue/create-fast" replace />} />
           <Route path="/venue/onboarding/profile" element={
             <AuthGuard><VenueGuard allowOnboarding><VenueOnboardingProfile /></VenueGuard></AuthGuard>
           } />
@@ -275,6 +274,7 @@ const AppContent = () => {
           } />
           <Route path="/venue/interest" element={<VenueInterestWizard />} />
           <Route path="/venue/create-fast" element={<AuthGuard><CreateVenueFast /></AuthGuard>} />
+          {/* Public kiosk display - intentionally unprotected for venue display screens */}
           <Route path="/venue/round-robins/:id/kiosk" element={<VenueRoundRobinKiosk />} />
 
           {/* Legacy routes - redirect to new structure */}
@@ -330,7 +330,7 @@ const AppContent = () => {
           <Route path="/round-robin/:id/kiosk" element={<RoundRobinKiosk />} />
           <Route path="/tournaments" element={<TournamentsLanding />} />
           <Route path="/tournaments/new" element={<TournamentNewWithGating />} />
-          <Route path="/venue/create-fast" element={<CreateVenueFast />} />
+          {/* Removed duplicate /venue/create-fast - the proper route is at line 277 with AuthGuard */}
           <Route path="/tournaments/:id" element={<TournamentDetail />} />
           <Route path="/tournaments/:id/divisions/:divisionId" element={<TournamentDivisionDetailNew />} />
           <Route path="/tournaments/:id/customize" element={<TournamentCustomize />} />

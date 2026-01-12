@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +14,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Calendar, Users, MapPin, Repeat, Play, Trophy, Trash2, Eye, Settings, Monitor } from "lucide-react";
+import { Plus, Calendar, Users, MapPin, Repeat, Play, Trophy, Trash2, Eye, Settings, Monitor, ArrowRight } from "lucide-react";
 import { format, parseISO, isPast } from "date-fns";
 import { useVenueRoundRobins, VenueRoundRobinEvent } from "@/hooks/useVenueRoundRobins";
 import { useMode } from "@/contexts/ModeContext";
@@ -29,6 +29,11 @@ export default function VenueRoundRobins() {
   const venueTheme = useVenueTheme();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [eventToDelete, setEventToDelete] = useState<string | null>(null);
+  const [searchParams] = useSearchParams();
+  
+  // Detect onboarding flow
+  const isOnboardingFlow = searchParams.get('onboarding') === 'true';
+  const hasEvents = events.length > 0;
 
   const logoSrc = getVenueLogoSrc(currentVenue?.logo_url, currentVenue?.venue_name);
 
@@ -159,6 +164,30 @@ export default function VenueRoundRobins() {
 
   return (
     <div className="p-6 space-y-6">
+      {/* Onboarding flow banner */}
+      {isOnboardingFlow && (
+        <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg flex items-center justify-between">
+          <div>
+            <p className="font-medium text-sm">
+              {hasEvents ? '🎉 Great job! Your first round robin is ready.' : 'Create a round robin event to complete this step.'}
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {hasEvents ? 'Continue to share your venue with players.' : 'Round robins help you organize competitive play.'}
+            </p>
+          </div>
+          {hasEvents && (
+            <Button 
+              size="sm" 
+              onClick={() => navigate('/venue/onboarding/share')}
+              className="gap-1.5"
+            >
+              Continue
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      )}
+      
       {/* Header with Venue Branding */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
