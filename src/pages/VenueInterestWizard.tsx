@@ -64,7 +64,7 @@ export default function VenueInterestWizard() {
           email: formData.email,
           city: formData.city,
           state: formData.state,
-          additional_info: formData.additionalNotes || null,
+          message: formData.additionalNotes || null,
           venue_type: formData.venueType,
           primary_goals: formData.primaryGoals,
           current_setup: formData.currentSetup,
