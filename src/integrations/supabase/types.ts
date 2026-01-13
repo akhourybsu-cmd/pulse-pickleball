@@ -4786,6 +4786,7 @@ export type Database = {
         Row: {
           city: string | null
           contact_name: string
+          converted_venue_id: string | null
           court_count: string | null
           created_at: string
           current_booking_method: string | null
@@ -4794,6 +4795,7 @@ export type Database = {
           event_volume: string | null
           facility_type: string | null
           id: string
+          intent: string | null
           message: string | null
           phone: string | null
           primary_goals: string[] | null
@@ -4808,6 +4810,7 @@ export type Database = {
         Insert: {
           city?: string | null
           contact_name: string
+          converted_venue_id?: string | null
           court_count?: string | null
           created_at?: string
           current_booking_method?: string | null
@@ -4816,6 +4819,7 @@ export type Database = {
           event_volume?: string | null
           facility_type?: string | null
           id?: string
+          intent?: string | null
           message?: string | null
           phone?: string | null
           primary_goals?: string[] | null
@@ -4830,6 +4834,7 @@ export type Database = {
         Update: {
           city?: string | null
           contact_name?: string
+          converted_venue_id?: string | null
           court_count?: string | null
           created_at?: string
           current_booking_method?: string | null
@@ -4838,6 +4843,7 @@ export type Database = {
           event_volume?: string | null
           facility_type?: string | null
           id?: string
+          intent?: string | null
           message?: string | null
           phone?: string | null
           primary_goals?: string[] | null
@@ -4849,7 +4855,15 @@ export type Database = {
           venue_name?: string
           venue_type?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "venue_inquiries_converted_venue_id_fkey"
+            columns: ["converted_venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       venue_lessons: {
         Row: {

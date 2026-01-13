@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Building2, Palette, ChevronRight, Check, Globe, MapPin, Gift, Target } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -44,11 +44,13 @@ const STEPS = [
 
 export default function CreateVenueFast() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const { refreshVenueAccess, setCurrentVenueId, setMode } = useMode();
   const [currentStep, setCurrentStep] = useState(0);
   const [direction, setDirection] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [inquiryId, setInquiryId] = useState<string | null>(null);
   const [formData, setFormData] = useState<FormData>({
     name: "",
     city: "",
@@ -59,6 +61,41 @@ export default function CreateVenueFast() {
     coverImageUrl: "",
     goals: [],
   });
+
+  // Prefill from inquiry if coming from venue interest wizard
+  useEffect(() => {
+    const inquiryParam = searchParams.get("inquiry");
+    if (inquiryParam) {
+      setInquiryId(inquiryParam);
+      prefillFromInquiry(inquiryParam);
+    }
+  }, [searchParams]);
+
+  const prefillFromInquiry = async (id: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("venue_inquiries")
+        .select("venue_name, city, state, primary_goals")
+        .eq("id", id)
+        .single();
+
+      if (error) throw error;
+
+      if (data) {
+        setFormData((prev) => ({
+          ...prev,
+          name: data.venue_name || "",
+          city: data.city || "",
+          state: data.state || "",
+          // Map inquiry goals to venue goals if applicable
+          goals: data.primary_goals || [],
+        }));
+      }
+    } catch (error) {
+      console.error("Error loading inquiry data:", error);
+      // Silently fail - user can still fill in manually
+    }
+  };
 
   const updateField = <K extends keyof FormData>(field: K, value: FormData[K]) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -136,6 +173,14 @@ export default function CreateVenueFast() {
 
       if (subError) {
         console.warn("Could not create subscription:", subError);
+      }
+
+      // Link venue back to inquiry if created from wizard
+      if (inquiryId) {
+        await supabase
+          .from("venue_inquiries")
+          .update({ converted_venue_id: venue.id, status: "converted" })
+          .eq("id", inquiryId);
       }
 
       toast({
