@@ -114,18 +114,26 @@ export default function VenueInterestWizard() {
   };
 
   const handleCreateNow = async () => {
-    if (!inquiryId) return;
+    if (!inquiryId) {
+      console.error("No inquiry ID found - inquiry may not have been saved");
+      toast.error("Please try submitting the form again.");
+      return;
+    }
     
     setLoadingAction("create");
     try {
       // Update inquiry to mark intent
-      await supabase
+      const { error: updateError } = await supabase
         .from("venue_inquiries")
         .update({ intent: "create_now", status: "converted" })
         .eq("id", inquiryId);
 
-      // Notify Pulse admins
-      await notifyPulseAdmins(inquiryId, "create_now");
+      if (updateError) {
+        console.error("Error updating inquiry:", updateError);
+      }
+
+      // Notify Pulse admins (non-blocking)
+      notifyPulseAdmins(inquiryId, "create_now");
 
       // Check if user is authenticated
       const { data: { session } } = await supabase.auth.getSession();
@@ -141,7 +149,6 @@ export default function VenueInterestWizard() {
     } catch (error) {
       console.error("Error processing create now:", error);
       toast.error("Something went wrong. Please try again.");
-    } finally {
       setLoadingAction(null);
     }
   };
