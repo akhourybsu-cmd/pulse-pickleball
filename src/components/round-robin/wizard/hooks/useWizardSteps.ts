@@ -69,7 +69,16 @@ export function useWizardSteps(formData: WizardFormData) {
         if (formData.eventMode === "immediate") {
           return !!formData.startTime;
         }
-        return !!formData.eventDate && !!formData.startTime && !!formData.registrationDeadline;
+        // For open registration: need date, time, and valid deadline (deadline before event)
+        if (!formData.eventDate || !formData.startTime || !formData.registrationDeadline) {
+          return false;
+        }
+        // Validate deadline is before event
+        try {
+          return new Date(formData.registrationDeadline) < new Date(formData.eventDate);
+        } catch {
+          return false;
+        }
       case "ratings":
         if (formData.ratingEligible) {
           return !!formData.ratingType;
