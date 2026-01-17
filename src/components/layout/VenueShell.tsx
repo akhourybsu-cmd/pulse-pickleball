@@ -63,10 +63,13 @@ interface VenueTheme {
 function useVenueTheme(): VenueTheme {
   const { currentVenue } = useMode();
   
+  // Import centralized defaults to avoid cross-venue color bleeding
+  const { DEFAULT_VENUE_COLORS } = require('@/lib/venueBranding');
+  
   return useMemo(() => ({
-    primary: currentVenue?.primary_color || '#22c55e', // fallback to default green
+    primary: currentVenue?.primary_color || DEFAULT_VENUE_COLORS.primary,
     primaryForeground: '#ffffff',
-    secondary: currentVenue?.secondary_color || '#1a1a1a',
+    secondary: currentVenue?.secondary_color || DEFAULT_VENUE_COLORS.secondary,
   }), [currentVenue?.primary_color, currentVenue?.secondary_color]);
 }
 
