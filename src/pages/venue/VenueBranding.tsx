@@ -8,6 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Loader2, Save, Palette, Image, Upload } from 'lucide-react';
+import { VenueLogoUpload } from '@/components/venue/VenueLogoUpload';
+import { DEFAULT_VENUE_COLORS } from '@/lib/venueBranding';
 
 export default function VenueBranding() {
   const { currentVenueId } = useMode();
@@ -81,33 +83,19 @@ export default function VenueBranding() {
               <Image className="h-5 w-5" />
               Logo
             </CardTitle>
-            <CardDescription>Your venue's logo image</CardDescription>
+            <CardDescription>Your venue's unique logo image</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="logo_url">Logo URL</Label>
-              <Input
-                id="logo_url"
-                type="url"
-                value={formData.logo_url || ''}
-                onChange={(e) => handleChange('logo_url', e.target.value)}
-                placeholder="https://..."
-              />
-            </div>
-            
-            {/* Logo Preview */}
-            {formData.logo_url && (
-              <div className="p-4 bg-muted rounded-lg flex items-center justify-center">
-                <img 
-                  src={formData.logo_url} 
-                  alt="Logo preview"
-                  className={`h-24 w-24 object-cover ${logoShape === 'circle' ? 'rounded-full' : 'rounded-lg'}`}
-                  onError={(e) => {
-                    e.currentTarget.style.display = 'none';
-                  }}
-                />
-              </div>
-            )}
+            {/* Logo Upload Component */}
+            <VenueLogoUpload
+              venueId={settings.id}
+              currentLogoUrl={formData.logo_url}
+              venueName={settings.name}
+              venueSlug={settings.slug}
+              logoShape={logoShape as 'circle' | 'square'}
+              onLogoChange={(newUrl) => handleChange('logo_url', newUrl)}
+              disabled={saving}
+            />
 
             {/* Logo Shape */}
             <div className="space-y-2">
@@ -209,14 +197,14 @@ export default function VenueBranding() {
                   <Input
                     id="primary_color"
                     type="color"
-                    value={formData.primary_color || '#22c55e'}
+                    value={formData.primary_color || DEFAULT_VENUE_COLORS.primary}
                     onChange={(e) => handleChange('primary_color', e.target.value)}
                     className="w-16 h-10 p-1 cursor-pointer"
                   />
                   <Input
-                    value={formData.primary_color || '#22c55e'}
+                    value={formData.primary_color || DEFAULT_VENUE_COLORS.primary}
                     onChange={(e) => handleChange('primary_color', e.target.value)}
-                    placeholder="#22c55e"
+                    placeholder={DEFAULT_VENUE_COLORS.primary}
                     className="flex-1"
                   />
                 </div>
@@ -228,14 +216,14 @@ export default function VenueBranding() {
                   <Input
                     id="secondary_color"
                     type="color"
-                    value={formData.secondary_color || '#1a1a1a'}
+                    value={formData.secondary_color || DEFAULT_VENUE_COLORS.secondary}
                     onChange={(e) => handleChange('secondary_color', e.target.value)}
                     className="w-16 h-10 p-1 cursor-pointer"
                   />
                   <Input
-                    value={formData.secondary_color || '#1a1a1a'}
+                    value={formData.secondary_color || DEFAULT_VENUE_COLORS.secondary}
                     onChange={(e) => handleChange('secondary_color', e.target.value)}
-                    placeholder="#1a1a1a"
+                    placeholder={DEFAULT_VENUE_COLORS.secondary}
                     className="flex-1"
                   />
                 </div>
@@ -250,14 +238,14 @@ export default function VenueBranding() {
                 <div className="space-y-2">
                   <div 
                     className="w-20 h-20 rounded-lg shadow-md" 
-                    style={{ backgroundColor: formData.primary_color || '#22c55e' }}
+                    style={{ backgroundColor: formData.primary_color || DEFAULT_VENUE_COLORS.primary }}
                   />
                   <p className="text-xs text-center text-muted-foreground">Primary</p>
                 </div>
                 <div className="space-y-2">
                   <div 
                     className="w-20 h-20 rounded-lg shadow-md" 
-                    style={{ backgroundColor: formData.secondary_color || '#1a1a1a' }}
+                    style={{ backgroundColor: formData.secondary_color || DEFAULT_VENUE_COLORS.secondary }}
                   />
                   <p className="text-xs text-center text-muted-foreground">Secondary</p>
                 </div>
@@ -267,7 +255,7 @@ export default function VenueBranding() {
               <div className="pt-4 border-t">
                 <p className="text-sm text-muted-foreground mb-2">Sample button:</p>
                 <Button
-                  style={{ backgroundColor: formData.primary_color || '#22c55e' }}
+                  style={{ backgroundColor: formData.primary_color || DEFAULT_VENUE_COLORS.primary }}
                   className="hover:opacity-90"
                 >
                   Create Tournament

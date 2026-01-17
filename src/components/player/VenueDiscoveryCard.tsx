@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { MapPin, ChevronRight } from 'lucide-react';
 import { PublicVenue } from '@/hooks/usePublicVenues';
 import { FavoriteButton } from './FavoriteButton';
-import { getVenueLogoSrc, getVenueLogoFallback } from '@/lib/venueBranding';
+import { getVenueLogoSrc, getVenueLogoFallback, DEFAULT_VENUE_COLORS } from '@/lib/venueBranding';
 
 // Helper to determine if a hex color is dark
 function isColorDark(hexColor: string): boolean {
@@ -23,8 +23,9 @@ interface VenueDiscoveryCardProps {
 }
 
 export function VenueDiscoveryCard({ venue, onSelect, isFavorite, onToggleFavorite }: VenueDiscoveryCardProps) {
-  const primaryColor = venue.primary_color || '#FF6B35';
-  const secondaryColor = venue.secondary_color || '#004E64';
+  // Use venue's own colors or neutral defaults - NO cross-venue bleeding
+  const primaryColor = venue.primary_color || DEFAULT_VENUE_COLORS.primary;
+  const secondaryColor = venue.secondary_color || DEFAULT_VENUE_COLORS.secondary;
   const logoSrc = getVenueLogoSrc(venue.logo_url, venue.name, venue.slug);
   
   const isDarkTheme = isColorDark(secondaryColor);
