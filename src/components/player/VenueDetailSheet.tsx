@@ -10,7 +10,7 @@ import { format } from 'date-fns';
 import { usePublicVenueDetails } from '@/hooks/usePublicVenues';
 import { FavoriteButton } from './FavoriteButton';
 import { useFavoriteVenues } from '@/hooks/useFavoriteVenues';
-import { getVenueLogoSrc, getVenueLogoFallback } from '@/lib/venueBranding';
+import { getVenueLogoSrc, getVenueLogoFallback, DEFAULT_VENUE_COLORS } from '@/lib/venueBranding';
 
 interface VenueDetailSheetProps {
   venueId: string | null;
@@ -35,8 +35,8 @@ export function VenueDetailSheet({ venueId, onClose }: VenueDetailSheetProps) {
   };
 
   // Get brand colors with fallbacks
-  const primaryColor = venue?.primary_color || '#FF6B35';
-  const secondaryColor = venue?.secondary_color || '#004E64';
+  const primaryColor = venue?.primary_color || DEFAULT_VENUE_COLORS.primary;
+  const secondaryColor = venue?.secondary_color || DEFAULT_VENUE_COLORS.secondary;
 
   // Generate venue initials for fallback
   const venueInitials = venue?.name

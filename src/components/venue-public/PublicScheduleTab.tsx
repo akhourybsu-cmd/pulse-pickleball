@@ -11,6 +11,7 @@ import { PublicVenue, VenueCourt, VenueEvent } from '@/hooks/usePublicVenue';
 import { useVenueAvailability, TimeSlot } from '@/hooks/useVenueAvailability';
 import { DatePickerStrip } from './DatePickerStrip';
 import { OrderSummaryDialog } from './OrderSummaryDialog';
+import { DEFAULT_VENUE_COLORS } from '@/lib/venueBranding';
 
 interface PublicScheduleTabProps {
   venue: PublicVenue;
@@ -32,7 +33,7 @@ export function PublicScheduleTab({ venue, courts, onSelectSlot, isAuthenticated
   const [dayEvents, setDayEvents] = useState<VenueEvent[]>([]);
   const [orderSummaryOpen, setOrderSummaryOpen] = useState(false);
   
-  const primaryColor = venue.primary_color || '#FF6B35';
+  const primaryColor = venue.primary_color || DEFAULT_VENUE_COLORS.primary;
   
   const { availability, loading, fetchAvailability } = useVenueAvailability({
     venueId: venue.id,

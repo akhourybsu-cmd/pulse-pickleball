@@ -25,6 +25,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { PublicVenue, VenueCoach } from '@/hooks/usePublicVenue';
 import { cn } from '@/lib/utils';
+import { DEFAULT_VENUE_COLORS } from '@/lib/venueBranding';
 
 interface CoachLessonBookingDialogProps {
   open: boolean;
@@ -67,7 +68,7 @@ export function CoachLessonBookingDialog({
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const primaryColor = venue.primary_color || '#FF6B35';
+  const primaryColor = venue.primary_color || DEFAULT_VENUE_COLORS.primary;
 
   // Generate dates for date picker
   const dates = Array.from({ length: 7 }, (_, i) => addDays(startOfToday(), dateOffset + i));

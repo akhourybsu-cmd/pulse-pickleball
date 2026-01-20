@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MapPin, ChevronRight, Building2, Search } from 'lucide-react';
 import { usePlayerVenueActivity } from '@/hooks/usePlayerVenueActivity';
+import { getVenueLogoSrc, getVenueLogoFallback } from '@/lib/venueBranding';
 
 export function VenueActivitySection() {
   const navigate = useNavigate();
@@ -56,7 +57,14 @@ export function VenueActivitySection() {
                 onClick={() => navigate('/player/venues', { state: { openVenueId: venue.id } })}
               >
                 {venue.logo_url ? (
-                  <img src={venue.logo_url} alt={venue.name} className="h-10 w-10 rounded-lg object-cover" />
+                  <img 
+                    src={getVenueLogoSrc(venue.logo_url, venue.name)} 
+                    alt={venue.name} 
+                    className="h-10 w-10 rounded-lg object-cover" 
+                    onError={(e) => {
+                      e.currentTarget.src = getVenueLogoFallback();
+                    }}
+                  />
                 ) : (
                   <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
                     <MapPin className="h-5 w-5 text-primary" />

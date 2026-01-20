@@ -24,6 +24,7 @@ import { PublicVenue, VenueCourt } from '@/hooks/usePublicVenue';
 import { TimeSlot } from '@/hooks/useVenueAvailability';
 import { CourtPickerModal } from './CourtPickerModal';
 import { cn } from '@/lib/utils';
+import { DEFAULT_VENUE_COLORS } from '@/lib/venueBranding';
 
 interface OrderSummaryDialogProps {
   open: boolean;
@@ -58,7 +59,7 @@ export function OrderSummaryDialog({
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  const primaryColor = venue.primary_color || '#FF6B35';
+  const primaryColor = venue.primary_color || DEFAULT_VENUE_COLORS.primary;
   
   // Defensive guard: check if we have slots
   const hasSlots = selectedSlots.length > 0;

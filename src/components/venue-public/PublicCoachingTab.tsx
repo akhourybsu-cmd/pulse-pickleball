@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { PublicVenue, VenueCoach } from '@/hooks/usePublicVenue';
+import { DEFAULT_VENUE_COLORS } from '@/lib/venueBranding';
 
 interface PublicCoachingTabProps {
   venue: PublicVenue;
@@ -12,8 +13,8 @@ interface PublicCoachingTabProps {
 }
 
 export function PublicCoachingTab({ venue, coaches, onBookCoach }: PublicCoachingTabProps) {
-  const primaryColor = venue.primary_color || '#FF6B35';
-  const secondaryColor = venue.secondary_color || '#004E64';
+  const primaryColor = venue.primary_color || DEFAULT_VENUE_COLORS.primary;
+  const secondaryColor = venue.secondary_color || DEFAULT_VENUE_COLORS.secondary;
 
   if (coaches.length === 0) {
     return (

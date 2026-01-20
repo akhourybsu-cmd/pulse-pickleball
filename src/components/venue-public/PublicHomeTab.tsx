@@ -17,7 +17,7 @@ import { motion } from 'framer-motion';
 import CountUp from 'react-countup';
 import { PublicVenue, VenueCourt, VenueEvent, VenueCoach } from '@/hooks/usePublicVenue';
 import { TabId } from './PublicVenueShell';
-import { getVenueLogoSrc, getVenueLogoFallback } from '@/lib/venueBranding';
+import { getVenueLogoSrc, getVenueLogoFallback, DEFAULT_VENUE_COLORS } from '@/lib/venueBranding';
 import { FollowButton } from '@/components/venue/FollowButton';
 
 interface PublicHomeTabProps {
@@ -70,8 +70,8 @@ export function PublicHomeTab({
   onRegisterEvent
 }: PublicHomeTabProps) {
   const navigate = useNavigate();
-  const primaryColor = venue.primary_color || '#FF6B35';
-  const secondaryColor = venue.secondary_color || '#004E64';
+  const primaryColor = venue.primary_color || DEFAULT_VENUE_COLORS.primary;
+  const secondaryColor = venue.secondary_color || DEFAULT_VENUE_COLORS.secondary;
 
   return (
     <div className="space-y-0">
