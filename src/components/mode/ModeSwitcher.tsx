@@ -25,6 +25,7 @@ import { useMediaQuery } from '@/hooks/use-media-query';
 import { cn } from '@/lib/utils';
 import { canManageVenue } from '@/lib/permissions';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getVenueLogoSrc, getVenueLogoFallback } from '@/lib/venueBranding';
 
 // Role badge colors
 const roleBadgeStyles: Record<VenueRole, string> = {
@@ -94,18 +95,15 @@ export function ModeSwitcher() {
             </>
           ) : (
             <>
-              {currentVenue?.logo_url ? (
-                <Avatar className="h-6 w-6">
-                  <AvatarImage src={currentVenue.logo_url} alt={currentVenue.venue_name} />
-                  <AvatarFallback className="text-[10px] bg-secondary text-secondary-foreground">
-                    {currentVenue.venue_name.slice(0, 2).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-              ) : (
-                <div className="h-6 w-6 rounded-full bg-secondary flex items-center justify-center">
-                  <Building2 className="h-3.5 w-3.5 text-secondary-foreground" />
-                </div>
-              )}
+              <Avatar className="h-6 w-6">
+                <AvatarImage 
+                  src={getVenueLogoSrc(currentVenue?.logo_url, currentVenue?.venue_name, currentVenue?.slug)} 
+                  alt={currentVenue?.venue_name} 
+                />
+                <AvatarFallback className="text-[10px] bg-secondary text-secondary-foreground">
+                  {currentVenue?.venue_name?.slice(0, 2).toUpperCase() || 'V'}
+                </AvatarFallback>
+              </Avatar>
               <span className="hidden sm:inline font-medium text-sm truncate max-w-[100px]">
                 {currentVenue?.venue_name || 'Venue'}
               </span>
@@ -183,21 +181,15 @@ export function ModeSwitcher() {
                         : 'hover:bg-muted text-foreground'
                     )}
                   >
-                    {venue.logo_url ? (
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src={venue.logo_url} alt={venue.venue_name} />
-                        <AvatarFallback className="text-[10px] bg-muted">
-                          {venue.venue_name.slice(0, 2).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                    ) : (
-                      <div className={cn(
-                        'h-8 w-8 rounded-full flex items-center justify-center',
-                        isSelected ? 'bg-secondary-foreground/20' : 'bg-muted'
-                      )}>
-                        <Building2 className="h-4 w-4" />
-                      </div>
-                    )}
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage 
+                        src={getVenueLogoSrc(venue.logo_url, venue.venue_name, venue.slug)} 
+                        alt={venue.venue_name} 
+                      />
+                      <AvatarFallback className="text-[10px] bg-muted">
+                        {venue.venue_name.slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
                     <div className="flex-1 text-left min-w-0">
                       <p className="font-medium text-sm truncate">{venue.venue_name}</p>
                       <Badge 

@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { PublicVenue } from '@/hooks/usePublicVenue';
+import { DEFAULT_VENUE_COLORS } from '@/lib/venueBranding';
 
 interface PublicInfoTabProps {
   venue: PublicVenue;
@@ -21,8 +22,8 @@ interface PublicInfoTabProps {
 const dayOrder = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
 export function PublicInfoTab({ venue }: PublicInfoTabProps) {
-  const primaryColor = venue.primary_color || '#FF6B35';
-  const secondaryColor = venue.secondary_color || '#004E64';
+  const primaryColor = venue.primary_color || DEFAULT_VENUE_COLORS.primary;
+  const secondaryColor = venue.secondary_color || DEFAULT_VENUE_COLORS.secondary;
 
   const formatTime = (time: string) => {
     const [hours, minutes] = time.split(':').map(Number);

@@ -10,6 +10,7 @@ export type VenueRole = 'owner' | 'manager' | 'organizer' | 'staff';
 export interface VenueAccess {
   venue_id: string;
   venue_name: string;
+  slug: string | null;
   role: VenueRole;
   logo_url: string | null;
   primary_color: string | null;
@@ -103,7 +104,7 @@ export function ModeProvider({ children }: { children: React.ReactNode }) {
       const venueIds = rpcData.map((v: any) => v.venue_id);
       const { data: venueDetails, error: venueError } = await supabase
         .from('venues')
-        .select('id, name, logo_url, primary_color, secondary_color, activation_state, is_published')
+        .select('id, name, slug, logo_url, primary_color, secondary_color, activation_state, is_published')
         .in('id', venueIds);
 
       if (venueError) {
@@ -112,6 +113,7 @@ export function ModeProvider({ children }: { children: React.ReactNode }) {
         const basicAccess = rpcData.map((v: any) => ({
           venue_id: v.venue_id,
           venue_name: v.venue_name,
+          slug: null,
           role: v.role as VenueRole,
           logo_url: null,
           primary_color: null,
@@ -127,6 +129,7 @@ export function ModeProvider({ children }: { children: React.ReactNode }) {
           return {
             venue_id: v.venue_id,
             venue_name: v.venue_name,
+            slug: details?.slug || null,
             role: v.role as VenueRole,
             logo_url: details?.logo_url || null,
             primary_color: details?.primary_color || null,

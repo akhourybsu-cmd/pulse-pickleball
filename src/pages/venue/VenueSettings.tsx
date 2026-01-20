@@ -403,12 +403,12 @@ export default function VenueSettingsPage() {
                     <Input
                       id="primary_color"
                       type="color"
-                      value={formData.primary_color || '#FF6B35'}
+                      value={formData.primary_color || '#6366F1'}
                       onChange={(e) => handleChange('primary_color', e.target.value)}
                       className="w-16 h-10 p-1 cursor-pointer"
                     />
                     <Input
-                      value={formData.primary_color || '#FF6B35'}
+                      value={formData.primary_color || '#6366F1'}
                       onChange={(e) => handleChange('primary_color', e.target.value)}
                       placeholder="#FF6B35"
                       className="flex-1"
@@ -440,11 +440,11 @@ export default function VenueSettingsPage() {
                   <div className="flex gap-2">
                     <div 
                       className="w-16 h-8 rounded" 
-                      style={{ backgroundColor: formData.primary_color || '#FF6B35' }}
+                      style={{ backgroundColor: formData.primary_color || '#6366F1' }}
                     />
                     <div 
                       className="w-16 h-8 rounded" 
-                      style={{ backgroundColor: formData.secondary_color || '#004E64' }}
+                      style={{ backgroundColor: formData.secondary_color || '#374151' }}
                     />
                   </div>
                 </div>

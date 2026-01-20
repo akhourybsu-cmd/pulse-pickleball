@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Users, ChevronDown, ChevronUp } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
+import { DEFAULT_VENUE_COLORS } from '@/lib/venueBranding';
 
 interface Registration {
   id: string;
@@ -25,7 +26,7 @@ function formatPlayerName(firstName: string | null, lastName: string | null): st
   return lastInitial ? `${first} ${lastInitial}.` : first;
 }
 
-export function EventRosterView({ eventId, primaryColor = '#FF6B35' }: EventRosterViewProps) {
+export function EventRosterView({ eventId, primaryColor = DEFAULT_VENUE_COLORS.primary }: EventRosterViewProps) {
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(false);

@@ -17,6 +17,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { PublicVenue, VenueEvent } from '@/hooks/usePublicVenue';
 import { EventRosterView } from './EventRosterView';
+import { DEFAULT_VENUE_COLORS } from '@/lib/venueBranding';
 
 interface EventRegistrationDialogProps {
   open: boolean;
@@ -43,7 +44,7 @@ export function EventRegistrationDialog({
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  const primaryColor = venue.primary_color || '#FF6B35';
+  const primaryColor = venue.primary_color || DEFAULT_VENUE_COLORS.primary;
   
   const isFull = event?.max_participants 
     ? event.current_participants >= event.max_participants 

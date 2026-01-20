@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PublicVenue, VenueCourt, VenueEvent, VenueCoach } from '@/hooks/usePublicVenue';
 import { supabase } from '@/integrations/supabase/client';
+import { DEFAULT_VENUE_COLORS } from '@/lib/venueBranding';
 
 export type TabId = 'home' | 'schedule' | 'events' | 'coaching' | 'info';
 
@@ -39,8 +40,8 @@ export function PublicVenueShell({ venue, courts, events, coaches, initialTab = 
   const [activeTab, setActiveTab] = useState<TabId>(initialTab);
   const [isVenueAdmin, setIsVenueAdmin] = useState(false);
   const navigate = useNavigate();
-  const primaryColor = venue.primary_color || '#FF6B35';
-  const secondaryColor = venue.secondary_color || '#004E64';
+  const primaryColor = venue.primary_color || DEFAULT_VENUE_COLORS.primary;
+  const secondaryColor = venue.secondary_color || DEFAULT_VENUE_COLORS.secondary;
 
   // Check if current user is venue owner or staff
   useEffect(() => {

@@ -24,6 +24,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { PublicVenue, VenueCourt } from '@/hooks/usePublicVenue';
 import { TimeSlot } from '@/hooks/useVenueAvailability';
+import { DEFAULT_VENUE_COLORS } from '@/lib/venueBranding';
 
 interface BookingFlowDialogProps {
   open: boolean;
@@ -60,7 +61,7 @@ export function BookingFlowDialog({
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  const primaryColor = venue.primary_color || '#FF6B35';
+  const primaryColor = venue.primary_color || DEFAULT_VENUE_COLORS.primary;
   
   // Calculate end time and total price based on duration
   const durationHours = DURATION_OPTIONS.find(d => d.value === duration)?.hours || 1;
