@@ -8,16 +8,17 @@ const productLinks = [
   { label: "Community", href: "/player/community" },
 ];
 
-const companyLinks = [
-  { label: "About", href: "/about" },
-  { label: "Contact", href: "/contact" },
-  { label: "Careers", href: "/careers" },
-];
-
-const legalLinks = [
-  { label: "Privacy Policy", href: "/privacy" },
-  { label: "Terms of Service", href: "/terms" },
-];
+// Company and Legal links removed - pages don't exist yet
+// These can be added back when the pages are created:
+// const companyLinks = [
+//   { label: "About", href: "/about" },
+//   { label: "Contact", href: "/contact" },
+//   { label: "Careers", href: "/careers" },
+// ];
+// const legalLinks = [
+//   { label: "Privacy Policy", href: "/privacy" },
+//   { label: "Terms of Service", href: "/terms" },
+// ];
 
 const socialLinks = [
   { icon: Twitter, href: "https://twitter.com", label: "Twitter" },
@@ -32,7 +33,7 @@ export const HomepageFooter = () => {
   return (
     <footer className="bg-muted/50 border-t border-border">
       <div className="container mx-auto px-4 py-12 md:py-16">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 mb-12">
           {/* Product */}
           <div>
             <h4 className="font-semibold mb-4 text-foreground">Product</h4>
@@ -50,54 +51,9 @@ export const HomepageFooter = () => {
             </ul>
           </div>
 
-          {/* Company */}
+          {/* Connect - Social Links section */}
           <div>
-            <h4 className="font-semibold mb-4 text-foreground">Company</h4>
-            <ul className="space-y-3">
-              {companyLinks.map((link) => (
-                <li key={link.href}>
-                  <Link
-                    to={link.href}
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Legal */}
-          <div>
-            <h4 className="font-semibold mb-4 text-foreground">Legal</h4>
-            <ul className="space-y-3">
-              {legalLinks.map((link) => (
-                <li key={link.href}>
-                  <Link
-                    to={link.href}
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Brand */}
-          <div>
-            <div className="flex items-center gap-2 mb-4">
-              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-secondary">
-                <span className="text-primary-foreground font-bold text-sm">P</span>
-              </div>
-              <span className="font-display text-lg font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                PULSE
-              </span>
-            </div>
-            <p className="text-sm text-muted-foreground mb-4">
-              The all-in-one pickleball platform for players and venues.
-            </p>
-            {/* Social Links */}
+            <h4 className="font-semibold mb-4 text-foreground">Connect</h4>
             <div className="flex gap-3">
               {socialLinks.map((social) => (
                 <a
@@ -112,6 +68,21 @@ export const HomepageFooter = () => {
                 </a>
               ))}
             </div>
+          </div>
+
+          {/* Brand */}
+          <div className="sm:col-span-2 md:col-span-1">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent">
+                <span className="text-primary-foreground font-bold text-sm">P</span>
+              </div>
+              <span className="font-display text-lg font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                PULSE
+              </span>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              The all-in-one pickleball platform for players and venues.
+            </p>
           </div>
         </div>
 
