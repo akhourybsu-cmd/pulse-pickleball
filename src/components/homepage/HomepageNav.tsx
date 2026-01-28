@@ -100,7 +100,7 @@ export const HomepageNav = ({ isLoggedIn, userMode }: HomepageNavProps) => {
               className="w-[300px] sm:w-[340px] p-0 flex flex-col"
             >
               {/* Header with logo */}
-              <div className="p-6 border-b border-border/50">
+              <div className="p-6 border-b border-border/50 bg-secondary rounded-t-lg">
                 <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
                 <Link 
                   to="/" 
