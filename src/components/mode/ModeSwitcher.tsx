@@ -5,9 +5,6 @@ import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -15,11 +12,11 @@ import {
   DrawerContent,
   DrawerHeader,
   DrawerTitle,
-  DrawerClose,
 } from '@/components/ui/drawer';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useNavigate } from 'react-router-dom';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import { cn } from '@/lib/utils';
@@ -27,12 +24,12 @@ import { canManageVenue } from '@/lib/permissions';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getVenueLogoSrc, getVenueLogoFallback } from '@/lib/venueBranding';
 
-// Role badge colors
-const roleBadgeStyles: Record<VenueRole, string> = {
-  owner: 'bg-primary/20 text-primary border-primary/30',
-  manager: 'bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30',
-  organizer: 'bg-purple-500/20 text-purple-600 dark:text-purple-400 border-purple-500/30',
-  staff: 'bg-muted text-muted-foreground border-muted-foreground/20',
+// Role badge colors with visual distinction for admin vs staff
+const roleBadgeStyles: Record<VenueRole, { className: string; isAdmin: boolean }> = {
+  owner: { className: 'bg-primary/20 text-primary border-primary/30', isAdmin: true },
+  manager: { className: 'bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30', isAdmin: true },
+  organizer: { className: 'bg-purple-500/20 text-purple-600 dark:text-purple-400 border-purple-500/30', isAdmin: true },
+  staff: { className: 'bg-muted text-muted-foreground border-muted-foreground/20', isAdmin: false },
 };
 
 export function ModeSwitcher() {
@@ -68,11 +65,19 @@ export function ModeSwitcher() {
     navigate('/venue');
   };
 
-  const filteredVenues = venueAccess.filter(venue =>
+  // Sort venues: current first, then by name
+  const sortedVenues = [...venueAccess].sort((a, b) => {
+    if (a.venue_id === currentVenueId) return -1;
+    if (b.venue_id === currentVenueId) return 1;
+    return a.venue_name.localeCompare(b.venue_name);
+  });
+
+  const filteredVenues = sortedVenues.filter(venue =>
     venue.venue_name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const showSearch = venueAccess.length > 5;
+  // Show search at 3+ venues (lowered from 5)
+  const showSearch = venueAccess.length >= 3;
 
   // Trigger button content
   const TriggerContent = () => (
@@ -149,7 +154,7 @@ export function ModeSwitcher() {
       {/* Venue Section */}
       <div className="px-2">
         <p className="text-xs font-medium text-muted-foreground px-2 mb-2">
-          {hasVenueAccess ? 'Your Venues' : 'Venue Mode'}
+          {hasVenueAccess ? `Your Venues (${venueAccess.length})` : 'Venue Mode'}
         </p>
         
         {hasVenueAccess ? (
@@ -167,46 +172,50 @@ export function ModeSwitcher() {
                 </div>
               </div>
             )}
-            <div className="max-h-[200px] overflow-y-auto space-y-1">
-              {filteredVenues.map((venue) => {
-                const isSelected = mode === 'venue' && currentVenueId === venue.venue_id;
-                return (
-                  <button
-                    key={venue.venue_id}
-                    onClick={() => handleVenueSelect(venue.venue_id)}
-                    className={cn(
-                      'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors',
-                      isSelected 
-                        ? 'bg-secondary/80 text-secondary-foreground' 
-                        : 'hover:bg-muted text-foreground'
-                    )}
-                  >
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage 
-                        src={getVenueLogoSrc(venue.logo_url, venue.venue_name, venue.slug)} 
-                        alt={venue.venue_name} 
-                      />
-                      <AvatarFallback className="text-[10px] bg-muted">
-                        {venue.venue_name.slice(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 text-left min-w-0">
-                      <p className="font-medium text-sm truncate">{venue.venue_name}</p>
-                      <Badge 
-                        variant="outline" 
-                        className={cn(
-                          'text-[10px] px-1.5 py-0 h-4 font-medium capitalize',
-                          roleBadgeStyles[venue.role]
-                        )}
-                      >
-                        {venue.role}
-                      </Badge>
-                    </div>
-                    {isSelected && <Check className="h-4 w-4 flex-shrink-0" />}
-                  </button>
-                );
-              })}
-            </div>
+            <ScrollArea className="max-h-[200px]">
+              <div className="space-y-1 pr-2">
+                {filteredVenues.map((venue) => {
+                  const isSelected = mode === 'venue' && currentVenueId === venue.venue_id;
+                  const roleStyle = roleBadgeStyles[venue.role];
+                  return (
+                    <button
+                      key={venue.venue_id}
+                      onClick={() => handleVenueSelect(venue.venue_id)}
+                      className={cn(
+                        'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors',
+                        isSelected 
+                          ? 'bg-secondary/80 text-secondary-foreground' 
+                          : 'hover:bg-muted text-foreground',
+                        roleStyle.isAdmin && !isSelected && 'border-l-2 border-primary/30'
+                      )}
+                    >
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage 
+                          src={getVenueLogoSrc(venue.logo_url, venue.venue_name, venue.slug)} 
+                          alt={venue.venue_name} 
+                        />
+                        <AvatarFallback className="text-[10px] bg-muted">
+                          {venue.venue_name.slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 text-left min-w-0">
+                        <p className="font-medium text-sm truncate">{venue.venue_name}</p>
+                        <Badge 
+                          variant="outline" 
+                          className={cn(
+                            'text-[10px] px-1.5 py-0 h-4 font-medium capitalize',
+                            roleStyle.className
+                          )}
+                        >
+                          {venue.role}
+                        </Badge>
+                      </div>
+                      {isSelected && <Check className="h-4 w-4 flex-shrink-0" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </ScrollArea>
           </>
         ) : (
           <button
@@ -233,7 +242,12 @@ export function ModeSwitcher() {
         <button
           onClick={() => {
             setIsOpen(false);
-            navigate('/venue/interest');
+            // For logged-in venue owners, go to fast create; otherwise to interest wizard
+            if (hasVenueAccess) {
+              navigate('/venue/create-fast');
+            } else {
+              navigate('/venue/interest');
+            }
           }}
           className="w-full flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-muted text-sm text-muted-foreground"
         >

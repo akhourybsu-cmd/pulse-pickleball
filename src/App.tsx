@@ -117,7 +117,7 @@ const VenueProfile = lazy(() => import("./pages/venue/VenueProfile"));
 const VenueBranding = lazy(() => import("./pages/venue/VenueBranding"));
 const VenueFacility = lazy(() => import("./pages/venue/VenueFacility"));
 const VenueMedia = lazy(() => import("./pages/venue/VenueMedia"));
-const VenueCommunity = lazy(() => import("./pages/venue/VenueCommunity"));
+// VenueCommunity removed - orphaned feature, may be re-added in future
 const VenueCourts = lazy(() => import("./pages/venue/VenueCourts"));
 const VenueBookings = lazy(() => import("./pages/venue/VenueBookings"));
 const VenueEvents = lazy(() => import("./pages/venue/VenueEvents"));
@@ -244,7 +244,7 @@ const AppContent = () => {
             <Route path="branding" element={<VenueBranding />} />
             <Route path="facility" element={<VenueFacility />} />
             <Route path="media" element={<VenueMedia />} />
-            <Route path="community" element={<VenueCommunity />} />
+            {/* Community route removed - orphaned feature */}
             <Route path="courts" element={<VenueCourts />} />
             <Route path="bookings" element={<VenueBookings />} />
             <Route path="events" element={<VenueEvents />} />
