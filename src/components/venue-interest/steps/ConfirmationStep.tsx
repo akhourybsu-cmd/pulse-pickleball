@@ -45,10 +45,10 @@ export function ConfirmationStep({
             </div>
             <div className="text-left">
               <h3 className="font-semibold text-lg mb-1">
-                Create My Free Profile and Tour Pulse Today
+                Create My Free Profile — Verification Required
               </h3>
               <p className="text-sm text-muted-foreground">
-                Get started now — it only takes a minute to set up your venue and explore all the features.
+                A Pulse representative will verify your venue ownership and help you get set up. Setup takes less than a minute!
               </p>
             </div>
           </div>

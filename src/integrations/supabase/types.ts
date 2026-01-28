@@ -5212,6 +5212,7 @@ export type Database = {
           description: string | null
           email: string | null
           facebook_url: string | null
+          has_player_profile: boolean | null
           hours_of_operation: Json | null
           id: string
           instagram_url: string | null
@@ -5243,6 +5244,10 @@ export type Database = {
           timezone: string | null
           updated_at: string
           venue_type: Database["public"]["Enums"]["venue_type"] | null
+          verification_approved_at: string | null
+          verification_approved_by: string | null
+          verification_notes: string | null
+          verification_requested_at: string | null
           visibility: Database["public"]["Enums"]["venue_visibility"] | null
           website: string | null
           website_url: string | null
@@ -5273,6 +5278,7 @@ export type Database = {
           description?: string | null
           email?: string | null
           facebook_url?: string | null
+          has_player_profile?: boolean | null
           hours_of_operation?: Json | null
           id?: string
           instagram_url?: string | null
@@ -5304,6 +5310,10 @@ export type Database = {
           timezone?: string | null
           updated_at?: string
           venue_type?: Database["public"]["Enums"]["venue_type"] | null
+          verification_approved_at?: string | null
+          verification_approved_by?: string | null
+          verification_notes?: string | null
+          verification_requested_at?: string | null
           visibility?: Database["public"]["Enums"]["venue_visibility"] | null
           website?: string | null
           website_url?: string | null
@@ -5334,6 +5344,7 @@ export type Database = {
           description?: string | null
           email?: string | null
           facebook_url?: string | null
+          has_player_profile?: boolean | null
           hours_of_operation?: Json | null
           id?: string
           instagram_url?: string | null
@@ -5365,6 +5376,10 @@ export type Database = {
           timezone?: string | null
           updated_at?: string
           venue_type?: Database["public"]["Enums"]["venue_type"] | null
+          verification_approved_at?: string | null
+          verification_approved_by?: string | null
+          verification_notes?: string | null
+          verification_requested_at?: string | null
           visibility?: Database["public"]["Enums"]["venue_visibility"] | null
           website?: string | null
           website_url?: string | null
@@ -5830,7 +5845,12 @@ export type Database = {
         | "completed"
         | "cancelled"
       tournament_visibility: "public" | "unlisted" | "private"
-      venue_activation_state: "claimed" | "pending" | "active" | "suspended"
+      venue_activation_state:
+        | "claimed"
+        | "pending_verification"
+        | "pending"
+        | "active"
+        | "suspended"
       venue_logo_shape: "circle" | "square"
       venue_role: "owner" | "manager" | "staff" | "organizer"
       venue_status: "draft" | "published"
@@ -5999,7 +6019,13 @@ export const Constants = {
         "cancelled",
       ],
       tournament_visibility: ["public", "unlisted", "private"],
-      venue_activation_state: ["claimed", "pending", "active", "suspended"],
+      venue_activation_state: [
+        "claimed",
+        "pending_verification",
+        "pending",
+        "active",
+        "suspended",
+      ],
       venue_logo_shape: ["circle", "square"],
       venue_role: ["owner", "manager", "staff", "organizer"],
       venue_status: ["draft", "published"],

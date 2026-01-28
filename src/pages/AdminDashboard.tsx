@@ -22,7 +22,8 @@ import {
   Shield,
   Fingerprint,
   Zap,
-  Activity
+  Activity,
+  Building2
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import logo from "@/assets/pulse-logo-new.png";
@@ -165,6 +166,29 @@ const AdminDashboard = () => {
 
       <div className="container mx-auto px-4 py-8">
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {/* Venue Verification - Priority card */}
+          <Card 
+            className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-l-4 border-l-amber-500 hover:-translate-y-1" 
+            onClick={() => navigate("/admin/venue-verification")}
+          >
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="p-2.5 bg-amber-500/20 rounded-lg">
+                  <Building2 className="w-8 h-8 text-amber-500" />
+                </div>
+              </div>
+              <CardTitle className="mt-4">Venue Verification</CardTitle>
+              <CardDescription>
+                Review and approve pending venue ownership claims
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button className="w-full" variant="secondary">
+                Review Venues
+              </Button>
+            </CardContent>
+          </Card>
+
           <Card 
             className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-l-4 border-l-transparent hover:border-l-[#A6DB5A] hover:-translate-y-1" 
             onClick={() => navigate("/admin/session")}

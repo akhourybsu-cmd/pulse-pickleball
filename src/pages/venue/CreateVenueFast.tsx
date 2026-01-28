@@ -33,6 +33,7 @@ interface FormData {
   logoUrl: string;
   coverImageUrl: string;
   goals: string[];
+  hasPlayerProfile: boolean;
 }
 
 const STEPS = [
@@ -60,6 +61,7 @@ export default function CreateVenueFast() {
     logoUrl: "",
     coverImageUrl: "",
     goals: [],
+    hasPlayerProfile: true,
   });
 
   // Prefill from inquiry if coming from venue interest wizard
@@ -143,7 +145,7 @@ export default function CreateVenueFast() {
         return;
       }
 
-      // Create the venue
+      // Create the venue with pending_verification state
       const { data: venue, error: venueError } = await supabase
         .from("venues")
         .insert({
@@ -156,6 +158,9 @@ export default function CreateVenueFast() {
           cover_image_url: formData.coverImageUrl.trim() || null,
           owner_id: user.id,
           is_published: false,
+          activation_state: "pending_verification",
+          verification_requested_at: new Date().toISOString(),
+          has_player_profile: formData.hasPlayerProfile,
         })
         .select()
         .single();
@@ -184,8 +189,8 @@ export default function CreateVenueFast() {
       }
 
       toast({
-        title: "Your free venue is ready!",
-        description: "Let's complete your venue setup.",
+        title: "Your venue is being verified!",
+        description: "A Pulse representative will contact you shortly to complete your setup.",
       });
 
       // Refresh venue access, set current venue, switch to venue mode
@@ -193,8 +198,8 @@ export default function CreateVenueFast() {
       setCurrentVenueId(venue.id);
       setMode("venue");
 
-      // Navigate to venue onboarding to complete setup
-      navigate("/venue/onboarding/profile");
+      // Navigate to verification pending page
+      navigate("/venue/verification-pending");
     } catch (error: any) {
       console.error("Error creating venue:", error);
       toast({
