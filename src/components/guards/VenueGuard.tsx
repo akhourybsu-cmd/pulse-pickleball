@@ -3,7 +3,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useMode } from '@/contexts/ModeContext';
 import { Skeleton } from '@/components/ui/skeleton';
 
-type VenueActivationState = 'claimed' | 'pending' | 'active' | 'suspended';
+type VenueActivationState = 'claimed' | 'pending_verification' | 'pending' | 'active' | 'suspended';
 
 interface VenueGuardProps {
   children: React.ReactNode;
@@ -65,14 +65,21 @@ export function VenueGuard({
   if (requireActivation && !allowOnboarding && currentVenue) {
     const activationState = (currentVenue as any).activation_state as VenueActivationState | undefined;
     
-    const stateOrder: VenueActivationState[] = ['claimed', 'pending', 'active', 'suspended'];
+    // Redirect pending_verification venues to the verification pending page
+    if (activationState === 'pending_verification') {
+      if (!location.pathname.startsWith('/venue/verification-pending')) {
+        return <Navigate to="/venue/verification-pending" replace />;
+      }
+    }
+    
+    const stateOrder: VenueActivationState[] = ['claimed', 'pending_verification', 'pending', 'active', 'suspended'];
     const requiredIndex = stateOrder.indexOf(requireActivation);
     const currentIndex = activationState ? stateOrder.indexOf(activationState) : 0;
 
     // If current state is less than required, redirect to onboarding
     if (currentIndex < requiredIndex) {
       // Don't redirect if already on a venue onboarding route
-      if (!location.pathname.startsWith('/venue/onboarding')) {
+      if (!location.pathname.startsWith('/venue/onboarding') && !location.pathname.startsWith('/venue/verification-pending')) {
         if (!activationState || activationState === 'claimed') {
           return <Navigate to="/venue/onboarding/profile" replace />;
         }
@@ -80,6 +87,14 @@ export function VenueGuard({
           return <Navigate to="/venue/onboarding/first-event" replace />;
         }
       }
+    }
+  }
+
+  // For non-guarded routes, still redirect pending_verification to their status page
+  if (!allowOnboarding && currentVenue) {
+    const activationState = (currentVenue as any).activation_state as VenueActivationState | undefined;
+    if (activationState === 'pending_verification' && !location.pathname.startsWith('/venue/verification-pending')) {
+      return <Navigate to="/venue/verification-pending" replace />;
     }
   }
 

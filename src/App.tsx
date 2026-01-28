@@ -94,6 +94,7 @@ const AdminAuditLog = lazy(() => import("./pages/AdminAuditLog"));
 const AdminTestAccounts = lazy(() => import("./pages/AdminTestAccounts"));
 const AdminBiometrics = lazy(() => import("./pages/AdminBiometrics"));
 const AdminSystemHealth = lazy(() => import("./pages/AdminSystemHealth"));
+const AdminVenueVerification = lazy(() => import("./pages/AdminVenueVerification"));
 const NotificationSettings = lazy(() => import("./pages/NotificationSettings"));
 
 // Player pages
@@ -129,6 +130,7 @@ const VenueAnalytics = lazy(() => import("./pages/venue/VenueAnalytics"));
 const VenueRoundRobins = lazy(() => import("./pages/venue/VenueRoundRobins"));
 const VenueRoundRobinDetail = lazy(() => import("./pages/venue/VenueRoundRobinDetail"));
 const VenueRoundRobinKiosk = lazy(() => import("./pages/venue/VenueRoundRobinKiosk"));
+const VenueVerificationPending = lazy(() => import("./pages/venue/VenueVerificationPending"));
 const PublicVenueLanding = lazy(() => import("./pages/PublicVenueLanding"));
 const VenueInterestWizard = lazy(() => import("./pages/VenueInterestWizard"));
 const PlayersLanding = lazy(() => import("./pages/PlayersLanding"));
@@ -274,6 +276,9 @@ const AppContent = () => {
           } />
           <Route path="/venue/interest" element={<VenueInterestWizard />} />
           <Route path="/venue/create-fast" element={<AuthGuard><CreateVenueFast /></AuthGuard>} />
+          <Route path="/venue/verification-pending" element={
+            <AuthGuard><VenueVerificationPending /></AuthGuard>
+          } />
           {/* Public kiosk display - intentionally unprotected for venue display screens */}
           <Route path="/venue/round-robins/:id/kiosk" element={<VenueRoundRobinKiosk />} />
 
@@ -309,6 +314,7 @@ const AppContent = () => {
           <Route path="/admin/test-accounts" element={<AdminTestAccounts />} />
           <Route path="/admin/biometrics" element={<AdminBiometrics />} />
           <Route path="/admin/system-health" element={<AdminSystemHealth />} />
+          <Route path="/admin/venue-verification" element={<AdminVenueVerification />} />
           <Route path="/admin/manage/:sessionId" element={<AdminManage />} />
           <Route path="/match/ticket/:ticketId" element={<MatchTicket />} />
           <Route path="/qr-checkin" element={<QRCheckIn />} />

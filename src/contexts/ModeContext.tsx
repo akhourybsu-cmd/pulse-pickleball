@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 export type AppMode = 'player' | 'venue';
 
-export type VenueActivationState = 'claimed' | 'pending' | 'active' | 'suspended';
+export type VenueActivationState = 'claimed' | 'pending_verification' | 'pending' | 'active' | 'suspended';
 
 export type VenueRole = 'owner' | 'manager' | 'organizer' | 'staff';
 
