@@ -119,22 +119,37 @@ export default function VenueSettingsPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="p-4 md:p-6 space-y-6 pb-24 md:pb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Venue Settings</h1>
-          <p className="text-muted-foreground">Customize how players see your venue</p>
+          <p className="text-muted-foreground text-sm md:text-base">Customize how players see your venue</p>
         </div>
         <Button 
           onClick={handleSave} 
           disabled={!hasChanges || saving}
           style={{ backgroundColor: venueTheme.primary }}
-          className="hover:opacity-90"
+          className="hover:opacity-90 hidden md:flex"
         >
           {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
           Save Changes
         </Button>
       </div>
+
+      {/* Mobile Sticky Save Button */}
+      {hasChanges && (
+        <div className="md:hidden fixed bottom-20 left-0 right-0 p-4 bg-background/95 backdrop-blur-sm border-t z-40">
+          <Button 
+            onClick={handleSave} 
+            disabled={saving}
+            style={{ backgroundColor: venueTheme.primary }}
+            className="w-full hover:opacity-90"
+          >
+            {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+            Save Changes
+          </Button>
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Basic Information */}

@@ -2,7 +2,6 @@ import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   MapPin, 
-  Calendar, 
   CalendarDays,
   GraduationCap,
   Users,
@@ -10,38 +9,87 @@ import {
   Menu,
   BarChart3,
   Repeat,
-  Trophy
+  Trophy,
+  Calendar,
+  MoreHorizontal
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { ModeSwitcher } from '@/components/mode/ModeSwitcher';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { useState, useMemo, useCallback, CSSProperties } from 'react';
 import { useMode } from '@/contexts/ModeContext';
 import { getVenueLogoSrc, getVenueLogoFallback } from '@/lib/venueBranding';
 
 import { Palette, Building2, Image } from 'lucide-react';
 
-const navItems = [
+// Navigation structure with groups for sidebar
+const navGroups = [
+  {
+    label: 'Overview',
+    items: [
+      { to: '/venue', icon: LayoutDashboard, label: 'Overview', end: true },
+      { to: '/venue/analytics', icon: BarChart3, label: 'Analytics' },
+    ]
+  },
+  {
+    label: 'Venue Setup',
+    items: [
+      { to: '/venue/profile', icon: Building2, label: 'Profile' },
+      { to: '/venue/branding', icon: Palette, label: 'Branding' },
+      { to: '/venue/facility', icon: MapPin, label: 'Facility' },
+      { to: '/venue/media', icon: Image, label: 'Media' },
+    ]
+  },
+  {
+    label: 'Operations',
+    items: [
+      { to: '/venue/courts', icon: MapPin, label: 'Courts' },
+      { to: '/venue/bookings', icon: Calendar, label: 'Bookings' },
+      { to: '/venue/events', icon: CalendarDays, label: 'Events' },
+      { to: '/venue/tournaments', icon: Trophy, label: 'Tournaments' },
+      { to: '/venue/round-robins', icon: Repeat, label: 'Round Robins' },
+      { to: '/venue/coaching', icon: GraduationCap, label: 'Coaching' },
+    ]
+  },
+  {
+    label: 'Team',
+    items: [
+      { to: '/venue/staff', icon: Users, label: 'Staff' },
+    ]
+  },
+  {
+    label: 'Admin',
+    items: [
+      { to: '/venue/settings', icon: Settings, label: 'Settings' },
+    ]
+  },
+];
+
+// Flat nav items for reference
+const allNavItems = navGroups.flatMap(g => g.items);
+
+// Primary bottom nav items (5 max for mobile)
+const bottomNavItems = [
   { to: '/venue', icon: LayoutDashboard, label: 'Overview', end: true },
+  { to: '/venue/events', icon: CalendarDays, label: 'Events' },
+  { to: '/venue/courts', icon: MapPin, label: 'Courts' },
+  { to: '/venue/bookings', icon: Calendar, label: 'Bookings' },
+  { to: '/venue/more', icon: MoreHorizontal, label: 'More', isMoreMenu: true },
+];
+
+// Items shown in the "More" menu (everything else)
+const moreMenuItems = [
+  { to: '/venue/tournaments', icon: Trophy, label: 'Tournaments' },
+  { to: '/venue/round-robins', icon: Repeat, label: 'Round Robins' },
+  { to: '/venue/coaching', icon: GraduationCap, label: 'Coaching' },
   { to: '/venue/profile', icon: Building2, label: 'Profile' },
   { to: '/venue/branding', icon: Palette, label: 'Branding' },
   { to: '/venue/facility', icon: MapPin, label: 'Facility' },
   { to: '/venue/media', icon: Image, label: 'Media' },
-  { to: '/venue/tournaments', icon: Trophy, label: 'Tournaments' },
-  { to: '/venue/round-robins', icon: Repeat, label: 'Round Robins' },
-  { to: '/venue/events', icon: CalendarDays, label: 'Events' },
   { to: '/venue/staff', icon: Users, label: 'Staff' },
-  { to: '/venue/settings', icon: Settings, label: 'Settings' },
-];
-
-// Bottom nav items (subset for mobile/desktop bottom bar)
-const bottomNavItems = [
-  { to: '/venue', icon: LayoutDashboard, label: 'Overview', end: true },
-  { to: '/venue/courts', icon: MapPin, label: 'Courts' },
-  { to: '/venue/tournaments', icon: Trophy, label: 'Tournaments' },
-  { to: '/venue/events', icon: CalendarDays, label: 'Events' },
+  { to: '/venue/analytics', icon: BarChart3, label: 'Analytics' },
   { to: '/venue/settings', icon: Settings, label: 'Settings' },
 ];
 
@@ -52,6 +100,9 @@ const prefetchMap: Record<string, () => Promise<unknown>> = {
   '/venue/bookings': () => import('@/pages/venue/VenueBookings'),
   '/venue/events': () => import('@/pages/venue/VenueEvents'),
   '/venue/settings': () => import('@/pages/venue/VenueSettings'),
+  '/venue/coaching': () => import('@/pages/venue/VenueCoaching'),
+  '/venue/analytics': () => import('@/pages/venue/VenueAnalytics'),
+  '/venue/tournaments': () => import('@/pages/venue/VenueTournaments'),
 };
 
 interface VenueTheme {
@@ -114,40 +165,49 @@ function SidebarContent({ onItemClick }: { onItemClick?: () => void }) {
         )}
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-1">
-        {navItems.map((item) => {
-          const isActive = item.end 
-            ? location.pathname === item.to
-            : location.pathname.startsWith(item.to);
-          
-          const activeStyle: CSSProperties = isActive ? {
-            backgroundColor: `${venueTheme.primary}15`,
-            color: venueTheme.primary,
-          } : {};
-          
-          return (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              onClick={onItemClick}
-              className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-sm',
-                isActive 
-                  ? 'font-medium' 
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-              )}
-              style={activeStyle}
-            >
-              <item.icon 
-                className="h-4 w-4 flex-shrink-0" 
-                style={isActive ? { color: venueTheme.primary } : undefined}
-              />
-              <span>{item.label}</span>
-            </NavLink>
-          );
-        })}
+      {/* Grouped Navigation */}
+      <nav className="flex-1 p-4 space-y-4 overflow-y-auto">
+        {navGroups.map((group) => (
+          <div key={group.label}>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider px-3 mb-2">
+              {group.label}
+            </p>
+            <div className="space-y-1">
+              {group.items.map((item) => {
+                const isActive = item.end 
+                  ? location.pathname === item.to
+                  : location.pathname.startsWith(item.to);
+                
+                const activeStyle: CSSProperties = isActive ? {
+                  backgroundColor: `${venueTheme.primary}15`,
+                  color: venueTheme.primary,
+                } : {};
+                
+                return (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    end={item.end}
+                    onClick={onItemClick}
+                    className={cn(
+                      'flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm',
+                      isActive 
+                        ? 'font-medium' 
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                    )}
+                    style={activeStyle}
+                  >
+                    <item.icon 
+                      className="h-4 w-4 flex-shrink-0" 
+                      style={isActive ? { color: venueTheme.primary } : undefined}
+                    />
+                    <span>{item.label}</span>
+                  </NavLink>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
       {/* Bottom Actions */}
@@ -163,6 +223,7 @@ function SidebarContent({ onItemClick }: { onItemClick?: () => void }) {
 
 export function VenueShell() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const { currentVenue } = useMode();
   const venueTheme = useVenueTheme();
   const location = useLocation();
@@ -170,12 +231,19 @@ export function VenueShell() {
   // Use centralized branding helper for reliable logo display
   const logoSrc = getVenueLogoSrc(currentVenue?.logo_url, currentVenue?.venue_name);
 
-  // Calculate active tab index for sliding indicator
-  const activeIndex = bottomNavItems.findIndex(item => 
-    item.end 
+  // Calculate active tab index for sliding indicator (exclude "More" from active state)
+  const activeIndex = bottomNavItems.findIndex(item => {
+    if (item.isMoreMenu) return false;
+    return item.end 
       ? location.pathname === item.to
-      : location.pathname.startsWith(item.to)
+      : location.pathname.startsWith(item.to);
+  });
+
+  // Check if current path is in the "More" menu items
+  const isMoreItemActive = moreMenuItems.some(item => 
+    location.pathname === item.to || location.pathname.startsWith(item.to + '/')
   );
+
   // Prefetch route on hover
   const handlePrefetch = useCallback((to: string) => {
     const prefetch = prefetchMap[to];
@@ -211,16 +279,23 @@ export function VenueShell() {
             </SheetContent>
           </Sheet>
 
-          <NavLink to="/venue">
-            <img 
-              src={logoSrc} 
-              alt={currentVenue?.venue_name || "Venue"} 
-              className="h-12 w-auto cursor-pointer hover:opacity-90 transition-opacity"
-              onError={(e) => {
-                e.currentTarget.src = getVenueLogoFallback();
-              }}
-            />
-          </NavLink>
+          <div className="flex items-center gap-2">
+            <NavLink to="/venue">
+              <img 
+                src={logoSrc} 
+                alt={currentVenue?.venue_name || "Venue"} 
+                className="h-10 w-auto cursor-pointer hover:opacity-90 transition-opacity"
+                onError={(e) => {
+                  e.currentTarget.src = getVenueLogoFallback();
+                }}
+              />
+            </NavLink>
+            {currentVenue && (
+              <span className="text-white text-sm font-medium truncate max-w-[120px]">
+                {currentVenue.venue_name}
+              </span>
+            )}
+          </div>
 
           <div className="flex items-center gap-2">
             <ThemeToggle />
@@ -250,6 +325,68 @@ export function VenueShell() {
         />
         <div className="flex items-center justify-around py-2">
           {bottomNavItems.map((item) => {
+            // Handle "More" button separately
+            if (item.isMoreMenu) {
+              return (
+                <Sheet key="more" open={moreMenuOpen} onOpenChange={setMoreMenuOpen}>
+                  <SheetTrigger asChild>
+                    <button
+                      className={cn(
+                        'flex flex-col items-center gap-1 px-3 py-2 rounded-lg min-w-[60px]',
+                        'transition-colors duration-[240ms] ease-out',
+                        isMoreItemActive 
+                          ? 'font-medium' 
+                          : 'text-muted-foreground hover:text-foreground'
+                      )}
+                      style={isMoreItemActive ? { color: venueTheme.primary } : undefined}
+                    >
+                      <item.icon 
+                        className="h-5 w-5 transition-colors duration-[240ms] ease-out"
+                        style={isMoreItemActive ? { color: venueTheme.primary } : undefined}
+                      />
+                      <span className="text-xs font-medium">{item.label}</span>
+                    </button>
+                  </SheetTrigger>
+                  <SheetContent side="bottom" className="max-h-[70vh]">
+                    <SheetHeader className="pb-4">
+                      <SheetTitle>More Options</SheetTitle>
+                    </SheetHeader>
+                    <div className="grid grid-cols-3 gap-3 pb-8">
+                      {moreMenuItems.map((menuItem) => {
+                        const isActive = location.pathname === menuItem.to || 
+                          location.pathname.startsWith(menuItem.to + '/');
+                        return (
+                          <NavLink
+                            key={menuItem.to}
+                            to={menuItem.to}
+                            onClick={() => setMoreMenuOpen(false)}
+                            className={cn(
+                              'flex flex-col items-center gap-2 p-4 rounded-xl transition-colors',
+                              isActive 
+                                ? 'bg-primary/10' 
+                                : 'hover:bg-muted'
+                            )}
+                            style={isActive ? { color: venueTheme.primary } : undefined}
+                          >
+                            <menuItem.icon 
+                              className="h-6 w-6" 
+                              style={isActive ? { color: venueTheme.primary } : undefined}
+                            />
+                            <span className={cn(
+                              'text-xs text-center',
+                              isActive ? 'font-medium' : 'text-muted-foreground'
+                            )}>
+                              {menuItem.label}
+                            </span>
+                          </NavLink>
+                        );
+                      })}
+                    </div>
+                  </SheetContent>
+                </Sheet>
+              );
+            }
+
             const isActive = item.end 
               ? location.pathname === item.to
               : location.pathname.startsWith(item.to);
@@ -280,55 +417,7 @@ export function VenueShell() {
         </div>
       </nav>
 
-      {/* Desktop Bottom Nav */}
-      <nav className="hidden lg:block fixed bottom-0 left-64 right-0 z-50 border-t bg-card/95 backdrop-blur-sm">
-        <div className="container mx-auto px-4 relative">
-          {/* Sliding active indicator for desktop */}
-          <div
-            className="absolute top-0 left-1/2 h-[3px] rounded-full transition-transform duration-[240ms] ease-out"
-            style={{
-              backgroundColor: venueTheme.primary,
-              width: '60px',
-              marginLeft: '-30px',
-              transform: activeIndex >= 0 ? `translateX(${(activeIndex - Math.floor(bottomNavItems.length / 2)) * 120}px)` : 'translateX(0)',
-              opacity: activeIndex >= 0 ? 1 : 0,
-            }}
-          />
-          <div className="flex items-center justify-center gap-8 py-3">
-            {bottomNavItems.map((item) => {
-              const isActive = item.end 
-                ? location.pathname === item.to
-                : location.pathname.startsWith(item.to);
-              
-              return (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  end={item.end}
-                  onMouseEnter={() => handlePrefetch(item.to)}
-                  className={cn(
-                    'flex items-center gap-2 px-4 py-2 rounded-lg',
-                    'transition-colors duration-[240ms] ease-out',
-                    isActive 
-                      ? 'font-medium' 
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                  )}
-                  style={isActive ? { 
-                    backgroundColor: `${venueTheme.primary}15`,
-                    color: venueTheme.primary 
-                  } : undefined}
-                >
-                  <item.icon 
-                    className="h-4 w-4 transition-colors duration-[240ms] ease-out"
-                    style={isActive ? { color: venueTheme.primary } : undefined}
-                  />
-                  <span className="text-sm">{item.label}</span>
-                </NavLink>
-              );
-            })}
-          </div>
-        </div>
-      </nav>
+      {/* Desktop Bottom Nav - Removed to avoid clutter, sidebar is sufficient */}
     </div>
   );
 }
