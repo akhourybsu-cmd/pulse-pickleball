@@ -33,7 +33,6 @@ import { cn } from '@/lib/utils';
 import type { Group, GroupMember } from '@/hooks/useGroups';
 import { GroupFeed } from '@/components/community/GroupFeed';
 import { GroupSchedule } from '@/components/community/GroupSchedule';
-
 import { GroupFiles } from '@/components/community/GroupFiles';
 import { GroupMembers } from '@/components/community/GroupMembers';
 import { GroupChat } from '@/components/community/GroupChat';
@@ -41,6 +40,7 @@ import { InviteModal } from '@/components/community/InviteModal';
 import { QuickPostComposer, type PostType } from '@/components/community/QuickPostComposer';
 import { GroupSnapshot } from '@/components/community/GroupSnapshot';
 import { useGroupPosts } from '@/hooks/useGroupPosts';
+import { useGroupPresence } from '@/hooks/useGroupPresence';
 
 export default function GroupDetail() {
   const { groupId } = useParams<{ groupId: string }>();
@@ -60,6 +60,7 @@ export default function GroupDetail() {
   const [quickPostType, setQuickPostType] = useState<PostType>('post');
 
   const { createPost } = useGroupPosts(groupId || '');
+  const { onlineUsers, onlineCount } = useGroupPresence(groupId);
 
   // Immersive mode for chat tab
   const isImmersive = activeTab === 'chat';
@@ -276,6 +277,8 @@ export default function GroupDetail() {
         <div className="px-4 py-3">
           <GroupSnapshot 
             members={members}
+            onlineCount={onlineCount}
+            onlineUserIds={onlineUsers.map(u => u.user_id)}
             onCreateEvent={() => setActiveTab('schedule')}
             onViewFeed={() => {
               setActiveTab('feed');
