@@ -1,279 +1,248 @@
 
-## Venue Landing Page Enhancement Plan
 
-### Current State Summary
+## Player Mode UI/UX Professional Refinement Plan
 
-After a thorough audit, I found that **a dedicated Venues Landing page already exists** at `/venues` (`VenuesLanding.tsx`) with 7 well-structured sections:
-
-| Current Section | Purpose |
-|-----------------|---------|
-| `VenueHero` | Hero with "Claim Your Venue" CTA |
-| `WhyVenuesSection` | 4 value propositions |
-| `VenueCapabilitiesSection` | 5 core capabilities explained |
-| `HowItWorksVenue` | 4-step onboarding flow |
-| `VenueUseCasesSection` | Venue type tabs (Rec Centers, Private Clubs, etc.) |
-| `SocialProofVenue` | Metrics counters |
-| `FinalConversionVenue` | Bottom CTA section |
-
-**Current Issues Identified:**
-
-1. **No Screenshots/Visuals** - The Capabilities section uses placeholder icons instead of actual product screenshots
-2. **Missing Demo Showcase** - No way to see "PULSE in action" with real data
-3. **Homepage Bypasses This Page** - The main homepage CTA ("I'm a Venue/Organizer") goes directly to `/venue/interest` wizard, skipping the landing page
-4. **No Interactive Preview** - Users can't explore what a venue dashboard looks like before committing
+### Executive Summary
+This plan addresses the visual refinement of all five player-side tabs (Dashboard, Find, Events, Bookings, Community) to maximize professionalism and remove any "AI-generated" feel. Special focus is given to the Community tab, which will receive an immersive, minimal-chrome experience for maximum content engagement.
 
 ---
 
-### Enhancement Strategy
+### Current State Analysis
 
-#### Goal: Make `/venues` the central marketing hub for venue conversion
+After auditing all player-side tabs, I identified these common issues:
 
-```text
-Current Flow:
-Homepage → /venue/interest (wizard) → verification → dashboard
-
-Proposed Flow:
-Homepage → /venues (learn) → /venue/interest (convert) → verification → dashboard
-                     ↓
-             Live Demo Preview (/v/pickleball-palace)
-```
+| Issue | Pages Affected |
+|-------|----------------|
+| Inconsistent section spacing | Dashboard, Events, Bookings |
+| Generic card styling lacking hierarchy | Events, Bookings, Community |
+| Headers with excessive chrome | Find, Events, Bookings |
+| Too much visual clutter in empty states | Events, Bookings |
+| Community tab not optimized for immersive content | Community, GroupDetail |
+| Lack of subtle micro-interactions | All tabs |
 
 ---
 
-### Phase 1: Update Homepage CTAs to Route Through `/venues`
+### Design Principles for Refinement
 
-**Files:** `HeroSection.tsx`, `DualLaneSection.tsx`, `SplitCTASection.tsx`
+1. **Reduce visual noise** - Fewer borders, subtle shadows, refined spacing
+2. **Establish clear hierarchy** - Primary content dominates, metadata recedes
+3. **Consistent density** - 8pt grid spacing system throughout
+4. **Premium feel** - Subtle gradients, refined typography, micro-animations
+5. **Content-first approach** - Especially for Community tab
+
+---
+
+## Phase 1: Dashboard Tab Refinements
+
+**Current State:** Already well-designed with DUPR-inspired layout
+
+**Refinements:**
+- Reduce border opacity on cards (`border-border/30` instead of `border-border`)
+- Add subtle hover states to stat chips
+- Improve mobile spacing with consistent gap-4 throughout
+- Make "Match History" section header more understated
+
+**Files:**
+- `src/components/dashboard/PlayerIdentityCard.tsx` - Softer borders, refined shadow
+- `src/components/dashboard/PerformanceModule.tsx` - Cleaner section headers
+- `src/components/dashboard/ActivityModule.tsx` - Reduce visual weight of action items
+- `src/components/dashboard/MatchCard.tsx` - Softer card styling
+
+---
+
+## Phase 2: Find Tab Refinements
+
+**Current State:** Clean but header feels slightly heavy
 
 **Changes:**
-- Change "I'm a Venue / Organizer" button to navigate to `/venues` instead of `/venue/interest`
-- Change "Claim Your Venue" in DualLaneSection to navigate to `/venues`
-- This ensures all venue visitors see the full marketing page first
+- Reduce header gradient intensity
+- Make filter chips more refined with subtle borders
+- Improve UnifiedEventCard spacing and hierarchy
+- Add subtle enter animations for results
+
+**Files:**
+- `src/pages/player/FindEvents.tsx` - Lighter header, refined filters
+- `src/components/events/UnifiedEventCard.tsx` - Improved visual hierarchy
 
 ---
 
-### Phase 2: Add Product Screenshot/Demo Section
+## Phase 3: My Events Tab Refinements
 
-**New Component:** `VenueProductShowcase.tsx`
+**Current State:** Basic card layout, generic empty states
 
-Create a new section showcasing actual screenshots of PULSE venue features:
+**Changes:**
+- Add visual grouping for upcoming events by date
+- Improve RegistrationCard with cleaner status badges
+- Refine empty state with less iconography, more purposeful copy
+- Add subtle dividers between tab content sections
 
-| Screenshot | Caption |
-|------------|---------|
-| Venue Dashboard | "Your command center for operations" |
-| Public Venue Page | "Your branded player-facing experience" |
-| Event Management | "Create and manage tournaments, round robins, and open play" |
-| Court Scheduling | "Visual court availability and booking" |
-
-**Implementation Options:**
-
-**Option A: Static Screenshots (Recommended for immediate implementation)**
-- Create browser-frame mockups using CSS
-- Show styled placeholder images representing dashboard views
-- Add "See Live Demo" button linking to `/v/pickleball-palace`
-
-**Option B: Live Demo Embed**
-- Embed iframe of Pickleball Palace demo venue
-- More impressive but heavier implementation
+**Files:**
+- `src/pages/player/MyEvents.tsx` - Restructure layout, improve cards
 
 ---
 
-### Phase 3: Add "See It In Action" Demo Section
+## Phase 4: Bookings Tab Refinements
 
-**New Component:** `VenueLiveDemoSection.tsx`
+**Current State:** Similar to Events, basic styling
 
-Create a dedicated section that promotes the demo venue:
+**Changes:**
+- Consistent card styling with Events tab
+- Improve status badge visual weight
+- Refine empty state messaging
+- Add venue logo/branding to booking cards if available
 
-```text
+**Files:**
+- `src/pages/player/MyBookings.tsx` - Improved visual hierarchy
+
+---
+
+## Phase 5: Community Tab - Immersive Redesign (Primary Focus)
+
+This is the main focus per user request - creating a minimal, full-screen experience.
+
+### Current Issues:
+- Standard container padding wastes screen space
+- Header + tabs take significant vertical space
+- Shell navigation visible - competes with content
+- Cards have heavy borders and shadows
+
+### Proposed Immersive Layout:
+
+```
 ┌─────────────────────────────────────────────────────────────────┐
+│  ← My Groups                                    [+] [Enter Code]│  ← Compact 48px header
+├─────────────────────────────────────────────────────────────────┤
+│  [My Groups] [Discover] [Activity]                              │  ← Slim inline tabs
+├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│  See Pulse in Action                                            │
+│  ┌────────────────────────────────────────────────────────────┐ │
+│  │  AV  Morning Crew                           Crew • 12 →   │ │  ← Full-width cards
+│  └────────────────────────────────────────────────────────────┘ │
+│  ┌────────────────────────────────────────────────────────────┐ │
+│  │  PP  Pickleball Palace Official             Venue • 45 →  │ │
+│  └────────────────────────────────────────────────────────────┘ │
 │                                                                 │
-│  Explore our demo venue, Pickleball Palace, to see exactly     │
-│  what your venue could look like on Pulse.                      │
-│                                                                 │
-│  [Preview Demo Venue →]                                         │
-│                                                                 │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │  [Screenshot/iframe of Pickleball Palace public page]   │   │
-│  └─────────────────────────────────────────────────────────┘   │
+│                          [Full height content area]             │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-**Features:**
-- Link to `/v/pickleball-palace` (existing demo venue)
-- Browser-frame styled preview image
-- Highlight key features visible in demo (courts, events, coaches)
+### Community.tsx Changes:
+
+1. **Remove container constraints** - Full edge-to-edge on mobile
+2. **Compact header** - Single line with minimal controls
+3. **Inline tabs** - Slim tab bar without box styling
+4. **Cards stretch full width** - No side margins on mobile
+5. **Reduce empty state visual weight** - Subtle, text-focused
+6. **Hide page title** - Use back button context instead
+
+**Code Changes:**
+```tsx
+// Current
+<div className="container max-w-4xl mx-auto px-4 py-8 space-y-8">
+
+// Proposed
+<div className="flex flex-col h-full">
+  {/* Compact header */}
+  <div className="flex items-center justify-between px-4 py-3 border-b border-border/30">
+    <h1 className="text-lg font-semibold">Community</h1>
+    <div className="flex gap-2">
+      <Button variant="ghost" size="sm">Enter Code</Button>
+      <Button size="sm">+ Create</Button>
+    </div>
+  </div>
+  
+  {/* Full-height scrollable content */}
+  <div className="flex-1 overflow-y-auto">
+```
+
+### GroupDetail.tsx - Chat-Focused Immersive Mode:
+
+For the group detail page, especially Chat tab:
+
+1. **Fullscreen chat experience** - When in Chat tab, minimize header/tabs
+2. **Edge-to-edge messages** - Reduce horizontal padding
+3. **Floating composer** - Fixed to bottom with minimal chrome
+4. **Tab bar becomes minimal** - Icons only, no labels
+
+**Code Changes:**
+```tsx
+// When in chat tab, use immersive mode
+const isImmersive = activeTab === 'chat';
+
+return (
+  <div className={cn(
+    "flex flex-col h-[calc(100vh-80px)]", // Account for bottom nav
+    isImmersive && "h-[calc(100vh-60px)]" // Tighter for chat
+  )}>
+```
+
+### GroupChat.tsx - Enhanced Experience:
+
+1. **Expand to fill available height** - Dynamic calculation
+2. **Reduce card styling on message area** - Simple background
+3. **Floating input** - Sticky to bottom with subtle blur
+4. **Larger touch targets** - 44px minimum
 
 ---
 
-### Phase 4: Enhance VenueCapabilitiesSection with Visuals
+## Phase 6: GroupCard Refinement
 
-**File:** `VenueCapabilitiesSection.tsx`
+For consistent professional feel:
 
-**Current State:** Uses icon placeholders for each capability
-**Enhancement:** Replace icon blocks with styled screenshot mockups
-
-For each capability, show:
-1. **Branded Venue Page** → Screenshot of public venue landing
-2. **Event Hosting** → Screenshot of event creation/management
-3. **Round Robin Tools** → Screenshot of round robin kiosk
-4. **Player Discovery** → Screenshot of venue search/discovery
-5. **Management Tools** → Screenshot of venue dashboard
-
-**Note:** Since actual screenshots don't exist yet, we'll create styled mockup components that simulate the UI using existing component patterns.
+1. **Reduce card border weight** - `border-border/30`
+2. **Improve avatar sizing** - Consistent 48px for groups
+3. **Cleaner type badges** - Less saturated colors
+4. **Refined hover states** - Subtle scale + shadow
 
 ---
 
-### Phase 5: Update VenueHero with Stronger Value Prop
+## Technical Implementation Summary
 
-**File:** `VenueHero.tsx`
-
-**Enhancements:**
-- Add a "Watch Demo" or "Explore Demo Venue" as secondary CTA
-- Consider adding a subtle animation showing venue transformation
-- Add social proof element (e.g., "Join 100+ venues")
-
----
-
-### Technical Implementation Details
-
-#### Files to Create
-
-| File | Purpose |
-|------|---------|
-| `src/components/venues-landing/VenueProductShowcase.tsx` | Screenshot gallery section |
-| `src/components/venues-landing/VenueLiveDemoSection.tsx` | Live demo CTA section |
-| `src/components/venues-landing/VenueScreenshotFrame.tsx` | Reusable browser-frame mockup component |
-
-#### Files to Modify
+### Files to Modify:
 
 | File | Changes |
 |------|---------|
-| `src/components/homepage/HeroSection.tsx` | Change venue CTA to `/venues` |
-| `src/components/homepage/DualLaneSection.tsx` | Change venue CTA to `/venues` |
-| `src/components/homepage/SplitCTASection.tsx` | Change venue CTA to `/venues` |
-| `src/components/venues-landing/VenueHero.tsx` | Add demo CTA, social proof |
-| `src/components/venues-landing/VenueCapabilitiesSection.tsx` | Add screenshot mockups |
-| `src/components/venues-landing/index.ts` | Export new components |
-| `src/pages/VenuesLanding.tsx` | Add new sections to page |
+| `src/pages/player/Community.tsx` | Full-width layout, compact header, minimal chrome |
+| `src/pages/player/GroupDetail.tsx` | Immersive mode for chat, reduced spacing |
+| `src/components/community/GroupChat.tsx` | Full-height, floating input, edge-to-edge messages |
+| `src/components/community/GroupCard.tsx` | Refined styling, softer borders |
+| `src/components/community/GroupFeed.tsx` | Reduced card weight, cleaner composer |
+| `src/pages/player/FindEvents.tsx` | Lighter header, refined filters |
+| `src/pages/player/MyEvents.tsx` | Improved card hierarchy, better empty states |
+| `src/pages/player/MyBookings.tsx` | Consistent styling with Events |
+| `src/components/dashboard/MatchCard.tsx` | Softer styling |
+| `src/components/dashboard/ActivityModule.tsx` | Reduced visual weight |
+| `src/components/events/UnifiedEventCard.tsx` | Improved hierarchy |
+
+### CSS/Styling Patterns to Apply:
+
+1. **Softer borders:** `border-border/30` or `border-border/40`
+2. **Refined shadows:** `shadow-sm` with reduced opacity
+3. **Consistent spacing:** `gap-4`, `p-4` (8pt grid)
+4. **Typography:** `text-sm` for metadata, `font-medium` for labels
+5. **Hover states:** `hover:bg-muted/30` (subtle background)
+6. **Active states:** `active:scale-[0.99]` (micro feedback)
 
 ---
 
-### New Section: VenueProductShowcase Design
+## Expected Outcomes
 
-```typescript
-// Mockup structure for screenshot display
-const showcaseItems = [
-  {
-    title: "Your Venue Dashboard",
-    description: "A complete command center for managing courts, events, staff, and analytics.",
-    mockupType: "dashboard", // renders styled dashboard mockup
-  },
-  {
-    title: "Player-Facing Venue Page",
-    description: "Your branded public page where players book courts, register for events, and book coaching.",
-    mockupType: "public-page", // renders styled public page mockup
-  },
-  {
-    title: "Event & Tournament Management",
-    description: "Create, manage, and run round robins and tournaments with ease.",
-    mockupType: "events", // renders styled events mockup
-  },
-];
-```
+1. **Dashboard** - Cleaner card styling, less visual noise
+2. **Find** - Lighter header, better content focus
+3. **My Events** - Professional card hierarchy
+4. **Bookings** - Consistent with Events styling
+5. **Community** - Full-screen immersive experience with minimal branding chrome
+6. **Group Detail/Chat** - Native messaging app feel
 
 ---
 
-### New Section: VenueLiveDemoSection Design
+## Community Tab Specific Goals
 
-```typescript
-export const VenueLiveDemoSection = () => {
-  return (
-    <section className="py-16 md:py-24 bg-gradient-to-b from-background to-muted/30">
-      <div className="container mx-auto px-4">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">
-            See Pulse in Action
-          </h2>
-          <p className="text-lg text-muted-foreground mb-8">
-            Explore our demo venue to see exactly what your facility could look like on Pulse.
-          </p>
-          
-          {/* Browser frame with demo venue preview */}
-          <div className="rounded-xl border shadow-2xl overflow-hidden">
-            <div className="bg-muted/50 px-4 py-2 flex items-center gap-2 border-b">
-              <div className="flex gap-1.5">
-                <div className="w-3 h-3 rounded-full bg-red-500/80" />
-                <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
-                <div className="w-3 h-3 rounded-full bg-green-500/80" />
-              </div>
-              <div className="flex-1 text-center text-xs text-muted-foreground">
-                pulse-pickleball.lovable.app/v/pickleball-palace
-              </div>
-            </div>
-            
-            {/* Preview image or styled mockup */}
-            <div className="aspect-video bg-gradient-to-br from-secondary/10 to-primary/5">
-              {/* Styled mockup of venue page */}
-            </div>
-          </div>
-          
-          <Button size="lg" className="mt-8" asChild>
-            <Link to="/v/pickleball-palace">
-              <Play className="w-5 h-5 mr-2" />
-              Explore Demo Venue
-            </Link>
-          </Button>
-        </div>
-      </div>
-    </section>
-  );
-};
-```
+Per user request, the Community tab will:
+- ✅ Use full screen width (edge-to-edge on mobile)
+- ✅ Minimize header/navigation chrome
+- ✅ Maximize content area for chatting and engagement
+- ✅ Keep Pulse branding to absolute minimum (just logo in shell, no repeated branding)
+- ✅ Feel like a native messaging/social app
 
----
-
-### Updated VenuesLanding.tsx Structure
-
-```typescript
-<main>
-  <VenueHero />                    {/* Claim CTA + Demo CTA */}
-  <WhyVenuesSection />              {/* 4 value props */}
-  <VenueProductShowcase />          {/* NEW: Screenshot gallery */}
-  <VenueCapabilitiesSection />      {/* Enhanced with visuals */}
-  <VenueLiveDemoSection />          {/* NEW: Live demo preview */}
-  <HowItWorksVenue />               {/* 4 steps */}
-  <VenueUseCasesSection />          {/* Venue type tabs */}
-  <SocialProofVenue />              {/* Metrics */}
-  <FinalConversionVenue />          {/* Final CTA */}
-</main>
-```
-
----
-
-### Screenshot Mockup Approach
-
-Since we don't have actual screenshots, I'll create styled mockup components that represent what the dashboard/public pages look like using:
-
-1. **Browser Frame Wrapper** - CSS-based browser chrome (dots, address bar)
-2. **Simplified UI Mockups** - Using existing UI components (Cards, Buttons) to show representative layouts
-3. **Branded Colors** - Using the Pickleball Palace demo colors (orange/teal) to show customization
-
-This approach:
-- Looks professional and polished
-- Demonstrates the actual product UI patterns
-- Doesn't require external screenshot assets
-- Can be easily updated as the product evolves
-
----
-
-### Summary of Changes
-
-1. **Route all venue CTAs through `/venues` landing page** - Ensures venues see full value proposition before wizard
-2. **Add Product Showcase section** - Visual demonstration of key features with mockups
-3. **Add Live Demo section** - Direct link to Pickleball Palace demo venue
-4. **Enhance Hero** - Add "See Demo" secondary CTA
-5. **Improve Capabilities section** - Replace icons with visual mockups
-
-This creates a complete marketing funnel: **Learn (landing page) → Explore (demo) → Convert (wizard) → Verify → Activate**
