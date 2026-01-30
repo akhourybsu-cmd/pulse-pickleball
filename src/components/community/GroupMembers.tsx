@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Users, Crown, Shield, MoreVertical, UserMinus, ShieldPlus, ShieldMinus, Ban, Check, X, UserPlus, Share2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Users, Crown, Shield, MoreVertical, UserMinus, ShieldPlus, ShieldMinus, Ban, Check, X, UserPlus, Share2, MessageCircle, Clock } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,6 +27,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useGroupMembers, type GroupMemberWithProfile } from '@/hooks/useGroupMembers';
 import { useGroupPresence } from '@/hooks/useGroupPresence';
+import { useFriends } from '@/hooks/useFriends';
+import { useDirectMessages } from '@/hooks/useDirectMessages';
 import { OnlineIndicator } from './OnlineIndicator';
 import { cn } from '@/lib/utils';
 
@@ -38,6 +41,7 @@ interface GroupMembersProps {
 }
 
 export function GroupMembers({ groupId, isAdmin, isOwner, currentUserId, onInviteClick }: GroupMembersProps) {
+  const navigate = useNavigate();
   const { 
     members, 
     pendingMembers, 
@@ -50,6 +54,8 @@ export function GroupMembers({ groupId, isAdmin, isOwner, currentUserId, onInvit
   } = useGroupMembers(groupId);
 
   const { isOnline } = useGroupPresence(groupId);
+  const { sendFriendRequest, getFriendshipStatus } = useFriends();
+  const { startConversation } = useDirectMessages();
   
   
   const [actionDialog, setActionDialog] = useState<{
@@ -79,6 +85,13 @@ export function GroupMembers({ groupId, isAdmin, isOwner, currentUserId, onInvit
     );
   }
 
+  const handleStartDM = async (userId: string) => {
+    const conversationId = await startConversation(userId);
+    if (conversationId) {
+      navigate(`/player/messages/${conversationId}`);
+    }
+  };
+
   const renderMemberCard = (member: GroupMemberWithProfile, isPending = false) => {
     const isSelf = currentUserId === member.user_id;
     const canManage = isAdmin && !isSelf && member.role !== 'owner';
@@ -91,6 +104,7 @@ export function GroupMembers({ groupId, isAdmin, isOwner, currentUserId, onInvit
       .slice(0, 2);
 
     const memberIsOnline = isOnline(member.user_id);
+    const friendshipStatus = !isSelf ? getFriendshipStatus(member.user_id) : 'none';
 
     return (
       <Card key={member.id} className="hover:bg-muted/30 transition-colors">
@@ -162,6 +176,53 @@ export function GroupMembers({ groupId, isAdmin, isOwner, currentUserId, onInvit
               >
                 <X className="h-4 w-4" />
               </Button>
+            </div>
+          )}
+
+          {/* Quick Actions for non-self members */}
+          {!isPending && !isSelf && (
+            <div className="flex items-center gap-1">
+              {/* Message Button */}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => handleStartDM(member.user_id)}
+              >
+                <MessageCircle className="h-4 w-4" />
+              </Button>
+
+              {/* Friend Action Button */}
+              {friendshipStatus === 'none' && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => sendFriendRequest(member.user_id)}
+                >
+                  <UserPlus className="h-4 w-4" />
+                </Button>
+              )}
+              {friendshipStatus === 'pending_sent' && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground"
+                  disabled
+                >
+                  <Clock className="h-4 w-4" />
+                </Button>
+              )}
+              {friendshipStatus === 'accepted' && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-primary"
+                  disabled
+                >
+                  <Check className="h-4 w-4" />
+                </Button>
+              )}
             </div>
           )}
 

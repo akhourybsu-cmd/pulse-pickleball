@@ -93,7 +93,7 @@ export function GroupCard({ group, showJoinButton, onJoin, isJoining }: GroupCar
         {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5">
-            <h3 className="font-medium text-sm text-foreground truncate">{group.name}</h3>
+            <h3 className="font-medium text-sm text-foreground line-clamp-2 break-words">{group.name}</h3>
             {isVerifiedVenue && (
               <BadgeCheck className="h-3.5 w-3.5 text-amber-500 shrink-0" />
             )}

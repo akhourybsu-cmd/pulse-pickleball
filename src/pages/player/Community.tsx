@@ -1,17 +1,23 @@
 import { useState } from 'react';
-import { Plus, Key, Users, Search, Activity } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, Key, Users, Search, Activity, UserPlus, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
 import { GroupCard } from '@/components/community/GroupCard';
 import { ReorderableGroupList } from '@/components/community/ReorderableGroupList';
 import { CreateGroupDialog } from '@/components/community/CreateGroupDialog';
 import { JoinGroupDialog } from '@/components/community/JoinGroupDialog';
 import { CommunityActivityFeed } from '@/components/community/CommunityActivityFeed';
+import { FriendsTab } from '@/components/community/FriendsTab';
 import { useGroups } from '@/hooks/useGroups';
+import { useDirectMessages } from '@/hooks/useDirectMessages';
 
 export default function Community() {
+  const navigate = useNavigate();
   const { myGroups, publicGroups, loading, createGroup, joinGroupByCode, joinPublicGroup, updateGroupOrder } = useGroups();
+  const { totalUnread } = useDirectMessages();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [joinDialogOpen, setJoinDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('my-groups');
@@ -29,6 +35,22 @@ export default function Community() {
       <div className="flex items-center justify-between px-4 py-3 border-b border-border/30">
         <h1 className="text-lg font-semibold">Community</h1>
         <div className="flex items-center gap-2">
+          {/* DM Icon with unread badge */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 relative"
+            onClick={() => navigate('/player/messages')}
+          >
+            <MessageCircle className="h-4 w-4" />
+            {totalUnread > 0 && (
+              <Badge 
+                className="absolute -top-1 -right-1 h-4 min-w-[16px] px-1 text-[10px] bg-primary text-primary-foreground"
+              >
+                {totalUnread > 99 ? '99+' : totalUnread}
+              </Badge>
+            )}
+          </Button>
           <Button 
             onClick={() => setJoinDialogOpen(true)} 
             variant="ghost" 
@@ -64,6 +86,13 @@ export default function Community() {
                   {myGroups.length}
                 </span>
               )}
+            </TabsTrigger>
+            <TabsTrigger 
+              value="friends" 
+              className="h-10 px-0 pb-0 pt-1 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none text-sm"
+            >
+              <UserPlus className="h-3.5 w-3.5 mr-1.5" />
+              Friends
             </TabsTrigger>
             <TabsTrigger 
               value="discover" 
@@ -116,6 +145,11 @@ export default function Community() {
                 </div>
               </div>
             )}
+          </TabsContent>
+
+          {/* Friends Tab */}
+          <TabsContent value="friends" className="m-0">
+            <FriendsTab />
           </TabsContent>
 
           {/* Discover Tab */}
