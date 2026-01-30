@@ -25,6 +25,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useGroupMembers, type GroupMemberWithProfile } from '@/hooks/useGroupMembers';
+import { useGroupPresence } from '@/hooks/useGroupPresence';
+import { OnlineIndicator } from './OnlineIndicator';
 import { cn } from '@/lib/utils';
 
 interface GroupMembersProps {
@@ -46,6 +48,9 @@ export function GroupMembers({ groupId, isAdmin, isOwner, currentUserId, onInvit
     removeMember, 
     banMember 
   } = useGroupMembers(groupId);
+
+  const { isOnline } = useGroupPresence(groupId);
+  
   
   const [actionDialog, setActionDialog] = useState<{
     type: 'remove' | 'ban' | null;
@@ -85,13 +90,23 @@ export function GroupMembers({ groupId, isAdmin, isOwner, currentUserId, onInvit
       .toUpperCase()
       .slice(0, 2);
 
+    const memberIsOnline = isOnline(member.user_id);
+
     return (
       <Card key={member.id} className="hover:bg-muted/30 transition-colors">
         <CardContent className="flex items-center gap-3 py-3">
-          <Avatar className="h-10 w-10 flex-shrink-0">
-            <AvatarImage src={member.profile?.avatar_url || undefined} />
-            <AvatarFallback>{initials}</AvatarFallback>
-          </Avatar>
+          <div className="relative">
+            <Avatar className="h-10 w-10 flex-shrink-0">
+              <AvatarImage src={member.profile?.avatar_url || undefined} />
+              <AvatarFallback>{initials}</AvatarFallback>
+            </Avatar>
+            <OnlineIndicator 
+              isOnline={memberIsOnline} 
+              size="sm" 
+              showPulse={false}
+              className="absolute -bottom-0.5 -right-0.5 ring-2 ring-card"
+            />
+          </div>
 
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">

@@ -1,11 +1,15 @@
 import { useState, useRef, useEffect } from 'react';
-import { Send, MessageCircle, Loader2 } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
+import { Send, Loader2, Smile, Image as ImageIcon } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Textarea } from '@/components/ui/textarea';
 import { useGroupChat } from '@/hooks/useGroupChat';
+import { useGroupPresence } from '@/hooks/useGroupPresence';
+import { useTypingIndicator } from '@/hooks/useTypingIndicator';
+import { ChatMessage } from './ChatMessage';
+import { TypingIndicator } from './TypingIndicator';
+import { OnlineIndicator } from './OnlineIndicator';
 import { cn } from '@/lib/utils';
 
 interface GroupChatProps {
@@ -15,9 +19,28 @@ interface GroupChatProps {
 
 export function GroupChat({ groupId, currentUserId }: GroupChatProps) {
   const { messages, loading, sending, sendMessage } = useGroupChat(groupId);
+  const { onlineCount, isConnected } = useGroupPresence(groupId);
+  const { typingUsers, startTyping, stopTyping } = useTypingIndicator(groupId);
+  
   const [newMessage, setNewMessage] = useState('');
+  const [userDisplayName, setUserDisplayName] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Get user display name for typing indicator
+  useEffect(() => {
+    const fetchDisplayName = async () => {
+      if (!currentUserId) return;
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data } = await supabase
+        .from('profiles')
+        .select('display_name, full_name')
+        .eq('id', currentUserId)
+        .single();
+      setUserDisplayName(data?.display_name || data?.full_name || 'User');
+    };
+    fetchDisplayName();
+  }, [currentUserId]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -31,8 +54,18 @@ export function GroupChat({ groupId, currentUserId }: GroupChatProps) {
     
     const content = newMessage;
     setNewMessage('');
+    stopTyping();
     await sendMessage(content);
-    inputRef.current?.focus();
+    textareaRef.current?.focus();
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setNewMessage(e.target.value);
+    if (e.target.value.trim()) {
+      startTyping(userDisplayName);
+    } else {
+      stopTyping();
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -53,107 +86,125 @@ export function GroupChat({ groupId, currentUserId }: GroupChatProps) {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Messages Area - Full height, edge-to-edge */}
+      {/* Online Status Header */}
+      <div className="flex items-center gap-2 px-4 py-2 border-b border-border/20 bg-muted/20">
+        <OnlineIndicator isOnline={isConnected} size="sm" showPulse={false} />
+        <span className="text-xs text-muted-foreground">
+          {onlineCount > 0 ? `${onlineCount} online` : 'Connecting...'}
+        </span>
+      </div>
+
+      {/* Messages Area */}
       <div 
         ref={scrollRef}
         className="flex-1 overflow-y-auto px-3 py-4"
       >
         {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center">
-            <div className="w-12 h-12 rounded-full bg-muted/50 flex items-center justify-center mb-3">
-              <MessageCircle className="h-5 w-5 text-muted-foreground/70" />
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col items-center justify-center h-full text-center"
+          >
+            <div className="w-14 h-14 rounded-full bg-muted/30 flex items-center justify-center mb-4">
+              <span className="text-2xl">💬</span>
             </div>
-            <h3 className="text-sm font-medium mb-1">No messages yet</h3>
+            <h3 className="text-sm font-medium mb-1">Start the conversation</h3>
             <p className="text-xs text-muted-foreground max-w-[200px]">
-              Start the conversation
+              Be the first to say hello to your group
             </p>
-          </div>
+          </motion.div>
         ) : (
           <div className="space-y-3">
-            {messages.map((message, index) => {
-              const isOwn = message.user_id === currentUserId;
-              const showAvatar = index === 0 || messages[index - 1]?.user_id !== message.user_id;
-              const initials = (message.profile?.display_name || message.profile?.full_name || 'U')
-                .split(' ')
-                .map(n => n[0])
-                .join('')
-                .toUpperCase()
-                .slice(0, 2);
+            <AnimatePresence initial={false}>
+              {messages.map((message, index) => {
+                const isOwn = message.user_id === currentUserId;
+                const showAvatar = index === 0 || messages[index - 1]?.user_id !== message.user_id;
+                const previousMessageDate = index > 0 ? new Date(messages[index - 1].created_at) : undefined;
 
-              return (
-                <div
-                  key={message.id}
-                  className={cn(
-                    'flex gap-2',
-                    isOwn ? 'flex-row-reverse' : 'flex-row'
-                  )}
-                >
-                  {showAvatar ? (
-                    <Avatar className="h-7 w-7 flex-shrink-0">
-                      <AvatarImage src={message.profile?.avatar_url || undefined} />
-                      <AvatarFallback className="text-[10px]">{initials}</AvatarFallback>
-                    </Avatar>
-                  ) : (
-                    <div className="w-7" />
-                  )}
-                  <div
-                    className={cn(
-                      'max-w-[75%] space-y-0.5',
-                      isOwn ? 'items-end' : 'items-start'
-                    )}
-                  >
-                    {showAvatar && (
-                      <div className={cn('flex items-center gap-2', isOwn && 'flex-row-reverse')}>
-                        <span className="text-[11px] font-medium text-muted-foreground">
-                          {message.profile?.display_name || message.profile?.full_name || 'Unknown'}
-                        </span>
-                        <span className="text-[10px] text-muted-foreground/60">
-                          {formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}
-                        </span>
-                      </div>
-                    )}
-                    <div
-                      className={cn(
-                        'rounded-2xl px-3 py-2 text-sm',
-                        isOwn
-                          ? 'bg-primary text-primary-foreground rounded-br-md'
-                          : 'bg-muted/70 rounded-bl-md'
-                      )}
-                    >
-                      {message.content}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+                return (
+                  <ChatMessage
+                    key={message.id}
+                    message={message}
+                    isOwn={isOwn}
+                    showAvatar={showAvatar}
+                    showDateSeparator={index === 0}
+                    previousMessageDate={previousMessageDate}
+                  />
+                );
+              })}
+            </AnimatePresence>
           </div>
         )}
       </div>
 
-      {/* Floating Input - Sticky to bottom with blur */}
+      {/* Typing Indicator */}
+      <TypingIndicator typingUsers={typingUsers} className="border-t border-border/10" />
+
+      {/* Enhanced Input Bar */}
       <div className="border-t border-border/30 bg-background/95 backdrop-blur-sm px-3 py-3">
-        <div className="flex items-center gap-2">
-          <Input
-            ref={inputRef}
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Message..."
-            disabled={sending}
-            className="flex-1 h-10 text-sm border-border/40 bg-muted/30"
-          />
+        <div className="flex items-end gap-2">
+          {/* Emoji Button */}
           <Button 
-            size="icon" 
-            onClick={handleSend}
-            disabled={!newMessage.trim() || sending}
-            className="h-10 w-10 shrink-0"
+            variant="ghost" 
+            size="icon"
+            className="h-10 w-10 shrink-0 text-muted-foreground hover:text-foreground"
           >
-            {sending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4" />
-            )}
+            <Smile className="h-5 w-5" />
           </Button>
+
+          {/* Message Input */}
+          <div className="flex-1 relative">
+            <Textarea
+              ref={textareaRef}
+              value={newMessage}
+              onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
+              placeholder="Message..."
+              disabled={sending}
+              rows={1}
+              className={cn(
+                "min-h-[40px] max-h-[120px] resize-none py-2.5 pr-10 text-sm",
+                "border-border/40 bg-muted/30 rounded-2xl",
+                "focus:ring-1 focus:ring-primary/30 transition-all"
+              )}
+              style={{ 
+                height: 'auto',
+                overflow: newMessage.split('\n').length > 3 ? 'auto' : 'hidden'
+              }}
+            />
+            
+            {/* Image Button (inside input) */}
+            <Button 
+              variant="ghost" 
+              size="icon"
+              className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 text-muted-foreground/50 hover:text-muted-foreground"
+            >
+              <ImageIcon className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {/* Send Button */}
+          <motion.div
+            whileTap={{ scale: 0.9 }}
+          >
+            <Button 
+              size="icon" 
+              onClick={handleSend}
+              disabled={!newMessage.trim() || sending}
+              className={cn(
+                "h-10 w-10 shrink-0 rounded-full transition-all",
+                newMessage.trim() 
+                  ? "bg-primary hover:bg-primary/90 shadow-md" 
+                  : "bg-muted text-muted-foreground"
+              )}
+            >
+              {sending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+            </Button>
+          </motion.div>
         </div>
       </div>
     </div>
