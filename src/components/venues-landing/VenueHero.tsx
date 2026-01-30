@@ -51,10 +51,10 @@ export const VenueHero = () => {
               variant="outline"
               size="lg"
               className="w-full sm:w-auto text-lg px-8 py-6 border-2"
-              onClick={() => navigate("/venue/interest?demo=true")}
+              onClick={() => navigate("/v/pickleball-palace")}
             >
               <Play className="w-5 h-5 mr-2" />
-              Book a Demo
+              Explore Demo Venue
             </Button>
           </div>
 
