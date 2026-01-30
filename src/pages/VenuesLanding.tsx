@@ -5,7 +5,9 @@ import { HomepageFooter } from "@/components/homepage/HomepageFooter";
 import {
   VenueHero,
   WhyVenuesSection,
+  VenueProductShowcase,
   VenueCapabilitiesSection,
+  VenueLiveDemoSection,
   HowItWorksVenue,
   VenueUseCasesSection,
   SocialProofVenue,
@@ -42,7 +44,9 @@ const VenuesLanding = () => {
       <main>
         <VenueHero />
         <WhyVenuesSection />
+        <VenueProductShowcase />
         <VenueCapabilitiesSection />
+        <VenueLiveDemoSection />
         <HowItWorksVenue />
         <VenueUseCasesSection />
         <SocialProofVenue />

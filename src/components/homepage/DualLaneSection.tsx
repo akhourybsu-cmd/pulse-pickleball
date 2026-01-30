@@ -99,7 +99,7 @@ export const DualLaneSection = () => {
                 ))}
               </ul>
               <Button
-                onClick={() => navigate("/venue/interest")}
+                onClick={() => navigate("/venues")}
                 className="w-full mt-6 bg-gradient-to-r from-secondary to-secondary/80 text-secondary-foreground hover:shadow-lg hover:shadow-secondary/20 transition-all"
               >
                 Claim Your Venue

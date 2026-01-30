@@ -40,7 +40,7 @@ export const HeroSection = () => {
           </Button>
           <Button
             size="lg"
-            onClick={() => navigate("/venue/interest")}
+            onClick={() => navigate("/venues")}
             className="group relative h-14 px-8 text-lg font-semibold bg-gradient-to-r from-secondary to-secondary/80 text-secondary-foreground hover:shadow-xl hover:shadow-secondary/25 hover:scale-105 transition-all duration-300"
           >
             <Building2 className="mr-2 h-5 w-5 group-hover:scale-110 transition-transform" />

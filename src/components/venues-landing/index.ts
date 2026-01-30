@@ -5,3 +5,6 @@ export { HowItWorksVenue } from "./HowItWorksVenue";
 export { VenueUseCasesSection } from "./VenueUseCasesSection";
 export { SocialProofVenue } from "./SocialProofVenue";
 export { FinalConversionVenue } from "./FinalConversionVenue";
+export { VenueProductShowcase } from "./VenueProductShowcase";
+export { VenueLiveDemoSection } from "./VenueLiveDemoSection";
+export { VenueScreenshotFrame } from "./VenueScreenshotFrame";
