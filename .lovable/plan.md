@@ -1,248 +1,402 @@
 
-
-## Player Mode UI/UX Professional Refinement Plan
+## Community Tab Social Enhancement Plan
 
 ### Executive Summary
-This plan addresses the visual refinement of all five player-side tabs (Dashboard, Find, Events, Bookings, Community) to maximize professionalism and remove any "AI-generated" feel. Special focus is given to the Community tab, which will receive an immersive, minimal-chrome experience for maximum content engagement.
+This plan transforms the Community tab into a polished, social-first experience that feels like a native messaging app. We'll implement real-time presence indicators, typing indicators, rich messaging features, and visual micro-interactions that make the platform intuitive, useful, and engaging.
 
 ---
 
 ### Current State Analysis
 
-After auditing all player-side tabs, I identified these common issues:
+After a detailed code audit, here's what exists:
 
-| Issue | Pages Affected |
-|-------|----------------|
-| Inconsistent section spacing | Dashboard, Events, Bookings |
-| Generic card styling lacking hierarchy | Events, Bookings, Community |
-| Headers with excessive chrome | Find, Events, Bookings |
-| Too much visual clutter in empty states | Events, Bookings |
-| Community tab not optimized for immersive content | Community, GroupDetail |
-| Lack of subtle micro-interactions | All tabs |
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Real-time chat messages | Implemented | Uses Supabase realtime subscriptions |
+| Post reactions | Implemented | Emoji reactions with counts |
+| Comments on posts | Implemented | Threaded replies supported |
+| Unread badges | Implemented | Per-group unread counts |
+| Group member list | Implemented | With roles displayed |
+| Presence system | Exists elsewhere | `CourtPresence.tsx` uses Supabase presence |
 
----
-
-### Design Principles for Refinement
-
-1. **Reduce visual noise** - Fewer borders, subtle shadows, refined spacing
-2. **Establish clear hierarchy** - Primary content dominates, metadata recedes
-3. **Consistent density** - 8pt grid spacing system throughout
-4. **Premium feel** - Subtle gradients, refined typography, micro-animations
-5. **Content-first approach** - Especially for Community tab
-
----
-
-## Phase 1: Dashboard Tab Refinements
-
-**Current State:** Already well-designed with DUPR-inspired layout
-
-**Refinements:**
-- Reduce border opacity on cards (`border-border/30` instead of `border-border`)
-- Add subtle hover states to stat chips
-- Improve mobile spacing with consistent gap-4 throughout
-- Make "Match History" section header more understated
-
-**Files:**
-- `src/components/dashboard/PlayerIdentityCard.tsx` - Softer borders, refined shadow
-- `src/components/dashboard/PerformanceModule.tsx` - Cleaner section headers
-- `src/components/dashboard/ActivityModule.tsx` - Reduce visual weight of action items
-- `src/components/dashboard/MatchCard.tsx` - Softer card styling
+**Missing Social Features:**
+- No typing indicators in chat
+- No online/offline presence for group members
+- No "last seen" timestamps
+- No message read receipts
+- No quick emoji reactions for chat messages
+- No @mentions with notifications
+- No animated message transitions
+- No link previews
+- No haptic-style micro-interactions
 
 ---
 
-## Phase 2: Find Tab Refinements
+### Enhancement Categories
 
-**Current State:** Clean but header feels slightly heavy
+## 1. Real-Time Presence System
 
-**Changes:**
-- Reduce header gradient intensity
-- Make filter chips more refined with subtle borders
-- Improve UnifiedEventCard spacing and hierarchy
-- Add subtle enter animations for results
+**Goal:** Show who's online in each group
 
-**Files:**
-- `src/pages/player/FindEvents.tsx` - Lighter header, refined filters
-- `src/components/events/UnifiedEventCard.tsx` - Improved visual hierarchy
+**Implementation:**
+- Create `useGroupPresence.ts` hook using Supabase Presence API
+- Display green online indicator dots on member avatars
+- Show "X members online" in group header
+- Track `online_at` timestamp for "last seen" display
 
----
-
-## Phase 3: My Events Tab Refinements
-
-**Current State:** Basic card layout, generic empty states
-
-**Changes:**
-- Add visual grouping for upcoming events by date
-- Improve RegistrationCard with cleaner status badges
-- Refine empty state with less iconography, more purposeful copy
-- Add subtle dividers between tab content sections
-
-**Files:**
-- `src/pages/player/MyEvents.tsx` - Restructure layout, improve cards
-
----
-
-## Phase 4: Bookings Tab Refinements
-
-**Current State:** Similar to Events, basic styling
-
-**Changes:**
-- Consistent card styling with Events tab
-- Improve status badge visual weight
-- Refine empty state messaging
-- Add venue logo/branding to booking cards if available
-
-**Files:**
-- `src/pages/player/MyBookings.tsx` - Improved visual hierarchy
-
----
-
-## Phase 5: Community Tab - Immersive Redesign (Primary Focus)
-
-This is the main focus per user request - creating a minimal, full-screen experience.
-
-### Current Issues:
-- Standard container padding wastes screen space
-- Header + tabs take significant vertical space
-- Shell navigation visible - competes with content
-- Cards have heavy borders and shadows
-
-### Proposed Immersive Layout:
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  ← My Groups                                    [+] [Enter Code]│  ← Compact 48px header
-├─────────────────────────────────────────────────────────────────┤
-│  [My Groups] [Discover] [Activity]                              │  ← Slim inline tabs
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  ┌────────────────────────────────────────────────────────────┐ │
-│  │  AV  Morning Crew                           Crew • 12 →   │ │  ← Full-width cards
-│  └────────────────────────────────────────────────────────────┘ │
-│  ┌────────────────────────────────────────────────────────────┐ │
-│  │  PP  Pickleball Palace Official             Venue • 45 →  │ │
-│  └────────────────────────────────────────────────────────────┘ │
-│                                                                 │
-│                          [Full height content area]             │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
+```typescript
+// Pattern from existing CourtPresence.tsx
+const channel = supabase.channel(`group-presence-${groupId}`)
+  .on('presence', { event: 'sync' }, () => {
+    const state = channel.presenceState();
+    // Update online members
+  })
+  .subscribe(async (status) => {
+    if (status === 'SUBSCRIBED') {
+      await channel.track({ user_id, online_at: new Date().toISOString() });
+    }
+  });
 ```
 
-### Community.tsx Changes:
-
-1. **Remove container constraints** - Full edge-to-edge on mobile
-2. **Compact header** - Single line with minimal controls
-3. **Inline tabs** - Slim tab bar without box styling
-4. **Cards stretch full width** - No side margins on mobile
-5. **Reduce empty state visual weight** - Subtle, text-focused
-6. **Hide page title** - Use back button context instead
-
-**Code Changes:**
-```tsx
-// Current
-<div className="container max-w-4xl mx-auto px-4 py-8 space-y-8">
-
-// Proposed
-<div className="flex flex-col h-full">
-  {/* Compact header */}
-  <div className="flex items-center justify-between px-4 py-3 border-b border-border/30">
-    <h1 className="text-lg font-semibold">Community</h1>
-    <div className="flex gap-2">
-      <Button variant="ghost" size="sm">Enter Code</Button>
-      <Button size="sm">+ Create</Button>
-    </div>
-  </div>
-  
-  {/* Full-height scrollable content */}
-  <div className="flex-1 overflow-y-auto">
-```
-
-### GroupDetail.tsx - Chat-Focused Immersive Mode:
-
-For the group detail page, especially Chat tab:
-
-1. **Fullscreen chat experience** - When in Chat tab, minimize header/tabs
-2. **Edge-to-edge messages** - Reduce horizontal padding
-3. **Floating composer** - Fixed to bottom with minimal chrome
-4. **Tab bar becomes minimal** - Icons only, no labels
-
-**Code Changes:**
-```tsx
-// When in chat tab, use immersive mode
-const isImmersive = activeTab === 'chat';
-
-return (
-  <div className={cn(
-    "flex flex-col h-[calc(100vh-80px)]", // Account for bottom nav
-    isImmersive && "h-[calc(100vh-60px)]" // Tighter for chat
-  )}>
-```
-
-### GroupChat.tsx - Enhanced Experience:
-
-1. **Expand to fill available height** - Dynamic calculation
-2. **Reduce card styling on message area** - Simple background
-3. **Floating input** - Sticky to bottom with subtle blur
-4. **Larger touch targets** - 44px minimum
+**UI Changes:**
+- `GroupChat.tsx`: Add "X online" indicator in header
+- `GroupMembers.tsx`: Show green dot on online member avatars
+- `GroupSnapshot.tsx`: Add online member count
 
 ---
 
-## Phase 6: GroupCard Refinement
+## 2. Typing Indicators
 
-For consistent professional feel:
+**Goal:** Show when someone is typing in chat
 
-1. **Reduce card border weight** - `border-border/30`
-2. **Improve avatar sizing** - Consistent 48px for groups
-3. **Cleaner type badges** - Less saturated colors
-4. **Refined hover states** - Subtle scale + shadow
+**Implementation:**
+- Use Supabase Broadcast for ephemeral typing state
+- Debounce typing events (300ms)
+- Auto-clear after 3 seconds of inactivity
+- Show animated typing bubble
+
+```typescript
+// Broadcast typing status
+channel.send({
+  type: 'broadcast',
+  event: 'typing',
+  payload: { user_id, display_name }
+});
+```
+
+**UI Component:** `TypingIndicator.tsx`
+- Three animated dots
+- Shows "John is typing..." or "John and 2 others are typing..."
+- Positioned just above the message input
 
 ---
 
-## Technical Implementation Summary
+## 3. Enhanced Chat Experience
 
-### Files to Modify:
+**Goal:** Make chat feel fluid and responsive
+
+### Message Transitions
+- Add subtle slide-in animations for new messages
+- Animate message sending state (optimistic UI)
+- Smooth scroll-to-bottom behavior
+
+### Quick Emoji Reactions for Chat
+- Long-press/double-tap on message to show emoji picker
+- Show small reaction pills below messages
+- Animate reaction additions
+
+### Message Grouping
+- Group consecutive messages from same user
+- Show timestamp only for first message in group
+- Smart time separators ("Today", "Yesterday", "Monday")
+
+### Read Indicators
+- Track `last_read_at` per user
+- Show "Seen by X" for own messages (optional)
+
+---
+
+## 4. Rich Content Features
+
+### @Mentions System
+- Type `@` to trigger member autocomplete
+- Highlight mentioned names in messages
+- Store mentions for notification system (future)
+
+### Link Previews
+- Detect URLs in messages
+- Show preview card with title, description, image
+- Use existing fetch/parse utilities
+
+### Media Quick Actions
+- Add camera icon for quick photo (placeholder for now)
+- GIF picker button (future)
+
+---
+
+## 5. Visual Micro-Interactions
+
+**Goal:** Premium, native-app feel
+
+| Element | Animation |
+|---------|-----------|
+| Send button | Scale + ripple on tap |
+| Message bubble | Slide-in from right (own) or left (others) |
+| Reactions | Pop + wiggle when added |
+| Typing dots | Wave animation (sequential bounce) |
+| Online indicator | Gentle pulse |
+| New message badge | Subtle bounce |
+
+**Implementation:**
+- Use Framer Motion for complex animations
+- CSS transitions for simple states
+- 60fps performance target
+
+---
+
+## 6. Feed Enhancements
+
+### Improved Post Composer
+- Expand smoothly on focus
+- Show character count
+- Persist draft on navigation (optional)
+
+### Reaction Feedback
+- Animate emoji when toggled
+- Show brief "+1" toast for new reactions on your posts
+
+### Comment Sheet Improvements
+- Smoother slide-up animation
+- Auto-focus input when opened
+- Show comment preview before opening
+
+---
+
+### Technical Implementation
+
+#### New Files to Create
+
+| File | Purpose |
+|------|---------|
+| `src/hooks/useGroupPresence.ts` | Real-time presence tracking |
+| `src/hooks/useTypingIndicator.ts` | Typing state management |
+| `src/components/community/TypingIndicator.tsx` | Typing dots UI |
+| `src/components/community/OnlineIndicator.tsx` | Green dot component |
+| `src/components/community/ChatMessage.tsx` | Enhanced message bubble |
+| `src/components/community/MessageReactions.tsx` | Quick reactions for chat |
+| `src/components/community/MentionAutocomplete.tsx` | @mention picker |
+
+#### Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/pages/player/Community.tsx` | Full-width layout, compact header, minimal chrome |
-| `src/pages/player/GroupDetail.tsx` | Immersive mode for chat, reduced spacing |
-| `src/components/community/GroupChat.tsx` | Full-height, floating input, edge-to-edge messages |
-| `src/components/community/GroupCard.tsx` | Refined styling, softer borders |
-| `src/components/community/GroupFeed.tsx` | Reduced card weight, cleaner composer |
-| `src/pages/player/FindEvents.tsx` | Lighter header, refined filters |
-| `src/pages/player/MyEvents.tsx` | Improved card hierarchy, better empty states |
-| `src/pages/player/MyBookings.tsx` | Consistent styling with Events |
-| `src/components/dashboard/MatchCard.tsx` | Softer styling |
-| `src/components/dashboard/ActivityModule.tsx` | Reduced visual weight |
-| `src/components/events/UnifiedEventCard.tsx` | Improved hierarchy |
-
-### CSS/Styling Patterns to Apply:
-
-1. **Softer borders:** `border-border/30` or `border-border/40`
-2. **Refined shadows:** `shadow-sm` with reduced opacity
-3. **Consistent spacing:** `gap-4`, `p-4` (8pt grid)
-4. **Typography:** `text-sm` for metadata, `font-medium` for labels
-5. **Hover states:** `hover:bg-muted/30` (subtle background)
-6. **Active states:** `active:scale-[0.99]` (micro feedback)
+| `src/components/community/GroupChat.tsx` | Add presence, typing, animations, enhanced UX |
+| `src/components/community/GroupFeed.tsx` | Add micro-interactions to reactions, improved composer |
+| `src/components/community/GroupMembers.tsx` | Add online indicators |
+| `src/components/community/GroupSnapshot.tsx` | Show online count |
+| `src/pages/player/GroupDetail.tsx` | Integrate presence system |
+| `src/hooks/useGroupChat.ts` | Add typing broadcast, message animations support |
 
 ---
 
-## Expected Outcomes
+### Detailed Component Changes
 
-1. **Dashboard** - Cleaner card styling, less visual noise
-2. **Find** - Lighter header, better content focus
-3. **My Events** - Professional card hierarchy
-4. **Bookings** - Consistent with Events styling
-5. **Community** - Full-screen immersive experience with minimal branding chrome
-6. **Group Detail/Chat** - Native messaging app feel
+#### GroupChat.tsx Enhanced
+
+```text
+┌─────────────────────────────────────────────────────────┐
+│  Chat            ● 3 online                             │  ← Online count
+├─────────────────────────────────────────────────────────┤
+│                                                         │
+│  ┌──── Today ────┐                                     │  ← Smart date separator
+│                                                         │
+│        ┌─────────────────────────────────┐             │
+│        │  Anyone up for 3pm today?       │  ← Own msg │
+│        └─────────────────────────────────┘  10:42 AM  │
+│                                                         │
+│  ┌─────────────────────────────────────┐               │
+│  │  I'm in! Meet at court 3?           │  ← Other msg │
+│  └─────────────────────────────────────┘  👍 2        │  ← Reactions
+│                                           Sarah • 10:43│
+│                                                         │
+│  ┌─────────────────────────────────────┐               │
+│  │ ● ● ●                               │  ← Typing    │
+│  │ John is typing...                   │               │
+│  └─────────────────────────────────────┘               │
+│                                                         │
+├─────────────────────────────────────────────────────────┤
+│  [😊] Type a message...                         [📷][➤]│  ← Enhanced input
+└─────────────────────────────────────────────────────────┘
+```
 
 ---
 
-## Community Tab Specific Goals
+### Animation Specifications
 
-Per user request, the Community tab will:
-- ✅ Use full screen width (edge-to-edge on mobile)
-- ✅ Minimize header/navigation chrome
-- ✅ Maximize content area for chatting and engagement
-- ✅ Keep Pulse branding to absolute minimum (just logo in shell, no repeated branding)
-- ✅ Feel like a native messaging/social app
+**Message Send Animation:**
+```css
+@keyframes message-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+/* Duration: 200ms, ease-out */
+```
 
+**Typing Indicator Dots:**
+```css
+@keyframes typing-bounce {
+  0%, 60%, 100% { transform: translateY(0); }
+  30% { transform: translateY(-4px); }
+}
+/* Staggered: 0ms, 150ms, 300ms */
+```
+
+**Reaction Pop:**
+```css
+@keyframes reaction-pop {
+  0% { transform: scale(0); }
+  50% { transform: scale(1.3); }
+  100% { transform: scale(1); }
+}
+/* Duration: 300ms, spring-like */
+```
+
+---
+
+### Presence Hook Design
+
+```typescript
+// useGroupPresence.ts
+export function useGroupPresence(groupId: string) {
+  const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
+  const [onlineProfiles, setOnlineProfiles] = useState<Profile[]>([]);
+  
+  useEffect(() => {
+    const channel = supabase.channel(`group-presence-${groupId}`, {
+      config: { presence: { key: 'user_id' } }
+    });
+    
+    channel
+      .on('presence', { event: 'sync' }, () => {
+        const state = channel.presenceState();
+        const userIds = Object.values(state).flat().map(p => p.user_id);
+        setOnlineUsers(userIds);
+        fetchProfiles(userIds);
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            await channel.track({ user_id: user.id });
+          }
+        }
+      });
+      
+    return () => supabase.removeChannel(channel);
+  }, [groupId]);
+  
+  return { onlineUsers, onlineProfiles, isOnline: (userId) => onlineUsers.includes(userId) };
+}
+```
+
+---
+
+### Typing Indicator Hook Design
+
+```typescript
+// useTypingIndicator.ts
+export function useTypingIndicator(groupId: string, channelRef: MutableRefObject<RealtimeChannel | null>) {
+  const [typingUsers, setTypingUsers] = useState<{id: string, name: string}[]>([]);
+  
+  // Clear stale typing states after 3 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTypingUsers(prev => prev.filter(u => u.timestamp > Date.now() - 3000));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+  
+  const startTyping = useCallback(debounce((userId, displayName) => {
+    channelRef.current?.send({
+      type: 'broadcast',
+      event: 'typing',
+      payload: { user_id: userId, display_name: displayName }
+    });
+  }, 300), []);
+  
+  return { typingUsers, startTyping };
+}
+```
+
+---
+
+### Performance Considerations
+
+1. **Presence Optimization**
+   - Only track presence when user is actively viewing group
+   - Unsubscribe on tab switch/navigation
+   - Debounce presence updates
+
+2. **Message Rendering**
+   - Virtualize long message lists (if >100 messages)
+   - Lazy load images/link previews
+   - Use React.memo for message components
+
+3. **Animation Performance**
+   - Use CSS transforms (GPU accelerated)
+   - Avoid layout thrashing
+   - will-change hints for animated elements
+
+---
+
+### Implementation Phases
+
+**Phase 1: Foundation (This Implementation)**
+- Real-time presence system
+- Typing indicators
+- Message animations
+- Online indicators in members list
+- Enhanced input bar
+
+**Phase 2: Rich Content (Future)**
+- @mentions with autocomplete
+- Link previews
+- Image attachments
+- GIF support
+
+**Phase 3: Notifications (Future)**
+- Push notifications for mentions
+- Unread badges with badge API
+- Sound effects (optional)
+
+---
+
+### User Experience Summary
+
+After implementation, the Community tab will:
+
+- Show who's online in each group with real-time green dots
+- Display "John is typing..." when members compose messages
+- Animate messages smoothly as they appear
+- Feel responsive with instant send feedback
+- Support quick emoji reactions on chat messages
+- Look and feel like a premium native messaging app
+- Operate quickly with optimized rendering and animations
+
+---
+
+### Success Metrics
+
+| Metric | Target |
+|--------|--------|
+| Message send latency | < 100ms perceived |
+| Animation frame rate | 60 fps |
+| Presence update delay | < 500ms |
+| Typing indicator accuracy | 95%+ |
+| Time to first interaction | < 2s |
