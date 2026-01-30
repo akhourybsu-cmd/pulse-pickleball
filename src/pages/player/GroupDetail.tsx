@@ -61,6 +61,9 @@ export default function GroupDetail() {
 
   const { createPost } = useGroupPosts(groupId || '');
 
+  // Immersive mode for chat tab
+  const isImmersive = activeTab === 'chat';
+
   useEffect(() => {
     if (groupId) {
       fetchGroupData();
@@ -157,9 +160,9 @@ export default function GroupDetail() {
 
   if (loading) {
     return (
-      <div className="container max-w-4xl mx-auto px-4 py-6 space-y-4">
+      <div className="px-4 py-4 space-y-4">
         <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-10 w-full" />
         <Skeleton className="h-64 w-full" />
       </div>
     );
@@ -167,20 +170,14 @@ export default function GroupDetail() {
 
   if (!group) {
     return (
-      <div className="container max-w-4xl mx-auto px-4 py-12 text-center">
-        <h2 className="text-xl font-semibold">Group not found</h2>
-        <Button onClick={() => navigate('/player/community')} className="mt-4">
+      <div className="px-4 py-12 text-center">
+        <h2 className="text-lg font-medium">Group not found</h2>
+        <Button onClick={() => navigate('/player/community')} variant="outline" size="sm" className="mt-4">
           Back to Community
         </Button>
       </div>
     );
   }
-
-  const visibilityIcon = group.visibility === 'private'
-    ? <Lock className="h-4 w-4" />
-    : group.visibility === 'unlisted'
-    ? <Eye className="h-4 w-4" />
-    : <Globe className="h-4 w-4" />;
 
   const visibilityLabel = group.visibility === 'private' 
     ? 'Private Group' 
@@ -189,19 +186,36 @@ export default function GroupDetail() {
     : 'Public Group';
 
   return (
-    <div className="container max-w-4xl mx-auto px-4 pt-6 pb-4 space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3">
+    <div className={cn(
+      "flex flex-col",
+      isImmersive ? "h-[calc(100vh-60px)]" : "min-h-[calc(100vh-120px)]"
+    )}>
+      {/* Compact Header */}
+      <div className={cn(
+        "flex items-center gap-2 px-4 border-b border-border/30",
+        isImmersive ? "py-2" : "py-3"
+      )}>
         <Button 
           variant="ghost" 
           size="icon"
+          className="h-8 w-8 -ml-2"
           onClick={() => navigate('/player/community')}
         >
-          <ArrowLeft className="h-5 w-5" />
+          <ArrowLeft className="h-4 w-4" />
         </Button>
         
         <div className="flex-1 min-w-0">
-          <h1 className="text-2xl font-bold tracking-tight line-clamp-2 leading-tight mb-1">{group.name}</h1>
+          <h1 className="text-base font-semibold truncate">{group.name}</h1>
+          {!isImmersive && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1">
+                {group.visibility === 'private' ? <Lock className="h-3 w-3" /> : <Globe className="h-3 w-3" />}
+                {group.visibility}
+              </span>
+              <span>•</span>
+              <span>{group.member_count} members</span>
+            </div>
+          )}
         </div>
 
         {/* Header Actions */}
@@ -210,16 +224,17 @@ export default function GroupDetail() {
             <Button 
               variant="ghost" 
               size="icon"
+              className="h-8 w-8"
               onClick={() => setInviteModalOpen(true)}
             >
-              <Share2 className="h-5 w-5" />
+              <Share2 className="h-4 w-4" />
             </Button>
           )}
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <Plus className="h-5 w-5" />
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Plus className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -241,8 +256,8 @@ export default function GroupDetail() {
           {isAdmin && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <MoreVertical className="h-5 w-5" />
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -256,119 +271,71 @@ export default function GroupDetail() {
         </div>
       </div>
 
-      {/* About Strip with Details Drawer */}
-      <div className="flex items-center gap-3 text-sm">
-        <Popover>
-          <PopoverTrigger asChild>
-            <Badge 
-              variant="outline" 
-              className="text-xs cursor-pointer hover:bg-muted gap-1 transition-colors"
-            >
-              {group.visibility === 'private' ? <Lock className="h-3 w-3" /> : <Globe className="h-3 w-3" />}
-              {group.visibility === 'private' ? 'Private' : group.visibility === 'unlisted' ? 'Unlisted' : 'Public'}
-            </Badge>
-          </PopoverTrigger>
-          <PopoverContent className="w-56 text-sm p-3" align="start">
-            <div className="space-y-2">
-              <p className="flex justify-between"><span className="text-muted-foreground">Visibility</span><span className="font-medium">{visibilityLabel}</span></p>
-              <p className="flex justify-between"><span className="text-muted-foreground">Join</span><span className="font-medium">{group.join_method === 'open' ? 'Anyone' : 'Invite only'}</span></p>
-              <p className="flex justify-between"><span className="text-muted-foreground">Invite</span><span className="font-medium">Members can share</span></p>
-            </div>
-          </PopoverContent>
-        </Popover>
-        {group.description ? (
-          <Drawer>
-            <DrawerTrigger asChild>
-              <button className="text-muted-foreground hover:text-foreground transition-colors truncate max-w-[200px] sm:max-w-none text-left">
-                {group.description}
-                <span className="text-primary ml-1">View details</span>
-              </button>
-            </DrawerTrigger>
-            <DrawerContent>
-              <DrawerHeader>
-                <DrawerTitle>{group.name}</DrawerTitle>
-                <DrawerDescription>{visibilityLabel}</DrawerDescription>
-              </DrawerHeader>
-              <div className="px-4 pb-6 space-y-4">
-                <div>
-                  <h4 className="font-medium mb-1">About</h4>
-                  <p className="text-muted-foreground">{group.description || 'No description'}</p>
-                </div>
-                <div>
-                  <h4 className="font-medium mb-1">Members</h4>
-                  <p className="text-muted-foreground">{group.member_count} members</p>
-                </div>
-              </div>
-            </DrawerContent>
-          </Drawer>
-        ) : (
-          <span className="text-muted-foreground">
-            <Users className="h-3.5 w-3.5 inline mr-1" />
-            {group.member_count} members
-          </span>
-        )}
-      </div>
-
-      {/* Group Snapshot */}
-      <GroupSnapshot 
-        members={members}
-        onCreateEvent={() => setActiveTab('schedule')}
-        onViewFeed={() => {
-          setActiveTab('feed');
-          setTimeout(() => document.querySelector('textarea')?.focus(), 100);
-        }}
-      />
-
-      {/* Tabs with Labels */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-5 gap-1 bg-transparent p-0">
-          <TabsTrigger value="feed" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-2.5 min-h-[44px] text-muted-foreground/70 data-[state=active]:text-foreground data-[state=active]:font-medium data-[state=active]:bg-muted/50 rounded-lg transition-colors">
-            <MessageSquare className="h-3.5 w-3.5" />
-            <span className="text-[10px] sm:text-sm">Feed</span>
-          </TabsTrigger>
-          <TabsTrigger value="schedule" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-2.5 min-h-[44px] text-muted-foreground/70 data-[state=active]:text-foreground data-[state=active]:font-medium data-[state=active]:bg-muted/50 rounded-lg transition-colors">
-            <Calendar className="h-3.5 w-3.5" />
-            <span className="text-[10px] sm:text-sm">Events</span>
-          </TabsTrigger>
-          <TabsTrigger value="chat" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-2.5 min-h-[44px] text-muted-foreground/70 data-[state=active]:text-foreground data-[state=active]:font-medium data-[state=active]:bg-muted/50 rounded-lg transition-colors">
-            <MessageCircle className="h-3.5 w-3.5" />
-            <span className="text-[10px] sm:text-sm">Chat</span>
-          </TabsTrigger>
-          <TabsTrigger value="members" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-2.5 min-h-[44px] text-muted-foreground/70 data-[state=active]:text-foreground data-[state=active]:font-medium data-[state=active]:bg-muted/50 rounded-lg transition-colors">
-            <Users className="h-3.5 w-3.5" />
-            <span className="text-[10px] sm:text-sm">Members</span>
-          </TabsTrigger>
-          <TabsTrigger value="files" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-2.5 min-h-[44px] text-muted-foreground/70 data-[state=active]:text-foreground data-[state=active]:font-medium data-[state=active]:bg-muted/50 rounded-lg transition-colors">
-            <FolderOpen className="h-3.5 w-3.5" />
-            <span className="text-[10px] sm:text-sm">Files</span>
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="feed" className="mt-6">
-          <GroupFeed groupId={groupId!} isAdmin={isAdmin} currentUserId={currentUserId} />
-        </TabsContent>
-
-        <TabsContent value="schedule" className="mt-6">
-          <GroupSchedule groupId={groupId!} isAdmin={isAdmin} currentUserId={currentUserId} />
-        </TabsContent>
-
-        <TabsContent value="chat" className="mt-6">
-          <GroupChat groupId={groupId!} currentUserId={currentUserId} />
-        </TabsContent>
-
-        <TabsContent value="members" className="mt-6">
-          <GroupMembers 
-            groupId={groupId!} 
-            isAdmin={isAdmin} 
-            isOwner={membership?.role === 'owner'} 
-            currentUserId={currentUserId}
-            onInviteClick={() => setInviteModalOpen(true)}
+      {/* Group Snapshot - Hidden in immersive mode */}
+      {!isImmersive && (
+        <div className="px-4 py-3">
+          <GroupSnapshot 
+            members={members}
+            onCreateEvent={() => setActiveTab('schedule')}
+            onViewFeed={() => {
+              setActiveTab('feed');
+              setTimeout(() => document.querySelector('textarea')?.focus(), 100);
+            }}
           />
-        </TabsContent>
+        </div>
+      )}
 
-        <TabsContent value="files" className="mt-6">
-          <GroupFiles groupId={groupId!} isAdmin={isAdmin} currentUserId={currentUserId} />
-        </TabsContent>
+      {/* Minimal Tab Bar */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
+        <div className="border-b border-border/30 px-2">
+          <TabsList className="h-10 bg-transparent p-0 w-full justify-start gap-0">
+            {[
+              { value: 'feed', icon: MessageSquare, label: 'Feed' },
+              { value: 'schedule', icon: Calendar, label: 'Events' },
+              { value: 'chat', icon: MessageCircle, label: 'Chat' },
+              { value: 'members', icon: Users, label: 'Members' },
+              { value: 'files', icon: FolderOpen, label: 'Files' },
+            ].map((tab) => (
+              <TabsTrigger 
+                key={tab.value}
+                value={tab.value} 
+                className="flex-1 h-10 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-1 text-xs px-2"
+              >
+                <tab.icon className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">{tab.label}</span>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
+
+        {/* Content Area */}
+        <div className="flex-1 overflow-hidden">
+          <TabsContent value="feed" className="h-full m-0 overflow-y-auto p-4">
+            <GroupFeed groupId={groupId!} isAdmin={isAdmin} currentUserId={currentUserId} />
+          </TabsContent>
+
+          <TabsContent value="schedule" className="h-full m-0 overflow-y-auto p-4">
+            <GroupSchedule groupId={groupId!} isAdmin={isAdmin} currentUserId={currentUserId} />
+          </TabsContent>
+
+          <TabsContent value="chat" className="h-full m-0 flex flex-col">
+            <GroupChat groupId={groupId!} currentUserId={currentUserId} />
+          </TabsContent>
+
+          <TabsContent value="members" className="h-full m-0 overflow-y-auto p-4">
+            <GroupMembers 
+              groupId={groupId!} 
+              isAdmin={isAdmin} 
+              isOwner={membership?.role === 'owner'} 
+              currentUserId={currentUserId}
+              onInviteClick={() => setInviteModalOpen(true)}
+            />
+          </TabsContent>
+
+          <TabsContent value="files" className="h-full m-0 overflow-y-auto p-4">
+            <GroupFiles groupId={groupId!} isAdmin={isAdmin} currentUserId={currentUserId} />
+          </TabsContent>
+        </div>
       </Tabs>
 
       {/* Invite Modal */}

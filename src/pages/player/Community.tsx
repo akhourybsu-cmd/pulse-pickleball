@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Plus, Key, Users, Search, Activity } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { GroupCard } from '@/components/community/GroupCard';
 import { ReorderableGroupList } from '@/components/community/ReorderableGroupList';
@@ -25,127 +24,144 @@ export default function Community() {
   };
 
   return (
-    <div className="container max-w-4xl mx-auto px-4 py-8 space-y-8">
-      {/* Header */}
-      <div className="space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight">Community</h1>
-        <p className="text-muted-foreground">Your groups, your people.</p>
+    <div className="flex flex-col min-h-[calc(100vh-120px)]">
+      {/* Compact Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border/30">
+        <h1 className="text-lg font-semibold">Community</h1>
+        <div className="flex items-center gap-2">
+          <Button 
+            onClick={() => setJoinDialogOpen(true)} 
+            variant="ghost" 
+            size="sm"
+            className="h-8 px-3 text-xs"
+          >
+            <Key className="h-3.5 w-3.5 mr-1.5" />
+            <span className="hidden sm:inline">Enter Code</span>
+          </Button>
+          <Button 
+            onClick={() => setCreateDialogOpen(true)} 
+            size="sm"
+            className="h-8 px-3 text-xs"
+          >
+            <Plus className="h-3.5 w-3.5 mr-1.5" />
+            Create
+          </Button>
+        </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="flex flex-wrap gap-3">
-        <Button onClick={() => setJoinDialogOpen(true)} variant="outline" className="gap-2">
-          <Key className="h-4 w-4" />
-          Enter Group Code
-        </Button>
-        <Button onClick={() => setCreateDialogOpen(true)} className="gap-2">
-          <Plus className="h-4 w-4" />
-          Create Group
-        </Button>
-      </div>
+      {/* Slim Inline Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+        <div className="border-b border-border/30 px-4">
+          <TabsList className="h-10 bg-transparent p-0 gap-4">
+            <TabsTrigger 
+              value="my-groups" 
+              className="h-10 px-0 pb-0 pt-1 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none text-sm"
+            >
+              <Users className="h-3.5 w-3.5 mr-1.5" />
+              Groups
+              {myGroups.length > 0 && (
+                <span className="ml-1.5 text-xs text-muted-foreground">
+                  {myGroups.length}
+                </span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger 
+              value="discover" 
+              className="h-10 px-0 pb-0 pt-1 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none text-sm"
+            >
+              <Search className="h-3.5 w-3.5 mr-1.5" />
+              Discover
+            </TabsTrigger>
+            <TabsTrigger 
+              value="activity" 
+              className="h-10 px-0 pb-0 pt-1 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none text-sm"
+            >
+              <Activity className="h-3.5 w-3.5 mr-1.5" />
+              Activity
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3 mb-8">
-          <TabsTrigger value="my-groups" className="gap-2">
-            <Users className="h-4 w-4" />
-            <span className="hidden sm:inline">My Groups</span>
-            <span className="sm:hidden">Groups</span>
-            {myGroups.length > 0 && (
-              <span className="ml-1 text-xs bg-muted px-1.5 py-0.5 rounded-full">
-                {myGroups.length}
-              </span>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="discover" className="gap-2">
-            <Search className="h-4 w-4" />
-            Discover
-          </TabsTrigger>
-          <TabsTrigger value="activity" className="gap-2">
-            <Activity className="h-4 w-4" />
-            Activity
-          </TabsTrigger>
-        </TabsList>
-
-        {/* My Groups Tab */}
-        <TabsContent value="my-groups" className="space-y-5 mt-2">
-          {loading ? (
-            <div className="space-y-4">
-              {[1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-28 w-full rounded-xl" />
-              ))}
-            </div>
-          ) : myGroups.length > 0 ? (
-            <ReorderableGroupList 
-              groups={myGroups} 
-              onReorder={updateGroupOrder} 
-            />
-          ) : (
-            <Card className="border-dashed">
-              <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                <Users className="h-12 w-12 text-muted-foreground/50 mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No groups yet</h3>
-                <p className="text-muted-foreground mb-6 max-w-sm">
-                  Join a group with a code or create your own to connect with other players.
+        {/* Full-height scrollable content */}
+        <div className="flex-1 overflow-y-auto">
+          {/* My Groups Tab */}
+          <TabsContent value="my-groups" className="m-0 p-4 space-y-3">
+            {loading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <Skeleton key={i} className="h-20 w-full rounded-xl" />
+                ))}
+              </div>
+            ) : myGroups.length > 0 ? (
+              <ReorderableGroupList 
+                groups={myGroups} 
+                onReorder={updateGroupOrder} 
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <div className="w-12 h-12 rounded-full bg-muted/50 flex items-center justify-center mb-4">
+                  <Users className="h-5 w-5 text-muted-foreground/70" />
+                </div>
+                <h3 className="text-base font-medium mb-1">No groups yet</h3>
+                <p className="text-sm text-muted-foreground mb-6 max-w-[280px]">
+                  Join with a code or create your own group
                 </p>
-                <div className="flex flex-wrap gap-3 justify-center">
-                  <Button onClick={() => setJoinDialogOpen(true)} variant="outline" className="gap-2">
-                    <Key className="h-4 w-4" />
-                    Join with Code
+                <div className="flex gap-2">
+                  <Button onClick={() => setJoinDialogOpen(true)} variant="outline" size="sm">
+                    Join
                   </Button>
-                  <Button onClick={() => setCreateDialogOpen(true)} className="gap-2">
-                    <Plus className="h-4 w-4" />
-                    Create Group
+                  <Button onClick={() => setCreateDialogOpen(true)} size="sm">
+                    Create
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-
-        {/* Discover Tab */}
-        <TabsContent value="discover" className="space-y-5 mt-2">
-          {publicGroups.length > 0 ? (
-            <>
-              <p className="text-sm text-muted-foreground/70">
-                Public groups you can join
-              </p>
-              <div className="space-y-4">
-                {publicGroups.map((group) => {
-                  const isAlreadyMember = myGroups.some(g => g.id === group.id);
-                  return (
-                    <GroupCard 
-                      key={group.id} 
-                      group={{
-                        ...group,
-                        membership: isAlreadyMember ? myGroups.find(g => g.id === group.id)?.membership : undefined,
-                        unread_count: 0,
-                      }}
-                      showJoinButton={!isAlreadyMember}
-                      onJoin={handleJoinPublicGroup}
-                      isJoining={joiningGroupId === group.id}
-                    />
-                  );
-                })}
               </div>
-            </>
-          ) : (
-            <Card className="border-dashed">
-              <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                <Search className="h-12 w-12 text-muted-foreground/50 mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No public groups</h3>
-                <p className="text-muted-foreground max-w-sm">
-                  There are no public groups to discover right now. Check back later or create your own!
-                </p>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
+            )}
+          </TabsContent>
 
-        {/* Activity Tab */}
-        <TabsContent value="activity" className="mt-2">
-          <CommunityActivityFeed />
-        </TabsContent>
+          {/* Discover Tab */}
+          <TabsContent value="discover" className="m-0 p-4 space-y-3">
+            {publicGroups.length > 0 ? (
+              <>
+                <p className="text-xs text-muted-foreground/70 mb-3">
+                  Public groups you can join
+                </p>
+                <div className="space-y-3">
+                  {publicGroups.map((group) => {
+                    const isAlreadyMember = myGroups.some(g => g.id === group.id);
+                    return (
+                      <GroupCard 
+                        key={group.id} 
+                        group={{
+                          ...group,
+                          membership: isAlreadyMember ? myGroups.find(g => g.id === group.id)?.membership : undefined,
+                          unread_count: 0,
+                        }}
+                        showJoinButton={!isAlreadyMember}
+                        onJoin={handleJoinPublicGroup}
+                        isJoining={joiningGroupId === group.id}
+                      />
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <div className="w-12 h-12 rounded-full bg-muted/50 flex items-center justify-center mb-4">
+                  <Search className="h-5 w-5 text-muted-foreground/70" />
+                </div>
+                <h3 className="text-base font-medium mb-1">No public groups</h3>
+                <p className="text-sm text-muted-foreground max-w-[280px]">
+                  Check back later or create your own group
+                </p>
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Activity Tab */}
+          <TabsContent value="activity" className="m-0 p-4">
+            <CommunityActivityFeed />
+          </TabsContent>
+        </div>
       </Tabs>
 
       {/* Dialogs */}

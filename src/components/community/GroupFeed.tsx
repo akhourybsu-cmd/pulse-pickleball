@@ -3,7 +3,6 @@ import { MessageSquare, Pin, Trash2, MoreVertical, Send, Image, BarChart3, Gamep
 import { PostCommentsSheet } from './PostCommentsSheet';
 import { GroupEmptyState } from './GroupEmptyState';
 import { formatDistanceToNow } from 'date-fns';
-import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -88,11 +87,11 @@ export function GroupFeed({ groupId, isAdmin, currentUserId }: GroupFeedProps) {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {/* Compact Post Composer */}
-      <div className="bg-muted/20 rounded-xl p-4">
+      <div className="bg-muted/30 rounded-xl p-3">
         <div className="flex gap-3 items-start">
-          <Avatar className="h-9 w-9 flex-shrink-0">
+          <Avatar className="h-8 w-8 flex-shrink-0">
             <AvatarFallback className="text-xs">U</AvatarFallback>
           </Avatar>
           <div className="flex-1 relative">
@@ -100,17 +99,17 @@ export function GroupFeed({ groupId, isAdmin, currentUserId }: GroupFeedProps) {
               placeholder="Post to the group..."
               value={newPostContent}
               onChange={(e) => setNewPostContent(e.target.value)}
-              className="min-h-[56px] resize-none pr-24 text-sm py-3 px-4 rounded-xl bg-background border-border/40"
+              className="min-h-[52px] resize-none pr-20 text-sm py-2.5 px-3 rounded-lg bg-background border-border/40"
             />
-            <div className="absolute right-3 bottom-3 flex items-center gap-1.5">
-              <Button variant="ghost" size="icon" className="h-8 w-8" disabled>
-                <Image className="h-4 w-4 text-muted-foreground/60" />
+            <div className="absolute right-2 bottom-2 flex items-center gap-1">
+              <Button variant="ghost" size="icon" className="h-7 w-7" disabled>
+                <Image className="h-3.5 w-3.5 text-muted-foreground/50" />
               </Button>
               <Button 
                 onClick={handleCreatePost} 
                 disabled={!newPostContent.trim() || isPosting}
                 size="sm"
-                className="h-8 px-4 text-xs"
+                className="h-7 px-3 text-xs"
               >
                 Post
               </Button>
@@ -142,84 +141,80 @@ export function GroupFeed({ groupId, isAdmin, currentUserId }: GroupFeedProps) {
             .slice(0, 2);
 
           return (
-            <Card key={post.id} className={cn('border-border/40', post.pinned && 'border-primary/50 bg-primary/5')}>
-              <CardHeader className="pb-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex items-start gap-3 flex-1 min-w-0">
-                    <Avatar className="h-10 w-10 flex-shrink-0">
-                      <AvatarImage src={post.profile?.avatar_url || undefined} />
-                      <AvatarFallback>{initials}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2.5 flex-wrap">
-                        <span className="font-semibold text-sm">
-                          {post.profile?.display_name || post.profile?.full_name || 'Unknown'}
-                        </span>
-                        {post.profile?.current_rating && (
-                          <Badge variant="outline" className="text-xs h-5 opacity-80">
-                            {post.profile.current_rating.toFixed(2)}
-                          </Badge>
-                        )}
-                        <span className="text-xs text-muted-foreground/70">
-                          {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 mt-1.5">
-                        {post.pinned && (
-                          <Badge variant="secondary" className="gap-1 text-xs">
-                            <Pin className="h-3 w-3" />
-                            Pinned
-                          </Badge>
-                        )}
-                        {post.type !== 'feed' && (
-                          <Badge variant="outline" className={cn('text-xs', typeInfo.className)}>
-                            {typeInfo.label}
-                          </Badge>
-                        )}
-                      </div>
+            <div key={post.id} className={cn('p-4 rounded-xl bg-card border transition-colors', post.pinned ? 'border-primary/30 bg-primary/5' : 'border-border/30')}>
+              {/* Header */}
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div className="flex items-start gap-2.5 flex-1 min-w-0">
+                  <Avatar className="h-9 w-9 flex-shrink-0">
+                    <AvatarImage src={post.profile?.avatar_url || undefined} />
+                    <AvatarFallback>{initials}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-medium text-sm">
+                        {post.profile?.display_name || post.profile?.full_name || 'Unknown'}
+                      </span>
+                      <span className="text-xs text-muted-foreground/70">
+                        {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      {post.pinned && (
+                        <Badge variant="secondary" className="gap-1 text-[10px] h-5 px-1.5">
+                          <Pin className="h-2.5 w-2.5" />
+                          Pinned
+                        </Badge>
+                      )}
+                      {post.type !== 'feed' && (
+                        <Badge variant="outline" className={cn('text-[10px] h-5 px-1.5', typeInfo.className)}>
+                          {typeInfo.label}
+                        </Badge>
+                      )}
                     </div>
                   </div>
-
-                  {canManage && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        {isAdmin && (
-                          <DropdownMenuItem onClick={() => togglePin(post.id, !post.pinned)}>
-                            <Pin className="h-4 w-4 mr-2" />
-                            {post.pinned ? 'Unpin' : 'Pin Post'}
-                          </DropdownMenuItem>
-                        )}
-                        <DropdownMenuItem 
-                          onClick={() => setDeleteDialogPost(post)}
-                          className="text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
                 </div>
-              </CardHeader>
 
-              <CardContent className="pb-4">
+                {canManage && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-7 w-7">
+                        <MoreVertical className="h-3.5 w-3.5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      {isAdmin && (
+                        <DropdownMenuItem onClick={() => togglePin(post.id, !post.pinned)}>
+                          <Pin className="h-4 w-4 mr-2" />
+                          {post.pinned ? 'Unpin' : 'Pin Post'}
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuItem 
+                        onClick={() => setDeleteDialogPost(post)}
+                        className="text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
+
+              {/* Content */}
+              <div className="mb-3">
                 {post.title && (
-                  <h3 className="font-semibold text-lg mb-3">{post.title}</h3>
+                  <h3 className="font-medium text-base mb-2">{post.title}</h3>
                 )}
                 {post.content && (
                   <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
                     {post.content}
                   </p>
                 )}
-              </CardContent>
+              </div>
 
-              <CardFooter className="pt-2 flex items-center justify-between border-t border-border/30">
-                <div className="flex items-center gap-2">
+              {/* Footer */}
+              <div className="pt-2 flex items-center justify-between border-t border-border/20">
+                <div className="flex items-center gap-1">
                   {REACTION_EMOJIS.map(({ emoji }) => {
                     const reactionData = post.reactions?.find(r => r.emoji === emoji);
                     const hasReacted = reactionData?.user_reacted;
@@ -230,7 +225,7 @@ export function GroupFeed({ groupId, isAdmin, currentUserId }: GroupFeedProps) {
                         key={emoji}
                         variant={hasReacted ? 'secondary' : 'ghost'}
                         size="sm"
-                        className={cn('h-8 gap-1 px-2', hasReacted && 'bg-primary/10')}
+                        className={cn('h-7 gap-1 px-2 text-xs', hasReacted && 'bg-primary/10')}
                         onClick={() => toggleReaction(post.id, emoji)}
                       >
                         <span>{emoji}</span>
@@ -243,14 +238,14 @@ export function GroupFeed({ groupId, isAdmin, currentUserId }: GroupFeedProps) {
                 <Button 
                   variant="ghost" 
                   size="sm" 
-                  className="gap-1.5 text-muted-foreground"
+                  className="h-7 gap-1 text-xs text-muted-foreground"
                   onClick={() => setCommentsPostId(post.id)}
                 >
-                  <MessageSquare className="h-4 w-4" />
+                  <MessageSquare className="h-3.5 w-3.5" />
                   {post.comment_count || 0}
                 </Button>
-              </CardFooter>
-            </Card>
+              </div>
+            </div>
           );
         })
       )}

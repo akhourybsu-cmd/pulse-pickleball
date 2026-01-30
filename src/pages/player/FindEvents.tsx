@@ -4,18 +4,17 @@ import { Search, Calendar, MapPin, Users, Trophy, Gamepad2, GraduationCap, Filte
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useDiscoverEvents, EventTypeFilter, DateRangeFilter } from "@/hooks/useDiscoverEvents";
 import { UnifiedEventCard } from "@/components/events/UnifiedEventCard";
 import { useAuthState } from "@/hooks/useAuthState";
 
 const eventTypeFilters: { value: EventTypeFilter; label: string; icon: React.ReactNode }[] = [
-  { value: 'all', label: 'All Events', icon: <Calendar className="w-4 h-4" /> },
-  { value: 'round_robin', label: 'Round Robin', icon: <Users className="w-4 h-4" /> },
-  { value: 'tournament', label: 'Tournament', icon: <Trophy className="w-4 h-4" /> },
-  { value: 'open_play', label: 'Open Play', icon: <Gamepad2 className="w-4 h-4" /> },
-  { value: 'clinic', label: 'Clinic', icon: <GraduationCap className="w-4 h-4" /> },
+  { value: 'all', label: 'All', icon: <Calendar className="w-3.5 h-3.5" /> },
+  { value: 'round_robin', label: 'Round Robin', icon: <Users className="w-3.5 h-3.5" /> },
+  { value: 'tournament', label: 'Tournament', icon: <Trophy className="w-3.5 h-3.5" /> },
+  { value: 'open_play', label: 'Open Play', icon: <Gamepad2 className="w-3.5 h-3.5" /> },
+  { value: 'clinic', label: 'Clinic', icon: <GraduationCap className="w-3.5 h-3.5" /> },
 ];
 
 const dateRangeFilters: { value: DateRangeFilter; label: string }[] = [
@@ -38,7 +37,7 @@ export default function FindEvents() {
   const { data: events, isLoading, error } = useDiscoverEvents({
     eventType,
     dateRange,
-    state: profile?.player_state ? undefined : undefined, // Could use location here
+    state: profile?.player_state ? undefined : undefined,
     limit: 50,
   });
 
@@ -58,27 +57,27 @@ export default function FindEvents() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="bg-gradient-to-b from-primary/10 to-background pt-6 pb-4 px-4">
+      {/* Refined Header - Lighter gradient */}
+      <div className="bg-gradient-to-b from-muted/30 to-background pt-4 pb-3 px-4">
         <div className="max-w-3xl mx-auto">
-          <h1 className="text-2xl font-bold text-foreground mb-1">Find Events</h1>
-          <p className="text-sm text-muted-foreground mb-4">
-            Discover round robins, tournaments, clinics, and more near you
+          <h1 className="text-xl font-semibold text-foreground mb-0.5">Find Events</h1>
+          <p className="text-xs text-muted-foreground mb-3">
+            Discover round robins, tournaments, and more
           </p>
 
-          {/* Search Bar */}
+          {/* Search Bar - Cleaner */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60" />
             <Input
-              placeholder="Search events, venues, or locations..."
+              placeholder="Search events, venues..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 h-11 bg-card border-border"
+              className="pl-9 h-10 bg-card border-border/40 text-sm"
             />
             <Button
               variant="ghost"
               size="icon"
-              className="absolute right-1 top-1/2 -translate-y-1/2 h-9 w-9"
+              className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
               onClick={() => setShowFilters(!showFilters)}
             >
               <Filter className={cn("w-4 h-4", showFilters && "text-primary")} />
@@ -87,20 +86,20 @@ export default function FindEvents() {
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b">
-        <div className="max-w-3xl mx-auto px-4 py-3">
+      {/* Filters - Refined chips */}
+      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border/30">
+        <div className="max-w-3xl mx-auto px-4 py-2.5">
           {/* Event Type Chips */}
-          <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
+          <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-hide">
             {eventTypeFilters.map((filter) => (
               <button
                 key={filter.value}
                 onClick={() => setEventType(filter.value)}
                 className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors",
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors",
                   eventType === filter.value
                     ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                    : "bg-muted/50 text-muted-foreground hover:bg-muted"
                 )}
               >
                 {filter.icon}
@@ -111,16 +110,16 @@ export default function FindEvents() {
 
           {/* Date Range Chips - Show when filters expanded */}
           {showFilters && (
-            <div className="flex gap-2 pt-2 overflow-x-auto -mx-4 px-4 scrollbar-hide">
+            <div className="flex gap-1.5 pt-2 overflow-x-auto -mx-4 px-4 scrollbar-hide">
               {dateRangeFilters.map((filter) => (
                 <button
                   key={filter.value}
                   onClick={() => setDateRange(filter.value)}
                   className={cn(
-                    "px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-colors border",
+                    "px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-colors border",
                     dateRange === filter.value
                       ? "bg-secondary text-secondary-foreground border-secondary"
-                      : "bg-transparent text-muted-foreground border-border hover:border-primary/50"
+                      : "bg-transparent text-muted-foreground border-border/40 hover:border-primary/30"
                   )}
                 >
                   {filter.label}
@@ -132,42 +131,44 @@ export default function FindEvents() {
       </div>
 
       {/* Results */}
-      <div className="max-w-3xl mx-auto px-4 py-6">
+      <div className="max-w-3xl mx-auto px-4 py-4">
         {isLoading ? (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {[...Array(3)].map((_, i) => (
-              <Skeleton key={i} className="h-32 w-full rounded-xl" />
+              <Skeleton key={i} className="h-28 w-full rounded-xl" />
             ))}
           </div>
         ) : error ? (
           <div className="text-center py-12">
-            <p className="text-muted-foreground">Failed to load events</p>
-            <Button variant="outline" className="mt-4" onClick={() => window.location.reload()}>
+            <p className="text-sm text-muted-foreground">Failed to load events</p>
+            <Button variant="outline" size="sm" className="mt-4" onClick={() => window.location.reload()}>
               Try Again
             </Button>
           </div>
         ) : filteredEvents.length === 0 ? (
-          <div className="text-center py-12">
-            <Calendar className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
-            <h3 className="text-lg font-semibold text-foreground mb-2">No events found</h3>
+          <div className="text-center py-16">
+            <div className="w-12 h-12 rounded-full bg-muted/50 flex items-center justify-center mx-auto mb-4">
+              <Calendar className="w-5 h-5 text-muted-foreground/70" />
+            </div>
+            <h3 className="text-base font-medium text-foreground mb-1">No events found</h3>
             <p className="text-sm text-muted-foreground mb-4">
               {searchQuery 
-                ? "Try adjusting your search or filters"
-                : "Check back later for new events in your area"
+                ? "Try adjusting your search"
+                : "Check back later for new events"
               }
             </p>
             {searchQuery && (
-              <Button variant="outline" onClick={() => setSearchQuery("")}>
+              <Button variant="outline" size="sm" onClick={() => setSearchQuery("")}>
                 Clear Search
               </Button>
             )}
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {/* Results Count */}
             <div className="flex items-center justify-between">
-              <p className="text-sm text-muted-foreground">
-                {filteredEvents.length} event{filteredEvents.length !== 1 ? 's' : ''} found
+              <p className="text-xs text-muted-foreground">
+                {filteredEvents.length} event{filteredEvents.length !== 1 ? 's' : ''}
               </p>
               {(eventType !== 'all' || dateRange !== 'all') && (
                 <Button
@@ -177,7 +178,7 @@ export default function FindEvents() {
                     setEventType('all');
                     setDateRange('all');
                   }}
-                  className="text-xs"
+                  className="text-xs h-7"
                 >
                   Clear filters
                 </Button>
@@ -190,13 +191,11 @@ export default function FindEvents() {
                 key={event.id}
                 event={event}
                 onClick={() => {
-                  // Navigate based on event type
                   if (event.event_type === 'round_robin') {
                     navigate(`/round-robin/${event.id}`);
                   } else if (event.event_type === 'tournament') {
                     navigate(`/tournaments/${event.id}`);
                   } else {
-                    // Generic event detail - could create a unified detail page
                     navigate(`/events/${event.id}`);
                   }
                 }}
