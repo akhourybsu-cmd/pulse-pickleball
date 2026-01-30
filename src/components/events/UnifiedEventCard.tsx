@@ -83,7 +83,7 @@ export function UnifiedEventCard({ event, onClick, compact = false }: UnifiedEve
   return (
     <button
       onClick={onClick}
-      className="w-full text-left p-4 rounded-xl bg-card border border-border hover:border-primary/30 hover:shadow-sm transition-all group"
+      className="w-full text-left p-4 rounded-xl bg-card border border-border/30 hover:border-border/60 transition-colors active:scale-[0.99]"
     >
       <div className="flex gap-4">
         {/* Date Column */}

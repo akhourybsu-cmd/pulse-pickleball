@@ -315,7 +315,7 @@ export const ActivityModule = ({ userId }: ActivityModuleProps) => {
               <button
                 key={item.id}
                 onClick={() => handleActionClick(item)}
-                className="w-full flex items-center gap-3 p-3 rounded-xl bg-destructive/10 hover:bg-destructive/15 border border-destructive/30 transition-colors text-left"
+                className="w-full flex items-center gap-3 p-3 rounded-xl bg-destructive/5 hover:bg-destructive/10 border border-destructive/20 transition-colors text-left"
               >
                 <div className="w-9 h-9 rounded-full bg-destructive/20 flex items-center justify-center flex-shrink-0">
                   <AlertCircle className="w-4 h-4 text-destructive" />
@@ -343,7 +343,7 @@ export const ActivityModule = ({ userId }: ActivityModuleProps) => {
               <button
                 key={item.id}
                 onClick={() => navigate(item.link)}
-                className="w-full flex items-center gap-3 p-3 rounded-xl bg-primary/5 hover:bg-primary/10 border border-primary/20 transition-colors text-left"
+                className="w-full flex items-center gap-3 p-3 rounded-xl bg-primary/5 hover:bg-primary/10 border border-border/30 transition-colors text-left"
               >
                 <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
                   <Calendar className="w-4 h-4 text-primary" />

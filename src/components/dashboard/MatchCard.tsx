@@ -41,7 +41,7 @@ export const MatchCard = ({
   return (
     <button
       onClick={onClick}
-      className="w-full bg-card hover:bg-muted/50 rounded-xl p-4 text-left transition-colors border border-border"
+      className="w-full bg-card hover:bg-muted/30 rounded-xl p-4 text-left transition-colors border border-border/30 active:scale-[0.99]"
     >
       {/* Header Row */}
       <div className="flex items-start justify-between mb-3">
