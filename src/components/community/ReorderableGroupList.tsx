@@ -110,7 +110,7 @@ function ReorderableGroupCard({ group }: { group: GroupWithMembership }) {
             {/* Content */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2.5 mb-1">
-                <h3 className="font-semibold text-base text-foreground truncate leading-relaxed">{group.name}</h3>
+                <h3 className="font-semibold text-base text-foreground line-clamp-2 break-words leading-relaxed">{group.name}</h3>
                 {isVerifiedVenue && (
                   <TooltipProvider>
                     <Tooltip>

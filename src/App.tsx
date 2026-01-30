@@ -110,6 +110,8 @@ const FindEvents = lazy(() => import("./pages/player/FindEvents"));
 const Community = lazy(() => import("./pages/player/Community"));
 const GroupDetail = lazy(() => import("./pages/player/GroupDetail"));
 const GroupManage = lazy(() => import("./pages/player/GroupManage"));
+const DirectMessages = lazy(() => import("./pages/player/DirectMessages"));
+const DirectMessageChat = lazy(() => import("./pages/player/DirectMessageChat"));
 
 // Venue pages
 const VenueOverview = lazy(() => import("./pages/venue/VenueOverview"));
@@ -231,6 +233,8 @@ const AppContent = () => {
             <Route path="community" element={<Community />} />
             <Route path="community/group/:groupId" element={<GroupDetail />} />
             <Route path="community/group/:groupId/manage" element={<GroupManage />} />
+            <Route path="messages" element={<DirectMessages />} />
+            <Route path="messages/:conversationId" element={<DirectMessageChat />} />
           </Route>
 
           {/* Venue routes with shell - require auth + venue access */}
