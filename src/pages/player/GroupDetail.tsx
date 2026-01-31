@@ -363,6 +363,7 @@ export default function GroupDetail() {
         open={quickPostOpen}
         onOpenChange={setQuickPostOpen}
         initialType={quickPostType}
+        groupId={groupId || ''}
         onSubmit={handleQuickPost}
       />
     </div>
