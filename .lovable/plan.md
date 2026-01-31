@@ -1,375 +1,375 @@
 
 
-## Community Page Visual Hierarchy Overhaul
+## Group Image Upload & Storage Plan
 
-### The Core Problem
+### Overview
 
-Currently the Community group feed has a "same-y" visual treatment:
-- Composer, posts, and metadata all share similar gray/white backgrounds
-- The brand green is underutilized (only on buttons and dots)
-- Quick action chips are subtle inline icons, not visually distinct
-- Activity info ("1 active today") floats without context
-- Post cards blend into the background
-- Reactions are visually flat
-
-**Result**: Nothing anchors the screen or tells the eye what's important.
+Enable image uploads for group posts and enhance the existing group files system. The database already has an `image_url` column in `group_posts`, and a `group-files` storage bucket exists. This plan implements the full upload flow for posts and improves the files tab experience.
 
 ---
 
-## Part 1: Composer "Primary Zone" Treatment
+## Current State Analysis
 
-**Goal**: Make the composer the most visually dominant element — the "action area"
+### What Already Exists
+- `group_posts.image_url` column (text, nullable)
+- `group-files` storage bucket (public)
+- `group_files` table for shared files
+- `useGroupFiles` hook with upload/delete functionality
+- Storage RLS policies for group file uploads
 
-### Changes to `GroupFeed.tsx` Composer Section
-
-**Current**:
-```tsx
-'bg-gradient-to-br from-muted/40 to-muted/20'
-```
-
-**New Treatment**:
-```tsx
-// Light mode: pale green/mint wash
-'bg-gradient-to-br from-primary/8 via-primary/4 to-transparent'
-// Dark mode handled via CSS
-'border-primary/15'
-```
-
-**Design Specs**:
-- Soft mint/pale green tinted background (using primary at 5-8% opacity)
-- Subtle primary-tinted border (instead of neutral)
-- Slightly elevated shadow to separate from content below
-- Avatar ring tinted green (already done with `ring-background`)
-
-This creates immediate top-down hierarchy: "Action area" (tinted) vs "Content area" (white).
+### What's Missing
+- Photo upload UI in `QuickPostComposer`
+- Image display in post cards
+- Dedicated storage structure for post images vs shared files
+- Image preview/compression before upload
+- Image gallery view in posts
 
 ---
 
-## Part 2: Color-Coded Action Chips
+## Part 1: Create Group Post Images Storage Bucket
 
-**Goal**: Transform subtle inline icons into intentional, color-coded buttons
+Create a dedicated bucket for post images to separate them from shared group files.
 
-### Changes to `ComposerQuickActions.tsx`
+### Database Migration
 
-**Current**:
-```tsx
-'bg-muted/30 hover:bg-muted/50'  // All same gray
+```sql
+-- Create storage bucket for group post images
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('group-post-images', 'group-post-images', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- RLS: Anyone can view group post images
+CREATE POLICY "Anyone can view group post images"
+ON storage.objects FOR SELECT
+USING (bucket_id = 'group-post-images');
+
+-- RLS: Authenticated group members can upload images
+CREATE POLICY "Group members can upload post images"
+ON storage.objects FOR INSERT
+WITH CHECK (
+  bucket_id = 'group-post-images' 
+  AND auth.role() = 'authenticated'
+);
+
+-- RLS: Uploaders can delete their own images
+CREATE POLICY "Users can delete their own post images"
+ON storage.objects FOR DELETE
+USING (
+  bucket_id = 'group-post-images' 
+  AND (auth.uid())::text = owner_id
+);
 ```
-
-**New Treatment** — Each chip gets a distinct low-saturation accent:
-
-| Action | Color Token | Meaning |
-|--------|-------------|---------|
-| 📸 Photo | `bg-teal-500/10 text-teal-600` | Media/visual |
-| 📅 Event | `bg-emerald-500/10 text-emerald-600` | Scheduling (on-brand green) |
-| 📊 Poll | `bg-blue-500/10 text-blue-600` | Data/voting |
-| ❓ Ask | `bg-amber-500/10 text-amber-600` | Question/help |
-
-**Visual Effect**:
-- Each chip is a rounded pill with its own subtle color
-- Hover state intensifies the tint
-- Active/tap state shows the color more prominently
-- Low saturation, not loud — keeps it professional
-
-**Why This Works**:
-- Color = intent (modular posting)
-- Scales to future actions (Score, Challenge, etc.)
-- Breaks the "gray sea" without being garish
 
 ---
 
-## Part 3: Anchored Community Status Bar
+## Part 2: Create Image Upload Hook
 
-**Goal**: Turn floating "X active today" into a contextual status card
+### New File: `src/hooks/useImageUpload.ts`
 
-### Redesign `CommunityPulse.tsx`
+A reusable hook for image uploads with:
+- File validation (type, size)
+- Image compression (client-side)
+- Upload progress tracking
+- Error handling
 
-**Current**: Floating inline text
+```typescript
+interface UseImageUploadOptions {
+  bucket: string;
+  maxSizeMB?: number;
+  compressionQuality?: number;
+  folder?: string;
+}
+
+interface UploadResult {
+  url: string;
+  path: string;
+}
+
+export function useImageUpload(options: UseImageUploadOptions) {
+  const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  
+  const uploadImage = async (file: File): Promise<UploadResult | null> => {
+    // Validate file type
+    // Compress if needed
+    // Upload to storage
+    // Return public URL
+  };
+  
+  return { uploadImage, uploading, progress };
+}
 ```
-🟢 1 active today • ⚡ 2 sessions this week
+
+**Features**:
+- Accepts images up to 10MB
+- Compresses to ~1MB using canvas
+- Generates unique filenames
+- Returns public URL for database storage
+
+---
+
+## Part 3: Update QuickPostComposer with Photo Upload
+
+### Changes to `src/components/community/QuickPostComposer.tsx`
+
+Replace the "Photo upload coming soon" placeholder with actual functionality.
+
+**New State**:
+```typescript
+const [selectedImage, setSelectedImage] = useState<File | null>(null);
+const [imagePreview, setImagePreview] = useState<string | null>(null);
 ```
 
-**New Treatment**: Compact anchored status card
+**Photo Tab Enhancement**:
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  🟢 Community Status                                        │
-│  ─────────────────────────────────────────────────────────  │
-│  1 active today  •  3 online  •  2 sessions this week       │
+│  Caption                                                     │
+│  ┌──────────────────────────────────────────────────────┐   │
+│  │  Add a caption...                                     │   │
+│  └──────────────────────────────────────────────────────┘   │
+│                                                             │
+│  ┌──────────────────────────────────────────────────────┐   │
+│  │                                                       │   │
+│  │     📸 Tap to add a photo                            │   │
+│  │     or drag and drop                                 │   │
+│  │                                                       │   │
+│  └──────────────────────────────────────────────────────┘   │
+│                                                             │
+│  [Selected: photo.jpg  ✕ Remove]                           │
+│                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**Design Specs**:
-- Small card with slightly darker background than feed (`bg-muted/50`)
-- "Community Status" label with pulsing green dot
-- Divider line
-- Stats in a single row with separators
-- Subtle border (`border-border/30`)
-- Lives between composer and first post
-
-**Visibility Logic**:
-- Show when group has any activity OR online members > 0
-- Hide for brand-new completely empty groups (welcome card takes precedence)
-- Accept `onlineCount` from parent for real-time data
+**Implementation**:
+- Drag & drop zone component
+- File input with image/* accept
+- Preview thumbnail with remove button
+- Upload happens on form submit
+- Caption becomes post content
 
 ---
 
-## Part 4: Stronger Post Card Identity
+## Part 4: Image Preview Component
 
-**Goal**: Make posts visually distinct from the page background
+### New File: `src/components/community/ImageDropzone.tsx`
 
-### Changes to `PostCard` in `GroupFeed.tsx`
+A reusable dropzone component for image selection.
 
-**Current**:
-```tsx
-'p-4 rounded-xl bg-card border border-border/20'  // Blends in
+```typescript
+interface ImageDropzoneProps {
+  onFileSelect: (file: File) => void;
+  preview?: string | null;
+  onRemove?: () => void;
+  className?: string;
+}
 ```
 
-**Enhanced Treatment**:
-
-1. **Darker card background than page**:
-   ```tsx
-   'bg-card' → 'bg-card/80 dark:bg-card'
-   ```
-
-2. **Subtle shadow for depth**:
-   ```tsx
-   'shadow-[0_1px_3px_rgba(0,0,0,0.04)]'
-   ```
-
-3. **Increased spacing between posts**:
-   ```tsx
-   'space-y-3' → 'space-y-4'
-   ```
-
-4. **Left accent bar by post type** (Optional, high polish):
-   ```tsx
-   // Add left border based on type
-   const typeAccent = {
-     announcement: 'border-l-amber-500',
-     lfg: 'border-l-emerald-500', 
-     highlight: 'border-l-purple-500',
-     venue: 'border-l-primary',
-     feed: 'border-l-transparent',
-   };
-   
-   // Apply 3px left border
-   'border-l-[3px] ' + typeAccent[post.type]
-   ```
-
-This adds organization without labels — the color bar signals post type at a glance.
+**Features**:
+- Drag & drop support
+- Click to select file
+- Image preview with aspect ratio preservation
+- Remove button overlay
+- Drag state visual feedback
+- File type validation
 
 ---
 
-## Part 5: Enhanced Reaction Row
+## Part 5: Update useGroupPosts Hook
 
-**Goal**: Make reactions feel interactive and visually separated
+### Changes to `src/hooks/useGroupPosts.ts`
 
-### Changes to Reaction Container
+Extend `createPost` mutation to accept `image_url`:
 
-**Current**: Individual flat ghost buttons in a row
-
-**New Treatment**: Grouped reactions in a rounded container
-
-```tsx
-{/* Reaction container */}
-<div className="flex items-center gap-0.5 bg-muted/40 rounded-full px-1 py-0.5">
-  {REACTION_EMOJIS.map(({ emoji }) => {
+```typescript
+const createPostMutation = useMutation({
+  mutationFn: async (postData: {
+    type: GroupPost['type'];
+    title?: string;
+    content?: string;
+    session_date?: string;
+    session_time?: string;
+    max_players?: number;
+    pinned?: boolean;
+    image_url?: string;  // Add this
+  }) => {
     // ... existing logic
-    return (
-      <Button
-        key={emoji}
-        variant={hasReacted ? 'secondary' : 'ghost'}
-        size="sm"
-        className={cn(
-          'h-7 gap-1 px-2 text-xs rounded-full',
-          hasReacted && 'bg-primary/15 text-primary',
-          !hasReacted && 'hover:bg-muted/60'
-        )}
-        onClick={() => onToggleReaction(post.id, emoji)}
-      >
-        <span>{emoji}</span>
-        {count > 0 && <span className="text-xs">{count}</span>}
-      </Button>
-    );
-  })}
-</div>
+  },
+});
 ```
-
-**Visual Effect**:
-- Reactions grouped in a subtle pill container
-- Light background tint on the container
-- Active reactions get primary color tint
-- Hover states are more pronounced
-- Clear separation: Content → Engagement → Meta
 
 ---
 
-## Part 6: Intentional Brand Green Usage
+## Part 6: Display Images in Post Cards
 
-**Goal**: Use green to mean something specific — action or activity
+### Changes to `src/components/community/GroupFeed.tsx`
 
-### Color Rule Audit
-
-**Green Should Mean**:
-- ✅ Post button (action)
-- ✅ Active status dot (activity)
-- ✅ Tab underline (current selection)
-- ✅ Event action chips (scheduling)
-- ✅ Composer tint (action zone)
-
-**Green Should NOT Be**:
-- ❌ Generic card backgrounds
-- ❌ Informational labels (use blue/gray)
-- ❌ Member avatars (neutral)
-
-### Applied Changes
-
-1. **Composer**: Add very light primary tint (action zone)
-2. **Event chip**: Use green variant (scheduling action)
-3. **Status bar**: Keep green dot only (activity indicator)
-4. **Posts**: Use green accent bar only for venue/event posts
-5. **Reactions**: Active reaction = primary tint
-
----
-
-## Part 7: Section Date Labels
-
-**Goal**: Add structure as the feed grows
-
-### Add Date Separators to Feed
-
-When posts span multiple days, insert subtle date labels:
+Add image display in the `PostCard` component:
 
 ```
-────────── Today ──────────
-(post)
-(post)
-
-────────── Earlier ──────────
-(post)
-
-────────── January 28 ──────────
-(post)
+┌─────────────────────────────────────────────────────────────┐
+│  [Avatar] User Name • 5 minutes ago              [⋮ Menu]  │
+│  ─────────────────────────────────────────────────────────  │
+│  Look at this amazing court setup! 🎾                       │
+│                                                             │
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │                                                       │  │
+│  │                   [Image Preview]                     │  │
+│  │                                                       │  │
+│  └──────────────────────────────────────────────────────┘  │
+│                                                             │
+│  [👍 ❤️ 🎾 🔥]                              💬 2 comments   │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 **Implementation**:
-
 ```tsx
-// Group posts by date
-const groupedPosts = useMemo(() => {
-  const groups: { label: string; posts: GroupPost[] }[] = [];
-  let currentLabel = '';
-  
-  regularPosts.forEach(post => {
-    const date = new Date(post.created_at);
-    const label = isToday(date) ? 'Today' 
-      : isYesterday(date) ? 'Yesterday'
-      : format(date, 'MMMM d');
-    
-    if (label !== currentLabel) {
-      currentLabel = label;
-      groups.push({ label, posts: [post] });
-    } else {
-      groups[groups.length - 1].posts.push(post);
-    }
-  });
-  
-  return groups;
-}, [regularPosts]);
-```
-
-**Visual Design**:
-```tsx
-<div className="flex items-center gap-3 py-3">
-  <div className="flex-1 h-px bg-border/30" />
-  <span className="text-[11px] font-medium text-muted-foreground/60 uppercase tracking-wider">
-    {label}
-  </span>
-  <div className="flex-1 h-px bg-border/30" />
-</div>
+{post.image_url && (
+  <div className="mt-3 -mx-1">
+    <img 
+      src={post.image_url} 
+      alt=""
+      className="w-full rounded-lg object-cover max-h-80 cursor-pointer"
+      onClick={() => setLightboxImage(post.image_url)}
+    />
+  </div>
+)}
 ```
 
 ---
 
-## File Changes Summary
+## Part 7: Image Lightbox Component
+
+### New File: `src/components/community/ImageLightbox.tsx`
+
+Full-screen image viewer when clicking on post images.
+
+```typescript
+interface ImageLightboxProps {
+  src: string | null;
+  onClose: () => void;
+}
+```
+
+**Features**:
+- Full-screen overlay
+- Click outside to close
+- Keyboard escape to close
+- Pinch-to-zoom on mobile
+- Download button
+
+---
+
+## Part 8: Enhance GroupFiles Tab
+
+### Changes to `src/components/community/GroupFiles.tsx`
+
+Improve the files tab with:
+- Grid/list view toggle
+- Image gallery view for photos
+- Better thumbnail previews
+- Multi-file upload support
+
+**Gallery Mode for Images**:
+```
+┌─────────────────────────────────────────────────────────────┐
+│  [Grid] [List]                           [+ Upload]         │
+├─────────────────────────────────────────────────────────────┤
+│  ┌────────┐  ┌────────┐  ┌────────┐  ┌────────┐            │
+│  │  IMG   │  │  IMG   │  │  IMG   │  │  PDF   │            │
+│  │        │  │        │  │        │  │  📄    │            │
+│  └────────┘  └────────┘  └────────┘  └────────┘            │
+│  photo1.jpg  photo2.jpg  photo3.jpg  doc.pdf               │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## File Summary
+
+### New Files
+
+| File | Purpose |
+|------|---------|
+| `src/hooks/useImageUpload.ts` | Reusable image upload hook with compression |
+| `src/components/community/ImageDropzone.tsx` | Drag & drop file selection component |
+| `src/components/community/ImageLightbox.tsx` | Full-screen image viewer |
 
 ### Modified Files
 
 | File | Changes |
 |------|---------|
-| `src/components/community/GroupFeed.tsx` | Composer primary zone tint, stronger post cards, date separators, enhanced reactions |
-| `src/components/community/ComposerQuickActions.tsx` | Color-coded action chips with distinct accents |
-| `src/components/community/CommunityPulse.tsx` | Redesign as anchored status card with proper container |
-| `src/components/community/GroupFeedPlaceholder.tsx` | Match new post card styling |
-| `src/components/community/GroupWelcomeCard.tsx` | Ensure consistent with new visual hierarchy |
+| `src/components/community/QuickPostComposer.tsx` | Add photo upload functionality |
+| `src/hooks/useGroupPosts.ts` | Accept image_url in createPost |
+| `src/components/community/GroupFeed.tsx` | Display images in post cards |
+| `src/components/community/GroupFiles.tsx` | Add grid view and gallery mode |
+
+### Database Migration
+
+| Change | Purpose |
+|--------|---------|
+| Create `group-post-images` bucket | Dedicated storage for post images |
+| Add storage RLS policies | Secure upload/delete access |
 
 ---
 
-## Visual Before/After
+## Implementation Flow
 
-### Before (Current)
-```
-┌─────────────────────────────────────────────────────────────┐
-│  ┌─────────────────────────────────────────────────────┐   │ ← Gray composer
-│  │ [Avatar] Share something...                   [Post] │   │
-│  │    📸 Photo | 📅 Event | 📊 Poll | ❓ Ask          │   │ ← All gray chips
-│  └─────────────────────────────────────────────────────┘   │
-│                                                             │
-│  🟢 1 active today                                         │ ← Floating text
-│                                                             │
-│  ┌─────────────────────────────────────────────────────┐   │ ← Flat card
-│  │ Post content...                                      │   │
-│  │ 👍 ❤️ 🎾 🔥                              💬 2       │   │ ← Flat reactions
-│  └─────────────────────────────────────────────────────┘   │
-│                                                             │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │ Another post...                                      │   │
-│  └─────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────┘
+```text
+User Flow:
+1. User clicks Photo chip → Opens QuickPostComposer on Photo tab
+2. User drags/selects image → Preview shown
+3. User adds optional caption → Types in textarea
+4. User clicks Post → Image uploads to storage
+5. Post created with image_url → Feed updates
+6. Others see image in feed → Click to open lightbox
 ```
 
-### After (Enhanced)
-```
-┌─────────────────────────────────────────────────────────────┐
-│  ┌─────────────────────────────────────────────────────┐   │ ← Mint/green tint
-│  │ [Avatar] Share something...                   [Post] │   │
-│  │    [📸 Photo] [📅 Event] [📊 Poll] [❓ Ask]        │   │ ← Color-coded pills
-│  │     teal      green      blue     amber              │   │
-│  └─────────────────────────────────────────────────────┘   │
-│                                                             │
-│  ┌───────────────────────────────────────────────────┐     │ ← Anchored card
-│  │ 🟢 Community Status                                │     │
-│  │ ─────────────────────────────────────────────────  │     │
-│  │ 1 active today • 3 online • 2 sessions this week   │     │
-│  └───────────────────────────────────────────────────┘     │
-│                                                             │
-│  ─────────────── Today ───────────────                     │ ← Date separator
-│                                                             │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  ▌ LFG: Need 1 for doubles                              │   │ ← Green accent bar
-│  │ Post content...                                      │   │ ← Elevated card
-│  │ [👍 ❤️ 🎾 🔥]                             💬 2      │   │ ← Grouped reactions
-│  └─────────────────────────────────────────────────────┘   │
-│                                                             │
-│  ┌─────────────────────────────────────────────────────┐   │
-│  │ Regular post...                                      │   │
-│  └─────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────┘
+```text
+Technical Flow:
+1. File selected → Validate type/size
+2. Preview generated → URL.createObjectURL()
+3. On submit → Compress image (if >1MB)
+4. Upload to storage → supabase.storage.from('group-post-images').upload()
+5. Get public URL → storage.from().getPublicUrl()
+6. Create post → INSERT with image_url
+7. Invalidate query → React Query refetch
 ```
 
 ---
 
 ## Expected Outcomes
 
-| Issue | Solution | Result |
-|-------|----------|--------|
-| Everything same-y | Primary zone tint + color chips | Clear visual hierarchy |
-| Activity info floating | Anchored status card | Contextual, grounded |
-| Posts blend in | Elevated cards + accent bars | Distinct identity |
-| Reactions flat | Grouped container + hover states | Interactive feel |
-| Green underused | Intentional action/activity meaning | Brand consistency |
-| No structure | Date separators | Organized as feed grows |
-| Chips too subtle | Color-coded pills | Modular, purposeful |
+| Feature | Result |
+|---------|--------|
+| Photo posts | Users can share images with captions |
+| Image compression | Large photos auto-compressed to ~1MB |
+| Drag & drop | Easy image selection on desktop |
+| Lightbox view | Full-screen image viewing |
+| Files gallery | Better browsing of shared images |
+| Mobile support | Touch-friendly upload on mobile |
 
-The result is a Community feed that feels **organized without being busy**, **color-coded by intent**, and **clearly the place where you DO things**.
+---
+
+## Technical Notes
+
+### Image Compression
+Using canvas-based compression:
+```typescript
+const canvas = document.createElement('canvas');
+const ctx = canvas.getContext('2d');
+// Scale down large images
+// Compress to JPEG with quality 0.8
+```
+
+### Storage Path Structure
+```
+group-post-images/
+  └── {groupId}/
+      └── {timestamp}-{random}.jpg
+```
+
+### File Size Limits
+- Max upload: 10MB
+- Compression target: 1MB
+- Accepted types: image/jpeg, image/png, image/gif, image/webp
 
