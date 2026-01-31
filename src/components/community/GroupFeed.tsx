@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react';
-import { MessageSquare, Pin, Trash2, MoreVertical, Send, Image, PenSquare } from 'lucide-react';
+import { useState, useCallback, useMemo, memo } from 'react';
+import { MessageSquare, Pin, Trash2, MoreVertical, Image } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { PostCommentsSheet } from './PostCommentsSheet';
 import { GroupEmptyState } from './GroupEmptyState';
@@ -7,7 +7,7 @@ import { GroupWelcomeCard } from './GroupWelcomeCard';
 import { GroupFeedPlaceholder } from './GroupFeedPlaceholder';
 import { CommunityPulse } from './CommunityPulse';
 import { ComposerQuickActions } from './ComposerQuickActions';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, isToday, isYesterday, format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -50,12 +50,42 @@ const POST_TYPE_BADGES: Record<string, { label: string; className: string }> = {
   feed: { label: 'Post', className: 'bg-muted text-muted-foreground' },
 };
 
+// Type accent colors for left border
+const POST_TYPE_ACCENT: Record<string, string> = {
+  announcement: 'border-l-amber-500',
+  lfg: 'border-l-emerald-500',
+  highlight: 'border-l-purple-500',
+  poll: 'border-l-blue-500',
+  venue: 'border-l-primary',
+  feed: 'border-l-transparent',
+};
+
 const REACTION_EMOJIS = [
   { emoji: '👍', label: 'Like' },
   { emoji: '❤️', label: 'Love' },
   { emoji: '🎾', label: 'Tennis' },
   { emoji: '🔥', label: 'Fire' },
 ];
+
+// Date separator component
+function DateSeparator({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-3 py-3">
+      <div className="flex-1 h-px bg-border/30" />
+      <span className="text-[11px] font-medium text-muted-foreground/60 uppercase tracking-wider">
+        {label}
+      </span>
+      <div className="flex-1 h-px bg-border/30" />
+    </div>
+  );
+}
+
+// Get date label for grouping
+function getDateLabel(date: Date): string {
+  if (isToday(date)) return 'Today';
+  if (isYesterday(date)) return 'Yesterday';
+  return format(date, 'MMMM d');
+}
 
 export function GroupFeed({ 
   groupId, 
@@ -107,6 +137,38 @@ export function GroupFeed({
     document.querySelector<HTMLTextAreaElement>('textarea')?.focus();
   }, []);
 
+  // Memoized handlers
+  const handleToggleReaction = useCallback((postId: string, emoji: string) => {
+    toggleReaction(postId, emoji);
+  }, [toggleReaction]);
+
+  const handleTogglePin = useCallback((postId: string, pinned: boolean) => {
+    togglePin(postId, pinned);
+  }, [togglePin]);
+
+  // Group posts by date
+  const pinnedPosts = useMemo(() => posts.filter(p => p.pinned), [posts]);
+  const regularPosts = useMemo(() => posts.filter(p => !p.pinned), [posts]);
+  
+  const groupedPosts = useMemo(() => {
+    const groups: { label: string; posts: GroupPost[] }[] = [];
+    let currentLabel = '';
+    
+    regularPosts.forEach(post => {
+      const date = new Date(post.created_at);
+      const label = getDateLabel(date);
+      
+      if (label !== currentLabel) {
+        currentLabel = label;
+        groups.push({ label, posts: [post] });
+      } else if (groups.length > 0) {
+        groups[groups.length - 1].posts.push(post);
+      }
+    });
+    
+    return groups;
+  }, [regularPosts]);
+
   if (loading) {
     return (
       <div className="space-y-4">
@@ -117,18 +179,15 @@ export function GroupFeed({
     );
   }
 
-  const pinnedPosts = posts.filter(p => p.pinned);
-  const regularPosts = posts.filter(p => !p.pinned);
-
   return (
     <div className="space-y-5">
-      {/* Enhanced Post Composer */}
+      {/* Enhanced Post Composer - Primary Zone Treatment */}
       <motion.div 
         className={cn(
           'rounded-xl p-4 transition-all duration-200',
-          'bg-gradient-to-br from-muted/40 to-muted/20',
-          'shadow-sm border border-border/20',
-          composerFocused && 'ring-2 ring-primary/20 border-primary/30'
+          'bg-gradient-to-br from-primary/8 via-primary/4 to-transparent',
+          'shadow-sm border border-primary/15',
+          composerFocused && 'ring-2 ring-primary/20 border-primary/25 shadow-md'
         )}
         animate={composerFocused ? { scale: 1.01 } : { scale: 1 }}
         transition={{ duration: 0.15 }}
@@ -166,7 +225,7 @@ export function GroupFeed({
               </div>
             </div>
             
-            {/* Quick Action Chips */}
+            {/* Color-Coded Quick Action Chips */}
             <ComposerQuickActions
               className="mt-3"
               onPhotoClick={focusComposer}
@@ -178,7 +237,7 @@ export function GroupFeed({
         </div>
       </motion.div>
 
-      {/* Community Pulse - Activity Stats */}
+      {/* Anchored Community Status Bar */}
       <CommunityPulse
         activeTodayCount={activeTodayCount}
         sessionsThisWeek={sessionsThisWeek}
@@ -191,18 +250,20 @@ export function GroupFeed({
             <Pin className="h-3 w-3" />
             <span className="font-medium uppercase tracking-wide">Pinned</span>
           </div>
-          {pinnedPosts.map((post) => (
-            <PostCard
-              key={post.id}
-              post={post}
-              currentUserId={currentUserId}
-              isAdmin={isAdmin}
-              onDelete={() => setDeleteDialogPost(post)}
-              onToggleReaction={toggleReaction}
-              onTogglePin={togglePin}
-              onOpenComments={() => setCommentsPostId(post.id)}
-            />
-          ))}
+          <div className="space-y-4">
+            {pinnedPosts.map((post) => (
+              <PostCard
+                key={post.id}
+                post={post}
+                currentUserId={currentUserId}
+                isAdmin={isAdmin}
+                onDelete={() => setDeleteDialogPost(post)}
+                onToggleReaction={handleToggleReaction}
+                onTogglePin={handleTogglePin}
+                onOpenComments={() => setCommentsPostId(post.id)}
+              />
+            ))}
+          </div>
         </div>
       )}
 
@@ -226,18 +287,28 @@ export function GroupFeed({
           size="sm"
         />
       ) : (
-        <div className="space-y-3">
-          {regularPosts.map((post) => (
-            <PostCard
-              key={post.id}
-              post={post}
-              currentUserId={currentUserId}
-              isAdmin={isAdmin}
-              onDelete={() => setDeleteDialogPost(post)}
-              onToggleReaction={toggleReaction}
-              onTogglePin={togglePin}
-              onOpenComments={() => setCommentsPostId(post.id)}
-            />
+        <div className="space-y-4">
+          {groupedPosts.map((group, groupIndex) => (
+            <div key={group.label}>
+              {/* Date separator - only show if more than one group or not "Today" */}
+              {(groupedPosts.length > 1 || group.label !== 'Today') && (
+                <DateSeparator label={group.label} />
+              )}
+              <div className="space-y-4">
+                {group.posts.map((post) => (
+                  <PostCard
+                    key={post.id}
+                    post={post}
+                    currentUserId={currentUserId}
+                    isAdmin={isAdmin}
+                    onDelete={() => setDeleteDialogPost(post)}
+                    onToggleReaction={handleToggleReaction}
+                    onTogglePin={handleTogglePin}
+                    onOpenComments={() => setCommentsPostId(post.id)}
+                  />
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       )}
@@ -275,7 +346,7 @@ export function GroupFeed({
   );
 }
 
-// Extracted PostCard component for cleaner code
+// Memoized PostCard component with enhanced styling
 interface PostCardProps {
   post: GroupPost;
   currentUserId: string | null;
@@ -286,7 +357,7 @@ interface PostCardProps {
   onOpenComments: () => void;
 }
 
-function PostCard({
+const PostCard = memo(function PostCard({
   post,
   currentUserId,
   isAdmin,
@@ -296,6 +367,7 @@ function PostCard({
   onOpenComments,
 }: PostCardProps) {
   const typeInfo = POST_TYPE_BADGES[post.type] || POST_TYPE_BADGES.feed;
+  const typeAccent = POST_TYPE_ACCENT[post.type] || POST_TYPE_ACCENT.feed;
   const isAuthor = currentUserId === post.user_id;
   const canManage = isAuthor || isAdmin;
   const initials = (post.profile?.display_name || post.profile?.full_name || 'U')
@@ -311,7 +383,9 @@ function PostCard({
       animate={{ opacity: 1, y: 0 }}
       className={cn(
         'p-4 rounded-xl bg-card border transition-colors',
-        post.pinned ? 'border-primary/20 bg-primary/5' : 'border-border/20'
+        'shadow-[0_1px_3px_rgba(0,0,0,0.04)]',
+        'border-l-[3px]',
+        post.pinned ? 'border-primary/20 bg-primary/5 border-l-primary' : cn('border-border/30', typeAccent)
       )}
     >
       {/* Header */}
@@ -378,9 +452,10 @@ function PostCard({
         )}
       </div>
 
-      {/* Footer */}
+      {/* Footer with Enhanced Reactions */}
       <div className="pt-2 flex items-center justify-between border-t border-border/15">
-        <div className="flex items-center gap-1">
+        {/* Grouped reaction container */}
+        <div className="flex items-center gap-0.5 bg-muted/40 rounded-full px-1 py-0.5">
           {REACTION_EMOJIS.map(({ emoji }) => {
             const reactionData = post.reactions?.find(r => r.emoji === emoji);
             const hasReacted = reactionData?.user_reacted;
@@ -389,9 +464,13 @@ function PostCard({
             return (
               <Button
                 key={emoji}
-                variant={hasReacted ? 'secondary' : 'ghost'}
+                variant="ghost"
                 size="sm"
-                className={cn('h-7 gap-1 px-2 text-xs', hasReacted && 'bg-primary/10')}
+                className={cn(
+                  'h-7 gap-1 px-2 text-xs rounded-full transition-all',
+                  hasReacted && 'bg-primary/15 text-primary hover:bg-primary/20',
+                  !hasReacted && 'hover:bg-muted/60'
+                )}
                 onClick={() => onToggleReaction(post.id, emoji)}
               >
                 <span>{emoji}</span>
@@ -404,7 +483,7 @@ function PostCard({
         <Button 
           variant="ghost" 
           size="sm" 
-          className="h-7 gap-1 text-xs text-muted-foreground"
+          className="h-7 gap-1 text-xs text-muted-foreground hover:text-foreground"
           onClick={onOpenComments}
         >
           <MessageSquare className="h-3.5 w-3.5" />
@@ -413,4 +492,4 @@ function PostCard({
       </div>
     </motion.div>
   );
-}
+});
