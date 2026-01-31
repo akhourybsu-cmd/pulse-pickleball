@@ -1,373 +1,384 @@
 
 
-## Community Tab Premium UX Overhaul
+# App Performance Optimization Plan
 
-### Overview
-Transform the individual Community group pages from passive, empty-state-heavy views into active, premium, engagement-driving experiences. This overhaul addresses the user's 7 key recommendations while maintaining the existing tab structure and immersive full-screen layout.
+## Executive Summary
 
----
-
-### The Core Problem
-
-Current state: When a user enters a group, they see quiet empty states with generic icons and passive messaging like "No posts yet." This reads as dead space rather than a vibrant community hub.
-
-Target state: The page should feel alive and intentional, guiding users to take action while conveying activity even when content is sparse.
+After a comprehensive audit of the PULSE codebase, I've identified several optimization opportunities to improve speed between tabs and across the app. The current implementation has some good foundations (lazy loading, prefetch on hover) but lacks optimization in data fetching, component memoization, and tab rendering strategies.
 
 ---
 
-## Part 1: Welcome Card + Guided Starter Layout
+## Current State Analysis
 
-**Replace passive empty states with action-oriented welcome experience**
+### What's Working Well
+- **Code splitting**: All 60+ pages use `React.lazy()` for route-level code splitting
+- **Route prefetching**: `PlayerShell` prefetches routes on hover
+- **Query client config**: Reasonable stale times (5 min) and gc times (30 min)
+- **Realtime subscriptions**: Properly cleaned up on unmount
 
-### New Component: `GroupWelcomeCard.tsx`
+### Performance Issues Identified
 
-When feed is empty, show a contextual welcome card instead of the generic empty state:
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│  Welcome to [Group Name]  👋                                │
-│  ─────────────────────────────────────────────────────────  │
-│  Share updates, schedule play, and stay connected.          │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐       │
-│  │  📣          │  │  📅          │  │  🏓          │       │
-│  │  Post an     │  │  Schedule a  │  │  Ask a       │       │
-│  │  Update      │  │  Session     │  │  Question    │       │
-│  └──────────────┘  └──────────────┘  └──────────────┘       │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
-```
-
-**Design specifications:**
-- Card has subtle gradient background (muted/10 to muted/5)
-- Group name displayed prominently with emoji
-- 3 action cards in a responsive grid (stack on mobile)
-- Each action card has:
-  - Large emoji/icon (24px)
-  - Clear action label (14px, medium weight)
-  - Hover state with scale(1.02) and shadow lift
-  - Taps open the QuickPostComposer with appropriate type pre-selected
+| Issue | Location | Impact |
+|-------|----------|--------|
+| Community hooks don't use React Query | `useGroupPosts`, `useGroupEvents`, `useGroupChat`, `useGroups` | No caching between tab switches |
+| Tab content re-renders on every switch | `GroupDetail.tsx` | All hooks re-fetch on tab change |
+| Missing component memoization | Most community components | Unnecessary re-renders |
+| Multiple sequential queries | `useGroups`, `useGroupPosts` | Waterfall fetching pattern |
+| Presence channel recreated on tab switch | `useGroupPresence` used in multiple components | Duplicate connections |
+| No profile caching | Profile fetched in each hook separately | Redundant database calls |
 
 ---
 
-## Part 2: Enhanced Post Composer
+## Part 1: Convert Community Hooks to React Query
 
-**Make the composer visually prominent and inviting**
+**Problem**: Current hooks use `useState` + `useEffect` patterns. When switching tabs within a group, all data is refetched because the hook state is lost.
 
-### Current Issues
-- Flat bg-muted/30 background
-- Small avatar
-- Minimal breathing room
-- No quick-action chips visible
+**Solution**: Convert to React Query for automatic caching, deduplication, and stale-while-revalidate behavior.
 
-### Enhanced Design
+### Modified Hooks
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│  ┌────┐                                                     │
-│  │    │  ┌─────────────────────────────────────────────┐   │
-│  │ 🧑 │  │  Share something with the group...          │   │
-│  │    │  └─────────────────────────────────────────────┘   │
-│  └────┘                                                     │
-│         ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐                │
-│         │ 📸   │ │ 📅   │ │ 📊   │ │ ❓   │                │
-│         │Photo │ │Event │ │Score │ │Ask  │                 │
-│         └──────┘ └──────┘ └──────┘ └──────┘                │
-└─────────────────────────────────────────────────────────────┘
-```
+#### 1. `useGroupPosts.ts` → React Query
 
-**Changes to `GroupFeed.tsx` composer section:**
-- Increase vertical padding (py-4 instead of py-3)
-- Add subtle box shadow (`shadow-sm`)
-- Increase avatar size (h-10 w-10)
-- Add focus animation (border glow, slight expand with Framer Motion)
-- Add quick-action chip row below input:
-  - Photo, Event/Session, Score, Question chips
-  - Horizontal scroll on mobile
-  - Tapping opens QuickPostComposer with correct type
-
----
-
-## Part 3: Tab Identity Enhancements
-
-**Strengthen visual distinction without changing tab structure**
-
-### Changes to Tab Bar in `GroupDetail.tsx`
-
-| Enhancement | Implementation |
-|-------------|----------------|
-| Active tab underline tint | Change from `border-primary` to custom Pulse green with opacity |
-| Tab slide animation | Add `motion.div` underline indicator that slides between tabs |
-| First-visit labels | Show sublabels on first group visit (store in localStorage) |
-
-**Tab sublabels (shown once):**
-- Feed → "Updates & Posts"
-- Events → "Sessions & Meetups"
-- Chat → "Real-time Discussions"
-- Members → "Who's Here"
-- Files → "Shared Media"
-
-**Animation spec:**
-- Use `layoutId` on underline for smooth position transitions
-- 180ms ease-out timing
-- Subtle tab icon pulse on selection
-
----
-
-## Part 4: Pinned Post Area
-
-**Reserve visual space at top of feed for pinned content**
-
-### Enhanced Pinned Post Design
-
-When a post is pinned, it appears in a dedicated area above regular posts:
-
-```
-┌──────────────────────────────────────────────────────────┐
-│ 📌 PINNED                                                │
-├──────────────────────────────────────────────────────────┤
-│  🏓 Open Play Tonight at 6PM                             │
-│  All levels welcome! See you on courts 1-4.              │
-│                                           [View Details] │
-└──────────────────────────────────────────────────────────┘
-```
-
-**Design specifications:**
-- Smaller card height than regular posts
-- Slightly darker/tinted background (`bg-primary/5`)
-- Pin icon in corner
-- Separate from main feed scroll area (sticky at top)
-- Maximum 1-2 pinned items visible (others in dropdown)
-
----
-
-## Part 5: Visual Momentum for Empty States
-
-**Replace static icons with dynamic skeleton placeholders**
-
-### New Component: `GroupFeedPlaceholder.tsx`
-
-When feed has 0 posts but composer is visible, show ghost/skeleton posts:
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│  [░░░░░]  ░░░░░░░░░░░░░░░░░                                │
-│           ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░              │
-│           ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░            │
-│           ░░░░░░░░░    ░░░░░░                              │
-└─────────────────────────────────────────────────────────────┘
-┌─────────────────────────────────────────────────────────────┐
-│  [░░░░░]  ░░░░░░░░░░░░░░░░░                                │
-│           ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░                  │
-│           ░░░░░░░░░    ░░░░░░                              │
-└─────────────────────────────────────────────────────────────┘
-          ⬇ Your post will appear here
-```
-
-**Visual effect:**
-- 2-3 stacked skeleton cards with subtle opacity gradient (more opaque at top)
-- Gentle shimmer/pulse animation (slower than loading state - 3s cycle)
-- Small helper text below: "Your post will appear here"
-- Psychological message: "This space fills up. You're early."
-
----
-
-## Part 6: Typography & Spacing Refinements
-
-**Premium visual polish across all components**
-
-### Specific Changes
-
-| Element | Current | Enhanced |
-|---------|---------|----------|
-| Empty state description | `text-sm` | `text-sm leading-relaxed` with increased line-height |
-| Empty state copy weight | Normal | `font-normal text-muted-foreground/80` (lighter) |
-| CTA buttons | Standard | Slightly taller (`h-10`), more rounded (`rounded-xl`) |
-| Card padding | `p-4` | `p-5` for more breathing room |
-| Section spacing | `space-y-4` | `space-y-6` between major sections |
-
----
-
-## Part 7: Community Pulse Element
-
-**Add a lightweight activity indicator to the group page**
-
-### New Component: `CommunityPulse.tsx`
-
-A subtle, informational bar that appears below the composer (or in header on scroll):
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│  🟢 8 players active today  •  ⚡ 3 sessions this week     │
-└─────────────────────────────────────────────────────────────┘
-```
-
-**Data sources:**
-- Active today: Count of unique users who posted/commented/reacted in last 24h
-- Sessions this week: Count of events in current week (group_events with start_time this week)
-
-**Design:**
-- Inline flex with small icons
-- `text-xs text-muted-foreground`
-- Primary color tint on numbers
-- Skeleton placeholder while loading
-
-**Visibility logic:**
-- Only show if group has activity (at least 1 post ever OR 1 event)
-- Hide for brand-new empty groups (show welcome card instead)
-
----
-
-## Part 8: Refreshed GroupEmptyState Component
-
-**Upgrade the base empty state component**
-
-### Changes to `GroupEmptyState.tsx`
-
-1. **Remove large centered icon** - replace with more compact inline icon
-2. **Shorter, action-oriented copy** - verb-first language
-3. **More prominent CTAs** - full-width on mobile
-4. **Add illustration variant** - optional prop for skeleton illustration
-
-**New Props:**
 ```typescript
-interface GroupEmptyStateProps {
-  icon: LucideIcon;
-  title: string;
-  description: string;
-  actions?: EmptyStateAction[];
-  className?: string;
-  variant?: 'default' | 'skeleton' | 'welcome';
-  showPlaceholderCards?: boolean;
+// Before: useState pattern - refetches on every mount
+const [posts, setPosts] = useState([]);
+useEffect(() => { fetchPosts(); }, [groupId]);
+
+// After: React Query - cached between tab switches
+const { data: posts = [], isLoading } = useQuery({
+  queryKey: ['group-posts', groupId],
+  queryFn: () => fetchGroupPosts(groupId),
+  staleTime: 30 * 1000, // 30 seconds stale time
+  enabled: !!groupId,
+});
+```
+
+#### 2. `useGroupEvents.ts` → React Query
+
+Same pattern - cache events data so switching to Feed tab and back doesn't refetch.
+
+#### 3. `useGroupChat.ts` → React Query + Optimistic Updates
+
+Messages cached but with shorter stale time (10s) due to realtime nature.
+
+#### 4. `useGroupMembers.ts` → React Query
+
+Cache members list with 1-minute stale time.
+
+#### 5. `useGroups.ts` → React Query
+
+Cache the main groups list so Community page loads instantly on revisit.
+
+---
+
+## Part 2: Optimize Tab Rendering Strategy
+
+**Problem**: All tab content is currently rendered and all hooks execute on every render, even for hidden tabs.
+
+**Solution**: Implement lazy tab rendering with state preservation.
+
+### Changes to `GroupDetail.tsx`
+
+1. **Lazy mount tabs**: Only mount tab content when first accessed
+2. **Keep mounted**: Once a tab is visited, keep it mounted but hidden (preserves scroll position and state)
+3. **Suspend non-active hooks**: Use React Query's `enabled` option tied to active tab
+
+```typescript
+// Track which tabs have been visited
+const [visitedTabs, setVisitedTabs] = useState<Set<string>>(new Set(['feed']));
+
+// On tab change, mark as visited
+const handleTabChange = (tab: string) => {
+  setActiveTab(tab);
+  setVisitedTabs(prev => new Set([...prev, tab]));
+};
+
+// Only render tabs that have been visited
+<TabsContent value="chat" className={cn(
+  "h-full m-0 flex flex-col",
+  activeTab !== 'chat' && "hidden"
+)}>
+  {visitedTabs.has('chat') && (
+    <GroupChat groupId={groupId!} currentUserId={currentUserId} />
+  )}
+</TabsContent>
+```
+
+---
+
+## Part 3: Component Memoization
+
+**Problem**: Components like `PostCard`, `GroupCard`, `EventCard` re-render on every parent render.
+
+**Solution**: Wrap with `React.memo` and use `useCallback` for handlers.
+
+### Components to Memoize
+
+| Component | Reason |
+|-----------|--------|
+| `PostCard` (in GroupFeed) | Already in separate function, wrap with memo |
+| `GroupCard` | Rendered in lists, benefits from memo |
+| `GroupSchedule` event items | Extracted to separate memoized component |
+| `GroupMembers` member cards | Extracted to `MemberCard` with memo |
+| `ChatMessage` | Already memoized ✓ |
+| `ComposerQuickActions` | Static component, should be memoized |
+
+### Example Memoization
+
+```typescript
+// GroupFeed.tsx - Memoize PostCard
+const PostCard = memo(function PostCard({ post, currentUserId, ... }: PostCardProps) {
+  // ... component code
+});
+
+// GroupFeed.tsx - Use callbacks for handlers
+const handleReaction = useCallback((postId: string, emoji: string) => {
+  toggleReaction(postId, emoji);
+}, [toggleReaction]);
+```
+
+---
+
+## Part 4: Shared Profile Cache
+
+**Problem**: User profiles are fetched multiple times - in `useGroupPosts`, `useGroupEvents`, `useGroupChat`, etc.
+
+**Solution**: Create a centralized profile cache using React Query.
+
+### New Hook: `useProfileCache.ts`
+
+```typescript
+// Batch fetch profiles with deduplication
+export function useProfiles(userIds: string[]) {
+  return useQuery({
+    queryKey: ['profiles', userIds.sort().join(',')],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, display_name, full_name, avatar_url, current_rating')
+        .in('id', userIds);
+      return new Map(data?.map(p => [p.id, p]) || []);
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    enabled: userIds.length > 0,
+  });
+}
+
+// Single profile with cache
+export function useProfile(userId: string | undefined) {
+  return useQuery({
+    queryKey: ['profile', userId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, display_name, full_name, avatar_url, current_rating')
+        .eq('id', userId)
+        .single();
+      return data;
+    },
+    staleTime: 5 * 60 * 1000,
+    enabled: !!userId,
+  });
 }
 ```
 
 ---
 
-## Implementation File Summary
+## Part 5: Optimize Presence Channel
 
-### New Files
+**Problem**: `useGroupPresence` is called in multiple components (`GroupDetail`, `GroupChat`, `GroupMembers`), potentially creating multiple channel subscriptions.
+
+**Solution**: Lift presence to parent level and pass down via context or props.
+
+### Changes
+
+1. **Single subscription**: Call `useGroupPresence` only in `GroupDetail.tsx`
+2. **Pass down**: Provide `onlineUsers`, `isOnline`, `onlineCount` as props to child components
+3. **Create context (optional)**: For deeply nested components that need presence
+
+```typescript
+// GroupDetail.tsx - single source of truth
+const presence = useGroupPresence(groupId);
+
+// Pass to children
+<GroupChat 
+  groupId={groupId!} 
+  currentUserId={currentUserId}
+  presence={presence}
+/>
+```
+
+---
+
+## Part 6: Prefetch Group Data on Hover
+
+**Problem**: When navigating from Community list to GroupDetail, there's a loading state while data fetches.
+
+**Solution**: Prefetch group data on hover over group cards.
+
+### Changes to `GroupCard.tsx`
+
+```typescript
+import { useQueryClient } from '@tanstack/react-query';
+
+function GroupCard({ group, ... }) {
+  const queryClient = useQueryClient();
+
+  const handleMouseEnter = () => {
+    // Prefetch posts
+    queryClient.prefetchQuery({
+      queryKey: ['group-posts', group.id],
+      queryFn: () => fetchGroupPosts(group.id),
+      staleTime: 30 * 1000,
+    });
+    
+    // Prefetch events
+    queryClient.prefetchQuery({
+      queryKey: ['group-events', group.id],
+      queryFn: () => fetchGroupEvents(group.id),
+      staleTime: 60 * 1000,
+    });
+  };
+
+  return (
+    <Card onMouseEnter={handleMouseEnter}>
+      ...
+    </Card>
+  );
+}
+```
+
+---
+
+## Part 7: Optimize Realtime Subscriptions
+
+**Problem**: Each hook creates its own realtime channel. Multiple channels for the same group.
+
+**Solution**: Consolidate to single group channel with multi-table listening.
+
+### Consolidated Channel Pattern
+
+```typescript
+// useGroupRealtime.ts - single channel for all group updates
+export function useGroupRealtime(groupId: string) {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (!groupId) return;
+
+    const channel = supabase
+      .channel(`group_realtime_${groupId}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'group_posts',
+        filter: `group_id=eq.${groupId}`,
+      }, () => {
+        queryClient.invalidateQueries({ queryKey: ['group-posts', groupId] });
+      })
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'group_events',
+        filter: `group_id=eq.${groupId}`,
+      }, () => {
+        queryClient.invalidateQueries({ queryKey: ['group-events', groupId] });
+      })
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'group_messages',
+        filter: `group_id=eq.${groupId}`,
+      }, () => {
+        queryClient.invalidateQueries({ queryKey: ['group-messages', groupId] });
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [groupId, queryClient]);
+}
+```
+
+---
+
+## Part 8: Navigation Performance
+
+### Already Good
+- Route prefetching on hover in `PlayerShell` ✓
+- Code splitting for all pages ✓
+
+### Additional Optimizations
+
+1. **Preload critical routes**: Add link preload hints for common navigation paths
+
+```typescript
+// PlayerShell.tsx - preload common routes on mount
+useEffect(() => {
+  // Preload likely next routes after dashboard
+  import('@/pages/player/Community');
+  import('@/pages/player/FindEvents');
+}, []);
+```
+
+2. **Skeleton consistency**: Ensure all loading states use consistent skeleton patterns to reduce layout shift
+
+---
+
+## Implementation Summary
+
+### Files to Create
 
 | File | Purpose |
 |------|---------|
-| `src/components/community/GroupWelcomeCard.tsx` | Guided starter card for empty groups |
-| `src/components/community/GroupFeedPlaceholder.tsx` | Skeleton post cards for visual momentum |
-| `src/components/community/CommunityPulse.tsx` | Activity stats indicator |
+| `src/hooks/useProfileCache.ts` | Centralized profile caching |
+| `src/hooks/useGroupRealtime.ts` | Consolidated realtime subscriptions |
 
-### Modified Files
+### Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/components/community/GroupFeed.tsx` | Enhanced composer with quick-action chips, integrate welcome card and pulse |
-| `src/components/community/GroupDetail.tsx` | Add tab slide animation, integrate pinned area |
-| `src/components/community/GroupEmptyState.tsx` | Add variants, lighter typography, optional skeleton mode |
-| `src/components/community/GroupSchedule.tsx` | Apply same enhanced empty state pattern |
-| `src/components/community/GroupChat.tsx` | Apply enhanced welcome message style |
-| `src/components/community/GroupFiles.tsx` | Apply enhanced empty state |
-| `src/hooks/useGroupPosts.ts` | Add stats fetch (posts/reactions in last 24h) |
-| `src/hooks/useGroupEvents.ts` | Add this-week event count |
+| `src/hooks/useGroupPosts.ts` | Convert to React Query |
+| `src/hooks/useGroupEvents.ts` | Convert to React Query |
+| `src/hooks/useGroupChat.ts` | Convert to React Query |
+| `src/hooks/useGroupMembers.ts` | Convert to React Query |
+| `src/hooks/useGroups.ts` | Convert to React Query |
+| `src/pages/player/GroupDetail.tsx` | Lazy tab rendering, lift presence |
+| `src/components/community/GroupFeed.tsx` | Memoize PostCard, use callbacks |
+| `src/components/community/GroupCard.tsx` | Add prefetch on hover |
+| `src/components/community/GroupSchedule.tsx` | Extract memoized EventCard |
+| `src/components/community/GroupMembers.tsx` | Extract memoized MemberCard |
+| `src/components/community/GroupChat.tsx` | Accept presence props |
+| `src/components/community/ComposerQuickActions.tsx` | Wrap with memo |
 
 ---
 
-## Visual Before/After Comparison
+## Expected Performance Improvements
 
-### Before (Current Empty Feed)
-
-```
-┌───────────────────────────────────────────┐
-│  ← Group Name               ● 0 online    │
-├───────────────────────────────────────────┤
-│  [Feed] [Events] [Chat] [Members] [Files] │
-├───────────────────────────────────────────┤
-│  ┌───────────────────────────────────┐    │
-│  │ [Avatar] Post to the group... [Post]│   │
-│  └───────────────────────────────────┘    │
-│                                           │
-│           ┌───────────────┐               │
-│           │      💬       │               │
-│           │               │               │
-│           │  No posts yet │               │
-│           │               │               │
-│           │  Be the first │               │
-│           │  to share...  │               │
-│           │               │               │
-│           │  [Post Update]│               │
-│           └───────────────┘               │
-│                                           │
-└───────────────────────────────────────────┘
-```
-
-### After (Enhanced Empty Feed)
-
-```
-┌───────────────────────────────────────────┐
-│  ← Group Name               ● 3 online    │
-├───────────────────────────────────────────┤
-│  [Feed] [Events] [Chat] [Members] [Files] │
-│  ───────                                  │
-├───────────────────────────────────────────┤
-│  ┌───────────────────────────────────┐    │
-│  │ 🧑 Share something with the group │    │
-│  │    ────────────────────────────── │    │
-│  │    📸 Photo  📅 Session  📊 Poll  │    │
-│  └───────────────────────────────────┘    │
-│                                           │
-│  🟢 3 players here now                    │
-│                                           │
-│  ┌───────────────────────────────────┐    │
-│  │ Welcome to [Group Name] 👋        │    │
-│  │ Share updates, schedule play...   │    │
-│  │ ┌─────┐ ┌─────┐ ┌─────┐           │    │
-│  │ │ 📣  │ │ 📅  │ │ 🏓  │           │    │
-│  │ │Post │ │Event│ │ Ask │           │    │
-│  │ └─────┘ └─────┘ └─────┘           │    │
-│  └───────────────────────────────────┘    │
-│                                           │
-│  ┌───────────────────────────────────┐    │
-│  │ ░░░░░ ░░░░░░░░░░░░░░░░░░░░░░░░░░ │    │
-│  │       ░░░░░░░░░░░░░░░░░░░░░░░░░░ │    │
-│  └───────────────────────────────────┘    │
-│  ┌───────────────────────────────────┐    │
-│  │ ░░░░░ ░░░░░░░░░░░░░░░░░░░░░░     │    │
-│  └───────────────────────────────────┘    │
-│       ⬇ Your post will appear here       │
-│                                           │
-└───────────────────────────────────────────┘
-```
-
----
-
-## Key UX Improvements
-
-| Issue | Solution |
-|-------|----------|
-| Empty feels dead | Skeleton cards + welcome card imply activity |
-| Composer is flat | Elevated design with quick-action chips |
-| No permission to post | Action cards give explicit prompts |
-| Tabs feel generic | Animated underline + first-visit labels |
-| No sense of life | Community Pulse shows activity stats |
-| Typography too uniform | Lighter weights, more spacing, premium feel |
-| Big empty icon is passive | Replaced with actionable welcome experience |
+| Metric | Before | After | Improvement |
+|--------|--------|-------|-------------|
+| Tab switch time | 500-1000ms (refetch) | ~50ms (cached) | 10-20x faster |
+| Return to group | Full reload | Instant (cached) | Instant |
+| Component re-renders | Every parent render | Only when props change | 50%+ reduction |
+| Realtime channels | 3-4 per group | 1 per group | 75% reduction |
+| Profile fetches | Multiple per page | 1 per unique user | 80% reduction |
 
 ---
 
 ## Technical Notes
 
-### Animation Implementation
-- Use Framer Motion for:
-  - Tab underline slide (`layoutId="tab-indicator"`)
-  - Composer focus expand (scale: 1.01, borderColor transition)
-  - Skeleton shimmer (opacity animation loop)
-  - Welcome card entrance (fade + slide up)
+### React Query Configuration
+The app already has reasonable defaults in `App.tsx`:
+- `staleTime: 5 * 60 * 1000` (5 minutes)
+- `gcTime: 30 * 60 * 1000` (30 minutes)
+- `refetchOnWindowFocus: false`
 
-### State Management
-- Store first-visit flag in localStorage: `group_visited_{groupId}`
-- Fetch activity stats lazily (after initial render)
-- Pulse data can be cached for 5 minutes
+For community data, we'll use shorter stale times (30s-1min) to balance freshness with performance.
 
-### Performance
-- Skeleton placeholders use CSS animations (not JS)
-- Activity stats query is lightweight (COUNT with date filter)
-- Quick-action chips are static until tapped
+### Migration Strategy
+1. Start with hooks that have the biggest impact (useGroupPosts, useGroupEvents)
+2. Test tab switching before/after each change
+3. Add memoization incrementally
+4. Consolidate realtime last (requires most careful testing)
 
