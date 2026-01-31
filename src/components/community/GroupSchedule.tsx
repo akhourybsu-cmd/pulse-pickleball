@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Calendar, Clock, MapPin, Users, Check, HelpCircle, X, Plus, Trash2, Sparkles } from 'lucide-react';
+import { Calendar, Clock, MapPin, Users, Check, HelpCircle, X, Plus, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -50,11 +50,11 @@ export function GroupSchedule({ groupId, isAdmin, currentUserId }: GroupSchedule
         <GroupEmptyState
           icon={Calendar}
           title="No upcoming events"
-          description="Schedule a session, round robin, or open play for the group."
+          description="Schedule a session, round robin, or open play for your group."
           actions={[
             { label: 'Create Event', onClick: () => setWizardOpen(true), icon: Plus },
-            { label: 'Round Robin', onClick: () => setWizardOpen(true), variant: 'outline', icon: Sparkles },
           ]}
+          size="sm"
         />
       ) : (
         events.map((event) => {

@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { FolderOpen, Upload, File, FileText, Image, Trash2, Download, ExternalLink, ImagePlus } from 'lucide-react';
+import { FolderOpen, Upload, File, FileText, Image, Trash2, Download, ExternalLink } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -79,11 +79,11 @@ export function GroupFiles({ groupId, isAdmin, currentUserId }: GroupFilesProps)
         <GroupEmptyState
           icon={FolderOpen}
           title="No files yet"
-          description="Share documents, images, or other files with the group."
+          description="Share documents, images, or resources with your group."
           actions={[
             { label: 'Upload File', onClick: () => fileInputRef.current?.click(), icon: Upload },
-            { label: 'Add Photo', onClick: () => fileInputRef.current?.click(), variant: 'outline', icon: ImagePlus },
           ]}
+          size="sm"
         />
       ) : (
         <div className="space-y-2">

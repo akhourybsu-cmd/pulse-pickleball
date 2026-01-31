@@ -284,7 +284,14 @@ export default function GroupDetail() {
         {/* Content Area */}
         <div className="flex-1 overflow-hidden">
           <TabsContent value="feed" className="h-full m-0 overflow-y-auto p-4">
-            <GroupFeed groupId={groupId!} isAdmin={isAdmin} currentUserId={currentUserId} />
+            <GroupFeed 
+              groupId={groupId!} 
+              groupName={group.name}
+              isAdmin={isAdmin} 
+              currentUserId={currentUserId}
+              onOpenQuickPost={(type) => openQuickPost(type as PostType)}
+              onSwitchToEvents={() => setActiveTab('schedule')}
+            />
           </TabsContent>
 
           <TabsContent value="schedule" className="h-full m-0 overflow-y-auto p-4">
