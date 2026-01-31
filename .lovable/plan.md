@@ -1,242 +1,373 @@
 
 
-## Full-Screen Immersive Group View
+## Community Tab Premium UX Overhaul
 
 ### Overview
-This enhancement transforms the group detail page into a full-screen, immersive experience when viewing a community group. The standard PlayerShell header and bottom navigation will be hidden, leaving only a minimal back button to return to the Community tab. This maximizes screen real estate for chat and content.
+Transform the individual Community group pages from passive, empty-state-heavy views into active, premium, engagement-driving experiences. This overhaul addresses the user's 7 key recommendations while maintaining the existing tab structure and immersive full-screen layout.
 
 ---
 
-### Current Layout
+### The Core Problem
 
-```
-┌─────────────────────────────────────────┐
-│  [Logo]    [🔔] [👤] [Logout]           │  ← PlayerShell Header (72px)
-├─────────────────────────────────────────┤
-│  [←] Group Name           [+] [⋮]       │  ← GroupDetail Header
-├─────────────────────────────────────────┤
-│  [Group Snapshot Section]               │
-├─────────────────────────────────────────┤
-│  [Feed] [Events] [Chat] [Members]       │  ← Tabs
-├─────────────────────────────────────────┤
-│                                         │
-│           Content Area                  │
-│                                         │
-├─────────────────────────────────────────┤
-│  [Home] [Find] [Events] [Book] [Comm]   │  ← Bottom Nav (~60px)
-└─────────────────────────────────────────┘
-```
+Current state: When a user enters a group, they see quiet empty states with generic icons and passive messaging like "No posts yet." This reads as dead space rather than a vibrant community hub.
 
-### Proposed Layout (Full-Screen)
-
-```
-┌─────────────────────────────────────────┐
-│ ← Group Name                 ● 5 online │  ← Minimal header (44px)
-├─────────────────────────────────────────┤
-│  [Feed] [Events] [Chat] [Members]       │  ← Tabs (compact)
-├─────────────────────────────────────────┤
-│                                         │
-│                                         │
-│           Full Content Area             │
-│         (Maximum Surface Area)          │
-│                                         │
-│                                         │
-├─────────────────────────────────────────┤
-│  [Emoji] [Message input...]      [Send] │  ← Input (Chat only)
-└─────────────────────────────────────────┘
-```
-
-**Space Gained:**
-- Remove PlayerShell header: +72px
-- Remove bottom navigation: +60px
-- Compact group header: +20px
-- **Total: ~150px more content space**
+Target state: The page should feel alive and intentional, guiding users to take action while conveying activity even when content is sparse.
 
 ---
 
-### Implementation Strategy
+## Part 1: Welcome Card + Guided Starter Layout
 
-#### Approach: Route-Based Shell Detection
+**Replace passive empty states with action-oriented welcome experience**
 
-The cleanest approach is to have `PlayerShell` detect when the user is on a group detail route and conditionally hide its header and bottom navigation.
+### New Component: `GroupWelcomeCard.tsx`
 
-**Why this approach:**
-- No need for complex context/state passing
-- Clean route-based logic (already used for dashboard)
-- GroupDetail page can focus on its own layout
+When feed is empty, show a contextual welcome card instead of the generic empty state:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Welcome to [Group Name]  👋                                │
+│  ─────────────────────────────────────────────────────────  │
+│  Share updates, schedule play, and stay connected.          │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐       │
+│  │  📣          │  │  📅          │  │  🏓          │       │
+│  │  Post an     │  │  Schedule a  │  │  Ask a       │       │
+│  │  Update      │  │  Session     │  │  Question    │       │
+│  └──────────────┘  └──────────────┘  └──────────────┘       │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Design specifications:**
+- Card has subtle gradient background (muted/10 to muted/5)
+- Group name displayed prominently with emoji
+- 3 action cards in a responsive grid (stack on mobile)
+- Each action card has:
+  - Large emoji/icon (24px)
+  - Clear action label (14px, medium weight)
+  - Hover state with scale(1.02) and shadow lift
+  - Taps open the QuickPostComposer with appropriate type pre-selected
 
 ---
 
-### Technical Changes
+## Part 2: Enhanced Post Composer
 
-#### 1. PlayerShell.tsx Modifications
+**Make the composer visually prominent and inviting**
 
-Add route detection for group detail pages:
+### Current Issues
+- Flat bg-muted/30 background
+- Small avatar
+- Minimal breathing room
+- No quick-action chips visible
 
+### Enhanced Design
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  ┌────┐                                                     │
+│  │    │  ┌─────────────────────────────────────────────┐   │
+│  │ 🧑 │  │  Share something with the group...          │   │
+│  │    │  └─────────────────────────────────────────────┘   │
+│  └────┘                                                     │
+│         ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐                │
+│         │ 📸   │ │ 📅   │ │ 📊   │ │ ❓   │                │
+│         │Photo │ │Event │ │Score │ │Ask  │                 │
+│         └──────┘ └──────┘ └──────┘ └──────┘                │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Changes to `GroupFeed.tsx` composer section:**
+- Increase vertical padding (py-4 instead of py-3)
+- Add subtle box shadow (`shadow-sm`)
+- Increase avatar size (h-10 w-10)
+- Add focus animation (border glow, slight expand with Framer Motion)
+- Add quick-action chip row below input:
+  - Photo, Event/Session, Score, Question chips
+  - Horizontal scroll on mobile
+  - Tapping opens QuickPostComposer with correct type
+
+---
+
+## Part 3: Tab Identity Enhancements
+
+**Strengthen visual distinction without changing tab structure**
+
+### Changes to Tab Bar in `GroupDetail.tsx`
+
+| Enhancement | Implementation |
+|-------------|----------------|
+| Active tab underline tint | Change from `border-primary` to custom Pulse green with opacity |
+| Tab slide animation | Add `motion.div` underline indicator that slides between tabs |
+| First-visit labels | Show sublabels on first group visit (store in localStorage) |
+
+**Tab sublabels (shown once):**
+- Feed → "Updates & Posts"
+- Events → "Sessions & Meetups"
+- Chat → "Real-time Discussions"
+- Members → "Who's Here"
+- Files → "Shared Media"
+
+**Animation spec:**
+- Use `layoutId` on underline for smooth position transitions
+- 180ms ease-out timing
+- Subtle tab icon pulse on selection
+
+---
+
+## Part 4: Pinned Post Area
+
+**Reserve visual space at top of feed for pinned content**
+
+### Enhanced Pinned Post Design
+
+When a post is pinned, it appears in a dedicated area above regular posts:
+
+```
+┌──────────────────────────────────────────────────────────┐
+│ 📌 PINNED                                                │
+├──────────────────────────────────────────────────────────┤
+│  🏓 Open Play Tonight at 6PM                             │
+│  All levels welcome! See you on courts 1-4.              │
+│                                           [View Details] │
+└──────────────────────────────────────────────────────────┘
+```
+
+**Design specifications:**
+- Smaller card height than regular posts
+- Slightly darker/tinted background (`bg-primary/5`)
+- Pin icon in corner
+- Separate from main feed scroll area (sticky at top)
+- Maximum 1-2 pinned items visible (others in dropdown)
+
+---
+
+## Part 5: Visual Momentum for Empty States
+
+**Replace static icons with dynamic skeleton placeholders**
+
+### New Component: `GroupFeedPlaceholder.tsx`
+
+When feed has 0 posts but composer is visible, show ghost/skeleton posts:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  [░░░░░]  ░░░░░░░░░░░░░░░░░                                │
+│           ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░              │
+│           ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░            │
+│           ░░░░░░░░░    ░░░░░░                              │
+└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│  [░░░░░]  ░░░░░░░░░░░░░░░░░                                │
+│           ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░                  │
+│           ░░░░░░░░░    ░░░░░░                              │
+└─────────────────────────────────────────────────────────────┘
+          ⬇ Your post will appear here
+```
+
+**Visual effect:**
+- 2-3 stacked skeleton cards with subtle opacity gradient (more opaque at top)
+- Gentle shimmer/pulse animation (slower than loading state - 3s cycle)
+- Small helper text below: "Your post will appear here"
+- Psychological message: "This space fills up. You're early."
+
+---
+
+## Part 6: Typography & Spacing Refinements
+
+**Premium visual polish across all components**
+
+### Specific Changes
+
+| Element | Current | Enhanced |
+|---------|---------|----------|
+| Empty state description | `text-sm` | `text-sm leading-relaxed` with increased line-height |
+| Empty state copy weight | Normal | `font-normal text-muted-foreground/80` (lighter) |
+| CTA buttons | Standard | Slightly taller (`h-10`), more rounded (`rounded-xl`) |
+| Card padding | `p-4` | `p-5` for more breathing room |
+| Section spacing | `space-y-4` | `space-y-6` between major sections |
+
+---
+
+## Part 7: Community Pulse Element
+
+**Add a lightweight activity indicator to the group page**
+
+### New Component: `CommunityPulse.tsx`
+
+A subtle, informational bar that appears below the composer (or in header on scroll):
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  🟢 8 players active today  •  ⚡ 3 sessions this week     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Data sources:**
+- Active today: Count of unique users who posted/commented/reacted in last 24h
+- Sessions this week: Count of events in current week (group_events with start_time this week)
+
+**Design:**
+- Inline flex with small icons
+- `text-xs text-muted-foreground`
+- Primary color tint on numbers
+- Skeleton placeholder while loading
+
+**Visibility logic:**
+- Only show if group has activity (at least 1 post ever OR 1 event)
+- Hide for brand-new empty groups (show welcome card instead)
+
+---
+
+## Part 8: Refreshed GroupEmptyState Component
+
+**Upgrade the base empty state component**
+
+### Changes to `GroupEmptyState.tsx`
+
+1. **Remove large centered icon** - replace with more compact inline icon
+2. **Shorter, action-oriented copy** - verb-first language
+3. **More prominent CTAs** - full-width on mobile
+4. **Add illustration variant** - optional prop for skeleton illustration
+
+**New Props:**
 ```typescript
-const location = useLocation();
-
-// Routes that should be full-screen immersive
-const isGroupDetail = location.pathname.includes('/player/community/group/');
-
-// Hide both header AND bottom nav on group detail pages
-const hideShell = isGroupDetail;
-```
-
-Update the render logic:
-- Conditionally hide the top header when `hideShell` is true
-- Conditionally hide both mobile and desktop bottom navigation
-
-#### 2. GroupDetail.tsx Modifications
-
-**Minimal Header Design:**
-- Single row with back button, group name, online indicator
-- Optional action buttons (share, settings) in a compact overflow menu
-- Height reduced to ~44px (from current ~56px)
-
-**Layout Changes:**
-- Remove `GroupSnapshot` section entirely in immersive mode (or move key info to header)
-- Tabs become edge-to-edge with reduced padding
-- Content area fills remaining space with `h-[calc(100dvh-88px)]` (header + tabs)
-
-**Updated Header Structure:**
-```
-┌──────────────────────────────────────────────────────┐
-│ [←]  Group Name                    [●3] [Share] [⋮] │
-└──────────────────────────────────────────────────────┘
-     │        │                       │      │     │
-  Back     Title                  Online  Quick  More
-  button   (truncated)           count   share  menu
+interface GroupEmptyStateProps {
+  icon: LucideIcon;
+  title: string;
+  description: string;
+  actions?: EmptyStateAction[];
+  className?: string;
+  variant?: 'default' | 'skeleton' | 'welcome';
+  showPlaceholderCards?: boolean;
+}
 ```
 
 ---
 
-### File Changes
+## Implementation File Summary
 
-#### Modified Files
+### New Files
+
+| File | Purpose |
+|------|---------|
+| `src/components/community/GroupWelcomeCard.tsx` | Guided starter card for empty groups |
+| `src/components/community/GroupFeedPlaceholder.tsx` | Skeleton post cards for visual momentum |
+| `src/components/community/CommunityPulse.tsx` | Activity stats indicator |
+
+### Modified Files
 
 | File | Changes |
 |------|---------|
-| `src/components/layout/PlayerShell.tsx` | Add route detection for `/player/community/group/`, hide header and bottom nav on these routes |
-| `src/pages/player/GroupDetail.tsx` | Redesign header to be minimal and self-contained, adjust height calculations for full viewport |
+| `src/components/community/GroupFeed.tsx` | Enhanced composer with quick-action chips, integrate welcome card and pulse |
+| `src/components/community/GroupDetail.tsx` | Add tab slide animation, integrate pinned area |
+| `src/components/community/GroupEmptyState.tsx` | Add variants, lighter typography, optional skeleton mode |
+| `src/components/community/GroupSchedule.tsx` | Apply same enhanced empty state pattern |
+| `src/components/community/GroupChat.tsx` | Apply enhanced welcome message style |
+| `src/components/community/GroupFiles.tsx` | Apply enhanced empty state |
+| `src/hooks/useGroupPosts.ts` | Add stats fetch (posts/reactions in last 24h) |
+| `src/hooks/useGroupEvents.ts` | Add this-week event count |
 
 ---
 
-### Detailed Component Changes
+## Visual Before/After Comparison
 
-#### PlayerShell.tsx
+### Before (Current Empty Feed)
 
-Add immersive route detection alongside existing dashboard check:
-
-```typescript
-// Full-screen immersive routes (hide shell chrome)
-const isImmersiveRoute = 
-  location.pathname.includes('/player/community/group/') ||
-  location.pathname.includes('/player/messages/');
-
-// Render header only when NOT on immersive routes
-{!isDashboard && !isImmersiveRoute && (
-  <header>...</header>
-)}
-
-// Render bottom nav only when NOT on immersive routes  
-{!isImmersiveRoute && (
-  <nav>...</nav>
-)}
+```
+┌───────────────────────────────────────────┐
+│  ← Group Name               ● 0 online    │
+├───────────────────────────────────────────┤
+│  [Feed] [Events] [Chat] [Members] [Files] │
+├───────────────────────────────────────────┤
+│  ┌───────────────────────────────────┐    │
+│  │ [Avatar] Post to the group... [Post]│   │
+│  └───────────────────────────────────┘    │
+│                                           │
+│           ┌───────────────┐               │
+│           │      💬       │               │
+│           │               │               │
+│           │  No posts yet │               │
+│           │               │               │
+│           │  Be the first │               │
+│           │  to share...  │               │
+│           │               │               │
+│           │  [Post Update]│               │
+│           └───────────────┘               │
+│                                           │
+└───────────────────────────────────────────┘
 ```
 
-This also applies the same treatment to direct message chats for consistency.
+### After (Enhanced Empty Feed)
 
-#### GroupDetail.tsx
-
-**New Minimal Header:**
-
-```typescript
-<div className="flex items-center gap-3 px-3 py-2.5 border-b border-border/20 bg-background sticky top-0 z-10">
-  <Button 
-    variant="ghost" 
-    size="icon"
-    className="h-9 w-9"
-    onClick={() => navigate('/player/community')}
-  >
-    <ArrowLeft className="h-5 w-5" />
-  </Button>
-  
-  <div className="flex-1 min-w-0">
-    <h1 className="text-sm font-semibold truncate">{group.name}</h1>
-  </div>
-  
-  <div className="flex items-center gap-1 text-xs text-muted-foreground">
-    <OnlineIndicator isOnline={isConnected} size="sm" />
-    <span>{onlineCount}</span>
-  </div>
-  
-  {/* Compact action menu */}
-  <DropdownMenu>
-    <DropdownMenuTrigger asChild>
-      <Button variant="ghost" size="icon" className="h-8 w-8">
-        <MoreHorizontal className="h-4 w-4" />
-      </Button>
-    </DropdownMenuTrigger>
-    <DropdownMenuContent>
-      <DropdownMenuItem>Share Invite</DropdownMenuItem>
-      <DropdownMenuItem>Group Info</DropdownMenuItem>
-      {isAdmin && <DropdownMenuItem>Settings</DropdownMenuItem>}
-    </DropdownMenuContent>
-  </DropdownMenu>
-</div>
 ```
-
-**Updated Height Calculations:**
-
-```typescript
-// Use dynamic viewport height for full-screen
-<div className="flex flex-col h-[100dvh]">
-  {/* Minimal header - ~44px */}
-  <div className="...">...</div>
-  
-  {/* Tabs - ~40px */}
-  <Tabs className="flex-1 flex flex-col overflow-hidden">
-    <TabsList>...</TabsList>
-    
-    {/* Content fills remaining space */}
-    <div className="flex-1 overflow-hidden">
-      <TabsContent className="h-full">...</TabsContent>
-    </div>
-  </Tabs>
-</div>
+┌───────────────────────────────────────────┐
+│  ← Group Name               ● 3 online    │
+├───────────────────────────────────────────┤
+│  [Feed] [Events] [Chat] [Members] [Files] │
+│  ───────                                  │
+├───────────────────────────────────────────┤
+│  ┌───────────────────────────────────┐    │
+│  │ 🧑 Share something with the group │    │
+│  │    ────────────────────────────── │    │
+│  │    📸 Photo  📅 Session  📊 Poll  │    │
+│  └───────────────────────────────────┘    │
+│                                           │
+│  🟢 3 players here now                    │
+│                                           │
+│  ┌───────────────────────────────────┐    │
+│  │ Welcome to [Group Name] 👋        │    │
+│  │ Share updates, schedule play...   │    │
+│  │ ┌─────┐ ┌─────┐ ┌─────┐           │    │
+│  │ │ 📣  │ │ 📅  │ │ 🏓  │           │    │
+│  │ │Post │ │Event│ │ Ask │           │    │
+│  │ └─────┘ └─────┘ └─────┘           │    │
+│  └───────────────────────────────────┘    │
+│                                           │
+│  ┌───────────────────────────────────┐    │
+│  │ ░░░░░ ░░░░░░░░░░░░░░░░░░░░░░░░░░ │    │
+│  │       ░░░░░░░░░░░░░░░░░░░░░░░░░░ │    │
+│  └───────────────────────────────────┘    │
+│  ┌───────────────────────────────────┐    │
+│  │ ░░░░░ ░░░░░░░░░░░░░░░░░░░░░░     │    │
+│  └───────────────────────────────────┘    │
+│       ⬇ Your post will appear here       │
+│                                           │
+└───────────────────────────────────────────┘
 ```
 
 ---
 
-### UX Considerations
+## Key UX Improvements
 
-1. **Gesture Navigation**: Back button is prominently placed for easy thumb access
-2. **Context Preservation**: Group name visible at all times so user knows where they are
-3. **Quick Actions**: Common actions (share, settings) accessible via overflow menu
-4. **Online Presence**: Online count always visible for social awareness
-5. **Safe Area**: Bottom input respects `env(safe-area-inset-bottom)` for notched phones
-
----
-
-### Extended to Direct Messages
-
-For consistency, apply the same full-screen treatment to:
-- `/player/messages/:conversationId` (DM chat pages)
-
-This creates a unified immersive messaging experience across both group chats and direct messages.
+| Issue | Solution |
+|-------|----------|
+| Empty feels dead | Skeleton cards + welcome card imply activity |
+| Composer is flat | Elevated design with quick-action chips |
+| No permission to post | Action cards give explicit prompts |
+| Tabs feel generic | Animated underline + first-visit labels |
+| No sense of life | Community Pulse shows activity stats |
+| Typography too uniform | Lighter weights, more spacing, premium feel |
+| Big empty icon is passive | Replaced with actionable welcome experience |
 
 ---
 
-### Summary
+## Technical Notes
 
-| Aspect | Before | After |
-|--------|--------|-------|
-| Visible headers | 2 (shell + page) | 1 (minimal) |
-| Bottom navigation | Always visible | Hidden |
-| Content height | ~calc(100vh - 200px) | ~calc(100dvh - 84px) |
-| Extra space gained | - | ~150px |
-| Visual feel | App within app | Native messaging app |
+### Animation Implementation
+- Use Framer Motion for:
+  - Tab underline slide (`layoutId="tab-indicator"`)
+  - Composer focus expand (scale: 1.01, borderColor transition)
+  - Skeleton shimmer (opacity animation loop)
+  - Welcome card entrance (fade + slide up)
 
-The result is a clean, focused, full-screen experience that maximizes the chat and content area, making the Community tab feel like a true native social/messaging application.
+### State Management
+- Store first-visit flag in localStorage: `group_visited_{groupId}`
+- Fetch activity stats lazily (after initial render)
+- Pulse data can be cached for 5 minutes
+
+### Performance
+- Skeleton placeholders use CSS animations (not JS)
+- Activity stats query is lightweight (COUNT with date filter)
+- Quick-action chips are static until tapped
 
