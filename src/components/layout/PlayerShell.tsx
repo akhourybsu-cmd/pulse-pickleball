@@ -49,6 +49,11 @@ export function PlayerShell() {
   
   // Hide shell header on dashboard since it has its own ProfileHero header
   const isDashboard = location.pathname === '/player/dashboard';
+  
+  // Full-screen immersive routes (hide all shell chrome)
+  const isImmersiveRoute = 
+    location.pathname.includes('/player/community/group/') ||
+    location.pathname.includes('/player/messages/');
 
   // Calculate active tab index for sliding indicator
   const activeIndex = navItems.findIndex(item => 
@@ -96,7 +101,7 @@ export function PlayerShell() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Top Header - Hidden on dashboard */}
-      {!isDashboard && (
+      {!isDashboard && !isImmersiveRoute && (
         <header className="sticky top-0 z-50 border-b bg-secondary shadow-sm">
           <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-4 flex items-center justify-between h-[72px]">
             <NavLink to="/player/dashboard" className="ml-2">
@@ -149,59 +154,22 @@ export function PlayerShell() {
       <VenueModeBanner />
 
       {/* Main Content */}
-      <main className="flex-1 pb-24 md:pb-20">
+      <main className={isImmersiveRoute ? "flex-1" : "flex-1 pb-24 md:pb-20"}>
         <Outlet />
       </main>
 
       {/* Bottom Navigation - Mobile Only */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-card/95 backdrop-blur-sm md:hidden pb-[env(safe-area-inset-bottom)]">
-        {/* Sliding active indicator */}
-        <div
-          className="absolute top-0 h-[3px] bg-primary rounded-full transition-all duration-[240ms] ease-out"
-          style={{
-            width: `${100 / navItems.length * 0.6}%`,
-            left: `${(100 / navItems.length) * activeIndex + (100 / navItems.length) * 0.2}%`,
-          }}
-        />
-        <div className="flex items-center justify-around py-2">
-          {navItems.map((item) => {
-            const isActive = location.pathname === item.to || 
-              (item.to !== '/player/dashboard' && location.pathname.startsWith(item.to));
-            
-            return (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                onMouseEnter={() => handlePrefetch(item.to)}
-                className={cn(
-                  'flex flex-col items-center gap-1 px-3 py-2 rounded-lg min-w-[60px]',
-                  'transition-colors duration-[240ms] ease-out',
-                  isActive 
-                    ? 'text-primary/80' 
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
-              >
-                <item.icon className={cn('h-5 w-5 transition-colors duration-[240ms] ease-out', isActive && 'text-primary/80')} />
-                <span className="text-xs font-medium">{item.label}</span>
-              </NavLink>
-            );
-          })}
-        </div>
-      </nav>
-
-      {/* Desktop Horizontal Nav */}
-      <nav className="hidden md:block fixed bottom-0 left-0 right-0 z-50 border-t bg-card/95 backdrop-blur-sm">
-        <div className="container mx-auto px-4 relative">
-          {/* Sliding active indicator for desktop */}
+      {!isImmersiveRoute && (
+        <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-card/95 backdrop-blur-sm md:hidden pb-[env(safe-area-inset-bottom)]">
+          {/* Sliding active indicator */}
           <div
-            className="absolute top-0 left-1/2 h-[3px] bg-primary rounded-full transition-transform duration-[240ms] ease-out"
+            className="absolute top-0 h-[3px] bg-primary rounded-full transition-all duration-[240ms] ease-out"
             style={{
-              width: '60px',
-              marginLeft: '-30px',
-              transform: `translateX(${(activeIndex - Math.floor(navItems.length / 2)) * 120}px)`,
+              width: `${100 / navItems.length * 0.6}%`,
+              left: `${(100 / navItems.length) * activeIndex + (100 / navItems.length) * 0.2}%`,
             }}
           />
-          <div className="flex items-center justify-center gap-8 py-3">
+          <div className="flex items-center justify-around py-2">
             {navItems.map((item) => {
               const isActive = location.pathname === item.to || 
                 (item.to !== '/player/dashboard' && location.pathname.startsWith(item.to));
@@ -212,21 +180,62 @@ export function PlayerShell() {
                   to={item.to}
                   onMouseEnter={() => handlePrefetch(item.to)}
                   className={cn(
-                    'flex items-center gap-2 px-4 py-2 rounded-lg',
+                    'flex flex-col items-center gap-1 px-3 py-2 rounded-lg min-w-[60px]',
                     'transition-colors duration-[240ms] ease-out',
                     isActive 
-                      ? 'bg-primary/10 text-primary font-medium' 
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                      ? 'text-primary/80' 
+                      : 'text-muted-foreground hover:text-foreground'
                   )}
                 >
-                  <item.icon className={cn('h-4 w-4 transition-colors duration-[240ms] ease-out')} />
-                  <span className="text-sm">{item.label}</span>
+                  <item.icon className={cn('h-5 w-5 transition-colors duration-[240ms] ease-out', isActive && 'text-primary/80')} />
+                  <span className="text-xs font-medium">{item.label}</span>
                 </NavLink>
               );
             })}
           </div>
-        </div>
-      </nav>
+        </nav>
+      )}
+
+      {/* Desktop Horizontal Nav */}
+      {!isImmersiveRoute && (
+        <nav className="hidden md:block fixed bottom-0 left-0 right-0 z-50 border-t bg-card/95 backdrop-blur-sm">
+          <div className="container mx-auto px-4 relative">
+            {/* Sliding active indicator for desktop */}
+            <div
+              className="absolute top-0 left-1/2 h-[3px] bg-primary rounded-full transition-transform duration-[240ms] ease-out"
+              style={{
+                width: '60px',
+                marginLeft: '-30px',
+                transform: `translateX(${(activeIndex - Math.floor(navItems.length / 2)) * 120}px)`,
+              }}
+            />
+            <div className="flex items-center justify-center gap-8 py-3">
+              {navItems.map((item) => {
+                const isActive = location.pathname === item.to || 
+                  (item.to !== '/player/dashboard' && location.pathname.startsWith(item.to));
+                
+                return (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    onMouseEnter={() => handlePrefetch(item.to)}
+                    className={cn(
+                      'flex items-center gap-2 px-4 py-2 rounded-lg',
+                      'transition-colors duration-[240ms] ease-out',
+                      isActive 
+                        ? 'bg-primary/10 text-primary font-medium' 
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                    )}
+                  >
+                    <item.icon className={cn('h-4 w-4 transition-colors duration-[240ms] ease-out')} />
+                    <span className="text-sm">{item.label}</span>
+                  </NavLink>
+                );
+              })}
+            </div>
+          </div>
+        </nav>
+      )}
     </div>
   );
 }

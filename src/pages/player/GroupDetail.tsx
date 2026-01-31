@@ -41,6 +41,7 @@ import { QuickPostComposer, type PostType } from '@/components/community/QuickPo
 import { GroupSnapshot } from '@/components/community/GroupSnapshot';
 import { useGroupPosts } from '@/hooks/useGroupPosts';
 import { useGroupPresence } from '@/hooks/useGroupPresence';
+import { OnlineIndicator } from '@/components/community/OnlineIndicator';
 
 export default function GroupDetail() {
   const { groupId } = useParams<{ groupId: string }>();
@@ -60,10 +61,7 @@ export default function GroupDetail() {
   const [quickPostType, setQuickPostType] = useState<PostType>('post');
 
   const { createPost } = useGroupPosts(groupId || '');
-  const { onlineUsers, onlineCount } = useGroupPresence(groupId);
-
-  // Immersive mode for chat tab
-  const isImmersive = activeTab === 'chat';
+  const { onlineUsers, onlineCount, isConnected } = useGroupPresence(groupId);
 
   useEffect(() => {
     if (groupId) {
@@ -187,106 +185,78 @@ export default function GroupDetail() {
     : 'Public Group';
 
   return (
-    <div className={cn(
-      "flex flex-col",
-      isImmersive ? "h-[calc(100vh-60px)]" : "min-h-[calc(100vh-120px)]"
-    )}>
-      {/* Compact Header */}
-      <div className={cn(
-        "flex items-center gap-2 px-4 border-b border-border/30",
-        isImmersive ? "py-2" : "py-3"
-      )}>
+    <div className="flex flex-col h-[100dvh]">
+      {/* Minimal Immersive Header */}
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-border/20 bg-background shrink-0">
         <Button 
           variant="ghost" 
           size="icon"
-          className="h-8 w-8 -ml-2"
+          className="h-9 w-9 -ml-1"
           onClick={() => navigate('/player/community')}
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-5 w-5" />
         </Button>
         
         <div className="flex-1 min-w-0">
-          <h1 className="text-base font-semibold truncate">{group.name}</h1>
-          {!isImmersive && (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1">
-                {group.visibility === 'private' ? <Lock className="h-3 w-3" /> : <Globe className="h-3 w-3" />}
-                {group.visibility}
-              </span>
-              <span>•</span>
-              <span>{group.member_count} members</span>
-            </div>
-          )}
+          <h1 className="text-sm font-semibold truncate">{group.name}</h1>
         </div>
 
-        {/* Header Actions */}
-        <div className="flex items-center gap-1">
-          {group.invite_code && (
-            <Button 
-              variant="ghost" 
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => setInviteModalOpen(true)}
-            >
-              <Share2 className="h-4 w-4" />
+        {/* Online indicator */}
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <OnlineIndicator isOnline={isConnected} size="sm" />
+          <span>{onlineCount} online</span>
+        </div>
+
+        {/* Compact action buttons */}
+        {group.invite_code && (
+          <Button 
+            variant="ghost" 
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => setInviteModalOpen(true)}
+          >
+            <Share2 className="h-4 w-4" />
+          </Button>
+        )}
+        
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8">
+              <Plus className="h-4 w-4" />
             </Button>
-          )}
-          
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => openQuickPost('post')}>
+              <MessageSquare className="h-4 w-4 mr-2" />
+              Post Update
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => { setActiveTab('schedule'); }}>
+              <Calendar className="h-4 w-4 mr-2" />
+              Create Event
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => openQuickPost('poll')}>
+              <MessageSquare className="h-4 w-4 mr-2" />
+              Create Poll
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {isAdmin && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="h-8 w-8">
-                <Plus className="h-4 w-4" />
+                <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => openQuickPost('post')}>
-                <MessageSquare className="h-4 w-4 mr-2" />
-                Post Update
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => { setActiveTab('schedule'); }}>
-                <Calendar className="h-4 w-4 mr-2" />
-                Create Event
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => openQuickPost('poll')}>
-                <MessageSquare className="h-4 w-4 mr-2" />
-                Create Poll
+              <DropdownMenuItem onClick={() => navigate(`/player/community/group/${groupId}/manage`)}>
+                <Settings className="h-4 w-4 mr-2" />
+                Group Settings
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-
-          {isAdmin && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => navigate(`/player/community/group/${groupId}/manage`)}>
-                  <Settings className="h-4 w-4 mr-2" />
-                  Group Settings
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-        </div>
+        )}
       </div>
-
-      {/* Group Snapshot - Hidden in immersive mode */}
-      {!isImmersive && (
-        <div className="px-4 py-3">
-          <GroupSnapshot 
-            members={members}
-            onlineCount={onlineCount}
-            onlineUserIds={onlineUsers.map(u => u.user_id)}
-            onCreateEvent={() => setActiveTab('schedule')}
-            onViewFeed={() => {
-              setActiveTab('feed');
-              setTimeout(() => document.querySelector('textarea')?.focus(), 100);
-            }}
-          />
-        </div>
-      )}
 
       {/* Minimal Tab Bar */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
