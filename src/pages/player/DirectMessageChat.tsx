@@ -95,7 +95,7 @@ export default function DirectMessageChat() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-120px)]">
+    <div className="flex flex-col h-[100dvh]">
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-border/30 shrink-0">
         <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="h-8 w-8">
