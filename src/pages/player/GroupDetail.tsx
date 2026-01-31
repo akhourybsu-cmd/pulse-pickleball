@@ -1,18 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, Settings, Users, MessageSquare, MessageCircle, Calendar, 
-  FolderOpen, Lock, Globe, Eye, Plus, Share2, MoreVertical
+  FolderOpen, Plus, Share2, MoreVertical
 } from 'lucide-react';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -21,14 +15,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Drawer,
-  DrawerContent,
-  DrawerDescription,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerTrigger,
-} from '@/components/ui/drawer';
 import { cn } from '@/lib/utils';
 import type { Group, GroupMember } from '@/hooks/useGroups';
 import { GroupFeed } from '@/components/community/GroupFeed';
@@ -38,9 +24,9 @@ import { GroupMembers } from '@/components/community/GroupMembers';
 import { GroupChat } from '@/components/community/GroupChat';
 import { InviteModal } from '@/components/community/InviteModal';
 import { QuickPostComposer, type PostType } from '@/components/community/QuickPostComposer';
-import { GroupSnapshot } from '@/components/community/GroupSnapshot';
 import { useGroupPosts } from '@/hooks/useGroupPosts';
 import { useGroupPresence } from '@/hooks/useGroupPresence';
+import { useGroupRealtime } from '@/hooks/useGroupRealtime';
 import { OnlineIndicator } from '@/components/community/OnlineIndicator';
 
 export default function GroupDetail() {
@@ -50,10 +36,12 @@ export default function GroupDetail() {
   
   const [group, setGroup] = useState<Group | null>(null);
   const [membership, setMembership] = useState<GroupMember | null>(null);
-  const [members, setMembers] = useState<GroupMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('feed');
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  
+  // Track which tabs have been visited for lazy mounting
+  const [visitedTabs, setVisitedTabs] = useState<Set<string>>(new Set(['feed']));
   
   // Modal states
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
@@ -61,7 +49,22 @@ export default function GroupDetail() {
   const [quickPostType, setQuickPostType] = useState<PostType>('post');
 
   const { createPost } = useGroupPosts(groupId || '');
-  const { onlineUsers, onlineCount, isConnected } = useGroupPresence(groupId);
+  
+  // Single presence subscription at parent level
+  const presence = useGroupPresence(groupId);
+  const { onlineCount, isConnected, isOnline } = presence;
+  
+  // Single realtime subscription for all group data
+  useGroupRealtime(groupId);
+
+  // Handle tab changes with lazy mounting
+  const handleTabChange = useCallback((tab: string) => {
+    setActiveTab(tab);
+    setVisitedTabs(prev => {
+      if (prev.has(tab)) return prev;
+      return new Set([...prev, tab]);
+    });
+  }, []);
 
   useEffect(() => {
     if (groupId) {
@@ -108,30 +111,6 @@ export default function GroupDetail() {
           .update({ last_read_at: new Date().toISOString() })
           .eq('id', membershipData.id);
       }
-
-      // Fetch members
-      const { data: membersData } = await supabase
-        .from('group_members')
-        .select('*')
-        .eq('group_id', groupId)
-        .eq('status', 'active')
-        .order('joined_at', { ascending: true });
-
-      // Fetch profiles separately
-      const memberUserIds = (membersData || []).map(m => m.user_id);
-      const { data: profilesData } = await supabase
-        .from('profiles')
-        .select('id, display_name, full_name, avatar_url')
-        .in('id', memberUserIds);
-
-      const profilesMap = new Map((profilesData || []).map(p => [p.id, p]));
-
-      const membersWithProfiles = (membersData || []).map(m => ({
-        ...m,
-        profile: profilesMap.get(m.user_id),
-      })) as GroupMember[];
-
-      setMembers(membersWithProfiles);
     } catch (error) {
       console.error('Error fetching group:', error);
       toast({
@@ -145,17 +124,26 @@ export default function GroupDetail() {
     }
   };
 
-  const openQuickPost = (type: PostType) => {
+  const openQuickPost = useCallback((type: PostType) => {
     setQuickPostType(type);
     setQuickPostOpen(true);
-  };
+  }, []);
 
-  const handleQuickPost = async (data: any) => {
+  const handleQuickPost = useCallback(async (data: any) => {
     const result = await createPost(data);
     return !!result;
-  };
+  }, [createPost]);
 
   const isAdmin = membership?.role === 'owner' || membership?.role === 'moderator';
+
+  // Memoize tab config
+  const tabs = useMemo(() => [
+    { value: 'feed', icon: MessageSquare, label: 'Feed' },
+    { value: 'schedule', icon: Calendar, label: 'Events' },
+    { value: 'chat', icon: MessageCircle, label: 'Chat' },
+    { value: 'members', icon: Users, label: 'Members' },
+    { value: 'files', icon: FolderOpen, label: 'Files' },
+  ], []);
 
   if (loading) {
     return (
@@ -177,12 +165,6 @@ export default function GroupDetail() {
       </div>
     );
   }
-
-  const visibilityLabel = group.visibility === 'private' 
-    ? 'Private Group' 
-    : group.visibility === 'unlisted' 
-    ? 'Unlisted Group' 
-    : 'Public Group';
 
   return (
     <div className="flex flex-col h-[100dvh]">
@@ -230,7 +212,7 @@ export default function GroupDetail() {
               <MessageSquare className="h-4 w-4 mr-2" />
               Post Update
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => { setActiveTab('schedule'); }}>
+            <DropdownMenuItem onClick={() => { handleTabChange('schedule'); }}>
               <Calendar className="h-4 w-4 mr-2" />
               Create Event
             </DropdownMenuItem>
@@ -259,16 +241,10 @@ export default function GroupDetail() {
       </div>
 
       {/* Minimal Tab Bar */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col overflow-hidden">
         <div className="border-b border-border/30 px-2">
           <TabsList className="h-10 bg-transparent p-0 w-full justify-start gap-0">
-            {[
-              { value: 'feed', icon: MessageSquare, label: 'Feed' },
-              { value: 'schedule', icon: Calendar, label: 'Events' },
-              { value: 'chat', icon: MessageCircle, label: 'Chat' },
-              { value: 'members', icon: Users, label: 'Members' },
-              { value: 'files', icon: FolderOpen, label: 'Files' },
-            ].map((tab) => (
+            {tabs.map((tab) => (
               <TabsTrigger 
                 key={tab.value}
                 value={tab.value} 
@@ -281,39 +257,95 @@ export default function GroupDetail() {
           </TabsList>
         </div>
 
-        {/* Content Area */}
+        {/* Content Area - Lazy mounted tabs */}
         <div className="flex-1 overflow-hidden">
-          <TabsContent value="feed" className="h-full m-0 overflow-y-auto p-4">
-            <GroupFeed 
-              groupId={groupId!} 
-              groupName={group.name}
-              isAdmin={isAdmin} 
-              currentUserId={currentUserId}
-              onOpenQuickPost={(type) => openQuickPost(type as PostType)}
-              onSwitchToEvents={() => setActiveTab('schedule')}
-            />
+          {/* Feed Tab - Always mounted first */}
+          <TabsContent 
+            value="feed" 
+            className={cn(
+              "h-full m-0 overflow-y-auto p-4",
+              activeTab !== 'feed' && "hidden"
+            )}
+            forceMount={visitedTabs.has('feed') ? true : undefined}
+          >
+            {visitedTabs.has('feed') && (
+              <GroupFeed 
+                groupId={groupId!} 
+                groupName={group.name}
+                isAdmin={isAdmin} 
+                currentUserId={currentUserId}
+                onOpenQuickPost={(type) => openQuickPost(type as PostType)}
+                onSwitchToEvents={() => handleTabChange('schedule')}
+              />
+            )}
           </TabsContent>
 
-          <TabsContent value="schedule" className="h-full m-0 overflow-y-auto p-4">
-            <GroupSchedule groupId={groupId!} isAdmin={isAdmin} currentUserId={currentUserId} />
+          {/* Schedule Tab */}
+          <TabsContent 
+            value="schedule" 
+            className={cn(
+              "h-full m-0 overflow-y-auto p-4",
+              activeTab !== 'schedule' && "hidden"
+            )}
+            forceMount={visitedTabs.has('schedule') ? true : undefined}
+          >
+            {visitedTabs.has('schedule') && (
+              <GroupSchedule groupId={groupId!} isAdmin={isAdmin} currentUserId={currentUserId} />
+            )}
           </TabsContent>
 
-          <TabsContent value="chat" className="h-full m-0 flex flex-col">
-            <GroupChat groupId={groupId!} currentUserId={currentUserId} />
+          {/* Chat Tab */}
+          <TabsContent 
+            value="chat" 
+            className={cn(
+              "h-full m-0 flex flex-col",
+              activeTab !== 'chat' && "hidden"
+            )}
+            forceMount={visitedTabs.has('chat') ? true : undefined}
+          >
+            {visitedTabs.has('chat') && (
+              <GroupChat 
+                groupId={groupId!} 
+                currentUserId={currentUserId}
+                onlineCount={onlineCount}
+                isConnected={isConnected}
+              />
+            )}
           </TabsContent>
 
-          <TabsContent value="members" className="h-full m-0 overflow-y-auto p-4">
-            <GroupMembers 
-              groupId={groupId!} 
-              isAdmin={isAdmin} 
-              isOwner={membership?.role === 'owner'} 
-              currentUserId={currentUserId}
-              onInviteClick={() => setInviteModalOpen(true)}
-            />
+          {/* Members Tab */}
+          <TabsContent 
+            value="members" 
+            className={cn(
+              "h-full m-0 overflow-y-auto p-4",
+              activeTab !== 'members' && "hidden"
+            )}
+            forceMount={visitedTabs.has('members') ? true : undefined}
+          >
+            {visitedTabs.has('members') && (
+              <GroupMembers 
+                groupId={groupId!} 
+                isAdmin={isAdmin} 
+                isOwner={membership?.role === 'owner'} 
+                currentUserId={currentUserId}
+                onInviteClick={() => setInviteModalOpen(true)}
+                isOnline={isOnline}
+              />
+            )}
           </TabsContent>
 
-          <TabsContent value="files" className="h-full m-0 overflow-y-auto p-4">
-            <GroupFiles groupId={groupId!} isAdmin={isAdmin} currentUserId={currentUserId} />
+          {/* Files Tab */}
+          <TabsContent 
+            value="files" 
+            className={cn(
+              "h-full m-0 overflow-y-auto p-4",
+              activeTab !== 'files' && "hidden"
+            )}
+            forceMount={visitedTabs.has('files') ? true : undefined}
+          >
+            {visitedTabs.has('files') && (
+              <GroupFiles groupId={groupId!} isAdmin={isAdmin} currentUserId={currentUserId} />
+            )}
           </TabsContent>
         </div>
       </Tabs>

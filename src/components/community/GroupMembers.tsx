@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Users, Crown, Shield, MoreVertical, UserMinus, ShieldPlus, ShieldMinus, Ban, Check, X, UserPlus, Share2, MessageCircle, Clock } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -26,7 +26,6 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useGroupMembers, type GroupMemberWithProfile } from '@/hooks/useGroupMembers';
-import { useGroupPresence } from '@/hooks/useGroupPresence';
 import { useFriends } from '@/hooks/useFriends';
 import { useDirectMessages } from '@/hooks/useDirectMessages';
 import { OnlineIndicator } from './OnlineIndicator';
@@ -38,9 +37,226 @@ interface GroupMembersProps {
   isOwner: boolean;
   currentUserId: string | null;
   onInviteClick?: () => void;
+  isOnline?: (userId: string) => boolean;
 }
 
-export function GroupMembers({ groupId, isAdmin, isOwner, currentUserId, onInviteClick }: GroupMembersProps) {
+// Memoized member card for better performance
+const MemberCard = memo(function MemberCard({
+  member,
+  isPending = false,
+  isSelf,
+  isAdmin,
+  isOwner,
+  currentUserId,
+  isOnline,
+  onApprove,
+  onReject,
+  onUpdateRole,
+  onRemove,
+  onBan,
+  onStartDM,
+  onSendFriendRequest,
+  getFriendshipStatus,
+}: {
+  member: GroupMemberWithProfile;
+  isPending?: boolean;
+  isSelf: boolean;
+  isAdmin: boolean;
+  isOwner: boolean;
+  currentUserId: string | null;
+  isOnline: boolean;
+  onApprove: (id: string) => void;
+  onReject: (id: string) => void;
+  onUpdateRole: (id: string, role: 'moderator' | 'member') => void;
+  onRemove: (member: GroupMemberWithProfile) => void;
+  onBan: (member: GroupMemberWithProfile) => void;
+  onStartDM: (userId: string) => void;
+  onSendFriendRequest: (userId: string) => void;
+  getFriendshipStatus: (userId: string) => string;
+}) {
+  const canManage = isAdmin && !isSelf && member.role !== 'owner';
+  const canChangeRole = isOwner && !isSelf && member.role !== 'owner';
+  const initials = (member.profile?.display_name || member.profile?.full_name || 'U')
+    .split(' ')
+    .map(n => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+
+  const friendshipStatus = !isSelf ? getFriendshipStatus(member.user_id) : 'none';
+
+  return (
+    <Card className="hover:bg-muted/30 transition-colors">
+      <CardContent className="flex items-center gap-3 py-3">
+        <div className="relative">
+          <Avatar className="h-10 w-10 flex-shrink-0">
+            <AvatarImage src={member.profile?.avatar_url || undefined} />
+            <AvatarFallback>{initials}</AvatarFallback>
+          </Avatar>
+          <OnlineIndicator 
+            isOnline={isOnline} 
+            size="sm" 
+            showPulse={false}
+            className="absolute -bottom-0.5 -right-0.5 ring-2 ring-card"
+          />
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="font-medium truncate">
+              {member.profile?.display_name || member.profile?.full_name || 'Unknown'}
+            </span>
+            {member.profile?.current_rating && (
+              <Badge variant="outline" className="text-xs h-5">
+                {member.profile.current_rating.toFixed(2)}
+              </Badge>
+            )}
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {isPending 
+              ? `Requested ${formatDistanceToNow(new Date(member.joined_at), { addSuffix: true })}`
+              : `Joined ${formatDistanceToNow(new Date(member.joined_at), { addSuffix: true })}`
+            }
+          </div>
+        </div>
+
+        {/* Role Badge */}
+        {!isPending && (
+          <Badge 
+            variant="secondary" 
+            className={cn(
+              'gap-1',
+              member.role === 'owner' && 'bg-amber-500/10 text-amber-600 border-amber-200',
+              member.role === 'moderator' && 'bg-blue-500/10 text-blue-600 border-blue-200'
+            )}
+          >
+            {member.role === 'owner' && <Crown className="h-3 w-3" />}
+            {member.role === 'moderator' && <Shield className="h-3 w-3" />}
+            {member.role.charAt(0).toUpperCase() + member.role.slice(1)}
+          </Badge>
+        )}
+
+        {/* Pending Actions */}
+        {isPending && isAdmin && (
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-green-600 hover:bg-green-500/10"
+              onClick={() => onApprove(member.id)}
+            >
+              <Check className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-red-600 hover:bg-red-500/10"
+              onClick={() => onReject(member.id)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+
+        {/* Quick Actions for non-self members */}
+        {!isPending && !isSelf && (
+          <div className="flex items-center gap-1">
+            {/* Message Button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => onStartDM(member.user_id)}
+            >
+              <MessageCircle className="h-4 w-4" />
+            </Button>
+
+            {/* Friend Action Button */}
+            {friendshipStatus === 'none' && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => onSendFriendRequest(member.user_id)}
+              >
+                <UserPlus className="h-4 w-4" />
+              </Button>
+            )}
+            {friendshipStatus === 'pending_sent' && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground"
+                disabled
+              >
+                <Clock className="h-4 w-4" />
+              </Button>
+            )}
+            {friendshipStatus === 'accepted' && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-primary"
+                disabled
+              >
+                <Check className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        )}
+
+        {/* Member Actions */}
+        {!isPending && canManage && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {canChangeRole && member.role === 'member' && (
+                <DropdownMenuItem onClick={() => onUpdateRole(member.id, 'moderator')}>
+                  <ShieldPlus className="h-4 w-4 mr-2" />
+                  Make Moderator
+                </DropdownMenuItem>
+              )}
+              {canChangeRole && member.role === 'moderator' && (
+                <DropdownMenuItem onClick={() => onUpdateRole(member.id, 'member')}>
+                  <ShieldMinus className="h-4 w-4 mr-2" />
+                  Remove Moderator
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem 
+                onClick={() => onRemove(member)}
+                className="text-destructive"
+              >
+                <UserMinus className="h-4 w-4 mr-2" />
+                Remove from Group
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => onBan(member)}
+                className="text-destructive"
+              >
+                <Ban className="h-4 w-4 mr-2" />
+                Ban Member
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </CardContent>
+    </Card>
+  );
+});
+
+export function GroupMembers({ 
+  groupId, 
+  isAdmin, 
+  isOwner, 
+  currentUserId, 
+  onInviteClick,
+  isOnline: isOnlineProp,
+}: GroupMembersProps) {
   const navigate = useNavigate();
   const { 
     members, 
@@ -53,17 +269,15 @@ export function GroupMembers({ groupId, isAdmin, isOwner, currentUserId, onInvit
     banMember 
   } = useGroupMembers(groupId);
 
-  const { isOnline } = useGroupPresence(groupId);
   const { sendFriendRequest, getFriendshipStatus } = useFriends();
   const { startConversation } = useDirectMessages();
-  
   
   const [actionDialog, setActionDialog] = useState<{
     type: 'remove' | 'ban' | null;
     member: GroupMemberWithProfile | null;
   }>({ type: null, member: null });
 
-  const handleAction = async () => {
+  const handleAction = useCallback(async () => {
     if (!actionDialog.member) return;
     
     if (actionDialog.type === 'remove') {
@@ -73,7 +287,27 @@ export function GroupMembers({ groupId, isAdmin, isOwner, currentUserId, onInvit
     }
     
     setActionDialog({ type: null, member: null });
-  };
+  }, [actionDialog, removeMember, banMember]);
+
+  const handleStartDM = useCallback(async (userId: string) => {
+    const conversationId = await startConversation(userId);
+    if (conversationId) {
+      navigate(`/player/messages/${conversationId}`);
+    }
+  }, [startConversation, navigate]);
+
+  const handleRemove = useCallback((member: GroupMemberWithProfile) => {
+    setActionDialog({ type: 'remove', member });
+  }, []);
+
+  const handleBan = useCallback((member: GroupMemberWithProfile) => {
+    setActionDialog({ type: 'ban', member });
+  }, []);
+
+  // Default isOnline function if not provided
+  const checkIsOnline = useCallback((userId: string) => {
+    return isOnlineProp ? isOnlineProp(userId) : false;
+  }, [isOnlineProp]);
 
   if (loading) {
     return (
@@ -85,191 +319,6 @@ export function GroupMembers({ groupId, isAdmin, isOwner, currentUserId, onInvit
     );
   }
 
-  const handleStartDM = async (userId: string) => {
-    const conversationId = await startConversation(userId);
-    if (conversationId) {
-      navigate(`/player/messages/${conversationId}`);
-    }
-  };
-
-  const renderMemberCard = (member: GroupMemberWithProfile, isPending = false) => {
-    const isSelf = currentUserId === member.user_id;
-    const canManage = isAdmin && !isSelf && member.role !== 'owner';
-    const canChangeRole = isOwner && !isSelf && member.role !== 'owner';
-    const initials = (member.profile?.display_name || member.profile?.full_name || 'U')
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-
-    const memberIsOnline = isOnline(member.user_id);
-    const friendshipStatus = !isSelf ? getFriendshipStatus(member.user_id) : 'none';
-
-    return (
-      <Card key={member.id} className="hover:bg-muted/30 transition-colors">
-        <CardContent className="flex items-center gap-3 py-3">
-          <div className="relative">
-            <Avatar className="h-10 w-10 flex-shrink-0">
-              <AvatarImage src={member.profile?.avatar_url || undefined} />
-              <AvatarFallback>{initials}</AvatarFallback>
-            </Avatar>
-            <OnlineIndicator 
-              isOnline={memberIsOnline} 
-              size="sm" 
-              showPulse={false}
-              className="absolute -bottom-0.5 -right-0.5 ring-2 ring-card"
-            />
-          </div>
-
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="font-medium truncate">
-                {member.profile?.display_name || member.profile?.full_name || 'Unknown'}
-              </span>
-              {member.profile?.current_rating && (
-                <Badge variant="outline" className="text-xs h-5">
-                  {member.profile.current_rating.toFixed(2)}
-                </Badge>
-              )}
-            </div>
-            <div className="text-xs text-muted-foreground">
-              {isPending 
-                ? `Requested ${formatDistanceToNow(new Date(member.joined_at), { addSuffix: true })}`
-                : `Joined ${formatDistanceToNow(new Date(member.joined_at), { addSuffix: true })}`
-              }
-            </div>
-          </div>
-
-          {/* Role Badge */}
-          {!isPending && (
-            <Badge 
-              variant="secondary" 
-              className={cn(
-                'gap-1',
-                member.role === 'owner' && 'bg-amber-500/10 text-amber-600 border-amber-200',
-                member.role === 'moderator' && 'bg-blue-500/10 text-blue-600 border-blue-200'
-              )}
-            >
-              {member.role === 'owner' && <Crown className="h-3 w-3" />}
-              {member.role === 'moderator' && <Shield className="h-3 w-3" />}
-              {member.role.charAt(0).toUpperCase() + member.role.slice(1)}
-            </Badge>
-          )}
-
-          {/* Pending Actions */}
-          {isPending && isAdmin && (
-            <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-green-600 hover:bg-green-500/10"
-                onClick={() => approveMember(member.id)}
-              >
-                <Check className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-red-600 hover:bg-red-500/10"
-                onClick={() => rejectMember(member.id)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          )}
-
-          {/* Quick Actions for non-self members */}
-          {!isPending && !isSelf && (
-            <div className="flex items-center gap-1">
-              {/* Message Button */}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => handleStartDM(member.user_id)}
-              >
-                <MessageCircle className="h-4 w-4" />
-              </Button>
-
-              {/* Friend Action Button */}
-              {friendshipStatus === 'none' && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => sendFriendRequest(member.user_id)}
-                >
-                  <UserPlus className="h-4 w-4" />
-                </Button>
-              )}
-              {friendshipStatus === 'pending_sent' && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-muted-foreground"
-                  disabled
-                >
-                  <Clock className="h-4 w-4" />
-                </Button>
-              )}
-              {friendshipStatus === 'accepted' && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-primary"
-                  disabled
-                >
-                  <Check className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
-          )}
-
-          {/* Member Actions */}
-          {!isPending && canManage && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {canChangeRole && member.role === 'member' && (
-                  <DropdownMenuItem onClick={() => updateRole(member.id, 'moderator')}>
-                    <ShieldPlus className="h-4 w-4 mr-2" />
-                    Make Moderator
-                  </DropdownMenuItem>
-                )}
-                {canChangeRole && member.role === 'moderator' && (
-                  <DropdownMenuItem onClick={() => updateRole(member.id, 'member')}>
-                    <ShieldMinus className="h-4 w-4 mr-2" />
-                    Remove Moderator
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem 
-                  onClick={() => setActionDialog({ type: 'remove', member })}
-                  className="text-destructive"
-                >
-                  <UserMinus className="h-4 w-4 mr-2" />
-                  Remove from Group
-                </DropdownMenuItem>
-                <DropdownMenuItem 
-                  onClick={() => setActionDialog({ type: 'ban', member })}
-                  className="text-destructive"
-                >
-                  <Ban className="h-4 w-4 mr-2" />
-                  Ban Member
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-        </CardContent>
-      </Card>
-    );
-  };
-
   return (
     <div className="space-y-6">
       {/* Pending Requests */}
@@ -279,7 +328,26 @@ export function GroupMembers({ groupId, isAdmin, isOwner, currentUserId, onInvit
             <Badge variant="secondary" className="h-5">{pendingMembers.length}</Badge>
             Pending Requests
           </h3>
-          {pendingMembers.map(m => renderMemberCard(m, true))}
+          {pendingMembers.map(m => (
+            <MemberCard
+              key={m.id}
+              member={m}
+              isPending
+              isSelf={currentUserId === m.user_id}
+              isAdmin={isAdmin}
+              isOwner={isOwner}
+              currentUserId={currentUserId}
+              isOnline={checkIsOnline(m.user_id)}
+              onApprove={approveMember}
+              onReject={rejectMember}
+              onUpdateRole={updateRole}
+              onRemove={handleRemove}
+              onBan={handleBan}
+              onStartDM={handleStartDM}
+              onSendFriendRequest={sendFriendRequest}
+              getFriendshipStatus={getFriendshipStatus}
+            />
+          ))}
         </div>
       )}
 
@@ -300,7 +368,25 @@ export function GroupMembers({ groupId, isAdmin, isOwner, currentUserId, onInvit
             ]}
           />
         ) : (
-          members.map(m => renderMemberCard(m))
+          members.map(m => (
+            <MemberCard
+              key={m.id}
+              member={m}
+              isSelf={currentUserId === m.user_id}
+              isAdmin={isAdmin}
+              isOwner={isOwner}
+              currentUserId={currentUserId}
+              isOnline={checkIsOnline(m.user_id)}
+              onApprove={approveMember}
+              onReject={rejectMember}
+              onUpdateRole={updateRole}
+              onRemove={handleRemove}
+              onBan={handleBan}
+              onStartDM={handleStartDM}
+              onSendFriendRequest={sendFriendRequest}
+              getFriendshipStatus={getFriendshipStatus}
+            />
+          ))
         )}
       </div>
 

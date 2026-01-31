@@ -1,11 +1,10 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, memo } from 'react';
 import { Send, Loader2, Smile, Image as ImageIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { useGroupChat } from '@/hooks/useGroupChat';
-import { useGroupPresence } from '@/hooks/useGroupPresence';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { ChatMessage } from './ChatMessage';
 import { TypingIndicator } from './TypingIndicator';
@@ -15,11 +14,18 @@ import { cn } from '@/lib/utils';
 interface GroupChatProps {
   groupId: string;
   currentUserId: string | null;
+  // Presence props passed from parent to avoid duplicate subscriptions
+  onlineCount?: number;
+  isConnected?: boolean;
 }
 
-export function GroupChat({ groupId, currentUserId }: GroupChatProps) {
+export const GroupChat = memo(function GroupChat({ 
+  groupId, 
+  currentUserId,
+  onlineCount = 0,
+  isConnected = false,
+}: GroupChatProps) {
   const { messages, loading, sending, sendMessage } = useGroupChat(groupId);
-  const { onlineCount, isConnected } = useGroupPresence(groupId);
   const { typingUsers, startTyping, stopTyping } = useTypingIndicator(groupId);
   
   const [newMessage, setNewMessage] = useState('');
@@ -209,4 +215,4 @@ export function GroupChat({ groupId, currentUserId }: GroupChatProps) {
       </div>
     </div>
   );
-}
+});

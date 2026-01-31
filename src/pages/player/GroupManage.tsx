@@ -186,11 +186,21 @@ export default function GroupManage() {
   };
 
   const handlePromoteToModerator = async (memberId: string): Promise<boolean> => {
-    return updateRole(memberId, 'moderator');
+    try {
+      await updateRole(memberId, 'moderator');
+      return true;
+    } catch {
+      return false;
+    }
   };
 
   const handleDemoteToMember = async (memberId: string): Promise<boolean> => {
-    return updateRole(memberId, 'member');
+    try {
+      await updateRole(memberId, 'member');
+      return true;
+    } catch {
+      return false;
+    }
   };
 
   const handleTransferOwnership = async (newOwnerId: string): Promise<boolean> => {
