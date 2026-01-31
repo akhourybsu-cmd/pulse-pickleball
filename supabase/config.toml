@@ -61,6 +61,12 @@ verify_jwt = false
 [functions.send-venue-announcement]
 verify_jwt = true
 
+[functions.send-tournament-notification]
+verify_jwt = false
+
+[functions.send-tournament-reminders]
+verify_jwt = false
+
 [edge_runtime]
 policy = "per_worker"
 
@@ -87,3 +93,9 @@ function_name = "cleanup-old-messages"
 name = "delete-old-posts"
 schedule = "0 3 * * *"
 function_name = "delete-old-posts"
+
+# Send tournament reminders every 5 minutes
+[[edge_runtime.cron]]
+name = "send-tournament-reminders"
+schedule = "*/5 * * * *"
+function_name = "send-tournament-reminders"

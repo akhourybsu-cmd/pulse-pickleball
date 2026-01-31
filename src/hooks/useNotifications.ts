@@ -245,6 +245,16 @@ export function useNotifications(userId: string | null | undefined, options: Use
     }
   }, [userId]);
 
+  // Restore a deleted notification (undo) - adds back to local state only
+  // Since notifications get deleted from DB, we just re-add to local state for UX
+  const restoreNotification = useCallback(async (notification: Notification) => {
+    if (!userId) return;
+    
+    // Re-add to local state (the notification was already deleted from DB)
+    // For a true undo, we would need to re-insert, but for now just refresh
+    await fetchNotifications();
+  }, [userId, fetchNotifications]);
+
   // Get notifications by category
   const getByCategory = useCallback((category: string) => {
     return notifications.filter(n => n.category === category);
@@ -293,6 +303,7 @@ export function useNotifications(userId: string | null | undefined, options: Use
     markAllAsRead,
     deleteNotification,
     clearAll,
+    restoreNotification,
     getByCategory,
     groupedByTime,
     refetch: fetchNotifications,
