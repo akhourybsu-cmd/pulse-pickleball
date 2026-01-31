@@ -11,7 +11,7 @@ function SkeletonPost({ opacity }: { opacity: number }) {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity }}
-      className="p-4 rounded-xl bg-card border border-border/20"
+      className="p-4 rounded-xl bg-card border border-border/30 shadow-[0_1px_3px_rgba(0,0,0,0.04)]"
     >
       <div className="flex gap-3">
         {/* Avatar skeleton */}
@@ -32,11 +32,13 @@ function SkeletonPost({ opacity }: { opacity: number }) {
             <Skeleton className="h-3.5 w-2/3" />
           </div>
           
-          {/* Reaction bar */}
-          <div className="flex items-center gap-2 pt-1">
-            <Skeleton className="h-6 w-10" />
-            <Skeleton className="h-6 w-10" />
-            <Skeleton className="h-6 w-8" />
+          {/* Reaction bar - grouped style */}
+          <div className="flex items-center pt-1">
+            <div className="flex items-center gap-1 bg-muted/40 rounded-full px-1.5 py-0.5">
+              <Skeleton className="h-5 w-8 rounded-full" />
+              <Skeleton className="h-5 w-8 rounded-full" />
+              <Skeleton className="h-5 w-6 rounded-full" />
+            </div>
           </div>
         </div>
       </div>
@@ -46,7 +48,7 @@ function SkeletonPost({ opacity }: { opacity: number }) {
 
 export function GroupFeedPlaceholder({ className }: GroupFeedPlaceholderProps) {
   return (
-    <div className={cn('space-y-3', className)}>
+    <div className={cn('space-y-4', className)}>
       {/* Skeleton posts with decreasing opacity */}
       <SkeletonPost opacity={0.7} />
       <SkeletonPost opacity={0.45} />

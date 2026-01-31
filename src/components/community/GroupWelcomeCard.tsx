@@ -1,5 +1,4 @@
 import { motion } from 'framer-motion';
-import { MessageSquare, Calendar, HelpCircle, Image } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
@@ -8,6 +7,7 @@ interface ActionCard {
   label: string;
   description: string;
   onClick: () => void;
+  colorClass: string;
 }
 
 interface GroupWelcomeCardProps {
@@ -31,18 +31,21 @@ export function GroupWelcomeCard({
       label: 'Post an Update',
       description: 'Share news with the group',
       onClick: onPostUpdate,
+      colorClass: 'hover:border-teal-500/30 hover:bg-teal-500/5',
     },
     {
       icon: <span className="text-2xl">📅</span>,
       label: 'Schedule a Session',
       description: 'Plan your next game',
       onClick: onScheduleSession,
+      colorClass: 'hover:border-emerald-500/30 hover:bg-emerald-500/5',
     },
     {
       icon: <span className="text-2xl">🏓</span>,
       label: 'Ask a Question',
       description: 'Get help from members',
       onClick: onAskQuestion,
+      colorClass: 'hover:border-amber-500/30 hover:bg-amber-500/5',
     },
   ];
 
@@ -53,7 +56,7 @@ export function GroupWelcomeCard({
       transition={{ duration: 0.4, ease: 'easeOut' }}
       className={className}
     >
-      <Card className="overflow-hidden border-border/30 bg-gradient-to-br from-muted/40 via-muted/20 to-transparent">
+      <Card className="overflow-hidden border-border/30 bg-gradient-to-br from-primary/5 via-primary/2 to-transparent shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
         <CardContent className="p-5">
           {/* Welcome Header */}
           <div className="mb-5">
@@ -78,9 +81,10 @@ export function GroupWelcomeCard({
                 className={cn(
                   'flex flex-col items-center p-4 rounded-xl',
                   'bg-background/60 border border-border/20',
-                  'hover:bg-background hover:border-border/40 hover:shadow-sm',
+                  'hover:shadow-sm',
                   'transition-all duration-200',
-                  'focus:outline-none focus:ring-2 focus:ring-primary/20'
+                  'focus:outline-none focus:ring-2 focus:ring-primary/20',
+                  action.colorClass
                 )}
                 whileHover={{ scale: 1.02, y: -2 }}
                 whileTap={{ scale: 0.98 }}
