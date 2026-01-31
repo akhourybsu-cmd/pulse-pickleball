@@ -1,11 +1,13 @@
+import { memo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { Users, Lock, Globe, Eye, Crown, Shield, ChevronRight, BadgeCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Card, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { GroupWithMembership } from '@/hooks/useGroups';
+import { fetchGroupPosts } from '@/hooks/useGroupPosts';
+import { fetchGroupEvents } from '@/hooks/useGroupEvents';
 
 interface GroupCardProps {
   group: GroupWithMembership;
@@ -30,8 +32,9 @@ const typeColors: Record<string, string> = {
   tournament: 'bg-red-500/10 text-red-600 dark:text-red-400',
 };
 
-export function GroupCard({ group, showJoinButton, onJoin, isJoining }: GroupCardProps) {
+export const GroupCard = memo(function GroupCard({ group, showJoinButton, onJoin, isJoining }: GroupCardProps) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const isMember = !!group.membership;
   
   const roleIcon = group.membership?.role === 'owner' 
@@ -45,12 +48,6 @@ export function GroupCard({ group, showJoinButton, onJoin, isJoining }: GroupCar
     : group.membership?.role === 'moderator'
     ? 'Mod'
     : 'Member';
-
-  const visibilityIcon = group.visibility === 'private'
-    ? <Lock className="h-3 w-3" />
-    : group.visibility === 'unlisted'
-    ? <Eye className="h-3 w-3" />
-    : <Globe className="h-3 w-3" />;
 
   const isVerifiedVenue = group.type === 'venue_official' && group.is_venue_verified;
 
@@ -73,10 +70,28 @@ export function GroupCard({ group, showJoinButton, onJoin, isJoining }: GroupCar
     'bg-rose-500/15 text-rose-600',
   ];
 
+  // Prefetch group data on hover for instant navigation
+  const handleMouseEnter = () => {
+    // Prefetch posts
+    queryClient.prefetchQuery({
+      queryKey: ['group-posts', group.id],
+      queryFn: () => fetchGroupPosts(group.id),
+      staleTime: 30 * 1000,
+    });
+    
+    // Prefetch events
+    queryClient.prefetchQuery({
+      queryKey: ['group-events', group.id],
+      queryFn: () => fetchGroupEvents(group.id),
+      staleTime: 60 * 1000,
+    });
+  };
+
   return (
     <button 
       className="w-full text-left p-3 rounded-xl bg-card hover:bg-muted/30 transition-colors border border-border/30 active:scale-[0.99]"
       onClick={() => navigate(`/player/community/group/${group.id}`)}
+      onMouseEnter={handleMouseEnter}
     >
       <div className="flex items-center gap-3">
         {/* Avatar - smaller, more refined */}
@@ -146,4 +161,4 @@ export function GroupCard({ group, showJoinButton, onJoin, isJoining }: GroupCar
       </div>
     </button>
   );
-}
+});

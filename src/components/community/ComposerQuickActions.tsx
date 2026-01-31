@@ -1,4 +1,4 @@
-import { Image, Calendar, BarChart3, HelpCircle } from 'lucide-react';
+import { memo } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -17,7 +17,7 @@ interface ComposerQuickActionsProps {
   className?: string;
 }
 
-export function ComposerQuickActions({
+export const ComposerQuickActions = memo(function ComposerQuickActions({
   onPhotoClick,
   onEventClick,
   onPollClick,
@@ -53,4 +53,4 @@ export function ComposerQuickActions({
       ))}
     </div>
   );
-}
+});
