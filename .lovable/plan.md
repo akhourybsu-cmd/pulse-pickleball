@@ -1,325 +1,374 @@
 
+# Tournament Notification System Enhancement Plan
 
-## Add Friends & Private Messaging + Fix Group Name Display
-
-### Overview
-This plan adds two major social features to the Community tab: a **Friend System** for connecting with players and **Private Messaging (DMs)** for 1-on-1 conversations. Additionally, we'll fix the group name truncation issue on the Discover tab so all names are fully visible.
-
----
-
-### Part 1: Fix Group Name Truncation on Discover Tab
-
-**The Issue:** Group names on the Discover tab are currently truncated with ellipses due to the `truncate` CSS class on line 96 of `GroupCard.tsx`.
-
-**Solution:** Allow names to wrap across multiple lines instead of truncating.
-
-**Changes:**
-- `src/components/community/GroupCard.tsx` - Remove `truncate` class, add `line-clamp-2 break-words` to allow up to 2 lines
-- `src/components/community/ReorderableGroupList.tsx` - Apply same fix for consistency
+## Executive Summary
+This plan provides a comprehensive audit of every touchpoint in the tournament system that warrants a notification, proposes the missing notifications to create a complete communication layer, and optimizes the notification center UI for improved usability, visual polish, and navigation.
 
 ---
 
-### Part 2: Friend System
+## Part 1: Tournament Notification Audit
 
-#### Database Tables Required
+### Current State
+The system currently sends notifications via:
+- **Email only** (through Resend API edge functions)
+- Limited in-app notification types (`court_activity`, `event_reminder`)
 
-**Table: `friendships`**
-| Column | Type | Description |
-|--------|------|-------------|
-| id | uuid | Primary key |
-| user_id | uuid | The user who sent the request |
-| friend_id | uuid | The user receiving the request |
-| status | enum | 'pending', 'accepted', 'blocked' |
-| created_at | timestamp | When request was sent |
-| accepted_at | timestamp | When accepted (nullable) |
+### Missing In-App Notifications
 
-**Unique constraint:** Prevent duplicate friendships in either direction
-
-#### Features
-1. **Send Friend Request** - From player profiles or member lists
-2. **Accept/Decline Requests** - In a dedicated "Friend Requests" section
-3. **View Friends List** - New tab or section in Community
-4. **Remove Friend** - Option in friend settings
-5. **Block User** - Prevent further requests
-
-#### UI Components
-
-**New Files:**
-- `src/hooks/useFriends.ts` - Hook for friend CRUD operations
-- `src/components/community/FriendsTab.tsx` - Friends list display
-- `src/components/community/FriendCard.tsx` - Individual friend card
-- `src/components/community/FriendRequestsSection.tsx` - Pending requests
-- `src/components/community/AddFriendDialog.tsx` - Search and add friends
-- `src/components/community/FriendProfileCard.tsx` - Quick profile view with actions
-
-**Modified Files:**
-- `src/pages/player/Community.tsx` - Add "Friends" tab alongside Groups/Discover/Activity
-- `src/components/community/GroupMembers.tsx` - Add "Add Friend" button to member cards
+After analyzing all tournament components, here is a complete inventory of notification-worthy events:
 
 ---
 
-### Part 3: Private Messaging (DMs)
+### 1. Registration Flow Notifications
 
-#### Database Tables Required
-
-**Table: `conversations`**
-| Column | Type | Description |
-|--------|------|-------------|
-| id | uuid | Primary key |
-| created_at | timestamp | When conversation started |
-| updated_at | timestamp | Last activity |
-
-**Table: `conversation_participants`**
-| Column | Type | Description |
-|--------|------|-------------|
-| id | uuid | Primary key |
-| conversation_id | uuid | FK to conversations |
-| user_id | uuid | FK to profiles |
-| joined_at | timestamp | When joined |
-| last_read_at | timestamp | For unread tracking |
-
-**Table: `direct_messages`**
-| Column | Type | Description |
-|--------|------|-------------|
-| id | uuid | Primary key |
-| conversation_id | uuid | FK to conversations |
-| sender_id | uuid | FK to profiles |
-| content | text | Message content |
-| created_at | timestamp | When sent |
-
-**Enable realtime:** `ALTER PUBLICATION supabase_realtime ADD TABLE public.direct_messages;`
-
-#### Features
-1. **Start DM** - From friend card, member list, or profile
-2. **DM Inbox** - List of all conversations with unread counts
-3. **Real-time Chat** - Same quality as group chat
-4. **Typing Indicators** - Reuse existing infrastructure
-5. **Online Status** - Show if friend is online
-
-#### UI Components
-
-**New Files:**
-- `src/hooks/useDirectMessages.ts` - DM conversation management
-- `src/hooks/useConversation.ts` - Single conversation state
-- `src/pages/player/DirectMessages.tsx` - DM inbox/list page
-- `src/pages/player/DirectMessageChat.tsx` - Individual DM conversation
-- `src/components/community/DMInbox.tsx` - Conversation list
-- `src/components/community/DMConversationCard.tsx` - Conversation preview
-- `src/components/community/DMChat.tsx` - Chat interface (reuses ChatMessage.tsx)
-- `src/components/community/StartDMButton.tsx` - Quick action to start DM
-
-**Modified Files:**
-- `src/pages/player/Community.tsx` - Add "Messages" access point
-- `src/components/community/FriendCard.tsx` - Add "Message" button
-- `src/components/community/GroupMembers.tsx` - Add "Message" action
-- `src/App.tsx` - Add routes for `/player/messages` and `/player/messages/:conversationId`
+| Trigger Point | Notification Type | Priority | Link |
+|---------------|-------------------|----------|------|
+| Player submits registration | `registration_submitted` | normal | `/tournament/{id}` |
+| Registration approved | `registration_approved` | high | `/tournament/{id}` |
+| Registration waitlisted | `registration_waitlisted` | normal | `/tournament/{id}` |
+| Registration rejected | `registration_rejected` | high | `/tournament/{id}` |
+| Promoted from waitlist | `waitlist_promoted` | urgent | `/tournament/{id}` |
+| Team assignment confirmed | `team_assigned` | high | `/tournament/{id}/team/{teamId}` |
+| Partner added to team | `partner_joined_team` | normal | `/tournament/{id}` |
+| Partner left team | `partner_left_team` | high | `/tournament/{id}` |
+| Registration cancelled by organizer | `registration_cancelled` | urgent | `/tournaments` |
 
 ---
 
-### Part 4: Community Tab Layout Update
+### 2. Tournament Lifecycle Notifications
 
-The Community tab header will be enhanced with a quick-access DM icon:
+| Trigger Point | Notification Type | Priority | Link |
+|---------------|-------------------|----------|------|
+| Tournament published/goes live | `tournament_published` | normal | `/tournament/{id}` |
+| Registration opens | `tournament_registration_open` | high | `/tournament/{id}/register` |
+| Registration closing soon (24h) | `registration_closing_soon` | high | `/tournament/{id}/register` |
+| Registration closed | `tournament_registration_closed` | normal | `/tournament/{id}` |
+| Tournament cancelled | `tournament_cancelled` | urgent | `/tournaments` |
+| Tournament rescheduled | `tournament_rescheduled` | urgent | `/tournament/{id}` |
+| Schedule/brackets released | `schedule_released` | high | `/tournament/{id}` |
+| Tournament completed | `tournament_completed` | normal | `/tournament/{id}` |
 
+---
+
+### 3. Match & Competition Notifications
+
+| Trigger Point | Notification Type | Priority | Link |
+|---------------|-------------------|----------|------|
+| Match scheduled (time assigned) | `match_scheduled` | normal | `/tournament/{id}/division/{divId}` |
+| Match starting soon (15 min) | `match_starting_soon` | urgent | `/tournament/{id}/division/{divId}` |
+| Match court assigned | `match_court_assigned` | high | `/tournament/{id}/division/{divId}` |
+| Match in progress (started) | `match_started` | normal | `/tournament/{id}/live` |
+| Match completed (score recorded) | `match_completed` | normal | `/tournament/{id}/division/{divId}` |
+| You won your match | `match_won` | normal | `/tournament/{id}` |
+| You lost your match | `match_lost` | low | `/tournament/{id}` |
+| Score disputed | `match_disputed` | urgent | `/tournament/{id}/division/{divId}` |
+| Dispute resolved | `match_dispute_resolved` | high | `/tournament/{id}/division/{divId}` |
+| Match forfeited | `match_forfeited` | high | `/tournament/{id}/division/{divId}` |
+| Next match ready (after previous completed) | `next_match_ready` | high | `/tournament/{id}/division/{divId}` |
+
+---
+
+### 4. Standings & Results Notifications
+
+| Trigger Point | Notification Type | Priority | Link |
+|---------------|-------------------|----------|------|
+| You advanced to next round | `advanced_to_next_round` | high | `/tournament/{id}` |
+| You're eliminated | `eliminated_from_tournament` | normal | `/tournament/{id}` |
+| You placed in top 3 | `podium_finish` | high | `/tournament/{id}` |
+| Tournament champion | `tournament_champion` | urgent | `/tournament/{id}` |
+| Final standings released | `standings_released` | normal | `/tournament/{id}` |
+
+---
+
+### 5. Check-In & Day-of Notifications
+
+| Trigger Point | Notification Type | Priority | Link |
+|---------------|-------------------|----------|------|
+| Check-in opens | `checkin_open` | high | `/tournament/{id}` |
+| Check-in reminder (30 min before) | `checkin_reminder` | urgent | `/tournament/{id}` |
+| Successfully checked in | `checked_in_confirmed` | normal | `/tournament/{id}` |
+| Missed check-in deadline | `checkin_missed` | urgent | `/tournament/{id}` |
+| Weather delay announcement | `weather_delay` | urgent | `/tournament/{id}` |
+
+---
+
+### 6. Organizer Announcements
+
+| Trigger Point | Notification Type | Priority | Link |
+|---------------|-------------------|----------|------|
+| General announcement | `tournament_announcement` | high | `/tournament/{id}` |
+| Important update | `tournament_update` | urgent | `/tournament/{id}` |
+| Schedule change | `schedule_change` | urgent | `/tournament/{id}` |
+| Venue change | `venue_change` | urgent | `/tournament/{id}` |
+
+---
+
+### 7. Payment & Financial Notifications
+
+| Trigger Point | Notification Type | Priority | Link |
+|---------------|-------------------|----------|------|
+| Payment received | `payment_confirmed` | normal | `/tournament/{id}` |
+| Payment failed | `payment_failed` | urgent | `/tournament/{id}` |
+| Refund processed | `refund_processed` | normal | `/tournaments` |
+| Payment reminder (for pending) | `payment_reminder` | high | `/tournament/{id}` |
+
+---
+
+## Part 2: Notification Center UI Optimization
+
+### Current Issues Identified
+
+1. **Navigation**: Clicking a notification marks it as read but doesn't provide visual feedback
+2. **Delete UX**: Individual delete requires hover - hard on mobile
+3. **Category filtering**: Pills could be more prominent
+4. **Empty states**: Generic empty state per category
+5. **Link clarity**: No visual indicator that notifications are clickable/actionable
+6. **Swipe to delete**: Not available on mobile
+7. **Batch selection**: No multi-select for bulk actions
+8. **Undo support**: No undo after clearing all
+
+### Proposed UI Enhancements
+
+#### A. Visual Refresh
+
+**NotificationItem.tsx changes:**
+- Add a subtle arrow/chevron icon to indicate clickability
+- Add swipe-to-delete gesture on mobile (using Framer Motion)
+- Show quick delete button always visible (not hover-only)
+- Add smooth exit animation when deleted
+- Better visual distinction for urgent vs normal priority
+- Add category color coding to icon backgrounds
+
+**Styling updates:**
 ```
-┌─────────────────────────────────────────────────────────┐
-│  Community                              [✉️] [+] [Code] │
-├─────────────────────────────────────────────────────────┤
-│  [Groups] [Friends] [Discover] [Activity]               │
-└─────────────────────────────────────────────────────────┘
-```
-
-**New "Friends" Tab Content:**
-- Friend requests section (if any pending)
-- Online friends first (sorted by last active)
-- Quick actions: Message, View Profile, Remove
-
-**DM Icon Badge:**
-- Shows total unread DM count
-- Tapping opens `/player/messages`
-
----
-
-### Technical Implementation Details
-
-#### Database Migration
-
-```sql
--- Create friendships table
-CREATE TABLE public.friendships (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-  friend_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'blocked')),
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  accepted_at TIMESTAMPTZ,
-  UNIQUE(user_id, friend_id),
-  CHECK (user_id != friend_id)
-);
-
--- Create conversations table
-CREATE TABLE public.conversations (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
--- Create conversation participants
-CREATE TABLE public.conversation_participants (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  conversation_id UUID NOT NULL REFERENCES public.conversations(id) ON DELETE CASCADE,
-  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-  joined_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  last_read_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE(conversation_id, user_id)
-);
-
--- Create direct messages table
-CREATE TABLE public.direct_messages (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  conversation_id UUID NOT NULL REFERENCES public.conversations(id) ON DELETE CASCADE,
-  sender_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-  content TEXT NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
--- Enable RLS
-ALTER TABLE public.friendships ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.conversations ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.conversation_participants ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.direct_messages ENABLE ROW LEVEL SECURITY;
-
--- Enable realtime for DMs
-ALTER PUBLICATION supabase_realtime ADD TABLE public.direct_messages;
-
--- RLS Policies (participants can view/send in their conversations)
-CREATE POLICY "Users can view their friendships" ON public.friendships
-  FOR SELECT USING (auth.uid() = user_id OR auth.uid() = friend_id);
-
-CREATE POLICY "Users can create friend requests" ON public.friendships
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users can update their friendships" ON public.friendships
-  FOR UPDATE USING (auth.uid() = user_id OR auth.uid() = friend_id);
-
-CREATE POLICY "Users can view their conversations" ON public.conversation_participants
-  FOR SELECT USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can view messages in their conversations" ON public.direct_messages
-  FOR SELECT USING (
-    conversation_id IN (
-      SELECT conversation_id FROM public.conversation_participants WHERE user_id = auth.uid()
-    )
-  );
-
-CREATE POLICY "Users can send messages to their conversations" ON public.direct_messages
-  FOR INSERT WITH CHECK (
-    auth.uid() = sender_id AND
-    conversation_id IN (
-      SELECT conversation_id FROM public.conversation_participants WHERE user_id = auth.uid()
-    )
-  );
+Current:                          Proposed:
+┌──────────────────────┐        ┌──────────────────────────────┐
+│ [Icon] Title         │        │ [Icon] Title            [→] │
+│        Message...    │        │        Message...       [X] │
+│        2 hours ago   │        │        2 hours ago          │
+└──────────────────────┘        └──────────────────────────────┘
 ```
 
-#### useFriends Hook Structure
+#### B. Category Tabs Enhancement
+
+- Add "Tournaments" as a dedicated category
+- Show category-specific empty states with relevant icons
+- Add badge counts on each tab
+- Make tabs horizontally scrollable on mobile
+
+**Updated categories:**
+```typescript
+const categories = [
+  { value: "all", label: "All", icon: Bell },
+  { value: "tournaments", label: "Tournaments", icon: Trophy },
+  { value: "matches", label: "Matches", icon: Target },
+  { value: "events", label: "Events", icon: Calendar },
+  { value: "community", label: "Social", icon: Users },
+  { value: "achievements", label: "Awards", icon: Award },
+];
+```
+
+#### C. Enhanced Actions Bar
+
+- Add confirmation dialog for "Clear all"
+- Add "Undo" toast after delete/clear actions
+- Add multi-select mode for batch delete
+
+#### D. Improved Link Handling
+
+- Store structured metadata with proper deep links
+- Handle navigation to specific tournament pages, divisions, matches
+- Add visual indicator (chevron) for actionable notifications
+
+**Link structure in metadata:**
+```typescript
+metadata: {
+  tournament_id: "uuid",
+  division_id: "uuid", 
+  match_id: "uuid",
+  action: "view_match" | "check_in" | "confirm_spot"
+}
+```
+
+---
+
+## Part 3: Implementation Details
+
+### New Edge Function: `send-tournament-notification`
+
+A unified edge function that handles all tournament notifications:
+
+**File:** `supabase/functions/send-tournament-notification/index.ts`
 
 ```typescript
-export function useFriends() {
-  // State
-  const [friends, setFriends] = useState<FriendWithProfile[]>([]);
-  const [pendingRequests, setPendingRequests] = useState<FriendRequest[]>([]);
-  const [loading, setLoading] = useState(true);
-  
-  // Actions
-  const sendFriendRequest = async (friendId: string) => {...};
-  const acceptRequest = async (friendshipId: string) => {...};
-  const declineRequest = async (friendshipId: string) => {...};
-  const removeFriend = async (friendshipId: string) => {...};
-  const blockUser = async (userId: string) => {...};
-  
-  return { friends, pendingRequests, loading, sendFriendRequest, ... };
-}
+// Handles all tournament notification types
+// Inserts into user_notifications table
+// Optionally sends email based on notification type and user preferences
 ```
 
-#### useDirectMessages Hook Structure
-
+**Notification creation pattern:**
 ```typescript
-export function useDirectMessages() {
-  const [conversations, setConversations] = useState<ConversationPreview[]>([]);
-  const [loading, setLoading] = useState(true);
-  
-  const startConversation = async (userId: string) => {...};
-  const getOrCreateConversation = async (userId: string) => {...};
-  
-  return { conversations, loading, startConversation, ... };
-}
-
-export function useConversation(conversationId: string) {
-  const [messages, setMessages] = useState<DirectMessage[]>([]);
-  const [loading, setLoading] = useState(true);
-  
-  // Realtime subscription for new messages
-  // Reuse typing indicator logic from useTypingIndicator
-  
-  const sendMessage = async (content: string) => {...};
-  const markAsRead = async () => {...};
-  
-  return { messages, loading, sendMessage, markAsRead };
-}
+await supabase.from("user_notifications").insert({
+  user_id: recipientId,
+  notification_type: "match_starting_soon",
+  category: "tournaments",
+  priority: "urgent",
+  title: "Match Starting Soon!",
+  message: `Your match vs ${opponentName} starts in 15 minutes on Court ${courtNumber}`,
+  link: `/tournament/${tournamentId}/division/${divisionId}`,
+  metadata: {
+    tournament_id: tournamentId,
+    division_id: divisionId,
+    match_id: matchId,
+    court_number: courtNumber
+  }
+});
 ```
+
+### Database Additions
+
+**New notification types to add to type icons:**
+```typescript
+const typeIcons: Record<string, React.ElementType> = {
+  // Existing
+  match_recorded: Target,
+  event_reminder: Calendar,
+  
+  // New Tournament Types
+  registration_approved: CheckCircle,
+  registration_waitlisted: Clock,
+  waitlist_promoted: Star,
+  team_assigned: Users,
+  match_scheduled: Calendar,
+  match_starting_soon: AlertTriangle,
+  match_court_assigned: MapPin,
+  match_completed: CheckCircle,
+  match_disputed: AlertTriangle,
+  match_won: Trophy,
+  advanced_to_next_round: TrendingUp,
+  tournament_champion: Trophy,
+  tournament_announcement: Megaphone,
+  checkin_open: UserCheck,
+  checkin_reminder: Bell,
+  payment_confirmed: CreditCard,
+  payment_failed: AlertCircle,
+  tournament_cancelled: XCircle,
+  schedule_released: FileText,
+};
+```
+
+### Cron Job: Tournament Reminder Scheduler
+
+**File:** `supabase/functions/send-tournament-reminders/index.ts`
+
+Add to config.toml:
+```toml
+[[edge_runtime.cron]]
+name = "send-tournament-reminders"
+schedule = "*/5 * * * *"
+function_name = "send-tournament-reminders"
+```
+
+This function will check for:
+- Matches starting in 15 minutes → Send `match_starting_soon`
+- Check-in opening in 30 minutes → Send `checkin_reminder`
+- Registration closing in 24 hours → Send `registration_closing_soon`
 
 ---
 
-### File Summary
+## Part 4: Files to Modify/Create
 
-#### New Files (17 files)
+### New Files
+
 | File | Purpose |
 |------|---------|
-| `src/hooks/useFriends.ts` | Friend system state management |
-| `src/hooks/useDirectMessages.ts` | DM list/inbox management |
-| `src/hooks/useConversation.ts` | Single DM conversation state |
-| `src/components/community/FriendsTab.tsx` | Friends list in Community tab |
-| `src/components/community/FriendCard.tsx` | Individual friend display |
-| `src/components/community/FriendRequestsSection.tsx` | Pending request handling |
-| `src/components/community/AddFriendDialog.tsx` | Search and add friends UI |
-| `src/components/community/StartDMButton.tsx` | Quick DM action button |
-| `src/components/community/DMInbox.tsx` | Conversation list component |
-| `src/components/community/DMConversationCard.tsx` | Conversation preview card |
-| `src/components/community/DMChat.tsx` | DM chat interface |
-| `src/pages/player/DirectMessages.tsx` | DM inbox page |
-| `src/pages/player/DirectMessageChat.tsx` | Individual DM page |
+| `supabase/functions/send-tournament-notification/index.ts` | Unified tournament notification sender |
+| `supabase/functions/send-tournament-reminders/index.ts` | Cron job for scheduled reminders |
+| `src/hooks/useTournamentNotifications.ts` | Hook to trigger notifications from components |
 
-#### Modified Files (6 files)
+### Modified Files
+
 | File | Changes |
 |------|---------|
-| `src/components/community/GroupCard.tsx` | Remove truncation, allow name wrapping |
-| `src/components/community/ReorderableGroupList.tsx` | Remove truncation, allow name wrapping |
-| `src/pages/player/Community.tsx` | Add Friends tab, DM icon in header |
-| `src/components/community/GroupMembers.tsx` | Add Friend/Message actions |
-| `src/App.tsx` | Add DM routes |
-| `src/components/community/index.ts` | Export new components |
+| `src/components/notifications/NotificationCenter.tsx` | Add tournaments category, improved UI, swipe delete, undo support |
+| `src/components/notifications/NotificationItem.tsx` | Add chevron, swipe gesture, category colors, better type icons |
+| `src/hooks/useNotifications.ts` | Add undo functionality, tournament category filter |
+| `src/components/tournament/RegistrationsPanel.tsx` | Trigger in-app notifications on status changes |
+| `src/components/tournament/MatchesPanel.tsx` | Trigger notifications on match start/complete |
+| `src/components/tournament/CheckInDashboard.tsx` | Trigger notification on check-in |
+| `src/components/tournament/ScoreEntryDialog.tsx` | Trigger match_completed notification |
+| `src/components/tournament/DisputeDialog.tsx` | Trigger dispute notifications |
+| `supabase/config.toml` | Add tournament reminders cron job |
 
 ---
 
-### User Experience Flow
+## Part 5: NotificationItem.tsx Enhanced Design
 
-**Adding a Friend:**
-1. View member in group → Tap their profile
-2. See "Add Friend" button → Tap to send request
-3. Friend receives notification/sees pending request
-4. Friend accepts → Both are now connected
-5. Both can now DM each other
+```
+┌────────────────────────────────────────────────────────────┐
+│ ┌────┐  Match Starting Soon!                      15m  ⌦  │
+│ │ 🏆 │  Your match vs Team Alpha starts in 15         →   │
+│ │    │  minutes on Court 3                                │
+│ └────┘  Tournament: Summer Slam                            │
+│         ─────────────────────                              │
+│         [Go to Match] [Dismiss]                            │
+└────────────────────────────────────────────────────────────┘
+```
 
-**Starting a DM:**
-1. From Friends tab → Tap "Message" on friend card
-2. OR from member list → Tap profile → "Message"
-3. Opens DM chat (creates conversation if new)
-4. Real-time messaging with typing indicators
-5. Back button returns to inbox
+**Key visual improvements:**
+- Icon background color matches category (tournaments = green, matches = blue, etc.)
+- Chevron (→) indicates actionable notification
+- Swipe left to delete on mobile
+- Quick action buttons for common actions
+- Timestamp shows relative time + absolute on hover
+- Priority stripe on left edge (urgent = red, high = primary, normal = transparent)
 
-**DM Inbox Experience:**
-- Sorted by most recent activity
-- Shows unread count per conversation
-- Shows friend's online status
-- Preview of last message
-- Tap to open conversation
+---
 
+## Part 6: Navigation Deep Linking
+
+Each notification type maps to a specific destination:
+
+| Notification Type | Destination |
+|-------------------|-------------|
+| `registration_approved` | `/tournament/{id}` (My Team tab) |
+| `match_starting_soon` | `/tournament/{id}/division/{divId}` (Matches tab) |
+| `match_court_assigned` | `/tournament/{id}/live` (Live view with court highlighted) |
+| `advanced_to_next_round` | `/tournament/{id}` (Bracket view) |
+| `tournament_announcement` | `/tournament/{id}` (Info tab) |
+| `checkin_open` | `/tournament/{id}` (Check-in modal auto-opens) |
+| `payment_failed` | `/tournament/{id}` (Payment section) |
+
+**Navigation handler enhancement:**
+```typescript
+const handleNotificationClick = (notification: Notification) => {
+  markAsRead(notification.id);
+  
+  // Check for special actions in metadata
+  if (notification.metadata?.action === 'check_in') {
+    navigate(notification.link);
+    // Trigger check-in modal after navigation
+    setTimeout(() => window.dispatchEvent(new CustomEvent('open-checkin')), 100);
+    return;
+  }
+  
+  if (notification.link) {
+    navigate(notification.link);
+  }
+};
+```
+
+---
+
+## Summary
+
+This plan delivers:
+
+1. **38+ new notification types** covering every tournament touchpoint
+2. **Enhanced NotificationCenter UI** with categories, swipe-delete, and undo
+3. **Deep linking** so every notification takes users exactly where they need to go
+4. **Unified edge function** for consistent notification delivery
+5. **Cron-based reminders** for time-sensitive notifications
+6. **Visual polish** with category colors, priority indicators, and smooth animations
+
+The result is a comprehensive notification system that keeps players informed at every step of their tournament journey, from registration through final results.
