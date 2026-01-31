@@ -217,7 +217,7 @@ export function QuickPostComposer({
                 className="min-h-[80px] resize-none"
               />
             </div>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="space-y-3">
               <div className="space-y-2">
                 <Label>Date</Label>
                 <Input
@@ -226,23 +226,25 @@ export function QuickPostComposer({
                   onChange={(e) => setSessionDate(e.target.value)}
                 />
               </div>
-              <div className="space-y-2">
-                <Label>Time</Label>
-                <Input
-                  type="time"
-                  value={sessionTime}
-                  onChange={(e) => setSessionTime(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Spots</Label>
-                <Input
-                  type="number"
-                  min="1"
-                  max="20"
-                  value={maxPlayers}
-                  onChange={(e) => setMaxPlayers(e.target.value)}
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label>Time</Label>
+                  <Input
+                    type="time"
+                    value={sessionTime}
+                    onChange={(e) => setSessionTime(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Spots</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    max="20"
+                    value={maxPlayers}
+                    onChange={(e) => setMaxPlayers(e.target.value)}
+                  />
+                </div>
               </div>
             </div>
           </TabsContent>
