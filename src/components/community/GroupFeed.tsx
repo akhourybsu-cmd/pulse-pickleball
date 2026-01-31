@@ -183,10 +183,10 @@ export function GroupFeed({
 
   return (
     <div className="space-y-5">
-      {/* Enhanced Post Composer - Primary Zone Treatment */}
+      {/* Enhanced Post Composer - Mobile Optimized */}
       <motion.div 
         className={cn(
-          'rounded-xl p-4 transition-all duration-200',
+          'rounded-xl p-3 sm:p-4 transition-all duration-200',
           'bg-gradient-to-br from-primary/8 via-primary/4 to-transparent',
           'shadow-sm border border-primary/15',
           composerFocused && 'ring-2 ring-primary/20 border-primary/25 shadow-md'
@@ -194,11 +194,11 @@ export function GroupFeed({
         animate={composerFocused ? { scale: 1.01 } : { scale: 1 }}
         transition={{ duration: 0.15 }}
       >
-        <div className="flex gap-3 items-start">
-          <Avatar className="h-10 w-10 flex-shrink-0 ring-2 ring-background">
-            <AvatarFallback className="text-sm bg-primary/10 text-primary">U</AvatarFallback>
+        <div className="flex gap-2 sm:gap-3 items-start">
+          <Avatar className="h-8 w-8 sm:h-10 sm:w-10 flex-shrink-0 ring-2 ring-background">
+            <AvatarFallback className="text-xs sm:text-sm bg-primary/10 text-primary">U</AvatarFallback>
           </Avatar>
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <div className="relative">
               <Textarea
                 placeholder="Share something with the group..."
@@ -207,20 +207,20 @@ export function GroupFeed({
                 onFocus={() => setComposerFocused(true)}
                 onBlur={() => setComposerFocused(false)}
                 className={cn(
-                  'min-h-[56px] resize-none pr-20 text-sm py-3 px-3.5 rounded-xl',
+                  'min-h-[52px] sm:min-h-[56px] resize-none pr-16 sm:pr-20 text-sm py-2.5 sm:py-3 px-3 sm:px-3.5 rounded-xl',
                   'bg-background border-border/30',
                   'focus:ring-0 focus:border-border/50 transition-colors'
                 )}
               />
-              <div className="absolute right-2 bottom-2 flex items-center gap-1">
-                <Button variant="ghost" size="icon" className="h-7 w-7" disabled>
-                  <ImageIcon className="h-3.5 w-3.5 text-muted-foreground/50" />
+              <div className="absolute right-1.5 sm:right-2 bottom-1.5 sm:bottom-2 flex items-center gap-1">
+                <Button variant="ghost" size="icon" className="h-6 w-6 sm:h-7 sm:w-7" disabled>
+                  <ImageIcon className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-muted-foreground/50" />
                 </Button>
                 <Button 
                   onClick={handleCreatePost} 
                   disabled={!newPostContent.trim() || isPosting}
                   size="sm"
-                  className="h-7 px-3 text-xs rounded-lg"
+                  className="h-6 sm:h-7 px-2 sm:px-3 text-xs rounded-lg"
                 >
                   Post
                 </Button>
@@ -229,7 +229,7 @@ export function GroupFeed({
             
             {/* Color-Coded Quick Action Chips */}
             <ComposerQuickActions
-              className="mt-3"
+              className="mt-2 sm:mt-3"
               onPhotoClick={focusComposer}
               onEventClick={() => onSwitchToEvents?.()}
               onPollClick={() => onOpenQuickPost?.('poll')}
@@ -400,23 +400,23 @@ const PostCard = memo(function PostCard({
         post.pinned ? 'border-primary/20 bg-primary/5 border-l-primary' : cn('border-border/30', typeAccent)
       )}
     >
-      {/* Header */}
-      <div className="flex items-start justify-between gap-3 mb-3">
-        <div className="flex items-start gap-2.5 flex-1 min-w-0">
-          <Avatar className="h-9 w-9 flex-shrink-0">
+      {/* Header - Mobile Optimized */}
+      <div className="flex items-start justify-between gap-2 sm:gap-3 mb-2 sm:mb-3">
+        <div className="flex items-start gap-2 sm:gap-2.5 flex-1 min-w-0">
+          <Avatar className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0">
             <AvatarImage src={post.profile?.avatar_url || undefined} />
-            <AvatarFallback>{initials}</AvatarFallback>
+            <AvatarFallback className="text-xs sm:text-sm">{initials}</AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-medium text-sm">
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+              <span className="font-medium text-sm truncate max-w-[120px] sm:max-w-none">
                 {post.profile?.display_name || post.profile?.full_name || 'Unknown'}
               </span>
               <span className="text-xs text-muted-foreground/70">
                 {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
               </span>
             </div>
-            <div className="flex items-center gap-1.5 mt-1">
+            <div className="flex items-center gap-1.5 mt-0.5 sm:mt-1">
               {post.type !== 'feed' && (
                 <Badge variant="outline" className={cn('text-[10px] h-5 px-1.5', typeInfo.className)}>
                   {typeInfo.label}
@@ -476,10 +476,10 @@ const PostCard = memo(function PostCard({
         )}
       </div>
 
-      {/* Footer with Enhanced Reactions */}
+      {/* Footer with Enhanced Reactions - Mobile Optimized */}
       <div className="pt-2 flex items-center justify-between border-t border-border/15">
-        {/* Grouped reaction container */}
-        <div className="flex items-center gap-0.5 bg-muted/40 rounded-full px-1 py-0.5">
+        {/* Grouped reaction container - smaller on mobile */}
+        <div className="flex items-center gap-0.5 bg-muted/40 rounded-full px-0.5 sm:px-1 py-0.5">
           {REACTION_EMOJIS.map(({ emoji }) => {
             const reactionData = post.reactions?.find(r => r.emoji === emoji);
             const hasReacted = reactionData?.user_reacted;
@@ -491,7 +491,7 @@ const PostCard = memo(function PostCard({
                 variant="ghost"
                 size="sm"
                 className={cn(
-                  'h-7 gap-1 px-2 text-xs rounded-full transition-all',
+                  'h-6 sm:h-7 gap-0.5 sm:gap-1 px-1.5 sm:px-2 text-xs rounded-full transition-all',
                   hasReacted && 'bg-primary/15 text-primary hover:bg-primary/20',
                   !hasReacted && 'hover:bg-muted/60'
                 )}

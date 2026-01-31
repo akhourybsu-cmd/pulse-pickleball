@@ -65,10 +65,10 @@ export function CommunityPulse({
       {/* Divider */}
       <div className="h-px bg-border/40 mb-2" />
       
-      {/* Stats row */}
-      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+      {/* Stats row - wrap friendly */}
+      <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-muted-foreground">
         {stats.map((stat, index) => (
-          <span key={stat.label} className="flex items-center gap-1.5">
+          <span key={stat.label} className="flex items-center gap-1.5 whitespace-nowrap">
             {index > 0 && <span className="text-border">•</span>}
             <span>
               <span className="font-semibold text-foreground">{stat.value}</span>

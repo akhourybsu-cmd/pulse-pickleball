@@ -168,43 +168,44 @@ export default function GroupDetail() {
 
   return (
     <div className="flex flex-col h-[100dvh]">
-      {/* Minimal Immersive Header */}
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-border/20 bg-background shrink-0">
+      {/* Minimal Immersive Header - Mobile Optimized */}
+      <div className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2 border-b border-border/20 bg-background shrink-0">
         <Button 
           variant="ghost" 
           size="icon"
-          className="h-9 w-9 -ml-1"
+          className="h-8 w-8 sm:h-9 sm:w-9 -ml-0.5 sm:-ml-1"
           onClick={() => navigate('/player/community')}
         >
-          <ArrowLeft className="h-5 w-5" />
+          <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
         </Button>
         
         <div className="flex-1 min-w-0">
           <h1 className="text-sm font-semibold truncate">{group.name}</h1>
         </div>
 
-        {/* Online indicator */}
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        {/* Online indicator - compact on mobile */}
+        <div className="flex items-center gap-1 sm:gap-1.5 text-xs text-muted-foreground">
           <OnlineIndicator isOnline={isConnected} size="sm" />
-          <span>{onlineCount} online</span>
+          <span className="hidden xs:inline">{onlineCount}</span>
+          <span className="hidden sm:inline">online</span>
         </div>
 
-        {/* Compact action buttons */}
+        {/* Compact action buttons - smaller on mobile */}
         {group.invite_code && (
           <Button 
             variant="ghost" 
             size="icon"
-            className="h-8 w-8"
+            className="h-7 w-7 sm:h-8 sm:w-8"
             onClick={() => setInviteModalOpen(true)}
           >
-            <Share2 className="h-4 w-4" />
+            <Share2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           </Button>
         )}
         
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
-              <Plus className="h-4 w-4" />
+            <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8">
+              <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -226,7 +227,7 @@ export default function GroupDetail() {
         {isAdmin && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
+              <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8">
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>

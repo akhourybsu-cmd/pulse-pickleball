@@ -53,7 +53,7 @@ export const ComposerQuickActions = memo(function ComposerQuickActions({
   ];
 
   return (
-    <div className={cn('flex items-center gap-2 overflow-x-auto no-scrollbar', className)}>
+    <div className={cn('flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar pb-0.5', className)}>
       {actions.map((action) => (
         <motion.div key={action.label} whileTap={{ scale: 0.95 }}>
           <Button
@@ -61,7 +61,7 @@ export const ComposerQuickActions = memo(function ComposerQuickActions({
             size="sm"
             onClick={action.onClick}
             className={cn(
-              'h-7 px-3 gap-1.5 text-xs font-medium',
+              'h-6 sm:h-7 px-2 sm:px-3 gap-1 sm:gap-1.5 text-xs font-medium',
               'rounded-full shrink-0 border',
               'transition-all duration-200',
               action.colorClass

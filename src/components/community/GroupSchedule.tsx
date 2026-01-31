@@ -129,34 +129,34 @@ export function GroupSchedule({ groupId, isAdmin, currentUserId }: GroupSchedule
               </CardContent>
 
               <CardFooter className="pt-0">
-                <div className="flex items-center gap-2 w-full">
+                <div className="flex items-center gap-1.5 sm:gap-2 w-full">
                   <Button
                     variant={event.user_rsvp === 'going' ? 'default' : 'outline'}
                     size="sm"
-                    className="flex-1 gap-1"
+                    className="flex-1 gap-1 px-2 sm:px-3"
                     onClick={() => updateRsvp(event.id, 'going')}
                     disabled={isFull && event.user_rsvp !== 'going'}
                   >
                     <Check className="h-4 w-4" />
-                    Going
+                    <span className="hidden sm:inline">Going</span>
                   </Button>
                   <Button
                     variant={event.user_rsvp === 'maybe' ? 'default' : 'outline'}
                     size="sm"
-                    className="flex-1 gap-1"
+                    className="flex-1 gap-1 px-2 sm:px-3"
                     onClick={() => updateRsvp(event.id, 'maybe')}
                   >
                     <HelpCircle className="h-4 w-4" />
-                    Maybe
+                    <span className="hidden sm:inline">Maybe</span>
                   </Button>
                   <Button
                     variant={event.user_rsvp === 'not_going' ? 'default' : 'outline'}
                     size="sm"
-                    className="flex-1 gap-1"
+                    className="flex-1 gap-1 px-2 sm:px-3"
                     onClick={() => updateRsvp(event.id, 'not_going')}
                   >
                     <X className="h-4 w-4" />
-                    Can't Go
+                    <span className="hidden sm:inline">Can't Go</span>
                   </Button>
                 </div>
               </CardFooter>

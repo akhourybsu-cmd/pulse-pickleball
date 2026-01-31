@@ -69,8 +69,8 @@ export function GroupWelcomeCard({
             </p>
           </div>
 
-          {/* Action Cards Grid */}
-          <div className="grid grid-cols-3 gap-3">
+          {/* Action Cards Grid - Responsive */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
             {actions.map((action, index) => (
               <motion.button
                 key={action.label}
@@ -79,7 +79,9 @@ export function GroupWelcomeCard({
                 transition={{ delay: 0.1 + index * 0.1, duration: 0.3 }}
                 onClick={action.onClick}
                 className={cn(
-                  'flex flex-col items-center p-4 rounded-xl',
+                  'flex flex-row sm:flex-col items-center p-3 sm:p-4 rounded-xl',
+                  'gap-3 sm:gap-0',
+                  'justify-start sm:justify-center',
                   'bg-background/60 border border-border/20',
                   'hover:shadow-sm',
                   'transition-all duration-200',
@@ -89,10 +91,15 @@ export function GroupWelcomeCard({
                 whileHover={{ scale: 1.02, y: -2 }}
                 whileTap={{ scale: 0.98 }}
               >
-                <div className="mb-2">{action.icon}</div>
-                <span className="text-xs font-medium text-center leading-tight">
-                  {action.label}
-                </span>
+                <div className="sm:mb-2 text-xl sm:text-2xl">{action.icon}</div>
+                <div className="text-left sm:text-center">
+                  <span className="text-xs font-medium leading-tight">
+                    {action.label}
+                  </span>
+                  <span className="text-[11px] text-muted-foreground/70 block sm:hidden">
+                    {action.description}
+                  </span>
+                </div>
               </motion.button>
             ))}
           </div>

@@ -67,8 +67,8 @@ export function GroupFiles({ groupId, isAdmin, currentUserId }: GroupFilesProps)
 
   return (
     <div className="space-y-4">
-      {/* Header with Upload and View Toggle */}
-      <div className="flex items-center justify-between gap-2">
+      {/* Header with Upload and View Toggle - Responsive */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
         <input
           ref={fileInputRef}
           type="file"
@@ -78,7 +78,7 @@ export function GroupFiles({ groupId, isAdmin, currentUserId }: GroupFilesProps)
         />
         <Button 
           onClick={() => fileInputRef.current?.click()} 
-          className="gap-2 flex-1"
+          className="gap-2 w-full sm:flex-1"
           disabled={uploading}
         >
           <Upload className="h-4 w-4" />
@@ -90,12 +90,12 @@ export function GroupFiles({ groupId, isAdmin, currentUserId }: GroupFilesProps)
             type="single" 
             value={viewMode} 
             onValueChange={(v) => v && setViewMode(v as ViewMode)}
-            className="border rounded-lg"
+            className="border rounded-lg self-end sm:self-auto"
           >
-            <ToggleGroupItem value="list" aria-label="List view" className="h-9 px-3">
+            <ToggleGroupItem value="list" aria-label="List view" className="h-9 px-2.5 sm:px-3">
               <List className="h-4 w-4" />
             </ToggleGroupItem>
-            <ToggleGroupItem value="grid" aria-label="Grid view" className="h-9 px-3">
+            <ToggleGroupItem value="grid" aria-label="Grid view" className="h-9 px-2.5 sm:px-3">
               <Grid3X3 className="h-4 w-4" />
             </ToggleGroupItem>
           </ToggleGroup>
@@ -190,21 +190,23 @@ export function GroupFiles({ groupId, isAdmin, currentUserId }: GroupFilesProps)
                     )}
                   </div>
 
-                  {/* File Info */}
+                  {/* File Info - Responsive */}
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm truncate">{file.file_name}</p>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-1 sm:gap-2 text-xs text-muted-foreground">
                       <span>{formatFileSize(file.file_size)}</span>
-                      <span>•</span>
-                      <div className="flex items-center gap-1">
+                      <span className="hidden sm:inline">•</span>
+                      <div className="hidden sm:flex items-center gap-1">
                         <Avatar className="h-4 w-4">
                           <AvatarImage src={file.uploader_profile?.avatar_url || undefined} />
                           <AvatarFallback className="text-[8px]">{initials}</AvatarFallback>
                         </Avatar>
-                        {file.uploader_profile?.display_name || file.uploader_profile?.full_name || 'Unknown'}
+                        <span className="truncate max-w-[80px]">
+                          {file.uploader_profile?.display_name || file.uploader_profile?.full_name || 'Unknown'}
+                        </span>
                       </div>
-                      <span>•</span>
-                      <span>{formatDistanceToNow(new Date(file.created_at), { addSuffix: true })}</span>
+                      <span className="hidden sm:inline">•</span>
+                      <span className="hidden sm:inline">{formatDistanceToNow(new Date(file.created_at), { addSuffix: true })}</span>
                     </div>
                   </div>
 
