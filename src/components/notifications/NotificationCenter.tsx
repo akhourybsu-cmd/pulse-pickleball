@@ -1,10 +1,34 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { X, Bell, CheckCheck, Trash2, Settings } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { 
+  X, 
+  Bell, 
+  CheckCheck, 
+  Trash2, 
+  Settings, 
+  Trophy, 
+  Target, 
+  Calendar, 
+  Users, 
+  Award,
+  Undo2
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import { NotificationItem } from "./NotificationItem";
 import type { Notification } from "@/hooks/useNotifications";
 
@@ -23,15 +47,27 @@ interface NotificationCenterProps {
   onMarkAllAsRead: () => void;
   onDelete: (id: string) => void;
   onClearAll: () => void;
+  onUndo?: (notification: Notification) => void;
 }
 
 const categories = [
-  { value: "all", label: "All" },
-  { value: "matches", label: "Matches" },
-  { value: "events", label: "Events" },
-  { value: "community", label: "Community" },
-  { value: "achievements", label: "Awards" },
+  { value: "all", label: "All", icon: Bell },
+  { value: "tournaments", label: "Tournaments", icon: Trophy },
+  { value: "matches", label: "Matches", icon: Target },
+  { value: "events", label: "Events", icon: Calendar },
+  { value: "community", label: "Social", icon: Users },
+  { value: "achievements", label: "Awards", icon: Award },
 ];
+
+// Category-specific empty state content
+const emptyStates: Record<string, { icon: React.ElementType; title: string; message: string }> = {
+  all: { icon: Bell, title: "No notifications", message: "You're all caught up!" },
+  tournaments: { icon: Trophy, title: "No tournament updates", message: "Register for a tournament to get notifications here" },
+  matches: { icon: Target, title: "No match notifications", message: "Your match updates will appear here" },
+  events: { icon: Calendar, title: "No event notifications", message: "Event reminders will show up here" },
+  community: { icon: Users, title: "No community activity", message: "Join groups to see activity here" },
+  achievements: { icon: Award, title: "No achievements yet", message: "Play matches to earn badges!" },
+};
 
 export function NotificationCenter({
   isOpen,
@@ -43,11 +79,14 @@ export function NotificationCenter({
   onMarkAllAsRead,
   onDelete,
   onClearAll,
+  onUndo,
 }: NotificationCenterProps) {
   const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState("all");
+  const [showClearDialog, setShowClearDialog] = useState(false);
+  const [recentlyDeleted, setRecentlyDeleted] = useState<Notification | null>(null);
 
-  const handleSelect = async (notificationId: string) => {
+  const handleSelect = useCallback(async (notificationId: string) => {
     const notification = notifications.find(n => n.id === notificationId);
     if (!notification) return;
 
@@ -56,7 +95,52 @@ export function NotificationCenter({
     
     if (notification.link) {
       navigate(notification.link);
+      
+      // Handle special actions in metadata
+      const action = notification.metadata?.action as string | undefined;
+      if (action) {
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent(`notification-action-${action}`, {
+            detail: notification.metadata
+          }));
+        }, 100);
+      }
     }
+  }, [notifications, onMarkAsRead, onClose, navigate]);
+
+  const handleDelete = useCallback((id: string) => {
+    const notification = notifications.find(n => n.id === id);
+    if (notification) {
+      setRecentlyDeleted(notification);
+      onDelete(id);
+      
+      // Show undo toast
+      toast("Notification dismissed", {
+        action: {
+          label: "Undo",
+          onClick: () => {
+            if (onUndo && notification) {
+              onUndo(notification);
+            }
+          },
+        },
+        duration: 5000,
+      });
+    }
+  }, [notifications, onDelete, onUndo]);
+
+  const handleClearAll = useCallback(() => {
+    onClearAll();
+    setShowClearDialog(false);
+    toast("All notifications cleared");
+  }, [onClearAll]);
+
+  // Get count by category
+  const getCategoryCount = (category: string) => {
+    if (category === "all") {
+      return notifications.filter(n => !n.read).length;
+    }
+    return notifications.filter(n => n.category === category && !n.read).length;
   };
 
   const filteredNotifications = activeCategory === "all"
@@ -75,39 +159,54 @@ export function NotificationCenter({
     
     return (
       <div className="space-y-1">
-        <h3 className="text-xs font-medium text-muted-foreground px-3 py-2 sticky top-0 bg-background/95 backdrop-blur-sm">
+        <h3 className="text-xs font-medium text-muted-foreground px-3 py-2 sticky top-0 bg-background/95 backdrop-blur-sm z-10">
           {title}
         </h3>
-        {items.map(notification => (
-          <NotificationItem
-            key={notification.id}
-            notification={notification}
-            onSelect={handleSelect}
-            onDismiss={onDelete}
-          />
-        ))}
+        <AnimatePresence mode="popLayout">
+          {items.map(notification => (
+            <motion.div
+              key={notification.id}
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+              className="group"
+            >
+              <NotificationItem
+                notification={notification}
+                onSelect={handleSelect}
+                onDismiss={handleDelete}
+              />
+            </motion.div>
+          ))}
+        </AnimatePresence>
       </div>
     );
   };
 
+  const currentEmptyState = emptyStates[activeCategory] || emptyStates.all;
+  const EmptyIcon = currentEmptyState.icon;
+
   return (
     <>
       {/* Backdrop */}
-      <div
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: isOpen ? 1 : 0 }}
+        transition={{ duration: 0.2 }}
         className={cn(
-          "fixed inset-0 bg-background/80 backdrop-blur-sm z-50 transition-opacity",
-          isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+          "fixed inset-0 bg-background/80 backdrop-blur-sm z-50",
+          !isOpen && "pointer-events-none"
         )}
         onClick={onClose}
       />
 
       {/* Drawer */}
-      <div
-        className={cn(
-          "fixed top-0 right-0 h-full w-full sm:w-[400px] bg-background border-l shadow-xl z-50",
-          "transform transition-transform duration-300 ease-out",
-          isOpen ? "translate-x-0" : "translate-x-full"
-        )}
+      <motion.div
+        initial={{ x: "100%" }}
+        animate={{ x: isOpen ? 0 : "100%" }}
+        transition={{ type: "spring", damping: 25, stiffness: 200 }}
+        className="fixed top-0 right-0 h-full w-full sm:w-[420px] bg-background border-l shadow-xl z-50"
       >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b">
@@ -142,22 +241,22 @@ export function NotificationCenter({
 
         {/* Category Tabs */}
         <Tabs value={activeCategory} onValueChange={setActiveCategory} className="w-full">
-          <div className="border-b px-2">
-            <TabsList className="h-10 w-full justify-start bg-transparent gap-1 overflow-x-auto">
+          <div className="border-b overflow-x-auto">
+            <TabsList className="h-11 w-max min-w-full justify-start bg-transparent gap-0.5 px-2">
               {categories.map(cat => {
-                const count = cat.value === "all" 
-                  ? notifications.filter(n => !n.read).length
-                  : notifications.filter(n => n.category === cat.value && !n.read).length;
+                const count = getCategoryCount(cat.value);
+                const CatIcon = cat.icon;
                 
                 return (
                   <TabsTrigger
                     key={cat.value}
                     value={cat.value}
-                    className="text-xs px-3 py-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-full"
+                    className="text-xs px-3 py-1.5 gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground rounded-full whitespace-nowrap"
                   >
+                    <CatIcon className="h-3.5 w-3.5" />
                     {cat.label}
                     {count > 0 && (
-                      <span className="ml-1.5 text-[10px]">({count})</span>
+                      <span className="ml-1 text-[10px] opacity-80">({count})</span>
                     )}
                   </TabsTrigger>
                 );
@@ -180,7 +279,7 @@ export function NotificationCenter({
             <Button
               variant="ghost"
               size="sm"
-              onClick={onClearAll}
+              onClick={() => setShowClearDialog(true)}
               disabled={notifications.length === 0}
               className="text-xs h-7 gap-1.5 text-destructive hover:text-destructive"
             >
@@ -193,15 +292,19 @@ export function NotificationCenter({
           <TabsContent value={activeCategory} className="m-0 h-[calc(100vh-180px)]">
             <ScrollArea className="h-full">
               {filteredNotifications.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex flex-col items-center justify-center py-16 px-4 text-center"
+                >
                   <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-                    <Bell className="h-8 w-8 text-muted-foreground" />
+                    <EmptyIcon className="h-8 w-8 text-muted-foreground" />
                   </div>
-                  <h3 className="font-medium text-muted-foreground">No notifications</h3>
-                  <p className="text-sm text-muted-foreground/70 mt-1">
-                    You're all caught up!
+                  <h3 className="font-medium text-muted-foreground">{currentEmptyState.title}</h3>
+                  <p className="text-sm text-muted-foreground/70 mt-1 max-w-[250px]">
+                    {currentEmptyState.message}
                   </p>
-                </div>
+                </motion.div>
               ) : (
                 <div className="p-2 space-y-4">
                   {renderGroup("Today", getFilteredGroup(grouped.today))}
@@ -213,7 +316,25 @@ export function NotificationCenter({
             </ScrollArea>
           </TabsContent>
         </Tabs>
-      </div>
+      </motion.div>
+
+      {/* Clear All Confirmation Dialog */}
+      <AlertDialog open={showClearDialog} onOpenChange={setShowClearDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clear all notifications?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete all {notifications.length} notifications. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleClearAll} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Clear All
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

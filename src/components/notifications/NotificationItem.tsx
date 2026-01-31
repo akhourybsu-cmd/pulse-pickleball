@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { formatDistanceToNow } from "date-fns";
+import { motion, useMotionValue, useTransform, PanInfo } from "framer-motion";
 import { 
   Trophy, 
   Calendar, 
@@ -9,7 +11,21 @@ import {
   UserPlus,
   CheckCircle,
   AlertTriangle,
-  X
+  X,
+  ChevronRight,
+  Clock,
+  Star,
+  MapPin,
+  TrendingUp,
+  Megaphone,
+  UserCheck,
+  CreditCard,
+  AlertCircle,
+  XCircle,
+  FileText,
+  Swords,
+  Flag,
+  Award
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -21,40 +37,114 @@ interface NotificationItemProps {
   onDismiss: (id: string) => void;
 }
 
-const categoryIcons: Record<string, React.ElementType> = {
-  matches: Target,
-  events: Calendar,
-  community: Users,
-  achievements: Trophy,
-  system: Bell,
-  bookings: Calendar,
-};
-
+// Icon mapping for different notification types
 const typeIcons: Record<string, React.ElementType> = {
+  // Match notifications
   match_recorded: Target,
   match_verification_needed: AlertTriangle,
   match_verified: CheckCircle,
   match_contested: AlertTriangle,
+  match_scheduled: Calendar,
+  match_starting_soon: AlertTriangle,
+  match_court_assigned: MapPin,
+  match_started: Swords,
+  match_completed: CheckCircle,
+  match_won: Trophy,
+  match_lost: Flag,
+  match_disputed: AlertTriangle,
+  match_dispute_resolved: CheckCircle,
+  match_forfeited: XCircle,
+  next_match_ready: Swords,
+  
+  // Tournament notifications
+  registration_submitted: FileText,
+  registration_approved: CheckCircle,
+  registration_waitlisted: Clock,
+  registration_rejected: XCircle,
+  waitlist_promoted: Star,
+  team_assigned: Users,
+  partner_joined_team: UserPlus,
+  partner_left_team: AlertCircle,
+  registration_cancelled: XCircle,
+  tournament_published: Trophy,
+  tournament_registration_open: Trophy,
+  registration_closing_soon: Clock,
+  tournament_registration_closed: XCircle,
+  tournament_cancelled: XCircle,
+  tournament_rescheduled: Calendar,
+  schedule_released: FileText,
+  tournament_completed: Trophy,
+  advanced_to_next_round: TrendingUp,
+  eliminated_from_tournament: Flag,
+  podium_finish: Award,
+  tournament_champion: Trophy,
+  standings_released: FileText,
+  
+  // Check-in notifications
+  checkin_open: UserCheck,
+  checkin_reminder: Bell,
+  checked_in_confirmed: CheckCircle,
+  checkin_missed: AlertCircle,
+  weather_delay: AlertTriangle,
+  
+  // Announcements
+  tournament_announcement: Megaphone,
+  tournament_update: Megaphone,
+  schedule_change: Calendar,
+  venue_change: MapPin,
+  
+  // Payment notifications
+  payment_confirmed: CreditCard,
+  payment_failed: AlertCircle,
+  refund_processed: CreditCard,
+  payment_reminder: CreditCard,
+  
+  // Community notifications
   group_post_new: MessageCircle,
   group_lfg_new: Users,
   group_lfg_joined: UserPlus,
   post_comment: MessageCircle,
+  
+  // Achievement notifications
   badge_earned: Trophy,
+  
+  // Event notifications
   event_reminder: Calendar,
   event_registration_confirmed: CheckCircle,
 };
 
-const priorityStyles: Record<string, string> = {
-  urgent: "border-l-4 border-l-destructive bg-destructive/5",
-  high: "border-l-4 border-l-primary bg-primary/5",
-  normal: "border-l-4 border-l-transparent",
-  low: "border-l-4 border-l-transparent opacity-75",
+// Category colors for icon backgrounds
+const categoryColors: Record<string, string> = {
+  tournaments: "bg-primary/20 text-primary",
+  matches: "bg-blue-500/20 text-blue-500",
+  events: "bg-indigo-500/20 text-indigo-500",
+  community: "bg-green-500/20 text-green-500",
+  achievements: "bg-amber-500/20 text-amber-500",
+  system: "bg-muted text-muted-foreground",
+  bookings: "bg-purple-500/20 text-purple-500",
 };
 
+// Priority border colors
+const priorityBorders: Record<string, string> = {
+  urgent: "border-l-4 border-l-destructive",
+  high: "border-l-4 border-l-primary",
+  normal: "border-l-4 border-l-transparent",
+  low: "border-l-4 border-l-transparent",
+};
+
+const SWIPE_THRESHOLD = 100;
+
 export function NotificationItem({ notification, onSelect, onDismiss }: NotificationItemProps) {
-  const Icon = typeIcons[notification.notification_type] || categoryIcons[notification.category] || Bell;
+  const [isDeleting, setIsDeleting] = useState(false);
+  const x = useMotionValue(0);
+  const opacity = useTransform(x, [-SWIPE_THRESHOLD, 0], [0.5, 1]);
+  const deleteOpacity = useTransform(x, [-SWIPE_THRESHOLD, -50, 0], [1, 0.5, 0]);
   
+  const Icon = typeIcons[notification.notification_type] || Bell;
   const timeAgo = formatDistanceToNow(new Date(notification.created_at), { addSuffix: true });
+  
+  const categoryColor = categoryColors[notification.category] || categoryColors.system;
+  const priorityBorder = priorityBorders[notification.priority] || priorityBorders.normal;
 
   const handleClick = () => {
     onSelect(notification.id);
@@ -62,63 +152,95 @@ export function NotificationItem({ notification, onSelect, onDismiss }: Notifica
 
   const handleDismiss = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onDismiss(notification.id);
+    setIsDeleting(true);
+    setTimeout(() => onDismiss(notification.id), 200);
   };
 
-  return (
-    <div
-      onClick={handleClick}
-      className={cn(
-        "relative group flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-all",
-        "hover:bg-accent/50 active:scale-[0.99]",
-        priorityStyles[notification.priority] || priorityStyles.normal,
-        !notification.read && "bg-accent/30"
-      )}
-    >
-      {/* Icon */}
-      <div className={cn(
-        "flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center",
-        notification.category === 'achievements' && "bg-amber-500/20 text-amber-500",
-        notification.category === 'matches' && "bg-primary/20 text-primary",
-        notification.category === 'events' && "bg-blue-500/20 text-blue-500",
-        notification.category === 'community' && "bg-green-500/20 text-green-500",
-        notification.category === 'system' && "bg-muted text-muted-foreground",
-      )}>
-        <Icon className="w-4 h-4" />
-      </div>
+  const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    if (info.offset.x < -SWIPE_THRESHOLD) {
+      setIsDeleting(true);
+      setTimeout(() => onDismiss(notification.id), 200);
+    }
+  };
 
-      {/* Content */}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-start justify-between gap-2">
-          <p className={cn(
-            "text-sm font-medium leading-tight",
-            !notification.read && "text-foreground",
-            notification.read && "text-muted-foreground"
-          )}>
-            {notification.title}
+  // Check if notification has an actionable link
+  const hasAction = !!notification.link;
+
+  return (
+    <div className="relative overflow-hidden">
+      {/* Delete indicator (revealed on swipe) */}
+      <motion.div 
+        className="absolute inset-y-0 right-0 flex items-center justify-end px-4 bg-destructive"
+        style={{ opacity: deleteOpacity }}
+      >
+        <X className="h-5 w-5 text-destructive-foreground" />
+      </motion.div>
+      
+      <motion.div
+        drag="x"
+        dragConstraints={{ left: 0, right: 0 }}
+        dragElastic={0.1}
+        onDragEnd={handleDragEnd}
+        style={{ x, opacity }}
+        animate={isDeleting ? { x: -300, opacity: 0 } : {}}
+        transition={{ duration: 0.2 }}
+        onClick={handleClick}
+        className={cn(
+          "relative flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-all",
+          "hover:bg-accent/50 active:scale-[0.99] bg-background",
+          priorityBorder,
+          !notification.read && "bg-accent/30"
+        )}
+      >
+        {/* Icon */}
+        <div className={cn(
+          "flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center",
+          categoryColor
+        )}>
+          <Icon className="w-5 h-5" />
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 min-w-0 pr-8">
+          <div className="flex items-start justify-between gap-2">
+            <p className={cn(
+              "text-sm font-medium leading-tight",
+              !notification.read && "text-foreground",
+              notification.read && "text-muted-foreground"
+            )}>
+              {notification.title}
+            </p>
+            {!notification.read && (
+              <span className="flex-shrink-0 w-2 h-2 rounded-full bg-primary mt-1.5" />
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+            {notification.message}
           </p>
-          {!notification.read && (
-            <span className="flex-shrink-0 w-2 h-2 rounded-full bg-primary mt-1.5" />
+          <p className="text-[10px] text-muted-foreground/70 mt-1">
+            {timeAgo}
+          </p>
+        </div>
+
+        {/* Right side: Chevron for actionable + Delete button */}
+        <div className="absolute right-2 top-3 flex items-center gap-1">
+          {/* Delete button - always visible on mobile, hover on desktop */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 opacity-50 hover:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+            onClick={handleDismiss}
+          >
+            <X className="h-3.5 w-3.5" />
+            <span className="sr-only">Dismiss</span>
+          </Button>
+          
+          {/* Chevron indicator for actionable notifications */}
+          {hasAction && (
+            <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
           )}
         </div>
-        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-          {notification.message}
-        </p>
-        <p className="text-[10px] text-muted-foreground/70 mt-1">
-          {timeAgo}
-        </p>
-      </div>
-
-      {/* Dismiss button */}
-      <Button
-        variant="ghost"
-        size="icon"
-        className="absolute top-2 right-2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-        onClick={handleDismiss}
-      >
-        <X className="h-3 w-3" />
-        <span className="sr-only">Dismiss</span>
-      </Button>
+      </motion.div>
     </div>
   );
 }
