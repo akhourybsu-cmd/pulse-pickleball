@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, memo } from 'react';
-import { MessageSquare, Pin, Trash2, MoreVertical, Image } from 'lucide-react';
+import { MessageSquare, Pin, Trash2, MoreVertical, Image as ImageIcon } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { PostCommentsSheet } from './PostCommentsSheet';
 import { GroupEmptyState } from './GroupEmptyState';
@@ -7,6 +7,7 @@ import { GroupWelcomeCard } from './GroupWelcomeCard';
 import { GroupFeedPlaceholder } from './GroupFeedPlaceholder';
 import { CommunityPulse } from './CommunityPulse';
 import { ComposerQuickActions } from './ComposerQuickActions';
+import { ImageLightbox } from './ImageLightbox';
 import { formatDistanceToNow, isToday, isYesterday, format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -102,6 +103,7 @@ export function GroupFeed({
   const [deleteDialogPost, setDeleteDialogPost] = useState<GroupPost | null>(null);
   const [commentsPostId, setCommentsPostId] = useState<string | null>(null);
   const [composerFocused, setComposerFocused] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
 
   // Calculate activity stats
   const activeTodayCount = posts.filter(p => {
@@ -212,7 +214,7 @@ export function GroupFeed({
               />
               <div className="absolute right-2 bottom-2 flex items-center gap-1">
                 <Button variant="ghost" size="icon" className="h-7 w-7" disabled>
-                  <Image className="h-3.5 w-3.5 text-muted-foreground/50" />
+                  <ImageIcon className="h-3.5 w-3.5 text-muted-foreground/50" />
                 </Button>
                 <Button 
                   onClick={handleCreatePost} 
@@ -261,6 +263,7 @@ export function GroupFeed({
                 onToggleReaction={handleToggleReaction}
                 onTogglePin={handleTogglePin}
                 onOpenComments={() => setCommentsPostId(post.id)}
+                onImageClick={setLightboxImage}
               />
             ))}
           </div>
@@ -305,6 +308,7 @@ export function GroupFeed({
                     onToggleReaction={handleToggleReaction}
                     onTogglePin={handleTogglePin}
                     onOpenComments={() => setCommentsPostId(post.id)}
+                    onImageClick={setLightboxImage}
                   />
                 ))}
               </div>
@@ -342,6 +346,12 @@ export function GroupFeed({
         currentUserId={currentUserId}
         isAdmin={isAdmin}
       />
+      
+      {/* Image Lightbox */}
+      <ImageLightbox
+        src={lightboxImage}
+        onClose={() => setLightboxImage(null)}
+      />
     </div>
   );
 }
@@ -355,6 +365,7 @@ interface PostCardProps {
   onToggleReaction: (postId: string, emoji: string) => void;
   onTogglePin: (postId: string, pinned: boolean) => void;
   onOpenComments: () => void;
+  onImageClick?: (imageUrl: string) => void;
 }
 
 const PostCard = memo(function PostCard({
@@ -365,6 +376,7 @@ const PostCard = memo(function PostCard({
   onToggleReaction,
   onTogglePin,
   onOpenComments,
+  onImageClick,
 }: PostCardProps) {
   const typeInfo = POST_TYPE_BADGES[post.type] || POST_TYPE_BADGES.feed;
   const typeAccent = POST_TYPE_ACCENT[post.type] || POST_TYPE_ACCENT.feed;
@@ -449,6 +461,18 @@ const PostCard = memo(function PostCard({
           <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
             {post.content}
           </p>
+        )}
+        
+        {/* Post Image */}
+        {post.image_url && (
+          <div className="mt-3 -mx-1">
+            <img
+              src={post.image_url}
+              alt=""
+              className="w-full rounded-lg object-cover max-h-80 cursor-pointer hover:opacity-95 transition-opacity"
+              onClick={() => onImageClick?.(post.image_url!)}
+            />
+          </div>
         )}
       </div>
 

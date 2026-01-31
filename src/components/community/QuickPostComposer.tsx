@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Send, Image, BarChart3, Calendar, Gamepad2, Trophy } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Send, Image, BarChart3, Gamepad2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -13,6 +13,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Progress } from '@/components/ui/progress';
+import { ImageDropzone } from './ImageDropzone';
+import { useImageUpload } from '@/hooks/useImageUpload';
 
 export type PostType = 'post' | 'photo' | 'poll' | 'event' | 'lfg' | 'result';
 
@@ -20,6 +23,7 @@ interface QuickPostComposerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initialType?: PostType;
+  groupId: string;
   onSubmit: (data: {
     type: string;
     content?: string;
@@ -27,6 +31,7 @@ interface QuickPostComposerProps {
     session_date?: string;
     session_time?: string;
     max_players?: number;
+    image_url?: string;
   }) => Promise<boolean>;
 }
 
@@ -34,6 +39,7 @@ export function QuickPostComposer({
   open, 
   onOpenChange, 
   initialType = 'post',
+  groupId,
   onSubmit 
 }: QuickPostComposerProps) {
   const [activeTab, setActiveTab] = useState<PostType>(initialType);
@@ -45,6 +51,26 @@ export function QuickPostComposer({
   const [sessionDate, setSessionDate] = useState('');
   const [sessionTime, setSessionTime] = useState('');
   const [maxPlayers, setMaxPlayers] = useState('4');
+  
+  // Image state
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  
+  const { uploadImage, uploading, progress } = useImageUpload({
+    bucket: 'group-post-images',
+    folder: groupId,
+  });
+
+  // Update preview when image is selected
+  useEffect(() => {
+    if (selectedImage) {
+      const url = URL.createObjectURL(selectedImage);
+      setImagePreview(url);
+      return () => URL.revokeObjectURL(url);
+    } else {
+      setImagePreview(null);
+    }
+  }, [selectedImage]);
 
   const resetForm = () => {
     setContent('');
@@ -52,17 +78,34 @@ export function QuickPostComposer({
     setSessionDate('');
     setSessionTime('');
     setMaxPlayers('4');
+    setSelectedImage(null);
+    setImagePreview(null);
   };
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
     
+    let imageUrl: string | undefined;
+    
+    // Upload image if present
+    if (selectedImage) {
+      const result = await uploadImage(selectedImage);
+      if (result) {
+        imageUrl = result.url;
+      } else {
+        setIsSubmitting(false);
+        return; // Upload failed, don't proceed
+      }
+    }
+    
     let data: any = {};
     
     switch (activeTab) {
       case 'post':
-      case 'photo':
         data = { type: 'feed', content: content.trim() };
+        break;
+      case 'photo':
+        data = { type: 'feed', content: content.trim(), image_url: imageUrl };
         break;
       case 'lfg':
         data = {
@@ -90,11 +133,19 @@ export function QuickPostComposer({
     setIsSubmitting(false);
   };
 
+  const handleRemoveImage = () => {
+    setSelectedImage(null);
+    setImagePreview(null);
+  };
+
   const canSubmit = () => {
+    if (uploading) return false;
+    
     switch (activeTab) {
       case 'post':
-      case 'photo':
         return content.trim().length > 0;
+      case 'photo':
+        return selectedImage !== null;
       case 'lfg':
         return title.trim().length > 0;
       case 'poll':
@@ -228,22 +279,35 @@ export function QuickPostComposer({
                 className="min-h-[80px] resize-none"
               />
             </div>
-            <div className="border-2 border-dashed border-muted-foreground/20 rounded-lg p-8 text-center">
-              <Image className="h-10 w-10 mx-auto text-muted-foreground/50 mb-2" />
-              <p className="text-sm text-muted-foreground">Photo upload coming soon</p>
-            </div>
+            
+            <ImageDropzone
+              onFileSelect={setSelectedImage}
+              preview={imagePreview}
+              onRemove={handleRemoveImage}
+              disabled={uploading || isSubmitting}
+            />
+            
+            {uploading && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Uploading...</span>
+                  <span className="text-muted-foreground">{progress}%</span>
+                </div>
+                <Progress value={progress} className="h-2" />
+              </div>
+            )}
           </TabsContent>
         </Tabs>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting || uploading}>
             Cancel
           </Button>
           <Button 
             onClick={handleSubmit}
-            disabled={!canSubmit() || isSubmitting}
+            disabled={!canSubmit() || isSubmitting || uploading}
           >
-            {isSubmitting ? 'Posting...' : 'Post'}
+            {uploading ? 'Uploading...' : isSubmitting ? 'Posting...' : 'Post'}
           </Button>
         </DialogFooter>
       </DialogContent>

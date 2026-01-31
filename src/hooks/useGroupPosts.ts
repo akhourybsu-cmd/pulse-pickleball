@@ -136,6 +136,7 @@ export function useGroupPosts(groupId: string | undefined) {
       session_time?: string;
       max_players?: number;
       pinned?: boolean;
+      image_url?: string;
     }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
