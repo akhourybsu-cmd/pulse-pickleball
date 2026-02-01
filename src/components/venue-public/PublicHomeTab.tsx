@@ -9,7 +9,8 @@ import {
   ChevronRight,
   Award,
   Star,
-  ArrowLeft
+  ArrowLeft,
+  MessageSquare
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -19,6 +20,7 @@ import { PublicVenue, VenueCourt, VenueEvent, VenueCoach } from '@/hooks/usePubl
 import { TabId } from './PublicVenueShell';
 import { getVenueLogoSrc, getVenueLogoFallback, DEFAULT_VENUE_COLORS } from '@/lib/venueBranding';
 import { FollowButton } from '@/components/venue/FollowButton';
+import { useVenueCommunityGroup } from '@/hooks/useVenueCommunityGroup';
 
 interface PublicHomeTabProps {
   venue: PublicVenue;
@@ -72,6 +74,9 @@ export function PublicHomeTab({
   const navigate = useNavigate();
   const primaryColor = venue.primary_color || DEFAULT_VENUE_COLORS.primary;
   const secondaryColor = venue.secondary_color || DEFAULT_VENUE_COLORS.secondary;
+  
+  // Fetch venue's official community group
+  const { group: venueGroup } = useVenueCommunityGroup(venue.id);
 
   return (
     <div className="space-y-0">
@@ -224,6 +229,39 @@ export function PublicHomeTab({
           </div>
         </div>
       </motion.section>
+
+      {/* Join Community CTA */}
+      {venueGroup && (
+        <motion.section 
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.5 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className="py-6 px-4"
+        >
+          <Card 
+            className="border-2 cursor-pointer hover:shadow-lg transition-all duration-300"
+            style={{ borderColor: `${primaryColor}30` }}
+            onClick={() => navigate(`/player/community/group/${venueGroup.id}`)}
+          >
+            <CardContent className="p-4 flex items-center gap-4">
+              <div 
+                className="w-12 h-12 rounded-full flex items-center justify-center shrink-0"
+                style={{ backgroundColor: `${primaryColor}15` }}
+              >
+                <MessageSquare className="w-6 h-6" style={{ color: primaryColor }} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-sm">Join Our Community</h3>
+                <p className="text-xs text-muted-foreground">
+                  Connect with {venueGroup.member_count || 0}+ players
+                </p>
+              </div>
+              <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0" />
+            </CardContent>
+          </Card>
+        </motion.section>
+      )}
 
       {/* Featured Courts - Staggered card reveal */}
       {courts.length > 0 && (
