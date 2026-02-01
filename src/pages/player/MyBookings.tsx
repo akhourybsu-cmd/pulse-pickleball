@@ -45,10 +45,10 @@ export default function MyBookings() {
     const isUpcoming = isFuture(bookingDate);
 
     return (
-      <div className="p-4 rounded-xl bg-card border border-border/30 hover:border-border/50 transition-colors">
+      <div className="card-premium p-4">
         <div className="flex justify-between items-start gap-3 mb-3">
           <div className="flex-1 min-w-0">
-            <h4 className="font-medium text-sm truncate">{booking.venue?.name || 'Venue'}</h4>
+            <h4 className="font-medium text-sm truncate tracking-tight">{booking.venue?.name || 'Venue'}</h4>
             <p className="text-xs text-muted-foreground">
               {booking.court?.name || 'Court'} (Court {booking.court?.court_number})
             </p>
@@ -58,32 +58,32 @@ export default function MyBookings() {
 
         <div className="text-xs text-muted-foreground space-y-1.5 mb-3">
           <div className="flex items-center gap-2">
-            <Calendar className="h-3 w-3" />
+            <Calendar className="h-3 w-3 text-muted-foreground/70" />
             <span>{format(bookingDate, 'EEE, MMM d, yyyy')}</span>
           </div>
           <div className="flex items-center gap-2">
-            <Clock className="h-3 w-3" />
+            <Clock className="h-3 w-3 text-muted-foreground/70" />
             <span>
               {format(bookingDate, 'h:mm a')} - {format(new Date(booking.end_time), 'h:mm a')}
             </span>
           </div>
           {booking.venue?.address && (
             <div className="flex items-center gap-2">
-              <MapPin className="h-3 w-3" />
+              <MapPin className="h-3 w-3 text-muted-foreground/70" />
               <span className="truncate">{booking.venue.city}, {booking.venue.state}</span>
             </div>
           )}
         </div>
 
         {booking.total_price && (
-          <p className="text-sm font-medium mb-3">${booking.total_price.toFixed(2)}</p>
+          <p className="text-sm font-semibold mb-3 tracking-tight">${booking.total_price.toFixed(2)}</p>
         )}
 
         {isUpcoming && (booking.status === 'pending' || booking.status === 'confirmed') && (
           <Button
             variant="ghost"
             size="sm"
-            className="w-full h-8 text-xs text-destructive hover:text-destructive hover:bg-destructive/5"
+            className="w-full h-8 text-xs text-destructive hover:text-destructive hover:bg-destructive/5 btn-premium"
             onClick={() => cancelBooking(booking.id)}
           >
             <X className="h-3 w-3 mr-1" />
@@ -95,10 +95,10 @@ export default function MyBookings() {
   };
 
   return (
-    <div className="p-4">
-      <div className="mb-4">
-        <h1 className="text-xl font-semibold tracking-tight">My Bookings</h1>
-        <p className="text-sm text-muted-foreground">Your court reservations</p>
+    <div className="p-4 sm:p-6">
+      <div className="mb-5">
+        <h1 className="page-title">My Bookings</h1>
+        <p className="page-subtitle mt-0.5">Your court reservations</p>
       </div>
 
       {loading ? (
@@ -109,14 +109,14 @@ export default function MyBookings() {
         </div>
       ) : (
         <Tabs defaultValue="upcoming">
-          <TabsList className="h-9 mb-4 bg-muted/30">
-            <TabsTrigger value="upcoming" className="text-xs">
+          <TabsList className="h-9 mb-4 bg-muted/40 p-0.5 rounded-lg">
+            <TabsTrigger value="upcoming" className="text-xs font-medium rounded-md data-[state=active]:shadow-sm">
               Upcoming ({upcomingBookings.length})
             </TabsTrigger>
-            <TabsTrigger value="past" className="text-xs">
+            <TabsTrigger value="past" className="text-xs font-medium rounded-md data-[state=active]:shadow-sm">
               Past ({pastBookings.length})
             </TabsTrigger>
-            <TabsTrigger value="cancelled" className="text-xs">
+            <TabsTrigger value="cancelled" className="text-xs font-medium rounded-md data-[state=active]:shadow-sm">
               Cancelled ({cancelledBookings.length})
             </TabsTrigger>
           </TabsList>

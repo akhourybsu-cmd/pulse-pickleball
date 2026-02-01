@@ -46,17 +46,17 @@ export const ProfileHero = ({
 
   return (
     <div className="relative overflow-hidden">
-      {/* Navigation Header - 72px height with shadow */}
+      {/* Navigation Header - Premium Polish */}
       <nav className="bg-secondary border-b border-secondary-foreground/10 shadow-sm">
-        <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-5 flex items-center justify-between h-[72px]">
-          <Link to="/" className="ml-2">
-          <img 
+        <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-3 flex items-center justify-between h-[64px] sm:h-[72px]">
+          <Link to="/" className="ml-1">
+            <img 
               src={logo} 
               alt="PULSE Logo" 
-              className="h-[60px] sm:h-[75px] w-auto cursor-pointer hover:opacity-80 transition-opacity" 
+              className="h-[52px] sm:h-[65px] w-auto cursor-pointer hover:opacity-90 transition-opacity" 
             />
           </Link>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <UnverifiedMatchesIndicator />
             <ThemeToggle />
             <NotificationBell 
@@ -67,16 +67,16 @@ export const ProfileHero = ({
               variant="ghost"
               size="icon"
               onClick={onSignOut}
-              className="text-white hover:text-white/90 hover:bg-white/10 h-[38px] w-[38px]"
+              className="text-secondary-foreground/80 hover:text-secondary-foreground hover:bg-secondary-foreground/10 h-8 w-8 sm:h-9 sm:w-9"
             >
-              <LogOut className="h-5 w-5" />
+              <LogOut className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
           </div>
         </div>
       </nav>
 
-      {/* Player Identity Card Zone */}
-      <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-6">
+      {/* Player Identity Card Zone - Premium Polish */}
+      <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-5">
         <PlayerIdentityCard
           userId={userId}
           fullName={fullName}
@@ -95,34 +95,34 @@ export const ProfileHero = ({
             {/* Quick Actions - 2x2 Grid */}
             <QuickActionsBar />
             
-            {/* Performance/Activity Toggle */}
+            {/* Performance/Activity Toggle - Premium Pill */}
             <div className="flex justify-center">
-              <div className="inline-flex bg-muted/40 p-0.5 rounded-full">
+              <div className="inline-flex bg-muted/50 p-0.5 rounded-full border border-border/30">
                 <button
                   onClick={() => onTabChange("performance")}
                   className={`
-                    flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all
+                    flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200
                     ${activeTab === "performance" 
-                      ? "bg-background text-foreground shadow-sm" 
+                      ? "bg-card text-foreground shadow-sm" 
                       : "text-muted-foreground hover:text-foreground"
                     }
                   `}
                 >
                   <TrendingUp className="w-3.5 h-3.5" />
-                  Performance
+                  <span className="tracking-tight">Performance</span>
                 </button>
                 <button
                   onClick={() => onTabChange("activity")}
                   className={`
-                    flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all
+                    flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200
                     ${activeTab === "activity" 
-                      ? "bg-background text-foreground shadow-sm" 
+                      ? "bg-card text-foreground shadow-sm" 
                       : "text-muted-foreground hover:text-foreground"
                     }
                   `}
                 >
                   <Activity className="w-3.5 h-3.5" />
-                  Activity
+                  <span className="tracking-tight">Activity</span>
                 </button>
               </div>
             </div>

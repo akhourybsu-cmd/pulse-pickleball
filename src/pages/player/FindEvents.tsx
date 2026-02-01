@@ -57,30 +57,30 @@ export default function FindEvents() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Refined Header - Lighter gradient */}
-      <div className="bg-gradient-to-b from-muted/30 to-background pt-4 pb-3 px-4">
+      {/* Refined Header - Premium Polish */}
+      <div className="bg-gradient-to-b from-muted/20 to-background pt-4 pb-3 px-4 sm:px-6">
         <div className="max-w-3xl mx-auto">
-          <h1 className="text-xl font-semibold text-foreground mb-0.5">Find Events</h1>
-          <p className="text-xs text-muted-foreground mb-3">
+          <h1 className="page-title">Find Events</h1>
+          <p className="page-subtitle mt-0.5 mb-3">
             Discover round robins, tournaments, and more
           </p>
 
-          {/* Search Bar - Cleaner */}
+          {/* Search Bar - Premium Polish */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/60" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
             <Input
               placeholder="Search events, venues..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 h-10 bg-card border-border/40 text-sm"
+              className="pl-9 h-10 input-premium text-sm"
             />
             <Button
               variant="ghost"
               size="icon"
-              className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
+              className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 hover:bg-muted/50"
               onClick={() => setShowFilters(!showFilters)}
             >
-              <Filter className={cn("w-4 h-4", showFilters && "text-primary")} />
+              <Filter className={cn("w-4 h-4 transition-colors", showFilters && "text-primary")} />
             </Button>
           </div>
         </div>

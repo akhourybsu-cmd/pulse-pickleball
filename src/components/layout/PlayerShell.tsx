@@ -100,27 +100,27 @@ export function PlayerShell() {
   }, []);
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Top Header - Hidden on dashboard */}
+      {/* Top Header - Hidden on dashboard - Premium Polish */}
       {!isDashboard && !isImmersiveRoute && (
-        <header className="sticky top-0 z-50 border-b bg-secondary shadow-sm">
-          <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-4 flex items-center justify-between h-[72px]">
-            <NavLink to="/player/dashboard" className="ml-2">
+        <header className="sticky top-0 z-50 border-b border-secondary-foreground/10 bg-secondary shadow-sm">
+          <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-3 flex items-center justify-between h-[64px] sm:h-[72px]">
+            <NavLink to="/player/dashboard" className="ml-1">
               <img 
                 src={logo} 
                 alt="PULSE Logo" 
-                className="h-[60px] sm:h-[75px] w-auto cursor-pointer hover:opacity-80 transition-opacity" 
+                className="h-[52px] sm:h-[65px] w-auto cursor-pointer hover:opacity-90 transition-opacity" 
               />
             </NavLink>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2">
               <UnverifiedMatchesIndicator />
               <ThemeToggle />
               <NotificationBell unreadCount={unreadCount} onOpen={() => setIsNotificationCenterOpen(true)} />
               <Avatar 
-                className="h-9 w-9 border-2 border-primary/30 cursor-pointer hover:border-primary/50 transition-colors"
+                className="h-8 w-8 sm:h-9 sm:w-9 border-2 border-primary/40 cursor-pointer hover:border-primary/60 transition-all hover:scale-105"
                 onClick={() => user && navigate(`/profile/${user.id}`)}
               >
                 <AvatarImage src={user?.avatarUrl} alt={user?.displayName} />
-                <AvatarFallback className="text-xs font-bold bg-primary/20 text-primary">
+                <AvatarFallback className="text-[10px] sm:text-xs font-bold bg-primary/20 text-primary">
                   {initials}
                 </AvatarFallback>
               </Avatar>
@@ -128,9 +128,9 @@ export function PlayerShell() {
                 variant="ghost"
                 size="icon"
                 onClick={handleSignOut}
-                className="text-white hover:text-white/90 hover:bg-white/10 h-[38px] w-[38px]"
+                className="text-secondary-foreground/80 hover:text-secondary-foreground hover:bg-secondary-foreground/10 h-8 w-8 sm:h-9 sm:w-9"
               >
-                <LogOut className="h-5 w-5" />
+                <LogOut className="h-4 w-4 sm:h-5 sm:w-5" />
               </Button>
             </div>
           </div>
@@ -158,18 +158,18 @@ export function PlayerShell() {
         <Outlet />
       </main>
 
-      {/* Bottom Navigation - Mobile Only */}
+      {/* Bottom Navigation - Mobile Only - Premium Polish */}
       {!isImmersiveRoute && (
-        <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-card/95 backdrop-blur-sm md:hidden pb-[env(safe-area-inset-bottom)]">
-          {/* Sliding active indicator */}
+        <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/40 bg-card/98 backdrop-blur-md md:hidden pb-[env(safe-area-inset-bottom)]">
+          {/* Sliding active indicator - refined */}
           <div
-            className="absolute top-0 h-[3px] bg-primary rounded-full transition-all duration-[240ms] ease-out"
+            className="absolute top-0 h-[2.5px] bg-primary rounded-full transition-all duration-[240ms] ease-out"
             style={{
-              width: `${100 / navItems.length * 0.6}%`,
-              left: `${(100 / navItems.length) * activeIndex + (100 / navItems.length) * 0.2}%`,
+              width: `${100 / navItems.length * 0.5}%`,
+              left: `${(100 / navItems.length) * activeIndex + (100 / navItems.length) * 0.25}%`,
             }}
           />
-          <div className="flex items-center justify-around py-2">
+          <div className="flex items-center justify-around py-2.5">
             {navItems.map((item) => {
               const isActive = location.pathname === item.to || 
                 (item.to !== '/player/dashboard' && location.pathname.startsWith(item.to));
@@ -180,15 +180,21 @@ export function PlayerShell() {
                   to={item.to}
                   onMouseEnter={() => handlePrefetch(item.to)}
                   className={cn(
-                    'flex flex-col items-center gap-1 px-3 py-2 rounded-lg min-w-[60px]',
-                    'transition-colors duration-[240ms] ease-out',
+                    'flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg min-w-[56px]',
+                    'transition-all duration-[240ms] ease-out',
                     isActive 
-                      ? 'text-primary/80' 
-                      : 'text-muted-foreground hover:text-foreground'
+                      ? 'text-primary' 
+                      : 'text-muted-foreground/70 hover:text-foreground active:scale-95'
                   )}
                 >
-                  <item.icon className={cn('h-5 w-5 transition-colors duration-[240ms] ease-out', isActive && 'text-primary/80')} />
-                  <span className="text-xs font-medium">{item.label}</span>
+                  <item.icon className={cn(
+                    'h-[22px] w-[22px] transition-all duration-[240ms] ease-out',
+                    isActive ? 'text-primary' : 'stroke-[1.5]'
+                  )} />
+                  <span className={cn(
+                    'nav-label',
+                    isActive ? 'text-primary font-semibold' : 'font-medium'
+                  )}>{item.label}</span>
                 </NavLink>
               );
             })}
@@ -196,20 +202,20 @@ export function PlayerShell() {
         </nav>
       )}
 
-      {/* Desktop Horizontal Nav */}
+      {/* Desktop Horizontal Nav - Premium Polish */}
       {!isImmersiveRoute && (
-        <nav className="hidden md:block fixed bottom-0 left-0 right-0 z-50 border-t bg-card/95 backdrop-blur-sm">
+        <nav className="hidden md:block fixed bottom-0 left-0 right-0 z-50 border-t border-border/40 bg-card/98 backdrop-blur-md">
           <div className="container mx-auto px-4 relative">
-            {/* Sliding active indicator for desktop */}
+            {/* Sliding active indicator for desktop - refined */}
             <div
-              className="absolute top-0 left-1/2 h-[3px] bg-primary rounded-full transition-transform duration-[240ms] ease-out"
+              className="absolute top-0 left-1/2 h-[2.5px] bg-primary rounded-full transition-transform duration-[240ms] ease-out"
               style={{
-                width: '60px',
-                marginLeft: '-30px',
-                transform: `translateX(${(activeIndex - Math.floor(navItems.length / 2)) * 120}px)`,
+                width: '48px',
+                marginLeft: '-24px',
+                transform: `translateX(${(activeIndex - Math.floor(navItems.length / 2)) * 116}px)`,
               }}
             />
-            <div className="flex items-center justify-center gap-8 py-3">
+            <div className="flex items-center justify-center gap-6 py-2.5">
               {navItems.map((item) => {
                 const isActive = location.pathname === item.to || 
                   (item.to !== '/player/dashboard' && location.pathname.startsWith(item.to));
@@ -221,14 +227,20 @@ export function PlayerShell() {
                     onMouseEnter={() => handlePrefetch(item.to)}
                     className={cn(
                       'flex items-center gap-2 px-4 py-2 rounded-lg',
-                      'transition-colors duration-[240ms] ease-out',
+                      'transition-all duration-[200ms] ease-out',
                       isActive 
-                        ? 'bg-primary/10 text-primary font-medium' 
-                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                        ? 'bg-primary/10 text-primary' 
+                        : 'text-muted-foreground/70 hover:text-foreground hover:bg-muted/50'
                     )}
                   >
-                    <item.icon className={cn('h-4 w-4 transition-colors duration-[240ms] ease-out')} />
-                    <span className="text-sm">{item.label}</span>
+                    <item.icon className={cn(
+                      'h-4 w-4 transition-all duration-[200ms] ease-out',
+                      !isActive && 'stroke-[1.5]'
+                    )} />
+                    <span className={cn(
+                      'text-sm nav-label',
+                      isActive ? 'font-semibold' : 'font-medium'
+                    )}>{item.label}</span>
                   </NavLink>
                 );
               })}
