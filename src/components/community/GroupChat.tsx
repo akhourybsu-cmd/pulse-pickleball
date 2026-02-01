@@ -30,6 +30,7 @@ export const GroupChat = memo(function GroupChat({
   
   const [newMessage, setNewMessage] = useState('');
   const [userDisplayName, setUserDisplayName] = useState('');
+  const [focusMode, setFocusMode] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -146,8 +147,18 @@ export const GroupChat = memo(function GroupChat({
       {/* Typing Indicator */}
       <TypingIndicator typingUsers={typingUsers} className="border-t border-border/10" />
 
-      {/* Enhanced Input Bar - Mobile Optimized */}
-      <div className="border-t border-border/30 bg-background/95 backdrop-blur-sm px-2 sm:px-3 py-2 sm:py-3">
+      {/* Enhanced Input Bar - Mobile Optimized with Focus Mode */}
+      <motion.div 
+        className={cn(
+          "border-t border-border/30 bg-background/95 backdrop-blur-sm px-2 sm:px-3 py-2 sm:py-3",
+          "pb-[env(safe-area-inset-bottom,0px)]",
+          focusMode && "shadow-[0_-4px_20px_rgba(0,0,0,0.08)]"
+        )}
+        animate={{ 
+          paddingBottom: focusMode ? 'calc(8px + env(safe-area-inset-bottom, 0px))' : 'env(safe-area-inset-bottom, 0px)'
+        }}
+        transition={{ duration: 0.2 }}
+      >
         <div className="flex items-end gap-1.5 sm:gap-2">
           {/* Emoji Button - hidden on mobile */}
           <Button 
@@ -165,17 +176,21 @@ export const GroupChat = memo(function GroupChat({
               value={newMessage}
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
+              onFocus={() => setFocusMode(true)}
+              onBlur={() => setFocusMode(false)}
               placeholder="Message..."
               disabled={sending}
               rows={1}
               className={cn(
-                "min-h-[38px] sm:min-h-[40px] max-h-[100px] sm:max-h-[120px] resize-none py-2 sm:py-2.5 pr-9 sm:pr-10 text-sm",
+                "resize-none py-2 sm:py-2.5 pr-9 sm:pr-10 text-sm",
                 "border-border/40 bg-muted/30 rounded-2xl",
-                "focus:ring-1 focus:ring-primary/30 transition-all"
+                "focus:ring-1 focus:ring-primary/30 transition-all duration-200",
+                focusMode 
+                  ? "min-h-[80px] sm:min-h-[100px] max-h-[150px]" 
+                  : "min-h-[38px] sm:min-h-[40px] max-h-[100px] sm:max-h-[120px]"
               )}
               style={{ 
-                height: 'auto',
-                overflow: newMessage.split('\n').length > 3 ? 'auto' : 'hidden'
+                overflow: newMessage.split('\n').length > 3 || focusMode ? 'auto' : 'hidden'
               }}
             />
             
@@ -183,7 +198,10 @@ export const GroupChat = memo(function GroupChat({
             <Button 
               variant="ghost" 
               size="icon"
-              className="absolute right-0.5 sm:right-1 top-1/2 -translate-y-1/2 h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground/50 hover:text-muted-foreground"
+              className={cn(
+                "absolute right-0.5 sm:right-1 h-7 w-7 sm:h-8 sm:w-8 text-muted-foreground/50 hover:text-muted-foreground",
+                focusMode ? "bottom-1" : "top-1/2 -translate-y-1/2"
+              )}
             >
               <ImageIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             </Button>
@@ -192,6 +210,7 @@ export const GroupChat = memo(function GroupChat({
           {/* Send Button - smaller on mobile */}
           <motion.div
             whileTap={{ scale: 0.9 }}
+            className={focusMode ? "self-end" : ""}
           >
             <Button 
               size="icon" 
@@ -212,7 +231,7 @@ export const GroupChat = memo(function GroupChat({
             </Button>
           </motion.div>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 });
