@@ -119,41 +119,43 @@ export default function VenueDiscovery() {
   };
 
   return (
-    <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
+    <div className="p-4 sm:p-6">
+      {/* Header - Premium Polish */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">Find a Place to Play</h1>
-          <p className="text-sm text-muted-foreground font-normal">Discover courts, clinics, and tournaments near you</p>
+          <h1 className="page-title">Find a Place to Play</h1>
+          <p className="page-subtitle mt-0.5">Discover courts, clinics, and tournaments near you</p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex gap-2">
           <Button 
             variant="outline" 
             size="sm"
             onClick={() => navigate('/player/my-bookings')}
-            className="gap-1.5"
+            className="gap-1.5 h-8 text-xs btn-premium"
           >
-            <ClipboardList className="h-4 w-4" />
-            My Reservations
+            <ClipboardList className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">My </span>Reservations
           </Button>
           <Button 
             variant="outline" 
             size="sm"
             onClick={() => navigate('/player/my-events')}
-            className="gap-1.5"
+            className="gap-1.5 h-8 text-xs btn-premium"
           >
-            <Calendar className="h-4 w-4" />
-            My Registrations
+            <Calendar className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">My </span>Registrations
           </Button>
         </div>
       </div>
 
-      <div className="relative mb-6">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      {/* Search - Premium Polish */}
+      <div className="relative mb-5">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
         <Input
           placeholder="Search by venue name, city, or state..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="pl-9"
+          className="pl-9 h-10 input-premium"
         />
       </div>
 

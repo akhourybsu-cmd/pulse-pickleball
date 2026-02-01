@@ -462,24 +462,73 @@ body {
 }
 }
 
-/* Typography System - Refined, Premium Feel */
+/* Typography System - Premium, Refined Feel */
 .page-title {
-  @apply text-xl font-semibold tracking-tight text-foreground;
-  letter-spacing: -0.01em;
+  @apply text-xl font-semibold tracking-tight text-foreground font-display;
+  letter-spacing: -0.02em;
 }
 
 .page-subtitle {
   @apply text-sm text-muted-foreground font-normal leading-relaxed;
+  letter-spacing: -0.01em;
 }
 
 .section-header {
-  @apply text-sm font-medium text-muted-foreground;
+  @apply text-xs font-medium text-muted-foreground uppercase tracking-wide;
+}
+
+.card-title {
+  @apply text-base font-semibold tracking-tight text-foreground font-display;
+  letter-spacing: -0.015em;
+}
+
+.stat-value {
+  @apply text-2xl font-bold tracking-tight text-foreground font-display;
+  letter-spacing: -0.03em;
+}
+
+.stat-label {
+  @apply text-xs font-medium text-muted-foreground uppercase tracking-wide;
 }
 
 .empty-state-title {
-  @apply text-base font-medium text-foreground;
+  @apply text-base font-semibold text-foreground font-display;
+  letter-spacing: -0.01em;
 }
 
 .empty-state-description {
   @apply text-sm text-muted-foreground font-normal leading-relaxed;
+}
+
+/* Premium Button Styles */
+.btn-premium {
+  @apply font-medium tracking-tight;
+  letter-spacing: -0.01em;
+}
+
+/* Premium Navigation Text */
+.nav-label {
+  @apply text-xs font-medium tracking-tight;
+  letter-spacing: -0.01em;
+}
+
+/* Premium Card Styling */
+.card-premium {
+  @apply bg-card rounded-xl border border-border/30 shadow-sm;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card-premium:hover {
+  @apply border-border/50;
+  box-shadow: 0 4px 12px hsl(var(--foreground) / 0.06);
+}
+
+/* Premium Input Styling */
+.input-premium {
+  @apply bg-card border-border/40 focus:border-primary/50 focus:ring-primary/20;
+}
+
+/* Smooth transitions for interactive elements */
+.interactive-smooth {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }

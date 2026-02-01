@@ -71,10 +71,10 @@ export default function MyEvents() {
     const isUpcoming = isFuture(eventDate);
 
     return (
-      <div className="p-4 rounded-xl bg-card border border-border/30 hover:border-border/50 transition-colors">
+      <div className="card-premium p-4">
         <div className="flex justify-between items-start gap-3 mb-3">
           <div className="flex-1 min-w-0">
-            <h4 className="font-medium text-sm truncate">{event.title}</h4>
+            <h4 className="font-medium text-sm truncate tracking-tight">{event.title}</h4>
             <p className="text-xs text-muted-foreground capitalize">{event.event_type.replace('_', ' ')}</p>
           </div>
           {getStatusBadge(registration.status)}
@@ -82,11 +82,11 @@ export default function MyEvents() {
 
         <div className="text-xs text-muted-foreground space-y-1.5 mb-3">
           <div className="flex items-center gap-2">
-            <Calendar className="h-3 w-3" />
+            <Calendar className="h-3 w-3 text-muted-foreground/70" />
             <span>{format(eventDate, 'EEE, MMM d, yyyy')}</span>
           </div>
           <div className="flex items-center gap-2">
-            <Clock className="h-3 w-3" />
+            <Clock className="h-3 w-3 text-muted-foreground/70" />
             <span>
               {format(eventDate, 'h:mm a')} - {format(new Date(event.end_time), 'h:mm a')}
             </span>
@@ -97,7 +97,7 @@ export default function MyEvents() {
           <Button
             variant="ghost"
             size="sm"
-            className="w-full h-8 text-xs text-destructive hover:text-destructive hover:bg-destructive/5"
+            className="w-full h-8 text-xs text-destructive hover:text-destructive hover:bg-destructive/5 btn-premium"
             onClick={() => cancelRegistration.mutate(registration.id)}
           >
             <X className="h-3 w-3 mr-1" />
@@ -109,10 +109,10 @@ export default function MyEvents() {
   };
 
   return (
-    <div className="p-4">
-      <div className="mb-4">
-        <h1 className="text-xl font-semibold tracking-tight">My Events</h1>
-        <p className="text-sm text-muted-foreground">Your registrations and upcoming events</p>
+    <div className="p-4 sm:p-6">
+      <div className="mb-5">
+        <h1 className="page-title">My Events</h1>
+        <p className="page-subtitle mt-0.5">Your registrations and upcoming events</p>
       </div>
 
       {isLoading ? (
@@ -123,14 +123,14 @@ export default function MyEvents() {
         </div>
       ) : (
         <Tabs defaultValue="upcoming">
-          <TabsList className="h-9 mb-4 bg-muted/30">
-            <TabsTrigger value="upcoming" className="text-xs">
+          <TabsList className="h-9 mb-4 bg-muted/40 p-0.5 rounded-lg">
+            <TabsTrigger value="upcoming" className="text-xs font-medium rounded-md data-[state=active]:shadow-sm">
               Upcoming ({upcomingRegistrations.length})
             </TabsTrigger>
-            <TabsTrigger value="past" className="text-xs">
+            <TabsTrigger value="past" className="text-xs font-medium rounded-md data-[state=active]:shadow-sm">
               Past ({pastRegistrations.length})
             </TabsTrigger>
-            <TabsTrigger value="cancelled" className="text-xs">
+            <TabsTrigger value="cancelled" className="text-xs font-medium rounded-md data-[state=active]:shadow-sm">
               Cancelled ({cancelledRegistrations.length})
             </TabsTrigger>
           </TabsList>
