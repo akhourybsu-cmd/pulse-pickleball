@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Fingerprint } from "lucide-react";
+import { Fingerprint, Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { logger } from "@/lib/logger";
 
@@ -12,9 +12,16 @@ interface BiometricLoginProps {
   onFallback: () => void;
 }
 
+interface CredentialInfo {
+  credential_id: string;
+  device_name: string;
+}
+
 export function BiometricLogin({ email, onSuccess, onFallback }: BiometricLoginProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingCredentials, setIsLoadingCredentials] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [credentials, setCredentials] = useState<CredentialInfo[]>([]);
   const { toast } = useToast();
 
   const logAnalytics = async (eventType: string, errorType?: string) => {
@@ -34,6 +41,18 @@ export function BiometricLogin({ email, onSuccess, onFallback }: BiometricLoginP
     }
   };
 
+  const base64ToArrayBuffer = (base64: string): ArrayBuffer => {
+    // Handle URL-safe base64
+    const standardBase64 = base64.replace(/-/g, '+').replace(/_/g, '/');
+    const padding = '='.repeat((4 - (standardBase64.length % 4)) % 4);
+    const binaryString = atob(standardBase64 + padding);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes.buffer;
+  };
+
   const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
     const bytes = new Uint8Array(buffer);
     let binary = '';
@@ -43,6 +62,42 @@ export function BiometricLogin({ email, onSuccess, onFallback }: BiometricLoginP
     return btoa(binary);
   };
 
+  // Fetch credentials when email changes
+  useEffect(() => {
+    const fetchCredentials = async () => {
+      if (!email || !email.includes('@')) {
+        setCredentials([]);
+        return;
+      }
+
+      setIsLoadingCredentials(true);
+      try {
+        const { data, error } = await supabase.functions.invoke('get-biometric-credentials', {
+          body: { email },
+        });
+
+        if (error) {
+          logger.error('Error fetching credentials:', error);
+          setCredentials([]);
+          return;
+        }
+
+        if (data?.credentials) {
+          setCredentials(data.credentials);
+        } else {
+          setCredentials([]);
+        }
+      } catch (err) {
+        logger.error('Failed to fetch credentials:', err);
+        setCredentials([]);
+      } finally {
+        setIsLoadingCredentials(false);
+      }
+    };
+
+    fetchCredentials();
+  }, [email]);
+
   const handleBiometricLogin = async () => {
     setIsLoading(true);
     setError(null);
@@ -50,17 +105,29 @@ export function BiometricLogin({ email, onSuccess, onFallback }: BiometricLoginP
     try {
       await logAnalytics('login_attempt');
 
+      if (credentials.length === 0) {
+        throw new Error('No biometric credentials found for this account');
+      }
+
       // Generate a random challenge
       const challenge = new Uint8Array(32);
       crypto.getRandomValues(challenge);
 
-      // Request WebAuthn authentication
+      // Build allowCredentials from fetched credentials
+      const allowCredentials: PublicKeyCredentialDescriptor[] = credentials.map(cred => ({
+        id: base64ToArrayBuffer(cred.credential_id),
+        type: 'public-key',
+        transports: ['internal', 'hybrid'] as AuthenticatorTransport[],
+      }));
+
+      // Request WebAuthn authentication with specific credentials
       const assertion = await navigator.credentials.get({
         publicKey: {
           challenge,
           rpId: window.location.hostname,
           userVerification: "required",
           timeout: 60000,
+          allowCredentials,
         },
       }) as PublicKeyCredential | null;
 
@@ -93,30 +160,24 @@ export function BiometricLogin({ email, onSuccess, onFallback }: BiometricLoginP
         throw new Error(data.error);
       }
 
-      if (data?.magicLink) {
-        // Extract the tokens from the magic link
-        const url = new URL(data.magicLink);
-        const accessToken = url.searchParams.get('access_token');
-        const refreshToken = url.searchParams.get('refresh_token');
+      // Use the tokens returned directly from the edge function
+      if (data?.access_token && data?.refresh_token) {
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: data.access_token,
+          refresh_token: data.refresh_token,
+        });
 
-        if (accessToken && refreshToken) {
-          const { error: sessionError } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          });
+        if (sessionError) throw sessionError;
 
-          if (sessionError) throw sessionError;
+        await logAnalytics('login_success');
 
-          await logAnalytics('login_success');
+        toast({
+          title: "Welcome back!",
+          description: "Signed in with biometric authentication.",
+        });
 
-          toast({
-            title: "Welcome back!",
-            description: "Signed in with biometric authentication.",
-          });
-
-          onSuccess();
-          return;
-        }
+        onSuccess();
+        return;
       }
 
       throw new Error('Failed to create session');
@@ -133,12 +194,18 @@ export function BiometricLogin({ email, onSuccess, onFallback }: BiometricLoginP
       } else if (error.name === 'NotSupportedError') {
         errorMessage = "Biometric authentication is not available on this device.";
         errorType = "no_hardware";
+      } else if (error.name === 'InvalidStateError') {
+        errorMessage = "No matching biometric credential found. Try using your password.";
+        errorType = "no_credential";
       } else if (error.message?.includes('Too many attempts')) {
         errorMessage = "Too many attempts. Please wait 5 minutes or use your password.";
         errorType = "rate_limited";
       } else if (error.message?.includes('Network')) {
         errorMessage = "Connection error. Please check your internet and try again.";
         errorType = "network_error";
+      } else if (error.message?.includes('No biometric credentials')) {
+        errorMessage = "No biometric credentials found. Please use your password.";
+        errorType = "no_credentials";
       }
 
       await logAnalytics('login_failed', errorType);
@@ -165,13 +232,33 @@ export function BiometricLogin({ email, onSuccess, onFallback }: BiometricLoginP
 
       <Button
         onClick={handleBiometricLogin}
-        disabled={isLoading}
+        disabled={isLoading || isLoadingCredentials || credentials.length === 0}
         className="w-full"
         size="lg"
       >
-        <Fingerprint className="h-5 w-5 mr-2" />
-        {isLoading ? 'Authenticating...' : 'Sign in with Biometrics'}
+        {isLoading ? (
+          <>
+            <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+            Authenticating...
+          </>
+        ) : isLoadingCredentials ? (
+          <>
+            <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+            Loading...
+          </>
+        ) : (
+          <>
+            <Fingerprint className="h-5 w-5 mr-2" />
+            Sign in with Biometrics
+          </>
+        )}
       </Button>
+
+      {credentials.length === 0 && !isLoadingCredentials && (
+        <p className="text-xs text-center text-muted-foreground">
+          No biometric credentials found for this email
+        </p>
+      )}
 
       <div className="text-center">
         <Button

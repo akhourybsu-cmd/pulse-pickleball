@@ -217,13 +217,19 @@ const Auth = () => {
     }
 
     try {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('biometric_enabled')
-        .eq('email', email)
-        .maybeSingle();
+      // Use the edge function to check biometric availability (bypasses RLS)
+      const { data, error } = await supabase.functions.invoke('get-biometric-credentials', {
+        body: { email },
+      });
 
-      const hasBiometric = profile?.biometric_enabled || false;
+      if (error) {
+        console.error('Error checking biometric:', error);
+        setBiometricAvailable(false);
+        setShowBiometric(false);
+        return;
+      }
+
+      const hasBiometric = data?.biometric_enabled && data?.credentials?.length > 0;
       const isSupported = window.PublicKeyCredential !== undefined;
       
       setBiometricAvailable(hasBiometric && isSupported);

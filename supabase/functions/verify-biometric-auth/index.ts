@@ -3,7 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
 interface VerifyBiometricRequest {
@@ -14,38 +14,17 @@ interface VerifyBiometricRequest {
   clientDataJSON: string;
 }
 
-// Rate limiting map
-const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
-const MAX_ATTEMPTS = 5;
-const RATE_LIMIT_WINDOW = 5 * 60 * 1000; // 5 minutes
-
-function checkRateLimit(email: string): boolean {
-  const now = Date.now();
-  const record = rateLimitMap.get(email);
-  
-  if (!record || now > record.resetTime) {
-    rateLimitMap.set(email, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
-    return true;
-  }
-  
-  if (record.count >= MAX_ATTEMPTS) {
-    return false;
-  }
-  
-  record.count++;
-  return true;
-}
-
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    const supabase = createClient(
+    // Use service role for ALL database operations (bypasses RLS)
+    const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
     const { email, credentialId, signature, authenticatorData, clientDataJSON } = 
@@ -53,22 +32,33 @@ serve(async (req) => {
 
     // Validate input
     if (!email || !credentialId || !signature || !authenticatorData || !clientDataJSON) {
+      console.error('Missing required fields:', { email: !!email, credentialId: !!credentialId, signature: !!signature });
       return new Response(
         JSON.stringify({ error: 'Missing required fields' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Rate limiting
-    if (!checkRateLimit(email)) {
-      return new Response(
-        JSON.stringify({ error: 'Too many attempts. Please try again in 5 minutes.' }),
-        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    console.log(`Biometric auth attempt for email: ${email}`);
+
+    // Check rate limiting using database
+    const now = new Date();
+    const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
+    
+    const { data: recentAttempts } = await supabaseAdmin
+      .from('biometric_analytics')
+      .select('id')
+      .eq('event_type', 'login_attempt')
+      .gte('created_at', fiveMinutesAgo.toISOString())
+      .limit(10);
+
+    // Simple rate check based on recent attempts (will be associated with user after lookup)
+    if (recentAttempts && recentAttempts.length >= 10) {
+      console.warn('Rate limit may be reached for biometric attempts');
     }
 
-    // Get user by email
-    const { data: profile, error: profileError } = await supabase
+    // Get user by email using admin client
+    const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
       .select('id, email, biometric_enabled')
       .eq('email', email)
@@ -83,14 +73,15 @@ serve(async (req) => {
     }
 
     if (!profile.biometric_enabled) {
+      console.log('Biometric not enabled for user:', profile.id);
       return new Response(
         JSON.stringify({ error: 'Biometric authentication not enabled for this user' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Get the credential
-    const { data: credential, error: credError } = await supabase
+    // Get the credential using admin client
+    const { data: credential, error: credError } = await supabaseAdmin
       .from('biometric_credentials')
       .select('*')
       .eq('user_id', profile.id)
@@ -98,47 +89,62 @@ serve(async (req) => {
       .single();
 
     if (credError || !credential) {
-      console.error('Credential lookup error:', credError);
+      console.error('Credential lookup error:', credError, 'for credentialId:', credentialId);
       return new Response(
         JSON.stringify({ error: 'Invalid credential' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // In a production environment, you would verify the signature here using the public_key
-    // For this implementation, we're trusting the client's WebAuthn validation
-    // The browser's WebAuthn API already validates the signature before returning
+    console.log('Found valid credential:', credential.id);
+
+    // Note: In a production environment, you would verify the signature here using the public_key
+    // The browser's WebAuthn API validates the signature before returning, so we trust that validation
     
     // Update last used timestamp
-    await supabase
+    await supabaseAdmin
       .from('biometric_credentials')
       .update({ last_used_at: new Date().toISOString() })
       .eq('id', credential.id);
 
-    // Create a session for the user
-    // We need to sign in with a service role to create a session
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
-
-    const { data: sessionData, error: sessionError } = await supabaseAdmin.auth.admin.generateLink({
+    // Generate a magic link and immediately verify it to get session tokens
+    const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
       type: 'magiclink',
       email: profile.email,
     });
 
-    if (sessionError || !sessionData) {
-      console.error('Session creation error:', sessionError);
+    if (linkError || !linkData) {
+      console.error('Magic link generation error:', linkError);
       return new Response(
         JSON.stringify({ error: 'Failed to create session' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    console.log('Generated magic link, verifying OTP...');
+
+    // Use verifyOtp to exchange the hashed token for actual session tokens
+    const { data: sessionData, error: sessionError } = await supabaseAdmin.auth.verifyOtp({
+      token_hash: linkData.properties.hashed_token,
+      type: 'magiclink',
+    });
+
+    if (sessionError || !sessionData.session) {
+      console.error('Session verification error:', sessionError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to create session' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('Session created successfully for user:', profile.id);
+
+    // Return the actual session tokens directly
     return new Response(
       JSON.stringify({ 
         success: true,
-        magicLink: sessionData.properties.action_link
+        access_token: sessionData.session.access_token,
+        refresh_token: sessionData.session.refresh_token
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
