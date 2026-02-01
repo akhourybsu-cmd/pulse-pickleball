@@ -1,294 +1,260 @@
 
 
-# Venue-Community Group Integration Plan
+# Biometric Authentication: Comprehensive Review & Fixes
 
-## Overview
+## Executive Summary
 
-This plan implements a deep integration between venue official community groups and their associated venue pages, creating a bidirectional connection that enhances discoverability and applies consistent venue branding.
-
----
-
-## Current State Analysis
-
-### Database Relationship
-The `groups` table already has a `venue_id` column that links venue official groups to their parent venue. There is also an `is_venue_verified` boolean column to indicate verified venue groups.
-
-**Example data found:**
-- Group: "Pickleball Palace Official" (type: venue_official)
-- Linked to venue: "Pickleball Palace" (slug: pickleball-palace)
-- Venue colors: Primary #D4AF37 (gold), Secondary #1A1A1A (dark)
-
-### Current Limitations
-1. **GroupDetail page** fetches group data but does not include venue relationship or branding
-2. **GroupCard** shows a verified badge but no link to the venue page
-3. **PublicHomeTab** (venue landing) has no CTA to join the community group
-4. **No venue-branded styling** is applied to venue official groups
+After a thorough investigation of the biometric authentication system, I found **several critical issues** that prevent biometric login from working properly. The analytics data confirms this: there are 3 registered credentials and 14 analytics events, but **zero successful logins** (all `last_used_at` values are `null`).
 
 ---
 
-## Implementation Summary
+## Current Architecture
 
-| Feature | Location | Description |
-|---------|----------|-------------|
-| Visit Venue Button | GroupDetail header | Button linking to /v/:slug for venue groups |
-| Join Community CTA | PublicHomeTab | Button on venue page to join the official group |
-| Venue Branding Theme | GroupDetail + GroupFeed | Apply venue's primary/secondary colors |
-| Venue Link Badge | GroupCard | Small venue indicator with navigation |
+```text
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        BIOMETRIC AUTH FLOW                              │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  ENROLLMENT (Works ✅)                                                  │
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────────┐             │
+│  │ BiometricSetup│ → │ WebAuthn    │ → │ biometric_       │             │
+│  │ (Profile page)│   │ .create()   │   │ credentials table│             │
+│  └─────────────┘    └─────────────┘    └─────────────────┘             │
+│                                                                         │
+│  LOGIN (Broken ❌)                                                      │
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────────┐             │
+│  │ BiometricLogin│ → │ WebAuthn    │ → │ Edge Function    │             │
+│  │ (Auth page)  │   │ .get()      │   │ verify-biometric │             │
+│  └─────────────┘    └─────────────┘    └─────────────────┘             │
+│                           │                    │                        │
+│                           │                    ▼                        │
+│                           │            ┌──────────────┐                 │
+│                           │            │ Magic Link   │ ← Wrong method! │
+│                           │            │ (broken)     │                 │
+│                           │            └──────────────┘                 │
+└─────────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
-## Part 1: Fetch Venue Data with Group
+## Issues Identified
 
-### Changes to `GroupDetail.tsx`
+### Issue 1: Critical - Magic Link Token Extraction Fails
 
-Modify the group fetch query to include the associated venue data when the group type is `venue_official`.
+**Location**: `BiometricLogin.tsx` (lines 96-119)
 
-**Updated Query:**
+**Problem**: The code assumes `generateLink` returns tokens in the URL as query parameters:
 ```typescript
-// Fetch group with venue relationship
-const { data: groupData, error: groupError } = await supabase
-  .from('groups')
-  .select(`
-    *,
-    venues:venue_id (
-      id,
-      name,
-      slug,
-      logo_url,
-      primary_color,
-      secondary_color
-    )
-  `)
-  .eq('id', groupId)
+const url = new URL(data.magicLink);
+const accessToken = url.searchParams.get('access_token');
+const refreshToken = url.searchParams.get('refresh_token');
+```
+
+**Reality**: Supabase's `generateLink` returns a **hashed_token** in `properties.hashed_token`, NOT tokens in the URL. The URL contains a token hash that needs to be verified server-side using `verifyOtp`.
+
+**Fix**: The edge function must call `verifyOtp` with the `hashed_token` to get the actual session tokens.
+
+---
+
+### Issue 2: Critical - Edge Function Uses Wrong Client for Credential Lookup
+
+**Location**: `verify-biometric-auth/index.ts` (lines 46-49, 93-98)
+
+**Problem**: The function creates an anon client to look up credentials:
+```typescript
+const supabase = createClient(
+  Deno.env.get('SUPABASE_URL') ?? '',
+  Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+);
+// Later uses this to query biometric_credentials
+```
+
+**Why it fails**: RLS policies on `biometric_credentials` require `auth.uid() = user_id`. Since the edge function uses the anon key with no authenticated user context, `auth.uid()` is null, so the query returns nothing.
+
+**Fix**: Use the service role client for all database lookups in this edge function.
+
+---
+
+### Issue 3: Critical - WebAuthn allowCredentials Not Specified
+
+**Location**: `BiometricLogin.tsx` (lines 57-65)
+
+**Problem**: The current implementation doesn't specify `allowCredentials`:
+```typescript
+const assertion = await navigator.credentials.get({
+  publicKey: {
+    challenge,
+    rpId: window.location.hostname,
+    userVerification: "required",
+    timeout: 60000,
+  },
+}) as PublicKeyCredential | null;
+```
+
+**Why it's problematic**: Without `allowCredentials`, WebAuthn will try to find discoverable credentials (passkeys). The enrollment creates platform authenticators but may not create discoverable credentials. This can cause WebAuthn to fail to find the credential.
+
+**Fix**: Fetch the user's credential IDs from the server and pass them in `allowCredentials` before calling `navigator.credentials.get()`.
+
+---
+
+### Issue 4: Edge Function Rate Limit Uses In-Memory Map
+
+**Location**: `verify-biometric-auth/index.ts` (lines 17-37)
+
+**Problem**: Rate limiting uses an in-memory `Map`:
+```typescript
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+```
+
+**Why it fails**: Edge functions are stateless. Each invocation may run in a different container, so the map resets on each cold start. This provides no actual rate limiting.
+
+**Fix**: Use a database table or Redis for rate limiting state, or use Supabase's built-in rate limiting.
+
+---
+
+### Issue 5: Profile Lookup by Email Uses Anon Client
+
+**Location**: `verify-biometric-auth/index.ts` (lines 70-83)
+
+**Problem**: Looking up profile by email:
+```typescript
+const { data: profile, error: profileError } = await supabase
+  .from('profiles')
+  .select('id, email, biometric_enabled')
+  .eq('email', email)
   .single();
 ```
 
-**Update Type Definition** in `useGroups.ts`:
+**RLS Issue**: The profiles RLS policy for non-owner access is:
+```sql
+(auth.uid() IS NOT NULL) AND (auth.uid() <> id)
+```
+
+This requires an authenticated user. Using the anon key means `auth.uid()` is null, so this query will also fail.
+
+---
+
+### Issue 6: Email Check Leaks User Existence
+
+**Location**: `Auth.tsx` (lines 212-236)
+
+**Problem**: The `checkBiometricAvailability` function queries if a user has biometrics enabled:
 ```typescript
-export interface Group {
-  // ... existing fields
-  venue?: {
-    id: string;
-    name: string;
-    slug: string | null;
-    logo_url: string | null;
-    primary_color: string | null;
-    secondary_color: string | null;
-  } | null;
+const { data: profile } = await supabase
+  .from('profiles')
+  .select('biometric_enabled')
+  .eq('email', email)
+  .maybeSingle();
+```
+
+**Security concern**: This allows unauthenticated users to determine if an email exists in the system by checking if they get biometric prompt vs. not.
+
+---
+
+## Recommended Fixes
+
+### Fix 1: Update Edge Function to Use Service Role & verifyOtp
+
+```typescript
+// Use service role for ALL database operations
+const supabaseAdmin = createClient(
+  Deno.env.get('SUPABASE_URL') ?? '',
+  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+);
+
+// Look up profile (using admin client)
+const { data: profile } = await supabaseAdmin
+  .from('profiles')
+  .select('id, email, biometric_enabled')
+  .eq('email', email)
+  .single();
+
+// Look up credential (using admin client)
+const { data: credential } = await supabaseAdmin
+  .from('biometric_credentials')
+  .select('*')
+  .eq('user_id', profile.id)
+  .eq('credential_id', credentialId)
+  .single();
+
+// Generate and verify the magic link to get actual session tokens
+const { data: linkData } = await supabaseAdmin.auth.admin.generateLink({
+  type: 'magiclink',
+  email: profile.email,
+});
+
+// Use verifyOtp to get the actual session
+const { data: sessionData, error: sessionError } = await supabaseAdmin.auth.verifyOtp({
+  token_hash: linkData.properties.hashed_token,
+  type: 'magiclink',
+});
+
+// Return the actual tokens
+return new Response(
+  JSON.stringify({ 
+    success: true,
+    access_token: sessionData.session.access_token,
+    refresh_token: sessionData.session.refresh_token
+  }),
+  { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+);
+```
+
+### Fix 2: Update BiometricLogin to Use Returned Tokens Directly
+
+```typescript
+// Instead of parsing magicLink URL
+if (data?.access_token && data?.refresh_token) {
+  const { error: sessionError } = await supabase.auth.setSession({
+    access_token: data.access_token,
+    refresh_token: data.refresh_token,
+  });
+
+  if (sessionError) throw sessionError;
+  // Success!
 }
 ```
 
----
+### Fix 3: Add Credential Pre-fetch for allowCredentials
 
-## Part 2: Visit Venue Button on Group Detail
+Create a new edge function or endpoint to fetch credential IDs for an email:
 
-### Changes to `GroupDetail.tsx` Header
-
-Add a "Visit Venue" button in the header for venue official groups that links to the public venue landing page.
-
-**Visual Placement:**
-```text
-┌─────────────────────────────────────────────────┐
-│ ← [Group Name]              [🏢 Visit] [+] [⋮] │
-└─────────────────────────────────────────────────┘
-```
-
-**Implementation:**
-```tsx
-{group.type === 'venue_official' && group.venue?.slug && (
-  <Button 
-    variant="outline" 
-    size="sm"
-    className="h-7 text-xs gap-1"
-    onClick={() => navigate(`/v/${group.venue.slug}`)}
-    style={{ 
-      borderColor: group.venue.primary_color || undefined,
-      color: group.venue.primary_color || undefined 
-    }}
-  >
-    <Building2 className="h-3 w-3" />
-    <span className="hidden sm:inline">Visit Venue</span>
-  </Button>
-)}
-```
-
----
-
-## Part 3: Join Community CTA on Venue Landing Page
-
-### Changes to `PublicHomeTab.tsx`
-
-Add a section prompting visitors to join the venue's official community group.
-
-**New Section (after Quick Stats):**
-```tsx
-{/* Community CTA Section */}
-{venueGroup && (
-  <section className="py-6 px-4">
-    <Card 
-      className="border-2 cursor-pointer hover:shadow-md transition-all"
-      style={{ borderColor: `${primaryColor}30` }}
-      onClick={() => navigate(`/player/community/group/${venueGroup.id}`)}
-    >
-      <CardContent className="p-4 flex items-center gap-4">
-        <div 
-          className="w-12 h-12 rounded-full flex items-center justify-center"
-          style={{ backgroundColor: `${primaryColor}15` }}
-        >
-          <Users className="w-6 h-6" style={{ color: primaryColor }} />
-        </div>
-        <div className="flex-1">
-          <h3 className="font-semibold text-sm">Join Our Community</h3>
-          <p className="text-xs text-muted-foreground">
-            Connect with {venueGroup.member_count}+ players
-          </p>
-        </div>
-        <ChevronRight className="w-5 h-5 text-muted-foreground" />
-      </CardContent>
-    </Card>
-  </section>
-)}
-```
-
-### Add Hook to Fetch Venue's Official Group
-
-**New Hook: `useVenueCommunityGroup.ts`**
 ```typescript
-export function useVenueCommunityGroup(venueId: string | undefined) {
-  const [group, setGroup] = useState<VenueGroup | null>(null);
-  
-  useEffect(() => {
-    if (!venueId) return;
-    
-    const fetchGroup = async () => {
-      const { data } = await supabase
-        .from('groups')
-        .select('id, name, member_count, is_venue_verified')
-        .eq('venue_id', venueId)
-        .eq('type', 'venue_official')
-        .eq('visibility', 'public')
-        .maybeSingle();
-      
-      setGroup(data);
-    };
-    
-    fetchGroup();
-  }, [venueId]);
-  
-  return { group };
-}
+// New edge function: get-biometric-credentials
+// Returns credential IDs for a given email (no auth required, just IDs)
+
+// Then in BiometricLogin:
+const { data: credentialData } = await supabase.functions.invoke('get-biometric-credentials', {
+  body: { email }
+});
+
+const assertion = await navigator.credentials.get({
+  publicKey: {
+    challenge,
+    rpId: window.location.hostname,
+    userVerification: "required",
+    timeout: 60000,
+    allowCredentials: credentialData.credentials.map(cred => ({
+      id: base64ToArrayBuffer(cred.credential_id),
+      type: 'public-key',
+      transports: ['internal'],
+    })),
+  },
+});
 ```
 
----
+### Fix 4: Implement Proper Rate Limiting
 
-## Part 4: Apply Venue Branding to Group UI
-
-### Changes to `GroupDetail.tsx`
-
-Create a venue theme context that applies the venue's colors throughout the group page when it's a venue official group.
-
-**CSS Variable Approach:**
-```tsx
-const venueColors = group.venue ? {
-  '--venue-primary': group.venue.primary_color || DEFAULT_VENUE_COLORS.primary,
-  '--venue-secondary': group.venue.secondary_color || DEFAULT_VENUE_COLORS.secondary,
-} : {};
-
-return (
-  <div 
-    className="flex flex-col h-[100dvh]"
-    style={venueColors as React.CSSProperties}
-  >
+Option A: Use database table
+```sql
+CREATE TABLE biometric_rate_limits (
+  email TEXT PRIMARY KEY,
+  attempt_count INTEGER DEFAULT 0,
+  last_attempt_at TIMESTAMPTZ DEFAULT now()
+);
 ```
 
-**Apply to Header:**
-```tsx
-{/* Header with venue branding */}
-<div 
-  className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2 border-b shrink-0"
-  style={isVenueGroup ? { 
-    borderColor: `${group.venue?.primary_color}30`,
-    background: `linear-gradient(to right, ${group.venue?.primary_color}05, transparent)`
-  } : undefined}
->
-```
-
-**Apply to Tab Indicator:**
-```tsx
-<TabsTrigger 
-  className="data-[state=active]:border-primary"
-  style={isVenueGroup && activeTab === tab.value ? {
-    borderColor: group.venue?.primary_color
-  } : undefined}
->
-```
-
----
-
-## Part 5: Venue Badge on GroupCard
-
-### Changes to `GroupCard.tsx`
-
-For venue official groups, show a small venue indicator that links to the venue page.
-
-**Updated Card Layout:**
-```tsx
-{/* Venue link for venue_official groups */}
-{isVerifiedVenue && group.venue?.slug && (
-  <button
-    onClick={(e) => {
-      e.stopPropagation();
-      navigate(`/v/${group.venue.slug}`);
-    }}
-    className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-primary transition-colors"
-  >
-    <Building2 className="h-2.5 w-2.5" />
-    <span>{group.venue.name}</span>
-  </button>
-)}
-```
-
-**Fetch Venue Data in Group Queries:**
-
-Update `useGroups.ts` to include venue relationship:
-```typescript
-const { data: memberships } = await supabase
-  .from('group_members')
-  .select(`
-    *,
-    groups (
-      *,
-      venues:venue_id (id, name, slug, logo_url, primary_color, secondary_color)
-    )
-  `)
-  .eq('user_id', currentUserId)
-  .eq('status', 'active');
-```
-
----
-
-## Part 6: Styling Consistency
-
-### Venue-Themed Elements
-
-When a group is venue official with branding:
-
-| Element | Normal | Venue Themed |
-|---------|--------|--------------|
-| Tab indicator | Primary green | Venue primary color |
-| Verified badge | Amber | Venue primary color |
-| CTA buttons | Default primary | Venue primary color |
-| Card borders | Default border | Subtle venue color tint |
-| Avatar fallback | Random color | Venue primary color |
-
-### CSS Utility Addition
-```css
-/* Venue-themed group styling */
-.venue-themed-group [data-venue-accent] {
-  color: var(--venue-primary);
-  border-color: var(--venue-primary);
-}
-```
+Option B: Skip rate limiting in edge function and rely on Supabase's built-in protection.
 
 ---
 
@@ -296,45 +262,37 @@ When a group is venue official with branding:
 
 | File | Changes |
 |------|---------|
-| `src/hooks/useGroups.ts` | Update Group interface, include venue join in queries |
-| `src/pages/player/GroupDetail.tsx` | Fetch venue data, add Visit Venue button, apply branding |
-| `src/components/community/GroupCard.tsx` | Add venue link badge for venue_official groups |
-| `src/components/venue-public/PublicHomeTab.tsx` | Add Join Community CTA section |
-| `src/hooks/useVenueCommunityGroup.ts` | NEW: Hook to fetch venue's official group |
-| `src/hooks/usePublicVenue.ts` | Optionally extend to return community group |
+| `supabase/functions/verify-biometric-auth/index.ts` | Complete rewrite: use service role, implement verifyOtp, return tokens directly |
+| `src/components/auth/BiometricLogin.tsx` | Update to use tokens from response, add allowCredentials support |
+| **NEW** `supabase/functions/get-biometric-credentials/index.ts` | New edge function to fetch credential IDs for email |
+| `src/pages/Auth.tsx` | Update biometric availability check to use new endpoint |
 
 ---
 
-## Technical Considerations
+## Testing Checklist
 
-### Navigation Flow
-- **Group to Venue**: Click "Visit Venue" button in group header navigates to `/v/:slug`
-- **Venue to Group**: Click "Join Community" card navigates to `/player/community/group/:id`
-- Both flows work for authenticated and unauthenticated users (with appropriate auth prompts)
+After implementation, test:
 
-### Authentication
-- Venue landing page CTA will show regardless of auth status
-- Clicking will navigate to group, which will redirect to auth if not logged in
-- After auth, user returns to group page
-
-### Branding Isolation
-- Venue colors only apply to venue_official groups with `is_venue_verified = true`
-- Non-venue groups continue using default Pulse styling
-- Fallback to DEFAULT_VENUE_COLORS if venue has no custom colors
+1. **Enrollment flow**: Enable biometrics on a new device
+2. **Login flow**: Sign out, enter email, verify biometric prompt appears
+3. **Credential matching**: Verify WebAuthn finds the correct credential
+4. **Session creation**: Verify user is fully authenticated after biometric
+5. **Fallback**: Verify "Use password instead" works
+6. **Rate limiting**: Verify rate limits persist across function invocations
+7. **Multi-device**: Test with credentials from different devices
+8. **Error handling**: Test cancellation, timeout, and hardware failure scenarios
 
 ---
 
-## Expected User Experience
+## Security Considerations
 
-**Player discovering venue via group:**
-1. Joins "Pickleball Palace Official" community group
-2. Sees gold/dark themed interface matching the venue
-3. Clicks "Visit Venue" to explore courts, events, coaching
-4. Books a court directly from venue page
+| Aspect | Current State | After Fix |
+|--------|---------------|-----------|
+| Token exchange | Broken (URL parsing) | Secure (server-side verifyOtp) |
+| Rate limiting | None (in-memory) | Database-backed |
+| Credential lookup | Fails (RLS blocks) | Works (service role) |
+| User enumeration | Possible via biometric check | Minimize by caching check |
+| Signature verification | Client-trusted | Should add server verification* |
 
-**Player discovering group via venue:**
-1. Visits Pickleball Palace venue page
-2. Sees "Join Our Community" card with member count
-3. Clicks to join the official group
-4. Engages with other players, sees events in feed
+*Note: Full server-side WebAuthn signature verification requires a WebAuthn library in Deno. The current implementation trusts the browser's WebAuthn API, which is acceptable for many use cases but not ideal for high-security applications.
 
