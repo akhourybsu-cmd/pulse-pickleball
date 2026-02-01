@@ -19,7 +19,7 @@ import { QuickActionsBar } from "@/components/dashboard/QuickActionsBar";
 import { ActivityModule } from "@/components/dashboard/ActivityModule";
 import { PerformanceModule } from "@/components/dashboard/PerformanceModule";
 import { StatsByCourtCard } from "@/components/dashboard/StatsByCourtCard";
-import { SpacesPreviewRow } from "@/components/dashboard/SpacesPreviewRow";
+
 import { HomeFooterUtilities } from "@/components/dashboard/HomeFooterUtilities";
 import { VenueActivitySection } from "@/components/dashboard/VenueActivitySection";
 
@@ -306,11 +306,6 @@ const Dashboard = () => {
             {/* Quick Actions - 2x2 Grid */}
             <QuickActionsBar />
             
-            {/* Your Spaces - Consolidated surface */}
-            <SpacesPreviewRow 
-              userId={user?.id}
-              homeCourtId={homeCourtId}
-            />
             
             {/* Performance Content - Historical & Analytical */}
             <div className="space-y-5">
@@ -366,11 +361,6 @@ const Dashboard = () => {
               {/* Match History & Trends */}
               <PerformanceModule userId={user?.id} />
 
-              {/* Your Spaces */}
-              <SpacesPreviewRow 
-                userId={user?.id}
-                homeCourtId={homeCourtId}
-              />
               
               {/* Venue History */}
               <VenueActivitySection />
