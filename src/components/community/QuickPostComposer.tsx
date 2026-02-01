@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Send, Image, BarChart3, Gamepad2 } from 'lucide-react';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  Drawer,
+  DrawerContent,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from '@/components/ui/drawer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -60,6 +59,13 @@ export function QuickPostComposer({
     bucket: 'group-post-images',
     folder: groupId,
   });
+
+  // Update active tab when initialType changes
+  useEffect(() => {
+    if (open) {
+      setActiveTab(initialType);
+    }
+  }, [initialType, open]);
 
   // Update preview when image is selected
   useEffect(() => {
@@ -156,163 +162,169 @@ export function QuickPostComposer({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Create Post</DialogTitle>
-          <DialogDescription>
-            Share something with the group
-          </DialogDescription>
-        </DialogHeader>
+    <Drawer open={open} onOpenChange={onOpenChange}>
+      <DrawerContent className="max-h-[85vh]">
+        <DrawerHeader className="pb-2">
+          <DrawerTitle>Create Post</DrawerTitle>
+        </DrawerHeader>
 
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as PostType)} className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="post" className="gap-1 text-xs">
-              <Send className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Post</span>
-            </TabsTrigger>
-            <TabsTrigger value="lfg" className="gap-1 text-xs">
-              <Gamepad2 className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">LFG</span>
-            </TabsTrigger>
-            <TabsTrigger value="poll" className="gap-1 text-xs">
-              <BarChart3 className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Poll</span>
-            </TabsTrigger>
-            <TabsTrigger value="photo" className="gap-1 text-xs">
-              <Image className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Photo</span>
-            </TabsTrigger>
-          </TabsList>
+        <div className="flex-1 overflow-y-auto px-4">
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as PostType)} className="w-full">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="post" className="gap-1 text-xs">
+                <Send className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Post</span>
+              </TabsTrigger>
+              <TabsTrigger value="lfg" className="gap-1 text-xs">
+                <Gamepad2 className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">LFG</span>
+              </TabsTrigger>
+              <TabsTrigger value="poll" className="gap-1 text-xs">
+                <BarChart3 className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Poll</span>
+              </TabsTrigger>
+              <TabsTrigger value="photo" className="gap-1 text-xs">
+                <Image className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Photo</span>
+              </TabsTrigger>
+            </TabsList>
 
-          {/* Post Tab */}
-          <TabsContent value="post" className="space-y-4 mt-4">
-            <div className="space-y-2">
-              <Label>What's on your mind?</Label>
-              <Textarea
-                placeholder="Share an update with the group..."
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                className="min-h-[120px] resize-none"
-              />
-            </div>
-          </TabsContent>
-
-          {/* LFG Tab */}
-          <TabsContent value="lfg" className="space-y-4 mt-4">
-            <div className="space-y-2">
-              <Label>Title *</Label>
-              <Input
-                placeholder="e.g., Need 1 more for doubles"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Details</Label>
-              <Textarea
-                placeholder="Skill level, format, etc."
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                className="min-h-[80px] resize-none"
-              />
-            </div>
-            <div className="space-y-3">
+            {/* Post Tab */}
+            <TabsContent value="post" className="space-y-4 mt-4">
               <div className="space-y-2">
-                <Label>Date</Label>
-                <Input
-                  type="date"
-                  value={sessionDate}
-                  onChange={(e) => setSessionDate(e.target.value)}
+                <Label>What's on your mind?</Label>
+                <Textarea
+                  placeholder="Share an update with the group..."
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  className="min-h-[120px] resize-none"
+                  autoFocus
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label>Time</Label>
-                  <Input
-                    type="time"
-                    value={sessionTime}
-                    onChange={(e) => setSessionTime(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Spots</Label>
-                  <Input
-                    type="number"
-                    min="1"
-                    max="20"
-                    value={maxPlayers}
-                    onChange={(e) => setMaxPlayers(e.target.value)}
-                  />
-                </div>
-              </div>
-            </div>
-          </TabsContent>
+            </TabsContent>
 
-          {/* Poll Tab */}
-          <TabsContent value="poll" className="space-y-4 mt-4">
-            <div className="space-y-2">
-              <Label>Question *</Label>
-              <Input
-                placeholder="e.g., Who's in for Saturday 9am?"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Additional details</Label>
-              <Textarea
-                placeholder="Any context for the poll..."
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                className="min-h-[80px] resize-none"
-              />
-            </div>
-          </TabsContent>
-
-          {/* Photo Tab */}
-          <TabsContent value="photo" className="space-y-4 mt-4">
-            <div className="space-y-2">
-              <Label>Caption</Label>
-              <Textarea
-                placeholder="Add a caption..."
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                className="min-h-[80px] resize-none"
-              />
-            </div>
-            
-            <ImageDropzone
-              onFileSelect={setSelectedImage}
-              preview={imagePreview}
-              onRemove={handleRemoveImage}
-              disabled={uploading || isSubmitting}
-            />
-            
-            {uploading && (
+            {/* LFG Tab */}
+            <TabsContent value="lfg" className="space-y-4 mt-4">
               <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Uploading...</span>
-                  <span className="text-muted-foreground">{progress}%</span>
-                </div>
-                <Progress value={progress} className="h-2" />
+                <Label>Title *</Label>
+                <Input
+                  placeholder="e.g., Need 1 more for doubles"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                />
               </div>
-            )}
-          </TabsContent>
-        </Tabs>
+              <div className="space-y-2">
+                <Label>Details</Label>
+                <Textarea
+                  placeholder="Skill level, format, etc."
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  className="min-h-[80px] resize-none"
+                />
+              </div>
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <Label>Date</Label>
+                  <Input
+                    type="date"
+                    value={sessionDate}
+                    onChange={(e) => setSessionDate(e.target.value)}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label>Time</Label>
+                    <Input
+                      type="time"
+                      value={sessionTime}
+                      onChange={(e) => setSessionTime(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Spots</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      max="20"
+                      value={maxPlayers}
+                      onChange={(e) => setMaxPlayers(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting || uploading}>
+            {/* Poll Tab */}
+            <TabsContent value="poll" className="space-y-4 mt-4">
+              <div className="space-y-2">
+                <Label>Question *</Label>
+                <Input
+                  placeholder="e.g., Who's in for Saturday 9am?"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Additional details</Label>
+                <Textarea
+                  placeholder="Any context for the poll..."
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  className="min-h-[80px] resize-none"
+                />
+              </div>
+            </TabsContent>
+
+            {/* Photo Tab */}
+            <TabsContent value="photo" className="space-y-4 mt-4">
+              <div className="space-y-2">
+                <Label>Caption</Label>
+                <Textarea
+                  placeholder="Add a caption..."
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  className="min-h-[80px] resize-none"
+                />
+              </div>
+              
+              <ImageDropzone
+                onFileSelect={setSelectedImage}
+                preview={imagePreview}
+                onRemove={handleRemoveImage}
+                disabled={uploading || isSubmitting}
+              />
+              
+              {uploading && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Uploading...</span>
+                    <span className="text-muted-foreground">{progress}%</span>
+                  </div>
+                  <Progress value={progress} className="h-2" />
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        </div>
+
+        <DrawerFooter className="flex-row gap-2 pt-4">
+          <Button 
+            variant="outline" 
+            onClick={() => onOpenChange(false)} 
+            disabled={isSubmitting || uploading}
+            className="flex-1"
+          >
             Cancel
           </Button>
           <Button 
             onClick={handleSubmit}
             disabled={!canSubmit() || isSubmitting || uploading}
+            className="flex-1"
           >
             {uploading ? 'Uploading...' : isSubmitting ? 'Posting...' : 'Post'}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </DrawerFooter>
+      </DrawerContent>
+    </Drawer>
   );
 }

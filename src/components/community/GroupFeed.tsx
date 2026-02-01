@@ -182,63 +182,7 @@ export function GroupFeed({
   }
 
   return (
-    <div className="space-y-5">
-      {/* Enhanced Post Composer - Mobile Optimized */}
-      <motion.div 
-        className={cn(
-          'rounded-xl p-3 sm:p-4 transition-all duration-200',
-          'bg-gradient-to-br from-primary/8 via-primary/4 to-transparent',
-          'shadow-sm border border-primary/15',
-          composerFocused && 'ring-2 ring-primary/20 border-primary/25 shadow-md'
-        )}
-        animate={composerFocused ? { scale: 1.01 } : { scale: 1 }}
-        transition={{ duration: 0.15 }}
-      >
-        <div className="flex gap-2 sm:gap-3 items-start">
-          <Avatar className="h-8 w-8 sm:h-10 sm:w-10 flex-shrink-0 ring-2 ring-background">
-            <AvatarFallback className="text-xs sm:text-sm bg-primary/10 text-primary">U</AvatarFallback>
-          </Avatar>
-          <div className="flex-1 min-w-0">
-            <div className="relative">
-              <Textarea
-                placeholder="Share something with the group..."
-                value={newPostContent}
-                onChange={(e) => setNewPostContent(e.target.value)}
-                onFocus={() => setComposerFocused(true)}
-                onBlur={() => setComposerFocused(false)}
-                className={cn(
-                  'min-h-[52px] sm:min-h-[56px] resize-none pr-16 sm:pr-20 text-sm py-2.5 sm:py-3 px-3 sm:px-3.5 rounded-xl',
-                  'bg-background border-border/30',
-                  'focus:ring-0 focus:border-border/50 transition-colors'
-                )}
-              />
-              <div className="absolute right-1.5 sm:right-2 bottom-1.5 sm:bottom-2 flex items-center gap-1">
-                <Button variant="ghost" size="icon" className="h-6 w-6 sm:h-7 sm:w-7" disabled>
-                  <ImageIcon className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-muted-foreground/50" />
-                </Button>
-                <Button 
-                  onClick={handleCreatePost} 
-                  disabled={!newPostContent.trim() || isPosting}
-                  size="sm"
-                  className="h-6 sm:h-7 px-2 sm:px-3 text-xs rounded-lg"
-                >
-                  Post
-                </Button>
-              </div>
-            </div>
-            
-            {/* Color-Coded Quick Action Chips */}
-            <ComposerQuickActions
-              className="mt-2 sm:mt-3"
-              onPhotoClick={focusComposer}
-              onEventClick={() => onSwitchToEvents?.()}
-              onPollClick={() => onOpenQuickPost?.('poll')}
-              onQuestionClick={focusComposer}
-            />
-          </div>
-        </div>
-      </motion.div>
-
+    <div className="space-y-5 pb-20">
       {/* Anchored Community Status Bar */}
       <CommunityPulse
         activeTodayCount={activeTodayCount}

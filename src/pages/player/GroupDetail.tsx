@@ -24,6 +24,7 @@ import { GroupMembers } from '@/components/community/GroupMembers';
 import { GroupChat } from '@/components/community/GroupChat';
 import { InviteModal } from '@/components/community/InviteModal';
 import { QuickPostComposer, type PostType } from '@/components/community/QuickPostComposer';
+import { CollapsedComposerBar } from '@/components/community/CollapsedComposerBar';
 import { useGroupPosts } from '@/hooks/useGroupPosts';
 import { useGroupPresence } from '@/hooks/useGroupPresence';
 import { useGroupRealtime } from '@/hooks/useGroupRealtime';
@@ -359,7 +360,15 @@ export default function GroupDetail() {
         groupName={group.name}
       />
 
-      {/* Quick Post Composer */}
+      {/* Collapsed Composer Bar - Only show on Feed tab */}
+      {activeTab === 'feed' && (
+        <CollapsedComposerBar
+          onExpand={() => openQuickPost('post')}
+          onPhotoClick={() => openQuickPost('photo')}
+        />
+      )}
+
+      {/* Quick Post Composer (Drawer) */}
       <QuickPostComposer
         open={quickPostOpen}
         onOpenChange={setQuickPostOpen}
