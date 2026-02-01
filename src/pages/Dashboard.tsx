@@ -19,7 +19,6 @@ import { QuickActionsBar } from "@/components/dashboard/QuickActionsBar";
 import { ActivityModule } from "@/components/dashboard/ActivityModule";
 import { PerformanceModule } from "@/components/dashboard/PerformanceModule";
 import { StatsByCourtCard } from "@/components/dashboard/StatsByCourtCard";
-
 import { HomeFooterUtilities } from "@/components/dashboard/HomeFooterUtilities";
 import { VenueActivitySection } from "@/components/dashboard/VenueActivitySection";
 
