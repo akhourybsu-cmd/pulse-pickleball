@@ -149,8 +149,9 @@ All colors MUST be HSL.
     @apply border-border;
   }
 
-body {
-  @apply bg-background text-foreground;
+  body {
+    @apply bg-background text-foreground;
+  }
 }
 
 /* ECG Pulse Animation */
@@ -459,7 +460,6 @@ body {
   .tile-hover:hover:not(:disabled) {
     transform: none;
   }
-}
 }
 
 /* Typography System - Premium, Refined Feel */
