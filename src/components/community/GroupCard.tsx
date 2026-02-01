@@ -1,7 +1,7 @@
 import { memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { Users, Lock, Globe, Eye, Crown, Shield, ChevronRight, BadgeCheck } from 'lucide-react';
+import { Users, Lock, Globe, Eye, Crown, Shield, ChevronRight, BadgeCheck, Building2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -114,7 +114,7 @@ export const GroupCard = memo(function GroupCard({ group, showJoinButton, onJoin
             )}
           </div>
           
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
             <span>{typeLabels[group.type]}</span>
             <span className="opacity-50">•</span>
             <span className="flex items-center gap-1">
@@ -123,11 +123,28 @@ export const GroupCard = memo(function GroupCard({ group, showJoinButton, onJoin
             </span>
             {isMember && (
               <>
-                <span>•</span>
+                <span className="opacity-50">•</span>
                 <span className="flex items-center gap-1">
                   {roleIcon}
                   {roleLabel}
                 </span>
+              </>
+            )}
+            {/* Venue link for venue_official groups */}
+            {isVerifiedVenue && group.venue?.slug && (
+              <>
+                <span className="opacity-50">•</span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/v/${group.venue!.slug}`);
+                  }}
+                  className="flex items-center gap-1 hover:text-primary transition-colors"
+                  style={{ color: group.venue.primary_color || undefined }}
+                >
+                  <Building2 className="h-2.5 w-2.5" />
+                  <span className="truncate max-w-[80px]">{group.venue.name}</span>
+                </button>
               </>
             )}
           </div>

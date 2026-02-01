@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, Settings, Users, MessageSquare, MessageCircle, Calendar, 
-  FolderOpen, Plus, Share2, MoreVertical
+  FolderOpen, Plus, Share2, MoreVertical, Building2
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -29,6 +29,7 @@ import { useGroupPosts } from '@/hooks/useGroupPosts';
 import { useGroupPresence } from '@/hooks/useGroupPresence';
 import { useGroupRealtime } from '@/hooks/useGroupRealtime';
 import { OnlineIndicator } from '@/components/community/OnlineIndicator';
+import { DEFAULT_VENUE_COLORS } from '@/lib/venueBranding';
 
 export default function GroupDetail() {
   const { groupId } = useParams<{ groupId: string }>();
@@ -85,15 +86,31 @@ export default function GroupDetail() {
       }
       setCurrentUserId(user.id);
 
-      // Fetch group
+      // Fetch group with venue relationship for venue_official groups
       const { data: groupData, error: groupError } = await supabase
         .from('groups')
-        .select('*')
+        .select(`
+          *,
+          venues:venue_id (
+            id,
+            name,
+            slug,
+            logo_url,
+            primary_color,
+            secondary_color
+          )
+        `)
         .eq('id', groupId)
         .single();
 
       if (groupError) throw groupError;
-      setGroup(groupData);
+      
+      // Map venues to venue for consistency with type
+      const groupWithVenue = {
+        ...groupData,
+        venue: groupData.venues || null
+      };
+      setGroup(groupWithVenue);
 
       // Fetch membership
       const { data: membershipData } = await supabase
@@ -136,6 +153,10 @@ export default function GroupDetail() {
   }, [createPost]);
 
   const isAdmin = membership?.role === 'owner' || membership?.role === 'moderator';
+  
+  // Venue branding for venue_official groups
+  const isVenueGroup = group?.type === 'venue_official' && group?.is_venue_verified && group?.venue;
+  const venueColor = isVenueGroup ? (group.venue?.primary_color || DEFAULT_VENUE_COLORS.primary) : null;
 
   // Memoize tab config
   const tabs = useMemo(() => [
@@ -168,9 +189,20 @@ export default function GroupDetail() {
   }
 
   return (
-    <div className="flex flex-col h-[100dvh]">
+    <div 
+      className="flex flex-col h-[100dvh]"
+      style={isVenueGroup ? {
+        '--venue-primary': venueColor,
+      } as React.CSSProperties : undefined}
+    >
       {/* Minimal Immersive Header - Mobile Optimized */}
-      <div className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2 border-b border-border/20 bg-background shrink-0">
+      <div 
+        className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2 border-b border-border/20 bg-background shrink-0"
+        style={isVenueGroup ? { 
+          borderColor: `${venueColor}30`,
+          background: `linear-gradient(to right, ${venueColor}08, transparent)`
+        } : undefined}
+      >
         <Button 
           variant="ghost" 
           size="icon"
@@ -190,6 +222,36 @@ export default function GroupDetail() {
           <span className="hidden xs:inline">{onlineCount}</span>
           <span className="hidden sm:inline">online</span>
         </div>
+
+        {/* Visit Venue button for venue_official groups */}
+        {isVenueGroup && group.venue?.slug && (
+          <Button 
+            variant="outline" 
+            size="sm"
+            className="h-7 text-xs gap-1 hidden sm:flex"
+            onClick={() => navigate(`/v/${group.venue!.slug}`)}
+            style={{ 
+              borderColor: venueColor || undefined,
+              color: venueColor || undefined 
+            }}
+          >
+            <Building2 className="h-3 w-3" />
+            <span>Visit Venue</span>
+          </Button>
+        )}
+
+        {/* Mobile venue button (icon only) */}
+        {isVenueGroup && group.venue?.slug && (
+          <Button 
+            variant="ghost" 
+            size="icon"
+            className="h-7 w-7 sm:hidden"
+            onClick={() => navigate(`/v/${group.venue!.slug}`)}
+            style={{ color: venueColor || undefined }}
+          >
+            <Building2 className="h-3.5 w-3.5" />
+          </Button>
+        )}
 
         {/* Compact action buttons - smaller on mobile */}
         {group.invite_code && (
@@ -244,13 +306,20 @@ export default function GroupDetail() {
 
       {/* Minimal Tab Bar */}
       <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col overflow-hidden">
-        <div className="border-b border-border/30 px-2">
+        <div 
+          className="border-b border-border/30 px-2"
+          style={isVenueGroup ? { borderColor: `${venueColor}20` } : undefined}
+        >
           <TabsList className="h-10 bg-transparent p-0 w-full justify-start gap-0">
             {tabs.map((tab) => (
               <TabsTrigger 
                 key={tab.value}
                 value={tab.value} 
                 className="flex-1 h-10 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-1 text-xs px-2"
+                style={isVenueGroup && activeTab === tab.value ? {
+                  borderColor: venueColor || undefined,
+                  color: venueColor || undefined
+                } : undefined}
               >
                 <tab.icon className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">{tab.label}</span>

@@ -24,7 +24,10 @@ export interface Group {
   venue?: {
     id: string;
     name: string;
+    slug: string | null;
     logo_url: string | null;
+    primary_color: string | null;
+    secondary_color: string | null;
   } | null;
 }
 
@@ -76,12 +79,15 @@ export function useGroups() {
     
     setLoading(true);
     try {
-      // Get groups where user is a member
+      // Get groups where user is a member (with venue data for venue_official groups)
       const { data: memberships, error: memberError } = await supabase
         .from('group_members')
         .select(`
           *,
-          groups (*)
+          groups (
+            *,
+            venues:venue_id (id, name, slug, logo_url, primary_color, secondary_color)
+          )
         `)
         .eq('user_id', currentUserId)
         .eq('status', 'active');
@@ -92,6 +98,7 @@ export function useGroups() {
         .filter((m: any) => m.groups)
         .map((m: any) => ({
           ...m.groups,
+          venue: m.groups.venues || null,
           membership: {
             id: m.id,
             group_id: m.group_id,
