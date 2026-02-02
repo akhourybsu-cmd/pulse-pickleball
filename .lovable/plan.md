@@ -1,298 +1,129 @@
 
+# Player Side Analysis - Issues & Fixes
 
-# Biometric Authentication: Comprehensive Review & Fixes
+## Critical Issue Found: App Crashing 🔴
 
-## Executive Summary
-
-After a thorough investigation of the biometric authentication system, I found **several critical issues** that prevent biometric login from working properly. The analytics data confirms this: there are 3 registered credentials and 14 analytics events, but **zero successful logins** (all `last_used_at` values are `null`).
-
----
-
-## Current Architecture
-
-```text
-┌─────────────────────────────────────────────────────────────────────────┐
-│                        BIOMETRIC AUTH FLOW                              │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                         │
-│  ENROLLMENT (Works ✅)                                                  │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────────┐             │
-│  │ BiometricSetup│ → │ WebAuthn    │ → │ biometric_       │             │
-│  │ (Profile page)│   │ .create()   │   │ credentials table│             │
-│  └─────────────┘    └─────────────┘    └─────────────────┘             │
-│                                                                         │
-│  LOGIN (Broken ❌)                                                      │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────────┐             │
-│  │ BiometricLogin│ → │ WebAuthn    │ → │ Edge Function    │             │
-│  │ (Auth page)  │   │ .get()      │   │ verify-biometric │             │
-│  └─────────────┘    └─────────────┘    └─────────────────┘             │
-│                           │                    │                        │
-│                           │                    ▼                        │
-│                           │            ┌──────────────┐                 │
-│                           │            │ Magic Link   │ ← Wrong method! │
-│                           │            │ (broken)     │                 │
-│                           │            └──────────────┘                 │
-└─────────────────────────────────────────────────────────────────────────┘
+The console logs reveal a **critical runtime error**:
+```
+ReferenceError: CourtConnector is not defined
 ```
 
----
-
-## Issues Identified
-
-### Issue 1: Critical - Magic Link Token Extraction Fails
-
-**Location**: `BiometricLogin.tsx` (lines 96-119)
-
-**Problem**: The code assumes `generateLink` returns tokens in the URL as query parameters:
-```typescript
-const url = new URL(data.magicLink);
-const accessToken = url.searchParams.get('access_token');
-const refreshToken = url.searchParams.get('refresh_token');
-```
-
-**Reality**: Supabase's `generateLink` returns a **hashed_token** in `properties.hashed_token`, NOT tokens in the URL. The URL contains a token hash that needs to be verified server-side using `verifyOtp`.
-
-**Fix**: The edge function must call `verifyOtp` with the `hashed_token` to get the actual session tokens.
-
----
-
-### Issue 2: Critical - Edge Function Uses Wrong Client for Credential Lookup
-
-**Location**: `verify-biometric-auth/index.ts` (lines 46-49, 93-98)
-
-**Problem**: The function creates an anon client to look up credentials:
-```typescript
-const supabase = createClient(
-  Deno.env.get('SUPABASE_URL') ?? '',
-  Deno.env.get('SUPABASE_ANON_KEY') ?? ''
-);
-// Later uses this to query biometric_credentials
-```
-
-**Why it fails**: RLS policies on `biometric_credentials` require `auth.uid() = user_id`. Since the edge function uses the anon key with no authenticated user context, `auth.uid()` is null, so the query returns nothing.
-
-**Fix**: Use the service role client for all database lookups in this edge function.
-
----
-
-### Issue 3: Critical - WebAuthn allowCredentials Not Specified
-
-**Location**: `BiometricLogin.tsx` (lines 57-65)
-
-**Problem**: The current implementation doesn't specify `allowCredentials`:
-```typescript
-const assertion = await navigator.credentials.get({
-  publicKey: {
-    challenge,
-    rpId: window.location.hostname,
-    userVerification: "required",
-    timeout: 60000,
-  },
-}) as PublicKeyCredential | null;
-```
-
-**Why it's problematic**: Without `allowCredentials`, WebAuthn will try to find discoverable credentials (passkeys). The enrollment creates platform authenticators but may not create discoverable credentials. This can cause WebAuthn to fail to find the credential.
-
-**Fix**: Fetch the user's credential IDs from the server and pass them in `allowCredentials` before calling `navigator.credentials.get()`.
-
----
-
-### Issue 4: Edge Function Rate Limit Uses In-Memory Map
-
-**Location**: `verify-biometric-auth/index.ts` (lines 17-37)
-
-**Problem**: Rate limiting uses an in-memory `Map`:
-```typescript
-const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
-```
-
-**Why it fails**: Edge functions are stateless. Each invocation may run in a different container, so the map resets on each cold start. This provides no actual rate limiting.
-
-**Fix**: Use a database table or Redis for rate limiting state, or use Supabase's built-in rate limiting.
-
----
-
-### Issue 5: Profile Lookup by Email Uses Anon Client
-
-**Location**: `verify-biometric-auth/index.ts` (lines 70-83)
-
-**Problem**: Looking up profile by email:
-```typescript
-const { data: profile, error: profileError } = await supabase
-  .from('profiles')
-  .select('id, email, biometric_enabled')
-  .eq('email', email)
-  .single();
-```
-
-**RLS Issue**: The profiles RLS policy for non-owner access is:
-```sql
-(auth.uid() IS NOT NULL) AND (auth.uid() <> id)
-```
-
-This requires an authenticated user. Using the anon key means `auth.uid()` is null, so this query will also fail.
-
----
-
-### Issue 6: Email Check Leaks User Existence
-
-**Location**: `Auth.tsx` (lines 212-236)
-
-**Problem**: The `checkBiometricAvailability` function queries if a user has biometrics enabled:
-```typescript
-const { data: profile } = await supabase
-  .from('profiles')
-  .select('biometric_enabled')
-  .eq('email', email)
-  .maybeSingle();
-```
-
-**Security concern**: This allows unauthenticated users to determine if an email exists in the system by checking if they get biometric prompt vs. not.
-
----
-
-## Recommended Fixes
-
-### Fix 1: Update Edge Function to Use Service Role & verifyOtp
+### Root Cause
+The previous cleanup removed the lazy import for `CourtConnector` from App.tsx (line removed), but the route `/player/courts` still references the `PlayerCourts` component which re-exports `CourtConnector`:
 
 ```typescript
-// Use service role for ALL database operations
-const supabaseAdmin = createClient(
-  Deno.env.get('SUPABASE_URL') ?? '',
-  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-);
-
-// Look up profile (using admin client)
-const { data: profile } = await supabaseAdmin
-  .from('profiles')
-  .select('id, email, biometric_enabled')
-  .eq('email', email)
-  .single();
-
-// Look up credential (using admin client)
-const { data: credential } = await supabaseAdmin
-  .from('biometric_credentials')
-  .select('*')
-  .eq('user_id', profile.id)
-  .eq('credential_id', credentialId)
-  .single();
-
-// Generate and verify the magic link to get actual session tokens
-const { data: linkData } = await supabaseAdmin.auth.admin.generateLink({
-  type: 'magiclink',
-  email: profile.email,
-});
-
-// Use verifyOtp to get the actual session
-const { data: sessionData, error: sessionError } = await supabaseAdmin.auth.verifyOtp({
-  token_hash: linkData.properties.hashed_token,
-  type: 'magiclink',
-});
-
-// Return the actual tokens
-return new Response(
-  JSON.stringify({ 
-    success: true,
-    access_token: sessionData.session.access_token,
-    refresh_token: sessionData.session.refresh_token
-  }),
-  { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-);
+// src/pages/player/PlayerCourts.tsx
+export { default } from '../CourtConnector';
 ```
 
-### Fix 2: Update BiometricLogin to Use Returned Tokens Directly
-
-```typescript
-// Instead of parsing magicLink URL
-if (data?.access_token && data?.refresh_token) {
-  const { error: sessionError } = await supabase.auth.setSession({
-    access_token: data.access_token,
-    refresh_token: data.refresh_token,
-  });
-
-  if (sessionError) throw sessionError;
-  // Success!
-}
-```
-
-### Fix 3: Add Credential Pre-fetch for allowCredentials
-
-Create a new edge function or endpoint to fetch credential IDs for an email:
-
-```typescript
-// New edge function: get-biometric-credentials
-// Returns credential IDs for a given email (no auth required, just IDs)
-
-// Then in BiometricLogin:
-const { data: credentialData } = await supabase.functions.invoke('get-biometric-credentials', {
-  body: { email }
-});
-
-const assertion = await navigator.credentials.get({
-  publicKey: {
-    challenge,
-    rpId: window.location.hostname,
-    userVerification: "required",
-    timeout: 60000,
-    allowCredentials: credentialData.credentials.map(cred => ({
-      id: base64ToArrayBuffer(cred.credential_id),
-      type: 'public-key',
-      transports: ['internal'],
-    })),
-  },
-});
-```
-
-### Fix 4: Implement Proper Rate Limiting
-
-Option A: Use database table
-```sql
-CREATE TABLE biometric_rate_limits (
-  email TEXT PRIMARY KEY,
-  attempt_count INTEGER DEFAULT 0,
-  last_attempt_at TIMESTAMPTZ DEFAULT now()
-);
-```
-
-Option B: Skip rate limiting in edge function and rely on Supabase's built-in protection.
+Since the `CourtConnector` lazy import was removed but the route and re-export still exist, the app crashes on load.
 
 ---
 
-## File Changes Summary
+## Summary of Issues
 
-| File | Changes |
-|------|---------|
-| `supabase/functions/verify-biometric-auth/index.ts` | Complete rewrite: use service role, implement verifyOtp, return tokens directly |
-| `src/components/auth/BiometricLogin.tsx` | Update to use tokens from response, add allowCredentials support |
-| **NEW** `supabase/functions/get-biometric-credentials/index.ts` | New edge function to fetch credential IDs for email |
-| `src/pages/Auth.tsx` | Update biometric availability check to use new endpoint |
-
----
-
-## Testing Checklist
-
-After implementation, test:
-
-1. **Enrollment flow**: Enable biometrics on a new device
-2. **Login flow**: Sign out, enter email, verify biometric prompt appears
-3. **Credential matching**: Verify WebAuthn finds the correct credential
-4. **Session creation**: Verify user is fully authenticated after biometric
-5. **Fallback**: Verify "Use password instead" works
-6. **Rate limiting**: Verify rate limits persist across function invocations
-7. **Multi-device**: Test with credentials from different devices
-8. **Error handling**: Test cancellation, timeout, and hardware failure scenarios
+| Category | Issue | Severity | Files Affected |
+|----------|-------|----------|----------------|
+| **Critical** | App crashes - `CourtConnector` undefined | 🔴 Critical | `App.tsx`, `PlayerCourts.tsx` |
+| **Navigation** | Legacy `/dashboard` navigations | 🟡 Medium | 15+ files |
+| **Navigation** | Legacy `/court/connector` links | 🟡 Medium | 3 files (FAQ, CourtSettings, CourtBoard) |
+| **Cleanup** | Orphaned `CourtConnector.tsx` | 🟢 Low | 1 file |
 
 ---
 
-## Security Considerations
+## Detailed Fixes Required
 
-| Aspect | Current State | After Fix |
-|--------|---------------|-----------|
-| Token exchange | Broken (URL parsing) | Secure (server-side verifyOtp) |
-| Rate limiting | None (in-memory) | Database-backed |
-| Credential lookup | Fails (RLS blocks) | Works (service role) |
-| User enumeration | Possible via biometric check | Minimize by caching check |
-| Signature verification | Client-trusted | Should add server verification* |
+### Fix 1: Remove Broken Player Courts Route (Critical)
 
-*Note: Full server-side WebAuthn signature verification requires a WebAuthn library in Deno. The current implementation trusts the browser's WebAuthn API, which is acceptable for many use cases but not ideal for high-security applications.
+Since we're archiving Court Connector functionality:
 
+1. **Remove the route** from App.tsx:
+   - Delete: `<Route path="courts" element={<PlayerCourts />} />`
+   
+2. **Delete orphaned files**:
+   - `src/pages/player/PlayerCourts.tsx` (re-export wrapper)
+   - Consider archiving `src/pages/CourtConnector.tsx`
+
+3. **Remove the lazy import** for PlayerCourts from App.tsx:
+   - Delete: `const PlayerCourts = lazy(() => import("./pages/player/PlayerCourts"));`
+
+### Fix 2: Update Legacy Navigation References
+
+Update these files to use `/player/dashboard` instead of `/dashboard`:
+
+| File | Line | Current | Fix |
+|------|------|---------|-----|
+| `MatchWizardContainer.tsx` | 182 | `navigate('/dashboard')` | `navigate('/player/dashboard')` |
+| `onboarding/Complete.tsx` | 34 | `navigate("/dashboard")` | `navigate("/player/dashboard")` |
+| `ViewProfile.tsx` | 61, 93 | `navigate("/dashboard")` | `navigate("/player/dashboard")` |
+| `MatchHistory.tsx` | 502 | `navigate("/dashboard")` | `navigate("/player/dashboard")` |
+| `CourtHistory.tsx` | 75 | `navigate("/dashboard")` | `navigate("/player/dashboard")` |
+| `EditProfile.tsx` | 891 | `navigate("/dashboard")` | `navigate("/player/dashboard")` (Cancel button) |
+| `TournamentLanding.tsx` | 176, 799 | `/dashboard` | `/player/dashboard` |
+| `AdminDashboard.tsx` | 60, 139 | `/dashboard` | `/player/dashboard` |
+| `AdminBadges.tsx` | 88 | `/dashboard` | `/player/dashboard` |
+| `AdminMarketing.tsx` | 49 | `/dashboard` | `/player/dashboard` |
+| `AdminAuditLog.tsx` | 82 | `/dashboard` | `/player/dashboard` |
+| `AdminVenueVerification.tsx` | 84 | `/dashboard` | `/player/dashboard` |
+| `AdminBiometrics.tsx` | 51, 59 | `/dashboard` | `/player/dashboard` |
+| `Kiosk.tsx` | 87, 105 | `/dashboard` | `/player/dashboard` |
+
+### Fix 3: Update Court Connector References
+
+Update these files to remove or redirect `/court/connector` links:
+
+| File | Change |
+|------|--------|
+| `FAQ.tsx` | Remove or update Court Connector reference |
+| `CourtSettings.tsx` | Change navigation to `/player/community` or remove |
+| `CourtBoard.tsx` | Update fallback navigation |
+
+---
+
+## Files to Delete (Archiving Court Connector)
+
+- `src/pages/player/PlayerCourts.tsx` - orphaned re-export
+- Consider archiving: `src/pages/CourtConnector.tsx`, `src/pages/CourtBoard.tsx`, `src/pages/CourtHistory.tsx`, `src/pages/CourtSettings.tsx`
+
+---
+
+## Working Features Verified ✅
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Dashboard (`/player/dashboard`) | ✅ Works | ProfileHero, PerformanceModule rendering correctly |
+| Find Events (`/player/find`) | ✅ Works | UnifiedEventCard, filters operational |
+| My Events (`/player/my-events`) | ✅ Works | Registration cards, cancel flow |
+| My Bookings (`/player/my-bookings`) | ✅ Works | Booking cards, cancel flow |
+| Community (`/player/community`) | ✅ Works | Groups, Friends tabs functional |
+| Friends Presence | ✅ Works | `useFriendsPresence` hook integrated |
+| Group Detail (`/player/community/group/:id`) | ✅ Works | Presence, chat, feed functional |
+| Direct Messages | ✅ Works | Conversation list, real-time chat |
+| Venue Discovery (`/player/venues`) | ✅ Works | Search, favorites, detail sheet |
+| Match Recording | ✅ Works | MatchWizard flow (nav needs fix) |
+| Profile Edit | ✅ Works | Form saves correctly (nav needs fix) |
+
+---
+
+## Implementation Order
+
+1. **Fix Critical App Crash** (Priority 1)
+   - Remove PlayerCourts route and import from App.tsx
+   
+2. **Update Navigation References** (Priority 2)
+   - Batch update all `/dashboard` → `/player/dashboard`
+   
+3. **Clean Up Court Connector References** (Priority 3)
+   - Update FAQ, CourtSettings, CourtBoard
+   
+4. **Archive Legacy Files** (Priority 4)
+   - Delete/archive CourtConnector-related files
+
+---
+
+## Technical Notes
+
+- The redirect from `/dashboard` to `/player/dashboard` in App.tsx (line 289) provides a safety net, but direct navigations still cause unnecessary redirects
+- The N+1 query optimizations in `useFriends.ts` are properly implemented with batched `.in()` queries
+- Friends presence integration in `FriendsTab.tsx` is now correctly wired up via `useFriendsPresence`
+- All player shell header rules are correctly applied (hidden on dashboard, visible elsewhere)
