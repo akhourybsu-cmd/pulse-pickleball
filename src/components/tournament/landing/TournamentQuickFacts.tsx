@@ -2,6 +2,7 @@ import { Calendar, MapPin, DollarSign, Trophy, Users, Clock } from "lucide-react
 import { format, differenceInDays } from "date-fns";
 import { motion } from "framer-motion";
 import CountUp from "react-countup";
+import { formatTournamentLabel } from "@/lib/formatLabels";
 
 interface TournamentEvent {
   location: string;
@@ -30,7 +31,8 @@ export function TournamentQuickFacts({
   const closeDate = event.registration_close_date ? new Date(event.registration_close_date) : null;
   const daysUntilClose = closeDate ? differenceInDays(closeDate, new Date()) : null;
   
-  const format_type = event.divisions?.[0]?.format || "Round Robin";
+  const rawFormat = event.divisions?.[0]?.format || "round_robin";
+  const format_type = formatTournamentLabel(rawFormat);
   
   // Calculate total spots from divisions
   const calculatedTotalSpots = totalSpots || event.divisions?.reduce((acc, div) => {
@@ -90,7 +92,7 @@ export function TournamentQuickFacts({
   return (
     <section className="py-12 md:py-16 bg-card border-y border-border">
       <div className="container mx-auto px-4">
-        <div className="flex overflow-x-auto pb-4 md:pb-0 md:grid md:grid-cols-5 lg:grid-cols-6 gap-4 md:gap-6 snap-x snap-mandatory scrollbar-hide">
+        <div className="flex overflow-x-auto pb-4 md:pb-0 md:grid md:grid-cols-5 lg:grid-cols-6 gap-3 md:gap-6 snap-x snap-mandatory scrollbar-hide">
           {facts.map((fact, index) => (
             <motion.div
               key={fact.label}
@@ -98,16 +100,16 @@ export function TournamentQuickFacts({
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.4, delay: index * 0.05 }}
-              className={`flex-shrink-0 w-[140px] md:w-auto snap-start flex flex-col items-center text-center p-4 rounded-xl ${
+              className={`flex-shrink-0 w-[120px] md:w-auto snap-start flex flex-col items-center text-center p-3 md:p-4 rounded-xl ${
                 fact.highlight 
                   ? "bg-primary/10 border border-primary/20" 
                   : "bg-muted/50"
               }`}
             >
-              <fact.icon className={`h-6 w-6 mb-3 ${
+              <fact.icon className={`h-5 w-5 md:h-6 md:w-6 mb-2 md:mb-3 ${
                 fact.highlight ? "text-primary" : "text-muted-foreground"
               }`} />
-              <div className={`text-2xl md:text-3xl font-bold ${
+              <div className={`text-xl md:text-3xl font-bold ${
                 fact.highlight ? "text-primary" : "text-foreground"
               }`}>
                 {fact.isCountUp && typeof fact.value === "number" ? (

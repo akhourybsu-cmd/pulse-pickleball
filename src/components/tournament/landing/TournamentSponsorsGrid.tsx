@@ -18,18 +18,18 @@ export function TournamentSponsorsGrid({ sponsors }: TournamentSponsorsGridProps
   if (validSponsors.length === 0) return null;
 
   return (
-    <section className="py-16 md:py-24 px-4 bg-gradient-to-br from-background via-muted/10 to-background">
+    <section className="py-12 md:py-24 px-4 bg-gradient-to-br from-background via-muted/10 to-background">
       <div className="container mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-center mb-12"
+          className="text-center mb-8 md:mb-12"
         >
-          <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-3">
+          <h2 className="text-2xl md:text-4xl font-bold text-foreground mb-2 md:mb-3">
             Proudly Supported By
           </h2>
-          <p className="text-muted-foreground text-lg">
+          <p className="text-muted-foreground text-sm md:text-lg">
             These partners help bring this event to life
           </p>
         </motion.div>
@@ -58,7 +58,7 @@ export function TournamentSponsorsGrid({ sponsors }: TournamentSponsorsGridProps
                 viewport={{ once: true }}
                 transition={{ duration: 0.4, delay: index * 0.05 }}
                 whileHover={{ y: -4, scale: 1.02 }}
-                className={`group relative bg-card rounded-xl p-6 border-2 border-border hover:border-primary/40 transition-all duration-300 flex flex-col items-center justify-center text-center min-h-[160px] shadow-sm hover:shadow-lg ${
+                className={`group relative bg-card rounded-xl p-4 md:p-6 border-2 border-border hover:border-primary/40 transition-all duration-300 flex flex-col items-center justify-center text-center min-h-[120px] md:min-h-[160px] shadow-sm hover:shadow-lg ${
                   sponsor.link ? 'cursor-pointer' : ''
                 }`}
               >
