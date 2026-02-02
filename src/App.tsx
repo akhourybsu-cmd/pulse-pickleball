@@ -41,7 +41,6 @@ const PendingMatches = lazy(() => import("./pages/PendingMatches"));
 const MatchHistory = lazy(() => import("./pages/MatchHistory"));
 const CourtHistory = lazy(() => import("./pages/CourtHistory"));
 const CourtBoard = lazy(() => import("./pages/CourtBoard"));
-const CourtConnector = lazy(() => import("./pages/CourtConnector"));
 const CourtSettings = lazy(() => import("./pages/CourtSettings"));
 const PostDetail = lazy(() => import("./pages/PostDetail"));
 const FAQ = lazy(() => import("./pages/FAQ"));
@@ -297,7 +296,6 @@ const AppContent = () => {
           <Route path="/match/history" element={<MatchHistory />} />
           <Route path="/court/history" element={<CourtHistory />} />
           <Route path="/court/board" element={<CourtBoard />} />
-          <Route path="/court/connector" element={<CourtConnector />} />
           <Route path="/pickleballciti" element={<Navigate to="/court/board/836003fb-fbd7-429c-8973-67ac6766a511" replace />} />
           <Route path="/masonfield" element={<Navigate to="/court/board/4a5d9fb8-981b-42f1-9504-595cb8f22fca" replace />} />
           <Route path="/tildastone" element={<Navigate to="/court/board/2bf21943-2efc-43fe-bab4-9bb7693d4674" replace />} />

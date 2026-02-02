@@ -53,23 +53,32 @@ export function useFriends() {
 
       if (error) throw error;
 
-      // Get the other user's profile for each friendship
+      // Batch fetch all friend profiles to avoid N+1 queries
+      const friendUserIds = (friendships || []).map(f => 
+        f.user_id === user.id ? f.friend_id : f.user_id
+      );
+      
       const friendsWithProfiles: FriendWithProfile[] = [];
       
-      for (const f of friendships || []) {
-        const otherUserId = f.user_id === user.id ? f.friend_id : f.user_id;
-        const { data: profile } = await supabase
+      if (friendUserIds.length > 0) {
+        const { data: profiles } = await supabase
           .from('profiles')
           .select('id, display_name, full_name, avatar_url, current_rating')
-          .eq('id', otherUserId)
-          .single();
-
-        if (profile) {
-          friendsWithProfiles.push({
-            ...f,
-            status: f.status as 'pending' | 'accepted' | 'blocked',
-            profile: profile as FriendProfile
-          });
+          .in('id', friendUserIds);
+        
+        const profileMap = new Map((profiles || []).map(p => [p.id, p]));
+        
+        for (const f of friendships || []) {
+          const otherUserId = f.user_id === user.id ? f.friend_id : f.user_id;
+          const profile = profileMap.get(otherUserId);
+          
+          if (profile) {
+            friendsWithProfiles.push({
+              ...f,
+              status: f.status as 'pending' | 'accepted' | 'blocked',
+              profile: profile as FriendProfile
+            });
+          }
         }
       }
 
@@ -84,19 +93,26 @@ export function useFriends() {
 
       if (receivedError) throw receivedError;
 
+      // Batch fetch pending request profiles
       const pendingWithProfiles: FriendRequest[] = [];
-      for (const r of received || []) {
-        const { data: profile } = await supabase
+      const pendingUserIds = (received || []).map(r => r.user_id);
+      
+      if (pendingUserIds.length > 0) {
+        const { data: pendingProfiles } = await supabase
           .from('profiles')
           .select('id, display_name, full_name, avatar_url, current_rating')
-          .eq('id', r.user_id)
-          .single();
-
-        if (profile) {
-          pendingWithProfiles.push({
-            ...r,
-            profile: profile as FriendProfile
-          });
+          .in('id', pendingUserIds);
+        
+        const pendingProfileMap = new Map((pendingProfiles || []).map(p => [p.id, p]));
+        
+        for (const r of received || []) {
+          const profile = pendingProfileMap.get(r.user_id);
+          if (profile) {
+            pendingWithProfiles.push({
+              ...r,
+              profile: profile as FriendProfile
+            });
+          }
         }
       }
       setPendingRequests(pendingWithProfiles);
@@ -110,21 +126,28 @@ export function useFriends() {
 
       if (sentError) throw sentError;
 
+      // Batch fetch sent request profiles
       const sentWithProfiles: FriendRequest[] = [];
-      for (const s of sent || []) {
-        const { data: profile } = await supabase
+      const sentUserIds = (sent || []).map(s => s.friend_id);
+      
+      if (sentUserIds.length > 0) {
+        const { data: sentProfiles } = await supabase
           .from('profiles')
           .select('id, display_name, full_name, avatar_url, current_rating')
-          .eq('id', s.friend_id)
-          .single();
-
-        if (profile) {
-          sentWithProfiles.push({
-            id: s.id,
-            user_id: s.friend_id,
-            created_at: s.created_at,
-            profile: profile as FriendProfile
-          });
+          .in('id', sentUserIds);
+        
+        const sentProfileMap = new Map((sentProfiles || []).map(p => [p.id, p]));
+        
+        for (const s of sent || []) {
+          const profile = sentProfileMap.get(s.friend_id);
+          if (profile) {
+            sentWithProfiles.push({
+              id: s.id,
+              user_id: s.friend_id,
+              created_at: s.created_at,
+              profile: profile as FriendProfile
+            });
+          }
         }
       }
       setSentRequests(sentWithProfiles);
