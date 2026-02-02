@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Users, UserPlus, MessageCircle, Search, Check, X, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFriends, type FriendWithProfile, type FriendRequest } from '@/hooks/useFriends';
 import { useDirectMessages } from '@/hooks/useDirectMessages';
+import { useFriendsPresence } from '@/hooks/useFriendsPresence';
 import { OnlineIndicator } from './OnlineIndicator';
 import { AddFriendDialog } from './AddFriendDialog';
 
@@ -18,6 +19,10 @@ export function FriendsTab() {
   const { startConversation } = useDirectMessages();
   const [searchQuery, setSearchQuery] = useState('');
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+
+  // Get friend IDs for presence tracking
+  const friendIds = useMemo(() => friends.map(f => f.profile.id), [friends]);
+  const { isOnline } = useFriendsPresence(friendIds);
 
   const filteredFriends = friends.filter(f => {
     const name = f.profile.display_name || f.profile.full_name || '';
@@ -126,6 +131,7 @@ export function FriendsTab() {
               <FriendCard
                 key={friend.id}
                 friend={friend}
+                isOnline={isOnline(friend.profile.id)}
                 onMessage={() => handleMessage(friend.profile.id)}
                 onRemove={() => removeFriend(friend.id)}
                 getInitials={getInitials}
@@ -198,11 +204,13 @@ function FriendRequestCard({
 
 function FriendCard({ 
   friend, 
+  isOnline,
   onMessage, 
   onRemove,
   getInitials
 }: { 
   friend: FriendWithProfile; 
+  isOnline: boolean;
   onMessage: () => void;
   onRemove: () => void;
   getInitials: (name: string | null) => string;
@@ -224,7 +232,7 @@ function FriendCard({
           <AvatarFallback>{getInitials(name)}</AvatarFallback>
         </Avatar>
         <OnlineIndicator 
-          isOnline={false} // Would integrate with presence system
+          isOnline={isOnline}
           size="sm"
           className="absolute -bottom-0.5 -right-0.5 ring-2 ring-card"
         />
