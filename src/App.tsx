@@ -98,7 +98,7 @@ const NotificationSettings = lazy(() => import("./pages/NotificationSettings"));
 
 // Player pages
 const PlayerDashboard = lazy(() => import("./pages/player/PlayerDashboard"));
-const PlayerCourts = lazy(() => import("./pages/player/PlayerCourts"));
+// PlayerCourts removed - Court Connector feature archived
 const PlayerEvents = lazy(() => import("./pages/player/PlayerEvents"));
 const PlayerCoaching = lazy(() => import("./pages/player/PlayerCoaching"));
 const PlayerBookings = lazy(() => import("./pages/player/PlayerBookings"));
@@ -223,7 +223,7 @@ const AppContent = () => {
             <Route path="dashboard" element={<PlayerDashboard />} />
             <Route path="find" element={<FindEvents />} />
             <Route path="events" element={<PlayerEvents />} />
-            <Route path="courts" element={<PlayerCourts />} />
+            {/* courts route removed - Court Connector feature archived */}
             <Route path="venues" element={<VenueDiscovery />} />
             <Route path="coaching" element={<PlayerCoaching />} />
             <Route path="bookings" element={<PlayerBookings />} />

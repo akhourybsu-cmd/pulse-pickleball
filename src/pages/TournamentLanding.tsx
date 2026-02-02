@@ -173,7 +173,7 @@ export default function TournamentLanding() {
           </p>
           <p className="text-lg text-muted-foreground mb-8">{event.location}</p>
           <p className="text-xl mb-8">Registration opens soon!</p>
-          <Button size="lg" onClick={() => navigate(userId ? "/dashboard" : "/auth")}>
+          <Button size="lg" onClick={() => navigate(userId ? "/player/dashboard" : "/auth")}>
             {userId ? "Go to Dashboard" : "Create Your Pulse Player Profile"}
           </Button>
         </div>
@@ -796,7 +796,7 @@ export default function TournamentLanding() {
             <Button
               size="lg"
               className="bg-white text-primary hover:bg-white/90 hover:shadow-[0_0_30px_rgba(255,255,255,0.5)] hover:scale-105 transition-all duration-300 text-lg px-12"
-              onClick={() => navigate(userId ? "/dashboard" : "/auth")}
+              onClick={() => navigate(userId ? "/player/dashboard" : "/auth")}
             >
               {userId ? "Go to Dashboard" : "Join Pulse Free"}
             </Button>

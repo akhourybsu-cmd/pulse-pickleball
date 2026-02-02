@@ -46,7 +46,7 @@ const AdminMarketing = () => {
 
       if (!roleData) {
         toast.error("Access denied: Admin privileges required");
-        navigate("/dashboard");
+        navigate("/player/dashboard");
         return;
       }
 

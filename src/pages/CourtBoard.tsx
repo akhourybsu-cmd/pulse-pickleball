@@ -84,7 +84,7 @@ export default function CourtBoard() {
         description: "Failed to load court",
         variant: "destructive",
       });
-      navigate("/court/connector");
+      navigate("/player/dashboard");
     } else {
       setCourt(data);
     }

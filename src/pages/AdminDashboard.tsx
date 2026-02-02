@@ -57,7 +57,7 @@ const AdminDashboard = () => {
 
       if (!roleData) {
         toast.error("Access denied: Admin privileges required");
-        navigate("/dashboard");
+        navigate("/player/dashboard");
         return;
       }
 
@@ -136,7 +136,7 @@ const AdminDashboard = () => {
             <Button 
               variant="outline" 
               size="sm" 
-              onClick={() => navigate("/dashboard")}
+              onClick={() => navigate("/player/dashboard")}
               className="border-slate-600 text-slate-200 hover:bg-slate-800 hover:text-white"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />

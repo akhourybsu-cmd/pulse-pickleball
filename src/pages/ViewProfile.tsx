@@ -58,7 +58,7 @@ const ViewProfile = () => {
     const fetchProfile = async () => {
       if (!userId) {
         toast.error("Invalid user ID");
-        navigate("/dashboard");
+        navigate("/player/dashboard");
         return;
       }
 
@@ -90,7 +90,7 @@ const ViewProfile = () => {
 
       if (error) {
         toast.error("Failed to load profile");
-        navigate("/dashboard");
+        navigate("/player/dashboard");
         return;
       }
 

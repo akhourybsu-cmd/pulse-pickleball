@@ -48,7 +48,7 @@ export default function AdminBiometrics() {
         .eq('role', 'admin');
 
       if (!roles || roles.length === 0) {
-        navigate('/dashboard');
+        navigate('/player/dashboard');
         return;
       }
 
@@ -56,7 +56,7 @@ export default function AdminBiometrics() {
       await fetchAnalytics();
     } catch (error) {
       console.error('Error checking admin access:', error);
-      navigate('/dashboard');
+      navigate('/player/dashboard');
     }
   };
 

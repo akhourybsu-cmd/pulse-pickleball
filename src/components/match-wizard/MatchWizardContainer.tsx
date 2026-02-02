@@ -179,7 +179,7 @@ export function MatchWizardContainer() {
       }
 
       toast.success('Match recorded successfully!');
-      navigate('/dashboard');
+      navigate('/player/dashboard');
     } catch (error: any) {
       console.error('Error recording match:', error);
       toast.error(error.message || 'Failed to record match');
