@@ -133,7 +133,7 @@ export const useOnboarding = (): UseOnboardingReturn => {
           navigate('/onboarding/complete');
           break;
         case 'done':
-          navigate('/dashboard');
+          navigate('/player/dashboard');
           break;
       }
     }
@@ -156,7 +156,7 @@ export const useOnboarding = (): UseOnboardingReturn => {
         navigate('/onboarding/complete');
         break;
       case 'done':
-        navigate('/dashboard');
+        navigate('/player/dashboard');
         break;
     }
   }, [navigate]);
@@ -172,7 +172,7 @@ export const useOnboarding = (): UseOnboardingReturn => {
 
       setState(prev => ({ ...prev, step: 'done', isNewUser: false }));
       setShowWelcome(false);
-      navigate('/dashboard');
+      navigate('/player/dashboard');
     } catch (error) {
       console.error('Error skipping onboarding:', error);
     }
@@ -188,7 +188,7 @@ export const useOnboarding = (): UseOnboardingReturn => {
         .eq('id', state.userId);
 
       setState(prev => ({ ...prev, step: 'done', isNewUser: false }));
-      navigate('/dashboard');
+      navigate('/player/dashboard');
     } catch (error) {
       console.error('Error completing onboarding:', error);
     }

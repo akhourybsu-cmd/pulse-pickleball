@@ -55,51 +55,63 @@ export const PerformanceModule = ({ userId }: PerformanceModuleProps) => {
         .order("created_at", { ascending: false })
         .limit(10);
 
-      if (participations) {
-        const matchData: Match[] = [];
+      if (participations && participations.length > 0) {
+        // Collect all match IDs for batched query (N+1 optimization)
+        const matchIds = participations
+          .filter(p => p.match)
+          .map(p => (p.match as any).id);
         
-        for (const p of participations) {
-          if (!p.match) continue;
-          const match = p.match as any;
-          
-          // Get all participants for this match
-          const { data: allParticipants } = await supabase
-            .from("match_participants")
-            .select("player_id, team, player:profiles!match_participants_player_id_fkey(id, display_name, full_name, first_name, last_name)")
-            .eq("match_id", match.id);
-
-          const team1Players: { id: string; name: string; initials: string }[] = [];
-          const team2Players: { id: string; name: string; initials: string }[] = [];
-
-          allParticipants?.forEach((participant: any) => {
-            const player = participant.player;
-            const name = player?.display_name || player?.full_name || 
-              `${player?.first_name || ''} ${player?.last_name || ''}`.trim() || 'Unknown';
-            const initials = name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
+        // Batch fetch all participants for all matches in single query
+        const { data: allParticipants } = await supabase
+          .from("match_participants")
+          .select("match_id, player_id, team, player:profiles!match_participants_player_id_fkey(id, display_name, full_name, first_name, last_name)")
+          .in("match_id", matchIds);
+        
+        // Group participants by match_id for O(1) lookup
+        const participantsByMatch = (allParticipants || []).reduce((acc, p) => {
+          if (!acc[p.match_id]) acc[p.match_id] = [];
+          acc[p.match_id].push(p);
+          return acc;
+        }, {} as Record<string, any[]>);
+        
+        const matchData: Match[] = participations
+          .filter(p => p.match)
+          .map(p => {
+            const match = p.match as any;
+            const matchParticipants = participantsByMatch[match.id] || [];
             
-            const playerData = { id: player?.id || '', name, initials };
-            
-            if (participant.team === 1) {
-              team1Players.push(playerData);
-            } else {
-              team2Players.push(playerData);
-            }
-          });
+            const team1Players: { id: string; name: string; initials: string }[] = [];
+            const team2Players: { id: string; name: string; initials: string }[] = [];
 
-          matchData.push({
-            id: match.id,
-            match_date: match.match_date,
-            team1_score: match.team1_score,
-            team2_score: match.team2_score,
-            userTeam: p.team,
-            team1Players,
-            team2Players,
-            courtName: match.court?.name || null,
-            location: match.court ? `${match.court.city}, ${match.court.state}` : null,
-            eventName: match.event?.name || null,
-            ratingChange: p.rating_change,
+            matchParticipants.forEach((participant: any) => {
+              const player = participant.player;
+              const name = player?.display_name || player?.full_name || 
+                `${player?.first_name || ''} ${player?.last_name || ''}`.trim() || 'Unknown';
+              const initials = name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
+              
+              const playerData = { id: player?.id || '', name, initials };
+              
+              if (participant.team === 1) {
+                team1Players.push(playerData);
+              } else {
+                team2Players.push(playerData);
+              }
+            });
+
+            return {
+              id: match.id,
+              match_date: match.match_date,
+              team1_score: match.team1_score,
+              team2_score: match.team2_score,
+              userTeam: p.team,
+              team1Players,
+              team2Players,
+              courtName: match.court?.name || null,
+              location: match.court ? `${match.court.city}, ${match.court.state}` : null,
+              eventName: match.event?.name || null,
+              ratingChange: p.rating_change,
+            };
           });
-        }
         
         setMatches(matchData);
       }

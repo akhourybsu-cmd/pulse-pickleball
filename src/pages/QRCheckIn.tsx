@@ -150,7 +150,7 @@ export default function QRCheckIn() {
             <p className="text-muted-foreground mb-4">
               This session may have ended or the link is invalid.
             </p>
-            <Button onClick={() => navigate("/dashboard")}>
+            <Button onClick={() => navigate("/player/dashboard")}>
               Go to Dashboard
             </Button>
           </CardContent>
