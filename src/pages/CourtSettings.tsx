@@ -154,11 +154,11 @@ export default function CourtSettings() {
         <div className="flex items-center justify-between">
           <Button
             variant="ghost"
-            onClick={() => navigate("/court/connector")}
+            onClick={() => navigate("/player/community")}
             className="gap-2"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back to Court Connector
+            Back to Community
           </Button>
           <ThemeToggle />
         </div>

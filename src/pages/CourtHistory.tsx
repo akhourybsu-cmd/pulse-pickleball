@@ -72,7 +72,7 @@ export default function CourtHistory() {
         <div className="flex items-center justify-between">
           <Button
             variant="ghost"
-            onClick={() => navigate("/dashboard")}
+            onClick={() => navigate("/player/dashboard")}
             className="gap-2"
           >
             <ArrowLeft className="w-4 h-4" />

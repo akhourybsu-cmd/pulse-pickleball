@@ -84,7 +84,7 @@ export default function Kiosk() {
           description: "The requested session could not be found",
           variant: "destructive",
         });
-        navigate("/dashboard");
+        navigate("/player/dashboard");
         return;
       }
 
@@ -102,7 +102,7 @@ export default function Kiosk() {
       fetchSessionData();
     } catch (error) {
       console.error("Error checking kiosk access:", error);
-      navigate("/dashboard");
+      navigate("/player/dashboard");
     } finally {
       setLoading(false);
     }

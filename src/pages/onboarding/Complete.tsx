@@ -31,7 +31,7 @@ const CompletePage = () => {
         .eq("id", userId);
     }
     
-    navigate("/dashboard");
+    navigate("/player/dashboard");
   };
 
   return <OnboardingComplete onComplete={handleComplete} />;

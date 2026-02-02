@@ -499,7 +499,7 @@ const MatchHistory = () => {
             src={logo} 
             alt="PULSE Logo"
             className="h-[60px] sm:h-[75px] w-auto cursor-pointer hover:opacity-80 transition-opacity"
-            onClick={() => navigate("/dashboard")}
+            onClick={() => navigate("/player/dashboard")}
           />
           <div className="flex items-center gap-3">
             <ThemeToggle />
