@@ -34,13 +34,13 @@ export function NotificationBell({ unreadCount, onOpen }: NotificationBellProps)
       <Bell 
         className={cn(
           "w-5 h-5 text-white transition-all",
-          hasUnread && "drop-shadow-[0_0_8px_rgba(181,255,96,0.7)]",
+          hasUnread && "drop-shadow-[0_0_8px_hsl(var(--primary)/0.7)]",
           isAnimating && "animate-shake"
         )} 
       />
       {hasUnread && (
         <div className={cn(
-          "absolute -top-1 -right-1 bg-lime-300 text-slate-900 text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-[4px] shadow-[0_0_8px_rgba(181,255,96,0.7)]",
+          "absolute -top-1 -right-1 bg-primary text-primary-foreground text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-[4px] shadow-[0_0_8px_hsl(var(--primary)/0.7)]",
           isAnimating && "animate-scale-fade-in"
         )}>
           {unreadCount > 99 ? "99+" : unreadCount}

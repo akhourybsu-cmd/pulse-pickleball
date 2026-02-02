@@ -67,42 +67,41 @@ const VenueInfoCard = () => {
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow border p-4 w-full max-w-sm" style={{ borderColor: '#e5f3d9' }}>
+    <div className="bg-card rounded-xl shadow-md hover:shadow-lg transition-shadow border border-border p-4 w-full max-w-sm">
       <div className="mb-3">
-        <h3 className="text-[15px] font-semibold mb-2" style={{ color: '#0E4C58' }}>{venue.name}</h3>
+        <h3 className="text-[15px] font-semibold mb-2 text-foreground">{venue.name}</h3>
       </div>
 
       <div className="space-y-2 mb-3">
-        <address className="not-italic text-xs flex gap-2 items-start" style={{ color: '#0E4C58', opacity: 0.8 }}>
-          <MapPin className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" style={{ color: '#B9E43B' }} />
+        <address className="not-italic text-xs flex gap-2 items-start text-muted-foreground">
+          <MapPin className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-primary" />
           <span>{venue.address}</span>
         </address>
         <a 
           href={`tel:${venue.phone.replace(/\D/g, "")}`} 
-          className="text-xs font-medium flex gap-2 items-center hover:underline"
-          style={{ color: '#B9E43B' }}
+          className="text-xs font-medium flex gap-2 items-center text-primary hover:underline"
         >
           <Phone className="w-3.5 h-3.5" />
           <span>{venue.phone}</span>
         </a>
-        <p className="text-xs flex gap-2 items-center" style={{ color: '#0E4C58', opacity: 0.8 }}>
-          <Trophy className="w-3.5 h-3.5" style={{ color: '#B9E43B' }} />
+        <p className="text-xs flex gap-2 items-center text-muted-foreground">
+          <Trophy className="w-3.5 h-3.5 text-primary" />
           <span>{venue.courts.indoor} indoor courts</span>
         </p>
       </div>
 
-      <div className="border-t pt-2 flex items-center justify-between" style={{ borderColor: '#e5f3d9' }}>
+      <div className="border-t border-border pt-2 flex items-center justify-between">
         <div>
-          <p className="text-[11px]" style={{ color: '#0E4C58', opacity: 0.7 }}>
+          <p className="text-[11px] text-muted-foreground">
             Today's Hours: {formatTime(todayHours.open)} – {formatTime(todayHours.close)}
           </p>
           {isOpen && (
-            <p className="text-[11px] mt-0.5" style={{ color: '#0E4C58', opacity: 0.6 }}>
+            <p className="text-[11px] mt-0.5 text-muted-foreground/70">
               Closes at {formatTime(todayHours.close)}
             </p>
           )}
           {!isOpen && (
-            <p className="text-[11px] mt-0.5" style={{ color: '#0E4C58', opacity: 0.6 }}>
+            <p className="text-[11px] mt-0.5 text-muted-foreground/70">
               Opens at {formatTime(todayHours.open)}
             </p>
           )}
@@ -110,11 +109,10 @@ const VenueInfoCard = () => {
         <span
           aria-label="Facility status"
           className={`text-xs font-medium px-2 py-1 rounded-full whitespace-nowrap ${
-            isOpen ? "text-white" : "text-white"
+            isOpen 
+              ? "bg-primary text-primary-foreground" 
+              : "bg-destructive text-destructive-foreground"
           }`}
-          style={{
-            backgroundColor: isOpen ? '#B9E43B' : '#ef4444'
-          }}
         >
           {isOpen ? "Open" : "Closed"}
         </span>

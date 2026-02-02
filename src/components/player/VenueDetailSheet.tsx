@@ -110,10 +110,7 @@ export function VenueDetailSheet({ venueId, onClose }: VenueDetailSheetProps) {
                 <Button 
                   onClick={() => navigateToVenue()} 
                   className="w-full mt-4 rounded-full text-base font-semibold shadow-lg"
-                  style={{ 
-                    backgroundColor: primaryColor,
-                    color: '#FFFFFF'
-                  }}
+                  style={{ backgroundColor: primaryColor }}
                 >
                   <ExternalLink className="w-4 h-4 mr-2" />
                   View Full Site
@@ -220,8 +217,8 @@ export function VenueDetailSheet({ venueId, onClose }: VenueDetailSheetProps) {
                       {/* NAVIGATION CTA - NO TRANSACTION */}
                       <Button 
                         onClick={() => navigateToVenue('schedule')} 
-                        className="w-full mt-2 rounded-full"
-                        style={{ backgroundColor: primaryColor, color: '#FFFFFF' }}
+                        className="w-full mt-2 rounded-full text-primary-foreground"
+                        style={{ backgroundColor: primaryColor }}
                       >
                         Reserve Court Time
                         <ArrowRight className="w-4 h-4 ml-2" />

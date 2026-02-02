@@ -335,11 +335,7 @@ const EditProfile = () => {
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="mb-8 md:mb-12"
-        style={{
-          background: 'linear-gradient(180deg, #E8FBD5 0%, #FFFFFF 80%)',
-          borderBottom: '1px solid rgba(169, 220, 61, 0.15)',
-        }}
+        className="mb-8 md:mb-12 bg-gradient-to-b from-primary/10 via-background to-background border-b border-primary/15"
       >
         <div className="container mx-auto px-4 py-6 md:py-8">
           <div className="flex items-start gap-3 md:gap-6">
@@ -362,13 +358,9 @@ const EditProfile = () => {
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
-                className="text-2xl md:text-4xl lg:text-5xl font-bold mb-2 md:mb-4 relative inline-block pb-2"
+                className="text-2xl md:text-4xl lg:text-5xl font-bold mb-2 md:mb-4 relative inline-block pb-2 text-foreground border-l-[3px] border-primary pl-3"
                 style={{
-                  color: '#0E4C58',
                   letterSpacing: '0.02em',
-                  textShadow: '0px 1px 2px rgba(14, 76, 88, 0.1)',
-                  borderLeft: '3px solid #A9DC3D',
-                  paddingLeft: '12px',
                 }}
               >
                 Edit Profile - {formData.display_name || formData.first_name || 'User'}
@@ -384,8 +376,7 @@ const EditProfile = () => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.5, delay: 0.3 }}
-                className="text-sm md:text-lg leading-relaxed"
-                style={{ color: '#0E4C58', opacity: 0.8 }}
+                className="text-sm md:text-lg leading-relaxed text-muted-foreground"
               >
                 Customize your profile, preferences, and notification settings
               </motion.p>

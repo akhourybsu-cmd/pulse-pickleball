@@ -512,11 +512,7 @@ const MatchHistory = () => {
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="relative border-b-2"
-        style={{
-          background: 'linear-gradient(180deg, #E8FBD5 0%, #FFFFFF 80%)',
-          borderBottomColor: 'rgba(169, 220, 61, 0.15)',
-        }}
+        className="relative border-b-2 bg-gradient-to-b from-primary/10 via-background to-background border-b-primary/15"
       >
         <div className="container mx-auto py-6 px-4 md:py-8">
           <div className="space-y-2">
@@ -529,12 +525,9 @@ const MatchHistory = () => {
             >
               <History className="w-5 h-5 text-primary" style={{ color: '#A9DC3D' }} />
               <h1 
-                className="text-3xl md:text-4xl lg:text-5xl font-bold border-l-4 pl-3"
+                className="text-3xl md:text-4xl lg:text-5xl font-bold border-l-4 border-primary pl-3 text-foreground"
                 style={{
-                  color: '#0E4C58',
                   letterSpacing: '0.02em',
-                  textShadow: '0px 1px 2px rgba(169, 220, 61, 0.25)',
-                  borderLeftColor: '#A9DC3D',
                 }}
               >
                 Match History - {playerName}
@@ -552,11 +545,7 @@ const MatchHistory = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.6, delay: 0.2 }}
-              className="text-base md:text-lg mt-2"
-              style={{ 
-                color: '#53797E',
-                fontWeight: 400,
-              }}
+              className="text-base md:text-lg mt-2 text-muted-foreground"
             >
               Track your progress, review past matches, verify match results, and celebrate victories.
             </motion.p>
