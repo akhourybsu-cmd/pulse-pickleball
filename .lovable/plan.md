@@ -1,129 +1,137 @@
 
-# Player Side Analysis - Issues & Fixes
+# Player-Side Comprehensive Analysis - Pass 2
 
-## Critical Issue Found: App Crashing 🔴
-
-The console logs reveal a **critical runtime error**:
-```
-ReferenceError: CourtConnector is not defined
-```
-
-### Root Cause
-The previous cleanup removed the lazy import for `CourtConnector` from App.tsx (line removed), but the route `/player/courts` still references the `PlayerCourts` component which re-exports `CourtConnector`:
-
-```typescript
-// src/pages/player/PlayerCourts.tsx
-export { default } from '../CourtConnector';
-```
-
-Since the `CourtConnector` lazy import was removed but the route and re-export still exist, the app crashes on load.
+## Executive Summary
+After the previous round of fixes, the app is **no longer crashing** and core features are operational. However, there are still **18 remaining legacy navigation references** and **1 significant N+1 query** that need attention.
 
 ---
 
-## Summary of Issues
+## Current Status
 
-| Category | Issue | Severity | Files Affected |
-|----------|-------|----------|----------------|
-| **Critical** | App crashes - `CourtConnector` undefined | 🔴 Critical | `App.tsx`, `PlayerCourts.tsx` |
-| **Navigation** | Legacy `/dashboard` navigations | 🟡 Medium | 15+ files |
-| **Navigation** | Legacy `/court/connector` links | 🟡 Medium | 3 files (FAQ, CourtSettings, CourtBoard) |
-| **Cleanup** | Orphaned `CourtConnector.tsx` | 🟢 Low | 1 file |
-
----
-
-## Detailed Fixes Required
-
-### Fix 1: Remove Broken Player Courts Route (Critical)
-
-Since we're archiving Court Connector functionality:
-
-1. **Remove the route** from App.tsx:
-   - Delete: `<Route path="courts" element={<PlayerCourts />} />`
-   
-2. **Delete orphaned files**:
-   - `src/pages/player/PlayerCourts.tsx` (re-export wrapper)
-   - Consider archiving `src/pages/CourtConnector.tsx`
-
-3. **Remove the lazy import** for PlayerCourts from App.tsx:
-   - Delete: `const PlayerCourts = lazy(() => import("./pages/player/PlayerCourts"));`
-
-### Fix 2: Update Legacy Navigation References
-
-Update these files to use `/player/dashboard` instead of `/dashboard`:
-
-| File | Line | Current | Fix |
-|------|------|---------|-----|
-| `MatchWizardContainer.tsx` | 182 | `navigate('/dashboard')` | `navigate('/player/dashboard')` |
-| `onboarding/Complete.tsx` | 34 | `navigate("/dashboard")` | `navigate("/player/dashboard")` |
-| `ViewProfile.tsx` | 61, 93 | `navigate("/dashboard")` | `navigate("/player/dashboard")` |
-| `MatchHistory.tsx` | 502 | `navigate("/dashboard")` | `navigate("/player/dashboard")` |
-| `CourtHistory.tsx` | 75 | `navigate("/dashboard")` | `navigate("/player/dashboard")` |
-| `EditProfile.tsx` | 891 | `navigate("/dashboard")` | `navigate("/player/dashboard")` (Cancel button) |
-| `TournamentLanding.tsx` | 176, 799 | `/dashboard` | `/player/dashboard` |
-| `AdminDashboard.tsx` | 60, 139 | `/dashboard` | `/player/dashboard` |
-| `AdminBadges.tsx` | 88 | `/dashboard` | `/player/dashboard` |
-| `AdminMarketing.tsx` | 49 | `/dashboard` | `/player/dashboard` |
-| `AdminAuditLog.tsx` | 82 | `/dashboard` | `/player/dashboard` |
-| `AdminVenueVerification.tsx` | 84 | `/dashboard` | `/player/dashboard` |
-| `AdminBiometrics.tsx` | 51, 59 | `/dashboard` | `/player/dashboard` |
-| `Kiosk.tsx` | 87, 105 | `/dashboard` | `/player/dashboard` |
-
-### Fix 3: Update Court Connector References
-
-Update these files to remove or redirect `/court/connector` links:
-
-| File | Change |
-|------|--------|
-| `FAQ.tsx` | Remove or update Court Connector reference |
-| `CourtSettings.tsx` | Change navigation to `/player/community` or remove |
-| `CourtBoard.tsx` | Update fallback navigation |
-
----
-
-## Files to Delete (Archiving Court Connector)
-
-- `src/pages/player/PlayerCourts.tsx` - orphaned re-export
-- Consider archiving: `src/pages/CourtConnector.tsx`, `src/pages/CourtBoard.tsx`, `src/pages/CourtHistory.tsx`, `src/pages/CourtSettings.tsx`
-
----
-
-## Working Features Verified ✅
-
+### Working Features
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Dashboard (`/player/dashboard`) | ✅ Works | ProfileHero, PerformanceModule rendering correctly |
-| Find Events (`/player/find`) | ✅ Works | UnifiedEventCard, filters operational |
-| My Events (`/player/my-events`) | ✅ Works | Registration cards, cancel flow |
-| My Bookings (`/player/my-bookings`) | ✅ Works | Booking cards, cancel flow |
-| Community (`/player/community`) | ✅ Works | Groups, Friends tabs functional |
-| Friends Presence | ✅ Works | `useFriendsPresence` hook integrated |
-| Group Detail (`/player/community/group/:id`) | ✅ Works | Presence, chat, feed functional |
-| Direct Messages | ✅ Works | Conversation list, real-time chat |
-| Venue Discovery (`/player/venues`) | ✅ Works | Search, favorites, detail sheet |
-| Match Recording | ✅ Works | MatchWizard flow (nav needs fix) |
-| Profile Edit | ✅ Works | Form saves correctly (nav needs fix) |
+| Dashboard (`/player/dashboard`) | Working | ProfileHero, PerformanceModule rendering |
+| Find Events (`/player/find`) | Working | UnifiedEventCard, filters functional |
+| My Events/Bookings | Working | Registration, cancel flows operational |
+| Community Hub | Working | Groups, Feed, Chat functional |
+| Friends System | Optimized | Batched queries, presence working |
+| Direct Messages | Working | Real-time chat functional |
+| Venue Discovery | Working | Search, favorites, detail sheet |
+| Match Recording | Working | Now redirects to `/player/dashboard` |
+| Profile Edit | Partial | Save works but Cancel still uses legacy route |
 
 ---
 
-## Implementation Order
+## Issues to Fix
 
-1. **Fix Critical App Crash** (Priority 1)
-   - Remove PlayerCourts route and import from App.tsx
-   
-2. **Update Navigation References** (Priority 2)
-   - Batch update all `/dashboard` → `/player/dashboard`
-   
-3. **Clean Up Court Connector References** (Priority 3)
-   - Update FAQ, CourtSettings, CourtBoard
-   
-4. **Archive Legacy Files** (Priority 4)
-   - Delete/archive CourtConnector-related files
+### Category 1: Legacy `/dashboard` Navigation (18 instances)
+
+These cause unnecessary redirects since App.tsx has a catch-all redirect:
+
+| File | Location | Current | Should Be |
+|------|----------|---------|-----------|
+| `EditProfile.tsx` | Line 891 | `navigate("/dashboard")` | `/player/dashboard` |
+| `useOnboarding.ts` | Lines 136, 159, 175, 191 | `navigate('/dashboard')` | `/player/dashboard` |
+| `onboarding/FirstMatch.tsx` | Line 13 | `navigate("/dashboard")` | `/player/dashboard` |
+| `onboarding/ProfileSetup.tsx` | Line 32 | `navigate("/dashboard")` | `/player/dashboard` |
+| `BackToDashboard.tsx` | Line 17 | `navigate("/dashboard")` | `/player/dashboard` |
+| `PageHeader.tsx` | Line 42 | `Link to="/dashboard"` | `/player/dashboard` |
+| `SessionQueue.tsx` | Lines 335, 547 | `navigate('/dashboard')` | `/player/dashboard` |
+| `FAQ.tsx` | Line 19 | `Link to="/dashboard"` | `/player/dashboard` |
+| `PostDetail.tsx` | Line 260 | `Link to="/dashboard"` | `/player/dashboard` |
+| `ViewProfile.tsx` | Line 255 | `Link to="/dashboard"` | `/player/dashboard` |
+| `QRCheckIn.tsx` | Line 153 | `navigate("/dashboard")` | `/player/dashboard` |
+| `AdminDashboard.tsx` | Line 132 | `Link to="/dashboard"` | `/player/dashboard` |
+| `PickleballCitiMemberships.tsx` | Line 82 | `Link to="/dashboard"` | `/player/dashboard` |
+| `AdminBadges.tsx` | Line 233 | `Link to="/dashboard"` | `/player/dashboard` |
+| `AdminMarketing.tsx` | Line 144 | `Link to="/dashboard"` | `/player/dashboard` |
+| `AdminPlayers.tsx` | Line 67 | `navigate("/dashboard")` | `/player/dashboard` |
+| `AdminSystemHealth.tsx` | Line 38 | `navigate("/dashboard")` | `/player/dashboard` |
+| `Auth.tsx` | Line 29 | Default `redirectPath` | `/player/dashboard` |
+
+### Category 2: Performance - N+1 Query in PerformanceModule
+
+**Location**: `src/components/dashboard/PerformanceModule.tsx` (lines 61-69)
+
+**Problem**: Inside a loop, the code queries `match_participants` individually for each match:
+```typescript
+for (const p of participations) {
+  // N+1: This query runs for each match
+  const { data: allParticipants } = await supabase
+    .from("match_participants")
+    .select("...")
+    .eq("match_id", match.id);
+}
+```
+
+**Solution**: Batch fetch all participants for all matches upfront using `.in('match_id', matchIds)`.
 
 ---
 
-## Technical Notes
+## Implementation Plan
 
-- The redirect from `/dashboard` to `/player/dashboard` in App.tsx (line 289) provides a safety net, but direct navigations still cause unnecessary redirects
-- The N+1 query optimizations in `useFriends.ts` are properly implemented with batched `.in()` queries
-- Friends presence integration in `FriendsTab.tsx` is now correctly wired up via `useFriendsPresence`
-- All player shell header rules are correctly applied (hidden on dashboard, visible elsewhere)
+### Phase 1: Fix Legacy Navigation (All 18 files)
+Update all `/dashboard` references to `/player/dashboard` across:
+- Onboarding hooks and pages
+- Shared components (BackToDashboard, PageHeader)
+- Session/Queue pages
+- Admin pages (for logo links)
+- Auth default redirect
+
+### Phase 2: Optimize PerformanceModule N+1
+Refactor the match history fetch to:
+1. First collect all match IDs from participations
+2. Batch fetch all participants using `.in('match_id', matchIds)`
+3. Map participants back to their respective matches
+
+### Phase 3: Minor Cleanup
+- Verify `Auth.tsx` default redirect path is correct
+- Ensure all admin access-denied redirects go to player dashboard
+
+---
+
+## Technical Details
+
+### Files to Modify (22 total)
+
+**Onboarding (4 files)**:
+- `src/hooks/useOnboarding.ts` - 4 instances
+- `src/pages/onboarding/FirstMatch.tsx` - 1 instance
+- `src/pages/onboarding/ProfileSetup.tsx` - 1 instance
+- `src/pages/onboarding/Complete.tsx` - Already fixed in previous pass
+
+**Shared Components (2 files)**:
+- `src/components/BackToDashboard.tsx` - 1 instance
+- `src/components/PageHeader.tsx` - 1 instance
+
+**Player/Session Pages (6 files)**:
+- `src/pages/EditProfile.tsx` - 1 instance (Cancel button)
+- `src/pages/SessionQueue.tsx` - 2 instances
+- `src/pages/FAQ.tsx` - 1 instance
+- `src/pages/PostDetail.tsx` - 1 instance
+- `src/pages/ViewProfile.tsx` - 1 instance
+- `src/pages/QRCheckIn.tsx` - 1 instance
+
+**Admin Pages (5 files)**:
+- `src/pages/AdminDashboard.tsx` - 1 instance
+- `src/pages/AdminBadges.tsx` - 1 instance
+- `src/pages/AdminMarketing.tsx` - 1 instance
+- `src/pages/AdminPlayers.tsx` - 1 instance
+- `src/pages/AdminSystemHealth.tsx` - 1 instance
+
+**Other (2 files)**:
+- `src/pages/Auth.tsx` - 1 instance (default redirect)
+- `src/pages/PickleballCitiMemberships.tsx` - 1 instance
+
+**Performance Optimization (1 file)**:
+- `src/components/dashboard/PerformanceModule.tsx` - N+1 query fix
+
+---
+
+## Expected Outcomes
+
+1. **Navigation Consistency**: All dashboard navigations use canonical `/player/dashboard` path
+2. **Performance Improvement**: PerformanceModule reduces database queries from N+1 to 2 fixed queries
+3. **Cleaner URL History**: No more redirect loops in browser history
+4. **Faster Page Transitions**: Direct navigation without redirect overhead
