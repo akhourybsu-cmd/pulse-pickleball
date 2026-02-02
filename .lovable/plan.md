@@ -1,189 +1,341 @@
 
-# Dark Mode Optimization Plan
 
-## Executive Summary
-The PULSE application has a well-structured dark mode foundation with comprehensive HSL CSS custom properties in `index.css`. However, numerous components and pages contain hardcoded light-mode colors (hex values, `bg-white`, `#ffffff`) that break the dark mode experience. This plan addresses all identified issues systematically.
+# Tournament Landing Page Complete Makeover
+
+## Overview
+
+Transform the individual tournament homepage (`/tournament/:slug`) from a "digital brochure" into a **premium, conversion-optimized experience** that entices players to register. The redesign removes header clutter, implements sophisticated information architecture, and creates an aspirational sports-event aesthetic.
+
+---
 
 ## Current State Analysis
 
-### What Works Well
-- **CSS Custom Properties**: Dark mode variables are properly defined in `:root` and `.dark` selectors
-- **UI Primitives**: Core shadcn/ui components (Button, Card, Dialog, Sheet, Dropdown, Select, Popover, Tabs) correctly use theme tokens (`bg-background`, `bg-popover`, `text-foreground`)
-- **Theme Provider**: `next-themes` is properly configured in `App.tsx`
-- **Sonner Toasts**: Already theme-aware with correct token usage
+### Problems Identified
 
-### Identified Issues (35+ instances)
+1. **Clunky Header**: The `PageHeader` component includes multiple elements (notification bell, profile icon, mode switcher, sign out) that distract from the tournament content and are irrelevant for public visitors
+2. **Information Overload**: Content is presented in long, scrollable sections without visual hierarchy or scannable modules
+3. **Weak Registration CTA**: The register button is buried inside a card rather than being a persistent, attention-grabbing element
+4. **No Urgency/FOMO**: Missing real-time registration counts, countdown timers, or spots-remaining indicators
+5. **Generic Visual Design**: The hero section lacks the immersive, premium feel of modern sports platforms
 
-#### Category 1: Hardcoded Page Headers with Light-Mode Gradients (Critical)
-These pages use inline styles with hardcoded light colors that appear as harsh white sections in dark mode:
-
-| File | Issue |
-|------|-------|
-| `EditProfile.tsx:340` | `background: 'linear-gradient(180deg, #E8FBD5 0%, #FFFFFF 80%)'` |
-| `FAQ.tsx:33` | Same light-mode gradient |
-| `MatchHistory.tsx:517` | Same light-mode gradient |
-| `CourtBoard.tsx:160` | `background: 'linear-gradient(180deg, #e9f8dc 0%, #ffffff 100%)'` |
-| `CourtBoard.tsx:305` | `background: '#ffffff'` |
-
-#### Category 2: Hardcoded Component Styling (High)
-Components with fixed colors that ignore the theme:
-
-| File | Issue | Fix |
-|------|-------|-----|
-| `VenueInfoCard.tsx:70` | `bg-white`, `style={{ borderColor: '#e5f3d9' }}` | Use `bg-card`, `border-border` |
-| `VenueInfoCard.tsx:72-88` | Hardcoded `color: '#0E4C58'` throughout | Use `text-foreground`, `text-muted-foreground` |
-| `SwipeToConfirm.tsx:226` | `bg-white` on confirmed state handle | Use `bg-card` or `bg-background` |
-| `NotificationBell.tsx:43` | `bg-lime-300 text-slate-900` badge | Use theme-aware colors |
-
-#### Category 3: Venue Public/White-Label Pages (Medium)
-These intentionally use hardcoded colors for branding but need dark mode fallbacks:
-
-| File | Issue |
-|------|-------|
-| `PublicEventsTab.tsx:201` | `bg-white text-slate-900` for selected state |
-| `VenueDetailSheet.tsx:115` | `color: '#FFFFFF'` hardcoded |
-| `TournamentCustomize.tsx:805` | Sample buttons with `bg-gray-100 text-gray-900` |
-
-#### Category 4: Admin/Kiosk Intentionally Dark (Acceptable)
-These use a fixed dark theme by design - no changes needed:
-- `AdminDashboard.tsx` - "Command Center" aesthetic with `bg-[#0B171F]`
-- `VenueRoundRobinKiosk.tsx` - Kiosk theme objects
-
-#### Category 5: Skill Level Colors (Low)
-Fixed semantic colors that are acceptable but could use better dark mode contrast:
-- `DayCalendarGrid.tsx:42-47` - `bg-gray-500`, `bg-green-500`, etc.
-
-#### Category 6: Manifest/Infrastructure (Low)
-- `public/manifest.json:7` - `background_color: "#ffffff"` - Should support dark preference
-
-## Implementation Plan
-
-### Phase 1: Critical Hero Headers (Highest Priority)
-Replace hardcoded inline gradients with CSS variable-based gradients that adapt to theme.
-
-**Files to Update:**
-1. `src/pages/EditProfile.tsx` - Lines 339-342
-2. `src/pages/FAQ.tsx` - Lines 32-35
-3. `src/pages/MatchHistory.tsx` - Lines 516-519
-4. `src/pages/CourtBoard.tsx` - Lines 159-162, 304-307
-
-**Solution Pattern:**
-Replace inline styles with Tailwind classes that reference CSS variables:
+### Current Flow
 ```
-// Before
-style={{
-  background: 'linear-gradient(180deg, #E8FBD5 0%, #FFFFFF 80%)',
-  borderBottom: '1px solid rgba(169, 220, 61, 0.15)',
-}}
-
-// After
-className="bg-gradient-to-b from-primary/10 via-background to-background border-b border-primary/15"
+PageHeader (full nav) → Hero Card → About → Quick Facts → Divisions → Venue → Sponsors → Contact → Footer CTA
 ```
 
-### Phase 2: Component Dark Mode Fixes
+---
 
-**VenueInfoCard.tsx - Full Rewrite:**
-- Replace `bg-white` with `bg-card`
-- Replace hardcoded `color` styles with Tailwind classes
-- Replace hardcoded border colors with `border-border`
+## New Design Vision
 
-**SwipeToConfirm.tsx:**
-- Replace `bg-white` on confirmed handle with `bg-card`
+### Design Principles
+- **Immersive First Impression**: Full-bleed hero with minimal chrome
+- **Action-Oriented Layout**: Sticky registration bar visible at all times
+- **Scannable Information**: Icon-driven modules, not text walls
+- **Social Proof & Urgency**: Live registration counts, spots remaining, countdown
+- **Mobile-First**: Touch-friendly, thumb-zone-optimized CTAs
 
-**NotificationBell.tsx:**
-- Make badge colors theme-aware using `bg-primary` and `text-primary-foreground`
+---
 
-### Phase 3: Public/White-Label Components
+## Technical Implementation
 
-**PublicEventsTab.tsx:**
-- Add dark mode variant: `bg-white text-slate-900 dark:bg-card dark:text-foreground`
+### Phase 1: New Minimal Tournament Header Component
 
-**VenueDetailSheet.tsx:**
-- Use contrast calculation or ensure text is visible on dynamic backgrounds
+Create a new `TournamentPublicHeader` component specifically for public tournament pages:
 
-### Phase 4: CSS Variable Additions
-Add new gradient variables to `index.css` for page heroes:
+**File**: `src/components/tournament/TournamentPublicHeader.tsx`
 
-```css
-/* Light mode */
---hero-gradient-from: 74 65% 52% / 0.1;
---hero-gradient-to: 0 0% 100%;
-
-/* Dark mode */
-.dark {
-  --hero-gradient-from: 85 64% 61% / 0.08;
-  --hero-gradient-to: 207 44% 10%;
-}
+```typescript
+// Ultra-minimal header for public tournament pages
+- Transparent background overlaying hero
+- Small PULSE logo (left)
+- Share button + Theme toggle (right)
+- No auth buttons, notifications, or mode switcher
+- Fades in on scroll
 ```
 
-### Phase 5: Manifest Update
-Update `public/manifest.json` to use a neutral dark color that works in both modes.
+**Key Features**:
+- `position: sticky` with transparent-to-solid transition on scroll
+- Only 48px height (vs current 72px)
+- Logo links to `/tournaments` (browse all)
+- Share and Theme toggle only
 
-## Technical Implementation Details
+---
 
-### New CSS Classes to Add (index.css)
-```css
-/* Hero Section Gradient - Theme Aware */
-.hero-gradient {
-  background: linear-gradient(180deg, 
-    hsl(var(--hero-gradient-from)) 0%, 
-    hsl(var(--background)) 100%
+### Phase 2: Immersive Hero Section Redesign
+
+Replace the current card-in-hero pattern with a full-bleed, cinematic hero:
+
+**New Structure**:
+```
+┌─────────────────────────────────────────────────┐
+│  [Minimal Header - transparent overlay]         │
+├─────────────────────────────────────────────────┤
+│                                                 │
+│     Full-bleed Hero Image/Video                 │
+│     with gradient overlay                       │
+│                                                 │
+│     ┌───────────────────────────────────┐       │
+│     │  Status Badge: "Registration Open"│       │
+│     │                                   │       │
+│     │  TOURNAMENT NAME                  │       │
+│     │  Tagline / Dates / Location       │       │
+│     │                                   │       │
+│     │  ┌─────────────┐ ┌─────────────┐  │       │
+│     │  │ REGISTER $X │ │   SHARE     │  │       │
+│     │  └─────────────┘ └─────────────┘  │       │
+│     └───────────────────────────────────┘       │
+│                                                 │
+│     ▼ Scroll for Details                        │
+└─────────────────────────────────────────────────┘
+```
+
+**Implementation Details**:
+- Full viewport height on desktop, 70vh on mobile
+- Parallax background image effect
+- Animated gradient overlay (primary to transparent)
+- Registration CTA with glow effect and hover animation
+- Countdown timer if registration closes within 7 days
+
+---
+
+### Phase 3: Sticky Registration Bar
+
+Create a persistent bottom bar that appears after scrolling past the hero:
+
+**File**: `src/components/tournament/TournamentStickyBar.tsx`
+
+```typescript
+// Sticky bottom bar with registration CTA
+- Appears on scroll (after hero exits viewport)
+- Shows: Event name (truncated) | Price | "Register Now" button
+- Full-width on mobile, centered max-width on desktop
+- Glassmorphism background (backdrop-blur)
+```
+
+---
+
+### Phase 4: Redesigned Content Sections
+
+#### Section A: "At a Glance" Quick Facts Grid
+
+Replace the sidebar card with a horizontal grid of scannable metrics:
+
+```
+┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐
+│ 📅     │ │ 📍     │ │ 💵     │ │ 🏆     │ │ 👥     │
+│ Mar 15 │ │Austin  │ │  $40   │ │ Bracket│ │ 24/48  │
+│ Dates  │ │Location│ │Entry   │ │Format  │ │Spots   │
+└────────┘ └────────┘ └────────┘ └────────┘ └────────┘
+```
+
+**Implementation**:
+- Horizontal scroll on mobile
+- 5-column grid on desktop
+- Animated count-up for spots remaining
+- "Almost Full" badge when >75% capacity
+
+#### Section B: Division Cards with Urgency
+
+Redesign division cards to show registration status and drive action:
+
+```
+┌─────────────────────────────────────┐
+│ Men's 4.0+ Doubles                  │
+│ ─────────────────────────────────── │
+│ Format: Round Robin → Bracket       │
+│ Teams: 12/16 registered             │
+│ ████████████░░░░ 75%                │
+│                                     │
+│ [Register for This Division]        │
+└─────────────────────────────────────┘
+```
+
+**Features**:
+- Progress bar showing fill rate
+- "X spots left!" urgency text
+- Skill level badge
+- One-tap registration
+
+#### Section C: Venue Experience Module
+
+Create an immersive venue preview:
+
+```
+┌─────────────────────────────────────────────────┐
+│                                                 │
+│  [Large Venue Photo - 16:9 ratio]               │
+│                                                 │
+├─────────────────────────────────────────────────┤
+│  Venue Name                                     │
+│  ─────────────                                  │
+│  ✓ 12 Indoor Courts  ✓ Pro Shop  ✓ Free Parking│
+│                                                 │
+│  [View Map]  [Get Directions]                   │
+└─────────────────────────────────────────────────┘
+```
+
+---
+
+### Phase 5: Social Proof Section (New)
+
+Add a new section to build credibility:
+
+```typescript
+// New component: TournamentSocialProof.tsx
+- Live registration count: "47 teams already registered"
+- Testimonials from past participants (if available)
+- "Add to Calendar" integration
+- Social share buttons with share count
+```
+
+---
+
+### Phase 6: Streamlined Page Structure
+
+**New Component Architecture**:
+
+```
+src/components/tournament/landing/
+├── TournamentPublicHeader.tsx    // Minimal header
+├── TournamentHeroSection.tsx     // Full-bleed hero
+├── TournamentQuickFacts.tsx      // Horizontal metrics grid
+├── TournamentDivisionsGrid.tsx   // Redesigned division cards
+├── TournamentVenueModule.tsx     // Immersive venue preview
+├── TournamentSocialProof.tsx     // Registration counts + social
+├── TournamentPoliciesAccordion.tsx // Collapsible policies
+├── TournamentContactCard.tsx     // Organizer contact
+├── TournamentStickyBar.tsx       // Bottom registration bar
+└── TournamentFooterCTA.tsx       // Final conversion push
+```
+
+**Refactored TournamentLanding.tsx**:
+
+```typescript
+export default function TournamentLanding() {
+  // ... data fetching logic stays similar
+  
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Minimal header - NOT PageHeader */}
+      <TournamentPublicHeader 
+        tournamentName={event.name}
+        onShare={handleShare}
+      />
+      
+      {/* Full-bleed hero */}
+      <TournamentHeroSection
+        event={event}
+        customization={customization}
+        onRegister={() => navigate(`/tournament/${event.id}/register`)}
+      />
+      
+      {/* Quick facts grid */}
+      <TournamentQuickFacts event={event} />
+      
+      {/* Divisions with urgency */}
+      <TournamentDivisionsGrid 
+        divisions={event.divisions}
+        eventId={event.id}
+      />
+      
+      {/* About section */}
+      {customization?.about_markdown && (
+        <TournamentAboutSection content={customization.about_markdown} />
+      )}
+      
+      {/* Venue experience */}
+      <TournamentVenueModule customization={customization} />
+      
+      {/* Social proof */}
+      <TournamentSocialProof eventId={event.id} />
+      
+      {/* Sponsors */}
+      <TournamentSponsorsGrid sponsors={customization?.sponsors} />
+      
+      {/* Policies accordion */}
+      <TournamentPoliciesAccordion customization={customization} />
+      
+      {/* Contact */}
+      <TournamentContactCard customization={customization} />
+      
+      {/* Final CTA */}
+      <TournamentFooterCTA 
+        userId={userId}
+        onRegister={() => navigate(`/tournament/${event.id}/register`)}
+      />
+      
+      {/* Sticky registration bar */}
+      <TournamentStickyBar
+        eventName={event.name}
+        fee={event.registration_fee}
+        onRegister={() => navigate(`/tournament/${event.id}/register`)}
+      />
+    </div>
   );
 }
-
-/* Premium Card with Dark Mode Glow */
-.card-glow-dark {
-  @apply dark:shadow-[0_0_20px_hsl(var(--primary)/0.08)];
-}
 ```
 
-### Files to Modify (22 Total)
+---
 
-**CSS/Config:**
-1. `src/index.css` - Add new gradient variables
-2. `public/manifest.json` - Update background_color
+## Files to Create/Modify
 
-**Pages with Hero Headers:**
-3. `src/pages/EditProfile.tsx`
-4. `src/pages/FAQ.tsx`
-5. `src/pages/MatchHistory.tsx`
-6. `src/pages/CourtBoard.tsx`
+### New Files (9)
+1. `src/components/tournament/landing/TournamentPublicHeader.tsx`
+2. `src/components/tournament/landing/TournamentHeroSection.tsx`
+3. `src/components/tournament/landing/TournamentQuickFacts.tsx`
+4. `src/components/tournament/landing/TournamentDivisionsGrid.tsx`
+5. `src/components/tournament/landing/TournamentVenueModule.tsx`
+6. `src/components/tournament/landing/TournamentSocialProof.tsx`
+7. `src/components/tournament/landing/TournamentPoliciesAccordion.tsx`
+8. `src/components/tournament/landing/TournamentContactCard.tsx`
+9. `src/components/tournament/landing/TournamentStickyBar.tsx`
 
-**Components with Hardcoded Colors:**
-7. `src/components/VenueInfoCard.tsx`
-8. `src/components/SwipeToConfirm.tsx`
-9. `src/components/NotificationBell.tsx`
-10. `src/components/reservations/DayCalendarGrid.tsx`
-11. `src/components/venue-public/PublicEventsTab.tsx`
-12. `src/components/player/VenueDetailSheet.tsx`
-13. `src/pages/TournamentCustomize.tsx`
+### Modified Files (2)
+1. `src/pages/TournamentLanding.tsx` - Complete restructure to use new components
+2. `src/index.css` - Add tournament-specific utility classes
 
-**Additional Pages with Hardcoded Text Colors:**
-14. `src/pages/ViewProfile.tsx` (if any)
-15. `src/pages/CourtSettings.tsx` (if any)
-16. `src/pages/CourtHistory.tsx` (if any)
+---
+
+## Visual Design Specifications
+
+### Color Usage
+- Primary CTA: `bg-gradient-to-r from-primary to-accent` with glow
+- Status badges: Green (open), Orange (closing soon), Red (full)
+- Progress bars: Primary color fill
+
+### Typography
+- Hero title: `text-5xl md:text-7xl font-bold`
+- Section headers: `text-3xl font-bold`
+- Quick facts: `text-2xl font-bold` (values), `text-sm text-muted-foreground` (labels)
+
+### Spacing
+- Section padding: `py-16 md:py-24`
+- Component gaps: `gap-6 md:gap-8`
+- 8pt grid system maintained
+
+### Animations
+- Hero: Parallax scroll, fade-in on load
+- Quick facts: Staggered reveal on scroll
+- Division cards: Hover lift + glow
+- Sticky bar: Slide-up entrance
+
+---
+
+## Mobile Optimizations
+
+- Hero: 70vh with bottom-anchored CTA card
+- Quick facts: Horizontal scroll with snap points
+- Divisions: Full-width cards with touch-friendly 48px buttons
+- Sticky bar: Fixed bottom with safe-area padding
+- Share: Native share sheet on supported devices
+
+---
 
 ## Expected Outcomes
 
-1. **Consistent Dark Mode**: All page headers, cards, and components will properly adapt to the dark theme
-2. **No White Flashes**: Eliminated harsh white backgrounds that break dark mode immersion
-3. **Proper Contrast**: Text remains readable in both modes
-4. **Maintained Branding**: Admin "Command Center" aesthetic preserved
-5. **Semantic Colors Intact**: Skill level indicators and status badges retain meaning
+1. **Reduced Header Clutter**: From 6+ nav elements to just logo + share
+2. **Increased Registration Rate**: Persistent CTA visibility + urgency indicators
+3. **Premium Aesthetic**: Immersive hero, glassmorphism, smooth animations
+4. **Better Information Architecture**: Scannable modules vs text walls
+5. **Mobile-First UX**: Touch-optimized, thumb-zone CTAs
 
-## Testing Checklist
-- Dashboard view in dark mode
-- Edit Profile page hero section
-- FAQ page hero section
-- Match History page header
-- Court Board page styling
-- Notification bell badge
-- Swipe to confirm component
-- Venue detail sheet
-- Tournament customization preview
-- Public venue pages
-
-## Notes
-- The Admin dashboard intentionally uses a fixed dark "Command Center" aesthetic - this is by design per memory
-- Kiosk pages have their own theme objects and should remain unchanged
-- White-label venue pages may need special handling if venues have custom branding colors
