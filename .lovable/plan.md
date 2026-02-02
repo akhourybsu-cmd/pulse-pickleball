@@ -1,137 +1,189 @@
 
-# Player-Side Comprehensive Analysis - Pass 2
+# Dark Mode Optimization Plan
 
 ## Executive Summary
-After the previous round of fixes, the app is **no longer crashing** and core features are operational. However, there are still **18 remaining legacy navigation references** and **1 significant N+1 query** that need attention.
+The PULSE application has a well-structured dark mode foundation with comprehensive HSL CSS custom properties in `index.css`. However, numerous components and pages contain hardcoded light-mode colors (hex values, `bg-white`, `#ffffff`) that break the dark mode experience. This plan addresses all identified issues systematically.
 
----
+## Current State Analysis
 
-## Current Status
+### What Works Well
+- **CSS Custom Properties**: Dark mode variables are properly defined in `:root` and `.dark` selectors
+- **UI Primitives**: Core shadcn/ui components (Button, Card, Dialog, Sheet, Dropdown, Select, Popover, Tabs) correctly use theme tokens (`bg-background`, `bg-popover`, `text-foreground`)
+- **Theme Provider**: `next-themes` is properly configured in `App.tsx`
+- **Sonner Toasts**: Already theme-aware with correct token usage
 
-### Working Features
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Dashboard (`/player/dashboard`) | Working | ProfileHero, PerformanceModule rendering |
-| Find Events (`/player/find`) | Working | UnifiedEventCard, filters functional |
-| My Events/Bookings | Working | Registration, cancel flows operational |
-| Community Hub | Working | Groups, Feed, Chat functional |
-| Friends System | Optimized | Batched queries, presence working |
-| Direct Messages | Working | Real-time chat functional |
-| Venue Discovery | Working | Search, favorites, detail sheet |
-| Match Recording | Working | Now redirects to `/player/dashboard` |
-| Profile Edit | Partial | Save works but Cancel still uses legacy route |
+### Identified Issues (35+ instances)
 
----
+#### Category 1: Hardcoded Page Headers with Light-Mode Gradients (Critical)
+These pages use inline styles with hardcoded light colors that appear as harsh white sections in dark mode:
 
-## Issues to Fix
+| File | Issue |
+|------|-------|
+| `EditProfile.tsx:340` | `background: 'linear-gradient(180deg, #E8FBD5 0%, #FFFFFF 80%)'` |
+| `FAQ.tsx:33` | Same light-mode gradient |
+| `MatchHistory.tsx:517` | Same light-mode gradient |
+| `CourtBoard.tsx:160` | `background: 'linear-gradient(180deg, #e9f8dc 0%, #ffffff 100%)'` |
+| `CourtBoard.tsx:305` | `background: '#ffffff'` |
 
-### Category 1: Legacy `/dashboard` Navigation (18 instances)
+#### Category 2: Hardcoded Component Styling (High)
+Components with fixed colors that ignore the theme:
 
-These cause unnecessary redirects since App.tsx has a catch-all redirect:
+| File | Issue | Fix |
+|------|-------|-----|
+| `VenueInfoCard.tsx:70` | `bg-white`, `style={{ borderColor: '#e5f3d9' }}` | Use `bg-card`, `border-border` |
+| `VenueInfoCard.tsx:72-88` | Hardcoded `color: '#0E4C58'` throughout | Use `text-foreground`, `text-muted-foreground` |
+| `SwipeToConfirm.tsx:226` | `bg-white` on confirmed state handle | Use `bg-card` or `bg-background` |
+| `NotificationBell.tsx:43` | `bg-lime-300 text-slate-900` badge | Use theme-aware colors |
 
-| File | Location | Current | Should Be |
-|------|----------|---------|-----------|
-| `EditProfile.tsx` | Line 891 | `navigate("/dashboard")` | `/player/dashboard` |
-| `useOnboarding.ts` | Lines 136, 159, 175, 191 | `navigate('/dashboard')` | `/player/dashboard` |
-| `onboarding/FirstMatch.tsx` | Line 13 | `navigate("/dashboard")` | `/player/dashboard` |
-| `onboarding/ProfileSetup.tsx` | Line 32 | `navigate("/dashboard")` | `/player/dashboard` |
-| `BackToDashboard.tsx` | Line 17 | `navigate("/dashboard")` | `/player/dashboard` |
-| `PageHeader.tsx` | Line 42 | `Link to="/dashboard"` | `/player/dashboard` |
-| `SessionQueue.tsx` | Lines 335, 547 | `navigate('/dashboard')` | `/player/dashboard` |
-| `FAQ.tsx` | Line 19 | `Link to="/dashboard"` | `/player/dashboard` |
-| `PostDetail.tsx` | Line 260 | `Link to="/dashboard"` | `/player/dashboard` |
-| `ViewProfile.tsx` | Line 255 | `Link to="/dashboard"` | `/player/dashboard` |
-| `QRCheckIn.tsx` | Line 153 | `navigate("/dashboard")` | `/player/dashboard` |
-| `AdminDashboard.tsx` | Line 132 | `Link to="/dashboard"` | `/player/dashboard` |
-| `PickleballCitiMemberships.tsx` | Line 82 | `Link to="/dashboard"` | `/player/dashboard` |
-| `AdminBadges.tsx` | Line 233 | `Link to="/dashboard"` | `/player/dashboard` |
-| `AdminMarketing.tsx` | Line 144 | `Link to="/dashboard"` | `/player/dashboard` |
-| `AdminPlayers.tsx` | Line 67 | `navigate("/dashboard")` | `/player/dashboard` |
-| `AdminSystemHealth.tsx` | Line 38 | `navigate("/dashboard")` | `/player/dashboard` |
-| `Auth.tsx` | Line 29 | Default `redirectPath` | `/player/dashboard` |
+#### Category 3: Venue Public/White-Label Pages (Medium)
+These intentionally use hardcoded colors for branding but need dark mode fallbacks:
 
-### Category 2: Performance - N+1 Query in PerformanceModule
+| File | Issue |
+|------|-------|
+| `PublicEventsTab.tsx:201` | `bg-white text-slate-900` for selected state |
+| `VenueDetailSheet.tsx:115` | `color: '#FFFFFF'` hardcoded |
+| `TournamentCustomize.tsx:805` | Sample buttons with `bg-gray-100 text-gray-900` |
 
-**Location**: `src/components/dashboard/PerformanceModule.tsx` (lines 61-69)
+#### Category 4: Admin/Kiosk Intentionally Dark (Acceptable)
+These use a fixed dark theme by design - no changes needed:
+- `AdminDashboard.tsx` - "Command Center" aesthetic with `bg-[#0B171F]`
+- `VenueRoundRobinKiosk.tsx` - Kiosk theme objects
 
-**Problem**: Inside a loop, the code queries `match_participants` individually for each match:
-```typescript
-for (const p of participations) {
-  // N+1: This query runs for each match
-  const { data: allParticipants } = await supabase
-    .from("match_participants")
-    .select("...")
-    .eq("match_id", match.id);
-}
-```
+#### Category 5: Skill Level Colors (Low)
+Fixed semantic colors that are acceptable but could use better dark mode contrast:
+- `DayCalendarGrid.tsx:42-47` - `bg-gray-500`, `bg-green-500`, etc.
 
-**Solution**: Batch fetch all participants for all matches upfront using `.in('match_id', matchIds)`.
-
----
+#### Category 6: Manifest/Infrastructure (Low)
+- `public/manifest.json:7` - `background_color: "#ffffff"` - Should support dark preference
 
 ## Implementation Plan
 
-### Phase 1: Fix Legacy Navigation (All 18 files)
-Update all `/dashboard` references to `/player/dashboard` across:
-- Onboarding hooks and pages
-- Shared components (BackToDashboard, PageHeader)
-- Session/Queue pages
-- Admin pages (for logo links)
-- Auth default redirect
+### Phase 1: Critical Hero Headers (Highest Priority)
+Replace hardcoded inline gradients with CSS variable-based gradients that adapt to theme.
 
-### Phase 2: Optimize PerformanceModule N+1
-Refactor the match history fetch to:
-1. First collect all match IDs from participations
-2. Batch fetch all participants using `.in('match_id', matchIds)`
-3. Map participants back to their respective matches
+**Files to Update:**
+1. `src/pages/EditProfile.tsx` - Lines 339-342
+2. `src/pages/FAQ.tsx` - Lines 32-35
+3. `src/pages/MatchHistory.tsx` - Lines 516-519
+4. `src/pages/CourtBoard.tsx` - Lines 159-162, 304-307
 
-### Phase 3: Minor Cleanup
-- Verify `Auth.tsx` default redirect path is correct
-- Ensure all admin access-denied redirects go to player dashboard
+**Solution Pattern:**
+Replace inline styles with Tailwind classes that reference CSS variables:
+```
+// Before
+style={{
+  background: 'linear-gradient(180deg, #E8FBD5 0%, #FFFFFF 80%)',
+  borderBottom: '1px solid rgba(169, 220, 61, 0.15)',
+}}
 
----
+// After
+className="bg-gradient-to-b from-primary/10 via-background to-background border-b border-primary/15"
+```
 
-## Technical Details
+### Phase 2: Component Dark Mode Fixes
 
-### Files to Modify (22 total)
+**VenueInfoCard.tsx - Full Rewrite:**
+- Replace `bg-white` with `bg-card`
+- Replace hardcoded `color` styles with Tailwind classes
+- Replace hardcoded border colors with `border-border`
 
-**Onboarding (4 files)**:
-- `src/hooks/useOnboarding.ts` - 4 instances
-- `src/pages/onboarding/FirstMatch.tsx` - 1 instance
-- `src/pages/onboarding/ProfileSetup.tsx` - 1 instance
-- `src/pages/onboarding/Complete.tsx` - Already fixed in previous pass
+**SwipeToConfirm.tsx:**
+- Replace `bg-white` on confirmed handle with `bg-card`
 
-**Shared Components (2 files)**:
-- `src/components/BackToDashboard.tsx` - 1 instance
-- `src/components/PageHeader.tsx` - 1 instance
+**NotificationBell.tsx:**
+- Make badge colors theme-aware using `bg-primary` and `text-primary-foreground`
 
-**Player/Session Pages (6 files)**:
-- `src/pages/EditProfile.tsx` - 1 instance (Cancel button)
-- `src/pages/SessionQueue.tsx` - 2 instances
-- `src/pages/FAQ.tsx` - 1 instance
-- `src/pages/PostDetail.tsx` - 1 instance
-- `src/pages/ViewProfile.tsx` - 1 instance
-- `src/pages/QRCheckIn.tsx` - 1 instance
+### Phase 3: Public/White-Label Components
 
-**Admin Pages (5 files)**:
-- `src/pages/AdminDashboard.tsx` - 1 instance
-- `src/pages/AdminBadges.tsx` - 1 instance
-- `src/pages/AdminMarketing.tsx` - 1 instance
-- `src/pages/AdminPlayers.tsx` - 1 instance
-- `src/pages/AdminSystemHealth.tsx` - 1 instance
+**PublicEventsTab.tsx:**
+- Add dark mode variant: `bg-white text-slate-900 dark:bg-card dark:text-foreground`
 
-**Other (2 files)**:
-- `src/pages/Auth.tsx` - 1 instance (default redirect)
-- `src/pages/PickleballCitiMemberships.tsx` - 1 instance
+**VenueDetailSheet.tsx:**
+- Use contrast calculation or ensure text is visible on dynamic backgrounds
 
-**Performance Optimization (1 file)**:
-- `src/components/dashboard/PerformanceModule.tsx` - N+1 query fix
+### Phase 4: CSS Variable Additions
+Add new gradient variables to `index.css` for page heroes:
 
----
+```css
+/* Light mode */
+--hero-gradient-from: 74 65% 52% / 0.1;
+--hero-gradient-to: 0 0% 100%;
+
+/* Dark mode */
+.dark {
+  --hero-gradient-from: 85 64% 61% / 0.08;
+  --hero-gradient-to: 207 44% 10%;
+}
+```
+
+### Phase 5: Manifest Update
+Update `public/manifest.json` to use a neutral dark color that works in both modes.
+
+## Technical Implementation Details
+
+### New CSS Classes to Add (index.css)
+```css
+/* Hero Section Gradient - Theme Aware */
+.hero-gradient {
+  background: linear-gradient(180deg, 
+    hsl(var(--hero-gradient-from)) 0%, 
+    hsl(var(--background)) 100%
+  );
+}
+
+/* Premium Card with Dark Mode Glow */
+.card-glow-dark {
+  @apply dark:shadow-[0_0_20px_hsl(var(--primary)/0.08)];
+}
+```
+
+### Files to Modify (22 Total)
+
+**CSS/Config:**
+1. `src/index.css` - Add new gradient variables
+2. `public/manifest.json` - Update background_color
+
+**Pages with Hero Headers:**
+3. `src/pages/EditProfile.tsx`
+4. `src/pages/FAQ.tsx`
+5. `src/pages/MatchHistory.tsx`
+6. `src/pages/CourtBoard.tsx`
+
+**Components with Hardcoded Colors:**
+7. `src/components/VenueInfoCard.tsx`
+8. `src/components/SwipeToConfirm.tsx`
+9. `src/components/NotificationBell.tsx`
+10. `src/components/reservations/DayCalendarGrid.tsx`
+11. `src/components/venue-public/PublicEventsTab.tsx`
+12. `src/components/player/VenueDetailSheet.tsx`
+13. `src/pages/TournamentCustomize.tsx`
+
+**Additional Pages with Hardcoded Text Colors:**
+14. `src/pages/ViewProfile.tsx` (if any)
+15. `src/pages/CourtSettings.tsx` (if any)
+16. `src/pages/CourtHistory.tsx` (if any)
 
 ## Expected Outcomes
 
-1. **Navigation Consistency**: All dashboard navigations use canonical `/player/dashboard` path
-2. **Performance Improvement**: PerformanceModule reduces database queries from N+1 to 2 fixed queries
-3. **Cleaner URL History**: No more redirect loops in browser history
-4. **Faster Page Transitions**: Direct navigation without redirect overhead
+1. **Consistent Dark Mode**: All page headers, cards, and components will properly adapt to the dark theme
+2. **No White Flashes**: Eliminated harsh white backgrounds that break dark mode immersion
+3. **Proper Contrast**: Text remains readable in both modes
+4. **Maintained Branding**: Admin "Command Center" aesthetic preserved
+5. **Semantic Colors Intact**: Skill level indicators and status badges retain meaning
+
+## Testing Checklist
+- Dashboard view in dark mode
+- Edit Profile page hero section
+- FAQ page hero section
+- Match History page header
+- Court Board page styling
+- Notification bell badge
+- Swipe to confirm component
+- Venue detail sheet
+- Tournament customization preview
+- Public venue pages
+
+## Notes
+- The Admin dashboard intentionally uses a fixed dark "Command Center" aesthetic - this is by design per memory
+- Kiosk pages have their own theme objects and should remain unchanged
+- White-label venue pages may need special handling if venues have custom branding colors
