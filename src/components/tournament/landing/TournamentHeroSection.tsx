@@ -114,7 +114,7 @@ export function TournamentHeroSection({
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="text-center text-white space-y-6"
+            className="text-center text-white space-y-4 md:space-y-6"
           >
             {/* Status Badge */}
             <motion.div
@@ -126,7 +126,7 @@ export function TournamentHeroSection({
             </motion.div>
 
             {/* Tournament Name */}
-            <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold tracking-tight drop-shadow-2xl">
+            <h1 className="text-3xl sm:text-5xl md:text-7xl font-bold tracking-tight drop-shadow-2xl px-2">
               {event.name}
             </h1>
 

@@ -100,14 +100,14 @@ export function TournamentVenueModule({
                 viewport={{ once: true }}
                 className="space-y-4"
               >
-                {sanitizedEmbed && (
+              {sanitizedEmbed && (
                   <div 
-                    className="rounded-xl overflow-hidden shadow-lg h-[250px]"
+                    className="rounded-xl overflow-hidden shadow-lg h-[180px] md:h-[250px]"
                     dangerouslySetInnerHTML={{ __html: sanitizedEmbed }}
                   />
                 )}
                 
-                <div className="flex gap-3">
+                <div className="flex flex-col sm:flex-row gap-3">
                   <Button
                     variant="outline"
                     className="flex-1"

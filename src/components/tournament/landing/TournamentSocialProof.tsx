@@ -41,12 +41,12 @@ export function TournamentSocialProof({
           {registeredCount > 0 && (
             <div className="flex flex-col items-center gap-2">
               <div className="flex items-center gap-2 text-primary">
-                <TrendingUp className="h-5 w-5" />
-                <span className="text-sm font-medium uppercase tracking-wider">
+                <TrendingUp className="h-4 w-4 md:h-5 md:w-5" />
+                <span className="text-xs md:text-sm font-medium uppercase tracking-wider">
                   Growing Fast
                 </span>
               </div>
-              <p className="text-3xl md:text-4xl font-bold text-foreground">
+              <p className="text-2xl md:text-4xl font-bold text-foreground">
                 <CountUp end={registeredCount} duration={2} /> teams already registered
               </p>
               <p className="text-muted-foreground">

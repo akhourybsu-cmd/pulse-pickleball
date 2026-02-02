@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Users, ChevronRight } from "lucide-react";
 import { motion } from "framer-motion";
+import { formatTournamentLabel } from "@/lib/formatLabels";
 
 interface Division {
   id: string;
@@ -26,15 +27,15 @@ export function TournamentDivisionsGrid({ divisions, eventId }: TournamentDivisi
   if (!divisions || divisions.length === 0) return null;
 
   return (
-    <section className="py-16 md:py-24 px-4 bg-muted/30">
+    <section className="py-12 md:py-24 px-4 bg-muted/30">
       <div className="container mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-center mb-12"
+          className="text-center mb-8 md:mb-12"
         >
-          <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-3">
+          <h2 className="text-2xl md:text-4xl font-bold text-foreground mb-2 md:mb-3">
             Choose Your Division
           </h2>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
@@ -71,9 +72,9 @@ export function TournamentDivisionsGrid({ divisions, eventId }: TournamentDivisi
                       <CardTitle className="text-xl">{division.name}</CardTitle>
                       <Badge 
                         variant="secondary" 
-                        className="shrink-0"
+                        className="shrink-0 text-xs"
                       >
-                        {division.format}
+                        {formatTournamentLabel(division.format)}
                       </Badge>
                     </div>
                     {division.description && (

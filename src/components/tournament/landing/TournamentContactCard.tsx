@@ -29,15 +29,15 @@ export function TournamentContactCard({
   if (!hasContact) return null;
 
   return (
-    <section className="py-16 md:py-24 px-4">
+    <section className="py-12 md:py-24 px-4">
       <div className="container mx-auto max-w-3xl">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-center mb-8"
+          className="text-center mb-6 md:mb-8"
         >
-          <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-3">
+          <h2 className="text-2xl md:text-4xl font-bold text-foreground mb-2 md:mb-3">
             Questions?
           </h2>
           <p className="text-muted-foreground">
@@ -52,7 +52,7 @@ export function TournamentContactCard({
           transition={{ delay: 0.1 }}
         >
           <Card className="border-2 border-primary/20 hover:border-primary/40 transition-colors">
-            <CardContent className="p-6 md:p-8 space-y-6">
+            <CardContent className="p-4 md:p-8 space-y-4 md:space-y-6">
               {/* Organizer Name */}
               {organizerName && (
                 <div className="text-center">

@@ -121,16 +121,16 @@ export function TournamentPoliciesAccordion({
                     value={policy.id}
                     className={index === 0 ? "border-t-0" : ""}
                   >
-                    <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-muted/50 transition-colors">
-                      <div className="flex items-center gap-3">
-                        <policy.icon className="h-5 w-5 text-primary" />
-                        <span className="font-semibold text-foreground text-left">
+                    <AccordionTrigger className="px-4 md:px-6 py-3 md:py-4 hover:no-underline hover:bg-muted/50 transition-colors">
+                      <div className="flex items-center gap-2 md:gap-3">
+                        <policy.icon className="h-4 w-4 md:h-5 md:w-5 text-primary" />
+                        <span className="font-semibold text-foreground text-left text-sm md:text-base">
                           {policy.title}
                         </span>
                       </div>
                     </AccordionTrigger>
-                    <AccordionContent className="px-6 pb-6">
-                      <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed pl-8">
+                    <AccordionContent className="px-4 md:px-6 pb-4 md:pb-6">
+                      <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed pl-4 md:pl-8 text-sm md:text-base">
                         {policy.content}
                       </p>
                     </AccordionContent>

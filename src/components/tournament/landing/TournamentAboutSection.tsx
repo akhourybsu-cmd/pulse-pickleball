@@ -8,15 +8,15 @@ interface TournamentAboutSectionProps {
 
 export function TournamentAboutSection({ content, imageUrl }: TournamentAboutSectionProps) {
   return (
-    <section className="py-16 md:py-24 px-4">
+    <section className="py-12 md:py-24 px-4">
       <div className="container mx-auto max-w-4xl">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-center mb-8"
+          className="text-center mb-6 md:mb-8"
         >
-          <h2 className="text-3xl md:text-4xl font-bold text-foreground">
+          <h2 className="text-2xl md:text-4xl font-bold text-foreground">
             About This Tournament
           </h2>
         </motion.div>
