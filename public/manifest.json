@@ -4,7 +4,7 @@
   "description": "Track your pickleball rating with PULSE - Pickleball Universal Level and Skill Estimator",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
+  "background_color": "#0E1A24",
   "theme_color": "#0EA5E9",
   "orientation": "any",
   "icons": [

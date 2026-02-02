@@ -186,7 +186,7 @@ export function PublicEventsTab({ venue, events, onRegister, registeredEventIds 
       </div>
 
       {/* Category Filter Pills */}
-      <div className="sticky top-[52px] z-20 bg-slate-900 dark:bg-slate-950 px-4 py-3">
+      <div className="sticky top-[52px] z-20 bg-secondary px-4 py-3">
         <div className="flex gap-2 overflow-x-auto scrollbar-hide">
           {CATEGORIES.map((category) => {
             const isSelected = selectedCategory === category.id;
@@ -198,8 +198,8 @@ export function PublicEventsTab({ venue, events, onRegister, registeredEventIds 
                 className={cn(
                   "flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all",
                   isSelected 
-                    ? "bg-white text-slate-900" 
-                    : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                    ? "bg-card text-foreground" 
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
                 )}
               >
                 {category.label}

@@ -155,11 +155,7 @@ export default function CourtBoard() {
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="mb-8 md:mb-12"
-        style={{
-          background: 'linear-gradient(180deg, #e9f8dc 0%, #ffffff 100%)',
-          borderBottom: '1px solid rgba(169, 220, 61, 0.2)',
-        }}
+        className="mb-8 md:mb-12 bg-gradient-to-b from-primary/10 via-background to-background border-b border-primary/20"
       >
         <div className="container mx-auto px-4 py-6 md:py-8">
           <div className="flex items-start gap-3 md:gap-6 flex-wrap md:flex-nowrap">
@@ -184,8 +180,7 @@ export default function CourtBoard() {
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ duration: 0.5, delay: 0.3 }}
-                      className="text-xl md:text-2xl font-semibold"
-                      style={{ color: '#0E4C58' }}
+                      className="text-xl md:text-2xl font-semibold text-foreground"
                     >
                       Cranston, RI
                     </motion.p>
@@ -193,8 +188,7 @@ export default function CourtBoard() {
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ duration: 0.5, delay: 0.4 }}
-                      className="text-sm md:text-base"
-                      style={{ color: '#0E4C58', opacity: 0.7 }}
+                      className="text-sm md:text-base text-muted-foreground"
                     >
                       Powered by PULSE
                     </motion.p>
@@ -258,13 +252,9 @@ export default function CourtBoard() {
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.5, delay: 0.2 }}
-                    className="text-2xl md:text-4xl lg:text-5xl font-bold mb-2 md:mb-4 relative inline-block pb-2 break-words"
+                    className="text-2xl md:text-4xl lg:text-5xl font-bold mb-2 md:mb-4 relative inline-block pb-2 break-words text-foreground border-l-[3px] border-primary pl-3"
                     style={{
-                      color: '#0E4C58',
                       letterSpacing: '0.02em',
-                      textShadow: '0px 1px 2px rgba(14, 76, 88, 0.1)',
-                      borderLeft: '3px solid #A9DC3D',
-                      paddingLeft: '12px',
                     }}
                   >
                     {court.name}
@@ -280,8 +270,7 @@ export default function CourtBoard() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.5, delay: 0.3 }}
-                    className="text-sm md:text-lg leading-relaxed break-words"
-                    style={{ color: '#0E4C58', opacity: 0.8 }}
+                    className="text-sm md:text-lg leading-relaxed break-words text-muted-foreground"
                   >
                     {isTildaStone ? "Attleboro, MA" : `${court.city}, ${court.state}`}
                     {!isTildaStone && !isNorthAttleboro && court.location && ` • ${court.location}`}
@@ -300,16 +289,13 @@ export default function CourtBoard() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="relative overflow-hidden rounded-xl shadow-sm p-6 md:p-8"
-            style={{
-              background: '#ffffff',
-            }}
+            className="relative overflow-hidden rounded-xl shadow-sm p-6 md:p-8 bg-card"
           >
             <motion.h2
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.3 }}
-              className="text-3xl md:text-4xl font-semibold text-slate-800 text-center mb-8"
+              className="text-3xl md:text-4xl font-semibold text-foreground text-center mb-8"
             >
               Join Pickleball Citi and Take Your Game to the Next Level
             </motion.h2>
@@ -319,13 +305,13 @@ export default function CourtBoard() {
                 initial={{ opacity: 0, x: -50 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.6, delay: 0.4 }}
-                className="space-y-3 p-6 rounded-lg border-2 border-lime-200 bg-gradient-to-br from-lime-50 to-white"
+                className="space-y-3 p-6 rounded-lg border-2 border-primary/30 bg-gradient-to-br from-primary/5 to-card"
               >
-                <h3 className="text-xl font-semibold text-lime-700 mb-3">Our Mission</h3>
-                <p className="text-slate-700 leading-7 text-sm">
+                <h3 className="text-xl font-semibold text-primary mb-3">Our Mission</h3>
+                <p className="text-foreground/80 leading-7 text-sm">
                   At Pickleball Citi, our mission is to grow the game of pickleball for all ages, skill levels, and abilities by fostering an inclusive environment that promotes health, social connection, good sportsmanship, and fun.
                 </p>
-                <p className="text-slate-700 leading-7 text-sm">
+                <p className="text-foreground/80 leading-7 text-sm">
                   We are committed to providing a welcoming atmosphere, supporting recreational enjoyment and competitive excellence through well-organized play, and engaging the community.
                 </p>
               </motion.div>
@@ -334,13 +320,13 @@ export default function CourtBoard() {
                 initial={{ opacity: 0, x: -50 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.6, delay: 0.6 }}
-                className="space-y-3 p-6 rounded-lg border-2 border-lime-200 bg-gradient-to-br from-lime-50 to-white"
+                className="space-y-3 p-6 rounded-lg border-2 border-primary/30 bg-gradient-to-br from-primary/5 to-card"
               >
-                <h3 className="text-xl font-semibold text-lime-700 mb-3">How We Support Players</h3>
-                <p className="text-slate-700 leading-7 text-sm mb-3">
+                <h3 className="text-xl font-semibold text-primary mb-3">How We Support Players</h3>
+                <p className="text-foreground/80 leading-7 text-sm mb-3">
                   We are dedicated to helping athletes of all levels reach their full potential. Our comprehensive approach includes:
                 </p>
-                <ul className="list-disc pl-5 space-y-1 text-slate-700 text-sm">
+                <ul className="list-disc pl-5 space-y-1 text-foreground/80 text-sm">
                   <li>Personalized training programs</li>
                   <li>Expert coaches with proven track records</li>
                   <li>Recreational and competitive excellence</li>
@@ -353,10 +339,10 @@ export default function CourtBoard() {
                 initial={{ opacity: 0, x: -50 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.6, delay: 0.8 }}
-                className="space-y-3 p-6 rounded-lg border-2 border-lime-200 bg-gradient-to-br from-lime-50 to-white"
+                className="space-y-3 p-6 rounded-lg border-2 border-primary/30 bg-gradient-to-br from-primary/5 to-card"
               >
-                <h3 className="text-xl font-semibold text-lime-700 mb-3">Start Playing with Us</h3>
-                <p className="text-slate-700 leading-7 text-sm font-medium">
+                <h3 className="text-xl font-semibold text-primary mb-3">Start Playing with Us</h3>
+                <p className="text-foreground/80 leading-7 text-sm font-medium">
                   Whether you're a beginner looking to learn the fundamentals or an experienced player looking to fine-tune your technique, join us today and take the first step towards becoming a better athlete!
                 </p>
               </motion.div>

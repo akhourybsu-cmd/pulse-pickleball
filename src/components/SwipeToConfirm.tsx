@@ -221,10 +221,10 @@ const SwipeToConfirm = ({
           ref={handleRef}
           onMouseDown={handleMouseDown}
           onTouchStart={handleTouchStart}
-          className={cn(
-            "absolute left-1 top-1 bottom-1 flex items-center justify-center rounded-full cursor-grab active:cursor-grabbing transition-all duration-100",
-            isConfirmed ? "w-14 h-14 bg-white" : "w-14 bg-primary"
-          )}
+        className={cn(
+          "absolute left-1 top-1 bottom-1 flex items-center justify-center rounded-full cursor-grab active:cursor-grabbing transition-all duration-100",
+          isConfirmed ? "w-14 h-14 bg-card" : "w-14 bg-primary"
+        )}
           style={{
             left: isConfirmed ? 'auto' : '0.25rem',
             right: isConfirmed ? '0.25rem' : 'auto',
