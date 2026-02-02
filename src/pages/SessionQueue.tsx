@@ -332,7 +332,7 @@ export default function SessionQueue() {
                 variant: "destructive",
               });
               setTimeout(() => {
-                navigate('/dashboard');
+                navigate('/player/dashboard');
               }, 3000);
             }
           }
@@ -544,7 +544,7 @@ export default function SessionQueue() {
               <p className="text-muted-foreground mb-4">
                 There are no active sessions at the moment. Check back later or contact an admin.
               </p>
-              <Button onClick={() => navigate("/dashboard")} className="w-full">
+              <Button onClick={() => navigate("/player/dashboard")} className="w-full">
                 Back to Dashboard
               </Button>
             </CardContent>

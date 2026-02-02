@@ -10,7 +10,7 @@ const FirstMatchPage = () => {
   };
 
   const handleSkip = () => {
-    navigate("/dashboard");
+    navigate("/player/dashboard");
   };
 
   return (

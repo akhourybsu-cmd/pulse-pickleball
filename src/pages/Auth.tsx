@@ -26,7 +26,7 @@ const authSchema = z.object({
 
 const Auth = () => {
   const [searchParams] = useSearchParams();
-  const redirectPath = searchParams.get('redirect') || '/dashboard';
+  const redirectPath = searchParams.get('redirect') || '/player/dashboard';
   
   const [isLogin, setIsLogin] = useState(true);
   const [isForgotPassword, setIsForgotPassword] = useState(false);

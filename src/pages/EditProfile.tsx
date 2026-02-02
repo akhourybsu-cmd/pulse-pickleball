@@ -888,7 +888,7 @@ const EditProfile = () => {
           </Card>
 
           <div className="flex gap-4 justify-end">
-            <Button variant="outline" onClick={() => navigate("/dashboard")}>
+            <Button variant="outline" onClick={() => navigate("/player/dashboard")}>
               Cancel
             </Button>
             <Button onClick={handleSave} disabled={saving}>

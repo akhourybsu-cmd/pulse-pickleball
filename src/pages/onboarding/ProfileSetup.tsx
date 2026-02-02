@@ -29,7 +29,7 @@ const ProfileSetupPage = () => {
   };
 
   const handleSkip = () => {
-    navigate("/dashboard");
+    navigate("/player/dashboard");
   };
 
   if (loading || !userId) {

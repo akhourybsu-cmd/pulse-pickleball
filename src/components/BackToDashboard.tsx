@@ -14,7 +14,7 @@ export function BackToDashboard({ onNavigate, className }: BackToDashboardProps)
     if (onNavigate && !onNavigate()) {
       return;
     }
-    navigate("/dashboard");
+    navigate("/player/dashboard");
   };
 
   return (

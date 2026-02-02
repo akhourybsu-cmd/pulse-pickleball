@@ -16,7 +16,7 @@ const FAQ = () => {
     <div className="min-h-screen bg-background">
       <nav className="bg-secondary border-b border-secondary-foreground/10 shadow-sm">
         <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-5 flex items-center justify-between h-[72px]">
-          <Link to="/dashboard">
+          <Link to="/player/dashboard">
             <img src={logo} alt="PULSE Logo" className="h-[60px] sm:h-[75px] w-auto cursor-pointer hover:opacity-80 transition-opacity" />
           </Link>
           <ThemeToggle />

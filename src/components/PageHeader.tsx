@@ -39,7 +39,7 @@ export function PageHeader({ userId }: PageHeaderProps) {
   return (
     <nav className="bg-secondary border-b border-secondary-foreground/10 shadow-sm">
       <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-5 flex items-center justify-between h-[72px]">
-        <Link to="/dashboard">
+        <Link to="/player/dashboard">
           <img 
             src={logo} 
             alt="PULSE Logo" 
