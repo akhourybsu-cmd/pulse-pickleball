@@ -48,6 +48,13 @@ interface TournamentCustomization {
   organizer_message?: string | null;
 }
 
+interface TournamentEventSettings {
+  require_partner_account?: boolean;
+  max_events_per_player?: number;
+  check_in_window_hours?: number;
+  allow_player_score_entry?: boolean;
+}
+
 interface TournamentEvent {
   id: string;
   name: string;
@@ -65,6 +72,11 @@ interface TournamentEvent {
     format: string;
     max_teams: number | null;
     description: string | null;
+    skill_level_min?: number | null;
+    skill_level_max?: number | null;
+    age_min?: number | null;
+    gender?: string | null;
+    play_type?: string | null;
   }>;
 }
 
@@ -73,6 +85,7 @@ export default function TournamentLanding() {
   const navigate = useNavigate();
   const [event, setEvent] = useState<TournamentEvent | null>(null);
   const [customization, setCustomization] = useState<TournamentCustomization | null>(null);
+  const [eventSettings, setEventSettings] = useState<TournamentEventSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
 
@@ -95,7 +108,7 @@ export default function TournamentLanding() {
       .from("tournaments_events")
       .select(`
         *,
-        divisions:tournaments_divisions(id, name, format, max_teams, description)
+        divisions:tournaments_divisions(id, name, format, max_teams, description, skill_level_min, skill_level_max, age_min, gender, play_type)
       `)
       .eq("id", slug)
       .eq("public_view_enabled", true)
@@ -108,6 +121,30 @@ export default function TournamentLanding() {
     }
 
     setEvent(eventData);
+
+    // Fetch event settings
+    const session = await supabase.auth.getSession();
+    const token = session.data.session?.access_token;
+    
+    try {
+      const settingsResponse = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/tournament_event_settings?event_id=eq.${slug}`,
+        {
+          headers: {
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      if (settingsResponse.ok) {
+        const settingsData = await settingsResponse.json();
+        if (settingsData.length > 0) {
+          setEventSettings(settingsData[0] as TournamentEventSettings);
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching event settings:", err);
+    }
 
     const { data: customData, error: customError } = await supabase
       .from("tournament_customization")
@@ -214,7 +251,7 @@ export default function TournamentLanding() {
       />
 
       {/* Quick Facts Grid */}
-      <TournamentQuickFacts event={event} />
+      <TournamentQuickFacts event={event} eventSettings={eventSettings} />
 
       {/* About Section */}
       {customization?.about_markdown && (

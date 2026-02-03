@@ -3512,6 +3512,47 @@ export type Database = {
           },
         ]
       }
+      tournament_email_templates: {
+        Row: {
+          body_template: string
+          created_at: string | null
+          enabled: boolean | null
+          event_id: string
+          id: string
+          subject: string
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          body_template: string
+          created_at?: string | null
+          enabled?: boolean | null
+          event_id: string
+          id?: string
+          subject: string
+          type: string
+          updated_at?: string | null
+        }
+        Update: {
+          body_template?: string
+          created_at?: string | null
+          enabled?: boolean | null
+          event_id?: string
+          id?: string
+          subject?: string
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournament_email_templates_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tournament_event_settings: {
         Row: {
           age_determination_date: string | null
