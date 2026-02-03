@@ -336,7 +336,7 @@ export default function RoundRobinHub() {
         {/* Top navigation */}
         <div className="relative z-20 border-b border-white/10">
           <div className="container max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-            <BackToDashboard className="text-white/80 hover:text-white" />
+            <BackToDashboard variant="light-on-dark" />
             <Button 
               onClick={() => navigate("/round-robin/create")}
               size="sm"
