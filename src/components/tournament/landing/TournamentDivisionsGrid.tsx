@@ -3,9 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Users, ChevronRight } from "lucide-react";
+import { Users, ChevronRight, Trophy, Clock } from "lucide-react";
 import { motion } from "framer-motion";
-import { formatTournamentLabel } from "@/lib/formatLabels";
+import { formatTournamentLabel, formatSkillLevelRange, formatGenderLabel, formatAgeGroupLabel } from "@/lib/formatLabels";
+import { differenceInDays, differenceInHours, isPast } from "date-fns";
 
 interface Division {
   id: string;
@@ -14,17 +15,46 @@ interface Division {
   max_teams: number | null;
   description: string | null;
   registered_count?: number;
+  skill_level_min?: number | null;
+  skill_level_max?: number | null;
+  age_group?: string | null;
+  age_min?: number | null;
+  age_max?: number | null;
+  gender?: string | null;
+  play_type?: string | null;
+  registration_fee?: number | null;
+  early_bird_fee?: number | null;
+  early_bird_deadline?: string | null;
 }
 
 interface TournamentDivisionsGridProps {
   divisions: Division[];
   eventId: string;
+  eventFee?: number | null;
 }
 
-export function TournamentDivisionsGrid({ divisions, eventId }: TournamentDivisionsGridProps) {
+export function TournamentDivisionsGrid({ divisions, eventId, eventFee }: TournamentDivisionsGridProps) {
   const navigate = useNavigate();
 
   if (!divisions || divisions.length === 0) return null;
+
+  const getEarlyBirdInfo = (division: Division) => {
+    if (!division.early_bird_fee || !division.early_bird_deadline) return null;
+    const deadline = new Date(division.early_bird_deadline);
+    if (isPast(deadline)) return null;
+    
+    const daysLeft = differenceInDays(deadline, new Date());
+    const hoursLeft = differenceInHours(deadline, new Date());
+    
+    return {
+      fee: division.early_bird_fee,
+      regularFee: division.registration_fee || eventFee || 0,
+      savings: (division.registration_fee || eventFee || 0) - division.early_bird_fee,
+      daysLeft,
+      hoursLeft,
+      urgentText: daysLeft <= 0 ? `${hoursLeft}h left` : daysLeft <= 3 ? `${daysLeft}d left` : null,
+    };
+  };
 
   return (
     <section className="py-12 md:py-24 px-4 bg-muted/30">
@@ -51,6 +81,10 @@ export function TournamentDivisionsGrid({ divisions, eventId }: TournamentDivisi
             const spotsLeft = maxTeams - registeredCount;
             const isAlmostFull = fillPercentage > 75;
             const isFull = fillPercentage >= 100;
+            const earlyBird = getEarlyBirdInfo(division);
+            
+            const hasSkillLevel = division.skill_level_min || division.skill_level_max;
+            const hasAgeRestriction = division.age_group || division.age_min || division.age_max;
 
             return (
               <motion.div
@@ -70,12 +104,19 @@ export function TournamentDivisionsGrid({ divisions, eventId }: TournamentDivisi
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between gap-2">
                       <CardTitle className="text-xl">{division.name}</CardTitle>
-                      <Badge 
-                        variant="secondary" 
-                        className="shrink-0 text-xs"
-                      >
-                        {formatTournamentLabel(division.format)}
-                      </Badge>
+                      <div className="flex flex-wrap gap-1 justify-end">
+                        <Badge 
+                          variant="secondary" 
+                          className="shrink-0 text-xs"
+                        >
+                          {formatTournamentLabel(division.format)}
+                        </Badge>
+                        {division.gender && division.gender !== "open" && (
+                          <Badge variant="outline" className="shrink-0 text-xs">
+                            {formatGenderLabel(division.gender)}
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                     {division.description && (
                       <CardDescription className="mt-2">
@@ -85,6 +126,47 @@ export function TournamentDivisionsGrid({ divisions, eventId }: TournamentDivisi
                   </CardHeader>
                   
                   <CardContent className="space-y-4">
+                    {/* Eligibility Badges */}
+                    {(hasSkillLevel || hasAgeRestriction) && (
+                      <div className="flex flex-wrap gap-2">
+                        {hasSkillLevel && (
+                          <Badge variant="secondary" className="text-xs bg-primary/10 text-primary border-primary/20">
+                            <Trophy className="h-3 w-3 mr-1" />
+                            {formatSkillLevelRange(division.skill_level_min, division.skill_level_max)}
+                          </Badge>
+                        )}
+                        {hasAgeRestriction && (
+                          <Badge variant="secondary" className="text-xs bg-muted">
+                            {formatAgeGroupLabel(division.age_group, division.age_min, division.age_max)}
+                          </Badge>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Early Bird Pricing */}
+                    {earlyBird && (
+                      <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-green-600">Early Bird Price</p>
+                            <div className="flex items-baseline gap-2">
+                              <span className="text-lg font-bold text-green-600">${earlyBird.fee}</span>
+                              <span className="text-sm text-muted-foreground line-through">${earlyBird.regularFee}</span>
+                            </div>
+                          </div>
+                          {earlyBird.urgentText && (
+                            <Badge variant="destructive" className="text-xs">
+                              <Clock className="h-3 w-3 mr-1" />
+                              {earlyBird.urgentText}
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-xs text-green-600 mt-1">
+                          Save ${earlyBird.savings.toFixed(0)}
+                        </p>
+                      </div>
+                    )}
+
                     {/* Registration Progress */}
                     <div className="space-y-2">
                       <div className="flex items-center justify-between text-sm">

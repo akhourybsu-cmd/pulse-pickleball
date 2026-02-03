@@ -3512,6 +3512,86 @@ export type Database = {
           },
         ]
       }
+      tournament_event_settings: {
+        Row: {
+          age_determination_date: string | null
+          allow_player_score_entry: boolean | null
+          allow_same_format_multiple: boolean | null
+          auto_email_court_assignment: boolean | null
+          auto_email_on_payment: boolean | null
+          auto_email_on_register: boolean | null
+          check_in_window_hours: number | null
+          court_transition_minutes: number | null
+          created_at: string | null
+          default_match_duration: number | null
+          event_id: string | null
+          id: string
+          max_events_per_day: number | null
+          max_events_per_player: number | null
+          require_emergency_contact: boolean | null
+          require_full_address: boolean | null
+          require_match_ready_confirm: boolean | null
+          require_partner_account: boolean | null
+          score_auto_confirm_minutes: number | null
+          sms_enabled: boolean | null
+          updated_at: string | null
+        }
+        Insert: {
+          age_determination_date?: string | null
+          allow_player_score_entry?: boolean | null
+          allow_same_format_multiple?: boolean | null
+          auto_email_court_assignment?: boolean | null
+          auto_email_on_payment?: boolean | null
+          auto_email_on_register?: boolean | null
+          check_in_window_hours?: number | null
+          court_transition_minutes?: number | null
+          created_at?: string | null
+          default_match_duration?: number | null
+          event_id?: string | null
+          id?: string
+          max_events_per_day?: number | null
+          max_events_per_player?: number | null
+          require_emergency_contact?: boolean | null
+          require_full_address?: boolean | null
+          require_match_ready_confirm?: boolean | null
+          require_partner_account?: boolean | null
+          score_auto_confirm_minutes?: number | null
+          sms_enabled?: boolean | null
+          updated_at?: string | null
+        }
+        Update: {
+          age_determination_date?: string | null
+          allow_player_score_entry?: boolean | null
+          allow_same_format_multiple?: boolean | null
+          auto_email_court_assignment?: boolean | null
+          auto_email_on_payment?: boolean | null
+          auto_email_on_register?: boolean | null
+          check_in_window_hours?: number | null
+          court_transition_minutes?: number | null
+          created_at?: string | null
+          default_match_duration?: number | null
+          event_id?: string | null
+          id?: string
+          max_events_per_day?: number | null
+          max_events_per_player?: number | null
+          require_emergency_contact?: boolean | null
+          require_full_address?: boolean | null
+          require_match_ready_confirm?: boolean | null
+          require_partner_account?: boolean | null
+          score_auto_confirm_minutes?: number | null
+          sms_enabled?: boolean | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournament_event_settings_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: true
+            referencedRelation: "tournaments_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tournament_registration_notifications: {
         Row: {
           id: string
@@ -3681,38 +3761,80 @@ export type Database = {
       }
       tournaments_divisions: {
         Row: {
+          age_group: string | null
+          age_max: number | null
+          age_min: number | null
           created_at: string
           description: string | null
+          early_bird_deadline: string | null
+          early_bird_fee: number | null
+          estimated_match_duration: number | null
           event_id: string
           format: string
+          gender: string | null
           id: string
           max_teams: number | null
+          min_teams: number | null
           name: string
+          play_type: string | null
+          registration_fee: number | null
+          scheduled_day: number | null
+          scheduled_start_time: string | null
           scoring_ruleset_id: string | null
+          skill_level_max: number | null
+          skill_level_min: number | null
           status: Database["public"]["Enums"]["division_status"]
           updated_at: string
         }
         Insert: {
+          age_group?: string | null
+          age_max?: number | null
+          age_min?: number | null
           created_at?: string
           description?: string | null
+          early_bird_deadline?: string | null
+          early_bird_fee?: number | null
+          estimated_match_duration?: number | null
           event_id: string
           format?: string
+          gender?: string | null
           id?: string
           max_teams?: number | null
+          min_teams?: number | null
           name: string
+          play_type?: string | null
+          registration_fee?: number | null
+          scheduled_day?: number | null
+          scheduled_start_time?: string | null
           scoring_ruleset_id?: string | null
+          skill_level_max?: number | null
+          skill_level_min?: number | null
           status?: Database["public"]["Enums"]["division_status"]
           updated_at?: string
         }
         Update: {
+          age_group?: string | null
+          age_max?: number | null
+          age_min?: number | null
           created_at?: string
           description?: string | null
+          early_bird_deadline?: string | null
+          early_bird_fee?: number | null
+          estimated_match_duration?: number | null
           event_id?: string
           format?: string
+          gender?: string | null
           id?: string
           max_teams?: number | null
+          min_teams?: number | null
           name?: string
+          play_type?: string | null
+          registration_fee?: number | null
+          scheduled_day?: number | null
+          scheduled_start_time?: string | null
           scoring_ruleset_id?: string | null
+          skill_level_max?: number | null
+          skill_level_min?: number | null
           status?: Database["public"]["Enums"]["division_status"]
           updated_at?: string
         }
@@ -3837,6 +3959,7 @@ export type Database = {
       tournaments_matches: {
         Row: {
           actual_duration_minutes: number | null
+          auto_confirmed: boolean | null
           completed_at: string | null
           court_id: string | null
           created_at: string
@@ -3850,6 +3973,10 @@ export type Database = {
           id: string
           match_number: number
           notes: string | null
+          opponent_confirmed: boolean | null
+          opponent_confirmed_at: string | null
+          player_score_submitted_at: string | null
+          player_score_submitted_by: string | null
           round_number: number
           scheduled_time: string | null
           score_edited_at: string | null
@@ -3864,6 +3991,7 @@ export type Database = {
         }
         Insert: {
           actual_duration_minutes?: number | null
+          auto_confirmed?: boolean | null
           completed_at?: string | null
           court_id?: string | null
           created_at?: string
@@ -3877,6 +4005,10 @@ export type Database = {
           id?: string
           match_number: number
           notes?: string | null
+          opponent_confirmed?: boolean | null
+          opponent_confirmed_at?: string | null
+          player_score_submitted_at?: string | null
+          player_score_submitted_by?: string | null
           round_number: number
           scheduled_time?: string | null
           score_edited_at?: string | null
@@ -3891,6 +4023,7 @@ export type Database = {
         }
         Update: {
           actual_duration_minutes?: number | null
+          auto_confirmed?: boolean | null
           completed_at?: string | null
           court_id?: string | null
           created_at?: string
@@ -3904,6 +4037,10 @@ export type Database = {
           id?: string
           match_number?: number
           notes?: string | null
+          opponent_confirmed?: boolean | null
+          opponent_confirmed_at?: string | null
+          player_score_submitted_at?: string | null
+          player_score_submitted_by?: string | null
           round_number?: number
           scheduled_time?: string | null
           score_edited_at?: string | null
@@ -3991,7 +4128,9 @@ export type Database = {
           id: string
           player1_id: string | null
           player2_id: string | null
+          seed_locked: boolean | null
           seed_number: number | null
+          seed_source: string | null
           team_name: string
           updated_at: string
         }
@@ -4001,7 +4140,9 @@ export type Database = {
           id?: string
           player1_id?: string | null
           player2_id?: string | null
+          seed_locked?: boolean | null
           seed_number?: number | null
+          seed_source?: string | null
           team_name: string
           updated_at?: string
         }
@@ -4011,7 +4152,9 @@ export type Database = {
           id?: string
           player1_id?: string | null
           player2_id?: string | null
+          seed_locked?: boolean | null
           seed_number?: number | null
+          seed_source?: string | null
           team_name?: string
           updated_at?: string
         }
