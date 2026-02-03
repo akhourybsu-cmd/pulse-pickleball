@@ -1,441 +1,283 @@
 
 
-# Tournament System Comprehensive Settings Overhaul
+# Tournament System Review - Issues & Fine-Tuning Plan
 
 ## Executive Summary
 
-Based on analysis of the current PULSE tournament system and best practices from pickleballtournaments.com and USA Pickleball standards, this plan outlines the missing settings, configurations, and front-end integrations needed to create a fully functional, professional-grade tournament management system.
+After a comprehensive review of the tournament system, I've identified **17 critical issues** across 4 categories that need to be addressed to ensure all components work together properly. The main problems are:
+
+1. **New components created but not integrated** into the admin UI
+2. **Database schema mismatches** between components and actual tables
+3. **Missing feature access control** for new tournament features
+4. **Incomplete data flow** between settings and the components that use them
 
 ---
 
-## Current State Analysis
+## Category A: Orphaned Components (Not Integrated)
 
-### What Exists
+### Issue A1: TournamentSettingsPanel Not Used
 
-| Category | Current Implementation |
-|----------|------------------------|
-| **Event Settings** | Basic fields: name, dates, location, description, registration dates, fees, waitlist |
-| **Divisions** | Name, format (round_robin only), max_teams, scoring_ruleset |
-| **Registration** | 4-step wizard: division, team info, additional info, review |
-| **Customization** | Hero images, about markdown, venue details, policies, sponsors, contact info |
-| **Operations** | Check-in dashboard, court assignment, score entry, bracket view |
+**Problem**: The `TournamentSettingsPanel` component exists but is not rendered anywhere. The "Settings" tab in `TournamentEventDetail.tsx` shows legacy manual fields instead of using the new comprehensive panel.
 
-### Critical Gaps Identified
+**Location**: `src/pages/TournamentEventDetail.tsx` lines 417-495
 
-| Gap Category | Missing Features | Priority |
-|--------------|------------------|----------|
-| **Division Configuration** | Skill levels, age groups, gender, play type (singles/doubles/mixed) | High |
-| **Advanced Formats** | Single/double elimination, pool play, hybrid formats | High |
-| **Registration Settings** | Partner requirements, max events per player, early bird pricing | High |
-| **Scheduling** | Match duration estimates, time slots, court allocation | High |
-| **Player Score Entry** | Self-reporting, auto-confirm timers | Medium |
-| **Seeding** | Manual seeding, rating-based seeding | Medium |
-| **Communication** | SMS/email templates, automated notifications | Medium |
-| **Check-in** | Match-ready status vs tournament check-in | Low |
-
----
-
-## Implementation Plan
-
-### Phase 1: Division Settings Enhancement (Database + UI)
-
-#### 1A. New Database Columns for `tournaments_divisions`
-
-Add comprehensive division configuration fields:
-
-```sql
--- New columns for tournaments_divisions table
-skill_level_min DECIMAL(3,2)       -- e.g., 3.0, 3.5, 4.0
-skill_level_max DECIMAL(3,2)       -- e.g., 3.5, 4.0, 4.5
-age_group TEXT                      -- 'junior', 'adult', 'senior'
-age_min INTEGER                     -- e.g., 50, 60, 70
-age_max INTEGER                     -- e.g., NULL for no upper limit
-gender TEXT                         -- 'men', 'women', 'mixed', 'open'
-play_type TEXT                      -- 'singles', 'doubles', 'mixed_doubles'
-registration_fee DECIMAL(10,2)      -- Division-specific fee (overrides event fee)
-early_bird_fee DECIMAL(10,2)        -- Discounted early registration
-early_bird_deadline TIMESTAMPTZ     -- When early bird expires
-estimated_match_duration INTEGER    -- Minutes per match for scheduling
-min_teams INTEGER                   -- Minimum teams to run division
-scheduled_start_time TIME           -- When this division starts
-scheduled_day INTEGER               -- Day 1, 2, etc. for multi-day
+**Fix**: Replace the legacy settings content in the "Settings" TabsContent with:
+```tsx
+<TournamentSettingsPanel eventId={eventId!} />
 ```
 
-#### 1B. New `tournament_event_settings` Table
+---
 
-Create dedicated settings table for advanced event configuration:
+### Issue A2: TournamentScheduler Not Accessible
 
-```sql
-CREATE TABLE tournament_event_settings (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  event_id UUID REFERENCES tournaments_events(id) ON DELETE CASCADE,
-  
-  -- Registration Controls
-  max_events_per_player INTEGER DEFAULT 3,
-  max_events_per_day INTEGER,
-  require_partner_account BOOLEAN DEFAULT false,
-  require_emergency_contact BOOLEAN DEFAULT true,
-  require_full_address BOOLEAN DEFAULT false,
-  allow_same_format_multiple BOOLEAN DEFAULT false,
-  
-  -- Player Score Entry
-  allow_player_score_entry BOOLEAN DEFAULT false,
-  score_auto_confirm_minutes INTEGER DEFAULT 3,
-  
-  -- Check-in Settings
-  check_in_window_hours INTEGER DEFAULT 1,
-  require_match_ready_confirm BOOLEAN DEFAULT false,
-  
-  -- Scheduling
-  default_match_duration INTEGER DEFAULT 30,
-  court_transition_minutes INTEGER DEFAULT 5,
-  
-  -- Communication
-  auto_email_on_register BOOLEAN DEFAULT true,
-  auto_email_on_payment BOOLEAN DEFAULT true,
-  auto_email_court_assignment BOOLEAN DEFAULT false,
-  sms_enabled BOOLEAN DEFAULT false,
-  
-  -- Age Determination
-  age_determination_date DATE,  -- Default: Dec 31 of tournament year
-  
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
+**Problem**: The `TournamentScheduler` component is complete but has no route or tab to access it from the admin interface.
+
+**Location**: Component exists at `src/components/tournament/scheduling/TournamentScheduler.tsx`
+
+**Fix**: Add a "Scheduler" tab to `TournamentEventDetail.tsx` that renders:
+```tsx
+<TournamentScheduler 
+  eventId={eventId!} 
+  startDate={event.start_date} 
+  endDate={event.end_date} 
+  numCourts={4} // or fetch from tournament_courts
+/>
 ```
-
-#### 1C. Update `CreateDivisionDialog.tsx` and `EditDivisionDialog.tsx`
-
-Add new form fields for:
-- Skill level range selector (3.0 - 5.0+)
-- Age group selector with age brackets
-- Gender/play type selector
-- Division-specific pricing with early bird option
-- Estimated match duration
-- Minimum teams to run
-- Scheduling preferences (day/time)
 
 ---
 
-### Phase 2: Event Settings Expansion (UI Components)
+### Issue A3: SeedingManager Not Used
 
-#### 2A. Create `TournamentSettingsPage.tsx`
+**Problem**: The `SeedingManager` component exists but the `TeamsPanel` still uses an inline seed number input instead of the full seeding manager.
 
-New dedicated settings page with organized tabs:
+**Location**: `src/components/tournament/TeamsPanel.tsx` lines 86-114 (legacy seed editing)
 
-```
-Tabs:
-├── General (existing fields: dates, location)
-├── Registration (new: max events, partner requirements)
-├── Divisions (quick overview of all divisions)
-├── Scheduling (match durations, court allocation)
-├── Communication (email/SMS settings)
-├── Advanced (player score entry, age determination)
-```
-
-#### 2B. Update `EditTournamentDialog.tsx`
-
-Add missing settings:
-- Max events per player/day
-- Partner account requirement toggle
-- Emergency contact required toggle
-- Age determination date picker
+**Fix**: Add a "Manage Seeding" button in `TeamsPanel` or `TournamentDivisionDetail` that opens the `SeedingManager` in a dialog or dedicated view.
 
 ---
 
-### Phase 3: Division Card System Enhancement
+### Issue A4: PlayerScoreEntry Not Connected
 
-#### 3A. Create `DivisionCardAdvanced.tsx`
+**Problem**: The `PlayerScoreEntry` component for player self-reporting is complete but:
+- Not integrated into any player-facing page
+- `ScoreEntryDialog` (admin) doesn't check the `allow_player_score_entry` setting
+- No route exists for players to access score entry
 
-Display division info with:
-- Skill level badge (e.g., "3.5 - 4.0")
-- Age group badge (e.g., "50+", "19+")
-- Gender/format indicator
-- Registration count with progress bar
-- Early bird pricing countdown
-- "Division Filling Fast" warning at 75%
-
-#### 3B. Update `TournamentDivisionsGrid.tsx`
-
-- Show all new division attributes
-- Filter/sort by skill level, age, gender
-- Display pricing tiers (early bird vs regular)
+**Fix**: 
+1. Create a player-facing score entry route at `/tournament/{eventId}/match/{matchId}/score`
+2. Update `ScoreEntryDialog` to conditionally show player entry option based on event settings
 
 ---
 
-### Phase 4: Registration Flow Enhancement
+### Issue A5: EmailTemplateEditor Not Accessible
 
-#### 4A. Update Registration Steps
+**Problem**: The `EmailTemplateEditor` component exists but there's no UI path to access it from tournament administration.
 
-**Step 1 - Division Selection Enhancement:**
-- Filter divisions by skill level compatibility
-- Show age eligibility warnings
-- Display partner requirements
-- Show early bird savings
+**Location**: `src/components/tournament/communication/EmailTemplateEditor.tsx`
 
-**Step 2 - Team Info Enhancement:**
-- Partner search with account requirement option
-- Partner skill level validation
-- Multiple event selection for same player
+**Fix**: Add "Email Templates" section to the Settings tab or create a Communication sub-tab in `TournamentEventDetail.tsx`.
 
-**Step 3 - Additional Info Enhancement:**
-- Dynamic fields based on event settings
-- Address collection if required
-- Multiple emergency contacts
+---
 
-**Step 4 - Review Enhancement:**
-- Total fee breakdown (base + per-division)
-- Early bird discount display
-- Policy acceptance with timestamp
+## Category B: Database/Schema Alignment Issues
 
-#### 4B. Create Registration Validation Logic
+### Issue B1: TournamentScheduler Uses Wrong Division IDs
 
+**Problem**: In `TournamentScheduler.tsx` line 108, the matches query uses `divisions.map(d => d.id)` but at that point `divisions` state is empty (it was just set on line 89 but the state update is async).
+
+**Code**:
 ```typescript
-// New validation functions
-validateSkillLevel(playerRating, divisionMin, divisionMax)
-validateAgeEligibility(playerDOB, divisionAgeMin, divisionAgeMax, ageDate)
-validateEventLimits(playerId, eventId, maxEvents)
-validatePartnerRequirements(partnerId, requireAccount)
+// Line 89: Just set divisions
+setDivisions(divisionsData);
+
+// Line 108: divisions is still empty []!
+.in("division_id", divisions.map(d => d.id) || [])
 ```
+
+**Fix**: Use `divisionsData.map(d => d.id)` directly or restructure the fetch logic.
 
 ---
 
-### Phase 5: Scheduling & Court Management
+### Issue B2: SeedingManager Missing captain_user_id Query
 
-#### 5A. Create `TournamentScheduler.tsx`
+**Problem**: `SeedingManager` fetches `player1_id` but the `send-court-assignment` edge function expects `captain_user_id`. The database uses `player1_id` and `player2_id`, not `captain_user_id`.
 
-New scheduling interface with:
-- Day planner with estimated duration
-- Court allocation matrix
-- Division time slot assignment
-- Conflict detection
-- Capacity simulator
+**Location**: `supabase/functions/send-court-assignment/index.ts` line 47
 
-#### 5B. Update Match Duration Estimates
-
-```typescript
-const MATCH_DURATION_ESTIMATES = {
-  games_to_11: 20,      // minutes
-  games_to_15: 30,
-  games_to_21: 45,
-  best_of_3_to_11: 45,
-  best_of_3_to_15: 60,
-};
-```
+**Fix**: Update edge function to use `player1_id` and `player2_id` instead of `captain_user_id` and `partner_user_id`.
 
 ---
 
-### Phase 6: Player Score Entry System
+### Issue B3: opponent_confirmed_at Column Missing in Query
 
-#### 6A. Create `PlayerScoreEntry.tsx`
+**Problem**: `PlayerScoreEntry` updates `opponent_confirmed_at` (line 171) but this column was added in migration. Need to verify it's being selected properly.
 
-Mobile-optimized score entry:
-- Winner submits score
-- Opponent confirms/disputes
-- Auto-confirm timer display
-- Dispute resolution flow
+**Fix**: Ensure the select query on line 90 includes `opponent_confirmed_at` field.
 
-#### 6B. Create `ScoreConfirmationDialog.tsx`
+---
 
-- Score display with team names
-- Confirm/Dispute buttons
-- Timer countdown
-- Dispute reason input
+### Issue B4: Registration Doesn't Check Event Settings
 
-#### 6C. Update Match Progression Logic
+**Problem**: `TournamentRegister.tsx` doesn't fetch or use `tournament_event_settings` to:
+- Validate max events per player
+- Enforce partner account requirement
+- Collect required info (emergency contact, address)
 
+**Fix**: Fetch settings in registration flow and apply validation logic.
+
+---
+
+## Category C: Feature Access Control Gaps
+
+### Issue C1: New Features Not in Feature List
+
+**Problem**: The `tournamentFeatures.ts` defines feature gates, but new features (Scheduler, Seeding, Player Score Entry) aren't added.
+
+**Location**: `src/lib/tournamentFeatures.ts`
+
+**Fix**: Add new features:
 ```typescript
-// Auto-confirm logic
-if (score_submitted && !opponent_response && time_elapsed > auto_confirm_minutes) {
-  confirmScore();
-  advanceBracket();
-  notifyNextMatch();
+{
+  id: "advanced_seeding",
+  name: "Advanced Seeding",
+  requiredTier: "plus",
+},
+{
+  id: "visual_scheduler",
+  name: "Visual Scheduler",
+  requiredTier: "pro",
+},
+{
+  id: "player_score_entry",
+  name: "Player Score Entry",
+  requiredTier: "plus",
 }
 ```
 
 ---
 
-### Phase 7: Communication Templates
+## Category D: Data Flow & Integration Gaps
 
-#### 7A. Create `TournamentEmailTemplates.tsx`
+### Issue D1: Division Eligibility Not Validated on Register
 
-Customizable templates for:
-- Registration confirmation
-- Payment confirmation
-- Check-in reminder (24h, 1h before)
-- Court assignment notification
-- Match ready notification
-- Results confirmation
+**Problem**: Divisions now have `skill_level_min/max`, `age_min/max`, `gender` fields but `RegistrationStepDivision` only displays these badges - it doesn't actually validate player eligibility.
 
-#### 7B. Update Edge Functions
-
-Enhance existing functions:
-- `send-registration-confirmation`: Add event settings data
-- `send-tournament-reminders`: Add court/time info
-- Create `send-court-assignment`: New function for match notifications
+**Fix**: Add validation functions:
+- Compare player rating against division skill requirements
+- Calculate player age on the age determination date
+- Check gender compatibility
 
 ---
 
-### Phase 8: Seeding System
+### Issue D2: Early Bird Pricing Not Applied
 
-#### 8A. Create `SeedingManager.tsx`
+**Problem**: Divisions have `early_bird_fee` and `early_bird_deadline` but the registration flow doesn't calculate/display the correct price based on current date.
 
-- Manual drag-and-drop seeding
-- Auto-seed by PULSE rating
-- Auto-seed by DUPR rating (if available)
-- Random seeding option
-- Preview bracket with seeding
+**Fix**: Update `RegistrationStepDivision` and `RegistrationStepReview` to:
+1. Check if current date is before `early_bird_deadline`
+2. Display early bird price with savings callout
+3. Use correct fee in payment calculation
 
-#### 8B. Database Update
+---
 
-```sql
--- Add to tournaments_teams
-seed_source TEXT  -- 'manual', 'pulse_rating', 'dupr', 'random'
-seed_locked BOOLEAN DEFAULT false
+### Issue D3: TournamentQuickFacts Not Fetching All Data
+
+**Problem**: `TournamentQuickFacts` now accepts `eventSettings` prop but some dynamic facts depend on division data (skill levels, age groups) that isn't being aggregated.
+
+**Location**: `src/components/tournament/landing/TournamentQuickFacts.tsx`
+
+**Fix**: Aggregate min/max skill levels and age ranges across all divisions to display "3.0 - 4.5" instead of just first division's data.
+
+---
+
+### Issue D4: Court Assignment Edge Function Missing court_number Mapping
+
+**Problem**: The `send-court-assignment` function updates `court_number` (integer) but the scheduler works with `court_id` (UUID). These are different fields.
+
+**Fix**: Either:
+- Add court_number lookup from court_id, or
+- Update the edge function to accept court_id and look up the court name
+
+---
+
+### Issue D5: Realtime Hook Not Filtering by Division
+
+**Problem**: `useTournamentRealtime` subscribes to ALL changes on `tournaments_matches` table, not filtered by event or division. This could cause performance issues with many concurrent tournaments.
+
+**Fix**: Add filter to the subscription:
+```typescript
+.on('postgres_changes', {
+  event: '*',
+  schema: 'public',
+  table: 'tournaments_matches',
+  filter: `division_id=in.(${divisionIds.join(',')})`
+}, onMatchUpdate)
 ```
 
 ---
 
-### Phase 9: Front-End Integration Points
+## Implementation Priority Order
 
-#### 9A. Tournament Landing Page Updates
+### Sprint 1: Critical Integration (Fixes A1, A2, A3, B1)
+1. Integrate `TournamentSettingsPanel` into Settings tab
+2. Add Scheduler tab with proper data fetching fix
+3. Add Seeding access from division detail page
+4. Fix scheduler's division ID query bug
 
-Show on `TournamentLanding.tsx`:
-- Skill level requirements per division
-- Age brackets and eligibility
-- Early bird countdown timer
-- Remaining spots per division
-- Partner requirements notice
+### Sprint 2: Player Experience (Fixes A4, D1, D2)
+1. Create player score entry route
+2. Add eligibility validation to registration
+3. Implement early bird pricing logic
 
-#### 9B. Quick Facts Updates (`TournamentQuickFacts.tsx`)
+### Sprint 3: Data Integrity (Fixes B2, B3, B4, D3)
+1. Fix edge function column names
+2. Add settings validation to registration
+3. Aggregate division data for QuickFacts
 
-Add new fact cards:
-- Skill Level Range
-- Age Groups
-- Partner Required (Yes/No)
-- Early Bird ends in X days
-
-#### 9C. Division Grid Updates (`TournamentDivisionsGrid.tsx`)
-
-Display per division:
-- Skill level badge
-- Age bracket badge
-- Gender indicator
-- Pricing (early bird vs regular)
-- Fill percentage with progress bar
-
----
-
-## Database Migration Summary
-
-### New Table
-- `tournament_event_settings`
-
-### Altered Tables
-| Table | New Columns |
-|-------|-------------|
-| `tournaments_divisions` | skill_level_min, skill_level_max, age_group, age_min, age_max, gender, play_type, registration_fee, early_bird_fee, early_bird_deadline, estimated_match_duration, min_teams, scheduled_start_time, scheduled_day |
-| `tournaments_teams` | seed_source, seed_locked |
-| `tournaments_matches` | player_score_submitted_by, player_score_submitted_at, opponent_confirmed, opponent_confirmed_at, auto_confirmed |
-
----
-
-## New Components to Create
-
-### Settings Components
-1. `src/components/tournament/settings/TournamentSettingsPage.tsx`
-2. `src/components/tournament/settings/RegistrationSettingsTab.tsx`
-3. `src/components/tournament/settings/SchedulingSettingsTab.tsx`
-4. `src/components/tournament/settings/CommunicationSettingsTab.tsx`
-5. `src/components/tournament/settings/AdvancedSettingsTab.tsx`
-
-### Division Components
-6. `src/components/tournament/DivisionCardAdvanced.tsx`
-7. `src/components/tournament/DivisionFilterBar.tsx`
-8. `src/components/tournament/SkillLevelSelector.tsx`
-9. `src/components/tournament/AgeGroupSelector.tsx`
-
-### Scheduling Components
-10. `src/components/tournament/scheduling/TournamentScheduler.tsx`
-11. `src/components/tournament/scheduling/DayPlanner.tsx`
-12. `src/components/tournament/scheduling/CourtAllocationMatrix.tsx`
-13. `src/components/tournament/scheduling/CapacitySimulator.tsx`
-
-### Score Entry Components
-14. `src/components/tournament/scoring/PlayerScoreEntry.tsx`
-15. `src/components/tournament/scoring/ScoreConfirmationDialog.tsx`
-16. `src/components/tournament/scoring/DisputeResolutionFlow.tsx`
-
-### Seeding Components
-17. `src/components/tournament/seeding/SeedingManager.tsx`
-18. `src/components/tournament/seeding/DragDropSeeding.tsx`
-19. `src/components/tournament/seeding/BracketPreview.tsx`
-
-### Communication Components
-20. `src/components/tournament/communication/EmailTemplateEditor.tsx`
-21. `src/components/tournament/communication/NotificationPreview.tsx`
+### Sprint 4: Polish & Performance (Fixes A5, C1, D4, D5)
+1. Add email template editor UI access
+2. Add new feature definitions
+3. Fix court assignment mapping
+4. Optimize realtime subscriptions
 
 ---
 
 ## Files to Modify
 
-### Existing Components
-1. `src/components/tournament/CreateDivisionDialog.tsx` - Add all new division fields
-2. `src/components/tournament/EditDivisionDialog.tsx` - Add all new division fields
-3. `src/components/tournament/EditTournamentDialog.tsx` - Add event settings
-4. `src/components/tournament/landing/TournamentQuickFacts.tsx` - Add skill/age facts
-5. `src/components/tournament/landing/TournamentDivisionsGrid.tsx` - Show new attributes
-6. `src/components/tournament/RegistrationStepDivision.tsx` - Add filtering/validation
-7. `src/components/tournament/RegistrationStepTeamInfo.tsx` - Partner validation
-8. `src/components/tournament/ScoreEntryDialog.tsx` - Add player entry support
-9. `src/pages/TournamentRegister.tsx` - New validation logic
-10. `src/pages/TournamentLanding.tsx` - Display new settings
-
-### Edge Functions
-11. `supabase/functions/send-registration-confirmation/index.ts` - Include new data
-12. Create `supabase/functions/send-court-assignment/index.ts` - New function
+| File | Changes |
+|------|---------|
+| `src/pages/TournamentEventDetail.tsx` | Add Settings Panel, Scheduler tab, Email Templates |
+| `src/pages/TournamentDivisionDetail.tsx` | Add SeedingManager access |
+| `src/components/tournament/scheduling/TournamentScheduler.tsx` | Fix division ID query bug |
+| `src/components/tournament/RegistrationStepDivision.tsx` | Add eligibility validation, early bird pricing |
+| `src/components/tournament/RegistrationStepReview.tsx` | Show correct pricing |
+| `src/pages/TournamentRegister.tsx` | Fetch event settings, apply validation |
+| `src/lib/tournamentFeatures.ts` | Add new feature definitions |
+| `src/hooks/useTournamentRealtime.ts` | Add division filter |
+| `supabase/functions/send-court-assignment/index.ts` | Fix column names |
+| `src/components/tournament/landing/TournamentQuickFacts.tsx` | Aggregate division data |
 
 ---
 
-## Technical Implementation Order
+## New Files to Create
 
-### Sprint 1: Foundation (Database + Core Settings)
-1. Database migrations for new columns and tables
-2. Create `TournamentSettingsPage.tsx` with tabs
-3. Update division dialogs with new fields
-4. Add validation logic
-
-### Sprint 2: Division Management
-5. Create skill level and age group selectors
-6. Update division grid with filters
-7. Add early bird pricing logic
-8. Create capacity warnings
-
-### Sprint 3: Registration Enhancement
-9. Update registration steps with validation
-10. Add partner account requirements
-11. Implement event limits per player
-12. Add age eligibility checks
-
-### Sprint 4: Scheduling & Scoring
-13. Create scheduler interface
-14. Add player score entry
-15. Implement auto-confirm logic
-16. Add court assignment notifications
-
-### Sprint 5: Seeding & Polish
-17. Create seeding manager
-18. Add communication templates
-19. Final front-end integration
-20. Testing and refinement
+| File | Purpose |
+|------|---------|
+| `src/pages/TournamentMatchScore.tsx` | Player-facing score entry page |
+| `src/lib/tournamentValidation.ts` | Eligibility validation utilities |
+| `src/lib/tournamentPricing.ts` | Early bird pricing calculation |
 
 ---
 
-## Expected Outcomes
+## Expected Outcome
 
-1. **Professional Parity**: Feature set comparable to pickleballtournaments.com
-2. **USAP Compliance**: Support for official skill levels, age brackets, and formats
-3. **Organizer Efficiency**: Reduced manual work with auto-scheduling and player score entry
-4. **Player Experience**: Clear division eligibility, early bird incentives, real-time updates
-5. **Scalability**: Settings architecture supports future feature expansion
+After implementing these fixes:
+
+1. All new components will be accessible from the tournament admin UI
+2. Database queries will correctly reference existing columns
+3. Player eligibility will be validated before registration
+4. Early bird pricing will work correctly
+5. Player score entry will be available when enabled
+6. Realtime updates will be performant and scoped
+7. Court assignment emails will work with correct data
 
