@@ -1,18 +1,18 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { ChevronLeft, ChevronRight, CheckCircle } from "lucide-react";
-import { BackToDashboard } from "@/components/BackToDashboard";
+import { ChevronLeft, ChevronRight, CheckCircle, ArrowLeft } from "lucide-react";
 import { RegistrationStepDivision } from "@/components/tournament/RegistrationStepDivision";
 import { RegistrationStepTeamInfo } from "@/components/tournament/RegistrationStepTeamInfo";
 import { RegistrationStepAdditionalInfo } from "@/components/tournament/RegistrationStepAdditionalInfo";
 import { RegistrationStepReview } from "@/components/tournament/RegistrationStepReview";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import logo from "@/assets/pulse-logo-new.png";
 
 interface TournamentEvent {
   id: string;
@@ -280,15 +280,41 @@ export default function TournamentRegister() {
     }
   };
 
+  // Standard PULSE header for this page
+  const StandardHeader = () => (
+    <nav className="bg-secondary border-b border-secondary-foreground/10 shadow-sm">
+      <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-5 flex items-center justify-between h-[72px]">
+        <Link to={`/tournament/${eventId}`}>
+          <img
+            src={logo}
+            alt="PULSE Logo"
+            className="h-[60px] sm:h-[75px] w-auto cursor-pointer hover:opacity-80 transition-opacity"
+          />
+        </Link>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate(`/tournament/${eventId}`)}
+            className="text-white hover:text-white hover:bg-white/10"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back
+          </Button>
+        </div>
+      </div>
+    </nav>
+  );
+
   if (loading) {
     return (
-      <div className="container max-w-4xl py-8">
-        <div className="flex justify-between items-center">
-          <BackToDashboard />
-          <ThemeToggle />
-        </div>
-        <div className="flex items-center justify-center py-12">
-          <p className="text-muted-foreground">Loading registration form...</p>
+      <div className="min-h-screen bg-background">
+        <StandardHeader />
+        <div className="container max-w-4xl py-8">
+          <div className="flex items-center justify-center py-12">
+            <p className="text-muted-foreground">Loading registration form...</p>
+          </div>
         </div>
       </div>
     );
@@ -296,17 +322,16 @@ export default function TournamentRegister() {
 
   if (!event) {
     return (
-      <div className="container max-w-4xl py-8">
-        <div className="flex justify-between items-center">
-          <BackToDashboard />
-          <ThemeToggle />
+      <div className="min-h-screen bg-background">
+        <StandardHeader />
+        <div className="container max-w-4xl py-8">
+          <Card>
+            <CardContent className="py-12 text-center">
+              <p className="text-muted-foreground mb-4">Tournament not found</p>
+              <Button onClick={() => navigate("/tournaments")}>Browse Tournaments</Button>
+            </CardContent>
+          </Card>
         </div>
-        <Card>
-          <CardContent className="py-12 text-center">
-            <p className="text-muted-foreground mb-4">Tournament not found</p>
-            <Button onClick={() => navigate("/tournaments")}>Browse Tournaments</Button>
-          </CardContent>
-        </Card>
       </div>
     );
   }
@@ -314,16 +339,14 @@ export default function TournamentRegister() {
   const progress = (currentStep / STEPS.length) * 100;
 
   return (
-    <div className="container max-w-4xl py-8">
-      <div className="flex justify-between items-center">
-        <BackToDashboard />
-        <ThemeToggle />
-      </div>
+    <div className="min-h-screen bg-background">
+      <StandardHeader />
       
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Register for {event.name}</h1>
-        <p className="text-muted-foreground">Complete the following steps to register your team</p>
-      </div>
+      <div className="container max-w-4xl py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold mb-2">Register for {event.name}</h1>
+          <p className="text-muted-foreground">Complete the following steps to register your team</p>
+        </div>
 
       <Card className="mb-6">
         <CardHeader>
@@ -412,6 +435,7 @@ export default function TournamentRegister() {
           </div>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }
