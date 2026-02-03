@@ -41,10 +41,10 @@ serve(async (req) => {
       throw new Error("Match not found");
     }
 
-    // Fetch teams separately
+    // Fetch teams separately - use player1_id and player2_id (correct column names)
     const { data: teamsData } = await supabase
       .from("tournaments_teams")
-      .select("id, team_name, captain_user_id, partner_user_id")
+      .select("id, team_name, player1_id, player2_id")
       .in("id", [matchData.team1_id, matchData.team2_id]);
 
     const team1 = teamsData?.find(t => t.id === matchData.team1_id);
@@ -66,12 +66,12 @@ serve(async (req) => {
 
     const eventName = eventData?.name || "Tournament";
 
-    // Collect all player IDs to notify
+    // Collect all player IDs to notify - use player1_id and player2_id
     const playerIds: string[] = [];
-    if (team1?.captain_user_id) playerIds.push(team1.captain_user_id);
-    if (team1?.partner_user_id) playerIds.push(team1.partner_user_id);
-    if (team2?.captain_user_id) playerIds.push(team2.captain_user_id);
-    if (team2?.partner_user_id) playerIds.push(team2.partner_user_id);
+    if (team1?.player1_id) playerIds.push(team1.player1_id);
+    if (team1?.player2_id) playerIds.push(team1.player2_id);
+    if (team2?.player1_id) playerIds.push(team2.player1_id);
+    if (team2?.player2_id) playerIds.push(team2.player2_id);
 
     // Fetch player emails
     const { data: players, error: playersError } = await supabase
@@ -99,8 +99,8 @@ serve(async (req) => {
 
     // Send emails to all players
     const emailPromises = players?.map(async (player) => {
-      const isTeam1 = team1?.captain_user_id === player.id || 
-                      team1?.partner_user_id === player.id;
+      const isTeam1 = team1?.player1_id === player.id || 
+                      team1?.player2_id === player.id;
       const opponentTeam = isTeam1 ? team2?.team_name : team1?.team_name;
       const playerTeam = isTeam1 ? team1?.team_name : team2?.team_name;
 

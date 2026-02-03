@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
-import { Calendar, MapPin, Users, DollarSign } from "lucide-react";
+import { Calendar, MapPin, Users, DollarSign, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { getDivisionPricing, type PricingInfo } from "@/lib/tournamentPricing";
 
 interface TournamentEvent {
   id: string;
@@ -17,6 +18,9 @@ interface Division {
   id: string;
   name: string;
   format: string;
+  registration_fee?: number | null;
+  early_bird_fee?: number | null;
+  early_bird_deadline?: string | null;
 }
 
 interface RegistrationFormData {
@@ -44,6 +48,11 @@ export function RegistrationStepReview({
 }: RegistrationStepReviewProps) {
   const [partnerName, setPartnerName] = useState<string | null>(null);
   const selectedDivision = divisions.find((d) => d.id === formData.divisionId);
+  
+  // Calculate pricing
+  const pricing: PricingInfo | null = selectedDivision 
+    ? getDivisionPricing(selectedDivision, event.registration_fee) 
+    : null;
 
   useEffect(() => {
     if (formData.partnerId) {
@@ -91,11 +100,23 @@ export function RegistrationStepReview({
                 <span>{event.location}</span>
               </div>
             )}
-            {event.registration_fee > 0 && (
+            {pricing && pricing.currentPrice > 0 && (
               <div className="flex items-center gap-2 text-sm">
                 <DollarSign className="h-4 w-4 text-muted-foreground" />
-                <span>${event.registration_fee.toFixed(2)} per team</span>
-                <Badge variant="secondary">Payment pending</Badge>
+                <div className="flex items-center gap-2">
+                  {pricing.isEarlyBird ? (
+                    <>
+                      <span className="line-through text-muted-foreground">${pricing.regularPrice.toFixed(2)}</span>
+                      <span className="font-semibold text-green-600">${pricing.currentPrice.toFixed(2)}</span>
+                      <Badge variant="secondary" className="text-green-600 bg-green-500/10">
+                        Early Bird - Save ${pricing.savings.toFixed(0)}
+                      </Badge>
+                    </>
+                  ) : (
+                    <span>${pricing.currentPrice.toFixed(2)} per team</span>
+                  )}
+                  <Badge variant="secondary">Payment pending</Badge>
+                </div>
               </div>
             )}
           </div>

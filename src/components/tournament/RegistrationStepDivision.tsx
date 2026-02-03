@@ -3,9 +3,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Users, Trophy, Clock, DollarSign } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Users, Trophy, Clock, AlertTriangle } from "lucide-react";
 import { formatTournamentLabel, formatSkillLevelRange, formatGenderLabel, formatAgeGroupLabel } from "@/lib/formatLabels";
 import { differenceInDays, isPast } from "date-fns";
+import { checkDivisionEligibility, type EligibilityResult } from "@/lib/tournamentValidation";
+import { getDivisionPricing, type PricingInfo } from "@/lib/tournamentPricing";
 
 interface Division {
   id: string;
@@ -28,6 +31,15 @@ interface Division {
 interface DivisionWithCounts extends Division {
   spotsRemaining: number;
   isFull: boolean;
+  eligibility: EligibilityResult;
+  pricing: PricingInfo;
+}
+
+interface PlayerProfile {
+  id: string;
+  current_rating?: number | null;
+  date_of_birth?: string | null;
+  gender?: string | null;
 }
 
 interface RegistrationStepDivisionProps {
@@ -36,6 +48,7 @@ interface RegistrationStepDivisionProps {
   selectedDivisionId: string;
   onSelectDivision: (divisionId: string) => void;
   eventFee?: number | null;
+  tournamentStartDate?: string;
 }
 
 export function RegistrationStepDivision({
@@ -44,13 +57,34 @@ export function RegistrationStepDivision({
   selectedDivisionId,
   onSelectDivision,
   eventFee,
+  tournamentStartDate,
 }: RegistrationStepDivisionProps) {
   const [divisionsWithCounts, setDivisionsWithCounts] = useState<DivisionWithCounts[]>([]);
   const [loading, setLoading] = useState(true);
+  const [playerProfile, setPlayerProfile] = useState<PlayerProfile | null>(null);
 
   useEffect(() => {
-    fetchDivisionCounts();
-  }, [divisions]);
+    fetchPlayerProfile();
+  }, []);
+
+  useEffect(() => {
+    if (playerProfile !== null) {
+      fetchDivisionCounts();
+    }
+  }, [divisions, playerProfile]);
+
+  const fetchPlayerProfile = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("id, current_rating, date_of_birth, gender")
+      .eq("id", user.id)
+      .single();
+
+    setPlayerProfile(profile || { id: user.id });
+  };
 
   const fetchDivisionCounts = async () => {
     const divisionsData = await Promise.all(
@@ -70,38 +104,26 @@ export function RegistrationStepDivision({
         const currentTeams = (teamsCount || 0) + (registrationsCount || 0);
         const spotsRemaining = Math.max(0, maxTeams - currentTeams);
 
+        // Check eligibility
+        const eligibility = playerProfile 
+          ? checkDivisionEligibility(playerProfile, division, tournamentStartDate)
+          : { eligible: true, reasons: [] };
+
+        // Get pricing
+        const pricing = getDivisionPricing(division, eventFee);
+
         return {
           ...division,
           spotsRemaining,
           isFull: spotsRemaining === 0,
+          eligibility,
+          pricing,
         };
       })
     );
 
     setDivisionsWithCounts(divisionsData);
     setLoading(false);
-  };
-
-  const getEarlyBirdInfo = (division: Division) => {
-    if (!division.early_bird_fee || !division.early_bird_deadline) return null;
-    const deadline = new Date(division.early_bird_deadline);
-    if (isPast(deadline)) return null;
-    
-    const daysLeft = differenceInDays(deadline, new Date());
-    const regularFee = division.registration_fee || eventFee || 0;
-    
-    return {
-      fee: division.early_bird_fee,
-      regularFee,
-      savings: regularFee - division.early_bird_fee,
-      daysLeft,
-    };
-  };
-
-  const getCurrentPrice = (division: Division) => {
-    const earlyBird = getEarlyBirdInfo(division);
-    if (earlyBird) return earlyBird.fee;
-    return division.registration_fee || eventFee || 0;
   };
 
   if (loading) {
@@ -122,40 +144,40 @@ export function RegistrationStepDivision({
           {divisionsWithCounts.map((division) => {
             const hasSkillLevel = division.skill_level_min || division.skill_level_max;
             const hasAgeRestriction = division.age_group || division.age_min || division.age_max;
-            const earlyBird = getEarlyBirdInfo(division);
-            const currentPrice = getCurrentPrice(division);
+            const { pricing, eligibility } = division;
+            const isDisabled = division.isFull || !eligibility.eligible;
 
             return (
               <div
                 key={division.id}
                 className={`border rounded-lg p-4 ${
                   selectedDivisionId === division.id ? "border-primary bg-primary/5" : ""
-                } ${division.isFull ? "opacity-60" : "cursor-pointer hover:border-primary/50"}`}
+                } ${isDisabled ? "opacity-60" : "cursor-pointer hover:border-primary/50"}`}
               >
                 <div className="flex items-start gap-3">
                   <RadioGroupItem
                     value={division.id}
                     id={division.id}
-                    disabled={division.isFull}
+                    disabled={isDisabled}
                     className="mt-1"
                   />
                   <div className="flex-1 space-y-2">
                     <div className="flex items-start justify-between gap-2">
                       <Label
                         htmlFor={division.id}
-                        className={`text-base font-medium ${division.isFull ? "cursor-not-allowed" : "cursor-pointer"}`}
+                        className={`text-base font-medium ${isDisabled ? "cursor-not-allowed" : "cursor-pointer"}`}
                       >
                         {division.name}
                       </Label>
-                      {currentPrice > 0 && (
+                      {pricing.currentPrice > 0 && (
                         <div className="text-right">
-                          {earlyBird ? (
+                          {pricing.isEarlyBird ? (
                             <div className="flex items-center gap-2">
-                              <span className="text-sm text-muted-foreground line-through">${earlyBird.regularFee}</span>
-                              <span className="text-base font-semibold text-green-600">${earlyBird.fee}</span>
+                              <span className="text-sm text-muted-foreground line-through">${pricing.regularPrice}</span>
+                              <span className="text-base font-semibold text-green-600">${pricing.currentPrice}</span>
                             </div>
                           ) : (
-                            <span className="text-base font-semibold">${currentPrice}</span>
+                            <span className="text-base font-semibold">${pricing.currentPrice}</span>
                           )}
                         </div>
                       )}
@@ -165,6 +187,16 @@ export function RegistrationStepDivision({
                       <p className="text-sm text-muted-foreground">
                         {division.description}
                       </p>
+                    )}
+
+                    {/* Eligibility Warning */}
+                    {!eligibility.eligible && eligibility.reasons.length > 0 && (
+                      <Alert variant="destructive" className="py-2">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertDescription className="text-xs">
+                          {eligibility.reasons[0]}
+                        </AlertDescription>
+                      </Alert>
                     )}
 
                     {/* Eligibility & Format Badges */}
@@ -192,11 +224,11 @@ export function RegistrationStepDivision({
                     </div>
 
                     {/* Early Bird Notice */}
-                    {earlyBird && earlyBird.daysLeft <= 7 && (
+                    {pricing.isEarlyBird && pricing.daysUntilDeadline !== null && pricing.daysUntilDeadline <= 7 && (
                       <div className="flex items-center gap-2 text-xs text-green-600 bg-green-500/10 px-2 py-1 rounded">
                         <Clock className="h-3 w-3" />
                         <span>
-                          Early bird ends in {earlyBird.daysLeft} {earlyBird.daysLeft === 1 ? "day" : "days"} - Save ${earlyBird.savings.toFixed(0)}
+                          Early bird ends in {pricing.daysUntilDeadline} {pricing.daysUntilDeadline === 1 ? "day" : "days"} - Save ${pricing.savings.toFixed(0)}
                         </span>
                       </div>
                     )}
@@ -211,6 +243,9 @@ export function RegistrationStepDivision({
                       </div>
                       {division.isFull && (
                         <Badge variant="destructive">Full</Badge>
+                      )}
+                      {!eligibility.eligible && !division.isFull && (
+                        <Badge variant="secondary">Not Eligible</Badge>
                       )}
                     </div>
                   </div>

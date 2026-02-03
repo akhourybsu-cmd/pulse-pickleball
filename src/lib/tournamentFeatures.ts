@@ -86,6 +86,34 @@ export const TOURNAMENT_FEATURES: TournamentFeature[] = [
     freeAllowed: false,
     requiredTier: "pro",
   },
+  {
+    id: "advanced_seeding",
+    name: "Advanced Seeding",
+    description: "Rating-based and manual seeding with seed locking",
+    freeAllowed: false,
+    requiredTier: "plus",
+  },
+  {
+    id: "visual_scheduler",
+    name: "Visual Scheduler",
+    description: "Day-planner grid for court and time management",
+    freeAllowed: false,
+    requiredTier: "pro",
+  },
+  {
+    id: "player_score_entry",
+    name: "Player Score Entry",
+    description: "Allow players to self-report match scores",
+    freeAllowed: false,
+    requiredTier: "plus",
+  },
+  {
+    id: "email_templates",
+    name: "Email Templates",
+    description: "Customizable email templates for player communication",
+    freeAllowed: false,
+    requiredTier: "pro",
+  },
 ];
 
 /**

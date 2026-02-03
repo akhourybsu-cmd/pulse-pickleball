@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { Edit, Trash2, Plus, ChevronRight, ExternalLink, Copy, Palette } from "lucide-react";
+import { Edit, Trash2, Plus, ChevronRight, ExternalLink, Copy, Palette, CalendarDays, Mail } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,9 @@ import { EditTournamentDialog } from "@/components/tournament/EditTournamentDial
 import { CreateDivisionDialog } from "@/components/tournament/CreateDivisionDialog";
 import { CourtManagementPanel } from "@/components/tournament/CourtManagementPanel";
 import { RegistrationsPanel } from "@/components/tournament/RegistrationsPanel";
+import { TournamentSettingsPanel } from "@/components/tournament/settings/TournamentSettingsPanel";
+import { TournamentScheduler } from "@/components/tournament/scheduling/TournamentScheduler";
+import { EmailTemplateEditor } from "@/components/tournament/communication/EmailTemplateEditor";
 import { format } from "date-fns";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import logo from "@/assets/pulse-logo-new.png";
@@ -278,11 +281,19 @@ export default function TournamentEventDetail() {
         )}
 
         <Tabs defaultValue="divisions" className="w-full">
-          <TabsList>
+          <TabsList className="flex-wrap h-auto gap-1">
             <TabsTrigger value="divisions">Divisions</TabsTrigger>
             <TabsTrigger value="registrations">Registrations</TabsTrigger>
             <TabsTrigger value="courts">Courts</TabsTrigger>
+            <TabsTrigger value="scheduler">
+              <CalendarDays className="h-4 w-4 mr-1" />
+              Scheduler
+            </TabsTrigger>
             <TabsTrigger value="customize">Customize Page</TabsTrigger>
+            <TabsTrigger value="communication">
+              <Mail className="h-4 w-4 mr-1" />
+              Communication
+            </TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
@@ -414,79 +425,21 @@ export default function TournamentEventDetail() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="settings" className="mt-6">
-            <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Public View</CardTitle>
-                  <CardDescription>
-                    Allow anyone with the link to view live scores and standings
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-1">
-                      <Label htmlFor="public-view">Enable Public View</Label>
-                      <p className="text-sm text-muted-foreground">
-                        When enabled, anyone can view live match scores and team standings
-                      </p>
-                    </div>
-                    <Switch
-                      id="public-view"
-                      checked={event.public_view_enabled}
-                      onCheckedChange={handleTogglePublicView}
-                    />
-                  </div>
-                  
-                  {event.public_view_enabled && (
-                    <div className="pt-4 border-t space-y-3">
-                      <div>
-                        <p className="text-sm font-medium mb-2">Public Live View URL</p>
-                        <div className="flex gap-2">
-                          <input
-                            type="text"
-                            readOnly
-                            value={`${window.location.origin}/tournament/${eventId}/live`}
-                            className="flex-1 px-3 py-2 text-sm bg-muted rounded-md"
-                          />
-                          <Button variant="outline" size="sm" onClick={copyPublicUrl}>
-                            <Copy className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => window.open(`/tournament/${eventId}/live`, '_blank')}
-                          >
-                            <ExternalLink className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+          <TabsContent value="scheduler" className="mt-6">
+            <TournamentScheduler 
+              eventId={eventId!} 
+              startDate={event.start_date} 
+              endDate={event.end_date} 
+              numCourts={4}
+            />
+          </TabsContent>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Event Settings</CardTitle>
-                  <CardDescription>
-                    Configure tournament parameters and rules
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <p className="text-sm font-medium">Status</p>
-                    <p className="text-sm text-muted-foreground capitalize">{event.status}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">Created</p>
-                    <p className="text-sm text-muted-foreground">
-                      {format(new Date(event.created_at), "MMM d, yyyy 'at' h:mm a")}
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+          <TabsContent value="communication" className="mt-6">
+            <EmailTemplateEditor eventId={eventId!} />
+          </TabsContent>
+
+          <TabsContent value="settings" className="mt-6">
+            <TournamentSettingsPanel eventId={eventId!} />
           </TabsContent>
         </Tabs>
       </div>

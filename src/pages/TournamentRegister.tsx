@@ -24,6 +24,12 @@ interface TournamentEvent {
   registration_fee: number;
 }
 
+interface EventSettings {
+  require_partner_account: boolean;
+  max_events_per_player: number | null;
+  require_emergency_contact: boolean;
+}
+
 interface Division {
   id: string;
   name: string;
@@ -59,6 +65,7 @@ export default function TournamentRegister() {
   const [submitting, setSubmitting] = useState(false);
   const [event, setEvent] = useState<TournamentEvent | null>(null);
   const [divisions, setDivisions] = useState<Division[]>([]);
+  const [eventSettings, setEventSettings] = useState<EventSettings | null>(null);
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<RegistrationFormData>({
     divisionId: "",
@@ -115,6 +122,44 @@ export default function TournamentRegister() {
 
     setEvent(eventData);
 
+    // Fetch event settings
+    const { data: settingsData } = await supabase
+      .from("tournament_event_settings")
+      .select("require_partner_account, max_events_per_player, require_emergency_contact")
+      .eq("event_id", eventId)
+      .single();
+
+    const settings: EventSettings = {
+      require_partner_account: settingsData?.require_partner_account ?? false,
+      max_events_per_player: settingsData?.max_events_per_player ?? null,
+      require_emergency_contact: settingsData?.require_emergency_contact ?? true,
+    };
+
+    setEventSettings(settings);
+
+    // Check max events per player
+    if (settings.max_events_per_player) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { count } = await supabase
+          .from("tournament_registrations")
+          .select("*", { count: "exact", head: true })
+          .eq("event_id", eventId)
+          .eq("captain_user_id", user.id)
+          .in("status", ["confirmed", "pending"]);
+
+        if ((count || 0) >= settings.max_events_per_player) {
+          toast({
+            title: "Registration limit reached",
+            description: `You have already registered for the maximum of ${settings.max_events_per_player} events in this tournament`,
+            variant: "destructive",
+          });
+          navigate(`/tournament/${eventId}`);
+          return;
+        }
+      }
+    }
+
     const { data: divisionsData, error: divisionsError } = await supabase
       .from("tournaments_divisions")
       .select("*")
@@ -133,12 +178,20 @@ export default function TournamentRegister() {
       case 1:
         return formData.divisionId !== "";
       case 2:
+        // If partner is required by event settings, enforce it
+        if (eventSettings?.require_partner_account && !formData.partnerId) {
+          return false;
+        }
         return formData.teamName.trim() !== "" && 
                (formData.hasPartner ? formData.partnerId !== null : true);
       case 3:
-        return formData.emergencyContact.trim() !== "" && 
-               formData.emergencyPhone.trim() !== "" && 
-               formData.waiverAccepted;
+        const requireEmergency = eventSettings?.require_emergency_contact !== false;
+        if (requireEmergency) {
+          return formData.emergencyContact.trim() !== "" && 
+                 formData.emergencyPhone.trim() !== "" && 
+                 formData.waiverAccepted;
+        }
+        return formData.waiverAccepted;
       case 4:
         return true;
       default:
@@ -312,6 +365,8 @@ export default function TournamentRegister() {
               eventId={eventId!}
               selectedDivisionId={formData.divisionId}
               onSelectDivision={(divisionId) => updateFormData({ divisionId })}
+              eventFee={event?.registration_fee}
+              tournamentStartDate={event?.start_date}
             />
           )}
           {currentStep === 2 && (
