@@ -67,6 +67,9 @@ verify_jwt = false
 [functions.send-venue-announcement]
 verify_jwt = true
 
+[functions.send-court-assignment]
+verify_jwt = true
+
 [functions.send-tournament-notification]
 verify_jwt = false
 

@@ -1,8 +1,24 @@
-import { Calendar, MapPin, DollarSign, Trophy, Users, Clock } from "lucide-react";
+import { Calendar, MapPin, DollarSign, Trophy, Users, Clock, Target, UserCheck } from "lucide-react";
 import { format, differenceInDays } from "date-fns";
 import { motion } from "framer-motion";
 import CountUp from "react-countup";
-import { formatTournamentLabel } from "@/lib/formatLabels";
+import { formatTournamentLabel, formatSkillLevelRange } from "@/lib/formatLabels";
+
+interface TournamentDivision {
+  id: string;
+  format: string;
+  max_teams: number | null;
+  skill_level_min?: number | null;
+  skill_level_max?: number | null;
+  age_min?: number | null;
+  gender?: string | null;
+  play_type?: string | null;
+}
+
+interface TournamentEventSettings {
+  require_partner_account?: boolean;
+  max_events_per_player?: number;
+}
 
 interface TournamentEvent {
   location: string;
@@ -10,23 +26,21 @@ interface TournamentEvent {
   end_date: string;
   registration_fee: number;
   registration_close_date: string | null;
-  divisions?: Array<{
-    id: string;
-    format: string;
-    max_teams: number | null;
-  }>;
+  divisions?: TournamentDivision[];
 }
 
 interface TournamentQuickFactsProps {
   event: TournamentEvent;
   registeredCount?: number;
   totalSpots?: number;
+  eventSettings?: TournamentEventSettings | null;
 }
 
 export function TournamentQuickFacts({ 
   event, 
   registeredCount = 0, 
-  totalSpots 
+  totalSpots,
+  eventSettings
 }: TournamentQuickFactsProps) {
   const closeDate = event.registration_close_date ? new Date(event.registration_close_date) : null;
   const daysUntilClose = closeDate ? differenceInDays(closeDate, new Date()) : null;
@@ -42,7 +56,26 @@ export function TournamentQuickFacts({
   const fillPercentage = (registeredCount / calculatedTotalSpots) * 100;
   const isAlmostFull = fillPercentage > 75;
 
-  const facts = [
+  // Extract skill level range from divisions
+  const skillLevels = event.divisions?.filter(d => d.skill_level_min || d.skill_level_max);
+  const minSkill = skillLevels?.length ? Math.min(...skillLevels.map(d => d.skill_level_min || 0).filter(Boolean)) : null;
+  const maxSkill = skillLevels?.length ? Math.max(...skillLevels.map(d => d.skill_level_max || 5).filter(Boolean)) : null;
+  const skillRange = minSkill && maxSkill ? formatSkillLevelRange(minSkill, maxSkill) : null;
+
+  // Extract age info
+  const ageGroups = event.divisions?.filter(d => d.age_min);
+  const hasAgeRestrictions = ageGroups && ageGroups.length > 0;
+
+  interface FactItem {
+    icon: typeof Calendar;
+    value: string | number;
+    label: string;
+    subtext?: string;
+    highlight?: boolean;
+    isCountUp?: boolean;
+  }
+
+  const facts: FactItem[] = [
     {
       icon: Calendar,
       value: format(new Date(event.start_date), "MMM d"),
@@ -76,6 +109,26 @@ export function TournamentQuickFacts({
       isCountUp: registeredCount > 0,
     },
   ];
+
+  // Add skill level if available
+  if (skillRange) {
+    facts.push({
+      icon: Target,
+      value: skillRange,
+      label: "Skill Range",
+      subtext: hasAgeRestrictions ? "Age groups available" : "All levels welcome",
+    });
+  }
+
+  // Add partner requirement if applicable
+  if (eventSettings?.require_partner_account) {
+    facts.push({
+      icon: UserCheck,
+      value: "Required",
+      label: "Partner Account",
+      subtext: "Must have PULSE profile",
+    });
+  }
 
   // Add deadline if exists and not passed
   if (daysUntilClose !== null && daysUntilClose > 0) {
