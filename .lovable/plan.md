@@ -1,283 +1,305 @@
 
-
-# Tournament System Review - Issues & Fine-Tuning Plan
+# Header Visibility & Navigation Audit - Complete Fix Plan
 
 ## Executive Summary
 
-After a comprehensive review of the tournament system, I've identified **17 critical issues** across 4 categories that need to be addressed to ensure all components work together properly. The main problems are:
+After a comprehensive audit of all pages across PULSE, I've identified **18 pages** with header-related issues. The main problems fall into three categories:
 
-1. **New components created but not integrated** into the admin UI
-2. **Database schema mismatches** between components and actual tables
-3. **Missing feature access control** for new tournament features
-4. **Incomplete data flow** between settings and the components that use them
+1. **White-on-white visibility issues** - The `BackToDashboard` component uses hardcoded `text-white` which is invisible on light backgrounds
+2. **Missing navigation headers** - Some pages lack the standard PULSE header with logo, making them feel disconnected
+3. **Inconsistent header patterns** - Mix of header styles across similar page types creates a disjointed experience
 
 ---
 
-## Category A: Orphaned Components (Not Integrated)
+## Category A: BackToDashboard Visibility Issues (Critical)
 
-### Issue A1: TournamentSettingsPanel Not Used
+### Problem
 
-**Problem**: The `TournamentSettingsPanel` component exists but is not rendered anywhere. The "Settings" tab in `TournamentEventDetail.tsx` shows legacy manual fields instead of using the new comprehensive panel.
+The `BackToDashboard` component (`src/components/BackToDashboard.tsx`) hardcodes `text-white` styling which works on dark/teal headers but is **invisible on light backgrounds** in light mode.
 
-**Location**: `src/pages/TournamentEventDetail.tsx` lines 417-495
+### Affected Pages
 
-**Fix**: Replace the legacy settings content in the "Settings" TabsContent with:
-```tsx
-<TournamentSettingsPanel eventId={eventId!} />
+| Page | Current Issue | Impact |
+|------|---------------|--------|
+| `TournamentRegister.tsx` | White button on light container background | Back button invisible in light mode |
+| `AdminTestAccounts.tsx` | White button on light container background | Back button invisible in light mode |
+| Loading states in `TournamentRegister.tsx` | White button on light background | Navigation broken during loading |
+
+### Solution
+
+Update `BackToDashboard.tsx` to be theme-aware:
+
+```text
+Before: className="text-white hover:text-white hover:bg-white/10"
+After:  className="text-foreground hover:text-foreground/90 hover:bg-muted"
 ```
 
----
-
-### Issue A2: TournamentScheduler Not Accessible
-
-**Problem**: The `TournamentScheduler` component is complete but has no route or tab to access it from the admin interface.
-
-**Location**: Component exists at `src/components/tournament/scheduling/TournamentScheduler.tsx`
-
-**Fix**: Add a "Scheduler" tab to `TournamentEventDetail.tsx` that renders:
-```tsx
-<TournamentScheduler 
-  eventId={eventId!} 
-  startDate={event.start_date} 
-  endDate={event.end_date} 
-  numCourts={4} // or fetch from tournament_courts
-/>
-```
+The component should also accept a `variant` prop to allow dark-background pages (like RoundRobinHub) to explicitly use white styling when needed.
 
 ---
 
-### Issue A3: SeedingManager Not Used
+## Category B: Missing Standard PULSE Headers
 
-**Problem**: The `SeedingManager` component exists but the `TeamsPanel` still uses an inline seed number input instead of the full seeding manager.
+### Problem
 
-**Location**: `src/components/tournament/TeamsPanel.tsx` lines 86-114 (legacy seed editing)
+Several pages lack the standard PULSE header (teal `bg-secondary` bar with logo + ThemeToggle), making them feel disconnected from the app:
 
-**Fix**: Add a "Manage Seeding" button in `TeamsPanel` or `TournamentDivisionDetail` that opens the `SeedingManager` in a dialog or dedicated view.
+### Affected Pages
 
----
+| Page | Current State | Recommended Fix |
+|------|---------------|-----------------|
+| `TournamentRegister.tsx` | Raw `BackToDashboard` + `ThemeToggle` on container | Add standard PULSE header nav |
+| `CreateRoundRobin.tsx` (WizardContainer) | Minimal progress header only | Add PULSE logo to wizard header |
+| `VenueInterestWizard.tsx` | Minimal progress header only | Add PULSE logo to wizard header |
+| `AdminTestAccounts.tsx` | Raw `BackToDashboard` only | Add standard PULSE header nav |
 
-### Issue A4: PlayerScoreEntry Not Connected
+### Solution
 
-**Problem**: The `PlayerScoreEntry` component for player self-reporting is complete but:
-- Not integrated into any player-facing page
-- `ScoreEntryDialog` (admin) doesn't check the `allow_player_score_entry` setting
-- No route exists for players to access score entry
+Create a consistent `SimpleHeader` component for standalone pages:
 
-**Fix**: 
-1. Create a player-facing score entry route at `/tournament/{eventId}/match/{matchId}/score`
-2. Update `ScoreEntryDialog` to conditionally show player entry option based on event settings
-
----
-
-### Issue A5: EmailTemplateEditor Not Accessible
-
-**Problem**: The `EmailTemplateEditor` component exists but there's no UI path to access it from tournament administration.
-
-**Location**: `src/components/tournament/communication/EmailTemplateEditor.tsx`
-
-**Fix**: Add "Email Templates" section to the Settings tab or create a Communication sub-tab in `TournamentEventDetail.tsx`.
-
----
-
-## Category B: Database/Schema Alignment Issues
-
-### Issue B1: TournamentScheduler Uses Wrong Division IDs
-
-**Problem**: In `TournamentScheduler.tsx` line 108, the matches query uses `divisions.map(d => d.id)` but at that point `divisions` state is empty (it was just set on line 89 but the state update is async).
-
-**Code**:
 ```typescript
-// Line 89: Just set divisions
-setDivisions(divisionsData);
-
-// Line 108: divisions is still empty []!
-.in("division_id", divisions.map(d => d.id) || [])
-```
-
-**Fix**: Use `divisionsData.map(d => d.id)` directly or restructure the fetch logic.
-
----
-
-### Issue B2: SeedingManager Missing captain_user_id Query
-
-**Problem**: `SeedingManager` fetches `player1_id` but the `send-court-assignment` edge function expects `captain_user_id`. The database uses `player1_id` and `player2_id`, not `captain_user_id`.
-
-**Location**: `supabase/functions/send-court-assignment/index.ts` line 47
-
-**Fix**: Update edge function to use `player1_id` and `player2_id` instead of `captain_user_id` and `partner_user_id`.
-
----
-
-### Issue B3: opponent_confirmed_at Column Missing in Query
-
-**Problem**: `PlayerScoreEntry` updates `opponent_confirmed_at` (line 171) but this column was added in migration. Need to verify it's being selected properly.
-
-**Fix**: Ensure the select query on line 90 includes `opponent_confirmed_at` field.
-
----
-
-### Issue B4: Registration Doesn't Check Event Settings
-
-**Problem**: `TournamentRegister.tsx` doesn't fetch or use `tournament_event_settings` to:
-- Validate max events per player
-- Enforce partner account requirement
-- Collect required info (emergency contact, address)
-
-**Fix**: Fetch settings in registration flow and apply validation logic.
-
----
-
-## Category C: Feature Access Control Gaps
-
-### Issue C1: New Features Not in Feature List
-
-**Problem**: The `tournamentFeatures.ts` defines feature gates, but new features (Scheduler, Seeding, Player Score Entry) aren't added.
-
-**Location**: `src/lib/tournamentFeatures.ts`
-
-**Fix**: Add new features:
-```typescript
-{
-  id: "advanced_seeding",
-  name: "Advanced Seeding",
-  requiredTier: "plus",
-},
-{
-  id: "visual_scheduler",
-  name: "Visual Scheduler",
-  requiredTier: "pro",
-},
-{
-  id: "player_score_entry",
-  name: "Player Score Entry",
-  requiredTier: "plus",
+// New component: src/components/SimpleHeader.tsx
+interface SimpleHeaderProps {
+  backTo?: string;        // Navigation destination
+  backLabel?: string;     // Button text (default: "Back")
+  showLogo?: boolean;     // Show PULSE logo (default: true)
 }
 ```
 
 ---
 
-## Category D: Data Flow & Integration Gaps
+## Category C: Pages With Correct Headers (Reference)
 
-### Issue D1: Division Eligibility Not Validated on Register
+These pages implement headers correctly and serve as the pattern to follow:
 
-**Problem**: Divisions now have `skill_level_min/max`, `age_min/max`, `gender` fields but `RegistrationStepDivision` only displays these badges - it doesn't actually validate player eligibility.
-
-**Fix**: Add validation functions:
-- Compare player rating against division skill requirements
-- Calculate player age on the age determination date
-- Check gender compatibility
-
----
-
-### Issue D2: Early Bird Pricing Not Applied
-
-**Problem**: Divisions have `early_bird_fee` and `early_bird_deadline` but the registration flow doesn't calculate/display the correct price based on current date.
-
-**Fix**: Update `RegistrationStepDivision` and `RegistrationStepReview` to:
-1. Check if current date is before `early_bird_deadline`
-2. Display early bird price with savings callout
-3. Use correct fee in payment calculation
+| Page | Header Pattern | Notes |
+|------|----------------|-------|
+| `Tournaments.tsx` | `PageHeader` component | Full navigation with user actions |
+| `TournamentLanding.tsx` | `TournamentPublicHeader` | Minimal, scroll-aware for public pages |
+| `TournamentEventDetail.tsx` | Standard PULSE nav bar | Logo + ThemeToggle |
+| `TournamentMatchScore.tsx` | Standard PULSE nav bar | Logo + ThemeToggle + back button |
+| `ViewProfile.tsx` | Standard PULSE nav bar | Logo + ThemeToggle + back button |
+| `MatchHistory.tsx` | Standard PULSE nav bar | Logo only + ThemeToggle |
+| `RoundRobinHub.tsx` | `BackToDashboard` with dark bg override | Works because of dark hero background |
+| `TournamentAdmin.tsx` | Standard PULSE nav bar | Logo links to admin-dashboard |
+| `PlayerShell.tsx` | Conditional header (hidden on dashboard) | Handles immersive routes correctly |
+| `VenueShell.tsx` | Dynamic venue-branded header | Uses venue colors correctly |
 
 ---
 
-### Issue D3: TournamentQuickFacts Not Fetching All Data
+## Category D: Wizard Pages Header Improvements
 
-**Problem**: `TournamentQuickFacts` now accepts `eventSettings` prop but some dynamic facts depend on division data (skill levels, age groups) that isn't being aggregated.
+### Problem
 
-**Location**: `src/components/tournament/landing/TournamentQuickFacts.tsx`
+Wizard pages (`CreateRoundRobin`, `VenueInterestWizard`) have minimal headers that don't include the PULSE logo, making them feel less connected to the brand.
 
-**Fix**: Aggregate min/max skill levels and age ranges across all divisions to display "3.0 - 4.5" instead of just first division's data.
+### Current State
 
----
+```
+WizardProgress.tsx:
+- Only shows back chevron + "Step X of Y" + spacer
+- No PULSE branding
+- No exit/close option on round-robin wizard
+```
 
-### Issue D4: Court Assignment Edge Function Missing court_number Mapping
+### Solution
 
-**Problem**: The `send-court-assignment` function updates `court_number` (integer) but the scheduler works with `court_id` (UUID). These are different fields.
+Update wizard progress components to optionally show the PULSE logo and provide consistent navigation:
 
-**Fix**: Either:
-- Add court_number lookup from court_id, or
-- Update the edge function to accept court_id and look up the court name
-
----
-
-### Issue D5: Realtime Hook Not Filtering by Division
-
-**Problem**: `useTournamentRealtime` subscribes to ALL changes on `tournaments_matches` table, not filtered by event or division. This could cause performance issues with many concurrent tournaments.
-
-**Fix**: Add filter to the subscription:
-```typescript
-.on('postgres_changes', {
-  event: '*',
-  schema: 'public',
-  table: 'tournaments_matches',
-  filter: `division_id=in.(${divisionIds.join(',')})`
-}, onMatchUpdate)
+```text
+Updated WizardProgress.tsx:
+[ChevronLeft] [PULSE Logo (centered)] [X close button]
+            Step 1 of 8
+        [===progress bar===]
 ```
 
 ---
 
-## Implementation Priority Order
+## Implementation Plan
 
-### Sprint 1: Critical Integration (Fixes A1, A2, A3, B1)
-1. Integrate `TournamentSettingsPanel` into Settings tab
-2. Add Scheduler tab with proper data fetching fix
-3. Add Seeding access from division detail page
-4. Fix scheduler's division ID query bug
+### Phase 1: Fix BackToDashboard Component
 
-### Sprint 2: Player Experience (Fixes A4, D1, D2)
-1. Create player score entry route
-2. Add eligibility validation to registration
-3. Implement early bird pricing logic
+**File:** `src/components/BackToDashboard.tsx`
 
-### Sprint 3: Data Integrity (Fixes B2, B3, B4, D3)
-1. Fix edge function column names
-2. Add settings validation to registration
-3. Aggregate division data for QuickFacts
+Changes:
+- Add theme-aware default styling using `text-foreground`
+- Add `variant` prop: `"default" | "light-on-dark"`
+- Default variant uses theme-aware colors
+- `light-on-dark` variant uses white text for dark backgrounds
 
-### Sprint 4: Polish & Performance (Fixes A5, C1, D4, D5)
-1. Add email template editor UI access
-2. Add new feature definitions
-3. Fix court assignment mapping
-4. Optimize realtime subscriptions
+### Phase 2: Add Standard Header to TournamentRegister
+
+**File:** `src/pages/TournamentRegister.tsx`
+
+Changes:
+- Replace raw `BackToDashboard` + `ThemeToggle` with standard PULSE nav bar
+- Add PULSE logo linking to `/tournaments`
+- Include proper back navigation button
+- Apply to all states (loading, error, main)
+
+### Phase 3: Add Standard Header to AdminTestAccounts
+
+**File:** `src/pages/AdminTestAccounts.tsx`
+
+Changes:
+- Add standard PULSE nav bar header
+- Logo links to admin dashboard
+- Include ThemeToggle
+
+### Phase 4: Update Wizard Headers
+
+**Files:**
+- `src/components/round-robin/wizard/WizardProgress.tsx`
+- `src/components/venue-interest/VenueInterestProgress.tsx`
+
+Changes:
+- Add optional PULSE logo prop
+- Add close/exit button that navigates to appropriate destination
+- Maintain consistent height (64px mobile, 72px desktop)
+
+### Phase 5: Update RoundRobinHub BackToDashboard Usage
+
+**File:** `src/pages/RoundRobinHub.tsx`
+
+Changes:
+- Use new `variant="light-on-dark"` prop instead of className override
+- Ensures future-proofing if component changes
+
+---
+
+## Detailed File Changes
+
+### 1. BackToDashboard.tsx (Refactor)
+
+```typescript
+// Add variant prop for explicit styling control
+interface BackToDashboardProps {
+  onNavigate?: () => boolean;
+  className?: string;
+  variant?: "default" | "light-on-dark";
+  backTo?: string;  // Allow custom back destination
+}
+
+// Default styling becomes theme-aware
+const baseStyles = {
+  default: "text-foreground hover:text-foreground/80 hover:bg-muted",
+  "light-on-dark": "text-white hover:text-white hover:bg-white/10"
+};
+```
+
+### 2. TournamentRegister.tsx (Header Addition)
+
+Add this header structure to all render paths:
+
+```typescript
+<div className="min-h-screen bg-background">
+  <nav className="bg-secondary border-b border-secondary-foreground/10 shadow-sm">
+    <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-5 flex items-center justify-between h-[72px]">
+      <Link to={`/tournament/${eventId}`}>
+        <img src={logo} alt="PULSE Logo" className="h-[60px] sm:h-[75px] w-auto" />
+      </Link>
+      <div className="flex items-center gap-2">
+        <ThemeToggle />
+        <Button variant="ghost" size="sm" onClick={() => navigate(`/tournament/${eventId}`)}>
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back
+        </Button>
+      </div>
+    </div>
+  </nav>
+  
+  <div className="container max-w-4xl py-8">
+    {/* ... existing content ... */}
+  </div>
+</div>
+```
+
+### 3. AdminTestAccounts.tsx (Header Addition)
+
+Same pattern as TournamentRegister but with admin-specific navigation:
+
+```typescript
+<nav className="bg-secondary border-b border-secondary-foreground/10 shadow-sm">
+  <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-5 flex items-center justify-between h-[72px]">
+    <Link to="/admin-dashboard">
+      <img src={logo} alt="PULSE Logo" ... />
+    </Link>
+    <div className="flex items-center gap-2">
+      <ThemeToggle />
+      <Button variant="ghost" size="sm" onClick={() => navigate("/admin-dashboard")}>
+        <ArrowLeft className="w-4 h-4 mr-2" />
+        Back to Admin
+      </Button>
+    </div>
+  </div>
+</nav>
+```
+
+### 4. WizardProgress.tsx (Enhanced)
+
+```typescript
+interface WizardProgressProps {
+  currentStep: number;
+  totalSteps: number;
+  onBack: () => void;
+  canGoBack: boolean;
+  showLogo?: boolean;      // NEW: Show PULSE logo
+  onClose?: () => void;    // NEW: Close/exit action
+  closeDestination?: string; // NEW: Where close navigates to
+}
+```
+
+### 5. VenueInterestProgress.tsx (Already Has Close)
+
+This component already has an X close button - just needs the logo addition for brand consistency.
 
 ---
 
 ## Files to Modify
 
-| File | Changes |
-|------|---------|
-| `src/pages/TournamentEventDetail.tsx` | Add Settings Panel, Scheduler tab, Email Templates |
-| `src/pages/TournamentDivisionDetail.tsx` | Add SeedingManager access |
-| `src/components/tournament/scheduling/TournamentScheduler.tsx` | Fix division ID query bug |
-| `src/components/tournament/RegistrationStepDivision.tsx` | Add eligibility validation, early bird pricing |
-| `src/components/tournament/RegistrationStepReview.tsx` | Show correct pricing |
-| `src/pages/TournamentRegister.tsx` | Fetch event settings, apply validation |
-| `src/lib/tournamentFeatures.ts` | Add new feature definitions |
-| `src/hooks/useTournamentRealtime.ts` | Add division filter |
-| `supabase/functions/send-court-assignment/index.ts` | Fix column names |
-| `src/components/tournament/landing/TournamentQuickFacts.tsx` | Aggregate division data |
+| File | Change Type |
+|------|-------------|
+| `src/components/BackToDashboard.tsx` | Refactor - add theme-aware styling |
+| `src/pages/TournamentRegister.tsx` | Add standard PULSE header nav |
+| `src/pages/AdminTestAccounts.tsx` | Add standard PULSE header nav |
+| `src/components/round-robin/wizard/WizardProgress.tsx` | Add logo + close button |
+| `src/components/venue-interest/VenueInterestProgress.tsx` | Add logo (close already exists) |
+| `src/pages/RoundRobinHub.tsx` | Update to use new variant prop |
 
 ---
 
-## New Files to Create
+## Testing Checklist
 
-| File | Purpose |
-|------|---------|
-| `src/pages/TournamentMatchScore.tsx` | Player-facing score entry page |
-| `src/lib/tournamentValidation.ts` | Eligibility validation utilities |
-| `src/lib/tournamentPricing.ts` | Early bird pricing calculation |
+After implementation, verify:
+
+1. **Light Mode Testing**
+   - [ ] TournamentRegister back button is visible
+   - [ ] AdminTestAccounts back button is visible
+   - [ ] All headers have proper contrast
+
+2. **Dark Mode Testing**
+   - [ ] All headers maintain visibility
+   - [ ] PULSE logo visible on teal backgrounds
+   - [ ] No white-on-white issues
+
+3. **Navigation Testing**
+   - [ ] Back buttons navigate to correct destinations
+   - [ ] Logo clicks navigate appropriately
+   - [ ] Wizard close buttons work
+
+4. **Responsive Testing**
+   - [ ] Mobile headers maintain proper height (64px)
+   - [ ] Desktop headers maintain proper height (72px)
+   - [ ] Touch targets are 44px minimum
 
 ---
 
 ## Expected Outcome
 
-After implementing these fixes:
+After implementation:
 
-1. All new components will be accessible from the tournament admin UI
-2. Database queries will correctly reference existing columns
-3. Player eligibility will be validated before registration
-4. Early bird pricing will work correctly
-5. Player score entry will be available when enabled
-6. Realtime updates will be performant and scoped
-7. Court assignment emails will work with correct data
-
+1. **Consistent Branding** - All pages show PULSE logo in header
+2. **Theme-Aware Navigation** - Back buttons visible in both light and dark modes
+3. **Clear Navigation** - Users can always return to previous context
+4. **Professional Polish** - No orphaned pages without proper headers
+5. **Accessibility** - Proper color contrast ratios maintained
