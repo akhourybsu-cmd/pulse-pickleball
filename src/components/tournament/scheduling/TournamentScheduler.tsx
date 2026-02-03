@@ -101,14 +101,17 @@ export function TournamentScheduler({ eventId, startDate, endDate, numCourts = 4
       }
     }
 
-    // Fetch matches
-    const { data: matchesData } = await supabase
-      .from("tournaments_matches")
-      .select("id, division_id, team1_id, team2_id, scheduled_time, court_id, round_number, status")
-      .in("division_id", divisions.map(d => d.id) || [])
-      .order("scheduled_time", { ascending: true });
+    // Fetch matches using the fresh divisionsData instead of stale state
+    if (divisionsData && divisionsData.length > 0) {
+      const divisionIds = divisionsData.map(d => d.id);
+      const { data: matchesData } = await supabase
+        .from("tournaments_matches")
+        .select("id, division_id, team1_id, team2_id, scheduled_time, court_id, round_number, status")
+        .in("division_id", divisionIds)
+        .order("scheduled_time", { ascending: true });
 
-    if (matchesData) setMatches(matchesData);
+      if (matchesData) setMatches(matchesData);
+    }
     
     setLoading(false);
   };

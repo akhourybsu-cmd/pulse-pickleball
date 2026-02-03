@@ -76,6 +76,7 @@ const Tournaments = lazy(() => import("./pages/Tournaments"));
 const TournamentRegister = lazy(() => import("./pages/TournamentRegister"));
 const TournamentLanding = lazy(() => import("./pages/TournamentLanding"));
 const TournamentCustomize = lazy(() => import("./pages/TournamentCustomize"));
+const TournamentMatchScore = lazy(() => import("./pages/TournamentMatchScore"));
 const TournamentNew = lazy(() => import("./pages/TournamentNew"));
 const TournamentNewWithGating = lazy(() => import("./pages/TournamentNewWithGating"));
 const TournamentDetail = lazy(() => import("./pages/TournamentDetail"));
@@ -349,6 +350,7 @@ const AppContent = () => {
           <Route path="/my-registrations" element={<MyCalendarRegistrations />} />
           <Route path="/tournament/:eventId/live" element={<TournamentLiveView />} />
           <Route path="/tournament/:eventId/team/:teamId" element={<TournamentTeamView />} />
+          <Route path="/tournament/:eventId/match/:matchId/score" element={<TournamentMatchScore />} />
           <Route path="/tournament-admin" element={<TournamentAdmin />} />
           <Route path="/tournament-admin/:eventId/customize" element={<TournamentCustomize />} />
           <Route path="/tournament-admin/event/:eventId" element={<TournamentEventDetail />} />

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { Plus, Loader2, Shuffle, Edit, Trash2, CheckCircle2, Award } from "lucide-react";
+import { Plus, Loader2, Shuffle, Edit, Trash2, CheckCircle2, Award, ListOrdered } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ import { StandingsPanel } from "@/components/tournament/StandingsPanel";
 import { ExportMenu } from "@/components/tournament/ExportMenu";
 import { BracketView } from "@/components/tournament/BracketView";
 import { ScoreEntryDialog } from "@/components/tournament/ScoreEntryDialog";
+import { SeedingManager } from "@/components/tournament/seeding/SeedingManager";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import logo from "@/assets/pulse-logo-new.png";
 
@@ -460,8 +461,12 @@ export default function TournamentDivisionDetail() {
         )}
 
         <Tabs defaultValue="teams" className="w-full">
-          <TabsList>
+          <TabsList className="flex-wrap h-auto gap-1">
             <TabsTrigger value="teams">Teams</TabsTrigger>
+            <TabsTrigger value="seeding">
+              <ListOrdered className="h-4 w-4 mr-1" />
+              Seeding
+            </TabsTrigger>
             <TabsTrigger value="matches">Matches</TabsTrigger>
             <TabsTrigger value="standings">Standings</TabsTrigger>
             {(division.format === "single_elimination" || division.format === "double_elimination") && (
@@ -474,6 +479,13 @@ export default function TournamentDivisionDetail() {
               divisionId={divisionId!} 
               refreshKey={refreshKey} 
               divisionStatus={division.status}
+            />
+          </TabsContent>
+
+          <TabsContent value="seeding" className="mt-6">
+            <SeedingManager 
+              divisionId={divisionId!} 
+              divisionName={division.name} 
             />
           </TabsContent>
 
