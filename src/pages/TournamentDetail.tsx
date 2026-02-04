@@ -252,6 +252,16 @@ export default function TournamentDetail() {
         throw new Error(errorMessage);
       }
 
+      // Handle free access (no redirect needed)
+      if (response.data?.free && response.data?.success) {
+        toast({
+          title: "Tournament activated!",
+          description: "Your tournament is now live and ready for registrations.",
+        });
+        fetchTournament();
+        return;
+      }
+
       if (response.data?.url) {
         window.location.href = response.data.url;
       }

@@ -111,9 +111,15 @@ export function TournamentWizard({ venueId }: TournamentWizardProps) {
 
     setIsCheckingOut(true);
     try {
-      const url = await initiateCheckout(tournamentId);
-      if (url) {
-        window.location.href = url;
+      const result = await initiateCheckout(tournamentId);
+      // Handle free access - result is object with { free: true, success: true }
+      if (result && typeof result === "object" && result.free && result.success) {
+        await refetch();
+        return;
+      }
+      // Handle normal checkout - result is URL string
+      if (result && typeof result === "string") {
+        window.location.href = result;
       }
     } finally {
       setIsCheckingOut(false);

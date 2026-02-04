@@ -73,6 +73,38 @@ serve(async (req) => {
       payment_status: tournament.payment_status 
     });
 
+    // FREE ACCESS: Bypass payment for specific admin account
+    const FREE_ACCESS_EMAILS = ["akhourybsu@gmail.com"];
+    if (FREE_ACCESS_EMAILS.includes(user.email?.toLowerCase() || "")) {
+      logStep("Free access granted", { email: user.email });
+
+      // Count actual divisions
+      const { count: divisionsCount } = await supabaseClient
+        .from("tournaments_divisions")
+        .select("*", { count: "exact", head: true })
+        .eq("event_id", tournament_id);
+
+      // Mark tournament as paid directly
+      const { error: updateError } = await supabaseClient
+        .from("tournaments_events")
+        .update({
+          payment_status: "paid",
+          paid_divisions_count: Math.max(divisionsCount || 0, 3),
+        })
+        .eq("id", tournament_id);
+
+      if (updateError) {
+        throw new Error("Failed to activate tournament");
+      }
+
+      logStep("Tournament activated for free", { tournament_id });
+
+      return new Response(JSON.stringify({ free: true, success: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+
     // Count actual divisions from tournaments_divisions table
     const { count: actualDivisionsCount, error: countError } = await supabaseClient
       .from("tournaments_divisions")
