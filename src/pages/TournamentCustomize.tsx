@@ -60,6 +60,7 @@ export default function TournamentCustomize() {
   const [saving, setSaving] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [eventName, setEventName] = useState("");
+  const [eventSlug, setEventSlug] = useState<string | null>(null);
   
   // Form state
   const [customizationId, setCustomizationId] = useState<string | null>(null);
