@@ -1,223 +1,207 @@
 
 
-# Tournament Pages Separation: Manage vs. Browse
+# Browse Tournaments Header and Mobile Redesign
 
 ## Overview
 
-Split the current combined `/tournaments` page into two distinct pages:
-1. **Manage Tournaments** (`/tournaments/manage`) - For users to view and manage tournaments they own
-2. **Browse Tournaments** (`/tournaments/browse`) - Public discovery page with advanced search and filtering
-
-The current `/tournaments` route will redirect to `/tournaments/browse` for consistency.
+Redesign the Browse Tournaments page to use a standardized tournament header consistent with other PULSE pages, and streamline the mobile experience by reducing the oversized hero section and consolidating filters into a more compact, premium layout.
 
 ---
 
-## New Page Architecture
+## Current Issues
+
+| Issue | Description |
+|-------|-------------|
+| Inconsistent header | Uses `PageHeader` which is player-dashboard focused, not tournament-discovery focused |
+| Oversized hero | 280px min-height takes too much screen space on mobile before users see content |
+| Cluttered filters | Two separate filter rows take significant vertical space |
+| No mobile optimization | Filter pills don't scroll horizontally, can wrap awkwardly on small screens |
+| Missing navigation | No clear way to navigate between Browse and Manage Tournaments |
+
+---
+
+## Solution: New Tournament Header Component
+
+Create a new `TournamentBrowseHeader` component that:
+
+1. Matches the height standard (72px desktop, 64px mobile)
+2. Uses the PULSE logo like other headers
+3. Includes contextual navigation (Browse vs Manage tabs)
+4. Has the standard ThemeToggle
+5. Shows Login/Dashboard CTA based on auth state
+
+### Header Layout
 
 ```text
-/tournaments          → Redirect to /tournaments/browse
-/tournaments/browse   → Public discovery page (new)
-/tournaments/manage   → Owner management page (new)
-/tournaments/new      → Create tournament (existing)
-/tournaments/:id      → Tournament detail (existing)
+Desktop:
+[PULSE Logo]    [Browse | Manage Tournaments]    [ThemeToggle] [Login/Dashboard]
+
+Mobile:
+[PULSE Logo]                                      [ThemeToggle] [Menu]
 ```
 
 ---
 
-## Page 1: Manage Tournaments (`/tournaments/manage`)
+## Solution: Streamlined Hero and Search
 
-### Purpose
-Allow authenticated users to view, manage, and take action on tournaments they own.
+Replace the current large hero with a compact, integrated search bar that doubles as the page header:
 
-### Features
-- Protected route (requires authentication)
-- List of user's tournaments with status badges
-- Quick actions: Edit, View Public Page, Customize, Delete
-- Filter by status (Draft, Upcoming, Live, Completed, Cancelled)
-- Sort by date or name
-- Link to create new tournament
+### New Layout (Mobile-First)
 
-### UI Elements
-| Element | Description |
-|---------|-------------|
-| Header | "Manage Tournaments" with Create button |
-| Empty state | "No tournaments yet" with Create CTA |
-| Tournament cards | Name, dates, status badge, division count, payment status |
-| Actions | Edit, View Public, Customize Landing Page |
-| Filters | Status pills (All, Draft, Active, Completed) |
-
----
-
-## Page 2: Browse Tournaments (`/tournaments/browse`)
-
-### Purpose
-Public-facing discovery page for players to find and register for tournaments.
-
-### Features
-- No authentication required (but can show personalized recommendations if logged in)
-- Advanced search with multiple filter options
-- Location-based filtering (city/state input or "Near Me")
-- Date range filtering
-- Skill level filtering
-- Registration status filtering (Open, Coming Soon, Closed)
-
-### Filter Options
-
-| Filter | Type | Options |
-|--------|------|---------|
-| Search | Text input | Search by name, venue, location |
-| Location | Text input + "Near Me" button | City/State or use browser geolocation |
-| Distance | Dropdown | 25mi, 50mi, 100mi, Any |
-| Date Range | Pills | This Week, This Month, Next 3 Months, All |
-| Skill Level | Range | 2.0 - 5.0+ |
-| Registration | Pills | Open Now, Opening Soon, All |
-
-### Data Source
-Query `tournaments_events` where:
-- `is_public = true`
-- `public_view_enabled = true`
-- `payment_status = 'paid'`
-- Ordered by `start_date` ascending
-
-Join with `venues` table when `venue_id` is present to get structured location data (city, state).
-
----
-
-## Implementation Steps
-
-### Step 1: Create Browse Tournaments Page
-- New file: `src/pages/BrowseTournaments.tsx`
-- Hero section with search bar
-- Filter bar with chips/pills
-- Tournament card grid
-- Pagination or infinite scroll
-
-### Step 2: Create Manage Tournaments Page
-- New file: `src/pages/ManageTournaments.tsx`
-- Auth guard (redirect to login if not authenticated)
-- Fetch tournaments where `created_by = user.id`
-- Status filter tabs
-- Tournament management cards with actions
-
-### Step 3: Create Tournament Filter Hook
-- New file: `src/hooks/useBrowseTournaments.ts`
-- Encapsulate all filtering logic
-- Support server-side and client-side filtering
-- Include debounced search
-
-### Step 4: Update Routing
-- Update `src/App.tsx`:
-  - Change `/tournaments` to redirect to `/tournaments/browse`
-  - Add `/tournaments/browse` route
-  - Add `/tournaments/manage` route (protected)
-
-### Step 5: Update Navigation Links
-- Update TournamentsLanding "View All" button to go to `/tournaments/manage`
-- Update Dashboard "Browse Tournaments" to go to `/tournaments/browse`
-- Add "Manage" link in header when user is authenticated
-
----
-
-## Technical Details
-
-### Database Query for Browse Page
-
-```sql
-SELECT 
-  te.id,
-  te.name,
-  te.description,
-  te.location,
-  te.start_date,
-  te.end_date,
-  te.status,
-  te.divisions_count,
-  te.registration_enabled,
-  te.registration_open_date,
-  te.registration_close_date,
-  v.name as venue_name,
-  v.city as venue_city,
-  v.state as venue_state
-FROM tournaments_events te
-LEFT JOIN venues v ON te.venue_id = v.id
-WHERE te.is_public = true
-  AND te.public_view_enabled = true
-  AND te.payment_status = 'paid'
-  AND te.start_date >= CURRENT_DATE
-ORDER BY te.start_date ASC
+```text
+Standard Header (64-72px)
+--------------------------
+Compact Hero with inline search (120px max)
+  - Title: "Find Tournaments"
+  - Subtitle: brief tagline
+  - Single search bar with location toggle
+--------------------------
+Horizontal scrolling filter chips
+--------------------------
+Results grid
 ```
 
-### Location Search Strategy
+### Key Changes
 
-Since tournaments may have freeform `location` text or structured `venue_id`:
-1. If `venue_id` exists, use `venues.city` and `venues.state` for filtering
-2. Otherwise, perform text search on the `location` field
-3. "Near Me" button: Use browser geolocation API, then filter client-side by calculating distance to venue coordinates (if available)
+1. **Remove 280px hero** - Replace with compact 120px header section
+2. **Combine search inputs** - Single smart search bar (searches both name and location)
+3. **Horizontal scroll filters** - Chips scroll horizontally on mobile with fade hints
+4. **Remove "Browse All" button** - Users are already on the browse page
 
-### New Hook: `useBrowseTournaments`
+---
+
+## Implementation Details
+
+### New Files
+
+| File | Purpose |
+|------|---------|
+| `src/components/tournament/TournamentBrowseHeader.tsx` | Standardized tournament header |
+
+### Modified Files
+
+| File | Changes |
+|------|---------|
+| `src/pages/BrowseTournaments.tsx` | Replace PageHeader with TournamentBrowseHeader, redesign hero |
+| `src/components/tournament/TournamentBrowseFilters.tsx` | Horizontal scroll, combined layout |
+
+---
+
+## Header Component Design
+
+The new `TournamentBrowseHeader` will:
+
+- Use `bg-secondary` background (consistent with PageHeader)
+- 72px height (standard PULSE header height)
+- Include PULSE logo linking to homepage or player dashboard
+- Navigation tabs for "Browse" and "Manage" (if authenticated)
+- Theme toggle
+- Login button or Dashboard button based on auth state
+- Mobile-responsive with hamburger menu for extra options
+
+---
+
+## Compact Hero Design
+
+```text
+py-6 on mobile, py-8 on desktop (reduced from py-12)
+Max height: ~120px vs current ~280px
+
+Layout:
++----------------------------------------+
+|  Find Tournaments                       |
+|  Discover events near you               |
+|                                         |
+|  [Search icon] Search by name or city...|
++----------------------------------------+
+```
+
+---
+
+## Improved Filter Bar
+
+Single horizontal row with:
+- Horizontally scrollable chips on mobile
+- Fade gradient hints at edges
+- Combined date and registration filters
+- Clear filters button at the end
+
+```text
+[All Dates] [This Week] [This Month] [Next 3 Mo] | [Open Now] [Opening Soon] [Clear X]
+                    ← scrollable on mobile →
+```
+
+---
+
+## Technical Specifications
+
+### TournamentBrowseHeader Props
 
 ```typescript
-interface BrowseTournamentFilters {
-  search?: string;
-  city?: string;
-  state?: string;
-  dateRange?: 'this_week' | 'this_month' | 'next_3_months' | 'all';
-  skillLevelMin?: number;
-  skillLevelMax?: number;
-  registrationStatus?: 'open' | 'opening_soon' | 'all';
-  limit?: number;
-}
-
-interface BrowseTournament {
-  id: string;
-  name: string;
-  description: string | null;
-  location: string | null;
-  venue_name?: string;
-  venue_city?: string;
-  venue_state?: string;
-  start_date: string;
-  end_date: string;
-  status: string;
-  divisions_count: number;
-  registration_enabled: boolean;
-  registration_open_date: string | null;
-  registration_close_date: string | null;
-  is_registration_open: boolean;
+interface TournamentBrowseHeaderProps {
+  userId?: string | null;
+  activeTab?: 'browse' | 'manage';
 }
 ```
 
----
+### Filter Component Updates
 
-## UI Components
-
-### New Components
-1. `TournamentBrowseFilters.tsx` - Filter bar with all filter options
-2. `TournamentBrowseCard.tsx` - Card designed for discovery (CTA-focused)
-3. `TournamentManageCard.tsx` - Card designed for management (action-focused)
-4. `LocationSearchInput.tsx` - Location input with "Near Me" button
-
-### Reused Components
-- `Badge` for status indicators
-- `Input` for search
-- `Button` for filter pills
-- `Card` for tournament cards
-- `Skeleton` for loading states
+- Add `overflow-x-auto` with `scrollbar-hide` utility
+- Add gradient fade masks using `mask-image`
+- Combine date and registration into single row
+- Mobile: all filters in horizontal scroll container
 
 ---
 
-## Route Protection
+## Mobile Viewport Optimization
 
-```typescript
-// Browse - Public
-<Route path="/tournaments/browse" element={<BrowseTournaments />} />
+| Element | Current | New |
+|---------|---------|-----|
+| Header | 72px | 64px (mobile) |
+| Hero | ~280px | ~100px |
+| Filters | ~140px (2 rows) | ~48px (1 scrollable row) |
+| **Above-fold content** | **~492px** | **~212px** |
 
-// Manage - Protected
-<Route path="/tournaments/manage" element={
-  <AuthGuard>
-    <ManageTournaments />
-  </AuthGuard>
-} />
+This gives users ~280px more visible content above the fold on mobile.
+
+---
+
+## Visual Summary
+
+### Before (Mobile)
+```text
++------------------+
+| PageHeader  72px |
++------------------+
+|                  |
+|   Big Hero      |
+|   280px         |
+|   Trophy Icon   |
+|   Button        |
+|                  |
++------------------+
+| Filter Row 1    |
++------------------+
+| Filter Row 2    |
++------------------+
+| Results...      |
+```
+
+### After (Mobile)
+```text
++------------------+
+| Header     64px  |
+| [Logo][Tab][CTA] |
++------------------+
+| Find Tournaments |
+| [Search bar]    |
++------------------+
+| [chips scroll →]|
++------------------+
+| 3 tournaments   |
+| +-------------+ |
+| | Card 1      | |
+| +-------------+ |
 ```
 
 ---
@@ -226,23 +210,7 @@ interface BrowseTournament {
 
 | Action | File |
 |--------|------|
-| Create | `src/pages/BrowseTournaments.tsx` |
-| Create | `src/pages/ManageTournaments.tsx` |
-| Create | `src/hooks/useBrowseTournaments.ts` |
-| Create | `src/components/tournament/TournamentBrowseFilters.tsx` |
-| Create | `src/components/tournament/TournamentBrowseCard.tsx` |
-| Create | `src/components/tournament/TournamentManageCard.tsx` |
-| Create | `src/components/tournament/LocationSearchInput.tsx` |
-| Modify | `src/App.tsx` - Update routes |
-| Modify | `src/pages/TournamentsLanding.tsx` - Update links |
-| Modify | `src/pages/Dashboard.tsx` - Update "Browse Tournaments" link |
-
----
-
-## Mobile Considerations
-
-- Filters collapse into a drawer/sheet on mobile
-- "Near Me" prominent for mobile users
-- Horizontal scroll for filter pills
-- Cards stack vertically on mobile
+| Create | `src/components/tournament/TournamentBrowseHeader.tsx` |
+| Modify | `src/pages/BrowseTournaments.tsx` |
+| Modify | `src/components/tournament/TournamentBrowseFilters.tsx` |
 
