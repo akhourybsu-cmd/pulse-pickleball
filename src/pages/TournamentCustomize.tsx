@@ -114,7 +114,7 @@ export default function TournamentCustomize() {
     // Check if user is admin or event creator
     const { data: eventData } = await supabase
       .from("tournaments_events")
-      .select("name, created_by")
+      .select("name, created_by, slug")
       .eq("id", actualEventId)
       .single();
 
@@ -125,6 +125,7 @@ export default function TournamentCustomize() {
     }
 
     setEventName(eventData.name);
+    setEventSlug(eventData.slug || null);
 
     // Check permissions
     const { data: roleData } = await supabase
