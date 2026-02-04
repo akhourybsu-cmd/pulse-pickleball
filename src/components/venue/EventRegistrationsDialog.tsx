@@ -52,7 +52,21 @@ export function EventRegistrationsDialog({
   const fetchRegistrations = async () => {
     try {
       setLoading(true);
-      // First get registrations
+      /**
+       * REGISTRATION TABLE ARCHITECTURE:
+       * 
+       * This dialog uses `venue_event_registrations` table which is specifically for:
+       * - Venue-hosted events (socials, clinics, round robins, open play)
+       * - Events created via VenueEvents.tsx / CreateEventDialog
+       * 
+       * The separate `event_registrations` table is used for:
+       * - Tournament registrations (unified_events with event_type='tournament')
+       * - Events in the unified event system
+       * 
+       * This separation allows venues to manage their casual events independently
+       * while tournaments use the global registration system with additional
+       * features like team assignments, payment tracking, and division placement.
+       */
       const { data: regsData, error: regsError } = await supabase
         .from('venue_event_registrations')
         .select('id, user_id, status, registered_at, notes')
