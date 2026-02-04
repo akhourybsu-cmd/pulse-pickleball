@@ -73,6 +73,8 @@ const TournamentDivisionDetail = lazy(() => import("./pages/TournamentDivisionDe
 const TournamentLiveView = lazy(() => import("./pages/TournamentLiveView"));
 const TournamentTeamView = lazy(() => import("./pages/TournamentTeamView"));
 const Tournaments = lazy(() => import("./pages/Tournaments"));
+const BrowseTournaments = lazy(() => import("./pages/BrowseTournaments"));
+const ManageTournaments = lazy(() => import("./pages/ManageTournaments"));
 const TournamentRegister = lazy(() => import("./pages/TournamentRegister"));
 const TournamentLanding = lazy(() => import("./pages/TournamentLanding"));
 const TournamentCustomize = lazy(() => import("./pages/TournamentCustomize"));
