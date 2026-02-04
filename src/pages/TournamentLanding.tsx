@@ -104,13 +104,15 @@ export default function TournamentLanding() {
   const fetchTournamentData = async () => {
     if (!slug) return;
 
+    // Support both custom slugs and UUIDs for backwards compatibility
+    // First try to find by slug, then fall back to ID
     const { data: eventData, error: eventError } = await supabase
       .from("tournaments_events")
       .select(`
         *,
         divisions:tournaments_divisions(id, name, format, max_teams, description, skill_level_min, skill_level_max, age_min, gender, play_type)
       `)
-      .eq("id", slug)
+      .or(`slug.eq.${slug},id.eq.${slug}`)
       .eq("public_view_enabled", true)
       .single();
 
