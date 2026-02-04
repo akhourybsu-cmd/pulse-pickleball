@@ -20,7 +20,7 @@ export function TournamentBrowseCard({ tournament, index = 0 }: TournamentBrowse
   const getRegistrationBadge = () => {
     switch (regStatus) {
       case 'open':
-        return <Badge className="bg-green-600 text-white shadow-[0_0_6px_rgba(34,197,94,0.6)]">Open</Badge>;
+        return <Badge className="bg-primary text-primary-foreground shadow-[0_0_6px_hsl(var(--primary)/0.6)]">Open</Badge>;
       case 'opening_soon':
         return (
           <Badge variant="secondary">

@@ -339,7 +339,9 @@ const AppContent = () => {
           <Route path="/round-robin/create" element={<CreateRoundRobin />} />
           <Route path="/round-robin/:id" element={<RoundRobinDetail />} />
           <Route path="/round-robin/:id/kiosk" element={<RoundRobinKiosk />} />
-          <Route path="/tournaments" element={<TournamentsLanding />} />
+          <Route path="/tournaments" element={<Navigate to="/tournaments/browse" replace />} />
+          <Route path="/tournaments/browse" element={<BrowseTournaments />} />
+          <Route path="/tournaments/manage" element={<AuthGuard><ManageTournaments /></AuthGuard>} />
           <Route path="/tournaments/new" element={<TournamentNewWithGating />} />
           {/* Removed duplicate /venue/create-fast - the proper route is at line 277 with AuthGuard */}
           <Route path="/tournaments/:id" element={<TournamentDetail />} />
