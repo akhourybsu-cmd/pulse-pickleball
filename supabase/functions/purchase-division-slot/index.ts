@@ -73,6 +73,31 @@ serve(async (req) => {
       paid_divisions_count: tournament.paid_divisions_count,
     });
 
+    // FREE ACCESS: Bypass payment for specific admin account
+    const FREE_ACCESS_EMAILS = ["akhourybsu@gmail.com"];
+    if (FREE_ACCESS_EMAILS.includes(user.email?.toLowerCase() || "")) {
+      logStep("Free division slot granted", { email: user.email });
+
+      // Increment paid_divisions_count directly
+      const { error: updateError } = await supabaseClient
+        .from("tournaments_events")
+        .update({
+          paid_divisions_count: (tournament.paid_divisions_count || 3) + 1,
+        })
+        .eq("id", tournament_id);
+
+      if (updateError) {
+        throw new Error("Failed to add division slot");
+      }
+
+      logStep("Division slot added for free", { tournament_id });
+
+      return new Response(JSON.stringify({ free: true, success: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+
     // Initialize Stripe
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
