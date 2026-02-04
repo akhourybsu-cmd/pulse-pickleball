@@ -1,335 +1,341 @@
 
-# Edit Profile Refactor - Tournament Readiness & Section Tabs
 
-## Overview
+# Venue Platform Comprehensive Analysis & Integration Audit
 
-This plan transforms the Edit Profile page from a long scrolling form into a **tabbed, section-based interface** with smart **tournament readiness indicators** that help players understand what profile information they're missing for tournament eligibility.
+## Executive Summary
 
----
-
-## Current State Analysis
-
-### Existing Profile Fields (from database schema)
-
-**Core Identity (Required)**
-- `first_name` - Required
-- `last_name` - Required  
-- `email` - Required (from auth)
-- `full_name` - Auto-generated
-
-**Player Customization (Optional)**
-- `display_name` - Leaderboard display
-- `phonetic_name` - Pronunciation guide
-- `avatar_url` - Profile picture
-- `town` / `state` - Location
-
-**Tournament-Critical Fields**
-- `date_of_birth` - Required for age-restricted divisions
-- `gender` - Required for gender-specific divisions
-- `phone_number` - Required for tournament communications
-- `shirt_size` - Required for merchandise
-- `emergency_contact_name` - Required by some tournaments
-- `emergency_contact_phone` - Required by some tournaments
-- `skill_level_self` - Self-assessment for matchmaking
-
-**Gameplay Preferences**
-- `home_court_id` - Home court selection
-- `handedness` - Right/Left/Ambidextrous
-- `play_side` - Forehand/Backhand/Either
-- `paddle_brand` / `paddle_model` - Equipment
-
-**System Fields**
-- `current_rating` - PULSE rating (system-managed)
-- `total_matches` / `wins` / `losses` - Stats (system-managed)
-- `dupr_rating` - External rating (not currently editable)
-
-**Notification Preferences**
-- `notify_score_email` / `notify_score_sms` / `notify_score_push`
-- `notify_badges_email` / `notify_badges_sms` / `notify_badges_push`
-- `notify_weekly_digest`
-
-**Accessibility & Privacy**
-- `accessibility_needs` - ADA accommodations
-- `pronouns` - Personal pronouns
-- `partner_preferences` - Partner matching preferences
-- `location_public` - Location visibility toggle
+After an extensive review of the Venue admin platform, I've analyzed **20+ venue pages**, **15+ hooks**, and **25+ components**. Overall, the platform is **well-architected** with proper data flow and consistent patterns. However, I've identified several areas requiring attention to ensure everything hooks up properly.
 
 ---
 
-## Proposed Section Structure
-
-### Tab 1: Profile Basics
-Core identity and how you appear to others
-- Profile picture upload
-- First name, Last name (required)
-- Display name
-- Phonetic name
-- Pronouns
-- Location (City, State)
-
-### Tab 2: Tournament Info
-Information needed for tournament registration
-- Date of birth (with age calculation display)
-- Gender
-- Phone number
-- Shirt size
-- Emergency contact name & phone
-- Self-assessed skill level
-- Accessibility needs
-
-### Tab 3: Play Style
-Gameplay preferences and equipment
-- Home court selection
-- Handedness
-- Play side preference
-- Paddle brand & model
-- Partner preferences
-
-### Tab 4: Notifications
-Communication preferences
-- Score confirmation (Email/SMS/Push)
-- Badge unlocks (Email/SMS/Push)
-- Weekly digest
-- Privacy: Location visibility toggle
-
-### Tab 5: Security
-Account security management
-- Password reset
-- MFA management
-- Biometric setup
-- Data export (GDPR)
-
----
-
-## Tournament Readiness Feature
-
-### Concept
-A visual indicator showing profile completeness for tournament eligibility, displayed:
-1. **In the Edit Profile header** - Overall completeness percentage
-2. **On the Tournament Info tab** - Detailed breakdown
-3. **During tournament registration** - Warning if missing required fields
-
-### Tournament Readiness Checklist
-Based on `tournament_event_settings` requirements:
+## Current Architecture Overview
 
 ```text
-Required by ALL tournaments:
-  First & Last Name
-  Phone Number
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              VENUE PLATFORM                                  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌─────────────────────┐     ┌─────────────────────┐                       │
+│  │   VenueShell.tsx    │────►│   ModeContext.tsx   │                       │
+│  │  (Layout + Nav)     │     │  (Auth + Access)    │                       │
+│  └─────────────────────┘     └─────────────────────┘                       │
+│           │                           │                                     │
+│           ▼                           ▼                                     │
+│  ┌─────────────────────────────────────────────────────────────────┐       │
+│  │                         ADMIN PAGES                               │       │
+│  ├────────────┬────────────┬────────────┬────────────┬─────────────┤       │
+│  │ Overview   │ Profile    │ Branding   │ Facility   │ Media       │       │
+│  │ Analytics  │ Courts     │ Bookings   │ Events     │ Tournaments │       │
+│  │ RoundRobins│ Coaching   │ Staff      │ Settings   │             │       │
+│  └────────────┴────────────┴────────────┴────────────┴─────────────┘       │
+│           │                                                                 │
+│           ▼                                                                 │
+│  ┌─────────────────────────────────────────────────────────────────┐       │
+│  │                       DATA HOOKS                                  │       │
+│  ├────────────┬────────────┬────────────┬────────────┬─────────────┤       │
+│  │ useVenue-  │ useVenue-  │ useVenue-  │ useVenue-  │ useVenue-   │       │
+│  │ Settings   │ Events     │ Courts     │ Bookings   │ Staff       │       │
+│  │ useVenue-  │ useVenue-  │ useVenue-  │ usePublic- │ usePublish- │       │
+│  │ Coaches    │ Tournaments│ RoundRobins│ Venue      │ Readiness   │       │
+│  └────────────┴────────────┴────────────┴────────────┴─────────────┘       │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
 
-Required by SOME tournaments (event_settings flags):
-  Date of Birth (require_emergency_contact or age-restricted divisions)
-  Gender (gender-specific divisions)
-  Emergency Contact (require_emergency_contact = true)
-  Full Address (require_full_address = true)
-
-Recommended for better experience:
-  Profile Picture
-  Shirt Size
-  Self-Assessed Skill Level
-```
-
-### Visual Design
-```text
-Tournament Ready ████████░░ 80%
-
- First & Last Name
- Phone Number
- Date of Birth
-✗ Gender (Add to register for Women's divisions)
- Emergency Contact
-✗ Address (Some tournaments require this)
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           PUBLIC VENUE PAGES                                 │
+│                          /v/:slug | /venue/:slug                             │
+├─────────────────────────────────────────────────────────────────────────────┤
+│  PublicVenueShell                                                           │
+│  ├── Home Tab      (hero, quick actions, featured events)                   │
+│  ├── Schedule Tab  (court availability, time slots, bookings)               │
+│  ├── Events Tab    (filterable event list, registration)                    │
+│  ├── Coaching Tab  (coach profiles, lesson booking)                         │
+│  └── Info Tab      (hours, amenities, location)                             │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Implementation Details
+## Findings Summary
 
-### New Files to Create
+### Properly Connected Features
 
-**1. `src/lib/profileCompleteness.ts`**
-Utility functions for calculating profile completeness
+| Feature | Admin Page | Hook | Public Page | Status |
+|---------|------------|------|-------------|--------|
+| Events | VenueEvents.tsx | useVenueEvents | PublicEventsTab | Working |
+| Coaching | VenueCoaching.tsx | useVenueCoaches | PublicCoachingTab | Working |
+| Courts | VenueCourts.tsx | useVenueCourts | PublicScheduleTab | Working |
+| Bookings | VenueBookings.tsx | useVenueBookings | BookingFlowDialog | Working |
+| Staff | VenueStaff.tsx | useVenueStaff | N/A (Admin only) | Working |
+| Tournaments | VenueTournaments.tsx | useVenueTournaments | Links to /tournaments/:id | Working |
+| Round Robins | VenueRoundRobins.tsx | useVenueRoundRobins | Links to /venue/round-robins/:id | Working |
+| Analytics | VenueAnalytics.tsx | Combined hooks | N/A (Admin only) | Working |
+| Settings | VenueSettings.tsx | useVenueSettings | Applied to public page | Working |
+| Profile | VenueProfile.tsx | useVenueSettings | PublicInfoTab | Working |
+| Branding | VenueBranding.tsx | useVenueSettings | All venue pages | Working |
+| Facility | VenueFacility.tsx | useVenueFacility | PublicInfoTab | Working |
+| Media | VenueMedia.tsx | useVenueMedia | PublicHomeTab | Working |
 
+### Issues Identified
+
+#### Issue 1: Two Separate Event Registration Tables
+**Severity:** Medium - Data Fragmentation Risk
+
+**Problem:** There are two different event registration systems:
+- `venue_event_registrations` - Used by `EventRegistrationsDialog.tsx` (venue admin view)
+- `event_registrations` - Used by `useEventRegistrations.ts` (tournament/general events)
+
+**Impact:** Event registrations may not be synchronized between the two systems. The `venue_events` table stores events, but registrations could end up in either table depending on the registration flow used.
+
+**Recommendation:** Audit and consolidate event registration flows to ensure a single source of truth, or implement cross-table synchronization.
+
+---
+
+#### Issue 2: Round Robin Event Linking
+**Severity:** Low - Already Handled
+
+**Status:** The code properly handles round robin creation:
+- When creating a "round_robin" type event via `CreateEventDialog`, it:
+  1. Creates entry in `venue_events`
+  2. Creates linked entry in `round_robin_events`
+  3. Links them via `round_robin_event_id` column
+
+The flow is correct and the "Manage Round Robin" button properly navigates to `/venue/round-robins/:id`.
+
+---
+
+#### Issue 3: Missing Prefetch Routes
+**Severity:** Low - Performance Optimization
+
+**Problem:** In `VenueShell.tsx`, the prefetch map is incomplete:
 ```typescript
-interface ProfileCompletenessResult {
-  overallPercentage: number;
-  tournamentReady: boolean;
-  missingRequired: string[];
-  missingRecommended: string[];
-  sections: {
-    basics: { complete: number; total: number };
-    tournament: { complete: number; total: number };
-    playStyle: { complete: number; total: number };
-  };
-}
-
-export function calculateProfileCompleteness(profile: Profile): ProfileCompletenessResult;
-export function getTournamentRequirements(eventSettings?: TournamentEventSettings): string[];
-export function checkTournamentReadiness(profile: Profile, requirements: string[]): {ready: boolean; missing: string[]};
+const prefetchMap: Record<string, () => Promise<unknown>> = {
+  '/venue': () => import('@/pages/venue/VenueOverview'),
+  '/venue/courts': () => import('@/pages/venue/VenueCourts'),
+  // Missing: /venue/profile, /venue/branding, /venue/facility, /venue/media, 
+  //          /venue/staff, /venue/round-robins
+};
 ```
 
-**2. `src/components/profile/TournamentReadinessCard.tsx`**
-Visual component showing tournament readiness status
-
-**3. `src/components/profile/ProfileSectionTabs.tsx`**
-Wrapper component managing the tabbed interface
-
-### Files to Modify
-
-**1. `src/pages/EditProfile.tsx`** - Major refactor
-- Replace scrolling card layout with Tabs component
-- Add tournament readiness indicator in header
-- Group existing fields into tab sections
-- Add progress indicators per section
-- Add "missing field" highlighting
-
-**2. `src/pages/TournamentRegister.tsx`** - Add readiness check
-- Before showing form, check profile completeness
-- Show warning banner if missing required tournament info
-- Link to Edit Profile with focus parameter for missing fields
+**Recommendation:** Add missing routes to prefetch map for faster navigation.
 
 ---
 
-## UI/UX Improvements
+#### Issue 4: VenueGuard Activation States
+**Severity:** Low - Currently Working
 
-### Tab Navigation
-Using existing Tabs component pattern:
-```tsx
-<Tabs defaultValue="basics" className="w-full">
-  <TabsList className="grid w-full grid-cols-5 mb-6">
-    <TabsTrigger value="basics">
-      <User className="h-4 w-4 mr-2" />
-      <span className="hidden sm:inline">Basics</span>
-    </TabsTrigger>
-    <TabsTrigger value="tournament">
-      <Trophy className="h-4 w-4 mr-2" />
-      <span className="hidden sm:inline">Tournament</span>
-      {!tournamentInfoComplete && <span className="ml-1 h-2 w-2 bg-amber-500 rounded-full" />}
-    </TabsTrigger>
-    <!-- ... more tabs ... -->
-  </TabsList>
-  
-  <TabsContent value="basics">
-    <!-- Profile Basics form fields -->
-  </TabsContent>
-  <!-- ... more content ... -->
-</Tabs>
-```
+**Status:** The `VenueGuard` component properly handles venue activation states:
+- `claimed` → redirects to onboarding/profile
+- `pending_verification` → redirects to verification-pending
+- `pending` → redirects to onboarding/first-event
+- `active` → allows access
 
-### Section Progress Indicators
-Each tab shows completion status with a dot indicator:
--  Green dot = section complete
--  Amber dot = section has missing recommended fields
--  Red dot = section has missing required fields
-
-### Mobile Responsiveness
-- On mobile: Icon-only tabs with full labels below
-- Swipe between sections supported via tabs
-- Sticky save button at bottom
-
-### Field Highlighting
-Missing required fields get visual treatment:
-```tsx
-<div className={cn(
-  "space-y-2",
-  !formData.date_of_birth && highlightMissing && "ring-2 ring-amber-500/50 rounded-lg p-2"
-)}>
-  <Label>Date of Birth</Label>
-  <Input type="date" ... />
-  {!formData.date_of_birth && (
-    <p className="text-xs text-amber-600">Required for age-restricted divisions</p>
-  )}
-</div>
-```
+The onboarding flow is complete with 4 steps:
+1. VenueOnboardingProfile
+2. VenueOnboardingFirstEvent
+3. VenueOnboardingShare
+4. VenueOnboardingComplete
 
 ---
 
-## Tournament Registration Integration
+#### Issue 5: Public Page Deep Linking
+**Severity:** Low - Already Working
 
-### Pre-Registration Check
-When a user navigates to `/tournament/:eventId/register`:
+**Status:** The `PublicVenueLanding.tsx` properly handles:
+- `?tab=schedule|events|coaching|info` - Tab navigation
+- `?eventId=xxx` - Scrolls to and highlights specific event
+- `?coachId=xxx` - Scrolls to and highlights specific coach
 
-1. Fetch `tournament_event_settings` for the event
-2. Check player profile against requirements
-3. If missing required fields, show warning:
+---
 
-```tsx
-<Alert variant="warning" className="mb-6">
-  <AlertTriangle className="h-4 w-4" />
-  <AlertDescription>
-    <p className="font-medium">Complete your profile to register</p>
-    <p className="text-sm mt-1">This tournament requires: Date of Birth, Emergency Contact</p>
-    <Button size="sm" variant="outline" className="mt-2" asChild>
-      <Link to={`/profile/edit?focus=tournament&return=/tournament/${eventId}/register`}>
-        Complete Profile
-      </Link>
-    </Button>
-  </AlertDescription>
-</Alert>
+#### Issue 6: RLS Policies - Security Warnings
+**Severity:** Medium - Review Recommended
+
+**Problem:** Database linter found 18 warnings including:
+- Multiple "RLS Policy Always True" warnings (UPDATE/INSERT with `true`)
+- Security definer view detected
+- Functions missing search_path
+
+**Recommendation:** Review and tighten RLS policies for:
+- Venue admin operations (ensure only staff can modify)
+- Event registrations (ensure proper access control)
+
+---
+
+## Feature-by-Feature Integration Analysis
+
+### Events System
+
+**Admin Flow (Working):**
+```
+VenueEvents.tsx
+    └── useVenueEvents(venueId)
+        └── createEvent() → venue_events table
+            └── If round_robin type → creates round_robin_events entry
+    └── CreateEventDialog → form for new events
+    └── EventCard → displays event with actions
+        └── EventRegistrationsDialog → shows registrations from venue_event_registrations
+        └── EditEventDialog → updates event
 ```
 
-### Return Flow
-After completing profile, return user to registration:
-- Store return URL in query param
-- After save, redirect back to registration page
-
----
-
-## Technical Details
-
-### State Management
-The existing `formData` state pattern is maintained, but organized into sections:
-
-```typescript
-// Existing state works as-is
-const [formData, setFormData] = useState<ProfileData>({...});
-
-// Add section validation helpers
-const basicsSectionComplete = useMemo(() => {
-  return !!(formData.first_name && formData.last_name);
-}, [formData]);
-
-const tournamentSectionComplete = useMemo(() => {
-  return !!(
-    formData.phone_number &&
-    formData.date_of_birth &&
-    formData.gender &&
-    formData.emergency_contact_name &&
-    formData.emergency_contact_phone
-  );
-}, [formData]);
+**Public Flow (Working):**
+```
+PublicVenueLanding.tsx
+    └── usePublicVenue(slug)
+        └── Fetches published events from venue_events
+    └── PublicEventsTab → displays events
+    └── EventRegistrationDialog → registers user
+        └── Creates entry in venue_event_registrations
 ```
 
-### Save Behavior
-- Save button remains at bottom (outside tabs)
-- All sections save together (single API call)
-- Validation runs across all sections before save
+### Coaching System
 
-### URL Query Parameters
-Support for deep-linking to specific sections:
-- `/profile/edit?focus=tournament` - Opens Tournament tab
-- `/profile/edit?focus=location` - Opens Basics tab, scrolls to location (existing)
-- `/profile/edit?return=/tournament/123/register` - Sets return destination after save
+**Admin Flow (Working):**
+```
+VenueCoaching.tsx
+    └── useVenueCoaches(venueId)
+        └── createCoach() → venue_coaches table
+    └── CreateCoachDialog → form for new coach
+    └── CoachCard → displays coach with toggle active/delete
+```
+
+**Public Flow (Working):**
+```
+PublicVenueLanding.tsx
+    └── usePublicVenue(slug)
+        └── Fetches active coaches from venue_coaches
+    └── PublicCoachingTab → displays coaches
+    └── CoachLessonBookingDialog → books lesson
+```
+
+### Bookings System
+
+**Admin Flow (Working):**
+```
+VenueBookings.tsx
+    └── useVenueBookings(venueId)
+    └── useVenueCourts(venueId) → needed for court selection
+    └── CreateBookingDialog → creates manual booking
+    └── BookingCard → shows booking with status management
+```
+
+**Public Flow (Working):**
+```
+PublicVenueLanding.tsx
+    └── PublicScheduleTab
+        └── useVenueAvailability() → checks available slots
+        └── BookingFlowDialog → multi-step booking process
+```
+
+### Tournament Integration
+
+**Admin Flow (Working):**
+```
+VenueTournaments.tsx
+    └── useVenueTournaments(venueId)
+        └── Fetches from tournaments_events WHERE venue_id = X
+    └── "Create Tournament" → navigates to /tournaments/new?venueId=xxx
+    └── TournamentCard → "View" navigates to /tournaments/:id
+```
+
+**Connection to Global Tournament System:** The venue tournament page correctly uses the shared `tournaments_events` table with venue_id filtering, ensuring tournaments appear in both the venue admin and the global tournament discovery.
+
+### Round Robin Integration
+
+**Admin Flow (Working):**
+```
+VenueRoundRobins.tsx
+    └── useVenueRoundRobins()
+        └── Fetches from round_robin_events WHERE venue_id = X
+    └── EventCard with round_robin type → "Manage Round Robin" button
+    └── VenueRoundRobinDetail → full round robin management
+    └── VenueRoundRobinKiosk → public display for live events
+```
+
+**Creation Flow:** Round robins can be created two ways:
+1. Via VenueEvents → CreateEventDialog with type "round_robin"
+2. Redirected from VenueRoundRobins empty state → VenueEvents
 
 ---
 
-## Files Summary
+## Venue Profile/Settings Overlap
 
-| File | Action | Purpose |
-|------|--------|---------|
-| `src/lib/profileCompleteness.ts` | Create | Profile completeness calculation utilities |
-| `src/components/profile/TournamentReadinessCard.tsx` | Create | Visual tournament readiness indicator |
-| `src/components/profile/ProfileSectionTabs.tsx` | Create | Tab wrapper component |
-| `src/pages/EditProfile.tsx` | Refactor | Convert to tabbed interface |
-| `src/pages/TournamentRegister.tsx` | Modify | Add profile completeness check |
+**Current State:** There are THREE pages that edit venue data:
+1. **VenueProfile.tsx** - Identity, description, contact, social
+2. **VenueBranding.tsx** - Logo, cover image, colors
+3. **VenueSettings.tsx** - Basic info, location, branding, subscription, Stripe
+
+**Analysis:** All three use `useVenueSettings` hook which updates the `venues` table. The forms overlap somewhat but serve different purposes:
+- Profile = How you present yourself
+- Branding = Visual identity
+- Settings = Technical/operational configuration
+
+**Recommendation:** Consider consolidating or more clearly differentiating these pages. Currently, some fields appear in multiple places (e.g., tagline is in both Profile and Settings).
 
 ---
 
-## Expected Outcomes
+## Public Venue Page Integration
 
-1. **Better UX** - Organized sections instead of endless scrolling
-2. **Tournament Awareness** - Players know exactly what's needed for tournaments
-3. **Guided Completion** - Visual indicators guide users to complete their profile
-4. **Reduced Registration Friction** - Pre-check prevents failed registrations
-5. **Mobile-Friendly** - Tabbed interface works better on small screens
-6. **Extensible** - Easy to add new fields or sections in the future
+The public venue pages correctly fetch and display:
+
+| Admin Created | Public Display |
+|---------------|----------------|
+| Venue Profile | Info Tab, Header |
+| Branding Colors | Throughout (buttons, accents) |
+| Logo | Header, Home Tab |
+| Cover Image | Home Tab hero |
+| Courts | Schedule Tab (availability) |
+| Events (published) | Events Tab |
+| Coaches (active) | Coaching Tab |
+| Facility Details | Info Tab (amenities) |
+| Hours of Operation | Schedule Tab (availability filtering) |
+
+---
+
+## Recommended Fixes
+
+### Fix 1: Add Missing Prefetch Routes
+**Location:** `src/components/layout/VenueShell.tsx`
+
+Add to prefetchMap:
+- `/venue/profile` → VenueProfile
+- `/venue/branding` → VenueBranding
+- `/venue/facility` → VenueFacility
+- `/venue/media` → VenueMedia
+- `/venue/staff` → VenueStaff
+- `/venue/round-robins` → VenueRoundRobins
+
+### Fix 2: Event Registration Table Audit
+**Action Required:** 
+1. Determine if `venue_event_registrations` and `event_registrations` should be unified
+2. If separate, ensure proper usage:
+   - `venue_event_registrations` for venue-specific events (socials, clinics)
+   - `event_registrations` for tournaments only
+
+### Fix 3: Add Error Boundaries to Venue Pages
+**Location:** Consider adding error boundaries around venue pages to gracefully handle:
+- Missing venue data
+- RLS policy violations
+- Network errors
+
+### Fix 4: Review RLS Policies
+**Action Required:** Security review of database policies for:
+- `venue_events` (ensure only staff can create/update)
+- `venue_event_registrations` (ensure proper player access)
+- `venue_coaches` (ensure only staff can manage)
+- `venue_bookings` (ensure proper access for both venue staff and booking customer)
+
+---
+
+## Conclusion
+
+The Venue platform is **well-integrated** with proper data flow between admin and public pages. The main areas requiring attention are:
+
+1. **Event registration table fragmentation** - Needs consolidation or clear separation
+2. **RLS policy review** - Security warnings should be addressed
+3. **Minor optimizations** - Prefetch routes, error boundaries
+
+Overall Status: **Operational** with recommended improvements.
+
