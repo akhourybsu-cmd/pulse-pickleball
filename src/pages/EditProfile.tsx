@@ -1,30 +1,26 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { ArrowLeft, Save, UserCog, Upload, X, KeyRound, Download, MapPin } from "lucide-react";
+import { Save, UserCog, User, Trophy, Gamepad2, Bell, Shield } from "lucide-react";
 import { motion } from "framer-motion";
-import type { User } from "@supabase/supabase-js";
+import type { User as SupabaseUser } from "@supabase/supabase-js";
 import logo from "@/assets/pulse-logo-new.png";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { MFAManagement } from "@/components/auth/MFAManagement";
-import { BiometricSetup } from "@/components/auth/BiometricSetup";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 
-const US_STATES = [
-  "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA",
-  "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD",
-  "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ",
-  "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC",
-  "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"
-];
+// Profile tab components
+import { ProfileBasicsTab } from "@/components/profile/ProfileBasicsTab";
+import { TournamentInfoTab } from "@/components/profile/TournamentInfoTab";
+import { PlayStyleTab } from "@/components/profile/PlayStyleTab";
+import { NotificationsTab } from "@/components/profile/NotificationsTab";
+import { SecurityTab } from "@/components/profile/SecurityTab";
+import { TournamentReadinessCard } from "@/components/profile/TournamentReadinessCard";
+
+// Profile completeness utilities
+import { calculateProfileCompleteness } from "@/lib/profileCompleteness";
 
 interface Court {
   id: string;
@@ -62,7 +58,7 @@ interface ProfileData {
 }
 
 const EditProfile = () => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<SupabaseUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -72,6 +68,18 @@ const EditProfile = () => {
   const locationSectionRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  
+  // Tab state with URL param support
+  const focusParam = searchParams.get('focus');
+  const returnUrl = searchParams.get('return');
+  const [activeTab, setActiveTab] = useState(() => {
+    if (focusParam === 'tournament') return 'tournament';
+    if (focusParam === 'playstyle') return 'playstyle';
+    if (focusParam === 'notifications') return 'notifications';
+    if (focusParam === 'security') return 'security';
+    if (focusParam === 'location') return 'basics';
+    return 'basics';
+  });
 
   const [formData, setFormData] = useState<ProfileData>({
     display_name: null,
@@ -100,6 +108,16 @@ const EditProfile = () => {
     emergency_contact_phone: null,
     skill_level_self: null,
   });
+
+  // Calculate profile completeness
+  const completeness = useMemo(() => calculateProfileCompleteness(formData), [formData]);
+
+  // Section completion status for tab indicators
+  const sectionStatus = useMemo(() => ({
+    basics: completeness.sections.basics.status,
+    tournament: completeness.sections.tournament.status,
+    playStyle: completeness.sections.playStyle.status,
+  }), [completeness]);
 
   // Scroll to location section if requested
   useEffect(() => {
@@ -180,6 +198,10 @@ const EditProfile = () => {
     fetchData();
   }, [navigate]);
 
+  const handleFormChange = (updates: Partial<ProfileData>) => {
+    setFormData(prev => ({ ...prev, ...updates }));
+  };
+
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !user?.id) return;
@@ -224,7 +246,7 @@ const EditProfile = () => {
         .from('avatars')
         .getPublicUrl(filePath);
 
-      setFormData({ ...formData, avatar_url: publicUrl });
+      setFormData(prev => ({ ...prev, avatar_url: publicUrl }));
       toast.success("Profile picture uploaded!");
     } catch (error) {
       console.error("Error uploading avatar:", error);
@@ -245,7 +267,7 @@ const EditProfile = () => {
           .remove([`${user.id}/${oldPath}`]);
       }
 
-      setFormData({ ...formData, avatar_url: null });
+      setFormData(prev => ({ ...prev, avatar_url: null }));
       toast.success("Profile picture removed");
     } catch (error) {
       console.error("Error removing avatar:", error);
@@ -292,13 +314,30 @@ const EditProfile = () => {
       if (error) throw error;
 
       toast.success("Profile updated successfully!");
-      navigate("/player/dashboard");
+      
+      // If there's a return URL, navigate there instead of dashboard
+      if (returnUrl) {
+        navigate(returnUrl);
+      } else {
+        navigate("/player/dashboard");
+      }
     } catch (error) {
       console.error("Error updating profile:", error);
       toast.error("Failed to update profile");
     } finally {
       setSaving(false);
     }
+  };
+
+  // Status dot component for tabs
+  const StatusDot = ({ status }: { status: 'complete' | 'partial' | 'incomplete' }) => {
+    if (status === 'complete') return null;
+    return (
+      <span className={cn(
+        "w-2 h-2 rounded-full ml-1.5",
+        status === 'incomplete' ? "bg-destructive" : "bg-amber-500"
+      )} />
+    );
   };
 
   if (loading) {
@@ -335,7 +374,7 @@ const EditProfile = () => {
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="mb-8 md:mb-12 bg-gradient-to-b from-primary/10 via-background to-background border-b border-primary/15"
+        className="mb-6 bg-gradient-to-b from-primary/10 via-background to-background border-b border-primary/15"
       >
         <div className="container mx-auto px-4 py-6 md:py-8">
           <div className="flex items-start gap-3 md:gap-6">
@@ -363,522 +402,134 @@ const EditProfile = () => {
                   letterSpacing: '0.02em',
                 }}
               >
-                Edit Profile - {formData.display_name || formData.first_name || 'User'}
+                Edit Profile
                 <motion.span
-                  className="absolute bottom-0 left-3 h-0.5 bg-gradient-to-r from-[#A9DC3D] to-transparent"
+                  className="absolute bottom-0 left-3 h-0.5 bg-gradient-to-r from-primary to-transparent"
                   initial={{ width: 0 }}
                   animate={{ width: '100%' }}
                   transition={{ duration: 0.8, delay: 0.5 }}
                   style={{ display: 'block' }}
                 />
               </motion.h1>
-              <motion.p
+              <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.5, delay: 0.3 }}
-                className="text-sm md:text-lg leading-relaxed text-muted-foreground"
+                className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4"
               >
-                Customize your profile, preferences, and notification settings
-              </motion.p>
+                <span className="text-sm md:text-base text-muted-foreground">
+                  {formData.display_name || formData.first_name || 'User'}
+                </span>
+                <TournamentReadinessCard completeness={completeness} compact />
+              </motion.div>
             </div>
           </div>
         </div>
       </motion.div>
 
-      <div className="container mx-auto px-4 py-6 space-y-6">
+      <div className="container mx-auto px-4 pb-8">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-5 mb-6 h-auto">
+            <TabsTrigger value="basics" className="flex items-center gap-1.5 py-2.5 px-2 text-xs sm:text-sm">
+              <User className="h-4 w-4 flex-shrink-0" />
+              <span className="hidden sm:inline">Basics</span>
+              <StatusDot status={sectionStatus.basics} />
+            </TabsTrigger>
+            <TabsTrigger value="tournament" className="flex items-center gap-1.5 py-2.5 px-2 text-xs sm:text-sm">
+              <Trophy className="h-4 w-4 flex-shrink-0" />
+              <span className="hidden sm:inline">Tournament</span>
+              <StatusDot status={sectionStatus.tournament} />
+            </TabsTrigger>
+            <TabsTrigger value="playstyle" className="flex items-center gap-1.5 py-2.5 px-2 text-xs sm:text-sm">
+              <Gamepad2 className="h-4 w-4 flex-shrink-0" />
+              <span className="hidden sm:inline">Play Style</span>
+              <StatusDot status={sectionStatus.playStyle} />
+            </TabsTrigger>
+            <TabsTrigger value="notifications" className="flex items-center gap-1.5 py-2.5 px-2 text-xs sm:text-sm">
+              <Bell className="h-4 w-4 flex-shrink-0" />
+              <span className="hidden sm:inline">Notifications</span>
+            </TabsTrigger>
+            <TabsTrigger value="security" className="flex items-center gap-1.5 py-2.5 px-2 text-xs sm:text-sm">
+              <Shield className="h-4 w-4 flex-shrink-0" />
+              <span className="hidden sm:inline">Security</span>
+            </TabsTrigger>
+          </TabsList>
 
-        <div className="space-y-6">
-          {/* Profile Picture Upload */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Profile Picture</CardTitle>
-              <CardDescription>Upload a photo to personalize your profile</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center gap-6">
-                <div className="flex-shrink-0">
-                  {formData.avatar_url ? (
-                    <div className="relative">
-                      <img
-                        src={formData.avatar_url}
-                        alt="Profile"
-                        className="w-24 h-24 rounded-full object-cover border-2 border-primary"
-                      />
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="icon"
-                        className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
-                        onClick={handleRemoveAvatar}
-                      >
-                        <X className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center border-2 border-dashed border-primary/30">
-                      <UserCog className="w-12 h-12 text-primary/50" />
-                    </div>
-                  )}
-                </div>
-                <div className="flex-1">
-                  <Label htmlFor="avatar-upload" className="cursor-pointer">
-                    <div className="flex items-center gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        disabled={uploading}
-                        onClick={() => document.getElementById('avatar-upload')?.click()}
-                      >
-                        <Upload className="w-4 h-4 mr-2" />
-                        {uploading ? "Uploading..." : "Upload Photo"}
-                      </Button>
-                    </div>
-                  </Label>
-                  <Input
-                    id="avatar-upload"
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleFileUpload}
-                    disabled={uploading}
-                  />
-                  <p className="text-xs text-muted-foreground mt-2">
-                    JPG, PNG, or WebP. Max 5MB.
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <TabsContent value="basics">
+            <ProfileBasicsTab
+              formData={{
+                first_name: formData.first_name,
+                last_name: formData.last_name,
+                display_name: formData.display_name,
+                avatar_url: formData.avatar_url,
+                phonetic_name: formData.phonetic_name,
+                town: formData.town,
+                state: formData.state,
+              }}
+              onFormChange={handleFormChange}
+              onFileUpload={handleFileUpload}
+              onRemoveAvatar={handleRemoveAvatar}
+              uploading={uploading}
+              highlightLocation={highlightLocation}
+              locationRef={locationSectionRef}
+            />
+          </TabsContent>
 
-          {/* Security */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Security</CardTitle>
-              <CardDescription>Manage your account security</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label>Password</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Reset your password via email
-                  </p>
-                </div>
-                <Button
-                  variant="outline"
-                  onClick={handleResetPassword}
-                  disabled={resettingPassword}
-                >
-                  <KeyRound className="w-4 h-4 mr-2" />
-                  {resettingPassword ? "Sending..." : "Reset Password"}
-                </Button>
-              </div>
+          <TabsContent value="tournament">
+            <TournamentInfoTab
+              formData={{
+                phone_number: formData.phone_number,
+                date_of_birth: formData.date_of_birth,
+                gender: formData.gender,
+                shirt_size: formData.shirt_size,
+                emergency_contact_name: formData.emergency_contact_name,
+                emergency_contact_phone: formData.emergency_contact_phone,
+                skill_level_self: formData.skill_level_self,
+              }}
+              onFormChange={handleFormChange}
+              completeness={completeness}
+            />
+          </TabsContent>
 
-              <Separator />
+          <TabsContent value="playstyle">
+            <PlayStyleTab
+              formData={{
+                home_court_id: formData.home_court_id,
+                handedness: formData.handedness,
+                play_side: formData.play_side,
+                paddle_brand: formData.paddle_brand,
+                paddle_model: formData.paddle_model,
+              }}
+              onFormChange={handleFormChange}
+              courts={courts}
+            />
+          </TabsContent>
 
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label>Data Export (GDPR)</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Download all your personal data
-                  </p>
-                </div>
-                <Button
-                  variant="outline"
-                  onClick={() => navigate('/profile/data-export')}
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  Export My Data
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+          <TabsContent value="notifications">
+            <NotificationsTab
+              formData={{
+                notify_score_email: formData.notify_score_email,
+                notify_score_sms: formData.notify_score_sms,
+                notify_score_push: formData.notify_score_push,
+                notify_badges_email: formData.notify_badges_email,
+                notify_badges_sms: formData.notify_badges_sms,
+                notify_badges_push: formData.notify_badges_push,
+              }}
+              onFormChange={handleFormChange}
+            />
+          </TabsContent>
 
-          {/* MFA Management */}
-          <MFAManagement />
+          <TabsContent value="security">
+            <SecurityTab
+              onResetPassword={handleResetPassword}
+              resettingPassword={resettingPassword}
+            />
+          </TabsContent>
+        </Tabs>
 
-          {/* Biometric Authentication */}
-          <BiometricSetup />
-
-          {/* Location Section */}
-          <Card 
-            ref={locationSectionRef}
-            className={`transition-all duration-500 ${highlightLocation ? 'ring-2 ring-primary ring-offset-2' : ''}`}
-          >
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MapPin className="w-5 h-5 text-primary" />
-                Location
-              </CardTitle>
-              <CardDescription>Where you play most often</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="town">City</Label>
-                  <Input
-                    id="town"
-                    value={formData.town || ""}
-                    onChange={(e) => setFormData({ ...formData, town: e.target.value })}
-                    placeholder="New York"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="state">State</Label>
-                  <Select
-                    value={formData.state || ""}
-                    onValueChange={(value) => setFormData({ ...formData, state: value })}
-                  >
-                    <SelectTrigger id="state">
-                      <SelectValue placeholder="Select state..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {US_STATES.map((st) => (
-                        <SelectItem key={st} value={st}>{st}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground">Your location is shown on your profile and helps other players find you</p>
-            </CardContent>
-          </Card>
-
-          {/* Identity & Visuals */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Identity & Visuals</CardTitle>
-              <CardDescription>How you appear to other players</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="first_name">First Name *</Label>
-                  <Input
-                    id="first_name"
-                    value={formData.first_name || ""}
-                    onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-                    placeholder="John"
-                    required
-                  />
-                  {!formData.first_name?.trim() && (
-                    <p className="text-xs text-destructive">First name is required</p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="last_name">Last Name *</Label>
-                  <Input
-                    id="last_name"
-                    value={formData.last_name || ""}
-                    onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-                    placeholder="Doe"
-                    required
-                  />
-                  {!formData.last_name?.trim() && (
-                    <p className="text-xs text-destructive">Last name is required</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="display_name">Display Name</Label>
-                <Input
-                  id="display_name"
-                  value={formData.display_name || ""}
-                  onChange={(e) => setFormData({ ...formData, display_name: e.target.value })}
-                  placeholder="Alex K."
-                />
-                <p className="text-xs text-muted-foreground">How you want to be shown on leaderboards</p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="phonetic_name">Phonetic Name (optional)</Label>
-                <Input
-                  id="phonetic_name"
-                  value={formData.phonetic_name || ""}
-                  onChange={(e) => setFormData({ ...formData, phonetic_name: e.target.value })}
-                  placeholder="AL-ex"
-                />
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="phone_number">Phone Number</Label>
-                  <Input
-                    id="phone_number"
-                    type="tel"
-                    value={formData.phone_number || ""}
-                    onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
-                    placeholder="(555) 123-4567"
-                  />
-                  <p className="text-xs text-muted-foreground">Used for tournament communications</p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="date_of_birth">Date of Birth (optional)</Label>
-                  <Input
-                    id="date_of_birth"
-                    type="date"
-                    value={formData.date_of_birth || ""}
-                    onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })}
-                  />
-                  <p className="text-xs text-muted-foreground">For age-based tournament divisions</p>
-                </div>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="gender">Gender (optional)</Label>
-                  <Select
-                    value={formData.gender || ""}
-                    onValueChange={(value) => setFormData({ ...formData, gender: value })}
-                  >
-                    <SelectTrigger id="gender">
-                      <SelectValue placeholder="Select..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="male">Male</SelectItem>
-                      <SelectItem value="female">Female</SelectItem>
-                      <SelectItem value="non_binary">Non-Binary</SelectItem>
-                      <SelectItem value="prefer_not_to_say">Prefer Not to Say</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">For gender-specific divisions</p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="shirt_size">Shirt Size (optional)</Label>
-                  <Select
-                    value={formData.shirt_size || ""}
-                    onValueChange={(value) => setFormData({ ...formData, shirt_size: value })}
-                  >
-                    <SelectTrigger id="shirt_size">
-                      <SelectValue placeholder="Select..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="XS">XS</SelectItem>
-                      <SelectItem value="S">S</SelectItem>
-                      <SelectItem value="M">M</SelectItem>
-                      <SelectItem value="L">L</SelectItem>
-                      <SelectItem value="XL">XL</SelectItem>
-                      <SelectItem value="XXL">XXL</SelectItem>
-                      <SelectItem value="2XL">2XL</SelectItem>
-                      <SelectItem value="3XL">3XL</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">For tournament merchandise</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Tournament Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Tournament Information</CardTitle>
-              <CardDescription>Optional information for tournament registration</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="emergency_contact_name">Emergency Contact Name</Label>
-                  <Input
-                    id="emergency_contact_name"
-                    value={formData.emergency_contact_name || ""}
-                    onChange={(e) => setFormData({ ...formData, emergency_contact_name: e.target.value })}
-                    placeholder="Full name"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="emergency_contact_phone">Emergency Contact Phone</Label>
-                  <Input
-                    id="emergency_contact_phone"
-                    type="tel"
-                    value={formData.emergency_contact_phone || ""}
-                    onChange={(e) => setFormData({ ...formData, emergency_contact_phone: e.target.value })}
-                    placeholder="(555) 123-4567"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="skill_level_self">Self-Assessed Skill Level</Label>
-                <Select
-                  value={formData.skill_level_self || ""}
-                  onValueChange={(value) => setFormData({ ...formData, skill_level_self: value })}
-                >
-                  <SelectTrigger id="skill_level_self">
-                    <SelectValue placeholder="Select your skill level..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="beginner">Beginner</SelectItem>
-                    <SelectItem value="intermediate">Intermediate</SelectItem>
-                    <SelectItem value="advanced">Advanced</SelectItem>
-                    <SelectItem value="semi_pro">Semi-Pro</SelectItem>
-                    <SelectItem value="pro">Pro</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">Your honest assessment helps with fair tournament matchmaking</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Notifications */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Notifications</CardTitle>
-              <CardDescription>Choose how you want to be notified</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div>
-                <h4 className="font-medium mb-3">Score Confirmation Requests</h4>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="notify_score_email">Email</Label>
-                    <Switch
-                      id="notify_score_email"
-                      checked={formData.notify_score_email}
-                      onCheckedChange={(checked) => setFormData({ ...formData, notify_score_email: checked })}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="notify_score_sms">SMS</Label>
-                    <Switch
-                      id="notify_score_sms"
-                      checked={formData.notify_score_sms}
-                      onCheckedChange={(checked) => setFormData({ ...formData, notify_score_sms: checked })}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="notify_score_push">Push Notifications</Label>
-                    <Switch
-                      id="notify_score_push"
-                      checked={formData.notify_score_push}
-                      onCheckedChange={(checked) => setFormData({ ...formData, notify_score_push: checked })}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <Separator />
-
-              <div>
-                <h4 className="font-medium mb-3">Match Approvals & Badge Unlocks</h4>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="notify_badges_email">Email</Label>
-                    <Switch
-                      id="notify_badges_email"
-                      checked={formData.notify_badges_email}
-                      onCheckedChange={(checked) => setFormData({ ...formData, notify_badges_email: checked })}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="notify_badges_sms">SMS</Label>
-                    <Switch
-                      id="notify_badges_sms"
-                      checked={formData.notify_badges_sms}
-                      onCheckedChange={(checked) => setFormData({ ...formData, notify_badges_sms: checked })}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="notify_badges_push">Push Notifications</Label>
-                    <Switch
-                      id="notify_badges_push"
-                      checked={formData.notify_badges_push}
-                      onCheckedChange={(checked) => setFormData({ ...formData, notify_badges_push: checked })}
-                    />
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Gameplay Preferences */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Gameplay Preferences</CardTitle>
-              <CardDescription>Customize your pickleball experience</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="home_court">Home Court</Label>
-                <Select
-                  value={formData.home_court_id || ""}
-                  onValueChange={(value) => setFormData({ ...formData, home_court_id: value })}
-                >
-                  <SelectTrigger id="home_court">
-                    <SelectValue placeholder="Select your home court" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {courts.map((court) => (
-                      <SelectItem key={court.id} value={court.id}>
-                        {court.name} - {court.city}, {court.state}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="handedness">Handedness</Label>
-                  <Select
-                    value={formData.handedness || ""}
-                    onValueChange={(value) => setFormData({ ...formData, handedness: value })}
-                  >
-                    <SelectTrigger id="handedness">
-                      <SelectValue placeholder="Select..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="right">Right</SelectItem>
-                      <SelectItem value="left">Left</SelectItem>
-                      <SelectItem value="ambidextrous">Ambidextrous</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="play_side">Play Side Preference</Label>
-                  <Select
-                    value={formData.play_side || ""}
-                    onValueChange={(value) => setFormData({ ...formData, play_side: value })}
-                  >
-                    <SelectTrigger id="play_side">
-                      <SelectValue placeholder="Select..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="forehand">Forehand</SelectItem>
-                      <SelectItem value="backhand">Backhand</SelectItem>
-                      <SelectItem value="either">Either</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="paddle_brand">Paddle Brand (optional)</Label>
-                  <Input
-                    id="paddle_brand"
-                    value={formData.paddle_brand || ""}
-                    onChange={(e) => setFormData({ ...formData, paddle_brand: e.target.value })}
-                    placeholder="e.g., Selkirk"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="paddle_model">Paddle Model (optional)</Label>
-                  <Input
-                    id="paddle_model"
-                    value={formData.paddle_model || ""}
-                    onChange={(e) => setFormData({ ...formData, paddle_model: e.target.value })}
-                    placeholder="e.g., Vanguard Power Air"
-                  />
-                </div>
-              </div>
-
-            </CardContent>
-          </Card>
-
-          <div className="flex gap-4 justify-end">
+        {/* Sticky Save Bar */}
+        <div className="sticky bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-t border-border py-4 mt-6 -mx-4 px-4">
+          <div className="flex gap-4 justify-end max-w-full">
             <Button variant="outline" onClick={() => navigate("/player/dashboard")}>
               Cancel
             </Button>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate, useParams, Link, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -24,13 +24,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { ArrowLeft, Users, Trophy, Check, ChevronsUpDown, Loader2, Calendar, MapPin, DollarSign, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Users, Trophy, Check, ChevronsUpDown, Loader2, Calendar, MapPin, DollarSign, AlertTriangle, UserCog } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { formatTournamentLabel, formatSkillLevelRange, formatGenderLabel } from "@/lib/formatLabels";
 import { checkDivisionEligibility, type EligibilityResult } from "@/lib/tournamentValidation";
 import { getDivisionPricing, type PricingInfo } from "@/lib/tournamentPricing";
+import { checkTournamentReadiness, type TournamentRequirements } from "@/lib/profileCompleteness";
 import logo from "@/assets/pulse-logo-new.png";
 
 interface TournamentEvent {
@@ -71,6 +72,21 @@ interface PlayerProfile {
   current_rating?: number | null;
 }
 
+interface UserProfileComplete {
+  id: string;
+  first_name?: string | null;
+  last_name?: string | null;
+  display_name?: string | null;
+  full_name?: string | null;
+  phone_number?: string | null;
+  date_of_birth?: string | null;
+  gender?: string | null;
+  emergency_contact_name?: string | null;
+  emergency_contact_phone?: string | null;
+  town?: string | null;
+  state?: string | null;
+}
+
 const SHIRT_SIZES = ["XS", "S", "M", "L", "XL", "XXL"];
 
 export default function TournamentRegister() {
@@ -88,6 +104,7 @@ export default function TournamentRegister() {
   const [event, setEvent] = useState<TournamentEvent | null>(null);
   const [divisions, setDivisions] = useState<DivisionWithData[]>([]);
   const [currentUser, setCurrentUser] = useState<PlayerProfile | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfileComplete | null>(null);
   const [players, setPlayers] = useState<PlayerProfile[]>([]);
   
   // Form fields
@@ -214,10 +231,11 @@ export default function TournamentRegister() {
     if (user) {
       const { data: profile } = await supabase
         .from("profiles")
-        .select("id, display_name, full_name")
+        .select("id, display_name, full_name, first_name, last_name, phone_number, date_of_birth, gender, emergency_contact_name, emergency_contact_phone, town, state")
         .eq("id", user.id)
         .single();
       setCurrentUser(profile);
+      setUserProfile(profile);
     }
   };
 
@@ -239,6 +257,25 @@ export default function TournamentRegister() {
         const displayName = player.display_name || player.full_name || "";
         return displayName.toLowerCase().includes(partnerSearchQuery.toLowerCase());
       });
+
+  // Check tournament readiness based on selected division
+  const tournamentRequirements: TournamentRequirements = useMemo(() => {
+    const hasGenderDivisions = divisions.some(d => d.gender && d.gender !== "open");
+    const hasAgeDivisions = divisions.some(d => 
+      (d.skill_level_min !== null && d.skill_level_min !== undefined) || 
+      (d.skill_level_max !== null && d.skill_level_max !== undefined)
+    );
+    return {
+      requireEmergencyContact: true, // Most tournaments require this
+      hasGenderRestrictedDivisions: hasGenderDivisions,
+      hasAgeRestrictedDivisions: hasAgeDivisions,
+    };
+  }, [divisions]);
+
+  const profileReadiness = useMemo(() => {
+    if (!userProfile) return { ready: true, missing: [] };
+    return checkTournamentReadiness(userProfile, tournamentRequirements);
+  }, [userProfile, tournamentRequirements]);
 
   const canSubmit = () => {
     if (!divisionId) return false;
@@ -396,6 +433,30 @@ export default function TournamentRegister() {
             )}
           </div>
         </div>
+
+        {/* Profile Readiness Warning */}
+        {!profileReadiness.ready && (
+          <Alert className="mb-6 border-amber-500/50 bg-amber-500/10">
+            <UserCog className="h-4 w-4 text-amber-600" />
+            <AlertDescription>
+              <p className="font-medium text-amber-700 dark:text-amber-400">Complete your profile to register</p>
+              <p className="text-sm mt-1 text-amber-600/80 dark:text-amber-400/80">
+                This tournament requires: {profileReadiness.missing.map(m => m.label).join(", ")}
+              </p>
+              <Button 
+                size="sm" 
+                variant="outline" 
+                className="mt-3 border-amber-500/50 text-amber-700 hover:bg-amber-500/10 dark:text-amber-400" 
+                asChild
+              >
+                <Link to={`/profile/edit?focus=tournament&return=/tournament/${eventId}/register`}>
+                  <UserCog className="w-4 h-4 mr-2" />
+                  Complete Profile
+                </Link>
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
 
         <Card>
           <CardContent className="p-6 space-y-8">
