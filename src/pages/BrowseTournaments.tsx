@@ -1,11 +1,12 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Trophy, ChevronDown } from "lucide-react";
+import { Trophy, Search } from "lucide-react";
 import { motion } from "framer-motion";
-import { PageHeader } from "@/components/PageHeader";
+import { TournamentBrowseHeader } from "@/components/tournament/TournamentBrowseHeader";
 import { TournamentBrowseFilters } from "@/components/tournament/TournamentBrowseFilters";
 import { TournamentBrowseCard } from "@/components/tournament/TournamentBrowseCard";
 import { useBrowseTournaments } from "@/hooks/useBrowseTournaments";
@@ -64,64 +65,60 @@ export default function BrowseTournaments() {
     setRegistrationStatus('all');
   };
 
-  const scrollToTournaments = () => {
-    document.getElementById("tournaments-section")?.scrollIntoView({ behavior: "smooth" });
-  };
-
   return (
     <div className="min-h-screen bg-[hsl(var(--page-bg))]">
-      <PageHeader userId={userId} />
+      <TournamentBrowseHeader userId={userId} activeTab="browse" />
       
-      {/* Hero Section */}
-      <section className="relative min-h-[280px] flex items-center justify-center overflow-hidden bg-secondary">
-        <div className="absolute inset-0 bg-gradient-to-br from-secondary via-secondary/90 to-secondary/80" />
-        
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="container mx-auto px-4 py-12 text-center relative z-10"
-        >
-          <Trophy className="h-12 w-12 text-primary mx-auto mb-4" />
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4 drop-shadow-lg">
-            Find Your Next Tournament
-          </h1>
-          <p className="text-lg sm:text-xl text-white/90 mb-6 max-w-xl mx-auto drop-shadow">
-            Discover pickleball tournaments in your area
-          </p>
-          
-          <Button 
-            size="lg" 
-            variant="outline" 
-            className="bg-transparent border-2 border-white text-white hover:bg-white hover:text-secondary transition-all duration-300"
-            onClick={scrollToTournaments}
-          >
-            Browse All
-            <ChevronDown className="ml-2 h-5 w-5" />
-          </Button>
-        </motion.div>
-      </section>
-
-      {/* Filters & Tournaments Section */}
-      <section id="tournaments-section" className="py-8 px-4 bg-background">
-        <div className="container mx-auto max-w-6xl">
-          {/* Filters */}
+      {/* Compact Hero Section */}
+      <section className="bg-secondary py-6 sm:py-8">
+        <div className="container mx-auto px-4 max-w-4xl">
           <motion.div 
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
-            className="mb-8"
+            className="text-center"
+          >
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <Trophy className="h-6 w-6 text-primary" />
+              <h1 className="text-2xl sm:text-3xl font-bold text-white">
+                Find Tournaments
+              </h1>
+            </div>
+            <p className="text-white/80 text-sm sm:text-base mb-4">
+              Discover pickleball events near you
+            </p>
+            
+            {/* Unified Search Bar */}
+            <div className="relative max-w-xl mx-auto">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+              <Input
+                placeholder="Search by name, city, or state..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-12 h-12 text-base bg-background border-0 shadow-lg rounded-xl"
+              />
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Filters & Tournaments Section */}
+      <section className="py-4 sm:py-6 px-4 bg-background">
+        <div className="container mx-auto max-w-6xl">
+          {/* Compact Filter Bar */}
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.1 }}
+            className="mb-6"
           >
             <TournamentBrowseFilters
-              search={search}
-              location={location}
               dateRange={dateRange}
               registrationStatus={registrationStatus}
-              onSearchChange={setSearch}
-              onLocationChange={setLocation}
               onDateRangeChange={setDateRange}
               onRegistrationStatusChange={setRegistrationStatus}
               onClearFilters={handleClearFilters}
+              hasActiveFilters={!!search || !!location || dateRange !== 'all' || registrationStatus !== 'all'}
             />
           </motion.div>
 
