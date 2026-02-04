@@ -1,340 +1,199 @@
 
+# Winter Classic Sample Tournament Setup
 
-# Tournament System Readiness Audit - Comprehensive Analysis
+## Overview
 
-## Executive Summary
-
-I've conducted a thorough audit of the PULSE tournament system, analyzing **15+ pages**, **10+ components**, **11 database tables**, **18+ edge functions**, and **8+ database triggers**. The system is **production-ready** with robust validation at both the database and UI levels. I've identified a few minor gaps and some security warnings that should be addressed before going live.
+I'll create a complete sample tournament called **"Winter Classic"** for **Saturday, February 7th, 2026** with 3 divisions, sample teams, and generated matches so you can test all tournament features end-to-end.
 
 ---
 
-## Overall Architecture
+## Tournament Details
+
+| Field | Value |
+|-------|-------|
+| Name | Winter Classic |
+| Date | Saturday, February 7, 2026 |
+| Location | PULSE Test Facility, Cumberland, RI |
+| Status | Upcoming (ready for registrations) |
+| Custom URL | `/tournament/winter-classic-2026` |
+| Created By | Alex Khoury (your admin account) |
+
+---
+
+## 3 Divisions
+
+### Division 1: Mixed Doubles 3.0-3.5
+- **Format**: Round Robin
+- **Gender**: Mixed (requires 1 male, 1 female per team)
+- **Skill Range**: 3.0 - 3.5
+- **Registration Fee**: $40/team
+- **4 Teams** → 6 matches total
+
+### Division 2: Open Doubles 2.5-3.0
+- **Format**: Round Robin  
+- **Gender**: Open (any gender combination)
+- **Skill Range**: 2.5 - 3.0
+- **Registration Fee**: $35/team
+- **4 Teams** → 6 matches total
+
+### Division 3: Recreational (All Levels)
+- **Format**: Round Robin
+- **Gender**: Open
+- **Skill Range**: None (all levels welcome)
+- **Registration Fee**: $30/team
+- **4 Teams** → 6 matches total
+
+---
+
+## Sample Teams (12 Total)
+
+Using real profiles from your database, I'll create teams with proper player links:
+
+### Mixed Doubles 3.0-3.5
+1. **Khoury & Lewis** - Alex Khoury + Pam Lewis
+2. **Sachleben & Dalton** - Kelly Sachleben + Michael Dalton  
+3. **Warren & DeForest** - Jenna Warren + David DeForest
+4. **Lotfi & Chalamala** - Bethany Lotfi + Manny Chalamala
+
+### Open Doubles 2.5-3.0
+1. **The Underdogs** - Debbie Belanger + Divyesh Dubey
+2. **Net Ninjas** - Tharun Bonthu + Test Account1
+3. **Dink Dynasty** - Test Account4 + Test Account5
+4. **Kitchen Crew** - Adam Khoury + Testing Test
+
+### Recreational Division
+1. **Just For Fun** - Linda Chilson + John Balcarcel
+2. **Weekend Warriors** - Robert Mammone + Gail Ferr
+3. **Pickle Pals** - Benjamin Averill + Kayla Tran
+4. **Casual Kings** - Tara Zerfas + John C
+
+---
+
+## Courts (4)
+
+| Court | Name |
+|-------|------|
+| 1 | Court 1 |
+| 2 | Court 2 |
+| 3 | Court 3 |
+| 4 | Court 4 |
+
+---
+
+## Round Robin Matches (18 Total)
+
+Each division will have 6 matches generated (4 teams = 6 unique pairings):
 
 ```text
-TOURNAMENT SYSTEM FLOW
+Division: Mixed Doubles 3.0-3.5
+├── Round 1: Match 1 (Team 1 vs Team 2), Match 2 (Team 3 vs Team 4)
+├── Round 2: Match 3 (Team 1 vs Team 3), Match 4 (Team 2 vs Team 4)
+└── Round 3: Match 5 (Team 1 vs Team 4), Match 6 (Team 2 vs Team 3)
 
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                        TOURNAMENT LIFECYCLE                                  │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  1. CREATION          2. DIVISIONS         3. REGISTRATION                  │
-│  ┌────────────┐      ┌──────────────┐     ┌─────────────────┐              │
-│  │TournamentNew│ ──► │CreateDivision│ ──► │TournamentRegister│             │
-│  │  Wizard    │      │   Dialog     │     │     Page        │              │
-│  └────────────┘      └──────────────┘     └─────────────────┘              │
-│        │                   │                      │                         │
-│        ▼                   ▼                      ▼                         │
-│  tournaments_events  tournaments_divisions  tournament_registrations        │
-│                                                                             │
-│  4. CHECK-IN          5. MATCHES            6. STANDINGS                   │
-│  ┌────────────┐      ┌──────────────┐     ┌─────────────────┐              │
-│  │ CheckIn    │ ──►  │MatchesPanel  │ ──► │  StandingsPanel │              │
-│  │ Dashboard  │      │ ScoreEntry   │     │   (Real-time)   │              │
-│  └────────────┘      └──────────────┘     └─────────────────┘              │
-│        │                   │                      │                         │
-│        ▼                   ▼                      ▼                         │
-│  checked_in_at      tournaments_matches     Calculated from                │
-│  (registration)     (with triggers)         completed matches              │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
+Division: Open Doubles 2.5-3.0
+├── Round 1: Match 1 (Team 1 vs Team 2), Match 2 (Team 3 vs Team 4)
+├── Round 2: Match 3 (Team 1 vs Team 3), Match 4 (Team 2 vs Team 4)
+└── Round 3: Match 5 (Team 1 vs Team 4), Match 6 (Team 2 vs Team 3)
 
-PUBLIC VIEWS:
-- TournamentLanding.tsx → Beautiful landing page with divisions, venue info
-- TournamentLiveView.tsx → Real-time scores for TV/spectators
-- TournamentTeamView.tsx → Individual team schedule/results
+Division: Recreational
+├── Round 1: Match 1 (Team 1 vs Team 2), Match 2 (Team 3 vs Team 4)
+├── Round 2: Match 3 (Team 1 vs Team 3), Match 4 (Team 2 vs Team 4)
+└── Round 3: Match 5 (Team 1 vs Team 4), Match 6 (Team 2 vs Team 3)
 ```
 
 ---
 
-## Feature Status Summary
+## Match Schedule (Tentative)
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Tournament Creation | READY | 3-step wizard with payment gating |
-| Division Configuration | READY | Full eligibility controls (skill, age, gender) |
-| Division Pricing | READY | Per-division fees, early bird pricing |
-| Registration Flow | READY | Single-page form with profile readiness check |
-| Eligibility Validation | READY | Real-time checks for skill/age/gender |
-| Partner Selection | READY | Searchable dropdown with ratings |
-| Team Management | READY | Create, edit, delete with seed numbers |
-| Match Generation | READY | Round robin algorithm with proper validation |
-| Match Scheduling | READY | Bulk scheduler, court auto-assignment |
-| Score Entry | READY | Ruleset-aware validation (games to X, win by 2) |
-| Standings Calculation | READY | W/L, head-to-head tiebreaker, point differential |
-| Check-In System | READY | Progress tracking, search, undo |
-| Public Landing Page | READY | 12 modular sections, mobile-optimized |
-| Custom URLs | READY | pulsepb.com/tournament/your-slug |
-| Email Notifications | READY | Confirmation, approval, reminders |
-| Real-time Updates | PARTIAL | Subscription hooks exist but need testing |
+All matches scheduled for **February 7, 2026**:
+
+| Time | Court 1 | Court 2 | Court 3 | Court 4 |
+|------|---------|---------|---------|---------|
+| 9:00 AM | Mixed R1-M1 | Mixed R1-M2 | Open R1-M1 | Open R1-M2 |
+| 10:00 AM | Rec R1-M1 | Rec R1-M2 | Mixed R2-M3 | Mixed R2-M4 |
+| 11:00 AM | Open R2-M3 | Open R2-M4 | Rec R2-M3 | Rec R2-M4 |
+| 12:00 PM | Mixed R3-M5 | Mixed R3-M6 | Open R3-M5 | Open R3-M6 |
+| 1:00 PM | Rec R3-M5 | Rec R3-M6 | - | - |
 
 ---
 
-## Database Tables (11 Tournament Tables)
+## Data Creation Sequence
 
-| Table | Purpose | RLS Status |
-|-------|---------|------------|
-| `tournaments_events` | Main event record | Has RLS |
-| `tournaments_divisions` | Division config (skill, age, gender, pricing) | Has RLS |
-| `tournaments_teams` | Teams with player links | Has RLS |
-| `tournaments_matches` | Match records with scores | Has RLS |
-| `tournaments_courts` | Court management | Has RLS |
-| `tournaments_scoring_rulesets` | Scoring rules (games to, win by 2) | Has RLS |
-| `tournament_registrations` | Player sign-ups | Has RLS |
-| `tournament_customization` | Landing page content | Has RLS |
-| `tournament_event_settings` | Event-level settings | Has RLS |
-| `tournament_email_templates` | Custom email templates | Has RLS |
-| `tournament_registration_notifications` | Email log | Has RLS |
+The data will be inserted in this order to respect foreign key constraints:
+
+1. **tournaments_events** - Main tournament record
+2. **tournaments_courts** - 4 courts
+3. **tournaments_divisions** - 3 divisions with eligibility rules
+4. **tournaments_teams** - 12 teams (4 per division)
+5. **tournaments_matches** - 18 matches with scheduled times and court assignments
 
 ---
 
-## Database Triggers (Data Integrity)
+## What You Can Test After Creation
 
-All critical business rules are enforced at the database level:
+With this sample data, you'll be able to test:
 
-| Trigger | Function | Status |
-|---------|----------|--------|
-| `trigger_validate_division_activation` | Requires 2+ teams to activate | ACTIVE |
-| `trigger_validate_division_completion` | Blocks completion with unfinished matches | ACTIVE |
-| `trigger_prevent_match_edits_completed` | Blocks score/court changes in completed divisions | ACTIVE |
-| `trigger_matches_updated_at` | Auto-timestamp on updates | ACTIVE |
-| `trigger_divisions_updated_at` | Auto-timestamp on updates | ACTIVE |
+- **Public Landing Page** at `/tournament/winter-classic-2026`
+- **Division eligibility** - Skill level and gender restrictions
+- **Team management** - Edit, delete, reorder seeds
+- **Match scheduling** - Assign courts, set times
+- **Score entry** - Enter scores for matches
+- **Standings calculation** - See rankings update in real-time
+- **Check-in system** - Mark players as checked in
+- **Live view** - TV display mode for spectators
+- **Status transitions** - Draft → Upcoming → Live → Completed
 
-### Match Status Transition Validation
+---
+
+## Technical Details
+
+### Database Inserts
+
 ```sql
--- Cannot complete match without scores
-IF NEW.status = 'completed' AND (NEW.team1_score IS NULL OR NEW.team2_score IS NULL) THEN
-  RAISE EXCEPTION 'Cannot mark match as completed without scores';
-END IF;
+-- 1. Create tournament event
+INSERT INTO tournaments_events (
+  name, slug, start_date, end_date, location,
+  status, created_by, public_view_enabled, registration_enabled
+) VALUES (
+  'Winter Classic', 'winter-classic-2026', '2026-02-07', '2026-02-07',
+  'PULSE Test Facility, Cumberland, RI', 'upcoming',
+  'fff594fe-02ea-439c-a974-72e1f6295f08', true, true
+);
 
--- Auto-set timestamps
-IF NEW.status = 'in_progress' THEN NEW.started_at := NOW();
-IF NEW.status = 'completed' THEN NEW.completed_at := NOW();
+-- 2. Create 4 courts
+INSERT INTO tournaments_courts (event_id, court_number, court_name, available)
+VALUES 
+  (event_id, 1, 'Court 1', true),
+  (event_id, 2, 'Court 2', true),
+  (event_id, 3, 'Court 3', true),
+  (event_id, 4, 'Court 4', true);
+
+-- 3. Create 3 divisions with eligibility rules
+INSERT INTO tournaments_divisions (
+  event_id, name, format, gender, skill_level_min, skill_level_max,
+  registration_fee, status
+) VALUES 
+  (event_id, 'Mixed Doubles 3.0-3.5', 'round_robin', 'mixed', 3.0, 3.5, 40, 'setup'),
+  (event_id, 'Open Doubles 2.5-3.0', 'round_robin', 'open', 2.5, 3.0, 35, 'setup'),
+  (event_id, 'Recreational', 'round_robin', 'open', NULL, NULL, 30, 'setup');
+
+-- 4. Create 12 teams (4 per division with player links)
+INSERT INTO tournaments_teams (division_id, team_name, player1_id, player2_id, seed_number)
+VALUES ...
+
+-- 5. Generate 18 round robin matches with scheduling
+INSERT INTO tournaments_matches (
+  division_id, team1_id, team2_id, round_number, match_number,
+  scheduled_time, court_id, status
+) VALUES ...
 ```
 
 ---
 
-## Division Eligibility System
+## Ready to Execute
 
-The system properly validates player eligibility for divisions:
+Once approved, I'll execute all the SQL inserts to create this complete sample tournament. After creation, you can access it at:
 
-### Skill Level Restrictions
-- `skill_level_min` and `skill_level_max` columns in `tournaments_divisions`
-- UI: `SkillLevelSelector` component (2.0 - 5.5+ range)
-- Validation: `checkDivisionEligibility()` in `tournamentValidation.ts`
-- Compares player's `current_rating` against division requirements
-
-### Age Restrictions
-- `age_min`, `age_max`, `age_group` columns
-- Age calculated as of Dec 31 of tournament year (standard pickleball rule)
-- UI: `AgeGroupSelector` component with presets (Senior 50+, Junior, etc.)
-
-### Gender Restrictions
-- `gender` column: `open`, `men`, `women`, `mixed`
-- UI: `GenderPlayTypeSelector` component
-- Validation maps: `mens` requires `male`, `womens` requires `female`
-
-### Eligibility Display
-```typescript
-// From TournamentRegister.tsx
-const eligibility = checkDivisionEligibility(playerProfile, division, eventData.start_date);
-// Returns: { eligible: boolean, reasons: string[] }
-```
-
----
-
-## Registration Flow Verification
-
-### Profile Readiness Check
-Before registration, the system verifies:
-1. **Required fields**: First name, last name, phone number
-2. **Conditional fields**: Date of birth (for age divisions), gender (for gender divisions)
-3. **Emergency contact**: If tournament requires it
-
-### Registration Process
-1. User selects division (shows eligibility + pricing)
-2. Enters team name
-3. Searches and selects partner (optional)
-4. Fills emergency contact
-5. Accepts waiver/policies
-6. Submits registration → Status: `pending`
-
-### Admin Approval Flow
-1. Admin sees registrations in `RegistrationsPanel`
-2. Can approve individually or bulk approve by division
-3. Approved status → Team created in `tournaments_teams`
-4. Email notification sent via `send-registration-approved` edge function
-
----
-
-## Scoring & Match Management
-
-### Scoring Rulesets
-The system supports configurable scoring rules:
-- `games_to`: Points needed to win (default: 11)
-- `win_by_2`: Require 2-point margin (default: true)
-- `best_of`: Number of games (1, 3, 5)
-
-### Score Entry Validation
-Real-time validation in `ScoreEntryDialog`:
-- Checks winning score reaches `games_to`
-- Checks `win_by_2` margin if required
-- Prevents ties
-- Shows example valid scores
-
-### Match Lifecycle
-```text
-scheduled → in_progress (started_at set) → completed (completed_at set)
-```
-
-### Score Editing
-- Tracked via `score_edited_by` and `score_edited_at`
-- Visual "(edited)" indicator with tooltip
-- Original duration preserved (not recalculated)
-
----
-
-## Edge Functions (Notifications)
-
-| Function | Purpose | Tested |
-|----------|---------|--------|
-| `send-registration-confirmation` | Initial registration email | Needs test |
-| `send-registration-approved` | Approval notification | Needs test |
-| `send-registration-waitlisted` | Waitlist notification | Needs test |
-| `send-team-assignment` | Team created notification | Needs test |
-| `send-tournament-reminders` | 15-min match, 24hr registration close | Needs test |
-| `send-court-assignment` | Court assignment notification | Needs test |
-| `create-tournament-checkout` | Stripe payment for tournament | Working |
-
----
-
-## Issues Found
-
-### Issue 1: RLS Policies Too Permissive
-**Severity**: Medium - Security Warning
-
-The database linter detected 11+ RLS policies with `USING (true)` or `WITH CHECK (true)` for UPDATE/INSERT operations. While this may be intentional for some admin operations, it should be reviewed.
-
-**Affected Areas**: Likely tournament tables allowing admin modifications without proper role checks.
-
-**Recommendation**: Review each policy and ensure proper role-based access:
-```sql
--- Example: Should check if user is event creator or admin
-WITH CHECK (created_by = auth.uid() OR has_admin_role())
-```
-
----
-
-### Issue 2: Security Definer View Detected
-**Severity**: Medium - Security Warning
-
-A view is defined with `SECURITY DEFINER`, which runs with the view creator's permissions rather than the querying user's. This could bypass RLS if not intentional.
-
-**Recommendation**: Review the view and convert to `SECURITY INVOKER` if appropriate.
-
----
-
-### Issue 3: Edge Function Table Reference Mismatch
-**Severity**: Low - Potential Bug
-
-In `send-tournament-reminders/index.ts`, lines 155-160 reference `event_tournament` table which doesn't exist in the current schema. Should be `tournaments_events`.
-
-```typescript
-// Current (incorrect):
-.from('event_tournament')
-// Should be:
-.from('tournaments_events')
-```
-
----
-
-### Issue 4: Missing Real-time Testing
-**Severity**: Low - Needs Verification
-
-The `useTournamentRealtime` hook exists but should be tested for:
-- Score updates across multiple devices
-- Division status changes propagating
-- Latency under load
-
----
-
-### Issue 5: No Court Conflict Prevention in UI
-**Severity**: Low - UX Improvement
-
-While there's a database trigger `prevent_court_conflicts()`, the UI doesn't pre-validate court availability before assignment. Users might see an error after attempting assignment.
-
-**Recommendation**: Add a pre-flight check in `CourtAssignmentDialog` to show available courts only.
-
----
-
-## Recommended Pre-Launch Testing Checklist
-
-### 1. End-to-End Registration Test
-- [ ] Create tournament with multiple divisions (skill-restricted, age-restricted, gender-restricted)
-- [ ] Register as player who meets eligibility
-- [ ] Register as player who DOESN'T meet eligibility (verify blocked)
-- [ ] Complete partner selection
-- [ ] Submit registration
-- [ ] Verify email received
-
-### 2. Admin Flow Test
-- [ ] Approve registration
-- [ ] Verify team created
-- [ ] Generate matches (round robin)
-- [ ] Assign courts
-- [ ] Start match (verify `started_at` set)
-- [ ] Enter score (verify validation works)
-- [ ] Complete match (verify `completed_at` set)
-- [ ] Check standings update
-
-### 3. Division Lifecycle Test
-- [ ] Try to activate division with <2 teams (should fail)
-- [ ] Activate division with 2+ teams
-- [ ] Generate matches
-- [ ] Try to complete division with unfinished matches (should fail)
-- [ ] Complete all matches
-- [ ] Complete division
-- [ ] Try to edit scores in completed division (should fail)
-
-### 4. Public View Test
-- [ ] Access tournament landing page via custom slug
-- [ ] Verify all sections render correctly
-- [ ] Test registration button navigation
-- [ ] View live scores page
-- [ ] Check mobile responsiveness
-
-### 5. Notification Test
-- [ ] Trigger registration confirmation email
-- [ ] Trigger approval email
-- [ ] Verify match reminder (15 min before) - requires cron
-
----
-
-## Fixes to Implement
-
-| Priority | Fix | Effort |
-|----------|-----|--------|
-| HIGH | Fix `send-tournament-reminders` table reference | 5 min |
-| MEDIUM | Review RLS policies for tournament tables | 1-2 hours |
-| MEDIUM | Add RESEND_API_KEY secret verification | 10 min |
-| LOW | Add court availability pre-check in UI | 30 min |
-| LOW | Test real-time subscriptions under load | 1 hour |
-
----
-
-## Conclusion
-
-The PULSE tournament system is **production-ready** with:
-- Complete tournament lifecycle management
-- Proper eligibility validation (skill, age, gender)
-- Database-level data integrity triggers
-- Email notification infrastructure
-- Beautiful public-facing pages
-
-**Before running your first tournament:**
-1. Fix the table reference in `send-tournament-reminders`
-2. Verify the RESEND_API_KEY is configured for email delivery
-3. Run through the testing checklist above
-4. Review the RLS policies for any unintended open access
-
-The system is well-architected and follows best practices for tournament management software.
-
+- **Admin View**: `/tournaments` → Click "Winter Classic"
+- **Public Landing**: `/tournament/winter-classic-2026`
+- **Live Scores**: `/tournament/winter-classic-2026/live`
