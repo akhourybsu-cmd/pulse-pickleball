@@ -229,7 +229,7 @@ export async function createTournament(data: {
   }
 }
 
-export async function initiateCheckout(tournamentId: string): Promise<string | null> {
+export async function initiateCheckout(tournamentId: string): Promise<string | { free: boolean; success: boolean } | null> {
   try {
     const { data, error } = await supabase.functions.invoke("create-tournament-checkout", {
       body: { tournament_id: tournamentId },
@@ -237,6 +237,12 @@ export async function initiateCheckout(tournamentId: string): Promise<string | n
 
     if (error) throw error;
     if (data?.error) throw new Error(data.error);
+
+    // Handle free access
+    if (data?.free && data?.success) {
+      toast.success("Tournament activated!");
+      return { free: true, success: true };
+    }
 
     return data.url;
   } catch (error) {

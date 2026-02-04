@@ -44,6 +44,18 @@ export function PurchaseDivisionDialog({
         throw new Error(errorMessage);
       }
 
+      // Handle free access (no redirect needed)
+      if (response.data?.free && response.data?.success) {
+        toast({
+          title: "Division slot added!",
+          description: "You can now add another division.",
+        });
+        onOpenChange(false);
+        onSuccess();
+        setLoading(false);
+        return;
+      }
+
       if (response.data?.url) {
         window.location.href = response.data.url;
       }
