@@ -10,7 +10,8 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { ExternalLink, Upload, X, Plus, Save, HelpCircle, Eye, CheckCircle2, Bold, Italic, Heading, Link2, List, Lightbulb, Wand2, MapPin, Droplet, Building2, AlertCircle } from "lucide-react";
+import { ExternalLink, Upload, X, Plus, Save, HelpCircle, Eye, CheckCircle2, Bold, Italic, Heading, Link2, List, Lightbulb, Wand2, MapPin, Droplet, Building2, AlertCircle, Share2 } from "lucide-react";
+import { CustomUrlSection } from "@/components/tournament/CustomUrlSection";
 import { PageHeader } from "@/components/PageHeader";
 import { motion } from "framer-motion";
 import ReactMarkdown from "react-markdown";
@@ -59,6 +60,7 @@ export default function TournamentCustomize() {
   const [saving, setSaving] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [eventName, setEventName] = useState("");
+  const [eventSlug, setEventSlug] = useState<string | null>(null);
   
   // Form state
   const [customizationId, setCustomizationId] = useState<string | null>(null);
@@ -112,7 +114,7 @@ export default function TournamentCustomize() {
     // Check if user is admin or event creator
     const { data: eventData } = await supabase
       .from("tournaments_events")
-      .select("name, created_by")
+      .select("name, created_by, slug")
       .eq("id", actualEventId)
       .single();
 
@@ -123,6 +125,7 @@ export default function TournamentCustomize() {
     }
 
     setEventName(eventData.name);
+    setEventSlug(eventData.slug || null);
 
     // Check permissions
     const { data: roleData } = await supabase
@@ -560,14 +563,67 @@ Your participation helps us give back. Let's rally together for a great cause!`
         </div>
 
         <Tabs defaultValue="hero" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6">
+          <TabsList className="grid w-full grid-cols-4 lg:grid-cols-7">
             <TabsTrigger value="hero">Hero</TabsTrigger>
             <TabsTrigger value="about">About</TabsTrigger>
             <TabsTrigger value="venue">Venue</TabsTrigger>
             <TabsTrigger value="sponsors">Sponsors</TabsTrigger>
             <TabsTrigger value="policies">Policies</TabsTrigger>
             <TabsTrigger value="contact">Contact</TabsTrigger>
+            <TabsTrigger value="sharing" className="gap-1">
+              <Share2 className="h-3 w-3" />
+              Sharing
+            </TabsTrigger>
           </TabsList>
+
+          {/* Sharing Tab - Custom URL */}
+          <TabsContent value="sharing" className="space-y-6">
+            <div className="max-w-2xl">
+              <CustomUrlSection
+                eventId={actualEventId!}
+                eventName={eventName}
+                initialSlug={eventSlug}
+                onSlugChange={(newSlug) => setEventSlug(newSlug)}
+              />
+              
+              {/* Additional Sharing Info */}
+              <Card className="mt-6">
+                <CardHeader>
+                  <CardTitle>Share Your Tournament</CardTitle>
+                  <CardDescription>
+                    Your tournament page is {isPublished ? "live and ready to share" : "in draft mode"}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="p-4 bg-muted/50 rounded-lg">
+                    <p className="text-sm text-muted-foreground mb-2">Current URL:</p>
+                    <code className="text-sm font-mono break-all">{publicUrl}</code>
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        navigator.clipboard.writeText(publicUrl);
+                        toast.success("URL copied!");
+                      }}
+                      className="flex-1"
+                    >
+                      Copy Link
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => window.open(publicUrl, '_blank')}
+                      className="flex-1"
+                    >
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      Open Page
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
 
           <TabsContent value="hero" className="space-y-6">
             <div className="grid lg:grid-cols-2 gap-6">
