@@ -150,9 +150,10 @@ export function CustomUrlSection({
             {!isValidating && validationResult && slug && (
               <>
                 {validationResult.valid ? (
-                  <span className="text-sm text-green-600 flex items-center gap-1">
+                  <span className="text-sm text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                     <Check className="h-3 w-3" />
                     This URL is available!
+                  </span>
                   </span>
                 ) : (
                   <span className="text-sm text-destructive flex items-center gap-1">
