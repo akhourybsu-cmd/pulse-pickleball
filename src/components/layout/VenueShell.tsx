@@ -21,6 +21,7 @@ import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/co
 import { useState, useMemo, useCallback, CSSProperties } from 'react';
 import { useMode } from '@/contexts/ModeContext';
 import { getVenueLogoSrc, getVenueLogoFallback } from '@/lib/venueBranding';
+import { VenueErrorBoundary } from '@/components/venue/VenueErrorBoundary';
 
 import { Palette, Building2, Image } from 'lucide-react';
 
@@ -93,16 +94,22 @@ const moreMenuItems = [
   { to: '/venue/settings', icon: Settings, label: 'Settings' },
 ];
 
-// Prefetch map for route preloading on hover
+// Prefetch map for route preloading on hover - ALL venue routes for fast navigation
 const prefetchMap: Record<string, () => Promise<unknown>> = {
   '/venue': () => import('@/pages/venue/VenueOverview'),
+  '/venue/profile': () => import('@/pages/venue/VenueProfile'),
+  '/venue/branding': () => import('@/pages/venue/VenueBranding'),
+  '/venue/facility': () => import('@/pages/venue/VenueFacility'),
+  '/venue/media': () => import('@/pages/venue/VenueMedia'),
   '/venue/courts': () => import('@/pages/venue/VenueCourts'),
   '/venue/bookings': () => import('@/pages/venue/VenueBookings'),
   '/venue/events': () => import('@/pages/venue/VenueEvents'),
-  '/venue/settings': () => import('@/pages/venue/VenueSettings'),
-  '/venue/coaching': () => import('@/pages/venue/VenueCoaching'),
-  '/venue/analytics': () => import('@/pages/venue/VenueAnalytics'),
   '/venue/tournaments': () => import('@/pages/venue/VenueTournaments'),
+  '/venue/round-robins': () => import('@/pages/venue/VenueRoundRobins'),
+  '/venue/coaching': () => import('@/pages/venue/VenueCoaching'),
+  '/venue/staff': () => import('@/pages/venue/VenueStaff'),
+  '/venue/analytics': () => import('@/pages/venue/VenueAnalytics'),
+  '/venue/settings': () => import('@/pages/venue/VenueSettings'),
 };
 
 interface VenueTheme {
@@ -304,11 +311,13 @@ export function VenueShell() {
         </div>
       </div>
 
-      {/* Main Content */}
+      {/* Main Content - Wrapped in error boundary for graceful error handling */}
       <main className="flex-1 lg:ml-64 pt-16 lg:pt-0 pb-24 lg:pb-0">
-        <div className="min-h-screen">
-          <Outlet />
-        </div>
+        <VenueErrorBoundary>
+          <div className="min-h-screen">
+            <Outlet />
+          </div>
+        </VenueErrorBoundary>
       </main>
 
       {/* Bottom Navigation - Mobile Only */}

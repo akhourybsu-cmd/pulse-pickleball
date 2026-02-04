@@ -1,3 +1,22 @@
+/**
+ * EVENT REGISTRATION HOOKS
+ * 
+ * This file manages registrations for the UNIFIED EVENT SYSTEM (unified_events table).
+ * These registrations are stored in the `event_registrations` table.
+ * 
+ * USE CASE: Tournaments, unified events, and events managed through the
+ * central event discovery system.
+ * 
+ * NOTE: Venue-specific events (socials, clinics, open play) created through
+ * VenueEvents.tsx use a SEPARATE table: `venue_event_registrations`.
+ * That table is managed by EventRegistrationsDialog.tsx in the venue admin.
+ * 
+ * This architectural separation allows:
+ * - Venues to manage casual events independently
+ * - Tournaments to have specialized features (divisions, payments, teams)
+ * - Different RLS policies for different access patterns
+ */
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
