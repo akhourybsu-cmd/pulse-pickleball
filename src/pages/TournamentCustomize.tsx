@@ -582,7 +582,8 @@ Your participation helps us give back. Let's rally together for a great cause!`
               <CustomUrlSection
                 eventId={actualEventId!}
                 eventName={eventName}
-                initialSlug={null}
+                initialSlug={eventSlug}
+                onSlugChange={(newSlug) => setEventSlug(newSlug)}
               />
               
               {/* Additional Sharing Info */}
