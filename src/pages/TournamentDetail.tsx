@@ -258,7 +258,7 @@ export default function TournamentDetail() {
           title: "Tournament activated!",
           description: "Your tournament is now live and ready for registrations.",
         });
-        refetch();
+        fetchTournament();
         return;
       }
 
