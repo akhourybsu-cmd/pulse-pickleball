@@ -194,7 +194,7 @@ export function CustomUrlSection({
               className="shrink-0"
             >
               {copied ? (
-                <Check className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                <Check className="h-4 w-4 text-primary" />
               ) : (
                 <Copy className="h-4 w-4" />
               )}
