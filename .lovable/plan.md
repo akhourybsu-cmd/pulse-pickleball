@@ -1,341 +1,200 @@
 
 
-# Venue Platform Comprehensive Analysis & Integration Audit
+# Tournament Custom URL Feature
 
-## Executive Summary
+## Overview
 
-After an extensive review of the Venue admin platform, I've analyzed **20+ venue pages**, **15+ hooks**, and **25+ components**. Overall, the platform is **well-architected** with proper data flow and consistent patterns. However, I've identified several areas requiring attention to ensure everything hooks up properly.
+Yes, this is absolutely possible! The database already has a `slug` column in `tournaments_events` that's been added but is currently unused. This feature would allow tournament creators to set custom URLs like `pulsepb.com/tournament/summer-open-2024` instead of the current UUID-based URLs.
 
 ---
 
-## Current Architecture Overview
+## Current State
+
+**What already exists:**
+- `slug` column in `tournaments_events` table (currently all NULL)
+- Route `/tournament/:slug` already defined in App.tsx
+- Working pattern in Venues: `/v/pickleball-palace` resolves via slug lookup
+
+**What's missing:**
+- UI for tournament creators to set their custom slug
+- Logic in TournamentLanding to resolve slug vs ID
+- Slug uniqueness validation
+- URL preview display
+
+---
+
+## Implementation Plan
+
+### 1. Update TournamentLanding to Support Slug Resolution
+
+Modify `src/pages/TournamentLanding.tsx` to:
+- First try to find tournament by slug
+- If not found, try to find by ID (backwards compatibility)
+- This allows both `/tournament/summer-open-2024` AND `/tournament/abc-123-uuid` to work
 
 ```text
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                              VENUE PLATFORM                                  │
-├─────────────────────────────────────────────────────────────────────────────┤
-│                                                                             │
-│  ┌─────────────────────┐     ┌─────────────────────┐                       │
-│  │   VenueShell.tsx    │────►│   ModeContext.tsx   │                       │
-│  │  (Layout + Nav)     │     │  (Auth + Access)    │                       │
-│  └─────────────────────┘     └─────────────────────┘                       │
-│           │                           │                                     │
-│           ▼                           ▼                                     │
-│  ┌─────────────────────────────────────────────────────────────────┐       │
-│  │                         ADMIN PAGES                               │       │
-│  ├────────────┬────────────┬────────────┬────────────┬─────────────┤       │
-│  │ Overview   │ Profile    │ Branding   │ Facility   │ Media       │       │
-│  │ Analytics  │ Courts     │ Bookings   │ Events     │ Tournaments │       │
-│  │ RoundRobins│ Coaching   │ Staff      │ Settings   │             │       │
-│  └────────────┴────────────┴────────────┴────────────┴─────────────┘       │
-│           │                                                                 │
-│           ▼                                                                 │
-│  ┌─────────────────────────────────────────────────────────────────┐       │
-│  │                       DATA HOOKS                                  │       │
-│  ├────────────┬────────────┬────────────┬────────────┬─────────────┤       │
-│  │ useVenue-  │ useVenue-  │ useVenue-  │ useVenue-  │ useVenue-   │       │
-│  │ Settings   │ Events     │ Courts     │ Bookings   │ Staff       │       │
-│  │ useVenue-  │ useVenue-  │ useVenue-  │ usePublic- │ usePublish- │       │
-│  │ Coaches    │ Tournaments│ RoundRobins│ Venue      │ Readiness   │       │
-│  └────────────┴────────────┴────────────┴────────────┴─────────────┘       │
-│                                                                             │
-└─────────────────────────────────────────────────────────────────────────────┘
+Current:  .eq("id", slug)
+New:      .or(`slug.eq.${slug},id.eq.${slug}`)
+```
 
-                                    │
-                                    ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                           PUBLIC VENUE PAGES                                 │
-│                          /v/:slug | /venue/:slug                             │
-├─────────────────────────────────────────────────────────────────────────────┤
-│  PublicVenueShell                                                           │
-│  ├── Home Tab      (hero, quick actions, featured events)                   │
-│  ├── Schedule Tab  (court availability, time slots, bookings)               │
-│  ├── Events Tab    (filterable event list, registration)                    │
-│  ├── Coaching Tab  (coach profiles, lesson booking)                         │
-│  └── Info Tab      (hours, amenities, location)                             │
-└─────────────────────────────────────────────────────────────────────────────┘
+### 2. Add Custom URL Field to Tournament Settings
+
+Create a new "Custom URL" section in tournament management with:
+- Slug input field with automatic formatting (lowercase, hyphens)
+- Live preview: `pulsepb.com/tournament/[your-slug]`
+- Copy URL button
+- Uniqueness validation with real-time feedback
+
+**Location Options:**
+- Option A: Add to `TournamentCustomize.tsx` under a new "Sharing" or "URL" tab
+- Option B: Add to `TournamentDetail.tsx` settings section
+- Option C: Add to tournament creation wizard basics step
+
+Recommendation: **Option A** - TournamentCustomize is the natural home for "public-facing" settings
+
+### 3. Add Slug Validation
+
+Create validation logic:
+- Check uniqueness across all tournaments
+- Auto-format: lowercase, replace spaces with hyphens, remove special characters
+- Reserved slugs: prevent "new", "admin", "register", etc.
+- Minimum length: 3 characters
+- Maximum length: 50 characters
+
+### 4. Database Considerations
+
+The `slug` column already exists as nullable text. We should:
+- Add a unique constraint (if not present)
+- Keep it nullable so tournaments can exist without custom URLs
+- Auto-generate suggestion from tournament name (e.g., "Summer Open 2024" → "summer-open-2024")
+
+---
+
+## User Flow
+
+```text
+Tournament Creator Flow:
+1. Creates tournament via wizard
+2. Goes to Customize page
+3. Sees new "Custom URL" section
+4. Enters desired slug: "summer-championship-2024"
+5. Sees preview: pulsepb.com/tournament/summer-championship-2024
+6. System validates uniqueness in real-time
+7. Saves changes
+8. Can now share the clean URL
+
+Player Flow:
+1. Receives link: pulsepb.com/tournament/summer-championship-2024
+2. Opens link
+3. System resolves slug → tournament ID
+4. Shows tournament landing page
 ```
 
 ---
 
-## Findings Summary
+## Files to Modify
 
-### Properly Connected Features
-
-| Feature | Admin Page | Hook | Public Page | Status |
-|---------|------------|------|-------------|--------|
-| Events | VenueEvents.tsx | useVenueEvents | PublicEventsTab | Working |
-| Coaching | VenueCoaching.tsx | useVenueCoaches | PublicCoachingTab | Working |
-| Courts | VenueCourts.tsx | useVenueCourts | PublicScheduleTab | Working |
-| Bookings | VenueBookings.tsx | useVenueBookings | BookingFlowDialog | Working |
-| Staff | VenueStaff.tsx | useVenueStaff | N/A (Admin only) | Working |
-| Tournaments | VenueTournaments.tsx | useVenueTournaments | Links to /tournaments/:id | Working |
-| Round Robins | VenueRoundRobins.tsx | useVenueRoundRobins | Links to /venue/round-robins/:id | Working |
-| Analytics | VenueAnalytics.tsx | Combined hooks | N/A (Admin only) | Working |
-| Settings | VenueSettings.tsx | useVenueSettings | Applied to public page | Working |
-| Profile | VenueProfile.tsx | useVenueSettings | PublicInfoTab | Working |
-| Branding | VenueBranding.tsx | useVenueSettings | All venue pages | Working |
-| Facility | VenueFacility.tsx | useVenueFacility | PublicInfoTab | Working |
-| Media | VenueMedia.tsx | useVenueMedia | PublicHomeTab | Working |
-
-### Issues Identified
-
-#### Issue 1: Two Separate Event Registration Tables
-**Severity:** Medium - Data Fragmentation Risk
-
-**Problem:** There are two different event registration systems:
-- `venue_event_registrations` - Used by `EventRegistrationsDialog.tsx` (venue admin view)
-- `event_registrations` - Used by `useEventRegistrations.ts` (tournament/general events)
-
-**Impact:** Event registrations may not be synchronized between the two systems. The `venue_events` table stores events, but registrations could end up in either table depending on the registration flow used.
-
-**Recommendation:** Audit and consolidate event registration flows to ensure a single source of truth, or implement cross-table synchronization.
+| File | Changes |
+|------|---------|
+| `src/pages/TournamentLanding.tsx` | Update query to resolve by slug OR id |
+| `src/pages/TournamentCustomize.tsx` | Add "Custom URL" section with slug input |
+| `src/hooks/useTournaments.ts` | Add `updateTournamentSlug` function with validation |
+| `src/lib/slugValidation.ts` | New file for slug formatting/validation utilities |
 
 ---
 
-#### Issue 2: Round Robin Event Linking
-**Severity:** Low - Already Handled
+## UI Design for Custom URL Section
 
-**Status:** The code properly handles round robin creation:
-- When creating a "round_robin" type event via `CreateEventDialog`, it:
-  1. Creates entry in `venue_events`
-  2. Creates linked entry in `round_robin_events`
-  3. Links them via `round_robin_event_id` column
-
-The flow is correct and the "Manage Round Robin" button properly navigates to `/venue/round-robins/:id`.
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│ Custom URL                                                       │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  Create a memorable link for your tournament                     │
+│                                                                  │
+│  pulsepb.com/tournament/ [summer-championship-2024    ]          │
+│                          ↑ input field                           │
+│                                                                  │
+│  ✓ This URL is available!                                        │
+│                                                                  │
+│  Full URL: https://pulsepb.com/tournament/summer-championship-2024
+│  [Copy Link]                                                     │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
-#### Issue 3: Missing Prefetch Routes
-**Severity:** Low - Performance Optimization
+## Technical Details
 
-**Problem:** In `VenueShell.tsx`, the prefetch map is incomplete:
+### Slug Resolution Logic
+
 ```typescript
-const prefetchMap: Record<string, () => Promise<unknown>> = {
-  '/venue': () => import('@/pages/venue/VenueOverview'),
-  '/venue/courts': () => import('@/pages/venue/VenueCourts'),
-  // Missing: /venue/profile, /venue/branding, /venue/facility, /venue/media, 
-  //          /venue/staff, /venue/round-robins
-};
+// In TournamentLanding.tsx
+const { data: eventData } = await supabase
+  .from("tournaments_events")
+  .select(`*, divisions:tournaments_divisions(...)`)
+  .or(`slug.eq.${slug},id.eq.${slug}`)
+  .eq("public_view_enabled", true)
+  .single();
 ```
 
-**Recommendation:** Add missing routes to prefetch map for faster navigation.
+### Slug Formatting Utility
+
+```typescript
+// src/lib/slugValidation.ts
+export function formatSlug(input: string): string {
+  return input
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '-')        // spaces → hyphens
+    .replace(/[^a-z0-9-]/g, '')  // remove special chars
+    .replace(/-+/g, '-')         // collapse multiple hyphens
+    .replace(/^-|-$/g, '');      // trim leading/trailing hyphens
+}
+
+export async function isSlugAvailable(slug: string, excludeId?: string): Promise<boolean> {
+  const query = supabase
+    .from('tournaments_events')
+    .select('id')
+    .eq('slug', slug);
+  
+  if (excludeId) {
+    query.neq('id', excludeId);
+  }
+  
+  const { data } = await query.maybeSingle();
+  return !data;
+}
+```
 
 ---
 
-#### Issue 4: VenueGuard Activation States
-**Severity:** Low - Currently Working
+## Additional Considerations
 
-**Status:** The `VenueGuard` component properly handles venue activation states:
-- `claimed` → redirects to onboarding/profile
-- `pending_verification` → redirects to verification-pending
-- `pending` → redirects to onboarding/first-event
-- `active` → allows access
+### SEO & Sharing
+- Clean URLs are better for social sharing
+- Consider adding Open Graph meta tags with tournament name/image
+- Custom slugs make links more trustworthy to click
 
-The onboarding flow is complete with 4 steps:
-1. VenueOnboardingProfile
-2. VenueOnboardingFirstEvent
-3. VenueOnboardingShare
-4. VenueOnboardingComplete
+### Reserved Slugs
+Block these from being used:
+- `new`, `create`, `admin`, `register`, `list`, `all`, `search`
 
----
+### Auto-Suggest Feature
+When user first opens custom URL section:
+- Pre-fill with suggested slug based on tournament name
+- Show "Suggested: summer-championship-2024"
 
-#### Issue 5: Public Page Deep Linking
-**Severity:** Low - Already Working
-
-**Status:** The `PublicVenueLanding.tsx` properly handles:
-- `?tab=schedule|events|coaching|info` - Tab navigation
-- `?eventId=xxx` - Scrolls to and highlights specific event
-- `?coachId=xxx` - Scrolls to and highlights specific coach
+### Analytics Tracking
+Consider logging when custom slugs are used vs UUIDs to measure adoption
 
 ---
 
-#### Issue 6: RLS Policies - Security Warnings
-**Severity:** Medium - Review Recommended
+## Implementation Priority
 
-**Problem:** Database linter found 18 warnings including:
-- Multiple "RLS Policy Always True" warnings (UPDATE/INSERT with `true`)
-- Security definer view detected
-- Functions missing search_path
-
-**Recommendation:** Review and tighten RLS policies for:
-- Venue admin operations (ensure only staff can modify)
-- Event registrations (ensure proper access control)
-
----
-
-## Feature-by-Feature Integration Analysis
-
-### Events System
-
-**Admin Flow (Working):**
-```
-VenueEvents.tsx
-    └── useVenueEvents(venueId)
-        └── createEvent() → venue_events table
-            └── If round_robin type → creates round_robin_events entry
-    └── CreateEventDialog → form for new events
-    └── EventCard → displays event with actions
-        └── EventRegistrationsDialog → shows registrations from venue_event_registrations
-        └── EditEventDialog → updates event
-```
-
-**Public Flow (Working):**
-```
-PublicVenueLanding.tsx
-    └── usePublicVenue(slug)
-        └── Fetches published events from venue_events
-    └── PublicEventsTab → displays events
-    └── EventRegistrationDialog → registers user
-        └── Creates entry in venue_event_registrations
-```
-
-### Coaching System
-
-**Admin Flow (Working):**
-```
-VenueCoaching.tsx
-    └── useVenueCoaches(venueId)
-        └── createCoach() → venue_coaches table
-    └── CreateCoachDialog → form for new coach
-    └── CoachCard → displays coach with toggle active/delete
-```
-
-**Public Flow (Working):**
-```
-PublicVenueLanding.tsx
-    └── usePublicVenue(slug)
-        └── Fetches active coaches from venue_coaches
-    └── PublicCoachingTab → displays coaches
-    └── CoachLessonBookingDialog → books lesson
-```
-
-### Bookings System
-
-**Admin Flow (Working):**
-```
-VenueBookings.tsx
-    └── useVenueBookings(venueId)
-    └── useVenueCourts(venueId) → needed for court selection
-    └── CreateBookingDialog → creates manual booking
-    └── BookingCard → shows booking with status management
-```
-
-**Public Flow (Working):**
-```
-PublicVenueLanding.tsx
-    └── PublicScheduleTab
-        └── useVenueAvailability() → checks available slots
-        └── BookingFlowDialog → multi-step booking process
-```
-
-### Tournament Integration
-
-**Admin Flow (Working):**
-```
-VenueTournaments.tsx
-    └── useVenueTournaments(venueId)
-        └── Fetches from tournaments_events WHERE venue_id = X
-    └── "Create Tournament" → navigates to /tournaments/new?venueId=xxx
-    └── TournamentCard → "View" navigates to /tournaments/:id
-```
-
-**Connection to Global Tournament System:** The venue tournament page correctly uses the shared `tournaments_events` table with venue_id filtering, ensuring tournaments appear in both the venue admin and the global tournament discovery.
-
-### Round Robin Integration
-
-**Admin Flow (Working):**
-```
-VenueRoundRobins.tsx
-    └── useVenueRoundRobins()
-        └── Fetches from round_robin_events WHERE venue_id = X
-    └── EventCard with round_robin type → "Manage Round Robin" button
-    └── VenueRoundRobinDetail → full round robin management
-    └── VenueRoundRobinKiosk → public display for live events
-```
-
-**Creation Flow:** Round robins can be created two ways:
-1. Via VenueEvents → CreateEventDialog with type "round_robin"
-2. Redirected from VenueRoundRobins empty state → VenueEvents
-
----
-
-## Venue Profile/Settings Overlap
-
-**Current State:** There are THREE pages that edit venue data:
-1. **VenueProfile.tsx** - Identity, description, contact, social
-2. **VenueBranding.tsx** - Logo, cover image, colors
-3. **VenueSettings.tsx** - Basic info, location, branding, subscription, Stripe
-
-**Analysis:** All three use `useVenueSettings` hook which updates the `venues` table. The forms overlap somewhat but serve different purposes:
-- Profile = How you present yourself
-- Branding = Visual identity
-- Settings = Technical/operational configuration
-
-**Recommendation:** Consider consolidating or more clearly differentiating these pages. Currently, some fields appear in multiple places (e.g., tagline is in both Profile and Settings).
-
----
-
-## Public Venue Page Integration
-
-The public venue pages correctly fetch and display:
-
-| Admin Created | Public Display |
-|---------------|----------------|
-| Venue Profile | Info Tab, Header |
-| Branding Colors | Throughout (buttons, accents) |
-| Logo | Header, Home Tab |
-| Cover Image | Home Tab hero |
-| Courts | Schedule Tab (availability) |
-| Events (published) | Events Tab |
-| Coaches (active) | Coaching Tab |
-| Facility Details | Info Tab (amenities) |
-| Hours of Operation | Schedule Tab (availability filtering) |
-
----
-
-## Recommended Fixes
-
-### Fix 1: Add Missing Prefetch Routes
-**Location:** `src/components/layout/VenueShell.tsx`
-
-Add to prefetchMap:
-- `/venue/profile` → VenueProfile
-- `/venue/branding` → VenueBranding
-- `/venue/facility` → VenueFacility
-- `/venue/media` → VenueMedia
-- `/venue/staff` → VenueStaff
-- `/venue/round-robins` → VenueRoundRobins
-
-### Fix 2: Event Registration Table Audit
-**Action Required:** 
-1. Determine if `venue_event_registrations` and `event_registrations` should be unified
-2. If separate, ensure proper usage:
-   - `venue_event_registrations` for venue-specific events (socials, clinics)
-   - `event_registrations` for tournaments only
-
-### Fix 3: Add Error Boundaries to Venue Pages
-**Location:** Consider adding error boundaries around venue pages to gracefully handle:
-- Missing venue data
-- RLS policy violations
-- Network errors
-
-### Fix 4: Review RLS Policies
-**Action Required:** Security review of database policies for:
-- `venue_events` (ensure only staff can create/update)
-- `venue_event_registrations` (ensure proper player access)
-- `venue_coaches` (ensure only staff can manage)
-- `venue_bookings` (ensure proper access for both venue staff and booking customer)
-
----
-
-## Conclusion
-
-The Venue platform is **well-integrated** with proper data flow between admin and public pages. The main areas requiring attention are:
-
-1. **Event registration table fragmentation** - Needs consolidation or clear separation
-2. **RLS policy review** - Security warnings should be addressed
-3. **Minor optimizations** - Prefetch routes, error boundaries
-
-Overall Status: **Operational** with recommended improvements.
+1. **Phase 1**: Add slug resolution to TournamentLanding (backwards compatible)
+2. **Phase 2**: Add slug input UI to TournamentCustomize
+3. **Phase 3**: Add real-time validation and auto-suggest
+4. **Phase 4**: Add copy-link and QR code generation
 
