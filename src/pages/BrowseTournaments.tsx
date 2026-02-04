@@ -103,25 +103,22 @@ export default function BrowseTournaments() {
       </section>
 
       {/* Filters & Tournaments Section */}
-      <section id="tournaments-section" className="py-8 px-4 bg-background">
+      <section className="py-4 sm:py-6 px-4 bg-background">
         <div className="container mx-auto max-w-6xl">
-          {/* Filters */}
+          {/* Compact Filter Bar */}
           <motion.div 
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-            className="mb-8"
+            transition={{ duration: 0.3, delay: 0.1 }}
+            className="mb-6"
           >
             <TournamentBrowseFilters
-              search={search}
-              location={location}
               dateRange={dateRange}
               registrationStatus={registrationStatus}
-              onSearchChange={setSearch}
-              onLocationChange={setLocation}
               onDateRangeChange={setDateRange}
               onRegistrationStatusChange={setRegistrationStatus}
               onClearFilters={handleClearFilters}
+              hasActiveFilters={!!search || !!location || dateRange !== 'all' || registrationStatus !== 'all'}
             />
           </motion.div>
 
