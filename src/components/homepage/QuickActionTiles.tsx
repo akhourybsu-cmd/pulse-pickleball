@@ -24,13 +24,6 @@ const tiles = [
     href: "/round-robin",
     color: "primary" as const,
   },
-  {
-    icon: Trophy,
-    title: "Host a Tournament",
-    description: "Create competitive events",
-    href: "/tournaments",
-    color: "secondary" as const,
-  },
 ];
 
 export const QuickActionTiles = () => {
