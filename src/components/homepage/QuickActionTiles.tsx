@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
-import { TrendingUp, MapPin, RotateCcw, Trophy } from "lucide-react";
+import { TrendingUp, MapPin, RotateCcw } from "lucide-react";
 
 const tiles = [
   {

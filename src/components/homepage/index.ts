@@ -1,6 +1,7 @@
 export { HomepageNav } from "./HomepageNav";
 export { HeroSection } from "./HeroSection";
 export { DualLaneSection } from "./DualLaneSection";
+export { TournamentSpotlight } from "./TournamentSpotlight";
 export { QuickActionTiles } from "./QuickActionTiles";
 export { HowItWorksSection } from "./HowItWorksSection";
 export { TrustBandSection } from "./TrustBandSection";

@@ -71,6 +71,7 @@ const Index = () => {
       <main>
         <HeroSection />
         <DualLaneSection />
+        <TournamentSpotlight />
         <QuickActionTiles />
         <HowItWorksSection />
         <TrustBandSection />
