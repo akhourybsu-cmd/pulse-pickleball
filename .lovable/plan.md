@@ -1,192 +1,231 @@
 
 
-# Tournament UX Polish: Premium Hierarchy and Role-Aware Navigation
+# Unified Event Discovery: Syncing Tournaments to Find Events
 
-## Overview
+## Problem Summary
 
-This plan implements the s-specs recommendations to elevate the tournament experience from "good" to "premium" by:
-1. Promoting tournaments on the homepage via a dedicated spotlight section
-2. Adding role-aware framing (Player vs Organizer) to the tournament landing page
-3. Restructuring the mobile sandwich menu with grouped navigation
+The **Find Events** page (`/player/find`) shows "No events found" even though there's an active tournament ("Winter Classic" starting Feb 7, 2026) that should be discoverable.
 
-All changes follow existing PULSE design patterns and maintain consistency across the platform.
+**Root Cause:** The Find Events page uses `useDiscoverEvents` which queries the `unified_events` table. However, tournaments live in a separate `tournaments_events` table with no sync mechanism to populate `unified_events`.
 
----
-
-## Part 1: Homepage Tournament Spotlight
-
-### Current State
-The homepage has tournaments presented in two places:
-- **Secondary link:** "Join a Tournament" inline text below hero CTAs
-- **Quick Action Tile:** "Host a Tournament" card in the Quick Actions section
-
-### Problem
-These two placements compete with fundamentally different intents and flatten importance. The "Join a Tournament" link treats a commitment-driven action as a footer item.
-
-### Solution
-Replace the inline "Join a Tournament" text link with a **Tournament Spotlight** card section positioned after the DualLaneSection, giving tournaments proper visual weight.
-
-### New Component: TournamentSpotlight
-
-Location after DualLaneSection, before QuickActionTiles:
-
-```
-+------------------------------------------+
-|  🏆 Tournaments                          |
-|                                          |
-|  "Join live or upcoming tournaments"     |
-|                                          |
-|  [Browse Tournaments]  [Host a Tournament]|
-+------------------------------------------+
-```
-
-**Design specs:**
-- Compact card with gradient border (matches premium styling)
-- Trophy icon with primary color glow
-- Two horizontal CTAs: "Browse Tournaments" (primary) and "Host a Tournament" (outline)
-- Mobile: CTAs stack vertically
-
-### Changes to Existing Files
-
-**HeroSection.tsx:**
-- Remove the "Join a Tournament" secondary link
-- Keep "Browse Venues" and "Create a Round Robin"
-
-**QuickActionTiles.tsx:**
-- Remove the "Host a Tournament" tile (now in spotlight)
-- Reduce to 3 tiles: Track Your Pulse, Find Places to Play, Run a Round Robin
-
-**Index.tsx:**
-- Add TournamentSpotlight component between DualLaneSection and QuickActionTiles
+| Table | Purpose | Current State |
+|-------|---------|---------------|
+| `unified_events` | Canonical discovery table | Empty (0 rows) |
+| `tournaments_events` | Tournament storage | Has 1 active upcoming tournament |
+| `round_robin_events` | Round robin storage | Separate from unified system |
 
 ---
 
-## Part 2: Tournament Landing Page - Role-Aware Framing
+## Solution Options
 
-### Current State
-The tournament landing page hero assumes users want to host ("Host Professional Tournaments"). Players looking to join feel like they landed on a sales page.
+### Option A: Database Sync Triggers (Recommended)
 
-### Solution
-Add a **role fork** immediately below the hero, visually distinguishing the two user intents.
+Create database triggers that automatically sync tournaments to `unified_events` when:
+- A tournament is created/updated
+- A tournament's `public_view_enabled` is set to `true`
+- A tournament's dates change
 
-### New Component: TournamentRoleFork
+**Pros:**
+- Single source of truth for discovery
+- Automatic, real-time sync
+- Works with existing Find Events UI
 
-```
-+------------------------------------------+
-|  Two Cards Side by Side                  |
-|                                          |
-|  +----------------+  +----------------+  |
-|  | 🎯 For Players |  | 🏢 For         |  |
-|  |                |  |    Organizers  |  |
-|  | "Find and join |  | "Host with     |  |
-|  |  tournaments"  |  |  automated     |  |
-|  |                |  |  tools"        |  |
-|  | [Browse]       |  | [Create]       |  |
-|  +----------------+  +----------------+  |
-|                                          |
-+------------------------------------------+
-```
+**Cons:**
+- Requires database migration
+- Need to handle existing tournaments
 
-**Design specs:**
-- Full-width section with muted background gradient
-- Two cards using existing Card component styling
-- Player card: Trophy icon, primary border hover
-- Organizer card: Settings/Wrench icon, secondary accent
-- Mobile: Cards stack vertically, player card first
+### Option B: Modify useDiscoverEvents Hook
 
-### Changes to TournamentsLanding.tsx
+Update the hook to query both `unified_events` AND `tournaments_events`, then merge results.
 
-Insert the TournamentRoleFork section immediately after TournamentHero and before the "My Tournaments" section.
+**Pros:**
+- No database changes
+- Quick to implement
 
-### Hero Adjustments
-
-Update TournamentHero.tsx to be more role-neutral:
-- Change headline from "Host Professional Tournaments" to "Professional Pickleball Tournaments"
-- Update subtext to be inclusive: "Join competitive events or host your own with automated brackets, live scoring, and seamless registration."
-- Keep both CTAs but with neutral ordering
+**Cons:**
+- More complex client-side logic
+- Duplicate queries
+- Harder to maintain long-term
 
 ---
 
-## Part 3: Mobile Sandwich Menu Restructuring
+## Recommended Approach: Database Sync + Backfill
 
-### Current State
-The mobile menu in HomepageNav.tsx has a flat list:
-- Players
-- Venues  
-- Events
-- Community
-- Login (if not logged in)
-- CTA button
+### Step 1: Create Sync Function
 
-### Problem
-As Pulse grows, a flat list doesn't scale. Tournaments aren't represented at all. The menu feels like "explore" rather than "platform."
+Create a PostgreSQL function that maps tournament fields to unified_events format:
 
-### Solution
-Restructure the menu with grouped navigation sections:
-
-```
-┌────────────────────────────────┐
-│  [PULSE Logo]                  │
-├────────────────────────────────┤
-│  EXPLORE                       │
-│    Players                     │
-│    Venues                      │
-│    Events                      │
-│    Community                   │
-├────────────────────────────────┤
-│  PLAY                          │
-│    Round Robins                │
-│    Tournaments  ▸              │
-│      └─ Browse Tournaments     │
-│      └─ Host a Tournament      │
-├────────────────────────────────┤
-│  (if logged in)                │
-│  ACCOUNT                       │
-│    Dashboard                   │
-│    My Profile                  │
-│    Settings                    │
-└────────────────────────────────┘
-│  [Get Started / Dashboard]     │
-└────────────────────────────────┘
+```text
+tournaments_events → unified_events mapping:
+├── name → title
+├── description → description  
+├── 'tournament' → event_type
+├── start_date (as timestamp) → start_time
+├── end_date (as timestamp) → end_time
+├── venue_id → host_venue_id, venue_id
+├── 'venue' → host_type
+├── registration_enabled → derives status
+├── public_view_enabled → visibility ('public' or 'private')
+└── id → legacy_id, 'tournaments_events' → legacy_table
 ```
 
-### Implementation in HomepageNav.tsx
+### Step 2: Create Database Trigger
 
-**Structure the navLinks into groups:**
+A trigger on `tournaments_events` that:
+- **INSERT:** Creates corresponding `unified_events` row when `public_view_enabled = true`
+- **UPDATE:** Syncs changes to `unified_events` row
+- **DELETE:** Removes from `unified_events`
 
-```typescript
-const menuSections = {
-  explore: [
-    { label: "Players", href: "/players", icon: User },
-    { label: "Venues", href: "/venues", icon: Building2 },
-    { label: "Events", href: "/browse-events", icon: Calendar },
-    { label: "Community", href: "/player/community", icon: Users },
-  ],
-  play: [
-    { label: "Round Robins", href: "/round-robin", icon: RotateCcw },
-    { 
-      label: "Tournaments", 
-      icon: Trophy,
-      submenu: [
-        { label: "Browse Tournaments", href: "/tournaments/browse" },
-        { label: "Host a Tournament", href: "/tournaments/new" },
-      ]
-    },
-  ],
-  account: [
-    { label: "Dashboard", href: "/player/dashboard", icon: LayoutDashboard },
-    { label: "My Profile", href: "/profile", icon: User },
-    { label: "Settings", href: "/settings", icon: Settings },
-  ],
-};
+### Step 3: Backfill Existing Tournaments
+
+Run a one-time migration to sync all existing public tournaments to `unified_events`.
+
+### Step 4: Handle Registration Status
+
+Map tournament registration state to unified status:
+
+```text
+If registration_enabled AND now() between open/close dates → 'registration_open'
+If registration_enabled AND now() < open_date → 'published'  
+If registration_enabled AND now() > close_date → 'registration_closed'
+If NOT registration_enabled → 'published'
 ```
 
-**Visual design:**
-- Section headers: text-xs uppercase text-muted-foreground with tracking-wider
-- Subtle dividers between sections (border-t border-border/50)
-- Collapsible submenu for Tournaments using Collapsible component
-- Increased vertical padding between groups (py-4)
-- Subtle expand animation on submenu
+---
+
+## Implementation Details
+
+### Migration SQL
+
+**1. Create sync function:**
+
+```sql
+CREATE OR REPLACE FUNCTION sync_tournament_to_unified_events()
+RETURNS TRIGGER AS $$
+DECLARE
+  unified_status TEXT;
+  unified_visibility TEXT;
+BEGIN
+  -- Determine visibility
+  IF NEW.public_view_enabled THEN
+    unified_visibility := 'public';
+  ELSE
+    unified_visibility := 'private';
+  END IF;
+
+  -- Determine status based on registration
+  IF NEW.status = 'completed' THEN
+    unified_status := 'completed';
+  ELSIF NEW.status = 'cancelled' THEN
+    unified_status := 'cancelled';
+  ELSIF NEW.registration_enabled THEN
+    IF NEW.registration_open_date IS NOT NULL AND NOW() < NEW.registration_open_date THEN
+      unified_status := 'published';
+    ELSIF NEW.registration_close_date IS NOT NULL AND NOW() > NEW.registration_close_date THEN
+      unified_status := 'registration_closed';
+    ELSE
+      unified_status := 'registration_open';
+    END IF;
+  ELSE
+    unified_status := 'published';
+  END IF;
+
+  -- Handle INSERT/UPDATE
+  IF TG_OP = 'INSERT' OR TG_OP = 'UPDATE' THEN
+    INSERT INTO unified_events (
+      id, title, description, event_type, host_type,
+      host_venue_id, start_time, end_time, venue_id,
+      price, visibility, status, is_published,
+      created_by, legacy_table, legacy_id
+    ) VALUES (
+      NEW.id,
+      NEW.name,
+      NEW.description,
+      'tournament',
+      CASE WHEN NEW.venue_id IS NOT NULL THEN 'venue' ELSE 'individual' END,
+      NEW.venue_id,
+      NEW.start_date::timestamptz,
+      NEW.end_date::timestamptz,
+      NEW.venue_id,
+      NEW.registration_fee,
+      unified_visibility,
+      unified_status,
+      NEW.public_view_enabled,
+      NEW.organizer_id,
+      'tournaments_events',
+      NEW.id
+    )
+    ON CONFLICT (id) DO UPDATE SET
+      title = EXCLUDED.title,
+      description = EXCLUDED.description,
+      start_time = EXCLUDED.start_time,
+      end_time = EXCLUDED.end_time,
+      host_venue_id = EXCLUDED.host_venue_id,
+      venue_id = EXCLUDED.venue_id,
+      price = EXCLUDED.price,
+      visibility = EXCLUDED.visibility,
+      status = EXCLUDED.status,
+      is_published = EXCLUDED.is_published,
+      updated_at = NOW();
+    
+    RETURN NEW;
+  END IF;
+
+  -- Handle DELETE
+  IF TG_OP = 'DELETE' THEN
+    DELETE FROM unified_events WHERE legacy_id = OLD.id AND legacy_table = 'tournaments_events';
+    RETURN OLD;
+  END IF;
+
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+```
+
+**2. Create trigger:**
+
+```sql
+CREATE TRIGGER sync_tournament_unified
+AFTER INSERT OR UPDATE OR DELETE ON tournaments_events
+FOR EACH ROW
+EXECUTE FUNCTION sync_tournament_to_unified_events();
+```
+
+**3. Backfill existing tournaments:**
+
+```sql
+INSERT INTO unified_events (
+  id, title, description, event_type, host_type,
+  host_venue_id, start_time, end_time, venue_id,
+  price, visibility, status, is_published,
+  created_by, legacy_table, legacy_id
+)
+SELECT 
+  t.id,
+  t.name,
+  t.description,
+  'tournament',
+  CASE WHEN t.venue_id IS NOT NULL THEN 'venue' ELSE 'individual' END,
+  t.venue_id,
+  t.start_date::timestamptz,
+  t.end_date::timestamptz,
+  t.venue_id,
+  t.registration_fee,
+  CASE WHEN t.public_view_enabled THEN 'public' ELSE 'private' END,
+  CASE 
+    WHEN t.status = 'completed' THEN 'completed'
+    WHEN t.status = 'cancelled' THEN 'cancelled'
+    WHEN t.registration_enabled THEN 'registration_open'
+    ELSE 'published'
+  END,
+  t.public_view_enabled,
+  t.organizer_id,
+  'tournaments_events',
+  t.id
+FROM tournaments_events t
+WHERE t.start_date >= CURRENT_DATE
+ON CONFLICT (id) DO NOTHING;
+```
 
 ---
 
@@ -194,75 +233,40 @@ const menuSections = {
 
 | Action | File | Description |
 |--------|------|-------------|
-| Create | `src/components/homepage/TournamentSpotlight.tsx` | New spotlight card for homepage |
-| Create | `src/components/tournament/TournamentRoleFork.tsx` | Player vs Organizer role selector |
-| Modify | `src/components/homepage/HeroSection.tsx` | Remove "Join a Tournament" link |
-| Modify | `src/components/homepage/QuickActionTiles.tsx` | Remove "Host a Tournament" tile |
-| Modify | `src/components/homepage/index.ts` | Export TournamentSpotlight |
-| Modify | `src/pages/Index.tsx` | Add TournamentSpotlight to layout |
-| Modify | `src/pages/TournamentsLanding.tsx` | Add TournamentRoleFork section |
-| Modify | `src/components/tournament/TournamentHero.tsx` | Make headline role-neutral |
-| Modify | `src/components/homepage/HomepageNav.tsx` | Restructure mobile menu with sections |
+| Create | Database migration | Sync function, trigger, and backfill |
+| Modify | `src/pages/player/FindEvents.tsx` | Update navigation for tournaments to use correct route |
 
----
+### Navigation Fix
 
-## Technical Specifications
-
-### TournamentSpotlight Component
+Currently the FindEvents component navigates to `/tournaments/${id}` but should use `/tournament/${id}` (singular) for the tournament landing page:
 
 ```typescript
-interface TournamentSpotlightProps {}
+// Current (line 196-197)
+} else if (event.event_type === 'tournament') {
+  navigate(`/tournaments/${event.id}`);
 
-// Styling: 
-// - Container: py-12 bg-gradient-to-r from-primary/5 via-transparent to-secondary/5
-// - Inner card: max-w-2xl mx-auto, border-primary/20, shadow-lg
-// - Trophy icon with shadow-[0_0_20px_rgba(169,207,70,0.3)]
+// Should be
+} else if (event.event_type === 'tournament') {
+  navigate(`/tournament/${event.id}`);
 ```
-
-### TournamentRoleFork Component
-
-```typescript
-interface TournamentRoleForkProps {
-  onBrowseClick?: () => void;
-  onCreateClick?: () => void;
-}
-
-// Uses framer-motion for entrance animation
-// Cards use hover:scale-[1.02] and hover:shadow-lg transitions
-```
-
-### Mobile Menu Submenu Behavior
-
-- Uses Radix Collapsible component (already installed)
-- ChevronDown icon rotates on expand
-- Submenu items indented with pl-8
-- Fast 150ms animation duration
 
 ---
 
-## Consistency Checklist
+## Expected Outcome
 
-- [ ] All new components use existing design tokens (primary, secondary, muted-foreground)
-- [ ] Cards match existing Card component patterns (border-border/50, rounded-2xl)
-- [ ] Buttons use existing size variants (sm, lg) and variants (default, outline, ghost)
-- [ ] Mobile touch targets meet 44px minimum
-- [ ] Animation timings consistent (300ms for cards, 150ms for menu)
-- [ ] Icons from lucide-react (already in use throughout)
+After implementation:
+1. "Winter Classic" tournament will appear in Find Events
+2. New tournaments automatically sync when `public_view_enabled = true`
+3. Tournament updates reflect in real-time on Find Events
+4. Players can discover and click through to tournament details
 
 ---
 
-## Mobile-First Considerations
+## Future Consideration
 
-**TournamentSpotlight:**
-- Full-width on mobile with horizontal padding
-- CTAs stack vertically on screens < sm
+The same sync pattern should be applied to:
+- `round_robin_events` → `unified_events`
+- `calendar_events` (open play, lessons) → `unified_events`
 
-**TournamentRoleFork:**
-- Cards stack vertically on mobile
-- Player card appears first (higher intent for players)
-
-**Mobile Menu:**
-- Touch-friendly submenu expansion
-- Visual affordance (chevron) for expandable items
-- Sections clearly separated with padding
+This would complete the Canonical Event System architecture.
 
