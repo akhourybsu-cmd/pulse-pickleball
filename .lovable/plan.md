@@ -1,231 +1,119 @@
 
-
-# Unified Event Discovery: Syncing Tournaments to Find Events
+# HomepageNav Enhancement: Fix 404s and Add Desktop Menu
 
 ## Problem Summary
 
-The **Find Events** page (`/player/find`) shows "No events found" even though there's an active tournament ("Winter Classic" starting Feb 7, 2026) that should be discoverable.
-
-**Root Cause:** The Find Events page uses `useDiscoverEvents` which queries the `unified_events` table. However, tournaments live in a separate `tournaments_events` table with no sync mechanism to populate `unified_events`.
-
-| Table | Purpose | Current State |
-|-------|---------|---------------|
-| `unified_events` | Canonical discovery table | Empty (0 rows) |
-| `tournaments_events` | Tournament storage | Has 1 active upcoming tournament |
-| `round_robin_events` | Round robin storage | Separate from unified system |
+The sandwich menu in `HomepageNav.tsx` has two routes that lead to 404 errors, and the structured navigation is only available on mobile. This plan fixes the broken links and extends the platform hub menu to desktop.
 
 ---
 
-## Solution Options
+## Issue 1: Broken Routes
 
-### Option A: Database Sync Triggers (Recommended)
+| Current Link | Issue | Fix |
+|--------------|-------|-----|
+| `/browse-events` | Route doesn't exist | Change to `/events/browse` |
+| `/settings` | Route doesn't exist | Change to `/settings/notifications` |
 
-Create database triggers that automatically sync tournaments to `unified_events` when:
-- A tournament is created/updated
-- A tournament's `public_view_enabled` is set to `true`
-- A tournament's dates change
-
-**Pros:**
-- Single source of truth for discovery
-- Automatic, real-time sync
-- Works with existing Find Events UI
-
-**Cons:**
-- Requires database migration
-- Need to handle existing tournaments
-
-### Option B: Modify useDiscoverEvents Hook
-
-Update the hook to query both `unified_events` AND `tournaments_events`, then merge results.
-
-**Pros:**
-- No database changes
-- Quick to implement
-
-**Cons:**
-- More complex client-side logic
-- Duplicate queries
-- Harder to maintain long-term
+**Evidence from App.tsx:**
+- Line 330: `<Route path="/events/browse" element={<BrowseEvents />} />`
+- Line 333: `<Route path="/settings/notifications" element={<NotificationSettings />} />`
 
 ---
 
-## Recommended Approach: Database Sync + Backfill
+## Issue 2: Desktop Menu Missing
 
-### Step 1: Create Sync Function
+Currently, desktop shows a flat list of 4 links:
+- Players, Venues, Events, Community, (Login)
 
-Create a PostgreSQL function that maps tournament fields to unified_events format:
+The mobile menu has a richer "Platform Hub" structure with:
+- **Explore**: Players, Venues, Events, Community
+- **Play**: Round Robins, Tournaments (with submenu)
+- **Account** (when logged in): Dashboard, Settings
+
+The desktop experience should match by using a dropdown menu triggered by a hamburger icon or similar, providing access to the same grouped navigation.
+
+---
+
+## Solution Design
+
+### Desktop Navigation Pattern
+
+Replace the flat desktop links with a similar dropdown/popover menu that mirrors the mobile structure:
 
 ```text
-tournaments_events → unified_events mapping:
-├── name → title
-├── description → description  
-├── 'tournament' → event_type
-├── start_date (as timestamp) → start_time
-├── end_date (as timestamp) → end_time
-├── venue_id → host_venue_id, venue_id
-├── 'venue' → host_type
-├── registration_enabled → derives status
-├── public_view_enabled → visibility ('public' or 'private')
-└── id → legacy_id, 'tournaments_events' → legacy_table
+Desktop Header (current):
+[Logo]     Players | Venues | Events | Community | Login    [Theme] [CTA]
+
+Desktop Header (proposed):
+[Logo]     Players | Venues | Events | Community | [Menu ▼]  [Theme] [CTA]
+                                                    │
+                                                    ├─ Play
+                                                    │   ├─ Round Robins
+                                                    │   └─ Tournaments ▸
+                                                    │       ├─ Browse
+                                                    │       └─ Host
+                                                    └─ Account (if logged in)
+                                                        ├─ Dashboard
+                                                        └─ Settings
 ```
 
-### Step 2: Create Database Trigger
-
-A trigger on `tournaments_events` that:
-- **INSERT:** Creates corresponding `unified_events` row when `public_view_enabled = true`
-- **UPDATE:** Syncs changes to `unified_events` row
-- **DELETE:** Removes from `unified_events`
-
-### Step 3: Backfill Existing Tournaments
-
-Run a one-time migration to sync all existing public tournaments to `unified_events`.
-
-### Step 4: Handle Registration Status
-
-Map tournament registration state to unified status:
-
-```text
-If registration_enabled AND now() between open/close dates → 'registration_open'
-If registration_enabled AND now() < open_date → 'published'  
-If registration_enabled AND now() > close_date → 'registration_closed'
-If NOT registration_enabled → 'published'
-```
+**Alternative (Simpler)**: Make the hamburger menu available on all screen sizes, keeping desktop inline links for primary navigation but adding the full menu for depth.
 
 ---
 
-## Implementation Details
+## Implementation Steps
 
-### Migration SQL
+### Step 1: Fix Broken Routes
 
-**1. Create sync function:**
+Update `menuSections` in HomepageNav.tsx:
 
-```sql
-CREATE OR REPLACE FUNCTION sync_tournament_to_unified_events()
-RETURNS TRIGGER AS $$
-DECLARE
-  unified_status TEXT;
-  unified_visibility TEXT;
-BEGIN
-  -- Determine visibility
-  IF NEW.public_view_enabled THEN
-    unified_visibility := 'public';
-  ELSE
-    unified_visibility := 'private';
-  END IF;
-
-  -- Determine status based on registration
-  IF NEW.status = 'completed' THEN
-    unified_status := 'completed';
-  ELSIF NEW.status = 'cancelled' THEN
-    unified_status := 'cancelled';
-  ELSIF NEW.registration_enabled THEN
-    IF NEW.registration_open_date IS NOT NULL AND NOW() < NEW.registration_open_date THEN
-      unified_status := 'published';
-    ELSIF NEW.registration_close_date IS NOT NULL AND NOW() > NEW.registration_close_date THEN
-      unified_status := 'registration_closed';
-    ELSE
-      unified_status := 'registration_open';
-    END IF;
-  ELSE
-    unified_status := 'published';
-  END IF;
-
-  -- Handle INSERT/UPDATE
-  IF TG_OP = 'INSERT' OR TG_OP = 'UPDATE' THEN
-    INSERT INTO unified_events (
-      id, title, description, event_type, host_type,
-      host_venue_id, start_time, end_time, venue_id,
-      price, visibility, status, is_published,
-      created_by, legacy_table, legacy_id
-    ) VALUES (
-      NEW.id,
-      NEW.name,
-      NEW.description,
-      'tournament',
-      CASE WHEN NEW.venue_id IS NOT NULL THEN 'venue' ELSE 'individual' END,
-      NEW.venue_id,
-      NEW.start_date::timestamptz,
-      NEW.end_date::timestamptz,
-      NEW.venue_id,
-      NEW.registration_fee,
-      unified_visibility,
-      unified_status,
-      NEW.public_view_enabled,
-      NEW.organizer_id,
-      'tournaments_events',
-      NEW.id
-    )
-    ON CONFLICT (id) DO UPDATE SET
-      title = EXCLUDED.title,
-      description = EXCLUDED.description,
-      start_time = EXCLUDED.start_time,
-      end_time = EXCLUDED.end_time,
-      host_venue_id = EXCLUDED.host_venue_id,
-      venue_id = EXCLUDED.venue_id,
-      price = EXCLUDED.price,
-      visibility = EXCLUDED.visibility,
-      status = EXCLUDED.status,
-      is_published = EXCLUDED.is_published,
-      updated_at = NOW();
-    
-    RETURN NEW;
-  END IF;
-
-  -- Handle DELETE
-  IF TG_OP = 'DELETE' THEN
-    DELETE FROM unified_events WHERE legacy_id = OLD.id AND legacy_table = 'tournaments_events';
-    RETURN OLD;
-  END IF;
-
-  RETURN NULL;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+**Explore section:**
+```typescript
+{ label: "Events", href: "/events/browse", icon: Calendar }
+// Changed from /browse-events
 ```
 
-**2. Create trigger:**
-
-```sql
-CREATE TRIGGER sync_tournament_unified
-AFTER INSERT OR UPDATE OR DELETE ON tournaments_events
-FOR EACH ROW
-EXECUTE FUNCTION sync_tournament_to_unified_events();
+**Account section:**
+```typescript
+{ label: "Settings", href: "/settings/notifications", icon: Settings }
+// Changed from /settings
 ```
 
-**3. Backfill existing tournaments:**
-
-```sql
-INSERT INTO unified_events (
-  id, title, description, event_type, host_type,
-  host_venue_id, start_time, end_time, venue_id,
-  price, visibility, status, is_published,
-  created_by, legacy_table, legacy_id
-)
-SELECT 
-  t.id,
-  t.name,
-  t.description,
-  'tournament',
-  CASE WHEN t.venue_id IS NOT NULL THEN 'venue' ELSE 'individual' END,
-  t.venue_id,
-  t.start_date::timestamptz,
-  t.end_date::timestamptz,
-  t.venue_id,
-  t.registration_fee,
-  CASE WHEN t.public_view_enabled THEN 'public' ELSE 'private' END,
-  CASE 
-    WHEN t.status = 'completed' THEN 'completed'
-    WHEN t.status = 'cancelled' THEN 'cancelled'
-    WHEN t.registration_enabled THEN 'registration_open'
-    ELSE 'published'
-  END,
-  t.public_view_enabled,
-  t.organizer_id,
-  'tournaments_events',
-  t.id
-FROM tournaments_events t
-WHERE t.start_date >= CURRENT_DATE
-ON CONFLICT (id) DO NOTHING;
+Also update `desktopNavLinks` for consistency:
+```typescript
+{ label: "Events", href: "/events/browse", icon: Calendar }
 ```
+
+### Step 2: Add Desktop Popover Menu
+
+Create a `NavigationMenu` dropdown for desktop that provides access to Play and Account sections:
+
+1. Keep the existing inline links (Players, Venues, Events, Community) for quick access
+2. Add a "More" dropdown using `DropdownMenu` or `Popover` component
+3. The dropdown contains:
+   - **Play** section with Round Robins and Tournaments submenu
+   - **Account** section (Dashboard, Settings) - shown only when logged in
+   - **Login** link - shown only when NOT logged in
+
+### Step 3: Make Mobile Menu Icon Always Visible (Alternative)
+
+Alternatively, show the hamburger menu on desktop too (alongside inline links):
+- Remove `md:hidden` from `SheetTrigger`
+- Desktop users get both quick inline links AND the full menu for deeper navigation
+
+---
+
+## Recommended Approach
+
+**Hybrid Navigation:**
+1. Keep desktop inline links for primary discovery (Players, Venues, Events, Community)
+2. Add a dropdown "More" menu for secondary navigation (Play, Account)
+3. Keep mobile Sheet menu as-is with full structure
+
+This provides:
+- Quick access to main sections on desktop
+- Full platform depth available via dropdown
+- Consistent experience across devices
 
 ---
 
@@ -233,40 +121,105 @@ ON CONFLICT (id) DO NOTHING;
 
 | Action | File | Description |
 |--------|------|-------------|
-| Create | Database migration | Sync function, trigger, and backfill |
-| Modify | `src/pages/player/FindEvents.tsx` | Update navigation for tournaments to use correct route |
+| Modify | `src/components/homepage/HomepageNav.tsx` | Fix broken routes, add desktop dropdown |
 
-### Navigation Fix
+---
 
-Currently the FindEvents component navigates to `/tournaments/${id}` but should use `/tournament/${id}` (singular) for the tournament landing page:
+## Technical Implementation
+
+### Route Fixes
 
 ```typescript
-// Current (line 196-197)
-} else if (event.event_type === 'tournament') {
-  navigate(`/tournaments/${event.id}`);
+// desktopNavLinks - line ~16
+{ label: "Events", href: "/events/browse", icon: Calendar },
 
-// Should be
-} else if (event.event_type === 'tournament') {
-  navigate(`/tournament/${event.id}`);
+// menuSections.explore.items - line ~30
+{ label: "Events", href: "/events/browse", icon: Calendar },
+
+// menuSections.account.items - line ~52
+{ label: "Settings", href: "/settings/notifications", icon: Settings },
+```
+
+### Desktop Dropdown Addition
+
+Add after the existing desktop nav links, before the Login link:
+
+```typescript
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+} from "@/components/ui/dropdown-menu";
+
+// Inside desktop nav section
+<DropdownMenu>
+  <DropdownMenuTrigger asChild>
+    <Button variant="ghost" size="sm" className="gap-1">
+      More
+      <ChevronDown className="h-4 w-4" />
+    </Button>
+  </DropdownMenuTrigger>
+  <DropdownMenuContent align="end" className="w-56">
+    <DropdownMenuLabel>Play</DropdownMenuLabel>
+    <DropdownMenuItem asChild>
+      <Link to="/round-robin">Round Robins</Link>
+    </DropdownMenuItem>
+    <DropdownMenuSub>
+      <DropdownMenuSubTrigger>Tournaments</DropdownMenuSubTrigger>
+      <DropdownMenuSubContent>
+        <DropdownMenuItem asChild>
+          <Link to="/tournaments/browse">Browse Tournaments</Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link to="/tournaments/new">Host a Tournament</Link>
+        </DropdownMenuItem>
+      </DropdownMenuSubContent>
+    </DropdownMenuSub>
+    
+    {isLoggedIn && (
+      <>
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel>Account</DropdownMenuLabel>
+        <DropdownMenuItem asChild>
+          <Link to="/player/dashboard">Dashboard</Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link to="/settings/notifications">Settings</Link>
+        </DropdownMenuItem>
+      </>
+    )}
+    
+    {!isLoggedIn && (
+      <>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link to="/auth">Login</Link>
+        </DropdownMenuItem>
+      </>
+    )}
+  </DropdownMenuContent>
+</DropdownMenu>
 ```
 
 ---
 
-## Expected Outcome
+## Also Update Footer
 
-After implementation:
-1. "Winter Classic" tournament will appear in Find Events
-2. New tournaments automatically sync when `public_view_enabled = true`
-3. Tournament updates reflect in real-time on Find Events
-4. Players can discover and click through to tournament details
+The `HomepageFooter.tsx` also has the broken `/browse-events` link that should be updated to `/events/browse` for consistency.
 
 ---
 
-## Future Consideration
+## Final Route Mapping
 
-The same sync pattern should be applied to:
-- `round_robin_events` → `unified_events`
-- `calendar_events` (open play, lessons) → `unified_events`
+| Menu Item | Current Route | Fixed Route |
+|-----------|---------------|-------------|
+| Events (Explore) | `/browse-events` | `/events/browse` |
+| Settings (Account) | `/settings` | `/settings/notifications` |
 
-This would complete the Canonical Event System architecture.
-
+All other routes are valid and will not cause 404s.
