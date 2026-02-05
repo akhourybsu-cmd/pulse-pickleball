@@ -179,53 +179,43 @@ export default function TournamentsLanding() {
         </section>
       )}
 
-      {/* Browse Tournaments Section */}
-      <section id="browse-tournaments" className="py-16">
+      {/* Featured Tournaments Section */}
+      <section id="featured-tournaments" className="py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <motion.h2 
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="text-3xl font-bold mb-4"
-            >
-              Browse Tournaments
-            </motion.h2>
-            <motion.p 
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.1 }}
-              className="text-muted-foreground max-w-2xl mx-auto"
-            >
-              Find and register for upcoming pickleball tournaments in your area
-            </motion.p>
-          </div>
-
-          {/* Search */}
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.2 }}
-            className="max-w-md mx-auto mb-10"
-          >
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search tournaments..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-11 h-12 bg-card/50 border-border/50 focus:border-primary/50 rounded-xl"
-              />
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <motion.h2 
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                className="text-3xl font-bold mb-2"
+              >
+                Featured Tournaments
+              </motion.h2>
+              <motion.p 
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.1 }}
+                className="text-muted-foreground"
+              >
+                Discover upcoming pickleball tournaments
+              </motion.p>
             </div>
-          </motion.div>
+            <Button 
+              variant="outline" 
+              onClick={() => navigate("/tournaments/browse")}
+              className="gap-2 hidden sm:flex"
+            >
+              Browse All <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
 
           {loading ? (
             <div className="flex justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
-          ) : filteredTournaments.length === 0 ? (
+          ) : publicTournaments.length === 0 ? (
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -235,7 +225,7 @@ export default function TournamentsLanding() {
                   <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4 shadow-[0_0_30px_rgba(169,207,70,0.2)]">
                     <Trophy className="h-8 w-8 text-primary" />
                   </div>
-                  <h3 className="text-lg font-semibold mb-2">No tournaments found</h3>
+                  <h3 className="text-lg font-semibold mb-2">No tournaments yet</h3>
                   <p className="text-muted-foreground mb-6">
                     Be the first to create a tournament!
                   </p>
@@ -247,49 +237,61 @@ export default function TournamentsLanding() {
               </Card>
             </motion.div>
           ) : (
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {filteredTournaments.map((tournament, index) => (
-                <motion.div
-                  key={tournament.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: index * 0.1 }}
-                  whileHover={{ y: -4, scale: 1.02 }}
-                  className="cursor-pointer"
-                  onClick={() => navigate(`/tournament/${tournament.id}`)}
-                >
-                  <Card className="h-full bg-gradient-to-br from-card to-card/80 border-border/50 hover:border-primary/50 hover:shadow-[0_0_30px_rgba(169,207,70,0.15)] transition-all duration-300">
-                    <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <CardTitle className="text-lg">{tournament.name}</CardTitle>
-                        <Badge variant="outline" className="bg-primary/10 border-primary/30 text-primary">
-                          {tournament.divisions_count} divisions
-                        </Badge>
-                      </div>
-                      <CardDescription className="space-y-1">
-                        {tournament.location && (
+            <>
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                {publicTournaments.slice(0, 3).map((tournament, index) => (
+                  <motion.div
+                    key={tournament.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: index * 0.1 }}
+                    whileHover={{ y: -4, scale: 1.02 }}
+                    className="cursor-pointer"
+                    onClick={() => navigate(`/tournament/${tournament.id}`)}
+                  >
+                    <Card className="h-full bg-gradient-to-br from-card to-card/80 border-border/50 hover:border-primary/50 hover:shadow-[0_0_30px_rgba(169,207,70,0.15)] transition-all duration-300">
+                      <CardHeader>
+                        <div className="flex items-start justify-between">
+                          <CardTitle className="text-lg">{tournament.name}</CardTitle>
+                          <Badge variant="outline" className="bg-primary/10 border-primary/30 text-primary">
+                            {tournament.divisions_count} divisions
+                          </Badge>
+                        </div>
+                        <CardDescription className="space-y-1">
+                          {tournament.location && (
+                            <span className="flex items-center gap-1">
+                              <span>{tournament.location}</span>
+                            </span>
+                          )}
                           <span className="flex items-center gap-1">
-                            <span>{tournament.location}</span>
+                            <Calendar className="h-3 w-3" />
+                            {format(new Date(tournament.start_date), "MMM d")} - {format(new Date(tournament.end_date), "MMM d, yyyy")}
                           </span>
-                        )}
-                        <span className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          {format(new Date(tournament.start_date), "MMM d")} - {format(new Date(tournament.end_date), "MMM d, yyyy")}
-                        </span>
-                      </CardDescription>
-                    </CardHeader>
-                    {tournament.description && (
-                      <CardContent>
-                        <p className="text-sm text-muted-foreground line-clamp-2">
-                          {tournament.description}
-                        </p>
-                      </CardContent>
-                    )}
-                  </Card>
-                </motion.div>
-              ))}
-            </div>
+                        </CardDescription>
+                      </CardHeader>
+                      {tournament.description && (
+                        <CardContent>
+                          <p className="text-sm text-muted-foreground line-clamp-2">
+                            {tournament.description}
+                          </p>
+                        </CardContent>
+                      )}
+                    </Card>
+                  </motion.div>
+                ))}
+              </div>
+              
+              {/* Mobile Browse All button */}
+              <div className="mt-8 text-center sm:hidden">
+                <Button 
+                  onClick={() => navigate("/tournaments/browse")}
+                  className="gap-2"
+                >
+                  Browse All Tournaments <ArrowRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </>
           )}
         </div>
       </section>
