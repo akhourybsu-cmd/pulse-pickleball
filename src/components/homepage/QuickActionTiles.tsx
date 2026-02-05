@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
-import { TrendingUp, MapPin, RotateCcw, Trophy } from "lucide-react";
+import { TrendingUp, MapPin, RotateCcw } from "lucide-react";
 
 const tiles = [
   {
@@ -23,13 +23,6 @@ const tiles = [
     description: "Organize open play sessions",
     href: "/round-robin",
     color: "primary" as const,
-  },
-  {
-    icon: Trophy,
-    title: "Host a Tournament",
-    description: "Create competitive events",
-    href: "/tournaments",
-    color: "secondary" as const,
   },
 ];
 

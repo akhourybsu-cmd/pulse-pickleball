@@ -77,7 +77,7 @@ export function TournamentHero({ onCreateClick }: TournamentHeroProps) {
             transition={{ delay: 0.3 }}
             className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight text-white"
           >
-            Host Professional
+            Professional Pickleball
             <br />
             <span className="bg-gradient-to-r from-primary via-primary to-accent bg-clip-text text-transparent">
               Tournaments
@@ -90,7 +90,7 @@ export function TournamentHero({ onCreateClick }: TournamentHeroProps) {
             transition={{ delay: 0.4 }}
             className="text-lg md:text-xl text-white/70 max-w-2xl mx-auto mb-10"
           >
-            Create, manage, and run tournaments with automated brackets, live scoring,
+            Join competitive events or host your own with automated brackets, live scoring,
             and seamless player registration. Everything you need in one place.
           </motion.p>
 

@@ -4,6 +4,7 @@ import {
   HomepageNav,
   HeroSection,
   DualLaneSection,
+  TournamentSpotlight,
   QuickActionTiles,
   HowItWorksSection,
   TrustBandSection,
@@ -70,6 +71,7 @@ const Index = () => {
       <main>
         <HeroSection />
         <DualLaneSection />
+        <TournamentSpotlight />
         <QuickActionTiles />
         <HowItWorksSection />
         <TrustBandSection />

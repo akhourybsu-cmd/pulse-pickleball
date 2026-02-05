@@ -58,13 +58,6 @@ export const HeroSection = () => {
           </button>
           <span className="text-muted-foreground/50">|</span>
           <button
-            onClick={() => navigate("/tournaments")}
-            className="text-muted-foreground hover:text-primary transition-colors underline-offset-4 hover:underline"
-          >
-            Join a Tournament
-          </button>
-          <span className="text-muted-foreground/50">|</span>
-          <button
             onClick={() => navigate("/round-robin")}
             className="text-muted-foreground hover:text-primary transition-colors underline-offset-4 hover:underline"
           >

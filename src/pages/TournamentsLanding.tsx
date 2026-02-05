@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TournamentHero } from "@/components/tournament/TournamentHero";
+import { TournamentRoleFork } from "@/components/tournament/TournamentRoleFork";
 import { PricingShowcase } from "@/components/tournament/PricingShowcase";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Footer } from "@/components/Footer";
@@ -114,6 +115,9 @@ export default function TournamentsLanding() {
 
       {/* Hero Section */}
       <TournamentHero onCreateClick={handleCreateTournament} />
+
+      {/* Role Fork Section */}
+      <TournamentRoleFork onCreateClick={handleCreateTournament} />
 
       {/* My Tournaments Section (if logged in) */}
       {user && myTournaments.length > 0 && (

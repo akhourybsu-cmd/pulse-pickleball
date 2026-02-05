@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
-import { Menu, User, Building2, Calendar, Users, ArrowRight, LogIn } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Menu, User, Building2, Calendar, Users, ArrowRight, LogIn, RotateCcw, Trophy, ChevronDown, LayoutDashboard, Settings } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import logo from "@/assets/pulse-logo-new.png";
 
@@ -11,17 +12,52 @@ interface HomepageNavProps {
   userMode?: "player" | "venue";
 }
 
-// Navigation links with icons for mobile menu
-const navLinks = [
+// Desktop navigation links
+const desktopNavLinks = [
   { label: "Players", href: "/players", icon: User },
   { label: "Venues", href: "/venues", icon: Building2 },
   { label: "Events", href: "/browse-events", icon: Calendar },
   { label: "Community", href: "/player/community", icon: Users },
 ];
 
+// Mobile menu sections
+const menuSections = {
+  explore: {
+    title: "Explore",
+    items: [
+      { label: "Players", href: "/players", icon: User },
+      { label: "Venues", href: "/venues", icon: Building2 },
+      { label: "Events", href: "/browse-events", icon: Calendar },
+      { label: "Community", href: "/player/community", icon: Users },
+    ],
+  },
+  play: {
+    title: "Play",
+    items: [
+      { label: "Round Robins", href: "/round-robin", icon: RotateCcw },
+    ],
+    expandable: {
+      label: "Tournaments",
+      icon: Trophy,
+      submenu: [
+        { label: "Browse Tournaments", href: "/tournaments/browse" },
+        { label: "Host a Tournament", href: "/tournaments/new" },
+      ],
+    },
+  },
+  account: {
+    title: "Account",
+    items: [
+      { label: "Dashboard", href: "/player/dashboard", icon: LayoutDashboard },
+      { label: "Settings", href: "/settings", icon: Settings },
+    ],
+  },
+};
+
 export const HomepageNav = ({ isLoggedIn, userMode }: HomepageNavProps) => {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [tournamentsOpen, setTournamentsOpen] = useState(false);
 
   const handlePrimaryCTA = () => {
     if (isLoggedIn) {
@@ -56,7 +92,7 @@ export const HomepageNav = ({ isLoggedIn, userMode }: HomepageNavProps) => {
 
         {/* Desktop Navigation */}
         <div className="hidden md:flex items-center gap-8">
-          {navLinks.map((link) => (
+          {desktopNavLinks.map((link) => (
             <Link
               key={link.href}
               to={link.href}
@@ -116,52 +152,124 @@ export const HomepageNav = ({ isLoggedIn, userMode }: HomepageNavProps) => {
               </div>
               
               {/* Navigation section */}
-              <div className="flex-1 p-6 space-y-6 overflow-y-auto">
-                {/* Explore section */}
-                <div className="space-y-1">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3 px-3">
-                    Explore
+              <div className="flex-1 py-4 overflow-y-auto">
+                {/* Explore Section */}
+                <div className="px-6 py-2">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 px-3">
+                    {menuSections.explore.title}
                   </p>
-                  {navLinks.map((link) => (
-                    <Link
-                      key={link.href}
-                      to={link.href}
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="flex items-center gap-3 px-3 py-3 rounded-lg text-base font-medium text-foreground hover:bg-muted/50 transition-colors min-h-[44px]"
-                    >
-                      <link.icon className="h-5 w-5 text-muted-foreground" />
-                      {link.label}
-                    </Link>
-                  ))}
+                  <div className="space-y-1">
+                    {menuSections.explore.items.map((link) => (
+                      <Link
+                        key={link.href}
+                        to={link.href}
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="flex items-center gap-3 px-3 py-3 rounded-lg text-base font-medium text-foreground hover:bg-muted/50 transition-colors min-h-[44px]"
+                      >
+                        <link.icon className="h-5 w-5 text-muted-foreground" />
+                        {link.label}
+                      </Link>
+                    ))}
+                  </div>
                 </div>
                 
                 {/* Divider */}
-                <div className="border-t border-border/50" />
+                <div className="border-t border-border/50 my-2 mx-6" />
                 
-                {/* Auth section */}
-                <div className="space-y-3">
-                  {!isLoggedIn && (
-                    <Link
-                      to="/auth"
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="flex items-center gap-3 px-3 py-3 rounded-lg text-base font-medium text-foreground hover:bg-muted/50 transition-colors min-h-[44px]"
-                    >
-                      <LogIn className="h-5 w-5 text-muted-foreground" />
-                      Login
-                    </Link>
-                  )}
-                  <Button
-                    onClick={() => {
-                      setMobileMenuOpen(false);
-                      handlePrimaryCTA();
-                    }}
-                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground min-h-[44px]"
-                    size="lg"
-                  >
-                    {getPrimaryCtaLabel()}
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
+                {/* Play Section */}
+                <div className="px-6 py-2">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 px-3">
+                    {menuSections.play.title}
+                  </p>
+                  <div className="space-y-1">
+                    {menuSections.play.items.map((link) => (
+                      <Link
+                        key={link.href}
+                        to={link.href}
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="flex items-center gap-3 px-3 py-3 rounded-lg text-base font-medium text-foreground hover:bg-muted/50 transition-colors min-h-[44px]"
+                      >
+                        <link.icon className="h-5 w-5 text-muted-foreground" />
+                        {link.label}
+                      </Link>
+                    ))}
+                    
+                    {/* Tournaments Expandable */}
+                    <Collapsible open={tournamentsOpen} onOpenChange={setTournamentsOpen}>
+                      <CollapsibleTrigger className="flex items-center justify-between w-full px-3 py-3 rounded-lg text-base font-medium text-foreground hover:bg-muted/50 transition-colors min-h-[44px]">
+                        <div className="flex items-center gap-3">
+                          <Trophy className="h-5 w-5 text-muted-foreground" />
+                          {menuSections.play.expandable.label}
+                        </div>
+                        <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform duration-150 ${tournamentsOpen ? 'rotate-180' : ''}`} />
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="overflow-hidden data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0">
+                        <div className="pl-8 space-y-1 mt-1">
+                          {menuSections.play.expandable.submenu.map((subItem) => (
+                            <Link
+                              key={subItem.href}
+                              to={subItem.href}
+                              onClick={() => setMobileMenuOpen(false)}
+                              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors min-h-[40px]"
+                            >
+                              {subItem.label}
+                            </Link>
+                          ))}
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </div>
                 </div>
+                
+                {/* Account Section (only if logged in) */}
+                {isLoggedIn && (
+                  <>
+                    <div className="border-t border-border/50 my-2 mx-6" />
+                    <div className="px-6 py-2">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 px-3">
+                        {menuSections.account.title}
+                      </p>
+                      <div className="space-y-1">
+                        {menuSections.account.items.map((link) => (
+                          <Link
+                            key={link.href}
+                            to={link.href}
+                            onClick={() => setMobileMenuOpen(false)}
+                            className="flex items-center gap-3 px-3 py-3 rounded-lg text-base font-medium text-foreground hover:bg-muted/50 transition-colors min-h-[44px]"
+                          >
+                            <link.icon className="h-5 w-5 text-muted-foreground" />
+                            {link.label}
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+              
+              {/* Footer CTA */}
+              <div className="p-6 border-t border-border/50 space-y-3">
+                {!isLoggedIn && (
+                  <Link
+                    to="/auth"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center gap-3 px-3 py-3 rounded-lg text-base font-medium text-foreground hover:bg-muted/50 transition-colors min-h-[44px]"
+                  >
+                    <LogIn className="h-5 w-5 text-muted-foreground" />
+                    Login
+                  </Link>
+                )}
+                <Button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    handlePrimaryCTA();
+                  }}
+                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground min-h-[44px]"
+                  size="lg"
+                >
+                  {getPrimaryCtaLabel()}
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
               </div>
             </SheetContent>
           </Sheet>
