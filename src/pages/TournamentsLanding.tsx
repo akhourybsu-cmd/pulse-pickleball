@@ -116,6 +116,9 @@ export default function TournamentsLanding() {
       {/* Hero Section */}
       <TournamentHero onCreateClick={handleCreateTournament} />
 
+      {/* Role Fork Section */}
+      <TournamentRoleFork onCreateClick={handleCreateTournament} />
+
       {/* My Tournaments Section (if logged in) */}
       {user && myTournaments.length > 0 && (
         <section className="py-16 bg-gradient-to-b from-muted/50 to-background">

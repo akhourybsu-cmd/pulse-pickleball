@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
-import { Menu, User, Building2, Calendar, Users, ArrowRight, LogIn } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Menu, User, Building2, Calendar, Users, ArrowRight, LogIn, RotateCcw, Trophy, ChevronDown, LayoutDashboard, Settings } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import logo from "@/assets/pulse-logo-new.png";
 
@@ -11,13 +12,47 @@ interface HomepageNavProps {
   userMode?: "player" | "venue";
 }
 
-// Navigation links with icons for mobile menu
-const navLinks = [
+// Desktop navigation links
+const desktopNavLinks = [
   { label: "Players", href: "/players", icon: User },
   { label: "Venues", href: "/venues", icon: Building2 },
   { label: "Events", href: "/browse-events", icon: Calendar },
   { label: "Community", href: "/player/community", icon: Users },
 ];
+
+// Mobile menu sections
+const menuSections = {
+  explore: {
+    title: "Explore",
+    items: [
+      { label: "Players", href: "/players", icon: User },
+      { label: "Venues", href: "/venues", icon: Building2 },
+      { label: "Events", href: "/browse-events", icon: Calendar },
+      { label: "Community", href: "/player/community", icon: Users },
+    ],
+  },
+  play: {
+    title: "Play",
+    items: [
+      { label: "Round Robins", href: "/round-robin", icon: RotateCcw },
+    ],
+    expandable: {
+      label: "Tournaments",
+      icon: Trophy,
+      submenu: [
+        { label: "Browse Tournaments", href: "/tournaments/browse" },
+        { label: "Host a Tournament", href: "/tournaments/new" },
+      ],
+    },
+  },
+  account: {
+    title: "Account",
+    items: [
+      { label: "Dashboard", href: "/player/dashboard", icon: LayoutDashboard },
+      { label: "Settings", href: "/settings", icon: Settings },
+    ],
+  },
+};
 
 export const HomepageNav = ({ isLoggedIn, userMode }: HomepageNavProps) => {
   const navigate = useNavigate();
