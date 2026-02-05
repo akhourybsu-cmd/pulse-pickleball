@@ -79,11 +79,6 @@ export default function TournamentsLanding() {
     navigate("/tournaments/new");
   };
 
-  const filteredTournaments = publicTournaments.filter(t =>
-    t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    t.location?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "paid":
