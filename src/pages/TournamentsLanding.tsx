@@ -126,7 +126,7 @@ export default function TournamentsLanding() {
                 </div>
                 <h2 className="text-2xl font-bold">My Tournaments</h2>
               </div>
-              <Button variant="ghost" onClick={() => navigate("/tournaments")} className="gap-2">
+              <Button variant="ghost" onClick={() => navigate("/tournaments/manage")} className="gap-2">
                 View All <ArrowRight className="h-4 w-4" />
               </Button>
             </div>

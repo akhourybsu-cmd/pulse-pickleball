@@ -113,11 +113,7 @@ export function TournamentHero({ onCreateClick }: TournamentHeroProps) {
             <Button
               variant="outline"
               size="lg"
-              onClick={() => {
-                document.getElementById("browse-tournaments")?.scrollIntoView({
-                  behavior: "smooth",
-                });
-              }}
+              onClick={() => navigate("/tournaments/browse")}
               className="gap-2 text-lg px-8 bg-white/10 border-white/30 text-white hover:bg-white/20 hover:text-white hover:border-white/50"
             >
               Browse Tournaments
