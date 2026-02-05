@@ -82,7 +82,7 @@ export default function ManageTournaments() {
 
   return (
     <div className="min-h-screen bg-[hsl(var(--page-bg))]">
-      <PageHeader userId={userId} />
+      <TournamentBrowseHeader userId={userId} activeTab="manage" />
       
       <div className="container mx-auto px-4 py-8 max-w-6xl">
         {/* Header */}
