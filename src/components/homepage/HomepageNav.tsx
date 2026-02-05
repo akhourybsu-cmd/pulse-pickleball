@@ -3,7 +3,18 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Menu, User, Building2, Calendar, Users, ArrowRight, LogIn, RotateCcw, Trophy, ChevronDown, LayoutDashboard, Settings } from "lucide-react";
+import { Menu, User, Building2, Calendar, Users, ArrowRight, LogIn, RotateCcw, Trophy, ChevronDown, LayoutDashboard, Settings, MoreHorizontal } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+} from "@/components/ui/dropdown-menu";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import logo from "@/assets/pulse-logo-new.png";
 
@@ -16,18 +27,18 @@ interface HomepageNavProps {
 const desktopNavLinks = [
   { label: "Players", href: "/players", icon: User },
   { label: "Venues", href: "/venues", icon: Building2 },
-  { label: "Events", href: "/browse-events", icon: Calendar },
+  { label: "Events", href: "/events/browse", icon: Calendar },
   { label: "Community", href: "/player/community", icon: Users },
 ];
 
-// Mobile menu sections
+// Menu sections (used for both mobile and desktop)
 const menuSections = {
   explore: {
     title: "Explore",
     items: [
       { label: "Players", href: "/players", icon: User },
       { label: "Venues", href: "/venues", icon: Building2 },
-      { label: "Events", href: "/browse-events", icon: Calendar },
+      { label: "Events", href: "/events/browse", icon: Calendar },
       { label: "Community", href: "/player/community", icon: Users },
     ],
   },
@@ -49,7 +60,7 @@ const menuSections = {
     title: "Account",
     items: [
       { label: "Dashboard", href: "/player/dashboard", icon: LayoutDashboard },
-      { label: "Settings", href: "/settings", icon: Settings },
+      { label: "Settings", href: "/settings/notifications", icon: Settings },
     ],
   },
 };
@@ -101,14 +112,77 @@ export const HomepageNav = ({ isLoggedIn, userMode }: HomepageNavProps) => {
               {link.label}
             </Link>
           ))}
-          {!isLoggedIn && (
-            <Link
-              to="/auth"
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Login
-            </Link>
-          )}
+          {/* Desktop More Menu */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground hover:text-foreground">
+                More
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 bg-popover">
+              <DropdownMenuLabel className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Play
+              </DropdownMenuLabel>
+              <DropdownMenuItem asChild>
+                <Link to="/round-robin" className="flex items-center gap-2 cursor-pointer">
+                  <RotateCcw className="h-4 w-4" />
+                  Round Robins
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger className="flex items-center gap-2">
+                  <Trophy className="h-4 w-4" />
+                  Tournaments
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent className="bg-popover">
+                  <DropdownMenuItem asChild>
+                    <Link to="/tournaments/browse" className="cursor-pointer">
+                      Browse Tournaments
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/tournaments/new" className="cursor-pointer">
+                      Host a Tournament
+                    </Link>
+                  </DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+              
+              {isLoggedIn && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Account
+                  </DropdownMenuLabel>
+                  <DropdownMenuItem asChild>
+                    <Link to="/player/dashboard" className="flex items-center gap-2 cursor-pointer">
+                      <LayoutDashboard className="h-4 w-4" />
+                      Dashboard
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/settings/notifications" className="flex items-center gap-2 cursor-pointer">
+                      <Settings className="h-4 w-4" />
+                      Settings
+                    </Link>
+                  </DropdownMenuItem>
+                </>
+              )}
+              
+              {!isLoggedIn && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link to="/auth" className="flex items-center gap-2 cursor-pointer">
+                      <LogIn className="h-4 w-4" />
+                      Login
+                    </Link>
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {/* Right Side Actions */}
