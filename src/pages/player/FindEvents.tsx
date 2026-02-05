@@ -194,7 +194,7 @@ export default function FindEvents() {
                   if (event.event_type === 'round_robin') {
                     navigate(`/round-robin/${event.id}`);
                   } else if (event.event_type === 'tournament') {
-                    navigate(`/tournaments/${event.id}`);
+                    navigate(`/tournament/${event.id}`);
                   } else {
                     navigate(`/events/${event.id}`);
                   }
