@@ -32,7 +32,6 @@ export default function TournamentsLanding() {
   const [user, setUser] = useState<any>(null);
   const [publicTournaments, setPublicTournaments] = useState<Tournament[]>([]);
   const [myTournaments, setMyTournaments] = useState<Tournament[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
