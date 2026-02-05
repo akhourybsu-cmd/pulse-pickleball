@@ -7,7 +7,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { TournamentHero } from "@/components/tournament/TournamentHero";
 import { PricingShowcase } from "@/components/tournament/PricingShowcase";
 import { ThemeToggle } from "@/components/ThemeToggle";
