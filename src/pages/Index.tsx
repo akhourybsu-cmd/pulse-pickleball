@@ -4,6 +4,7 @@ import {
   HomepageNav,
   HeroSection,
   DualLaneSection,
+  TournamentSpotlight,
   QuickActionTiles,
   HowItWorksSection,
   TrustBandSection,
