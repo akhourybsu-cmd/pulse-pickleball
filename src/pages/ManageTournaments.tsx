@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Trophy, Search } from "lucide-react";
-import { PageHeader } from "@/components/PageHeader";
+import { TournamentBrowseHeader } from "@/components/tournament/TournamentBrowseHeader";
 import { TournamentManageCard } from "@/components/tournament/TournamentManageCard";
 
 interface ManagedTournament {
