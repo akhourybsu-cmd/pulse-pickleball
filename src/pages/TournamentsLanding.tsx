@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TournamentHero } from "@/components/tournament/TournamentHero";
+import { TournamentRoleFork } from "@/components/tournament/TournamentRoleFork";
 import { PricingShowcase } from "@/components/tournament/PricingShowcase";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Footer } from "@/components/Footer";
