@@ -31,14 +31,14 @@ const desktopNavLinks = [
   { label: "Community", href: "/player/community", icon: Users },
 ];
 
-// Mobile menu sections
+// Menu sections (used for both mobile and desktop)
 const menuSections = {
   explore: {
     title: "Explore",
     items: [
       { label: "Players", href: "/players", icon: User },
       { label: "Venues", href: "/venues", icon: Building2 },
-      { label: "Events", href: "/browse-events", icon: Calendar },
+      { label: "Events", href: "/events/browse", icon: Calendar },
       { label: "Community", href: "/player/community", icon: Users },
     ],
   },
@@ -60,7 +60,7 @@ const menuSections = {
     title: "Account",
     items: [
       { label: "Dashboard", href: "/player/dashboard", icon: LayoutDashboard },
-      { label: "Settings", href: "/settings", icon: Settings },
+      { label: "Settings", href: "/settings/notifications", icon: Settings },
     ],
   },
 };
