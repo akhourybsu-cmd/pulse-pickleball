@@ -112,14 +112,77 @@ export const HomepageNav = ({ isLoggedIn, userMode }: HomepageNavProps) => {
               {link.label}
             </Link>
           ))}
-          {!isLoggedIn && (
-            <Link
-              to="/auth"
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Login
-            </Link>
-          )}
+          {/* Desktop More Menu */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="gap-1 text-muted-foreground hover:text-foreground">
+                More
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 bg-popover">
+              <DropdownMenuLabel className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Play
+              </DropdownMenuLabel>
+              <DropdownMenuItem asChild>
+                <Link to="/round-robin" className="flex items-center gap-2 cursor-pointer">
+                  <RotateCcw className="h-4 w-4" />
+                  Round Robins
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger className="flex items-center gap-2">
+                  <Trophy className="h-4 w-4" />
+                  Tournaments
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent className="bg-popover">
+                  <DropdownMenuItem asChild>
+                    <Link to="/tournaments/browse" className="cursor-pointer">
+                      Browse Tournaments
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/tournaments/new" className="cursor-pointer">
+                      Host a Tournament
+                    </Link>
+                  </DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+              
+              {isLoggedIn && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                    Account
+                  </DropdownMenuLabel>
+                  <DropdownMenuItem asChild>
+                    <Link to="/player/dashboard" className="flex items-center gap-2 cursor-pointer">
+                      <LayoutDashboard className="h-4 w-4" />
+                      Dashboard
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/settings/notifications" className="flex items-center gap-2 cursor-pointer">
+                      <Settings className="h-4 w-4" />
+                      Settings
+                    </Link>
+                  </DropdownMenuItem>
+                </>
+              )}
+              
+              {!isLoggedIn && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link to="/auth" className="flex items-center gap-2 cursor-pointer">
+                      <LogIn className="h-4 w-4" />
+                      Login
+                    </Link>
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {/* Right Side Actions */}

@@ -4,7 +4,7 @@ import { Github, Twitter, Instagram, Youtube } from "lucide-react";
 const productLinks = [
   { label: "Players", href: "/players" },
   { label: "Venues", href: "/venues" },
-  { label: "Events", href: "/browse-events" },
+  { label: "Events", href: "/events/browse" },
   { label: "Community", href: "/player/community" },
 ];
 
