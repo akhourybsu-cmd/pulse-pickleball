@@ -27,7 +27,7 @@ interface HomepageNavProps {
 const desktopNavLinks = [
   { label: "Players", href: "/players", icon: User },
   { label: "Venues", href: "/venues", icon: Building2 },
-  { label: "Events", href: "/browse-events", icon: Calendar },
+  { label: "Events", href: "/events/browse", icon: Calendar },
   { label: "Community", href: "/player/community", icon: Users },
 ];
 
