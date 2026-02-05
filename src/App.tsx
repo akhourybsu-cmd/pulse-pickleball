@@ -339,7 +339,7 @@ const AppContent = () => {
           <Route path="/round-robin/create" element={<CreateRoundRobin />} />
           <Route path="/round-robin/:id" element={<RoundRobinDetail />} />
           <Route path="/round-robin/:id/kiosk" element={<RoundRobinKiosk />} />
-          <Route path="/tournaments" element={<Navigate to="/tournaments/browse" replace />} />
+          <Route path="/tournaments" element={<TournamentsLanding />} />
           <Route path="/tournaments/browse" element={<BrowseTournaments />} />
           <Route path="/tournaments/manage" element={<AuthGuard><ManageTournaments /></AuthGuard>} />
           <Route path="/tournaments/new" element={<TournamentNewWithGating />} />
