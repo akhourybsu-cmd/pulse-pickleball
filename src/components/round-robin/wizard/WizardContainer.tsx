@@ -231,7 +231,10 @@ export function WizardContainer() {
         return (
           <EventModeStep
             value={formData.eventMode}
-            onChange={(v) => updateFormData("eventMode", v)}
+            onChange={(v) => {
+              updateFormData("eventMode", v);
+              setTimeout(() => goNext(), 150);
+            }}
           />
         );
       case "name":
@@ -252,7 +255,10 @@ export function WizardContainer() {
         return (
           <FormatStep
             value={formData.format}
-            onChange={(v) => updateFormData("format", v)}
+            onChange={(v) => {
+              updateFormData("format", v);
+              setTimeout(() => goNext(), 150);
+            }}
           />
         );
       case "players":
@@ -344,14 +350,17 @@ export function WizardContainer() {
         </div>
       </main>
 
-      <WizardNavigation
-        onContinue={handleContinue}
-        onSkip={currentStep.isOptional ? handleSkip : undefined}
-        isValid={isValid}
-        isOptional={currentStep.isOptional}
-        isLastStep={isLastStep}
-        isLoading={loading}
-      />
+      {/* Hide nav on auto-advance steps */}
+      {currentStep.id !== 'mode' && currentStep.id !== 'format' && (
+        <WizardNavigation
+          onContinue={handleContinue}
+          onSkip={currentStep.isOptional ? handleSkip : undefined}
+          isValid={isValid}
+          isOptional={currentStep.isOptional}
+          isLastStep={isLastStep}
+          isLoading={loading}
+        />
+      )}
     </div>
   );
 }

@@ -28,7 +28,7 @@ export interface WizardStep {
 
 const ALL_STEPS: WizardStep[] = [
   { id: "mode", label: "Event Mode", isOptional: false },
-  { id: "name", label: "Event Name", isOptional: false },
+  { id: "name", label: "Event Name", isOptional: true },
   { id: "location", label: "Location", isOptional: true },
   { id: "format", label: "Format", isOptional: false },
   { id: "players", label: "Players", isOptional: false },
@@ -51,14 +51,20 @@ export function useWizardSteps(formData: WizardFormData) {
       case "mode":
         return !!formData.eventMode;
       case "name":
-        return formData.eventName.trim().length > 0;
+        return true; // Optional - auto-fills with default if left blank
       case "location":
         return true; // Optional
       case "format":
         return !!formData.format;
       case "players":
         if (formData.eventMode === "immediate") {
-          return formData.selectedPlayers.length >= 4;
+          if (formData.playerInputMethod === "count") {
+            return formData.playerCount >= 4;
+          }
+          if (formData.playerInputMethod === "add") {
+            return formData.selectedPlayers.length >= 4;
+          }
+          return false; // Must choose an input method first
         }
         return formData.maxPlayers >= 4;
       case "courts":
