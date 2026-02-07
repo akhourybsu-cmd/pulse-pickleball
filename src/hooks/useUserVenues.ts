@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 export interface UserVenue {
   id: string;
   name: string;
+  slug: string | null;
   logo_url: string | null;
   address: string | null;
   city: string | null;
@@ -29,7 +30,7 @@ export function useUserVenues() {
       // Fetch venues where user is owner
       const { data: ownedVenues } = await supabase
         .from('venues')
-        .select('id, name, logo_url, address, city, state')
+        .select('id, name, slug, logo_url, address, city, state')
         .eq('owner_id', user.id);
 
       // Fetch venues where user is staff with owner/manager role
@@ -40,6 +41,7 @@ export function useUserVenues() {
           venues:venue_id (
             id,
             name,
+            slug,
             logo_url,
             address,
             city,
@@ -65,6 +67,7 @@ export function useUserVenues() {
         const v = sv.venues as unknown as {
           id: string;
           name: string;
+          slug: string | null;
           logo_url: string | null;
           address: string | null;
           city: string | null;
