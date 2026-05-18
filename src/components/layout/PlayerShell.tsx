@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Calendar, Users, Search, ClipboardList, LogOut } from 'lucide-react';
+import { Home, Trophy, Compass, MapPin, User, LogOut, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { NotificationBell } from '@/components/NotificationBell';
@@ -14,20 +14,20 @@ import logo from '@/assets/pulse-logo-new.png';
 import { VenueModeBanner } from '@/components/mode/VenueModeBanner';
 
 const navItems = [
-  { to: '/player/dashboard', icon: Home, label: 'Dashboard' },
-  { to: '/player/find', icon: Search, label: 'Find' },
-  { to: '/player/my-events', icon: Calendar, label: 'My Events' },
-  { to: '/player/my-bookings', icon: ClipboardList, label: 'Bookings' },
-  { to: '/player/community', icon: Users, label: 'Community' },
+  { to: '/player/dashboard', icon: Home, label: 'Home' },
+  { to: '/player/matches', icon: Trophy, label: 'Matches' },
+  { to: '/player/play', icon: Compass, label: 'Play' },
+  { to: '/player/venues', icon: MapPin, label: 'Venues' },
+  { to: '/player/profile', icon: User, label: 'Profile' },
 ];
 
 // Prefetch map for route preloading on hover
 const prefetchMap: Record<string, () => Promise<unknown>> = {
   '/player/dashboard': () => import('@/pages/player/PlayerDashboard'),
-  '/player/find': () => import('@/pages/player/FindEvents'),
-  '/player/my-events': () => import('@/pages/player/MyEvents'),
-  '/player/my-bookings': () => import('@/pages/player/MyBookings'),
-  '/player/community': () => import('@/pages/player/Community'),
+  '/player/matches': () => import('@/pages/MatchHistory'),
+  '/player/play': () => import('@/pages/play/PlayHub'),
+  '/player/venues': () => import('@/pages/player/VenueDiscovery'),
+  '/player/profile': () => import('@/pages/player/PlayerProfile'),
 };
 
 export function PlayerShell() {
@@ -50,10 +50,14 @@ export function PlayerShell() {
   // Hide shell header on dashboard since it has its own ProfileHero header
   const isDashboard = location.pathname === '/player/dashboard';
   
-  // Full-screen immersive routes (hide all shell chrome)
-  const isImmersiveRoute = 
+  // Full-screen immersive routes (hide all shell chrome).
+  // Match entry has its own sticky header + fixed bottom CTA bar; rendering
+  // PlayerShell's bottom nav alongside it would stack two fixed bars on top
+  // of each other.
+  const isImmersiveRoute =
     location.pathname.includes('/player/community/group/') ||
-    location.pathname.includes('/player/messages/');
+    location.pathname.includes('/player/messages/') ||
+    location.pathname === '/player/matches/new';
 
   // Calculate active tab index for sliding indicator
   const activeIndex = navItems.findIndex(item => 
@@ -157,6 +161,23 @@ export function PlayerShell() {
       <main className={isImmersiveRoute ? "flex-1" : "flex-1 pb-24 md:pb-20"}>
         <Outlet />
       </main>
+
+      {/* Record Match FAB — hidden on immersive routes and on the match entry page itself */}
+      {!isImmersiveRoute && !location.pathname.startsWith('/match/new') && !location.pathname.startsWith('/player/matches/new') && (
+        <button
+          onClick={() => navigate('/player/matches/new')}
+          aria-label="Record a match"
+          className={cn(
+            'fixed right-4 z-40 flex items-center gap-2 rounded-full bg-primary text-primary-foreground shadow-lg',
+            'h-14 pl-5 pr-6 font-semibold text-sm',
+            'hover:bg-primary/90 active:scale-95 transition-all',
+            'bottom-[88px] md:bottom-[72px] pb-[env(safe-area-inset-bottom)]'
+          )}
+        >
+          <Plus className="h-5 w-5" strokeWidth={2.5} />
+          <span>Record Match</span>
+        </button>
+      )}
 
       {/* Bottom Navigation - Mobile Only - Premium Polish */}
       {!isImmersiveRoute && (

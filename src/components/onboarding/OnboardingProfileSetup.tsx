@@ -10,13 +10,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { User, Upload, MapPin } from "lucide-react";
 
-const US_STATES = [
-  "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA",
-  "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD",
-  "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ",
-  "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC",
-  "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"
-];
+import { US_STATE_CODES } from "@/lib/us-states";
+
+const US_STATES = US_STATE_CODES;
 
 interface OnboardingProfileSetupProps {
   userId: string;

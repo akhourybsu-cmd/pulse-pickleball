@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, AlertTriangle, CheckCircle2, Flag, History } from "lucide-react";
+import { ArrowLeft, AlertTriangle, CheckCircle2, Flag, History, Plus, Clock } from "lucide-react";
 import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -30,6 +30,8 @@ import { z } from "zod";
 import { toLocaleDateStringEST } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Footer } from "@/components/Footer";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const issueSchema = z.object({
   details: z.string().trim().max(500, "Details too long").optional(),
@@ -66,9 +68,21 @@ const MatchHistory = () => {
   const [matches, setMatches] = useState<Match[]>([]);
   const [pendingMatches, setPendingMatches] = useState<Match[]>([]);
   const [playerName, setPlayerName] = useState("");
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const playerId = searchParams.get("player");
+  const tabParam = searchParams.get("tab");
+  const activeTab: "all" | "pending" | "verified" =
+    tabParam === "pending" || tabParam === "verified" ? tabParam : "all";
+  const setActiveTab = (next: "all" | "pending" | "verified") => {
+    const params = new URLSearchParams(searchParams);
+    if (next === "all") {
+      params.delete("tab");
+    } else {
+      params.set("tab", next);
+    }
+    setSearchParams(params, { replace: true });
+  };
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [reportSheetOpen, setReportSheetOpen] = useState(false);
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
@@ -488,7 +502,27 @@ const MatchHistory = () => {
   };
 
   if (loading) {
-    return <div className="flex justify-center items-center min-h-screen">Loading...</div>;
+    // Card-shaped skeleton matches the verified-card layout so the page doesn't
+    // visually jump when matches arrive.
+    return (
+      <div className="min-h-screen bg-[hsl(var(--page-bg))]">
+        <div className="border-b bg-gradient-to-b from-primary/10 via-background to-background">
+          <div className="container mx-auto px-4 py-5 md:py-6 flex items-start justify-between gap-4">
+            <div className="min-w-0 space-y-2">
+              <Skeleton className="h-7 w-32" />
+              <Skeleton className="h-4 w-64" />
+            </div>
+            <Skeleton className="h-9 w-28 flex-shrink-0" />
+          </div>
+        </div>
+        <div className="container mx-auto px-4 py-6 space-y-4">
+          <Skeleton className="h-10 w-full max-w-md" />
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-44 w-full rounded-2xl" />
+          ))}
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -507,157 +541,252 @@ const MatchHistory = () => {
         </div>
       </nav>
 
-      {/* Pulse-Branded Header Section - Full Width */}
-      <motion.div 
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="relative border-b-2 bg-gradient-to-b from-primary/10 via-background to-background border-b-primary/15"
-      >
-        <div className="container mx-auto py-6 px-4 md:py-8">
-          <div className="space-y-2">
-            {/* Title & Subtitle */}
-            <motion.div 
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6, delay: 0.1 }}
-              className="flex items-center gap-3"
-            >
-              <History className="w-5 h-5 text-primary" style={{ color: '#A9DC3D' }} />
-              <h1 
-                className="text-3xl md:text-4xl lg:text-5xl font-bold border-l-4 border-primary pl-3 text-foreground"
-                style={{
-                  letterSpacing: '0.02em',
-                }}
-              >
-                Match History - {playerName}
-                {/* Accent line animation */}
-                <motion.div
-                  initial={{ scaleX: 0, opacity: 0 }}
-                  animate={{ scaleX: 1, opacity: 0.3 }}
-                  transition={{ duration: 1.5, ease: "easeInOut" }}
-                  className="h-0.5 mt-1 origin-left"
-                  style={{ backgroundColor: '#A9DC3D' }}
-                />
+      {/* Page header — compact, primary CTA in the corner */}
+      <div className="border-b bg-gradient-to-b from-primary/10 via-background to-background">
+        <div className="container mx-auto px-4 py-5 md:py-6 flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <History className="w-5 h-5 text-primary" />
+              <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">
+                {playerId ? `${playerName}'s Matches` : 'Matches'}
               </h1>
-            </motion.div>
-            <motion.p 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="text-base md:text-lg mt-2 text-muted-foreground"
-            >
-              Track your progress, review past matches, verify match results, and celebrate victories.
-            </motion.p>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {playerId
+                ? `Review ${playerName}'s pickleball results.`
+                : 'Track your submitted, pending, and verified pickleball results.'}
+            </p>
           </div>
+          {!playerId && (
+            <Button
+              size="sm"
+              onClick={() => navigate('/player/matches/new')}
+              className="gap-1.5 flex-shrink-0"
+            >
+              <Plus className="w-4 h-4" />
+              <span className="hidden sm:inline">Record Match</span>
+              <span className="sm:hidden">Record</span>
+            </Button>
+          )}
         </div>
-      </motion.div>
+      </div>
 
       <div className="container mx-auto px-4 py-6 space-y-6">
-        
-        {/* Pending Matches Section - Only show for current user's own history */}
-        {!playerId && pendingMatches.length > 0 && (
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 mb-4">
-              <AlertTriangle className="w-5 h-5 text-amber-500" />
-              <h2 className="text-2xl font-bold">Pending Verification</h2>
-              <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-300">
-                {pendingMatches.length} match{pendingMatches.length !== 1 ? 'es' : ''}
-              </Badge>
-            </div>
-            <p className="text-muted-foreground text-sm mb-4">
-              These matches need your verification. Once 2+ players verify, they'll auto-approve and appear in your history.
-            </p>
-            
-            {pendingMatches.map((match, index) => {
-              const verificationCount = match.verified_by.length;
-              const hasVerified = currentUserId ? match.verified_by.includes(currentUserId) : false;
-              
-              return (
-                <motion.div
-                  key={match.match_id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: index * 0.05 }}
-                >
-                  <Card className="rounded-2xl border-2 border-amber-200 bg-amber-50/30 shadow-md">
-                    <CardHeader className="pb-3">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <CardTitle className="text-lg font-semibold">
-                            {toLocaleDateStringEST(match.match_date)}
-                          </CardTitle>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {match.court_name}
-                          </p>
-                        </div>
-                        <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300">
-                          {verificationCount}/4 verified
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div className="grid grid-cols-3 gap-4 items-center">
-                        <div className="text-center">
-                          <p className="font-semibold text-sm mb-1">Your Team</p>
-                          <p className="text-xs text-muted-foreground">{playerName}</p>
-                          <p className="text-xs text-muted-foreground">{match.partner_name}</p>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-3xl font-bold">
-                            {match.my_team === 1 ? match.team1_score : match.team2_score}
-                            <span className="mx-2 text-muted-foreground">-</span>
-                            {match.my_team === 1 ? match.team2_score : match.team1_score}
-                          </div>
-                        </div>
-                        <div className="text-center">
-                          <p className="font-semibold text-sm mb-1">Opponents</p>
-                          <p className="text-xs text-muted-foreground">{match.opponent1_name}</p>
-                          <p className="text-xs text-muted-foreground">{match.opponent2_name}</p>
-                        </div>
-                      </div>
-                      
-                      <div className="pt-3 border-t">
-                        {hasVerified ? (
-                          <div className="flex items-center justify-center gap-2 text-sm text-green-600">
-                            <CheckCircle2 className="w-4 h-4" />
-                            <span>You've verified this match</span>
-                          </div>
-                        ) : (
-                          <Button 
-                            onClick={() => handleVerifyPendingMatch(match.match_id)}
-                            className="w-full"
-                            variant="default"
-                          >
-                            <CheckCircle2 className="w-4 h-4 mr-2" />
-                            Verify Match
-                          </Button>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              );
-            })}
-          </div>
+        {/* Tabs — only shown when viewing your own matches (not another player's).
+            Render even when both lists are empty so the player can switch tabs
+            and see the per-tab empty states. */}
+        {!playerId && (
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "all" | "pending" | "verified")}>
+            <TabsList className="grid w-full grid-cols-3 max-w-md">
+              <TabsTrigger value="all">All</TabsTrigger>
+              <TabsTrigger value="pending">
+                Pending{pendingMatches.length > 0 && ` (${pendingMatches.length})`}
+              </TabsTrigger>
+              <TabsTrigger value="verified">
+                Verified{matches.length > 0 && ` (${matches.length})`}
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
         )}
 
-        {/* Divider between pending and approved */}
-        {!playerId && pendingMatches.length > 0 && matches.length > 0 && (
+        {/* Empty state for the Pending tab when there's nothing pending */}
+        {!playerId && activeTab === "pending" && pendingMatches.length === 0 && (
+          <Card className="rounded-2xl border-2 border-border shadow-lg">
+            <CardContent className="p-8 text-center">
+              <CheckCircle2 className="w-10 h-10 mx-auto mb-3 text-green-500" />
+              <p className="font-semibold text-lg mb-1">All caught up</p>
+              <p className="text-sm text-muted-foreground mb-5 max-w-xs mx-auto">
+                No matches awaiting your verification. Recorded another game?
+              </p>
+              <Button size="sm" onClick={() => navigate('/player/matches/new')}>
+                <Plus className="w-4 h-4 mr-1.5" />
+                Record another match
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Pending Matches Section — grouped so the player knows exactly who
+            is blocking what. Order is intentional: "Needs your confirmation"
+            first because that's the only group the player can act on. */}
+        {!playerId && pendingMatches.length > 0 && (activeTab === "all" || activeTab === "pending") && (() => {
+          // Split pending into two intent-driven buckets using existing
+          // verified_by data (sourced from match_approvals at fetch time).
+          const needsMyConfirmation = pendingMatches.filter(
+            (m) => !(currentUserId && m.verified_by.includes(currentUserId))
+          );
+          const waitingOnOthers = pendingMatches.filter(
+            (m) => currentUserId && m.verified_by.includes(currentUserId)
+          );
+
+          const renderPendingCard = (match: Match, index: number, sectionKey: string) => {
+            const verificationCount = match.verified_by.length;
+            const hasVerified = currentUserId ? match.verified_by.includes(currentUserId) : false;
+            // Total players that *could* verify — current user + partner + 2 opponents
+            // (partner_id is empty for singles). Filter out empty IDs.
+            const totalApprovers = [
+              currentUserId,
+              match.partner_id,
+              match.opponent1_id,
+              match.opponent2_id,
+            ].filter((id) => id && id.trim() !== '').length;
+
+            return (
+              <motion.div
+                key={`${sectionKey}-${match.match_id}`}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: index * 0.05 }}
+              >
+                <Card className="rounded-2xl border-2 border-amber-200 bg-amber-50/30 shadow-md">
+                  <CardHeader className="pb-3">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <CardTitle className="text-lg font-semibold">
+                          {toLocaleDateStringEST(match.match_date)}
+                        </CardTitle>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {match.court_name}
+                        </p>
+                      </div>
+                      <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300">
+                        {verificationCount}/{totalApprovers || 4} confirmed
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="grid grid-cols-3 gap-4 items-center">
+                      <div className="text-center">
+                        <p className="font-semibold text-sm mb-1">Your Team</p>
+                        <p className="text-xs text-muted-foreground">{playerName}</p>
+                        <p className="text-xs text-muted-foreground">{match.partner_name}</p>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-3xl font-bold">
+                          {match.my_team === 1 ? match.team1_score : match.team2_score}
+                          <span className="mx-2 text-muted-foreground">-</span>
+                          {match.my_team === 1 ? match.team2_score : match.team1_score}
+                        </div>
+                      </div>
+                      <div className="text-center">
+                        <p className="font-semibold text-sm mb-1">Opponents</p>
+                        <p className="text-xs text-muted-foreground">{match.opponent1_name}</p>
+                        <p className="text-xs text-muted-foreground">{match.opponent2_name}</p>
+                      </div>
+                    </div>
+
+                    <div className="pt-3 border-t">
+                      {hasVerified ? (
+                        <div className="flex items-center justify-center gap-2 text-sm text-green-600">
+                          <CheckCircle2 className="w-4 h-4" />
+                          <span>You confirmed this — waiting on other players</span>
+                        </div>
+                      ) : (
+                        <Button
+                          onClick={() => handleVerifyPendingMatch(match.match_id)}
+                          className="w-full"
+                          variant="default"
+                        >
+                          <CheckCircle2 className="w-4 h-4 mr-2" />
+                          Confirm Result
+                        </Button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            );
+          };
+
+          return (
+            <div className="space-y-6">
+              {/* Section 1: action required */}
+              {needsMyConfirmation.length > 0 && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="w-5 h-5 text-amber-500" />
+                    <h2 className="text-xl md:text-2xl font-bold">Needs your confirmation</h2>
+                    <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-300">
+                      {needsMyConfirmation.length}
+                    </Badge>
+                  </div>
+                  <p className="text-muted-foreground text-sm">
+                    Tap <span className="font-medium text-foreground">Confirm Result</span> if the score looks right.
+                    Once enough players confirm, the match is verified and saved to your PULSE history.
+                  </p>
+                  {needsMyConfirmation.map((match, i) => renderPendingCard(match, i, 'needs'))}
+                </div>
+              )}
+
+              {/* Section 2: already confirmed by me */}
+              {waitingOnOthers.length > 0 && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 mt-2">
+                    <Clock className="w-5 h-5 text-muted-foreground" />
+                    <h2 className="text-xl md:text-2xl font-bold">Waiting on other players</h2>
+                    <Badge variant="outline" className="bg-muted text-muted-foreground border-border">
+                      {waitingOnOthers.length}
+                    </Badge>
+                  </div>
+                  <p className="text-muted-foreground text-sm">
+                    You've already confirmed these. They'll move to your verified history once enough players confirm.
+                  </p>
+                  {waitingOnOthers.map((match, i) => renderPendingCard(match, i, 'waiting'))}
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
+        {/* Divider between pending and approved (only on the "all" tab) */}
+        {!playerId && pendingMatches.length > 0 && matches.length > 0 && activeTab === "all" && (
           <div className="flex items-center gap-3 mb-4 mt-8">
             <History className="w-5 h-5 text-primary" />
             <h2 className="text-2xl font-bold">Verified Match History</h2>
           </div>
         )}
 
-        {/* Approved Matches Section */}
-        {matches.length === 0 && pendingMatches.length === 0 ? (
+        {/* Per-tab empty states (only when viewing your own matches).
+            Each tab gets honest copy + a useful CTA — no blank screens. */}
+        {!playerId && activeTab === "all" && matches.length === 0 && pendingMatches.length === 0 && (
           <Card className="rounded-2xl border-2 border-border shadow-lg">
-            <CardContent className="p-6 text-center text-muted-foreground">
-              No match history yet
+            <CardContent className="p-8 text-center">
+              <History className="w-10 h-10 mx-auto mb-3 text-muted-foreground/40" />
+              <p className="font-semibold text-lg mb-1">No matches yet</p>
+              <p className="text-sm text-muted-foreground mb-5 max-w-xs mx-auto">
+                Record your first match to start building your PULSE history.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-2 justify-center items-center">
+                <Button size="sm" onClick={() => navigate('/player/matches/new')}>
+                  <Plus className="w-4 h-4 mr-1.5" />
+                  Record your first match
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => navigate('/player/play')}>
+                  Find play
+                </Button>
+              </div>
             </CardContent>
           </Card>
-        ) : (
+        )}
+
+        {!playerId && activeTab === "verified" && matches.length === 0 && (
+          <Card className="rounded-2xl border-2 border-border shadow-lg">
+            <CardContent className="p-8 text-center">
+              <CheckCircle2 className="w-10 h-10 mx-auto mb-3 text-muted-foreground/40" />
+              <p className="font-semibold text-lg mb-1">No verified matches yet</p>
+              <p className="text-sm text-muted-foreground mb-5 max-w-xs mx-auto">
+                Verified matches will appear here once players confirm results.
+              </p>
+              <Button size="sm" onClick={() => navigate('/player/matches/new')}>
+                <Plus className="w-4 h-4 mr-1.5" />
+                Record Match
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Approved Matches Section */}
+        {!playerId && activeTab === "pending" ? null : matches.length === 0 ? null : (
           <div className="space-y-4">
             {matches.map((match, index) => {
               const { verifiedCount, totalPlayers, isCurrentUserVerified } = getVerificationStatus(match);

@@ -14,12 +14,21 @@ import { EmailMFAChallenge } from "@/components/auth/EmailMFAChallenge";
 import { BiometricLogin } from "@/components/auth/BiometricLogin";
 import pulseLogo from "@/assets/pulse-logo-new.png";
 
+// State list comes from the shared module; Auth historically stores the FULL
+// state name (not the 2-letter code), so we use US_STATE_NAMES here. Keep this
+// format until a deliberate data migration switches to codes everywhere.
+import { US_STATE_NAMES } from "@/lib/us-states";
+
+// Zod needs a non-empty tuple at compile time. The shared array is readonly
+// string[], so we cast to the tuple shape Zod expects without changing values.
+const US_STATE_NAMES_TUPLE = US_STATE_NAMES as unknown as readonly [string, ...string[]];
+
 const authSchema = z.object({
   email: z.string().trim().email("Invalid email address").max(255, "Email too long"),
   password: z.string().min(6, "Password must be at least 6 characters").max(72, "Password too long"),
   firstName: z.string().trim().min(1, "First name is required").max(50, "First name too long").optional(),
   lastName: z.string().trim().min(1, "Last name is required").max(50, "Last name too long").optional(),
-  state: z.enum(["Massachusetts", "Rhode Island"], {
+  state: z.enum(US_STATE_NAMES_TUPLE, {
     errorMap: () => ({ message: "Please select your state" }),
   }).optional(),
 });
@@ -37,7 +46,7 @@ const Auth = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [selectedState, setSelectedState] = useState<"Massachusetts" | "Rhode Island" | "">("");
+  const [selectedState, setSelectedState] = useState<string>("");
   const [showMFAChallenge, setShowMFAChallenge] = useState(false);
   const [showEmailMFA, setShowEmailMFA] = useState(false);
   const [mfaMethod, setMfaMethod] = useState<"authenticator" | "email" | "none">("none");
@@ -366,17 +375,20 @@ const Auth = () => {
 
                     <div className="space-y-2">
                       <Label htmlFor="state">State</Label>
-                      <Select 
-                        value={selectedState} 
-                        onValueChange={(value) => setSelectedState(value as "Massachusetts" | "Rhode Island")}
+                      <Select
+                        value={selectedState}
+                        onValueChange={(value) => setSelectedState(value)}
                         disabled={loading}
                       >
                         <SelectTrigger id="state">
                           <SelectValue placeholder="Select your state" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Massachusetts">Massachusetts</SelectItem>
-                          <SelectItem value="Rhode Island">Rhode Island</SelectItem>
+                          {US_STATE_NAMES.map((state) => (
+                            <SelectItem key={state} value={state}>
+                              {state}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>

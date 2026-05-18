@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link, useSearchParams } from 'react-router-dom';
+import { useParams, Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { usePublicVenue, VenueCourt, VenueEvent, VenueCoach } from '@/hooks/usePublicVenue';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
+import { useMode } from '@/contexts/ModeContext';
+import { Settings2 } from 'lucide-react';
 import { PublicVenueShell, TabId } from '@/components/venue-public/PublicVenueShell';
 import { PublicHomeTab } from '@/components/venue-public/PublicHomeTab';
 import { PublicScheduleTab } from '@/components/venue-public/PublicScheduleTab';
@@ -18,6 +20,8 @@ import { TimeSlot } from '@/hooks/useVenueAvailability';
 export default function PublicVenueLanding() {
   const { slug } = useParams<{ slug: string }>();
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { venueAccess, setMode, setCurrentVenueId } = useMode();
   const { venue, courts, events, coaches, loading, error } = usePublicVenue(slug);
   
   // Get initial tab from URL query params
@@ -141,6 +145,17 @@ export default function PublicVenueLanding() {
     return <LoadingSkeleton />;
   }
 
+  // Check whether the current user can manage this venue (owner / manager / organizer / staff)
+  const managedAccess = venue ? venueAccess.find((v) => v.venue_id === venue.id) : undefined;
+  const canManageVenue = !!managedAccess;
+
+  const handleManageVenue = () => {
+    if (!managedAccess) return;
+    setCurrentVenueId(managedAccess.venue_id);
+    setMode('venue');
+    navigate('/venue');
+  };
+
   if (error || !venue) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -236,6 +251,18 @@ export default function PublicVenueLanding() {
         coach={selectedCoach}
         isAuthenticated={isAuthenticated}
       />
+
+      {/* Manage this Venue — only visible to owners/staff of this venue */}
+      {canManageVenue && (
+        <button
+          onClick={handleManageVenue}
+          aria-label="Manage this venue"
+          className="fixed bottom-4 right-4 z-40 flex items-center gap-2 rounded-full bg-primary text-primary-foreground shadow-lg h-12 pl-4 pr-5 font-semibold text-sm hover:bg-primary/90 active:scale-95 transition-all pb-[env(safe-area-inset-bottom)]"
+        >
+          <Settings2 className="h-4 w-4" />
+          Manage this Venue
+        </button>
+      )}
     </>
   );
 }

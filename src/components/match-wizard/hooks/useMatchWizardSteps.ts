@@ -38,11 +38,15 @@ export interface WizardStep {
   isOptional?: boolean;
 }
 
+// Natural flow: "What kind?" → "Who?" → "Score?" → "Where/When?" → "Review".
+// Asking the player to set a venue before they've even picked singles vs doubles
+// is the wrong mental order; this matches how a casual player narrates a match
+// they just finished.
 const ALL_STEPS: WizardStep[] = [
-  { id: 'date-location', label: 'When & Where' },
   { id: 'match-type', label: 'Match Type' },
   { id: 'players', label: 'Players' },
   { id: 'score', label: 'Score' },
+  { id: 'date-location', label: 'When & Where' },
   { id: 'review', label: 'Review' },
 ];
 

@@ -44,6 +44,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { z } from "zod";
 import logo from "@/assets/pulse-logo-new.png";
 import { suggestRounds } from "@/lib/roundRobinFairness";
+import { isPlatformAdmin } from "@/lib/permissions";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -235,14 +236,8 @@ export default function RoundRobinDetail() {
       }
       setUserId(user.id);
 
-      // Check if user is admin
-      const { data: roleData } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .eq('role', 'admin')
-        .maybeSingle();
-      setIsAdmin(!!roleData);
+      // Check if user is admin (centralized helper from src/lib/permissions)
+      setIsAdmin(await isPlatformAdmin(user.id));
 
       const { data: eventData, error: eventError } = await supabase
         .from("round_robin_events")

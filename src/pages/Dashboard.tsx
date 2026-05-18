@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { isPlatformAdmin } from "@/lib/permissions";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Trophy, Activity } from "lucide-react";
@@ -21,6 +22,9 @@ import { PerformanceModule } from "@/components/dashboard/PerformanceModule";
 import { StatsByCourtCard } from "@/components/dashboard/StatsByCourtCard";
 import { HomeFooterUtilities } from "@/components/dashboard/HomeFooterUtilities";
 import { VenueActivitySection } from "@/components/dashboard/VenueActivitySection";
+import { UpcomingEventsPreview } from "@/components/dashboard/UpcomingEventsPreview";
+import { ExploreCard } from "@/components/dashboard/ExploreCard";
+import { RoleSwitcherCard } from "@/components/dashboard/RoleSwitcherCard";
 
 interface Profile {
   id: string;
@@ -136,9 +140,9 @@ const Dashboard = () => {
         const user = session.user;
         setUser(user);
 
-        const [profileResult, roleResult, publicProfileResult] = await Promise.all([
+        const [profileResult, isAdminResult, publicProfileResult] = await Promise.all([
           supabase.from("profiles").select("*").eq("id", user.id).single(),
-          supabase.from('user_roles').select('role').eq('user_id', user.id).eq('role', 'admin').maybeSingle(),
+          isPlatformAdmin(user.id),
           supabase.from("profiles_public").select("home_court_id").eq("id", user.id).single()
         ]);
 
@@ -150,7 +154,7 @@ const Dashboard = () => {
         }
 
         setProfile(profileResult.data);
-        setIsAdmin(!!roleResult.data);
+        setIsAdmin(isAdminResult);
 
         // Show onboarding welcome for new users
         if (!profileResult.data.tutorial_completed && (profileResult.data.total_matches || 0) === 0) {
@@ -300,40 +304,45 @@ const Dashboard = () => {
 
         {/* Desktop: Two-column layout */}
         <div className="hidden lg:grid lg:grid-cols-12 lg:gap-6">
-          {/* Left Column - Performance (How am I doing?) */}
+          {/* Left Column — "What can I do next?" */}
           <div className="lg:col-span-7 space-y-6">
-            {/* Quick Actions - 2x2 Grid */}
+            {/* 1. Primary actions — Record Match is the headline */}
             <QuickActionsBar />
-            
-            
-            {/* Performance Content - Historical & Analytical */}
+
+            {/* 2. Role-aware shortcut — only renders for venue staff / admins */}
+            <RoleSwitcherCard isAdmin={isAdmin} />
+
+            {/* 3. Upcoming play — registered events + round robins + tournaments */}
+            <UpcomingEventsPreview userId={user?.id} />
+
+            {/* 4. Recent matches — history preview */}
+            <PerformanceModule userId={user?.id} />
+
+            {/* 5. Honest exploration (NOT personalized recs) */}
+            <ExploreCard />
+
+            {/* Performance deep dives — kept below the player-first stack */}
             <div className="space-y-5">
-              {/* Most Played Court */}
               <StatsByCourtCard userId={user?.id} />
-              
-              {/* Match History & Trends */}
-              <PerformanceModule userId={user?.id} />
-              
-              {/* Venue History (visited venues only) */}
               <VenueActivitySection />
             </div>
-            
-            {/* Discovery Tools - Neutral section below Performance */}
+
+            {/* Discovery tools — Smart Match + LFG */}
             <div className="space-y-3 pt-2" data-tour="court-stats">
               <SmartMatch userId={user?.id || null} />
               <LFGNotifications />
             </div>
-            
-            {/* Settings Footer - De-emphasized */}
-            <HomeFooterUtilities 
+
+            {/* Settings footer — de-emphasized */}
+            <HomeFooterUtilities
               isAdmin={isAdmin}
               onShare={handleShare}
               onRefreshStats={handleRefreshStats}
               refreshing={refreshing}
             />
           </div>
-          
-          {/* Right Column - Activity (What needs my attention?) */}
+
+          {/* Right Column — "What needs my attention?" */}
           <div className="lg:col-span-5">
             <div className="bg-muted/20 rounded-xl sticky top-6">
               <div className="p-4 pb-2 border-b border-border/30">
@@ -351,20 +360,26 @@ const Dashboard = () => {
 
         {/* Mobile: Content controlled by ProfileHero toggle */}
         <div className="lg:hidden space-y-5">
-          {/* Content based on active tab */}
+          {/* Performance tab = the player-first home stack */}
           {activeTab === "performance" ? (
             <div className="space-y-5">
-              {/* Most Played Court */}
-              <StatsByCourtCard userId={user?.id} />
+              {/* Role-aware shortcut — only renders for venue staff / admins */}
+              <RoleSwitcherCard isAdmin={isAdmin} />
 
-              {/* Match History & Trends */}
+              {/* Upcoming play — registered events */}
+              <UpcomingEventsPreview userId={user?.id} />
+
+              {/* Recent matches */}
               <PerformanceModule userId={user?.id} />
 
-              
-              {/* Venue History */}
+              {/* Honest exploration */}
+              <ExploreCard />
+
+              {/* Performance deep dives */}
+              <StatsByCourtCard userId={user?.id} />
               <VenueActivitySection />
 
-              {/* Discovery Tools */}
+              {/* Discovery tools */}
               <div className="space-y-3" data-tour="court-stats">
                 <SmartMatch userId={user?.id || null} />
                 <LFGNotifications />
@@ -378,7 +393,7 @@ const Dashboard = () => {
           )}
 
           {/* Footer Utilities - Mobile */}
-          <HomeFooterUtilities 
+          <HomeFooterUtilities
             isAdmin={isAdmin}
             onShare={handleShare}
             onRefreshStats={handleRefreshStats}
@@ -398,20 +413,6 @@ const Dashboard = () => {
         onClearAll={clearAll}
         groupedByTime={groupedByTime}
       />
-
-      {/* Special button for alexanderskhoury@gmail.com */}
-      {user?.email === "alexanderskhoury@gmail.com" && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50">
-          <Button
-            size="lg"
-            onClick={() => navigate("/tournaments")}
-            className="shadow-lg"
-          >
-            <Trophy className="w-5 h-5 mr-2" />
-            Browse Tournaments
-          </Button>
-        </div>
-      )}
 
       <Footer />
     </div>

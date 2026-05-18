@@ -32,7 +32,7 @@ export default function VenueTournaments() {
 
   const handleCreateTournament = () => {
     if (venueId) {
-      navigate(`/tournaments/new?venueId=${venueId}`);
+      navigate(`/venue/tournaments/new?venueId=${venueId}`);
     }
   };
 

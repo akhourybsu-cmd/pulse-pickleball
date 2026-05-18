@@ -1,22 +1,35 @@
 import { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { Search, Calendar, ClipboardList, Heart } from 'lucide-react';
+import { Search, Calendar, ClipboardList, Heart, MapPin } from 'lucide-react';
 import { usePublicVenues } from '@/hooks/usePublicVenues';
 import { useFavoriteVenues } from '@/hooks/useFavoriteVenues';
 import { VenueDiscoveryCard } from '@/components/player/VenueDiscoveryCard';
 import { VenueDetailSheet } from '@/components/player/VenueDetailSheet';
 import { NoVenuesEmptyState, NoSearchResultsEmptyState } from '@/components/empty-states';
 
-export default function VenueDiscovery() {
+interface VenueDiscoveryProps {
+  hideHeader?: boolean;
+}
+
+export default function VenueDiscovery({ hideHeader = false }: VenueDiscoveryProps = {}) {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { venues, loading } = usePublicVenues();
   const { isFavorite, toggleFavorite, loading: favoritesLoading } = useFavoriteVenues();
   const [search, setSearch] = useState('');
   const [selectedVenueId, setSelectedVenueId] = useState<string | null>(null);
+
+  // When embedded in the Play Hub, the "no venues" empty-state should suggest
+  // switching to the Events tab — not "Register a Venue" (organizer action).
+  const switchToEventsTab = () => {
+    const params = new URLSearchParams(searchParams);
+    params.delete('tab');
+    setSearchParams(params, { replace: true });
+  };
 
   // Handle deep linking from dashboard
   useEffect(() => {
@@ -59,14 +72,32 @@ export default function VenueDiscovery() {
 
     if (filteredVenues.length === 0 && search) {
       return (
-        <NoSearchResultsEmptyState 
-          searchTerm={search} 
-          onClear={() => setSearch('')} 
+        <NoSearchResultsEmptyState
+          searchTerm={search}
+          onClear={() => setSearch('')}
         />
       );
     }
 
     if (filteredVenues.length === 0) {
+      // When embedded in the Play Hub, give the player a useful next step
+      // (browse events) instead of the default organizer-facing CTA.
+      if (hideHeader) {
+        return (
+          <div className="text-center py-12 sm:py-16 rounded-xl border border-border/40 bg-card">
+            <div className="w-12 h-12 rounded-full bg-muted/50 flex items-center justify-center mx-auto mb-4">
+              <MapPin className="w-5 h-5 text-muted-foreground/70" />
+            </div>
+            <h3 className="text-base font-medium text-foreground mb-1">No venues listed yet</h3>
+            <p className="text-sm text-muted-foreground mb-5 max-w-xs mx-auto">
+              Places to play will appear here as they join PULSE. Browse events to see what's scheduled now.
+            </p>
+            <Button size="sm" onClick={switchToEventsTab}>
+              Browse events
+            </Button>
+          </div>
+        );
+      }
       return <NoVenuesEmptyState />;
     }
 
@@ -120,33 +151,35 @@ export default function VenueDiscovery() {
 
   return (
     <div className="p-4 sm:p-6">
-      {/* Header - Premium Polish */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5">
-        <div>
-          <h1 className="page-title">Find a Place to Play</h1>
-          <p className="page-subtitle mt-0.5">Discover courts, clinics, and tournaments near you</p>
+      {/* Header - Premium Polish (suppressed in embedded mode) */}
+      {!hideHeader && (
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5">
+          <div>
+            <h1 className="page-title">Find a Place to Play</h1>
+            <p className="page-subtitle mt-0.5">Browse venues, courts, and the events they host</p>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/player/my-bookings')}
+              className="gap-1.5 h-8 text-xs btn-premium"
+            >
+              <ClipboardList className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">My </span>Reservations
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/player/my-events')}
+              className="gap-1.5 h-8 text-xs btn-premium"
+            >
+              <Calendar className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">My </span>Registrations
+            </Button>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => navigate('/player/my-bookings')}
-            className="gap-1.5 h-8 text-xs btn-premium"
-          >
-            <ClipboardList className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">My </span>Reservations
-          </Button>
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => navigate('/player/my-events')}
-            className="gap-1.5 h-8 text-xs btn-premium"
-          >
-            <Calendar className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">My </span>Registrations
-          </Button>
-        </div>
-      </div>
+      )}
 
       {/* Search - Premium Polish */}
       <div className="relative mb-5">

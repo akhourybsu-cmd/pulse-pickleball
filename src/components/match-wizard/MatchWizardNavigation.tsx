@@ -39,10 +39,10 @@ export function MatchWizardNavigation({
           {isLoading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              {isLastStep ? 'Recording...' : 'Loading...'}
+              {isLastStep ? 'Submitting...' : 'Loading...'}
             </>
           ) : (
-            isLastStep ? 'Confirm Match' : 'Continue'
+            isLastStep ? 'Submit Match' : 'Continue'
           )}
         </Button>
       </div>

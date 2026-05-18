@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { isPlatformAdmin } from "@/lib/permissions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -49,14 +50,7 @@ export default function AdminPairing() {
       return;
     }
 
-    const { data: roleData } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id)
-      .eq("role", "admin")
-      .single();
-
-    if (!roleData) {
+    if (!(await isPlatformAdmin(user.id))) {
       toast({
         title: "Access Denied",
         description: "You don't have admin access",
