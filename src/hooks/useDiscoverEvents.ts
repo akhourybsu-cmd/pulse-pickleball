@@ -106,7 +106,18 @@ export function useDiscoverEvents(filters: DiscoverEventsFilters = {}) {
   return useQuery({
     queryKey: ['discover-events', eventType, dateRange, state, city, skillMin, skillMax, limit],
     queryFn: async (): Promise<DiscoverEvent[]> => {
-      // Build the query
+      // Compute a single lower bound for start_time:
+      //   - Always "now" (we never want past events in discovery)
+      //   - For 'today' the dateRangeStart is 00:00 today, which is BEFORE
+      //     now; clamping to max(now, dateRangeStart) prevents earlier-today
+      //     events that have already started from leaking in.
+      //   - For 'this_week' / 'this_month' early in the period, "now" is
+      //     stricter; later in the period, dateRangeStart is stricter.
+      const now = new Date();
+      const dateRangeStart = dateRange !== 'all' ? getDateRangeStart(dateRange) : now;
+      const lowerBound = dateRangeStart > now ? dateRangeStart : now;
+      const upperBound = dateRange !== 'all' ? getDateRangeEnd(dateRange) : null;
+
       let query = supabase
         .from('unified_events')
         .select(`
@@ -131,24 +142,17 @@ export function useDiscoverEvents(filters: DiscoverEventsFilters = {}) {
         `)
         .eq('status', 'published')
         .eq('visibility', 'public')
-        .gte('start_time', new Date().toISOString())
+        .gte('start_time', lowerBound.toISOString())
         .order('start_time', { ascending: true })
         .limit(limit);
+
+      if (upperBound) {
+        query = query.lte('start_time', upperBound.toISOString());
+      }
 
       // Apply event type filter
       if (eventType !== 'all') {
         query = query.eq('event_type', eventType);
-      }
-
-      // Apply date range filter
-      if (dateRange !== 'all') {
-        const startDate = getDateRangeStart(dateRange);
-        const endDate = getDateRangeEnd(dateRange);
-        
-        query = query.gte('start_time', startDate.toISOString());
-        if (endDate) {
-          query = query.lte('start_time', endDate.toISOString());
-        }
       }
 
       // Apply skill level filters
@@ -266,7 +270,18 @@ export function useMyRegisteredEvents(userId: string | undefined) {
   });
 }
 
-// Hook to get upcoming registered events for dashboard preview
+// Hook to get upcoming registered events for dashboard preview.
+//
+// Previously this used a single query with a PostgREST nested filter
+//   .gte('unified_events.start_time', …)
+// + ordering by a referenced table. That pattern is fragile: it depends on
+// the FK relationship name being detectable by PostgREST, and silently
+// returns nothing if the foreign-table filter can't be resolved.
+//
+// The hardened version fetches the user's active registrations in one query
+// and applies the start_time filter + sort + limit client-side. The cost
+// is small (a player has at most dozens of active registrations) and we
+// no longer depend on a brittle nested filter.
 export function useUpcomingRegisteredEvents(userId: string | undefined, limit = 3) {
   return useQuery({
     queryKey: ['upcoming-registered-events', userId, limit],
@@ -279,7 +294,7 @@ export function useUpcomingRegisteredEvents(userId: string | undefined, limit = 
           id,
           status,
           registered_at,
-          event:unified_events!inner (
+          event:unified_events (
             id,
             title,
             event_type,
@@ -289,45 +304,62 @@ export function useUpcomingRegisteredEvents(userId: string | undefined, limit = 
           )
         `)
         .eq('user_id', userId)
-        .in('status', ['registered', 'confirmed'])
-        .gte('unified_events.start_time', new Date().toISOString())
-        .order('unified_events.start_time', { ascending: true, referencedTable: 'unified_events' })
-        .limit(limit);
+        .in('status', ['registered', 'confirmed']);
 
       if (error) {
         console.error('Error fetching upcoming events:', error);
         throw error;
       }
 
-      // Fetch venue names for events
-      if (data && data.length > 0) {
-        const venueIds = [...new Set(
-          data
-            .map(r => (r.event as any)?.host_venue_id)
-            .filter(Boolean)
-        )];
-
-        if (venueIds.length > 0) {
-          const { data: venues } = await supabase
-            .from('venues')
-            .select('id, name')
-            .in('id', venueIds);
-
-          const venueMap = venues?.reduce((acc, v) => {
-            acc[v.id] = v.name;
-            return acc;
-          }, {} as Record<string, string>) || {};
-
-          return data.map(r => ({
-            ...r,
-            venue_name: (r.event as any)?.host_venue_id 
-              ? venueMap[(r.event as any).host_venue_id] 
-              : undefined
-          }));
-        }
+      if (!data || data.length === 0) {
+        return [];
       }
 
-      return data || [];
+      // Filter to future-or-current events client-side, sort by start_time,
+      // and trim to the caller's limit. Drop registrations whose join failed.
+      const nowMs = Date.now();
+      type RegRow = (typeof data)[number] & {
+        event: {
+          id: string;
+          title: string;
+          event_type: string;
+          start_time: string;
+          end_time: string | null;
+          host_venue_id: string | null;
+        } | null;
+      };
+      const upcoming = (data as RegRow[])
+        .filter((r) => r.event && new Date(r.event.start_time).getTime() >= nowMs)
+        .sort((a, b) =>
+          new Date(a.event!.start_time).getTime() - new Date(b.event!.start_time).getTime()
+        )
+        .slice(0, limit);
+
+      if (upcoming.length === 0) return [];
+
+      // Enrich with venue names for the trimmed result set only.
+      const venueIds = [...new Set(
+        upcoming
+          .map((r) => r.event?.host_venue_id)
+          .filter((id): id is string => !!id)
+      )];
+
+      if (venueIds.length === 0) return upcoming;
+
+      const { data: venues } = await supabase
+        .from('venues')
+        .select('id, name')
+        .in('id', venueIds);
+
+      const venueMap = (venues ?? []).reduce<Record<string, string>>((acc, v) => {
+        acc[v.id] = v.name;
+        return acc;
+      }, {});
+
+      return upcoming.map((r) => ({
+        ...r,
+        venue_name: r.event?.host_venue_id ? venueMap[r.event.host_venue_id] : undefined,
+      }));
     },
     enabled: !!userId,
     staleTime: 60 * 1000,

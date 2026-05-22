@@ -1,13 +1,16 @@
-import { Users, Trophy, Gamepad2, GraduationCap, Star, type LucideIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Users, Trophy, Gamepad2, GraduationCap, Star, Sparkles, type LucideIcon } from "lucide-react";
 import type { EventTypeFilter } from "@/hooks/useDiscoverEvents";
 
 interface ContextCopy {
   icon: LucideIcon;
   title: string;
   description: string;
-  /** Tailwind color classes for the icon tile, matching the UnifiedEventCard type badge palette. */
-  tone: string;
+  /**
+   * CSS variable name (without `--`) holding the per-event-type HSL triplet.
+   * Defined in src/index.css for both light and dark themes so each event
+   * type has consistent design-system coloring across the app.
+   */
+  toneVar: string;
 }
 
 /**
@@ -16,43 +19,46 @@ interface ContextCopy {
  * When the player narrows the filter to a specific play type, this strip
  * gives a one-line definition so newcomers understand what they're filtering
  * for. Returns null on the "all" filter — the hub header copy is enough there.
+ *
+ * Colors come from design-system CSS variables (`--event-*`) instead of
+ * ad-hoc Tailwind palette literals — see :root / .dark blocks in index.css.
  */
 const CONTEXT_COPY: Partial<Record<EventTypeFilter, ContextCopy>> = {
   round_robin: {
     icon: Users,
     title: "Round Robins",
     description: "Rotate through multiple games with different partners. Standings are tracked across rounds.",
-    tone: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+    toneVar: "event-round-robin",
   },
   tournament: {
     icon: Trophy,
     title: "Tournaments",
     description: "Competitive events with divisions and brackets. Register a team or play singles.",
-    tone: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+    toneVar: "event-tournament",
   },
   open_play: {
     icon: Gamepad2,
     title: "Open Play",
     description: "Drop-in games with rotating partners. Show up, play, meet people.",
-    tone: "bg-green-500/10 text-green-600 dark:text-green-400",
+    toneVar: "event-open-play",
   },
   clinic: {
     icon: GraduationCap,
     title: "Clinics & Lessons",
     description: "Coached sessions to sharpen specific skills.",
-    tone: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
+    toneVar: "event-clinic",
   },
   league: {
     icon: Star,
     title: "Leagues",
     description: "Recurring play across a season with standings.",
-    tone: "bg-orange-500/10 text-orange-600 dark:text-orange-400",
+    toneVar: "event-league",
   },
   social: {
-    icon: Users,
+    icon: Sparkles,
     title: "Socials",
     description: "Casual community events centered on play and people.",
-    tone: "bg-pink-500/10 text-pink-600 dark:text-pink-400",
+    toneVar: "event-social",
   },
 };
 
@@ -67,10 +73,15 @@ export function PlayContextBar({ eventType }: PlayContextBarProps) {
   if (!copy) return null;
 
   const Icon = copy.icon;
+  const tone = `hsl(var(--${copy.toneVar}))`;
+  const toneBg = `hsl(var(--${copy.toneVar}) / 0.1)`;
 
   return (
     <div className="flex items-start gap-3 p-3 rounded-xl border border-border/40 bg-card mb-3">
-      <div className={cn("p-2 rounded-lg flex-shrink-0", copy.tone)}>
+      <div
+        className="p-2 rounded-lg flex-shrink-0"
+        style={{ backgroundColor: toneBg, color: tone }}
+      >
         <Icon className="w-4 h-4" />
       </div>
       <div className="min-w-0">
