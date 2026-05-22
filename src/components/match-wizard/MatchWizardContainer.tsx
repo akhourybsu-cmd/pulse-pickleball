@@ -178,8 +178,11 @@ export function MatchWizardContainer() {
         await supabase.from('match_approvals').insert(approvals);
       }
 
-      toast.success('Match recorded successfully!');
-      navigate('/player/dashboard');
+      toast.success('Match submitted — pending player verification.');
+      // Land on the player's matches page with the Pending tab pre-selected
+      // so they immediately see the match they just submitted awaiting
+      // confirmation from the other players.
+      navigate('/player/matches?tab=pending');
     } catch (error: any) {
       console.error('Error recording match:', error);
       toast.error(error.message || 'Failed to record match');
@@ -213,12 +216,21 @@ export function MatchWizardContainer() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => navigate(-1)}
+            // Predictable exit — always back to the player home rather than
+            // navigate(-1), which can leak outside the shell if the user
+            // deep-linked here.
+            onClick={() => navigate('/player/dashboard')}
             className="h-9 w-9"
+            aria-label="Cancel and return home"
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <h1 className="font-semibold">Record Match</h1>
+          <div>
+            <h1 className="font-semibold leading-tight">Record Match</h1>
+            <p className="text-[11px] text-muted-foreground leading-tight">
+              Saved to your PULSE history
+            </p>
+          </div>
         </div>
       </div>
 

@@ -101,6 +101,47 @@ export function ReviewStep({ formData, updateFormData }: ReviewStepProps) {
   const winnerScore = formData.winnerScore;
   const loserScore = formData.loserScore;
 
+  // Presentational rating-eligibility status — describes what WILL happen on
+  // submit using existing form state. This does not change any rating logic;
+  // it only surfaces the system's behavior so the player isn't surprised.
+  //
+  // The four honest states map to:
+  //  - guests present       → ratings are auto-disabled by existing logic
+  //  - toggle off           → "casual" save with no rating impact
+  //  - real players only    → submits as pending; rating impact waits on verification
+  //  - toggle on but solo   → defensive fallback (shouldn't normally hit valid review)
+  const eligibility: {
+    tone: 'amber' | 'green' | 'muted';
+    label: string;
+    description: string;
+  } = (() => {
+    if (hasGuests) {
+      return {
+        tone: 'amber',
+        label: 'Guest players — no rating impact',
+        description: "Guest players don't have PULSE ratings, so this match won't change anyone's rating. It will still be saved to your history.",
+      };
+    }
+    if (!formData.updateRatings) {
+      return {
+        tone: 'muted',
+        label: 'Casual match — saved to history',
+        description: "This match won't change PULSE ratings. Toggle Update Ratings below if you want it to count.",
+      };
+    }
+    return {
+      tone: 'green',
+      label: 'Likely rating eligible — pending verification',
+      description: 'Other players will be asked to verify the result. Ratings update once enough players confirm.',
+    };
+  })();
+
+  const eligibilityToneClasses: Record<typeof eligibility.tone, string> = {
+    amber: 'bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-300',
+    green: 'bg-green-500/10 border-green-500/30 text-green-700 dark:text-green-300',
+    muted: 'bg-muted border-border text-muted-foreground',
+  };
+
   return (
     <div className="space-y-6">
       <div className="text-sm font-medium text-muted-foreground text-center">
@@ -160,6 +201,12 @@ export function ReviewStep({ formData, updateFormData }: ReviewStepProps) {
           </div>
           <div className="text-3xl font-bold text-muted-foreground mt-3">{loserScore}</div>
         </Card>
+      </div>
+
+      {/* Rating eligibility — honest preview of what will happen on submit */}
+      <div className={`p-3 rounded-lg border ${eligibilityToneClasses[eligibility.tone]}`}>
+        <p className="text-sm font-medium leading-tight">{eligibility.label}</p>
+        <p className="text-xs mt-1 leading-snug opacity-90">{eligibility.description}</p>
       </div>
 
       {/* Rating Toggle */}

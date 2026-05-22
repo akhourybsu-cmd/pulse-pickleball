@@ -24,23 +24,23 @@ interface EmptyStateConfigProps {
 /** No events found in browse/discovery */
 export function NoEventsEmptyState({ onAction, className }: EmptyStateConfigProps) {
   const navigate = useNavigate();
-  
+
   return (
     <EmptyState
       icon={Calendar}
       title="No events found"
-      description="There are no upcoming events in your area yet. Be the first to create one and bring players together!"
+      description="There are no upcoming events in your area yet. Browse venues or check back soon."
       actions={[
         {
-          label: 'Create Event',
-          onClick: onAction || (() => navigate('/events/new')),
-          icon: PlusCircle,
+          label: 'Browse Venues',
+          onClick: onAction || (() => navigate('/play?tab=venues')),
+          icon: Search,
         },
         {
-          label: 'Browse Venues',
-          onClick: () => navigate('/player/venues'),
+          label: 'Create Event',
+          onClick: () => navigate('/events/new'),
           variant: 'outline',
-          icon: Search,
+          icon: PlusCircle,
         },
       ]}
       className={className}
@@ -60,7 +60,7 @@ export function NoVenuesEmptyState({ onAction, className }: EmptyStateConfigProp
       actions={[
         {
           label: 'Register a Venue',
-          onClick: onAction || (() => navigate('/venue/onboarding')),
+          onClick: onAction || (() => navigate('/venue/create-fast')),
           icon: PlusCircle,
         },
       ]}
@@ -81,7 +81,7 @@ export function NoMatchesEmptyState({ onAction, className }: EmptyStateConfigPro
       actions={[
         {
           label: 'Record a Match',
-          onClick: onAction || (() => navigate('/match/new')),
+          onClick: onAction || (() => navigate('/player/matches/new')),
           icon: PlusCircle,
         },
       ]}
@@ -123,7 +123,7 @@ export function NoRegistrationsEmptyState({ onAction, className }: EmptyStateCon
       actions={[
         {
           label: 'Browse Events',
-          onClick: onAction || (() => navigate('/events/browse')),
+          onClick: onAction || (() => navigate('/play')),
           icon: Search,
         },
       ]}

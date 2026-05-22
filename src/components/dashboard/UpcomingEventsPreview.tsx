@@ -38,7 +38,7 @@ export function UpcomingEventsPreview({ userId }: UpcomingEventsPreviewProps) {
       <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
         <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
           <Calendar className="w-4 h-4 text-primary" />
-          Upcoming Events
+          Upcoming play
         </h3>
         {hasEvents && (
           <Button
@@ -57,7 +57,7 @@ export function UpcomingEventsPreview({ userId }: UpcomingEventsPreviewProps) {
       <div className="p-3">
         {hasEvents ? (
           <div className="space-y-2">
-            {registrations.map((registration: any) => {
+            {registrations.map((registration) => {
               const event = registration.event;
               if (!event) return null;
               
@@ -121,10 +121,10 @@ export function UpcomingEventsPreview({ userId }: UpcomingEventsPreviewProps) {
             </p>
             <Button
               size="sm"
-              onClick={() => navigate("/player/find")}
+              onClick={() => navigate("/player/play")}
               className="h-8 text-xs"
             >
-              Find Events
+              Find something to play
             </Button>
           </div>
         )}

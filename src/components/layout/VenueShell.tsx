@@ -80,19 +80,43 @@ const bottomNavItems = [
   { to: '/venue/more', icon: MoreHorizontal, label: 'More', isMoreMenu: true },
 ];
 
-// Items shown in the "More" menu (everything else)
-const moreMenuItems = [
-  { to: '/venue/tournaments', icon: Trophy, label: 'Tournaments' },
-  { to: '/venue/round-robins', icon: Repeat, label: 'Round Robins' },
-  { to: '/venue/coaching', icon: GraduationCap, label: 'Coaching' },
-  { to: '/venue/profile', icon: Building2, label: 'Profile' },
-  { to: '/venue/branding', icon: Palette, label: 'Branding' },
-  { to: '/venue/facility', icon: MapPin, label: 'Facility' },
-  { to: '/venue/media', icon: Image, label: 'Media' },
-  { to: '/venue/staff', icon: Users, label: 'Staff' },
-  { to: '/venue/analytics', icon: BarChart3, label: 'Analytics' },
-  { to: '/venue/settings', icon: Settings, label: 'Settings' },
+// Items shown in the "More" sheet, grouped into sections for scan-ability.
+// A flat 10-item grid is hard to parse on mobile; sections give the eye anchors.
+const moreMenuGroups = [
+  {
+    label: 'Programs',
+    items: [
+      { to: '/venue/tournaments', icon: Trophy, label: 'Tournaments' },
+      { to: '/venue/round-robins', icon: Repeat, label: 'Round Robins' },
+      { to: '/venue/coaching', icon: GraduationCap, label: 'Coaching' },
+    ],
+  },
+  {
+    label: 'Public Presence',
+    items: [
+      { to: '/venue/profile', icon: Building2, label: 'Profile' },
+      { to: '/venue/branding', icon: Palette, label: 'Branding' },
+      { to: '/venue/facility', icon: MapPin, label: 'Facility' },
+      { to: '/venue/media', icon: Image, label: 'Media' },
+    ],
+  },
+  {
+    label: 'Team',
+    items: [
+      { to: '/venue/staff', icon: Users, label: 'Staff' },
+    ],
+  },
+  {
+    label: 'Account',
+    items: [
+      { to: '/venue/analytics', icon: BarChart3, label: 'Analytics' },
+      { to: '/venue/settings', icon: Settings, label: 'Settings' },
+    ],
+  },
 ];
+
+// Flat array kept for active-tab detection (matches any current path).
+const moreMenuItems = moreMenuGroups.flatMap((g) => g.items);
 
 // Prefetch map for route preloading on hover - ALL venue routes for fast navigation
 const prefetchMap: Record<string, () => Promise<unknown>> = {
@@ -356,40 +380,49 @@ export function VenueShell() {
                       <span className="text-xs font-medium">{item.label}</span>
                     </button>
                   </SheetTrigger>
-                  <SheetContent side="bottom" className="max-h-[70vh]">
+                  <SheetContent side="bottom" className="max-h-[80vh] overflow-y-auto">
                     <SheetHeader className="pb-4">
                       <SheetTitle>More Options</SheetTitle>
                     </SheetHeader>
-                    <div className="grid grid-cols-3 gap-3 pb-8">
-                      {moreMenuItems.map((menuItem) => {
-                        const isActive = location.pathname === menuItem.to || 
-                          location.pathname.startsWith(menuItem.to + '/');
-                        return (
-                          <NavLink
-                            key={menuItem.to}
-                            to={menuItem.to}
-                            onClick={() => setMoreMenuOpen(false)}
-                            className={cn(
-                              'flex flex-col items-center gap-2 p-4 rounded-xl transition-colors',
-                              isActive 
-                                ? 'bg-primary/10' 
-                                : 'hover:bg-muted'
-                            )}
-                            style={isActive ? { color: venueTheme.primary } : undefined}
-                          >
-                            <menuItem.icon 
-                              className="h-6 w-6" 
-                              style={isActive ? { color: venueTheme.primary } : undefined}
-                            />
-                            <span className={cn(
-                              'text-xs text-center',
-                              isActive ? 'font-medium' : 'text-muted-foreground'
-                            )}>
-                              {menuItem.label}
-                            </span>
-                          </NavLink>
-                        );
-                      })}
+                    <div className="space-y-6 pb-8">
+                      {moreMenuGroups.map((group) => (
+                        <div key={group.label}>
+                          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1">
+                            {group.label}
+                          </h3>
+                          <div className="grid grid-cols-3 gap-3">
+                            {group.items.map((menuItem) => {
+                              const isActive = location.pathname === menuItem.to ||
+                                location.pathname.startsWith(menuItem.to + '/');
+                              return (
+                                <NavLink
+                                  key={menuItem.to}
+                                  to={menuItem.to}
+                                  onClick={() => setMoreMenuOpen(false)}
+                                  className={cn(
+                                    'flex flex-col items-center gap-2 p-4 rounded-xl transition-colors',
+                                    isActive
+                                      ? 'bg-primary/10'
+                                      : 'hover:bg-muted'
+                                  )}
+                                  style={isActive ? { color: venueTheme.primary } : undefined}
+                                >
+                                  <menuItem.icon
+                                    className="h-6 w-6"
+                                    style={isActive ? { color: venueTheme.primary } : undefined}
+                                  />
+                                  <span className={cn(
+                                    'text-xs text-center',
+                                    isActive ? 'font-medium' : 'text-muted-foreground'
+                                  )}>
+                                    {menuItem.label}
+                                  </span>
+                                </NavLink>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </SheetContent>
                 </Sheet>

@@ -9,7 +9,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ModeProvider } from "@/contexts/ModeContext";
 import { useAuthPersistence } from "@/hooks/useAuthPersistence";
 import { PlayerShell } from "@/components/layout/PlayerShell";
-import { AuthGuard, VenueGuard } from "@/components/guards";
+import { AuthGuard, VenueGuard, AdminGuard } from "@/components/guards";
 import { VenueShell } from "@/components/layout/VenueShell";
 import { RoundRobinBanner } from "@/components/RoundRobinBanner";
 import { ScrollToTop } from "@/components/ScrollToTop";
@@ -101,6 +101,8 @@ const NotificationSettings = lazy(() => import("./pages/NotificationSettings"));
 
 // Player pages
 const PlayerDashboard = lazy(() => import("./pages/player/PlayerDashboard"));
+const PlayerProfile = lazy(() => import("./pages/player/PlayerProfile"));
+const PlayHub = lazy(() => import("./pages/play/PlayHub"));
 // PlayerCourts removed - Court Connector feature archived
 const PlayerEvents = lazy(() => import("./pages/player/PlayerEvents"));
 const PlayerCoaching = lazy(() => import("./pages/player/PlayerCoaching"));
@@ -197,6 +199,11 @@ const AppContent = () => {
           <Route path="/demo" element={<DemoTour />} />
           <Route path="/players" element={<PlayersLanding />} />
           <Route path="/venues" element={<VenuesLanding />} />
+          {/* Unified public discovery hub (events + venues) */}
+          <Route path="/play" element={<PlayHub />} />
+          {/* Legacy browse routes — redirect into the unified hub */}
+          <Route path="/events/browse" element={<Navigate to="/play" replace />} />
+          <Route path="/tournaments/browse" element={<Navigate to="/play" replace />} />
           
           {/* Onboarding routes - require auth but allow onboarding state */}
           <Route path="/onboarding/profile" element={
@@ -224,9 +231,15 @@ const AppContent = () => {
           }>
             <Route index element={<Navigate to="/player/dashboard" replace />} />
             <Route path="dashboard" element={<PlayerDashboard />} />
-            <Route path="find" element={<FindEvents />} />
+            {/* New primary nav routes (Phase 1) */}
+            <Route path="matches" element={<MatchHistory />} />
+            <Route path="matches/new" element={<NewMatch />} />
+            <Route path="matches/pending" element={<Navigate to="/player/matches?tab=pending" replace />} />
+            <Route path="play" element={<PlayHub />} />
+            <Route path="profile" element={<PlayerProfile />} />
+            {/* Legacy aliases - kept functional, redirected from old paths */}
+            <Route path="find" element={<Navigate to="/player/play" replace />} />
             <Route path="events" element={<PlayerEvents />} />
-            {/* courts route removed - Court Connector feature archived */}
             <Route path="venues" element={<VenueDiscovery />} />
             <Route path="coaching" element={<PlayerCoaching />} />
             <Route path="bookings" element={<PlayerBookings />} />
@@ -257,6 +270,7 @@ const AppContent = () => {
             <Route path="bookings" element={<VenueBookings />} />
             <Route path="events" element={<VenueEvents />} />
             <Route path="tournaments" element={<VenueTournaments />} />
+            <Route path="tournaments/new" element={<TournamentNewWithGating />} />
             <Route path="round-robins" element={<VenueRoundRobins />} />
             <Route path="round-robins/:id" element={<VenueRoundRobinDetail />} />
             <Route path="coaching" element={<VenueCoaching />} />
@@ -294,9 +308,10 @@ const AppContent = () => {
           {/* Existing routes */}
           <Route path="/profile/edit" element={<EditProfile />} />
           <Route path="/profile/:userId" element={<ViewProfile />} />
-          <Route path="/match/new" element={<NewMatch />} />
-          <Route path="/match/pending" element={<PendingMatches />} />
-          <Route path="/match/history" element={<MatchHistory />} />
+          {/* Match routes: legacy /match/* paths now redirect into the player shell */}
+          <Route path="/match/new" element={<Navigate to="/player/matches/new" replace />} />
+          <Route path="/match/pending" element={<Navigate to="/player/matches?tab=pending" replace />} />
+          <Route path="/match/history" element={<Navigate to="/player/matches" replace />} />
           <Route path="/court/history" element={<CourtHistory />} />
           <Route path="/court/board" element={<CourtBoard />} />
           <Route path="/pickleballciti" element={<Navigate to="/court/board/836003fb-fbd7-429c-8973-67ac6766a511" replace />} />
@@ -308,19 +323,19 @@ const AppContent = () => {
           <Route path="/settings/courts" element={<CourtSettings />} />
           <Route path="/faq" element={<FAQ />} />
           <Route path="/session/queue" element={<SessionQueue />} />
-          <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/admin/session" element={<AdminSession />} />
-          <Route path="/admin/pairing" element={<AdminPairing />} />
-          <Route path="/admin/players" element={<AdminPlayers />} />
-          <Route path="/admin/badges" element={<AdminBadges />} />
-          <Route path="/admin/matches" element={<AdminMatches />} />
-          <Route path="/admin/marketing" element={<AdminMarketing />} />
-          <Route path="/admin/audit-log" element={<AdminAuditLog />} />
-          <Route path="/admin/test-accounts" element={<AdminTestAccounts />} />
-          <Route path="/admin/biometrics" element={<AdminBiometrics />} />
-          <Route path="/admin/system-health" element={<AdminSystemHealth />} />
-          <Route path="/admin/venue-verification" element={<AdminVenueVerification />} />
-          <Route path="/admin/manage/:sessionId" element={<AdminManage />} />
+          <Route path="/admin" element={<AdminGuard><AdminDashboard /></AdminGuard>} />
+          <Route path="/admin/session" element={<AdminGuard><AdminSession /></AdminGuard>} />
+          <Route path="/admin/pairing" element={<AdminGuard><AdminPairing /></AdminGuard>} />
+          <Route path="/admin/players" element={<AdminGuard><AdminPlayers /></AdminGuard>} />
+          <Route path="/admin/badges" element={<AdminGuard><AdminBadges /></AdminGuard>} />
+          <Route path="/admin/matches" element={<AdminGuard><AdminMatches /></AdminGuard>} />
+          <Route path="/admin/marketing" element={<AdminGuard><AdminMarketing /></AdminGuard>} />
+          <Route path="/admin/audit-log" element={<AdminGuard><AdminAuditLog /></AdminGuard>} />
+          <Route path="/admin/test-accounts" element={<AdminGuard><AdminTestAccounts /></AdminGuard>} />
+          <Route path="/admin/biometrics" element={<AdminGuard><AdminBiometrics /></AdminGuard>} />
+          <Route path="/admin/system-health" element={<AdminGuard><AdminSystemHealth /></AdminGuard>} />
+          <Route path="/admin/venue-verification" element={<AdminGuard><AdminVenueVerification /></AdminGuard>} />
+          <Route path="/admin/manage/:sessionId" element={<AdminGuard><AdminManage /></AdminGuard>} />
           <Route path="/match/ticket/:ticketId" element={<MatchTicket />} />
           <Route path="/qr-checkin" element={<QRCheckIn />} />
           <Route path="/kiosk" element={<Kiosk />} />
@@ -355,11 +370,12 @@ const AppContent = () => {
           <Route path="/tournament/:eventId/live" element={<TournamentLiveView />} />
           <Route path="/tournament/:eventId/team/:teamId" element={<TournamentTeamView />} />
           <Route path="/tournament/:eventId/match/:matchId/score" element={<TournamentMatchScore />} />
-          <Route path="/tournament-admin" element={<TournamentAdmin />} />
-          <Route path="/tournament-admin/:eventId/customize" element={<TournamentCustomize />} />
-          <Route path="/tournament-admin/event/:eventId" element={<TournamentEventDetail />} />
-          <Route path="/tournament-admin/event/:eventId/division/:divisionId" element={<TournamentDivisionDetail />} />
-          <Route path="/tournament-admin/division/:divisionId" element={<TournamentDivisionDetail />} />
+          {/* Platform tournament admin — gated at the router level (security fix Phase 5) */}
+          <Route path="/tournament-admin" element={<AdminGuard><TournamentAdmin /></AdminGuard>} />
+          <Route path="/tournament-admin/:eventId/customize" element={<AdminGuard><TournamentCustomize /></AdminGuard>} />
+          <Route path="/tournament-admin/event/:eventId" element={<AdminGuard><TournamentEventDetail /></AdminGuard>} />
+          <Route path="/tournament-admin/event/:eventId/division/:divisionId" element={<AdminGuard><TournamentDivisionDetail /></AdminGuard>} />
+          <Route path="/tournament-admin/division/:divisionId" element={<AdminGuard><TournamentDivisionDetail /></AdminGuard>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>

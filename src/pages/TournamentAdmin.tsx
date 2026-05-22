@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { isPlatformAdmin } from "@/lib/permissions";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -47,14 +48,7 @@ export default function TournamentAdmin() {
       return;
     }
 
-    const { data: roleData } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id)
-      .eq("role", "admin")
-      .maybeSingle();
-
-    if (!roleData) {
+    if (!(await isPlatformAdmin(user.id))) {
       toast({
         title: "Access denied",
         description: "Admin privileges required for Tournament Portal",

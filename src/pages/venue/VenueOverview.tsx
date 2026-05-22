@@ -176,6 +176,17 @@ export default function VenueOverview() {
             <p className="text-gray-300 mt-1">
               Manage courts, events, and team
             </p>
+            {currentVenue?.slug && isPublished && (
+              <a
+                href={`/v/${currentVenue.slug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 mt-3 text-sm text-white/90 hover:text-white underline-offset-4 hover:underline"
+              >
+                <Eye className="h-4 w-4" />
+                Preview public page
+              </a>
+            )}
           </div>
         </div>
       </div>
@@ -196,8 +207,8 @@ export default function VenueOverview() {
                   Create tournaments at standard pricing or free Round Robins to engage your community.
                 </p>
                 <div className="flex flex-wrap gap-3">
-                  <Button 
-                    onClick={() => navigate(`/tournaments/new?venueId=${currentVenueId}`)}
+                  <Button
+                    onClick={() => navigate(`/venue/tournaments/new?venueId=${currentVenueId}`)}
                     className="gap-2"
                   >
                     <Trophy className="h-4 w-4" />

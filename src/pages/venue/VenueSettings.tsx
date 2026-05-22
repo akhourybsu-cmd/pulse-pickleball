@@ -22,13 +22,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-const US_STATES = [
-  'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
-  'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
-  'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
-  'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
-  'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY'
-];
+import { US_STATE_CODES } from '@/lib/us-states';
+
+// Venue address fields store the 2-letter postal code (e.g. "MA").
+// Sourcing from the shared module so we don't drift from the canonical list.
+const US_STATES = US_STATE_CODES;
 
 const TIMEZONES = [
   { value: 'America/New_York', label: 'Eastern Time (ET)' },

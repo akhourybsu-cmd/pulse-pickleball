@@ -380,3 +380,85 @@ export async function checkPermission(context: PermissionContext): Promise<Permi
       return { allowed: false, reason: 'Unknown entity type' };
   }
 }
+
+// =============================================================================
+// PLATFORM-ADMIN PERMISSIONS
+// =============================================================================
+
+/**
+ * Check if a user has the platform-level `admin` role in `user_roles`.
+ *
+ * Use this everywhere page-level admin checks currently inline the same query.
+ * Note: route-level protection is enforced via <AdminGuard> in App.tsx — this
+ * helper exists for in-component conditionals (e.g. showing an admin-only
+ * button on a shared page) and as a defense-in-depth backup.
+ */
+export async function isPlatformAdmin(userId: string | null): Promise<boolean> {
+  if (!userId) return false;
+  const { data } = await supabase
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', userId)
+    .eq('role', 'admin')
+    .maybeSingle();
+  return !!data;
+}
+
+/**
+ * Convenience wrapper that pulls the current Supabase auth session and checks
+ * whether that user is a platform admin. Returns false if signed out.
+ */
+export async function canAccessAdmin(): Promise<boolean> {
+  const { data: { user } } = await supabase.auth.getUser();
+  return isPlatformAdmin(user?.id ?? null);
+}
+
+// =============================================================================
+// TOURNAMENT PERMISSIONS
+// =============================================================================
+
+export interface TournamentManagementContext {
+  createdBy: string | null;
+  venueId: string | null;
+}
+
+/**
+ * Decide whether a user can manage a tournament. The creator can always manage
+ * their own tournament; otherwise venue managers/owners/organizers at the
+ * host venue can manage. Platform admins are checked separately via canAccessAdmin.
+ */
+export async function canManageTournament(
+  userId: string | null,
+  ctx: TournamentManagementContext
+): Promise<boolean> {
+  if (!userId) return false;
+  if (ctx.createdBy && ctx.createdBy === userId) return true;
+  if (!ctx.venueId) return false;
+  const role = await getVenueRole(userId, ctx.venueId);
+  return canCreateVenueEvents(role);
+}
+
+// =============================================================================
+// ROUND ROBIN PERMISSIONS
+// =============================================================================
+
+export interface RoundRobinManagementContext {
+  organizerId: string | null;
+  venueId: string | null;
+}
+
+/**
+ * Decide whether a user can manage a round robin event. Same shape as
+ * canManageTournament — organizer can always manage; otherwise venue staff
+ * with event-create permission can manage.
+ */
+export async function canManageRoundRobin(
+  userId: string | null,
+  ctx: RoundRobinManagementContext
+): Promise<boolean> {
+  if (!userId) return false;
+  if (ctx.organizerId && ctx.organizerId === userId) return true;
+  if (!ctx.venueId) return false;
+  const role = await getVenueRole(userId, ctx.venueId);
+  return canCreateVenueEvents(role);
+}

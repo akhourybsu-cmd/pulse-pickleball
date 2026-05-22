@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Trophy, Check } from "lucide-react";
+import { Trophy, Check, AlertCircle } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -100,9 +100,26 @@ export function ScoreEntryStep({ formData, updateFormData }: ScoreEntryStepProps
     return names.join(' & ');
   };
 
-  const isScoreValid = formData.winnerScore !== null && 
-                       formData.loserScore !== null && 
+  const isScoreValid = formData.winnerScore !== null &&
+                       formData.loserScore !== null &&
                        formData.winnerScore > formData.loserScore;
+
+  // Soft heuristic for "this looks unusual for pickleball" — not a hard block,
+  // just a gentle nudge. Standard pickleball games are played to 11 (win by 2).
+  // 11-game scores: anything above 10 for the loser implies the game went into
+  // overtime past expected win-by-2 territory. 15- and 21-game scores have
+  // their own thresholds. This is presentational only — never blocks submit.
+  const unusualScoreReason: string | null = (() => {
+    const w = formData.winnerScore;
+    const l = formData.loserScore;
+    if (w == null || l == null || w <= l) return null;
+    // Allow up to win-by-2 + a small overtime buffer for each preset
+    if (w === 11 && l > 13) return "Pickleball games to 11 usually end before 11–14.";
+    if (w === 15 && l > 17) return "Pickleball games to 15 usually end before 15–18.";
+    if (w === 21 && l > 23) return "Pickleball games to 21 usually end before 21–24.";
+    if (w - l > 15) return "That's a wide margin — double-check the score.";
+    return null;
+  })();
 
   return (
     <div className="space-y-6">
@@ -240,10 +257,20 @@ export function ScoreEntryStep({ formData, updateFormData }: ScoreEntryStepProps
             </div>
           )}
 
-          {/* Validation feedback */}
+          {/* Hard validation — submit is blocked while this is shown */}
           {formData.loserScore !== null && formData.winnerScore !== null && !isScoreValid && (
             <div className="text-center text-sm text-destructive">
               Winner's score must be higher than loser's score
+            </div>
+          )}
+
+          {/* Soft warning — informational only, does NOT block submission */}
+          {isScoreValid && unusualScoreReason && (
+            <div className="flex items-start gap-2 p-3 rounded-md bg-amber-500/10 border border-amber-500/30">
+              <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+              <p className="text-xs text-amber-700 dark:text-amber-300">
+                <span className="font-medium">Looks unusual.</span> {unusualScoreReason} You can still submit if this is correct.
+              </p>
             </div>
           )}
         </div>

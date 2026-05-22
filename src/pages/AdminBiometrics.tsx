@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { isPlatformAdmin } from "@/lib/permissions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -41,13 +42,7 @@ export default function AdminBiometrics() {
         return;
       }
 
-      const { data: roles } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .eq('role', 'admin');
-
-      if (!roles || roles.length === 0) {
+      if (!(await isPlatformAdmin(user.id))) {
         navigate('/player/dashboard');
         return;
       }
