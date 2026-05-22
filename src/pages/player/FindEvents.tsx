@@ -1,13 +1,12 @@
 import { useState, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Search, Calendar, MapPin, Users, Trophy, Gamepad2, GraduationCap, Filter } from "lucide-react";
+import { Search, Calendar, MapPin, Users, Trophy, Gamepad2, GraduationCap, Star, Sparkles, Filter } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useDiscoverEvents, EventTypeFilter, DateRangeFilter } from "@/hooks/useDiscoverEvents";
 import { UnifiedEventCard } from "@/components/events/UnifiedEventCard";
-import { useAuthState } from "@/hooks/useAuthState";
 import { PlayContextBar } from "@/components/play/PlayContextBar";
 
 const eventTypeFilters: { value: EventTypeFilter; label: string; icon: React.ReactNode }[] = [
@@ -16,6 +15,10 @@ const eventTypeFilters: { value: EventTypeFilter; label: string; icon: React.Rea
   { value: 'tournament', label: 'Tournament', icon: <Trophy className="w-3.5 h-3.5" /> },
   { value: 'open_play', label: 'Open Play', icon: <Gamepad2 className="w-3.5 h-3.5" /> },
   { value: 'clinic', label: 'Clinic', icon: <GraduationCap className="w-3.5 h-3.5" /> },
+  // League and Social used to be reachable only via a URL `?type=` deep link
+  // with no way to clear via UI — now they're first-class chips.
+  { value: 'league', label: 'League', icon: <Star className="w-3.5 h-3.5" /> },
+  { value: 'social', label: 'Social', icon: <Sparkles className="w-3.5 h-3.5" /> },
 ];
 
 const dateRangeFilters: { value: DateRangeFilter; label: string }[] = [
@@ -31,7 +34,7 @@ interface FindEventsProps {
 
 // Validate that a URL `type` param is a known filter value.
 const KNOWN_EVENT_TYPES: ReadonlySet<EventTypeFilter> = new Set([
-  'all', 'round_robin', 'tournament', 'open_play', 'clinic',
+  'all', 'round_robin', 'tournament', 'open_play', 'clinic', 'league', 'social',
 ]);
 function readTypeParam(value: string | null): EventTypeFilter {
   if (value && KNOWN_EVENT_TYPES.has(value as EventTypeFilter)) {
@@ -40,37 +43,65 @@ function readTypeParam(value: string | null): EventTypeFilter {
   return 'all';
 }
 
+const KNOWN_DATE_RANGES: ReadonlySet<DateRangeFilter> = new Set([
+  'all', 'today', 'this_week', 'this_month',
+]);
+function readDateRangeParam(value: string | null): DateRangeFilter {
+  if (value && KNOWN_DATE_RANGES.has(value as DateRangeFilter)) {
+    return value as DateRangeFilter;
+  }
+  return 'all';
+}
+
 export default function FindEvents({ hideHeader = false }: FindEventsProps = {}) {
   const navigate = useNavigate();
-  const { profile } = useAuthState();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const [searchQuery, setSearchQuery] = useState("");
-  // Initial event type can be deep-linked from URL: /player/play?type=round_robin
+  // URL-driven filter state — deep links / refreshes preserve filters.
+  const [searchQuery, setSearchQueryState] = useState<string>(() => searchParams.get('q') ?? '');
   const [eventType, setEventTypeState] = useState<EventTypeFilter>(() =>
     readTypeParam(searchParams.get('type'))
   );
-  const [dateRange, setDateRange] = useState<DateRangeFilter>('all');
-  const [showFilters, setShowFilters] = useState(false);
+  const [dateRange, setDateRangeState] = useState<DateRangeFilter>(() =>
+    readDateRangeParam(searchParams.get('when'))
+  );
+  // When a non-default date range arrives via URL, expand the filter panel
+  // so the user can see which date filter is active.
+  const [showFilters, setShowFilters] = useState(() =>
+    readDateRangeParam(searchParams.get('when')) !== 'all'
+  );
 
-  // Keep URL in sync when user changes filter, so the address bar matches state
-  // and deep links remain shareable. Preserves other params like `tab`.
-  const setEventType = (next: EventTypeFilter) => {
-    setEventTypeState(next);
+  /**
+   * Sync a single filter to the URL while preserving the other params.
+   * All three filter setters go through this so the URL stays in lockstep
+   * with state and deep links remain shareable.
+   */
+  const syncParam = (key: 'type' | 'when' | 'q', value: string, defaultValue: string) => {
     const params = new URLSearchParams(searchParams);
-    if (next === 'all') {
-      params.delete('type');
+    if (!value || value === defaultValue) {
+      params.delete(key);
     } else {
-      params.set('type', next);
+      params.set(key, value);
     }
     setSearchParams(params, { replace: true });
   };
 
-  // Use player's location from profile for filtering
+  const setEventType = (next: EventTypeFilter) => {
+    setEventTypeState(next);
+    syncParam('type', next, 'all');
+  };
+  const setDateRange = (next: DateRangeFilter) => {
+    setDateRangeState(next);
+    syncParam('when', next, 'all');
+  };
+  const setSearchQuery = (next: string) => {
+    setSearchQueryState(next);
+    syncParam('q', next, '');
+  };
+
   const { data: events, isLoading, error } = useDiscoverEvents({
     eventType,
     dateRange,
-    state: profile?.player_state ? undefined : undefined,
     limit: 50,
   });
 
@@ -128,8 +159,33 @@ export default function FindEvents({ hideHeader = false }: FindEventsProps = {})
     setSearchParams(params, { replace: true });
   };
 
+  // Single search-bar block reused in both standalone and embedded modes —
+  // previously this JSX was duplicated across two branches.
+  const searchBar = (
+    <div className="relative">
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
+      <Input
+        placeholder="Search events, venues..."
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        className="pl-9 h-10 input-premium text-sm"
+      />
+      <Button
+        variant="ghost"
+        size="icon"
+        className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 hover:bg-muted/50"
+        onClick={() => setShowFilters(!showFilters)}
+        aria-label={showFilters ? 'Hide filters' : 'Show filters'}
+      >
+        <Filter className={cn("w-4 h-4 transition-colors", showFilters && "text-primary")} />
+      </Button>
+    </div>
+  );
+
   return (
-    <div className="min-h-screen bg-background">
+    // Embedded mode (PlayHub) owns page-level chrome (min-h-screen, bg) —
+    // applying it here would stack viewport-height containers.
+    <div className={hideHeader ? undefined : "min-h-screen bg-background"}>
       {/* Refined Header - Premium Polish (suppressed in embedded mode) */}
       {!hideHeader ? (
         <div className="bg-gradient-to-b from-muted/20 to-background pt-4 pb-3 px-4 sm:px-6">
@@ -138,53 +194,20 @@ export default function FindEvents({ hideHeader = false }: FindEventsProps = {})
             <p className="page-subtitle mt-0.5 mb-3">
               Discover round robins, tournaments, and more
             </p>
-
-            {/* Search Bar - Premium Polish */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
-              <Input
-                placeholder="Search events, venues..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 h-10 input-premium text-sm"
-              />
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 hover:bg-muted/50"
-                onClick={() => setShowFilters(!showFilters)}
-              >
-                <Filter className={cn("w-4 h-4 transition-colors", showFilters && "text-primary")} />
-              </Button>
-            </div>
+            {searchBar}
           </div>
         </div>
       ) : (
         <div className="px-4 sm:px-6 pt-3">
-          <div className="max-w-3xl mx-auto">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
-              <Input
-                placeholder="Search events, venues..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 h-10 input-premium text-sm"
-              />
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8 hover:bg-muted/50"
-                onClick={() => setShowFilters(!showFilters)}
-              >
-                <Filter className={cn("w-4 h-4 transition-colors", showFilters && "text-primary")} />
-              </Button>
-            </div>
-          </div>
+          <div className="max-w-3xl mx-auto">{searchBar}</div>
         </div>
       )}
 
-      {/* Filters - Refined chips */}
-      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border/30">
+      {/* Filters - Refined chips. Sticks below PlayerShell's global header
+          (h-[64px] sm:h-[72px]) so it never slides under the nav bar. On the
+          public /play route (no shell) there'll be a small gap above when
+          scrolled — minor cosmetic tradeoff for correctness on /player/play. */}
+      <div className="sticky top-16 sm:top-[72px] z-10 bg-background/95 backdrop-blur-sm border-b border-border/30">
         <div className="max-w-3xl mx-auto px-4 py-2.5">
           {/* Event Type Chips */}
           <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-hide">

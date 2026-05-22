@@ -31,15 +31,17 @@ export default function VenueDiscovery({ hideHeader = false }: VenueDiscoveryPro
     setSearchParams(params, { replace: true });
   };
 
-  // Handle deep linking from dashboard
+  // Handle deep linking from dashboard. After consuming `openVenueId` from
+  // router state, clear it through the router (NOT via window.history) so
+  // React Router's internal location stays consistent and back/forward
+  // navigation isn't corrupted.
   useEffect(() => {
     const state = location.state as { openVenueId?: string } | null;
     if (state?.openVenueId) {
       setSelectedVenueId(state.openVenueId);
-      // Clear the state to prevent re-opening on navigation
-      window.history.replaceState({}, document.title);
+      navigate(location.pathname + location.search, { replace: true, state: null });
     }
-  }, [location.state]);
+  }, [location.state, location.pathname, location.search, navigate]);
 
   const filteredVenues = venues.filter(venue =>
     venue.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -150,7 +152,9 @@ export default function VenueDiscovery({ hideHeader = false }: VenueDiscoveryPro
   };
 
   return (
-    <div className="p-4 sm:p-6">
+    // Embedded mode (PlayHub) owns outer padding — applying p-4/p-6 here
+    // would double-pad the section relative to the Events tab.
+    <div className={hideHeader ? "px-4 sm:px-6 pt-3 pb-6" : "p-4 sm:p-6"}>
       {/* Header - Premium Polish (suppressed in embedded mode) */}
       {!hideHeader && (
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-5">

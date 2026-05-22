@@ -75,6 +75,17 @@ All colors MUST be HSL.
     --hero-border: rgba(166, 219, 90, 0.15);
     --hero-heading: #0E4C58;
     --hero-body: #0E4C58;
+
+    /* Per-event-type accent tokens (HSL triplets, used with hsl(var(--…) / α)).
+       These replace the ad-hoc bg-blue-500/text-blue-600 literals scattered
+       through PlayContextBar and the event card type badges, putting event
+       coloring under design-system control. */
+    --event-round-robin: 217 91% 60%; /* blue */
+    --event-tournament: 38 92% 50%;   /* amber */
+    --event-open-play: 142 71% 45%;   /* green */
+    --event-clinic: 271 81% 56%;      /* purple */
+    --event-league: 25 95% 53%;       /* orange */
+    --event-social: 330 81% 60%;      /* pink */
   }
 
   .dark {
@@ -141,6 +152,16 @@ All colors MUST be HSL.
     --hero-border: rgba(166, 219, 90, 0.1);
     --hero-heading: #EAF3F5;
     --hero-body: #B4C4CA;
+
+    /* Per-event-type accent tokens — dark-mode tuned for readable contrast
+       on the dark card background. Lighter L values than the light-mode
+       palette so text-with-α still reads. */
+    --event-round-robin: 213 94% 78%;
+    --event-tournament: 43 96% 70%;
+    --event-open-play: 142 64% 65%;
+    --event-clinic: 270 91% 78%;
+    --event-league: 27 96% 70%;
+    --event-social: 328 86% 78%;
   }
 }
 

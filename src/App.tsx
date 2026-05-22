@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ModeProvider } from "@/contexts/ModeContext";
@@ -16,6 +16,16 @@ import { ScrollToTop } from "@/components/ScrollToTop";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
+
+/**
+ * Forward the current location's `search` (and `hash`) when redirecting from a
+ * legacy alias to its new home. Plain <Navigate to="..."/> drops query params,
+ * which silently breaks deep links like /player/find?type=tournament.
+ */
+function RedirectWithParams({ to }: { to: string }) {
+  const location = useLocation();
+  return <Navigate to={`${to}${location.search}${location.hash}`} replace />;
+}
 
 // Loading fallback component
 const PageLoader = () => (
@@ -199,11 +209,22 @@ const AppContent = () => {
           <Route path="/demo" element={<DemoTour />} />
           <Route path="/players" element={<PlayersLanding />} />
           <Route path="/venues" element={<VenuesLanding />} />
-          {/* Unified public discovery hub (events + venues) */}
-          <Route path="/play" element={<PlayHub />} />
-          {/* Legacy browse routes — redirect into the unified hub */}
-          <Route path="/events/browse" element={<Navigate to="/play" replace />} />
-          <Route path="/tournaments/browse" element={<Navigate to="/play" replace />} />
+          {/* Unified discovery hub (events + venues). Auth-required because
+              every inner CTA (register, favorite, book) is auth-gated — letting
+              unauthenticated users in causes a partial render then a forced
+              bounce to /auth, which loses context. */}
+          <Route
+            path="/play"
+            element={
+              <AuthGuard>
+                <PlayHub />
+              </AuthGuard>
+            }
+          />
+          {/* Legacy browse routes — redirect into the unified hub.
+              Use RedirectWithParams so ?type=... and other query params survive. */}
+          <Route path="/events/browse" element={<RedirectWithParams to="/play" />} />
+          <Route path="/tournaments/browse" element={<RedirectWithParams to="/play" />} />
           
           {/* Onboarding routes - require auth but allow onboarding state */}
           <Route path="/onboarding/profile" element={
@@ -238,7 +259,7 @@ const AppContent = () => {
             <Route path="play" element={<PlayHub />} />
             <Route path="profile" element={<PlayerProfile />} />
             {/* Legacy aliases - kept functional, redirected from old paths */}
-            <Route path="find" element={<Navigate to="/player/play" replace />} />
+            <Route path="find" element={<RedirectWithParams to="/player/play" />} />
             <Route path="events" element={<PlayerEvents />} />
             <Route path="venues" element={<VenueDiscovery />} />
             <Route path="coaching" element={<PlayerCoaching />} />
