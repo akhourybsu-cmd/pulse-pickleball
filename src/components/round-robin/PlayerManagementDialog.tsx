@@ -11,7 +11,8 @@ import {
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { PlayerSelector } from "./PlayerSelector";
-import { UserPlus, UserMinus, UserX, Users } from "lucide-react";
+import { UserPlus, UserMinus, Users, ChevronRight, ChevronLeft } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Select,
   SelectContent,
@@ -141,72 +142,111 @@ export function PlayerManagementDialog({
         </DialogHeader>
 
         {!mode ? (
-          <div className="space-y-3 py-4">
-            <Button
-              variant="outline"
-              className="w-full justify-start h-auto py-4"
-              onClick={() => setMode('add')}
-            >
-              <UserPlus className="w-5 h-5 mr-3" />
-              <div className="text-left">
-                <div className="font-semibold">Add Player (Late Join)</div>
-                <div className="text-sm text-muted-foreground">
-                  Add a player and regenerate remaining rounds
-                </div>
-              </div>
-            </Button>
+          <div className="space-y-4 py-2">
+            {/* Action cards — icon tile + title + description + chevron.
+                Consistent with the dashboard QuickActions tile style so the
+                visual language carries across the organizer experience. */}
+            <div className="space-y-2">
+              {[
+                {
+                  id: 'add' as const,
+                  icon: UserPlus,
+                  title: 'Add Player',
+                  description: 'Late join — regenerates remaining rounds',
+                  disabled: false,
+                },
+                {
+                  id: 'remove' as const,
+                  icon: UserMinus,
+                  title: 'Remove From Roster',
+                  description: activePlayers.length <= 4
+                    ? `Minimum 4 active players required (you have ${activePlayers.length})`
+                    : 'Excludes player from future rounds; past scores preserved',
+                  disabled: activePlayers.length <= 4,
+                },
+                {
+                  id: 'substitute' as const,
+                  icon: Users,
+                  title: 'Substitute Player',
+                  description: 'Swap one player for another, globally or for a single round',
+                  disabled: false,
+                },
+              ].map((action) => {
+                const Icon = action.icon;
+                return (
+                  <button
+                    key={action.id}
+                    type="button"
+                    onClick={() => !action.disabled && setMode(action.id)}
+                    disabled={action.disabled}
+                    className="w-full flex items-center gap-3 p-3 rounded-xl border border-border bg-card hover:border-primary/40 hover:bg-muted/30 active:scale-[0.99] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-border disabled:hover:bg-card text-left"
+                  >
+                    <div className="h-10 w-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-sm">{action.title}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">{action.description}</div>
+                    </div>
+                    {!action.disabled && (
+                      <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
 
-            <Button
-              variant="outline"
-              className="w-full justify-start h-auto py-4"
-              onClick={() => setMode('remove')}
-              disabled={activePlayers.length <= 4}
-            >
-              <UserMinus className="w-5 h-5 mr-3" />
-              <div className="text-left">
-                <div className="font-semibold">Remove Player From Roster</div>
-                <div className="text-sm text-muted-foreground">
-                  Remove player from future rounds (past scores preserved)
-                </div>
+            {/* Roster — avatar + name rows grouped by active/inactive. */}
+            <div className="pt-3 border-t border-border/60">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-semibold">Active roster</span>
+                <Badge variant="secondary" className="font-medium">{activePlayers.length}</Badge>
               </div>
-            </Button>
-
-            <Button
-              variant="outline"
-              className="w-full justify-start h-auto py-4"
-              onClick={() => setMode('substitute')}
-            >
-              <Users className="w-5 h-5 mr-3" />
-              <div className="text-left">
-                <div className="font-semibold">Substitute Player</div>
-                <div className="text-sm text-muted-foreground">
-                  Replace one player with another for specific or all rounds
-                </div>
-              </div>
-            </Button>
-
-            <div className="pt-4 border-t">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-sm font-medium">Active Players</span>
-                <Badge variant="secondary">{activePlayers.length}</Badge>
-              </div>
-              <div className="text-sm text-muted-foreground space-y-1">
-                {activePlayers.map(p => (
-                  <div key={p.id}>• {p.profiles.display_name || p.profiles.full_name}</div>
-                ))}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                {activePlayers.map((p) => {
+                  const name = p.profiles.display_name || p.profiles.full_name || 'Player';
+                  const initials = name.split(' ').map(s => s[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
+                  return (
+                    <div
+                      key={p.id}
+                      className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-muted/40"
+                    >
+                      <Avatar className="h-6 w-6">
+                        <AvatarFallback className="text-[10px] font-semibold bg-primary/15 text-primary">
+                          {initials}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="text-sm text-foreground truncate">{name}</span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
             {inactivePlayers.length > 0 && (
-              <div className="pt-2">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm font-medium">Inactive Players</span>
-                  <Badge variant="outline">{inactivePlayers.length}</Badge>
+              <div className="pt-1">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-semibold text-muted-foreground">Inactive</span>
+                  <Badge variant="outline" className="font-medium">{inactivePlayers.length}</Badge>
                 </div>
-                <div className="text-sm text-muted-foreground space-y-1">
-                  {inactivePlayers.map(p => (
-                    <div key={p.id}>• {p.profiles.display_name || p.profiles.full_name}</div>
-                  ))}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                  {inactivePlayers.map((p) => {
+                    const name = p.profiles.display_name || p.profiles.full_name || 'Player';
+                    const initials = name.split(' ').map(s => s[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
+                    return (
+                      <div
+                        key={p.id}
+                        className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-muted/20 opacity-60"
+                      >
+                        <Avatar className="h-6 w-6">
+                          <AvatarFallback className="text-[10px] font-semibold bg-muted text-muted-foreground">
+                            {initials}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="text-sm text-muted-foreground truncate">{name}</span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -336,26 +376,46 @@ export function PlayerManagementDialog({
           </div>
         )}
 
-        <DialogFooter>
+        <DialogFooter className="gap-2 sm:gap-2">
+          {mode && (
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setMode(null);
+                setSelectedPlayer("");
+                setSubstituteOriginal("");
+                setSubstituteNew("");
+                setSubstituteScope('global');
+              }}
+              className="mr-auto text-muted-foreground hover:text-foreground"
+            >
+              <ChevronLeft className="h-4 w-4 mr-1" />
+              Back
+            </Button>
+          )}
           <Button variant="outline" onClick={handleClose}>
             Cancel
           </Button>
           {mode === 'add' && (
-            <Button onClick={handleAddPlayer} disabled={!selectedPlayer || loading}>
-              {loading ? "Adding..." : "Add Player"}
+            <Button onClick={handleAddPlayer} disabled={!selectedPlayer || loading} className="gap-1.5">
+              <UserPlus className="h-4 w-4" />
+              {loading ? "Adding…" : "Add Player"}
             </Button>
           )}
           {mode === 'remove' && (
-            <Button onClick={handleMarkInactive} disabled={!selectedPlayer || loading} variant="destructive">
-              {loading ? "Removing..." : "Remove From Roster"}
+            <Button onClick={handleMarkInactive} disabled={!selectedPlayer || loading} variant="destructive" className="gap-1.5">
+              <UserMinus className="h-4 w-4" />
+              {loading ? "Removing…" : "Remove From Roster"}
             </Button>
           )}
           {mode === 'substitute' && (
-            <Button 
-              onClick={handleSubstitute} 
+            <Button
+              onClick={handleSubstitute}
               disabled={!substituteOriginal || !substituteNew || loading}
+              className="gap-1.5"
             >
-              {loading ? "Substituting..." : "Substitute"}
+              <Users className="h-4 w-4" />
+              {loading ? "Substituting…" : "Substitute Player"}
             </Button>
           )}
         </DialogFooter>
