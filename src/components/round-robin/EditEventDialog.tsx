@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Save } from "lucide-react";
 
 interface Event {
   id: string;
@@ -128,158 +129,201 @@ export function EditEventDialog({ open, onOpenChange, event, onSave, playerCount
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4 overflow-y-auto flex-1 px-1">
-          <div className="space-y-2">
-            <Label htmlFor="name">Event Name</Label>
-            <Input
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Event name"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-5 py-4 overflow-y-auto flex-1 px-1">
+          {/* Section: Basics */}
+          <section className="space-y-3">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Basics
+            </h3>
             <div className="space-y-2">
-              <Label htmlFor="date">Event Date</Label>
+              <Label htmlFor="name">Event Name</Label>
               <Input
-                id="date"
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Event name"
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="time">Start Time</Label>
-              <Input
-                id="time"
-                type="time"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="notes">Notes</Label>
-            <Textarea
-              id="notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Additional notes or instructions"
-              rows={3}
-            />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label>Rating Eligible</Label>
-              <p className="text-sm text-muted-foreground">
-                Affects future matches only
-              </p>
-            </div>
-            <Switch
-              checked={ratingEligible}
-              onCheckedChange={setRatingEligible}
-            />
-          </div>
-
-          {ratingEligible && (
-            <div className="space-y-2">
-              <Label htmlFor="rating-type">Match Type</Label>
-              <Select 
-                value={ratingType} 
-                onValueChange={(value) => setRatingType(value as "ladder" | "league" | "playoffs" | "casual")}
-              >
-                <SelectTrigger id="rating-type">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ladder">Ladder</SelectItem>
-                  <SelectItem value="league">League</SelectItem>
-                  <SelectItem value="playoffs">Playoffs</SelectItem>
-                  <SelectItem value="casual">Casual</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="courts">Number of Courts</Label>
-              <Input
-                id="courts"
-                type="number"
-                min="1"
-                max="20"
-                value={numCourts}
-                onChange={(e) => setNumCourts(parseInt(e.target.value) || 1)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="games-per-player">Games per Player</Label>
-              <Input
-                id="games-per-player"
-                type="number"
-                min="1"
-                max="20"
-                value={gamesPerPlayer}
-                onChange={(e) => setGamesPerPlayer(parseInt(e.target.value) || 3)}
-              />
-            </div>
-          </div>
-
-          {event.registration_mode === 'open_registration' && (
-            <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label htmlFor="max-players">Number of Players</Label>
+                <Label htmlFor="date">Event Date</Label>
                 <Input
-                  id="max-players"
-                  type="number"
-                  min="4"
-                  max="100"
-                  value={maxPlayers}
-                  onChange={(e) => setMaxPlayers(parseInt(e.target.value) || 8)}
+                  id="date"
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
                 />
               </div>
-              
+
               <div className="space-y-2">
-                <Label htmlFor="registration-deadline">Registration Deadline</Label>
+                <Label htmlFor="time">Start Time</Label>
                 <Input
-                  id="registration-deadline"
-                  type="datetime-local"
-                  value={registrationDeadline}
-                  onChange={(e) => setRegistrationDeadline(e.target.value)}
-                  min={new Date().toISOString().slice(0, 16)}
+                  id="time"
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
                 />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="notes">Notes</Label>
+              <Textarea
+                id="notes"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Additional notes or instructions"
+                rows={3}
+              />
+            </div>
+          </section>
+
+          {/* Section: Rating */}
+          <section className="space-y-3 pt-1 border-t border-border/60">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground pt-3">
+              Rating
+            </h3>
+            <div className="flex items-center justify-between gap-3">
+              <div className="space-y-0.5 min-w-0">
+                <Label>Rating eligible</Label>
                 <p className="text-xs text-muted-foreground">
-                  Players can register until this date and time
+                  Future matches only — past scores aren't affected
                 </p>
               </div>
-            </>
-          )}
+              <Switch
+                checked={ratingEligible}
+                onCheckedChange={setRatingEligible}
+              />
+            </div>
 
-          <div className="bg-muted/50 p-3 rounded-lg space-y-1">
-            <p className="text-sm font-medium">Auto-calculated Schedule</p>
-            <p className="text-xs text-muted-foreground">
-              {event.registration_mode === 'open_registration' ? maxPlayers : playerCount || 8} players × {gamesPerPlayer} games ÷ ({numCourts} courts × 4 slots) = <span className="font-semibold">{calculatedRounds} rounds</span>
-            </p>
-            {calculatedRounds !== event.num_rounds && (
-              <p className="text-xs text-amber-600 dark:text-amber-400">
-                ⚠ Rounds will update from {event.num_rounds} to {calculatedRounds}
-              </p>
+            {ratingEligible && (
+              <div className="space-y-2">
+                <Label htmlFor="rating-type">Match type</Label>
+                <Select
+                  value={ratingType}
+                  onValueChange={(value) => setRatingType(value as "ladder" | "league" | "playoffs" | "casual")}
+                >
+                  <SelectTrigger id="rating-type">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ladder">Ladder</SelectItem>
+                    <SelectItem value="league">League</SelectItem>
+                    <SelectItem value="playoffs">Playoffs</SelectItem>
+                    <SelectItem value="casual">Casual</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             )}
-          </div>
+          </section>
+
+          {/* Section: Schedule */}
+          <section className="space-y-3 pt-1 border-t border-border/60">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground pt-3">
+              Schedule
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="courts">Courts available</Label>
+                <Input
+                  id="courts"
+                  type="number"
+                  inputMode="numeric"
+                  min="1"
+                  max="20"
+                  value={numCourts}
+                  onChange={(e) => setNumCourts(parseInt(e.target.value) || 1)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="games-per-player">Games per player</Label>
+                <Input
+                  id="games-per-player"
+                  type="number"
+                  inputMode="numeric"
+                  min="1"
+                  max="20"
+                  value={gamesPerPlayer}
+                  onChange={(e) => setGamesPerPlayer(parseInt(e.target.value) || 3)}
+                />
+              </div>
+            </div>
+
+            {event.registration_mode === 'open_registration' && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="max-players">Number of players</Label>
+                  <Input
+                    id="max-players"
+                    type="number"
+                    inputMode="numeric"
+                    min="4"
+                    max="100"
+                    value={maxPlayers}
+                    onChange={(e) => setMaxPlayers(parseInt(e.target.value) || 8)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="registration-deadline">Registration deadline</Label>
+                  <Input
+                    id="registration-deadline"
+                    type="datetime-local"
+                    value={registrationDeadline}
+                    onChange={(e) => setRegistrationDeadline(e.target.value)}
+                    min={new Date().toISOString().slice(0, 16)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Players can register until this date and time
+                  </p>
+                </div>
+              </>
+            )}
+
+            {/* Schedule preview — primary-tinted, large numeric, same pattern
+                as CourtsRoundsDialog so the visual language stays consistent. */}
+            <div
+              className="rounded-xl border border-primary/20 p-3.5"
+              style={{ backgroundColor: "hsl(var(--primary) / 0.05)" }}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-xs font-semibold text-primary uppercase tracking-wide">
+                    Schedule preview
+                  </div>
+                  <div className="text-sm text-muted-foreground mt-0.5">
+                    {event.registration_mode === 'open_registration' ? maxPlayers : (playerCount || 8)} players ·{" "}
+                    {numCourts} {numCourts === 1 ? 'court' : 'courts'} ·{" "}
+                    {gamesPerPlayer} {gamesPerPlayer === 1 ? 'game' : 'games'}
+                  </div>
+                  {calculatedRounds !== event.num_rounds && (
+                    <div className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                      Rounds will change from {event.num_rounds} to {calculatedRounds}
+                    </div>
+                  )}
+                </div>
+                <div className="flex-shrink-0 text-right">
+                  <div className="text-2xl font-bold text-primary tabular-nums leading-none">
+                    {calculatedRounds}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    {calculatedRounds === 1 ? 'round' : 'rounds'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
         </div>
 
-        <DialogFooter className="flex-shrink-0">
+        <DialogFooter className="flex-shrink-0 gap-2 sm:gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={!hasChanges || saving}>
-            {saving ? "Saving..." : "Save Changes"}
+          <Button onClick={handleSave} disabled={!hasChanges || saving} className="gap-1.5">
+            <Save className="h-4 w-4" />
+            {saving ? "Saving…" : "Save Changes"}
           </Button>
         </DialogFooter>
       </DialogContent>

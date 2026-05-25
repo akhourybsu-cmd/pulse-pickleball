@@ -22,7 +22,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Edit3, Trash2, Ban, AlertTriangle, ShieldCheck } from "lucide-react";
+import { Edit3, Trash2, Ban, AlertTriangle, ChevronRight, ChevronLeft, ShieldCheck } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -202,82 +202,100 @@ export function ScoreManagementDialog({
                 </div>
 
                 {!mode && roundMatches.length > 0 ? (
-                  <div className="space-y-3">
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start h-auto py-4"
-                      onClick={() => setMode('enter')}
-                    >
-                      <Edit3 className="w-5 h-5 mr-3" />
-                      <div className="text-left">
-                        <div className="font-semibold">Enter Scores</div>
-                        <div className="text-sm text-muted-foreground">
-                          Enter or update scores for any match in this round
-                        </div>
-                      </div>
-                    </Button>
+                  <div className="space-y-4">
+                    {/* Action cards — consistent visual language with PlayerManagementDialog. */}
+                    <div className="space-y-2">
+                      {[
+                        {
+                          id: 'enter' as const,
+                          icon: Edit3,
+                          title: 'Enter Scores',
+                          description: 'Enter or update scores for any match in this round',
+                          tone: 'default' as const,
+                          show: true,
+                        },
+                        {
+                          id: 'edit' as const,
+                          icon: Edit3,
+                          title: 'Edit Score',
+                          description: 'Update an existing score and recalculate standings',
+                          tone: 'default' as const,
+                          show: scoredMatches.length > 0,
+                        },
+                        {
+                          id: 'void' as const,
+                          icon: Ban,
+                          title: 'Void Match',
+                          description: 'Keep the record but remove from standings and ratings',
+                          tone: 'default' as const,
+                          show: true,
+                        },
+                        {
+                          id: 'delete' as const,
+                          icon: Trash2,
+                          title: 'Delete Match (Admin)',
+                          description: 'Permanently remove the match record',
+                          tone: 'destructive' as const,
+                          show: isAdmin,
+                        },
+                      ].filter((a) => a.show).map((action) => {
+                        const Icon = action.icon;
+                        const isDestructive = action.tone === 'destructive';
+                        return (
+                          <button
+                            key={action.id}
+                            type="button"
+                            onClick={() => setMode(action.id)}
+                            className="w-full flex items-center gap-3 p-3 rounded-xl border border-border bg-card hover:border-primary/40 hover:bg-muted/30 active:scale-[0.99] transition-all text-left"
+                          >
+                            <div className={`h-10 w-10 rounded-lg flex items-center justify-center flex-shrink-0 ${isDestructive ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'}`}>
+                              <Icon className="h-5 w-5" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className={`font-semibold text-sm ${isDestructive ? 'text-destructive' : ''}`}>{action.title}</div>
+                              <div className="text-xs text-muted-foreground mt-0.5">{action.description}</div>
+                            </div>
+                            <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          </button>
+                        );
+                      })}
+                    </div>
 
-                    {scoredMatches.length > 0 && (
-                      <Button
-                        variant="outline"
-                        className="w-full justify-start h-auto py-4"
-                        onClick={() => setMode('edit')}
-                      >
-                        <Edit3 className="w-5 h-5 mr-3" />
-                        <div className="text-left">
-                          <div className="font-semibold">Edit Score</div>
-                          <div className="text-sm text-muted-foreground">
-                            Update match score and recalculate standings
-                          </div>
-                        </div>
-                      </Button>
-                    )}
-
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start h-auto py-4"
-                      onClick={() => setMode('void')}
-                    >
-                      <Ban className="w-5 h-5 mr-3" />
-                      <div className="text-left">
-                        <div className="font-semibold">Void Match</div>
-                        <div className="text-sm text-muted-foreground">
-                          Keep record but remove from standings/ratings
-                        </div>
-                      </div>
-                    </Button>
-
-                    {isAdmin && (
-                      <Button
-                        variant="outline"
-                        className="w-full justify-start h-auto py-4 text-destructive"
-                        onClick={() => setMode('delete')}
-                      >
-                        <Trash2 className="w-5 h-5 mr-3" />
-                        <div className="text-left">
-                          <div className="font-semibold">Delete Match (Admin)</div>
-                          <div className="text-sm text-muted-foreground">
-                            Permanently remove match record
-                          </div>
-                        </div>
-                      </Button>
-                    )}
-
-                    <div className="pt-4 border-t">
-                      <p className="text-sm font-medium mb-3">Scored Matches in Round {selectedRound}</p>
+                    {/* Round preview — match cards with court + score + teams. */}
+                    <div className="pt-3 border-t border-border/60">
+                      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                        Matches in Round {selectedRound}
+                      </p>
                       <div className="space-y-2">
-                        {roundMatches.map(match => (
-                          <div key={match.id} className="p-3 border rounded-lg text-sm">
-                            <div className="flex items-center justify-between mb-2">
-                              <Badge variant="secondary">Court {match.court_no}</Badge>
-                              <Badge variant="default">{match.team1_score} - {match.team2_score}</Badge>
+                        {roundMatches.map((match) => {
+                          const hasScore = match.team1_score !== null && match.team2_score !== null;
+                          return (
+                            <div key={match.id} className="p-3 rounded-xl bg-muted/40 text-sm space-y-2">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-mono font-semibold text-muted-foreground">
+                                  COURT {match.court_no}
+                                </span>
+                                {hasScore ? (
+                                  <span className="text-base font-bold tabular-nums text-primary">
+                                    {match.team1_score}–{match.team2_score}
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">No score</span>
+                                )}
+                              </div>
+                              <div className="space-y-0.5 text-foreground/90">
+                                <div className="truncate">
+                                  <span className="text-muted-foreground">A:</span>{' '}
+                                  {getPlayerName(match.a1_player_id)} &amp; {getPlayerName(match.a2_player_id)}
+                                </div>
+                                <div className="truncate">
+                                  <span className="text-muted-foreground">B:</span>{' '}
+                                  {getPlayerName(match.b1_player_id)} &amp; {getPlayerName(match.b2_player_id)}
+                                </div>
+                              </div>
                             </div>
-                            <div className="space-y-1">
-                              <div><strong>Team A:</strong> {getPlayerName(match.a1_player_id)} & {getPlayerName(match.a2_player_id)}</div>
-                              <div><strong>Team B:</strong> {getPlayerName(match.b1_player_id)} & {getPlayerName(match.b2_player_id)}</div>
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   </div>
@@ -310,31 +328,35 @@ export function ScoreManagementDialog({
 
                     {selectedMatchData && (
                       <>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label>Team A Score</Label>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="rounded-xl border border-border bg-card p-3 space-y-2">
+                            <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Team A</Label>
                             <Input
                               type="number"
+                              inputMode="numeric"
                               min="0"
                               max="99"
                               value={team1Score}
                               onChange={(e) => setTeam1Score(parseInt(e.target.value) || 0)}
+                              className="h-12 text-2xl text-center font-bold tabular-nums focus-visible:ring-2 focus-visible:ring-primary"
                             />
-                            <p className="text-xs text-muted-foreground">
-                              {getPlayerName(selectedMatchData.a1_player_id)} & {getPlayerName(selectedMatchData.a2_player_id)}
+                            <p className="text-xs text-muted-foreground truncate">
+                              {getPlayerName(selectedMatchData.a1_player_id)} &amp; {getPlayerName(selectedMatchData.a2_player_id)}
                             </p>
                           </div>
-                          <div className="space-y-2">
-                            <Label>Team B Score</Label>
+                          <div className="rounded-xl border border-border bg-card p-3 space-y-2">
+                            <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Team B</Label>
                             <Input
                               type="number"
+                              inputMode="numeric"
                               min="0"
                               max="99"
                               value={team2Score}
                               onChange={(e) => setTeam2Score(parseInt(e.target.value) || 0)}
+                              className="h-12 text-2xl text-center font-bold tabular-nums focus-visible:ring-2 focus-visible:ring-primary"
                             />
-                            <p className="text-xs text-muted-foreground">
-                              {getPlayerName(selectedMatchData.b1_player_id)} & {getPlayerName(selectedMatchData.b2_player_id)}
+                            <p className="text-xs text-muted-foreground truncate">
+                              {getPlayerName(selectedMatchData.b1_player_id)} &amp; {getPlayerName(selectedMatchData.b2_player_id)}
                             </p>
                           </div>
                         </div>
@@ -387,31 +409,35 @@ export function ScoreManagementDialog({
 
                     {selectedMatchData && (
                       <>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label>Team A Score</Label>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="rounded-xl border border-border bg-card p-3 space-y-2">
+                            <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Team A</Label>
                             <Input
                               type="number"
+                              inputMode="numeric"
                               min="0"
                               max="99"
                               value={team1Score}
                               onChange={(e) => setTeam1Score(parseInt(e.target.value) || 0)}
+                              className="h-12 text-2xl text-center font-bold tabular-nums focus-visible:ring-2 focus-visible:ring-primary"
                             />
-                            <p className="text-xs text-muted-foreground">
-                              {getPlayerName(selectedMatchData.a1_player_id)} & {getPlayerName(selectedMatchData.a2_player_id)}
+                            <p className="text-xs text-muted-foreground truncate">
+                              {getPlayerName(selectedMatchData.a1_player_id)} &amp; {getPlayerName(selectedMatchData.a2_player_id)}
                             </p>
                           </div>
-                          <div className="space-y-2">
-                            <Label>Team B Score</Label>
+                          <div className="rounded-xl border border-border bg-card p-3 space-y-2">
+                            <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Team B</Label>
                             <Input
                               type="number"
+                              inputMode="numeric"
                               min="0"
                               max="99"
                               value={team2Score}
                               onChange={(e) => setTeam2Score(parseInt(e.target.value) || 0)}
+                              className="h-12 text-2xl text-center font-bold tabular-nums focus-visible:ring-2 focus-visible:ring-primary"
                             />
-                            <p className="text-xs text-muted-foreground">
-                              {getPlayerName(selectedMatchData.b1_player_id)} & {getPlayerName(selectedMatchData.b2_player_id)}
+                            <p className="text-xs text-muted-foreground truncate">
+                              {getPlayerName(selectedMatchData.b1_player_id)} &amp; {getPlayerName(selectedMatchData.b2_player_id)}
                             </p>
                           </div>
                         </div>
@@ -491,41 +517,59 @@ export function ScoreManagementDialog({
             )}
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:gap-2">
+            {mode && (
+              <Button
+                variant="ghost"
+                onClick={resetForm}
+                className="mr-auto text-muted-foreground hover:text-foreground"
+              >
+                <ChevronLeft className="h-4 w-4 mr-1" />
+                Back
+              </Button>
+            )}
             <Button variant="outline" onClick={handleClose}>
               Cancel
             </Button>
             {mode === 'enter' && (
-              <Button 
-                onClick={handleEditScore} 
+              <Button
+                onClick={handleEditScore}
                 disabled={!selectedMatch || team1Score === team2Score || loading}
+                className="gap-1.5"
               >
-                {loading ? "Saving..." : "Save Score"}
+                <Edit3 className="h-4 w-4" />
+                {loading ? "Saving…" : "Save Score"}
               </Button>
             )}
             {mode === 'edit' && (
-              <Button 
-                onClick={handleEditScore} 
+              <Button
+                onClick={handleEditScore}
                 disabled={!selectedMatch || team1Score === team2Score || !hasScoreChanged || loading}
+                className="gap-1.5"
               >
-                {loading ? "Saving..." : "Update Score"}
+                <Edit3 className="h-4 w-4" />
+                {loading ? "Saving…" : "Update Score"}
               </Button>
             )}
             {mode === 'void' && (
-              <Button 
+              <Button
                 variant="destructive"
-                onClick={() => setConfirmDialogOpen(true)} 
+                onClick={() => setConfirmDialogOpen(true)}
                 disabled={!selectedMatch || loading}
+                className="gap-1.5"
               >
+                <Ban className="h-4 w-4" />
                 Void Match
               </Button>
             )}
             {mode === 'delete' && (
-              <Button 
+              <Button
                 variant="destructive"
-                onClick={() => setConfirmDialogOpen(true)} 
+                onClick={() => setConfirmDialogOpen(true)}
                 disabled={!selectedMatch || loading}
+                className="gap-1.5"
               >
+                <Trash2 className="h-4 w-4" />
                 Delete Match
               </Button>
             )}
