@@ -339,6 +339,7 @@ export function WizardContainer() {
         totalSteps={totalSteps}
         onBack={goBack}
         canGoBack={currentStepIndex > 0}
+        stepLabel={currentStep.label}
       />
 
       <main className="flex-1 px-4 py-6 pb-24 overflow-hidden">
