@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -132,6 +132,11 @@ interface MatchScore {
 export default function RoundRobinDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  // When the user arrived via /venue/round-robins/:id (now a redirect with
+  // ?ctx=venue), back-nav should return them to the venue console rather
+  // than the public RR hub.
+  const backHref = searchParams.get("ctx") === "venue" ? "/venue/round-robins" : "/round-robin";
   const [loading, setLoading] = useState(true);
   const [event, setEvent] = useState<Event | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
@@ -712,7 +717,7 @@ export default function RoundRobinDetail() {
         });
         if (error) throw error;
         toast.success("Event deleted successfully.");
-        navigate("/round-robin");
+        navigate(backHref);
         return;
       }
       
@@ -1405,7 +1410,7 @@ export default function RoundRobinDetail() {
 
       toast.success(`You have left ${event.name}`);
       setLeaveDialogOpen(false);
-      navigate('/round-robin');
+      navigate(backHref);
     } catch (error: any) {
       console.error('Leave error:', error);
       toast.error('Failed to leave event');
@@ -1440,7 +1445,7 @@ export default function RoundRobinDetail() {
         >
           <Trophy className="h-16 w-16 mx-auto mb-4 text-muted-foreground/50" />
           <p className="text-muted-foreground mb-4">Event not found</p>
-          <Button onClick={() => navigate("/round-robin")} variant="outline">
+          <Button onClick={() => navigate(backHref)} variant="outline">
             Go Back
           </Button>
         </motion.div>

@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ModeProvider } from "@/contexts/ModeContext";
@@ -25,6 +25,28 @@ import { toast } from "sonner";
 function RedirectWithParams({ to }: { to: string }) {
   const location = useLocation();
   return <Navigate to={`${to}${location.search}${location.hash}`} replace />;
+}
+
+/**
+ * Send /venue/round-robins/:id traffic to the unified RoundRobinDetail page.
+ * Adds `?ctx=venue` so the detail page's back-nav can return to the venue
+ * console (instead of the public RoundRobinHub) for venue-context viewers.
+ * Replaces the previously-slim VenueRoundRobinDetail (strict subset of the
+ * full detail page) so venue staff get every organizer feature.
+ */
+function VenueRoundRobinDetailRedirect() {
+  const { id } = useParams();
+  return <Navigate to={`/round-robin/${id}?ctx=venue`} replace />;
+}
+
+/**
+ * Same pattern for /venue/round-robins/:id/kiosk → /round-robin/:id/kiosk.
+ * Kiosk mode is a fullscreen TV display so back-nav isn't a concern; this
+ * just consolidates to a single kiosk implementation.
+ */
+function VenueRoundRobinKioskRedirect() {
+  const { id } = useParams();
+  return <Navigate to={`/round-robin/${id}/kiosk`} replace />;
 }
 
 // Loading fallback component
@@ -144,8 +166,6 @@ const VenueStaff = lazy(() => import("./pages/venue/VenueStaff"));
 const VenueSettings = lazy(() => import("./pages/venue/VenueSettings"));
 const VenueAnalytics = lazy(() => import("./pages/venue/VenueAnalytics"));
 const VenueRoundRobins = lazy(() => import("./pages/venue/VenueRoundRobins"));
-const VenueRoundRobinDetail = lazy(() => import("./pages/venue/VenueRoundRobinDetail"));
-const VenueRoundRobinKiosk = lazy(() => import("./pages/venue/VenueRoundRobinKiosk"));
 const VenueVerificationPending = lazy(() => import("./pages/venue/VenueVerificationPending"));
 const PublicVenueLanding = lazy(() => import("./pages/PublicVenueLanding"));
 const VenueInterestWizard = lazy(() => import("./pages/VenueInterestWizard"));
@@ -293,7 +313,7 @@ const AppContent = () => {
             <Route path="tournaments" element={<VenueTournaments />} />
             <Route path="tournaments/new" element={<TournamentNewWithGating />} />
             <Route path="round-robins" element={<VenueRoundRobins />} />
-            <Route path="round-robins/:id" element={<VenueRoundRobinDetail />} />
+            <Route path="round-robins/:id" element={<VenueRoundRobinDetailRedirect />} />
             <Route path="coaching" element={<VenueCoaching />} />
             <Route path="staff" element={<VenueStaff />} />
             <Route path="settings" element={<VenueSettings />} />
@@ -321,7 +341,7 @@ const AppContent = () => {
             <AuthGuard><VenueVerificationPending /></AuthGuard>
           } />
           {/* Public kiosk display - intentionally unprotected for venue display screens */}
-          <Route path="/venue/round-robins/:id/kiosk" element={<VenueRoundRobinKiosk />} />
+          <Route path="/venue/round-robins/:id/kiosk" element={<VenueRoundRobinKioskRedirect />} />
 
           {/* Legacy routes - redirect to new structure */}
           <Route path="/dashboard" element={<Navigate to="/player/dashboard" replace />} />

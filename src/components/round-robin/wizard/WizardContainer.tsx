@@ -8,15 +8,12 @@ import { WizardCard } from "./WizardCard";
 import { WizardNavigation } from "./WizardNavigation";
 import { useWizardSteps, WizardFormData, generateDefaultEventName, calculateScheduleMetrics } from "./hooks/useWizardSteps";
 import { EventModeStep } from "./steps/EventModeStep";
-import { EventNameStep } from "./steps/EventNameStep";
-import { LocationStep } from "./steps/LocationStep";
 import { FormatStep } from "./steps/FormatStep";
+import { DetailsStep } from "./steps/DetailsStep";
 import { PlayersStep } from "./steps/PlayersStep";
-import { CourtsStep } from "./steps/CourtsStep";
-import { GamesStep } from "./steps/GamesStep";
+import { ScheduleStep } from "./steps/ScheduleStep";
 import { DateTimeStep } from "./steps/DateTimeStep";
 import { RatingsStep } from "./steps/RatingsStep";
-import { NotesStep } from "./steps/NotesStep";
 import { ReviewStep } from "./steps/ReviewStep";
 
 interface Court {
@@ -254,20 +251,6 @@ export function WizardContainer() {
             }}
           />
         );
-      case "name":
-        return (
-          <EventNameStep
-            value={formData.eventName}
-            onChange={(v) => updateFormData("eventName", v)}
-          />
-        );
-      case "location":
-        return (
-          <LocationStep
-            value={formData.locationId}
-            onChange={(v) => updateFormData("locationId", v)}
-          />
-        );
       case "format":
         return (
           <FormatStep
@@ -276,6 +259,18 @@ export function WizardContainer() {
               updateFormData("format", v);
               setTimeout(() => goNext(), 150);
             }}
+          />
+        );
+      case "details":
+        // Combined Name + Location + Notes — see DetailsStep for rationale.
+        return (
+          <DetailsStep
+            eventName={formData.eventName}
+            onEventNameChange={(v) => updateFormData("eventName", v)}
+            locationId={formData.locationId}
+            onLocationIdChange={(v) => updateFormData("locationId", v)}
+            notes={formData.notes}
+            onNotesChange={(v) => updateFormData("notes", v)}
           />
         );
       case "players":
@@ -293,18 +288,14 @@ export function WizardContainer() {
             onMaxPlayersChange={(v) => updateFormData("maxPlayers", v)}
           />
         );
-      case "courts":
+      case "schedule":
+        // Combined Courts + Games — see ScheduleStep for rationale.
         return (
-          <CourtsStep
-            value={formData.courtCount}
-            onChange={(v) => updateFormData("courtCount", v)}
-          />
-        );
-      case "games":
-        return (
-          <GamesStep
-            value={formData.gamesPerPlayer}
-            onChange={(v) => updateFormData("gamesPerPlayer", v)}
+          <ScheduleStep
+            courtCount={formData.courtCount}
+            onCourtCountChange={(v) => updateFormData("courtCount", v)}
+            gamesPerPlayer={formData.gamesPerPlayer}
+            onGamesPerPlayerChange={(v) => updateFormData("gamesPerPlayer", v)}
           />
         );
       case "datetime":
@@ -326,13 +317,6 @@ export function WizardContainer() {
             onRatingEligibleChange={(v) => updateFormData("ratingEligible", v)}
             ratingType={formData.ratingType}
             onRatingTypeChange={(v) => updateFormData("ratingType", v)}
-          />
-        );
-      case "notes":
-        return (
-          <NotesStep
-            value={formData.notes}
-            onChange={(v) => updateFormData("notes", v)}
           />
         );
       case "review":

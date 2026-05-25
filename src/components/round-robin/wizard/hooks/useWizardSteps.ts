@@ -26,17 +26,21 @@ export interface WizardStep {
   isOptional: boolean;
 }
 
+// 8-step wizard (slimmed from 11).
+//   - "details" replaces the previous Name + Location + Notes screens
+//     (3 form-input screens collapsed into a single coherent "details" form).
+//   - "schedule" replaces the previous Courts + Games screens (2 numeric
+//     configs that both drive schedule generation, now shown together).
+// Mode and Format stay separate because they're tile/auto-advance UX and
+// don't mix well with form-input screens.
 const ALL_STEPS: WizardStep[] = [
   { id: "mode", label: "Event Mode", isOptional: false },
-  { id: "name", label: "Event Name", isOptional: true },
-  { id: "location", label: "Location", isOptional: true },
   { id: "format", label: "Format", isOptional: false },
+  { id: "details", label: "Details", isOptional: true },
   { id: "players", label: "Players", isOptional: false },
-  { id: "courts", label: "Courts", isOptional: false },
-  { id: "games", label: "Games", isOptional: false },
+  { id: "schedule", label: "Schedule", isOptional: false },
   { id: "datetime", label: "Date & Time", isOptional: false },
   { id: "ratings", label: "Ratings", isOptional: false },
-  { id: "notes", label: "Notes", isOptional: true },
   { id: "review", label: "Review", isOptional: false },
 ];
 
@@ -50,12 +54,12 @@ export function useWizardSteps(formData: WizardFormData) {
     switch (stepId) {
       case "mode":
         return !!formData.eventMode;
-      case "name":
-        return true; // Optional - auto-fills with default if left blank
-      case "location":
-        return true; // Optional
       case "format":
         return !!formData.format;
+      case "details":
+        // All three sub-fields are optional. Name auto-fills, location and
+        // notes can stay blank. So the combined step is always valid.
+        return true;
       case "players":
         if (formData.eventMode === "immediate") {
           if (formData.playerInputMethod === "count") {
@@ -67,10 +71,9 @@ export function useWizardSteps(formData: WizardFormData) {
           return false; // Must choose an input method first
         }
         return formData.maxPlayers >= 4;
-      case "courts":
-        return formData.courtCount >= 1;
-      case "games":
-        return formData.gamesPerPlayer >= 1;
+      case "schedule":
+        // Both sub-fields must be valid for the combined step to advance.
+        return formData.courtCount >= 1 && formData.gamesPerPlayer >= 1;
       case "datetime":
         if (formData.eventMode === "immediate") {
           return !!formData.startTime;
@@ -90,8 +93,6 @@ export function useWizardSteps(formData: WizardFormData) {
           return !!formData.ratingType;
         }
         return true;
-      case "notes":
-        return true; // Optional
       case "review":
         return true;
       default:

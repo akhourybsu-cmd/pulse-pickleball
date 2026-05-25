@@ -37,9 +37,12 @@ export const QuickActionsBar = () => {
       tourTag: "find-play",
     },
     {
+      // Routes to the dedicated RR hub (My/Participating/Browse tabs)
+      // rather than the type-filtered PlayHub — the hub is purpose-built
+      // for round-robin browsing and gives a richer surface for organizers.
       label: "Round Robins",
       icon: <Users className="w-5 h-5" />,
-      path: "/player/play?type=round_robin",
+      path: "/round-robin",
     },
     {
       label: "Tournaments",
