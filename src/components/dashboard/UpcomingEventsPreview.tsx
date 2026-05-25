@@ -57,7 +57,7 @@ export function UpcomingEventsPreview({ userId }: UpcomingEventsPreviewProps) {
       <div className="p-3">
         {hasEvents ? (
           <div className="space-y-2">
-            {registrations.map((registration) => {
+            {registrations.map((registration: any) => {
               const event = registration.event;
               if (!event) return null;
               
