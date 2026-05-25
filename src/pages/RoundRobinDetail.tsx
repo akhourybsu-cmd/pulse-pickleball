@@ -1518,184 +1518,183 @@ export default function RoundRobinDetail() {
       )}
       
       <div className="pb-20">
-      {/* Premium Event Info Banner */}
-      <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="relative overflow-hidden border-b border-border/50"
+      {/* Refined hero — static gradient (no animated orb), tighter density,
+          horizontally-scrolling action row on mobile instead of wrapping. */}
+      <div
+        className="relative border-b border-border/50"
+        style={{
+          background:
+            "linear-gradient(180deg, hsl(var(--primary) / 0.08) 0%, hsl(var(--background)) 100%)",
+        }}
       >
-        {/* Animated gradient background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-background to-secondary/10" />
-        <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-        
-        <div className="container relative mx-auto px-4 py-6">
-          <div className="flex items-start justify-between gap-4 flex-wrap">
-            <motion.div 
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.1 }}
-              className="flex-1 min-w-[280px]"
-            >
-              <div className="mb-3">
-                <h1 className="text-2xl md:text-3xl font-bold text-foreground">{event.name}</h1>
-                <motion.div
-                  initial={{ scaleX: 0 }}
-                  animate={{ scaleX: 1 }}
-                  transition={{ duration: 0.5, delay: 0.3 }}
-                  className="h-1 w-20 mt-2 origin-left bg-gradient-to-r from-primary to-primary/50 rounded-full"
-                />
-              </div>
-              
-              <div className="flex flex-wrap items-center gap-2 mb-4">
+        <div className="container relative mx-auto px-4 py-5 sm:py-6">
+          {/* Row 1: status + title + share */}
+          <div className="flex items-start gap-3 mb-3">
+            <div className="flex-1 min-w-0">
+              {/* Status row — single prominent pill */}
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
                 {event.status === 'live' ? (
-                  <Badge className="bg-primary text-primary-foreground shadow-[0_0_12px_rgba(197,232,108,0.5)]">
-                    <span className="mr-2 relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary text-primary-foreground text-xs font-semibold tracking-wide">
+                    <span className="relative flex h-1.5 w-1.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
+                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white" />
                     </span>
                     LIVE
-                  </Badge>
+                  </span>
                 ) : event.status === 'completed' ? (
-                  <Badge className="bg-secondary text-secondary-foreground">
-                    <Trophy className="h-3 w-3 mr-1" />
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary text-secondary-foreground text-xs font-semibold tracking-wide">
+                    <Trophy className="h-3 w-3" />
                     COMPLETED
-                  </Badge>
+                  </span>
                 ) : (
-                  <Badge variant="outline" className="text-muted-foreground">DRAFT</Badge>
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-full border border-border bg-card/60 text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+                    Draft
+                  </span>
                 )}
-                {event.voided && <Badge variant="destructive">Voided</Badge>}
+                {event.voided && (
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-destructive text-destructive-foreground text-xs font-semibold">
+                    Voided
+                  </span>
+                )}
                 {event.rating_eligible && (
-                  <Badge variant="outline" className="border-primary/50 text-primary">
-                    Rating Eligible
-                  </Badge>
-                )}
-                <Badge variant="outline" className="bg-muted/50">
-                  Doubles Format
-                </Badge>
-                <Badge variant="outline" className="bg-muted/50">
-                  Rounds: {hasSchedule ? event.num_rounds : '—'}
-                </Badge>
-              </div>
-
-              <div className="flex items-center gap-4 flex-wrap">
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-card/80 backdrop-blur-sm border border-border/50 text-sm">
-                  <Calendar className="h-4 w-4 text-primary" />
-                  <span>{format(parseISO(event.date + 'T00:00:00'), 'PP')}</span>
-                </div>
-                {event.start_time && (
-                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-card/80 backdrop-blur-sm border border-border/50 text-sm">
-                    <Clock className="h-4 w-4 text-primary" />
-                    <span>{event.start_time}</span>
-                  </div>
-                )}
-                {isOrganizer && (
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={handleShareEvent}
-                          className="h-8 px-3 hover:bg-primary/10"
-                        >
-                          <Share2 className="h-4 w-4 mr-1" />
-                          Share
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Share event link</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-full border border-primary/40 text-primary text-xs font-medium">
+                    Rating eligible
+                  </span>
                 )}
               </div>
-            </motion.div>
 
-            {/* Action buttons */}
-            <motion.div 
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.2 }}
-              className="flex items-center gap-2 flex-wrap"
-            >
-              {!isOrganizer && isParticipant && !event.voided && 
-                event.status === 'draft' && 
-                (!event.registration_deadline || new Date() < new Date(event.registration_deadline)) && (
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => setLeaveDialogOpen(true)}
-                  className="border-destructive/50 text-destructive hover:bg-destructive/10"
-                >
-                  Leave Event
-                </Button>
-              )}
-              {isOrganizer && !event.voided && (
-                <>
-                  {event.status === 'live' && (
-                    <Button 
-                      size="sm"
-                      onClick={() => {
-                        const kioskUrl = `/round-robin/${event.id}/kiosk`;
-                        window.open(kioskUrl, '_blank', 'width=1920,height=1080');
-                      }}
-                      className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20"
-                    >
-                      <Monitor className="h-4 w-4 mr-2" />
-                      Kiosk Mode
-                    </Button>
-                  )}
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => setEditDialogOpen(true)}
-                    disabled={isEditMode}
-                    className="hover:bg-muted/80"
-                  >
-                    <Settings className="h-4 w-4 mr-2" />
-                    Settings
-                  </Button>
-                  {event.status === 'draft' && (
-                    <>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => setCourtsRoundsOpen(true)}
-                        className="hover:bg-muted/80"
-                      >
-                        <Edit className="h-4 w-4 mr-2" />
-                        Courts & Games
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={async () => {
-                          if (!confirm("Regenerate the entire schedule from scratch? This will reset all court assignments to match current settings.")) {
-                            return;
-                          }
-                          try {
-                            toast.loading("Regenerating schedule...");
-                            await regenerateScheduleFromRound(1);
-                            await fetchEventDetails();
-                            toast.success("Schedule regenerated successfully");
-                          } catch (error: any) {
-                            toast.error("Failed to regenerate schedule");
-                            console.error(error);
-                          }
-                        }}
-                        className="hover:bg-muted/80"
-                      >
-                        <RefreshCw className="h-4 w-4 mr-2" />
-                        Sync Schedule
-                      </Button>
-                    </>
-                  )}
-                </>
-              )}
-            </motion.div>
+              {/* Title with static accent line */}
+              <h1 className="text-2xl md:text-3xl font-bold text-foreground leading-tight">
+                {event.name}
+              </h1>
+              <div className="h-1 w-12 mt-1.5 bg-primary rounded-full" />
+            </div>
+
+            {/* Share — icon-only on mobile, full button on desktop */}
+            {isOrganizer && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleShareEvent}
+                className="flex-shrink-0 h-9 px-2.5 sm:px-3 hover:bg-primary/10"
+              >
+                <Share2 className="h-4 w-4 sm:mr-1.5" />
+                <span className="hidden sm:inline">Share</span>
+              </Button>
+            )}
           </div>
+
+          {/* Row 2: key facts — inline icon row, single line on mobile */}
+          <div className="flex items-center gap-x-4 gap-y-1.5 flex-wrap text-sm text-muted-foreground">
+            <div className="inline-flex items-center gap-1.5">
+              <Calendar className="h-4 w-4 text-primary/80" />
+              <span>{format(parseISO(event.date + 'T00:00:00'), 'PP')}</span>
+            </div>
+            {event.start_time && (
+              <div className="inline-flex items-center gap-1.5">
+                <Clock className="h-4 w-4 text-primary/80" />
+                <span>{event.start_time}</span>
+              </div>
+            )}
+            <div className="inline-flex items-center gap-1.5">
+              <Users className="h-4 w-4 text-primary/80" />
+              <span>{players.length} {players.length === 1 ? 'player' : 'players'}</span>
+            </div>
+            <div className="inline-flex items-center gap-1.5">
+              <Trophy className="h-4 w-4 text-primary/80" />
+              <span>
+                {hasSchedule ? `${event.num_rounds} rounds` : 'Schedule TBD'}
+                {' · '}
+                Doubles
+              </span>
+            </div>
+          </div>
+
+          {/* Row 3 (organizers only): action row.
+              Horizontally scrolls on mobile so all actions fit in one row
+              instead of wrapping to multiple lines like the old version. */}
+          {(isOrganizer || (!isOrganizer && isParticipant && !event.voided && event.status === 'draft' && (!event.registration_deadline || new Date() < new Date(event.registration_deadline)))) && (
+            <div className="mt-4 flex items-center gap-2 -mx-4 sm:mx-0 overflow-x-auto scrollbar-hide pb-1">
+              <div className="flex items-center gap-2 px-4 sm:px-0">
+                {!isOrganizer && isParticipant && !event.voided &&
+                  event.status === 'draft' &&
+                  (!event.registration_deadline || new Date() < new Date(event.registration_deadline)) && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setLeaveDialogOpen(true)}
+                    className="border-destructive/50 text-destructive hover:bg-destructive/10 flex-shrink-0"
+                  >
+                    Leave Event
+                  </Button>
+                )}
+                {isOrganizer && !event.voided && (
+                  <>
+                    {event.status === 'live' && (
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          const kioskUrl = `/round-robin/${event.id}/kiosk`;
+                          window.open(kioskUrl, '_blank', 'width=1920,height=1080');
+                        }}
+                        className="flex-shrink-0 bg-primary text-primary-foreground hover:bg-primary/90"
+                      >
+                        <Monitor className="h-4 w-4 mr-1.5" />
+                        Kiosk
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setEditDialogOpen(true)}
+                      disabled={isEditMode}
+                      className="flex-shrink-0"
+                    >
+                      <Settings className="h-4 w-4 mr-1.5" />
+                      Settings
+                    </Button>
+                    {event.status === 'draft' && (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setCourtsRoundsOpen(true)}
+                          className="flex-shrink-0"
+                        >
+                          <Edit className="h-4 w-4 mr-1.5" />
+                          Courts & Games
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={async () => {
+                            if (!confirm("Regenerate the entire schedule from scratch? This will reset all court assignments to match current settings.")) {
+                              return;
+                            }
+                            try {
+                              toast.loading("Regenerating schedule...");
+                              await regenerateScheduleFromRound(1);
+                              await fetchEventDetails();
+                              toast.success("Schedule regenerated successfully");
+                            } catch (error: unknown) {
+                              toast.error("Failed to regenerate schedule");
+                              console.error(error);
+                            }
+                          }}
+                          className="flex-shrink-0"
+                        >
+                          <RefreshCw className="h-4 w-4 mr-1.5" />
+                          Sync
+                        </Button>
+                      </>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          )}
         </div>
-      </motion.div>
+      </div>
 
       <main className="container max-w-[1280px] mx-auto px-4 py-6">
         {isOrganizer && isEditMode && (
@@ -1718,68 +1717,66 @@ export default function RoundRobinDetail() {
           </Alert>
         )}
 
-        {/* Premium Progress Stepper */}
-        <motion.div 
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="mb-6 px-2"
-        >
-          <div className="flex items-center justify-center gap-2 text-xs sm:text-sm p-3 rounded-xl bg-card/80 backdrop-blur-sm border border-border/50 shadow-sm max-w-2xl mx-auto">
-            <div className={`flex items-center gap-2 ${currentStep >= 1 ? 'font-semibold' : 'text-muted-foreground'}`}>
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all ${currentStep >= 1 ? 'bg-primary text-primary-foreground shadow-[0_0_8px_rgba(197,232,108,0.4)]' : 'bg-muted text-muted-foreground'}`}>1</div>
-              <span className="hidden sm:inline">Add Players</span>
-              <span className="sm:hidden">Players</span>
-            </div>
-            <div className={`h-px w-6 sm:w-10 transition-colors ${currentStep >= 2 ? 'bg-primary' : 'bg-border'}`} />
-            <div className={`flex items-center gap-2 ${currentStep >= 2 ? 'font-semibold' : 'text-muted-foreground'}`}>
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all ${currentStep >= 2 ? 'bg-primary text-primary-foreground shadow-[0_0_8px_rgba(197,232,108,0.4)]' : 'bg-muted text-muted-foreground'}`}>2</div>
-              <span className="hidden sm:inline">Generate</span>
-              <span className="sm:hidden">Generate</span>
-            </div>
-            <div className={`h-px w-6 sm:w-10 transition-colors ${currentStep >= 3 ? 'bg-primary' : 'bg-border'}`} />
-            <div className={`flex items-center gap-2 ${currentStep >= 3 ? 'font-semibold' : 'text-muted-foreground'}`}>
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all ${currentStep >= 3 ? 'bg-primary text-primary-foreground shadow-[0_0_8px_rgba(197,232,108,0.4)]' : 'bg-muted text-muted-foreground'}`}>3</div>
-              <span className="hidden sm:inline">Play & Score</span>
-              <span className="sm:hidden">Score</span>
-            </div>
-            <div className={`h-px w-6 sm:w-10 transition-colors ${currentStep >= 4 ? 'bg-primary' : 'bg-border'}`} />
-            <div className={`flex items-center gap-2 ${currentStep >= 4 ? 'font-semibold' : 'text-muted-foreground'}`}>
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all ${currentStep >= 4 ? 'bg-primary text-primary-foreground shadow-[0_0_8px_rgba(197,232,108,0.4)]' : 'bg-muted text-muted-foreground'}`}>4</div>
-              <span className="hidden sm:inline">Standings</span>
-              <span className="sm:hidden">Done</span>
-            </div>
+        {/* Lifecycle stepper — slimmer, design-system glow, no decorative motion.
+            Maps to the four organizer phases: roster → schedule → live play → results. */}
+        <div className="mb-6">
+          <div className="flex items-center justify-center gap-1.5 sm:gap-3 text-[11px] sm:text-sm p-3 rounded-xl bg-card border border-border/60 max-w-2xl mx-auto">
+            {[
+              { num: 1, full: "Add Players", short: "Players" },
+              { num: 2, full: "Generate", short: "Generate" },
+              { num: 3, full: "Play & Score", short: "Score" },
+              { num: 4, full: "Standings", short: "Done" },
+            ].map((step, idx, arr) => {
+              const active = currentStep >= step.num;
+              return (
+                <div key={step.num} className="flex items-center gap-1.5 sm:gap-3">
+                  <div className={`flex items-center gap-1.5 sm:gap-2 ${active ? "font-semibold" : "text-muted-foreground"}`}>
+                    <div
+                      className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold transition-colors ${
+                        active
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-muted-foreground"
+                      }`}
+                      style={active ? { boxShadow: "0 0 0 3px hsl(var(--primary) / 0.15)" } : undefined}
+                    >
+                      {step.num}
+                    </div>
+                    <span className="hidden sm:inline">{step.full}</span>
+                    <span className="sm:hidden">{step.short}</span>
+                  </div>
+                  {idx < arr.length - 1 && (
+                    <div className={`h-px w-4 sm:w-8 transition-colors ${currentStep > step.num ? "bg-primary" : "bg-border"}`} />
+                  )}
+                </div>
+              );
+            })}
           </div>
-        </motion.div>
+        </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-        >
+        <div>
         <Tabs defaultValue="schedule" className="w-full">
-          {/* Premium Tab List */}
-          <TabsList className="w-full max-w-md mx-auto grid grid-cols-3 mb-6 p-1 bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl shadow-sm h-auto">
-            <TabsTrigger 
-              value="schedule" 
-              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md rounded-lg transition-all py-2"
+          {/* Tab strip — design-system styling, no decorative blur/shadow. */}
+          <TabsList className="w-full max-w-md mx-auto grid grid-cols-3 mb-6 p-1 bg-muted rounded-xl h-auto">
+            <TabsTrigger
+              value="schedule"
+              className="data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm rounded-lg transition-colors py-2 gap-1.5"
             >
-              <Calendar className="h-4 w-4 mr-2" />
-              Schedule
+              <Calendar className="h-4 w-4" />
+              <span>Schedule</span>
             </TabsTrigger>
-            <TabsTrigger 
-              value="players" 
-              className="flex items-center gap-2 whitespace-nowrap data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md rounded-lg transition-all py-2"
+            <TabsTrigger
+              value="players"
+              className="data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm rounded-lg transition-colors py-2 gap-1.5"
             >
-              <Users className="h-4 w-4 mr-1" />
-              <span>Players ({players.length})</span>
+              <Users className="h-4 w-4" />
+              <span>Players · {players.length}</span>
             </TabsTrigger>
-            <TabsTrigger 
-              value="standings" 
-              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md rounded-lg transition-all py-2"
+            <TabsTrigger
+              value="standings"
+              className="data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm rounded-lg transition-colors py-2 gap-1.5"
             >
-              <Trophy className="h-4 w-4 mr-2" />
-              Standings
+              <Trophy className="h-4 w-4" />
+              <span>Standings</span>
             </TabsTrigger>
           </TabsList>
 
@@ -1955,7 +1952,8 @@ export default function RoundRobinDetail() {
                                             type="number"
                                             min="0"
                                             max="99"
-                                            className="w-16 h-8 text-center ml-2"
+                                            inputMode="numeric"
+                                            className="w-16 h-10 text-center text-base font-bold tabular-nums ml-2 focus-visible:ring-2 focus-visible:ring-primary"
                                             placeholder="0"
                                             value={scores[match.id]?.team1_score ?? ''}
                                             onChange={(e) => handleScoreChange(match.id, 'team1', e.target.value)}
@@ -1980,7 +1978,8 @@ export default function RoundRobinDetail() {
                                             type="number"
                                             min="0"
                                             max="99"
-                                            className="w-16 h-8 text-center ml-2"
+                                            inputMode="numeric"
+                                            className="w-16 h-10 text-center text-base font-bold tabular-nums ml-2 focus-visible:ring-2 focus-visible:ring-primary"
                                             placeholder="0"
                                             value={scores[match.id]?.team2_score ?? ''}
                                             onChange={(e) => handleScoreChange(match.id, 'team2', e.target.value)}
@@ -2238,7 +2237,7 @@ export default function RoundRobinDetail() {
             </Card>
           </TabsContent>
         </Tabs>
-        </motion.div>
+        </div>
       </main>
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
