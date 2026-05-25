@@ -970,6 +970,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "event_instruction_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "venue_coaches_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "event_instruction_event_id_fkey"
             columns: ["event_id"]
             isOneToOne: true
@@ -5219,6 +5226,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "venue_lessons_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "venue_coaches_public"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "venue_lessons_court_id_fkey"
             columns: ["court_id"]
             isOneToOne: false
@@ -5864,6 +5878,56 @@ export type Database = {
           },
           {
             foreignKeyName: "unified_events_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      venue_coaches_public: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          created_at: string | null
+          hourly_rate: number | null
+          id: string | null
+          is_active: boolean | null
+          name: string | null
+          specialties: string[] | null
+          updated_at: string | null
+          user_id: string | null
+          venue_id: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string | null
+          hourly_rate?: number | null
+          id?: string | null
+          is_active?: boolean | null
+          name?: string | null
+          specialties?: string[] | null
+          updated_at?: string | null
+          user_id?: string | null
+          venue_id?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string | null
+          hourly_rate?: number | null
+          id?: string | null
+          is_active?: boolean | null
+          name?: string | null
+          specialties?: string[] | null
+          updated_at?: string | null
+          user_id?: string | null
+          venue_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venue_coaches_venue_id_fkey"
             columns: ["venue_id"]
             isOneToOne: false
             referencedRelation: "venues"
