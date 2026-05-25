@@ -372,7 +372,17 @@ const AppContent = () => {
           <Route path="/events/:eventId" element={<EventDetail />} />
           <Route path="/events/:eventId/add-match" element={<EventMatchEntry />} />
           <Route path="/round-robin" element={<RoundRobinHub />} />
-          <Route path="/round-robin/create" element={<CreateRoundRobin />} />
+          {/* Wizard writes to the DB on submit and reads getUser() on submit.
+              Wrap in AuthGuard so unauthenticated visitors are bounced before
+              filling out the multi-step form (avoids losing their work). */}
+          <Route
+            path="/round-robin/create"
+            element={
+              <AuthGuard>
+                <CreateRoundRobin />
+              </AuthGuard>
+            }
+          />
           <Route path="/round-robin/:id" element={<RoundRobinDetail />} />
           <Route path="/round-robin/:id/kiosk" element={<RoundRobinKiosk />} />
           <Route path="/tournaments" element={<TournamentsLanding />} />

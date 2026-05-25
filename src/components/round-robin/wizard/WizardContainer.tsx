@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -29,6 +29,12 @@ interface Court {
 
 export function WizardContainer() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  // Optional ?venueId=… — when the wizard is launched from a venue console
+  // ("Create Round Robin" button in VenueRoundRobins), this links the new
+  // event to that venue so it shows up in the venue's RR list. Falls back
+  // to a free-standing player-organized event if absent.
+  const venueId = searchParams.get("venueId");
   const [loading, setLoading] = useState(false);
   const [courts, setCourts] = useState<Court[]>([]);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -171,6 +177,10 @@ export function WizardContainer() {
           location: formData.locationId && formData.locationId !== "none" ? formData.locationId : null,
           notes: formData.notes.trim() || null,
           organizer_id: user.id,
+          // Link to a venue when the wizard was launched from the venue console
+          // (via ?venueId=…). Null for player-organized RRs — keeps existing
+          // free-standing flow unchanged.
+          venue_id: venueId || null,
           num_courts: formData.courtCount,
           games_per_player: formData.gamesPerPlayer,
           rating_eligible: formData.ratingEligible,
@@ -216,7 +226,14 @@ export function WizardContainer() {
           : "Event created in draft mode.";
 
       toast.success(successMessage);
-      navigate(`/round-robin/${event.id}`);
+      // Venue-context creates land on the venue console RR detail so staff
+      // stay inside their console. Player-organized creates land on the
+      // public detail page they would naturally share.
+      if (venueId) {
+        navigate(`/venue/round-robins/${event.id}`);
+      } else {
+        navigate(`/round-robin/${event.id}`);
+      }
     } catch (error: unknown) {
       toast.error("Failed to create event");
       console.error(error);
