@@ -33,12 +33,16 @@ export function ReviewStep({ formData, onEdit, courts }: ReviewStepProps) {
     casual: "Casual",
   };
 
+  // Step indices match the 8-step wizard order in useWizardSteps.ts:
+  //   0=mode, 1=format, 2=details, 3=players, 4=schedule, 5=datetime,
+  //   6=ratings, 7=review. Name/Location/Notes all live in step 2 (Details);
+  //   Courts/Games both live in step 4 (Schedule).
   const items = [
     {
       icon: FileText,
       label: "Event Name",
       value: formData.eventName || "Not set",
-      stepIndex: 1,
+      stepIndex: 2,
     },
     {
       icon: Zap,
@@ -54,7 +58,7 @@ export function ReviewStep({ formData, onEdit, courts }: ReviewStepProps) {
         : formData.eventDate
           ? new Date(formData.eventDate).toLocaleString()
           : "Not set",
-      stepIndex: 7,
+      stepIndex: 5,
     },
     {
       icon: MapPin,
@@ -66,25 +70,25 @@ export function ReviewStep({ formData, onEdit, courts }: ReviewStepProps) {
       icon: Users,
       label: "Format",
       value: formatLabels[formData.format],
-      stepIndex: 3,
+      stepIndex: 1,
     },
     {
       icon: Users,
       label: "Players",
       value: `${playerCount} players`,
-      stepIndex: 4,
+      stepIndex: 3,
     },
     {
       icon: LayoutGrid,
       label: "Courts",
       value: `${formData.courtCount} ${formData.courtCount === 1 ? "court" : "courts"}`,
-      stepIndex: 5,
+      stepIndex: 4,
     },
     {
       icon: Target,
       label: "Games/Player",
       value: `${formData.gamesPerPlayer} games → ${metrics.rounds} rounds`,
-      stepIndex: 6,
+      stepIndex: 4,
     },
     {
       icon: TrendingUp,
@@ -92,7 +96,7 @@ export function ReviewStep({ formData, onEdit, courts }: ReviewStepProps) {
       value: formData.ratingEligible
         ? `Yes (${ratingTypeLabels[formData.ratingType]})`
         : "No",
-      stepIndex: 8,
+      stepIndex: 6,
     },
   ];
 
@@ -101,7 +105,7 @@ export function ReviewStep({ formData, onEdit, courts }: ReviewStepProps) {
       icon: FileText,
       label: "Notes",
       value: formData.notes.substring(0, 50) + (formData.notes.length > 50 ? "..." : ""),
-      stepIndex: 9,
+      stepIndex: 2,
     });
   }
 

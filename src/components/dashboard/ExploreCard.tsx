@@ -25,7 +25,10 @@ export function ExploreCard() {
       label: "Round Robins",
       description: "Quick, social play",
       icon: <Users className="h-5 w-5" />,
-      to: "/player/play?type=round_robin",
+      // Points at the dedicated RR hub (with My/Participating/Browse tabs)
+      // rather than the type-filtered PlayHub — keeps a single canonical
+      // surface for "all my round-robin stuff".
+      to: "/round-robin",
     },
     {
       label: "Tournaments",
