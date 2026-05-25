@@ -214,9 +214,9 @@ export default function VenueOverview() {
                     <Trophy className="h-4 w-4" />
                     Create Your First Tournament
                   </Button>
-                  <Button 
+                  <Button
                     variant="outline"
-                    onClick={() => navigate('/venue/events')}
+                    onClick={() => navigate(`/round-robin/create?venueId=${currentVenueId}`)}
                     className="gap-2"
                   >
                     <Users2 className="h-4 w-4" />

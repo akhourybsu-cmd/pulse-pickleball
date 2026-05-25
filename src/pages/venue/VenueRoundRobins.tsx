@@ -188,12 +188,12 @@ export default function VenueRoundRobins() {
         </div>
       )}
       
-      {/* Header with Venue Branding */}
+      {/* Header with Venue Branding + primary Create CTA */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <img 
-            src={logoSrc} 
-            alt={currentVenue?.venue_name || "Venue"} 
+          <img
+            src={logoSrc}
+            alt={currentVenue?.venue_name || "Venue"}
             className="h-12 w-auto"
             onError={(e) => { e.currentTarget.src = getVenueLogoFallback(); }}
           />
@@ -204,6 +204,18 @@ export default function VenueRoundRobins() {
             </p>
           </div>
         </div>
+        {/* Top-level create button — RR wizard accepts ?venueId= so the new
+            event is auto-linked to this venue and immediately appears below. */}
+        {currentVenue?.venue_id && (
+          <Button
+            onClick={() => navigate(`/round-robin/create?venueId=${currentVenue.venue_id}`)}
+            style={{ backgroundColor: venueTheme.primary, color: venueTheme.primaryForeground }}
+            className="gap-1.5"
+          >
+            <Plus className="h-4 w-4" />
+            Create Round Robin
+          </Button>
+        )}
       </div>
 
       {/* Tabs */}
@@ -233,14 +245,14 @@ export default function VenueRoundRobins() {
                 <Repeat className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                 <h3 className="text-lg font-medium mb-2">No Round Robins Yet</h3>
                 <p className="text-muted-foreground mb-4">
-                  Create a "Round Robin" event from the Events tab to get started
+                  Set up rotating play with auto-scheduling and live standings.
                 </p>
-                <Button 
-                  onClick={() => navigate("/venue/events")}
+                <Button
+                  onClick={() => navigate(`/round-robin/create${currentVenue?.venue_id ? `?venueId=${currentVenue.venue_id}` : ''}`)}
                   style={{ backgroundColor: venueTheme.primary, color: venueTheme.primaryForeground }}
                 >
-                  <Calendar className="h-4 w-4 mr-2" />
-                  Go to Events
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Round Robin
                 </Button>
               </CardContent>
             </Card>
@@ -280,14 +292,14 @@ export default function VenueRoundRobins() {
                 <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                 <h3 className="text-lg font-medium mb-2">No Draft Events</h3>
                 <p className="text-muted-foreground mb-4">
-                  Create a "Round Robin" event from the Events tab
+                  Drafts let you set up an event before opening registration.
                 </p>
-                <Button 
-                  onClick={() => navigate("/venue/events")}
+                <Button
+                  onClick={() => navigate(`/round-robin/create${currentVenue?.venue_id ? `?venueId=${currentVenue.venue_id}` : ''}`)}
                   style={{ backgroundColor: venueTheme.primary, color: venueTheme.primaryForeground }}
                 >
-                  <Calendar className="h-4 w-4 mr-2" />
-                  Go to Events
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Round Robin
                 </Button>
               </CardContent>
             </Card>
