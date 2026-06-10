@@ -49,9 +49,6 @@ export function PlayerShell() {
     groupedByTime,
   } = useNotifications(user?.id);
   
-  // Hide shell header on dashboard since it has its own ProfileHero header
-  const isDashboard = location.pathname === '/player/dashboard';
-  
   // Full-screen immersive routes (hide all shell chrome).
   // Match entry has its own sticky header + fixed bottom CTA bar; rendering
   // PlayerShell's bottom nav alongside it would stack two fixed bars on top
@@ -106,8 +103,11 @@ export function PlayerShell() {
   }, []);
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Top Header - Hidden on dashboard - Premium Polish */}
-      {!isDashboard && !isImmersiveRoute && (
+      {/* Top Header — single source of top chrome across all player tabs.
+          Previously hidden on /player/dashboard which rendered its own ProfileHero
+          nav strip; that's been removed so this header now owns the top on every
+          non-immersive player route. */}
+      {!isImmersiveRoute && (
         <header className="sticky top-0 z-50 border-b border-secondary-foreground/10 bg-secondary shadow-sm">
           <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-3 flex items-center justify-between h-[64px] sm:h-[72px]">
             <NavLink to="/player/dashboard" className="ml-1">

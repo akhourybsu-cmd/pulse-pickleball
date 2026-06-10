@@ -203,29 +203,100 @@ export default function FindEvents({ hideHeader = false }: FindEventsProps = {})
         </div>
       )}
 
+      {/* Quick-filter row — one-tap shortcuts that set the most common
+          combinations of type + dateRange. Lives OUTSIDE the sticky bar so
+          it scrolls away once the player has committed to a search; the
+          sticky type chips below remain available. */}
+      <div className="px-4 sm:px-6 pt-3 pb-1">
+        <div className="max-w-3xl mx-auto flex gap-2 overflow-x-auto pb-2 -mx-4 sm:-mx-6 px-4 sm:px-6 scrollbar-hide">
+          {(() => {
+            const presets: {
+              id: string;
+              label: string;
+              type: EventTypeFilter;
+              date: DateRangeFilter;
+              active: boolean;
+            }[] = [
+              {
+                id: 'today',
+                label: 'Today',
+                type: 'all',
+                date: 'today',
+                active: dateRange === 'today' && eventType === 'all',
+              },
+              {
+                id: 'this-week',
+                label: 'This week',
+                type: 'all',
+                date: 'this_week',
+                active: dateRange === 'this_week' && eventType === 'all',
+              },
+              {
+                id: 'round-robins',
+                label: 'Round robins',
+                type: 'round_robin',
+                date: 'all',
+                active: eventType === 'round_robin' && dateRange === 'all',
+              },
+              {
+                id: 'open-play',
+                label: 'Open play',
+                type: 'open_play',
+                date: 'all',
+                active: eventType === 'open_play' && dateRange === 'all',
+              },
+            ];
+            return presets.map((preset) => (
+              <button
+                key={preset.id}
+                onClick={() => {
+                  setEventType(preset.type);
+                  setDateRange(preset.date);
+                }}
+                className={cn(
+                  'flex-shrink-0 px-3.5 py-2 rounded-xl text-sm font-medium whitespace-nowrap',
+                  'transition-all duration-200 ease-out active:scale-[0.97]',
+                  preset.active
+                    ? 'bg-primary text-primary-foreground shadow-[0_2px_8px_-2px_hsl(var(--primary)/0.4)]'
+                    : 'bg-card border border-border/60 text-foreground hover:border-primary/40 hover:bg-primary/[0.04]',
+                )}
+              >
+                {preset.label}
+              </button>
+            ));
+          })()}
+        </div>
+      </div>
+
       {/* Filters - Refined chips. Sticks below PlayerShell's global header
           (h-[64px] sm:h-[72px]) so it never slides under the nav bar. On the
           public /play route (no shell) there'll be a small gap above when
           scrolled — minor cosmetic tradeoff for correctness on /player/play. */}
       <div className="sticky top-16 sm:top-[72px] z-10 bg-background/95 backdrop-blur-sm border-b border-border/30">
         <div className="max-w-3xl mx-auto px-4 py-2.5">
-          {/* Event Type Chips */}
+          {/* Event Type Chips — refined active state with subtle shadow lift */}
           <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-4 px-4 scrollbar-hide">
-            {eventTypeFilters.map((filter) => (
-              <button
-                key={filter.value}
-                onClick={() => setEventType(filter.value)}
-                className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors",
-                  eventType === filter.value
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted/50 text-muted-foreground hover:bg-muted"
-                )}
-              >
-                {filter.icon}
-                {filter.label}
-              </button>
-            ))}
+            {eventTypeFilters.map((filter) => {
+              const active = eventType === filter.value;
+              return (
+                <button
+                  key={filter.value}
+                  onClick={() => setEventType(filter.value)}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap",
+                    "transition-all duration-200 ease-out active:scale-[0.96]",
+                    active
+                      ? "bg-primary text-primary-foreground shadow-[0_1px_6px_-1px_hsl(var(--primary)/0.5)]"
+                      : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground",
+                  )}
+                >
+                  <span className={active ? "text-primary-foreground" : "text-muted-foreground/80"}>
+                    {filter.icon}
+                  </span>
+                  {filter.label}
+                </button>
+              );
+            })}
           </div>
 
           {/* Date Range Chips - Show when filters expanded */}
@@ -328,21 +399,33 @@ export default function FindEvents({ hideHeader = false }: FindEventsProps = {})
               )}
             </div>
 
-            {/* Event Cards */}
-            {filteredEvents.map((event) => (
-              <UnifiedEventCard
+            {/* Event Cards — staggered fade-up reveal capped at 8 items so
+                very long lists don't drag on entrance. Items past index 8 just
+                appear without animation, which is fine since they're below
+                the fold anyway. */}
+            {filteredEvents.map((event, idx) => (
+              <div
                 key={event.id}
-                event={event}
-                onClick={() => {
-                  if (event.event_type === 'round_robin') {
-                    navigate(`/round-robin/${event.id}`);
-                  } else if (event.event_type === 'tournament') {
-                    navigate(`/tournaments/${event.id}`);
-                  } else {
-                    navigate(`/events/${event.id}`);
-                  }
-                }}
-              />
+                className={cn(idx < 8 && "opacity-0 animate-fade-up")}
+                style={
+                  idx < 8
+                    ? { animationDelay: `${idx * 60}ms`, animationFillMode: 'forwards' }
+                    : undefined
+                }
+              >
+                <UnifiedEventCard
+                  event={event}
+                  onClick={() => {
+                    if (event.event_type === 'round_robin') {
+                      navigate(`/round-robin/${event.id}`);
+                    } else if (event.event_type === 'tournament') {
+                      navigate(`/tournaments/${event.id}`);
+                    } else {
+                      navigate(`/events/${event.id}`);
+                    }
+                  }}
+                />
+              </div>
             ))}
           </div>
         )}

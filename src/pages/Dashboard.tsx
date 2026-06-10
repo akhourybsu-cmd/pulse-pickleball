@@ -2,31 +2,26 @@ import { useEffect, useState } from "react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { isPlatformAdmin } from "@/lib/permissions";
-import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Trophy, Activity } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 
 import { Footer } from "@/components/Footer";
 import { OnboardingWelcome } from "@/components/onboarding";
 import { SmartMatch } from "@/components/court/SmartMatch";
 import { LFGNotifications } from "@/components/court/LFGNotifications";
-import { NotificationCenter } from "@/components/notifications/NotificationCenter";
-import { useNotifications } from "@/hooks/useNotifications";
+import { SectionHeader } from "@/components/layout/SectionHeader";
 
-// Dashboard Components
+// Dashboard Components — Phase 2 overhaul slim list.
+// Dropped from Home (these surfaces don't belong on the player-first hub):
+//   • VenueActivitySection  — venue-flavored; lives on the venue side
+//   • HomeFooterUtilities   — admin/share/refresh; moves to Profile in Phase 5
+//   • ExploreCard           — already removed in the player-first refocus
 import { ProfileHero } from "@/components/dashboard/ProfileHero";
 import { QuickActionsBar } from "@/components/dashboard/QuickActionsBar";
 import { ActivityModule } from "@/components/dashboard/ActivityModule";
 import { PerformanceModule } from "@/components/dashboard/PerformanceModule";
 import { StatsByCourtCard } from "@/components/dashboard/StatsByCourtCard";
-import { HomeFooterUtilities } from "@/components/dashboard/HomeFooterUtilities";
-import { VenueActivitySection } from "@/components/dashboard/VenueActivitySection";
 import { UpcomingEventsPreview } from "@/components/dashboard/UpcomingEventsPreview";
-// ExploreCard removed from the dashboard as part of the player-first refocus —
-// its tiles (Round Robins, Tournaments, Venues) duplicated QuickActions and
-// referenced venue/tournament surfaces that now live behind the mode toggle.
-// Component file retained for potential future use; not imported anywhere.
 import { RoleSwitcherCard } from "@/components/dashboard/RoleSwitcherCard";
 
 interface Profile {
@@ -56,34 +51,16 @@ const Dashboard = () => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const navigate = useNavigate();
 
-  // Notification state - using new real-time notification system
-  const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
-  const [homeCourtId, setHomeCourtId] = useState<string | null>(null);
-  
-  // Partner/Opponent stats
-  const [partnersCount, setPartnersCount] = useState(0);
-  const [courtsPlayed, setCourtsPlayed] = useState(0);
+  // Partner/Opponent stats (currently fetched but unused after Phase 2 reshuffle;
+  // PerformanceModule shows the rich detail. Kept for future use.)
+  const [, setPartnersCount] = useState(0);
+  const [, setCourtsPlayed] = useState(0);
 
-  // Mobile tab state - lifted to control from ProfileHero
-  const [activeTab, setActiveTab] = useState<"performance" | "activity">("performance");
-  
   // Onboarding welcome modal
   const [showOnboardingWelcome, setShowOnboardingWelcome] = useState(false);
-
-  // Real-time notifications
-  const {
-    notifications,
-    unreadCount,
-    markAsRead,
-    markAllAsRead,
-    deleteNotification,
-    clearAll,
-    groupedByTime,
-  } = useNotifications(user?.id);
 
   const fetchPartnerAndCourtStats = async (userId: string) => {
     try {
@@ -164,9 +141,9 @@ const Dashboard = () => {
           setShowOnboardingWelcome(true);
         }
 
-        if (publicProfileResult.data?.home_court_id) {
-          setHomeCourtId(publicProfileResult.data.home_court_id);
-        }
+        // home_court_id fetched but unused after Phase 2 reshuffle; query
+        // stays so the prefetched join doesn't change.
+        void publicProfileResult.data?.home_court_id;
 
         fetchPartnerAndCourtStats(user.id);
 
@@ -191,67 +168,8 @@ const Dashboard = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  const handleRefreshStats = async () => {
-    if (!user?.id) return;
-    
-    setRefreshing(true);
-    try {
-      const { error: recomputeError } = await supabase.rpc('recalculate_all_ratings');
-
-      if (recomputeError) {
-        console.error('Recomputation error:', recomputeError);
-        toast.error("Failed to recalculate ratings");
-        return;
-      }
-
-      const { data: profileData, error: fetchError } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .single();
-
-      if (fetchError) {
-        toast.error("Failed to refresh stats");
-        return;
-      }
-
-      setProfile(profileData);
-      toast.success("Ratings recalculated successfully");
-    } catch (error) {
-      console.error('Refresh error:', error);
-      toast.error("Failed to refresh stats");
-    } finally {
-      setRefreshing(false);
-    }
-  };
-
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    navigate("/");
-  };
-
-  const handleShare = async () => {
-    const shareData = {
-      title: 'Pulse Pickleball',
-      text: 'Join me on Pulse - Track your pickleball journey and compete with friends!',
-      url: 'https://pulsepb.com'
-    };
-
-    try {
-      if (navigator.share) {
-        await navigator.share(shareData);
-        toast.success("Thanks for spreading the word!");
-      } else {
-        await navigator.clipboard.writeText('https://pulsepb.com');
-        toast.success("Share link copied to clipboard!");
-      }
-    } catch (error) {
-      if (error instanceof Error && error.name !== 'AbortError') {
-        console.error('Error sharing:', error);
-        toast.error("Could not share. Please try again.");
-      }
-    }
-  };
+  // handleRefreshStats + handleShare moved to Profile (Phase 5) — they belonged
+  // in HomeFooterUtilities which is no longer rendered on Home.
 
   if (loading) {
     return (
@@ -282,7 +200,8 @@ const Dashboard = () => {
         />
       )}
       
-      {/* Profile Hero Header - Unified Player Overview with embedded toggle */}
+      {/* Player Identity hero — the actual page hero now that PlayerShell
+          owns the top nav. Staggered fade-up animations live inside the card. */}
       <ProfileHero
         userId={user?.id}
         fullName={profile?.full_name || null}
@@ -293,123 +212,156 @@ const Dashboard = () => {
         totalMatches={profile?.total_matches}
         wins={profile?.wins}
         losses={profile?.losses}
-        partnersCount={partnersCount}
-        courtsPlayed={courtsPlayed}
-        unreadNotifications={unreadCount}
-        onNotificationOpen={() => setIsNotificationCenterOpen(true)}
-        onSignOut={handleSignOut}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
       />
 
-      {/* Main Dashboard Content */}
-      <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-6 lg:py-8 space-y-6">
+      {/* Main Dashboard Content — single linear flow on mobile, two-column
+          on desktop. The previous Performance/Activity tab toggle on mobile
+          was removed in favor of always showing Activity at the top (when
+          there's action to take) followed by the player-first stack. */}
+      <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-4 lg:py-6">
 
-        {/* Desktop: Two-column layout */}
+        {/* Desktop: Two-column — action stack left, sticky activity right */}
         <div className="hidden lg:grid lg:grid-cols-12 lg:gap-6">
-          {/* Left Column — "What can I do next?" */}
-          <div className="lg:col-span-7 space-y-6">
-            {/* 1. Primary actions — Record Match is the headline */}
-            <QuickActionsBar />
-
-            {/* 2. Role-aware shortcut — only renders for venue staff / admins */}
-            <RoleSwitcherCard isAdmin={isAdmin} />
-
-            {/* 3. Upcoming play — registered events + round robins + tournaments */}
-            <UpcomingEventsPreview userId={user?.id} />
-
-            {/* 4. Recent matches — history preview */}
-            <PerformanceModule userId={user?.id} />
-
-            {/* Performance deep dives — kept below the player-first stack */}
-            <div className="space-y-5">
-              <StatsByCourtCard userId={user?.id} />
-              <VenueActivitySection />
+          <div className="lg:col-span-7 space-y-8">
+            {/* Quick Actions — primary action surface (Record Match etc.) */}
+            <div
+              className="opacity-0 animate-fade-up"
+              style={{ animationDelay: '120ms', animationFillMode: 'forwards' }}
+            >
+              <SectionHeader label="Quick actions" />
+              <QuickActionsBar />
             </div>
 
-            {/* Discovery tools — Smart Match + LFG */}
-            <div className="space-y-3 pt-2" data-tour="court-stats">
+            {/* Dual-role shortcut — only renders for venue staff / admins */}
+            <RoleSwitcherCard isAdmin={isAdmin} />
+
+            {/* Up next — upcoming registered play */}
+            <div
+              className="opacity-0 animate-fade-up"
+              style={{ animationDelay: '180ms', animationFillMode: 'forwards' }}
+            >
+              <SectionHeader
+                label="Up next"
+                action={
+                  <Link
+                    to="/player/play"
+                    className="text-muted-foreground hover:text-foreground transition-colors font-medium"
+                  >
+                    Find more →
+                  </Link>
+                }
+              />
+              <UpcomingEventsPreview userId={user?.id} />
+            </div>
+
+            {/* Recent form — match history + court stats */}
+            <div
+              className="opacity-0 animate-fade-up space-y-4"
+              style={{ animationDelay: '240ms', animationFillMode: 'forwards' }}
+            >
+              <SectionHeader
+                label="Recent form"
+                action={
+                  <Link
+                    to="/player/matches"
+                    className="text-muted-foreground hover:text-foreground transition-colors font-medium"
+                  >
+                    All matches →
+                  </Link>
+                }
+              />
+              <PerformanceModule userId={user?.id} />
+              <StatsByCourtCard userId={user?.id} />
+            </div>
+
+            {/* Discover play — player-to-player LFG features */}
+            <div
+              className="opacity-0 animate-fade-up space-y-3"
+              style={{ animationDelay: '300ms', animationFillMode: 'forwards' }}
+              data-tour="court-stats"
+            >
+              <SectionHeader label="Discover play" />
               <SmartMatch userId={user?.id || null} />
               <LFGNotifications />
             </div>
-
-            {/* Settings footer — de-emphasized */}
-            <HomeFooterUtilities
-              isAdmin={isAdmin}
-              onShare={handleShare}
-              onRefreshStats={handleRefreshStats}
-              refreshing={refreshing}
-            />
           </div>
 
-          {/* Right Column — "What needs my attention?" */}
-          <div className="lg:col-span-5">
-            <div className="bg-muted/20 rounded-xl sticky top-6">
-              <div className="p-4 pb-2 border-b border-border/30">
-                <h2 className="text-xs font-medium text-muted-foreground flex items-center gap-2">
-                  <Activity className="w-3.5 h-3.5" />
-                  Activity
-                </h2>
-              </div>
-              <div className="max-h-[calc(100vh-200px)] overflow-y-auto p-4 pt-3">
-                <ActivityModule userId={user?.id} />
+          {/* Right Column — Activity (action items, sticky) */}
+          <aside className="lg:col-span-5">
+            <div
+              className="sticky top-6 opacity-0 animate-fade-up"
+              style={{ animationDelay: '150ms', animationFillMode: 'forwards' }}
+            >
+              <SectionHeader label="Needs attention" />
+              <div className="rounded-2xl border border-border/60 bg-card overflow-hidden">
+                <div className="max-h-[calc(100vh-180px)] overflow-y-auto p-4">
+                  <ActivityModule userId={user?.id} />
+                </div>
               </div>
             </div>
-          </div>
+          </aside>
         </div>
 
-        {/* Mobile: Content controlled by ProfileHero toggle */}
-        <div className="lg:hidden space-y-5">
-          {/* Performance tab = the player-first home stack */}
-          {activeTab === "performance" ? (
-            <div className="space-y-5">
-              {/* Role-aware shortcut — only renders for venue staff / admins */}
-              <RoleSwitcherCard isAdmin={isAdmin} />
+        {/* Mobile: single linear flow. Activity at top (action items first),
+            then the player-first stack. Quick Actions already render inside
+            ProfileHero above on mobile. */}
+        <div className="lg:hidden space-y-7 mt-4">
+          <div
+            className="opacity-0 animate-fade-up"
+            style={{ animationDelay: '120ms', animationFillMode: 'forwards' }}
+          >
+            <SectionHeader label="Needs attention" />
+            <ActivityModule userId={user?.id} />
+          </div>
 
-              {/* Upcoming play — registered events */}
-              <UpcomingEventsPreview userId={user?.id} />
+          {/* Dual-role shortcut */}
+          <RoleSwitcherCard isAdmin={isAdmin} />
 
-              {/* Recent matches */}
-              <PerformanceModule userId={user?.id} />
+          {/* Up next */}
+          <div
+            className="opacity-0 animate-fade-up"
+            style={{ animationDelay: '180ms', animationFillMode: 'forwards' }}
+          >
+            <SectionHeader
+              label="Up next"
+              action={
+                <Link to="/player/play" className="text-muted-foreground hover:text-foreground transition-colors font-medium">
+                  Find more →
+                </Link>
+              }
+            />
+            <UpcomingEventsPreview userId={user?.id} />
+          </div>
 
-              {/* Performance deep dives */}
-              <StatsByCourtCard userId={user?.id} />
-              <VenueActivitySection />
+          {/* Recent form */}
+          <div
+            className="opacity-0 animate-fade-up space-y-4"
+            style={{ animationDelay: '240ms', animationFillMode: 'forwards' }}
+          >
+            <SectionHeader
+              label="Recent form"
+              action={
+                <Link to="/player/matches" className="text-muted-foreground hover:text-foreground transition-colors font-medium">
+                  All matches →
+                </Link>
+              }
+            />
+            <PerformanceModule userId={user?.id} />
+            <StatsByCourtCard userId={user?.id} />
+          </div>
 
-              {/* Discovery tools */}
-              <div className="space-y-3" data-tour="court-stats">
-                <SmartMatch userId={user?.id || null} />
-                <LFGNotifications />
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {/* Activity: Action Required + Alerts + System Updates */}
-              <ActivityModule userId={user?.id} />
-            </div>
-          )}
-
-          {/* Footer Utilities - Mobile */}
-          <HomeFooterUtilities
-            isAdmin={isAdmin}
-            onShare={handleShare}
-            onRefreshStats={handleRefreshStats}
-            refreshing={refreshing}
-          />
+          {/* Discover play */}
+          <div
+            className="opacity-0 animate-fade-up space-y-3"
+            style={{ animationDelay: '300ms', animationFillMode: 'forwards' }}
+            data-tour="court-stats"
+          >
+            <SectionHeader label="Discover play" />
+            <SmartMatch userId={user?.id || null} />
+            <LFGNotifications />
+          </div>
         </div>
       </div>
-
-      <NotificationCenter
-        isOpen={isNotificationCenterOpen}
-        onClose={() => setIsNotificationCenterOpen(false)}
-        notifications={notifications}
-        unreadCount={unreadCount}
-        onMarkAsRead={markAsRead}
-        onMarkAllAsRead={markAllAsRead}
-        onDelete={deleteNotification}
-        onClearAll={clearAll}
-        groupedByTime={groupedByTime}
-      />
 
       <Footer />
     </div>

@@ -41,20 +41,31 @@ export const PlayerIdentityCard = ({
   const hasRating = currentRating !== undefined && currentRating > 0;
 
   return (
-    <div 
+    <div
       className={cn(
-        "relative rounded-2xl border border-border/50 p-4",
-        "bg-gradient-to-br from-card via-card/98 to-primary/[0.02]",
-        "shadow-xl dark:shadow-[0_0_40px_hsl(var(--primary)/0.08)]",
-        "overflow-hidden opacity-0 animate-fade-up"
+        "relative rounded-2xl border border-border/50 p-5 sm:p-6",
+        "bg-gradient-to-br from-card via-card to-primary/[0.04]",
+        "shadow-[0_4px_24px_-8px_hsl(var(--primary)/0.18)]",
+        "dark:shadow-[0_0_48px_hsl(var(--primary)/0.10)]",
+        "overflow-hidden opacity-0 animate-fade-up",
       )}
       style={{ animationDelay: '50ms', animationFillMode: 'forwards' }}
     >
-      {/* Accent stripe for dark mode */}
-      <div className="hidden dark:block absolute left-0 top-0 bottom-0 w-1 bg-primary" />
-      
+      {/* Decorative gradient orb — primary-tinted, very subtle, sits behind the
+          win-rate ring on the right. Adds depth without competing for attention. */}
+      <div
+        className="absolute top-0 right-0 w-48 h-48 -translate-y-1/3 translate-x-1/4 rounded-full pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(circle, hsl(var(--primary) / 0.10) 0%, transparent 65%)",
+        }}
+      />
+
+      {/* Accent stripe — light mode gets a subtle one too now, not just dark */}
+      <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-gradient-to-b from-primary via-primary to-primary/60 rounded-l-2xl" />
+
       {/* Identity Row - Left-anchored with ring on right */}
-      <div className="flex items-start justify-between gap-3 sm:gap-4">
+      <div className="relative flex items-start justify-between gap-3 sm:gap-4">
         {/* Left: Avatar + Identity */}
         <div className="flex items-start gap-3 sm:gap-4 min-w-0 flex-1">
           {/* Avatar */}
@@ -81,11 +92,14 @@ export const PlayerIdentityCard = ({
               {name}
             </h2>
             
-            {/* Rating Pill */}
-            <div className="inline-flex items-center gap-1.5 bg-primary/10 text-primary rounded-full px-2.5 py-1 w-fit hover:bg-primary/15 hover:scale-[0.98] active:scale-[0.96] transition-all cursor-default">
+            {/* Rating Pill — slightly larger + tabular nums + subtle border for premium feel */}
+            <div className="inline-flex items-center gap-1.5 bg-primary/10 border border-primary/20 text-primary rounded-full pl-2 pr-3 py-1 w-fit hover:bg-primary/15 transition-all cursor-default">
               <Star className="h-3.5 w-3.5 fill-primary" />
-              <span className="text-sm font-semibold">
-                {hasRating ? `${currentRating.toFixed(2)} Rating` : "No Rating"}
+              <span className="text-sm font-bold tabular-nums tracking-tight">
+                {hasRating ? currentRating.toFixed(2) : "—"}
+              </span>
+              <span className="text-[11px] font-medium text-primary/80 uppercase tracking-wider">
+                {hasRating ? "PULSE" : "No Rating"}
               </span>
             </div>
             
