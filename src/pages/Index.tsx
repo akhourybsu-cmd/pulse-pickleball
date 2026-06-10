@@ -3,8 +3,6 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   HomepageNav,
   HeroSection,
-  DualLaneSection,
-  TournamentSpotlight,
   QuickActionTiles,
   HowItWorksSection,
   TrustBandSection,
@@ -69,9 +67,12 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <HomepageNav isLoggedIn={isLoggedIn} userMode={userMode} />
       <main>
+        {/* Player-first composition. DualLaneSection (the two co-equal player
+            vs venue cards) and TournamentSpotlight were dropped — venue and
+            tournament management live behind the mode toggle now, not on the
+            homepage. The quiet "I run a venue or event" link in HeroSection
+            and SplitCTASection is the single secondary affordance. */}
         <HeroSection />
-        <DualLaneSection />
-        <TournamentSpotlight />
         <QuickActionTiles />
         <HowItWorksSection />
         <TrustBandSection />

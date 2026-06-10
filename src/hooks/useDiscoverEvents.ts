@@ -14,6 +14,14 @@ export type DateRangeFilter = 'today' | 'this_week' | 'this_month' | 'all';
 
 interface DiscoverEventsFilters {
   eventType?: EventTypeFilter;
+  /**
+   * Event types to exclude from results regardless of `eventType`.
+   * Used by the player-side FindEvents to hide tournament events from the
+   * player surface (tournaments live on the venue/organizer side now).
+   * Has no effect when `eventType` is set to one of the excluded types
+   * (the explicit user choice wins).
+   */
+  excludeEventTypes?: EventTypeFilter[];
   dateRange?: DateRangeFilter;
   state?: string;
   city?: string;
@@ -95,6 +103,7 @@ function getDateRangeEnd(range: DateRangeFilter): Date | null {
 export function useDiscoverEvents(filters: DiscoverEventsFilters = {}) {
   const {
     eventType = 'all',
+    excludeEventTypes,
     dateRange = 'all',
     state,
     city,
@@ -103,8 +112,11 @@ export function useDiscoverEvents(filters: DiscoverEventsFilters = {}) {
     limit = 50,
   } = filters;
 
+  // Stable cache key for excludeEventTypes (sorted so caller order doesn't matter).
+  const exclusionKey = excludeEventTypes ? [...excludeEventTypes].sort().join(',') : '';
+
   return useQuery({
-    queryKey: ['discover-events', eventType, dateRange, state, city, skillMin, skillMax, limit],
+    queryKey: ['discover-events', eventType, exclusionKey, dateRange, state, city, skillMin, skillMax, limit],
     queryFn: async (): Promise<DiscoverEvent[]> => {
       // Compute a single lower bound for start_time:
       //   - Always "now" (we never want past events in discovery)
@@ -150,9 +162,15 @@ export function useDiscoverEvents(filters: DiscoverEventsFilters = {}) {
         query = query.lte('start_time', upperBound.toISOString());
       }
 
-      // Apply event type filter
+      // Apply event type filter. An explicit `eventType` selection always
+      // wins (the user picked that filter); the exclusion list only applies
+      // when the caller is browsing the "all" view.
       if (eventType !== 'all') {
         query = query.eq('event_type', eventType);
+      } else if (excludeEventTypes && excludeEventTypes.length > 0) {
+        // PostgREST `not.in.(…)` excludes any rows whose event_type is in the list.
+        const csv = excludeEventTypes.join(',');
+        query = query.not('event_type', 'in', `(${csv})`);
       }
 
       // Apply skill level filters

@@ -139,7 +139,6 @@ const PlayHub = lazy(() => import("./pages/play/PlayHub"));
 const PlayerEvents = lazy(() => import("./pages/player/PlayerEvents"));
 const PlayerCoaching = lazy(() => import("./pages/player/PlayerCoaching"));
 const PlayerBookings = lazy(() => import("./pages/player/PlayerBookings"));
-const VenueDiscovery = lazy(() => import("./pages/player/VenueDiscovery"));
 const MyBookings = lazy(() => import("./pages/player/MyBookings"));
 const MyEvents = lazy(() => import("./pages/player/MyEvents"));
 const FindEvents = lazy(() => import("./pages/player/FindEvents"));
@@ -281,7 +280,10 @@ const AppContent = () => {
             {/* Legacy aliases - kept functional, redirected from old paths */}
             <Route path="find" element={<RedirectWithParams to="/player/play" />} />
             <Route path="events" element={<PlayerEvents />} />
-            <Route path="venues" element={<VenueDiscovery />} />
+            {/* /player/venues redirects to /player/play as part of the player-first
+                refocus. Venue browsing now lives behind the mode toggle on the
+                venue/organizer side. Legacy deep links land safely. */}
+            <Route path="venues" element={<Navigate to="/player/play" replace />} />
             <Route path="coaching" element={<PlayerCoaching />} />
             <Route path="bookings" element={<PlayerBookings />} />
             <Route path="my-bookings" element={<MyBookings />} />
