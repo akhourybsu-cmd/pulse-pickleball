@@ -12,7 +12,20 @@ import { z } from "zod";
 import { MFAChallenge } from "@/components/auth/MFAChallenge";
 import { EmailMFAChallenge } from "@/components/auth/EmailMFAChallenge";
 import { BiometricLogin } from "@/components/auth/BiometricLogin";
+import { lovable } from "@/integrations/lovable";
 import pulseLogo from "@/assets/pulse-logo-new.png";
+
+const GoogleIcon = () => (
+  <svg className="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
+    <path fill="#EA4335" d="M12 10.2v3.9h5.5c-.24 1.4-1.7 4.1-5.5 4.1-3.3 0-6-2.74-6-6.1s2.7-6.1 6-6.1c1.9 0 3.16.8 3.88 1.5l2.65-2.55C16.94 3.3 14.7 2.3 12 2.3 6.85 2.3 2.7 6.45 2.7 11.6S6.85 20.9 12 20.9c6.93 0 9.3-4.87 9.3-9.4 0-.63-.07-1.1-.16-1.3H12z"/>
+  </svg>
+);
+
+const AppleIcon = () => (
+  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M16.365 1.43c0 1.14-.466 2.23-1.226 3.01-.816.84-2.144 1.49-3.235 1.41-.135-1.1.418-2.25 1.142-3.01.81-.85 2.213-1.49 3.319-1.41zM20.5 17.27c-.55 1.28-.81 1.85-1.52 2.98-.99 1.57-2.39 3.53-4.12 3.55-1.54.02-1.94-1.01-4.03-1-2.09.01-2.53 1.02-4.07 1-1.73-.02-3.06-1.79-4.05-3.36C.92 17.54-.13 12.6 1.96 9.34 3.43 7.06 5.77 5.71 7.99 5.71c2.26 0 3.68 1.24 5.55 1.24 1.81 0 2.92-1.24 5.54-1.24 1.97 0 4.07 1.08 5.55 2.94-4.88 2.67-4.09 9.65.87 8.62z"/>
+  </svg>
+);
 
 // State list comes from the shared module; Auth historically stores the FULL
 // state name (not the 2-letter code), so we use US_STATE_NAMES here. Keep this
@@ -218,6 +231,26 @@ const Auth = () => {
     navigate(redirectPath);
   };
 
+  const handleOAuth = async (provider: "google" | "apple") => {
+    setLoading(true);
+    try {
+      localStorage.setItem('pulse_persist_session', staySignedIn.toString());
+      const result = await lovable.auth.signInWithOAuth(provider, {
+        redirect_uri: window.location.origin + redirectPath,
+      });
+      if (result.error) {
+        toast.error((result.error as any)?.message || `Could not sign in with ${provider}`);
+        setLoading(false);
+        return;
+      }
+      if (result.redirected) return;
+      navigate(redirectPath);
+    } catch (err: any) {
+      toast.error(err?.message || "OAuth sign-in failed");
+      setLoading(false);
+    }
+  };
+
   const checkBiometricAvailability = async () => {
     if (!email || !isLogin) {
       setShowBiometric(false);
@@ -343,6 +376,37 @@ const Auth = () => {
                 />
               </div>
             ) : (
+              <>
+                <div className="space-y-2 mb-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => handleOAuth("google")}
+                    disabled={loading}
+                  >
+                    <GoogleIcon />
+                    <span className="ml-2">Continue with Google</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => handleOAuth("apple")}
+                    disabled={loading}
+                  >
+                    <AppleIcon />
+                    <span className="ml-2">Continue with Apple</span>
+                  </Button>
+                </div>
+                <div className="relative my-4">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-card px-2 text-muted-foreground">or continue with email</span>
+                  </div>
+                </div>
               <form onSubmit={handleAuth} className="space-y-4">
                 {!isLogin && (
                   <>
@@ -546,6 +610,7 @@ const Auth = () => {
                   </button>
                 </div>
               </form>
+              </>
             )}
           </CardContent>
         </Card>
