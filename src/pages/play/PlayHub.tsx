@@ -1,13 +1,8 @@
 import { lazy, Suspense } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Compass, Calendar, MapPin } from 'lucide-react';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Compass } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const FindEvents = lazy(() => import('@/pages/player/FindEvents'));
-const VenueDiscovery = lazy(() => import('@/pages/player/VenueDiscovery'));
-
-type PlayTab = 'events' | 'venues';
 
 const TabSkeleton = () => (
   <div className="px-4 sm:px-6 py-4 max-w-3xl mx-auto space-y-3">
@@ -18,28 +13,19 @@ const TabSkeleton = () => (
 );
 
 /**
- * PlayHub — the unified discovery surface for everything a player can do.
- * Top-level tabs separate Events (round robins, tournaments, clinics, open play)
- * from Venues (places to play). Each tab embeds an existing discovery component
- * with its header suppressed so the hub controls page chrome.
+ * PlayHub — player-side discovery surface.
  *
- * Tab state is URL-driven via `?tab=events|venues` so deep links are shareable.
+ * Previously had Events + Venues tabs. The Venues tab was removed as part of
+ * the player-first refocus — venue browsing lives behind the mode toggle on
+ * the venue/organizer side. The hub now embeds the events feed directly with
+ * its header suppressed so the hub controls page chrome.
+ *
+ * Note: this component is still meaningfully different from rendering
+ * FindEvents directly because it provides the consistent player-shell
+ * page chrome (compact header + subtitle). When deep cleanup happens later
+ * we may collapse this into FindEvents.
  */
 export default function PlayHub() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const tabParam = searchParams.get('tab');
-  const activeTab: PlayTab = tabParam === 'venues' ? 'venues' : 'events';
-
-  const setActiveTab = (next: PlayTab) => {
-    const params = new URLSearchParams(searchParams);
-    if (next === 'events') {
-      params.delete('tab');
-    } else {
-      params.set('tab', next);
-    }
-    setSearchParams(params, { replace: true });
-  };
-
   return (
     <div className="min-h-screen bg-background">
       {/* Hub header — compact on mobile, clear hierarchy */}
@@ -50,35 +36,14 @@ export default function PlayHub() {
             <h1 className="page-title">Find Play</h1>
           </div>
           <p className="page-subtitle mt-0.5 hidden sm:block">
-            Find round robins, tournaments, open play, clinics, and places to play.
+            Round robins, open play, clinics, and other events near you.
           </p>
-
-          <Tabs
-            value={activeTab}
-            onValueChange={(v) => setActiveTab(v as PlayTab)}
-            className="mt-3 sm:mt-4"
-          >
-            <TabsList className="grid w-full grid-cols-2 max-w-sm">
-              <TabsTrigger value="events" className="gap-1.5">
-                <Calendar className="w-3.5 h-3.5" />
-                Events
-              </TabsTrigger>
-              <TabsTrigger value="venues" className="gap-1.5">
-                <MapPin className="w-3.5 h-3.5" />
-                Venues
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
         </div>
       </div>
 
-      {/* Tab body */}
+      {/* Embedded events feed */}
       <Suspense fallback={<TabSkeleton />}>
-        {activeTab === 'events' ? (
-          <FindEvents hideHeader />
-        ) : (
-          <VenueDiscovery hideHeader />
-        )}
+        <FindEvents hideHeader />
       </Suspense>
     </div>
   );

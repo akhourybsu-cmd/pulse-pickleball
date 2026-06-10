@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { Plus, Compass, Users, Trophy, Repeat, ChevronRight } from "lucide-react";
+import { Plus, Compass, Users, Repeat, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface QuickAction {
@@ -29,6 +29,9 @@ export const QuickActionsBar = () => {
     tourTag: "record-match",
   };
 
+  // Player-only secondary actions. Tournaments was removed as part of the
+  // player/venue separation — tournament discovery lives on the venue/
+  // organizer side now, reachable via the mode toggle.
   const secondaryActions: QuickAction[] = [
     {
       label: "Find Play",
@@ -43,11 +46,6 @@ export const QuickActionsBar = () => {
       label: "Round Robins",
       icon: <Users className="w-5 h-5" />,
       path: "/round-robin",
-    },
-    {
-      label: "Tournaments",
-      icon: <Trophy className="w-5 h-5" />,
-      path: "/player/play?type=tournament",
     },
   ];
 
@@ -75,8 +73,10 @@ export const QuickActionsBar = () => {
         </div>
       </button>
 
-      {/* Secondary actions — 3-column grid (stacks at very narrow widths) */}
-      <div className="grid grid-cols-3 gap-2">
+      {/* Secondary actions — 2-column grid after dropping the Tournaments tile.
+          Larger tiles fit better on mobile and the two remaining tiles (Find
+          Play, Round Robins) get the breathing room they deserve. */}
+      <div className="grid grid-cols-2 gap-2">
         {secondaryActions.map((action) => (
           <button
             key={action.path}

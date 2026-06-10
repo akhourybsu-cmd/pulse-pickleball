@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Search, Calendar, MapPin, Users, Trophy, Gamepad2, GraduationCap, Star, Sparkles, Filter } from "lucide-react";
+import { Search, Calendar, Users, Gamepad2, GraduationCap, Star, Sparkles, Filter } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -9,14 +9,16 @@ import { useDiscoverEvents, EventTypeFilter, DateRangeFilter } from "@/hooks/use
 import { UnifiedEventCard } from "@/components/events/UnifiedEventCard";
 import { PlayContextBar } from "@/components/play/PlayContextBar";
 
+// Player-side event type chips. Tournament was removed as part of the player/
+// venue separation — tournament discovery lives behind the mode toggle on the
+// venue side. The `tournament` value is still in EventTypeFilter (so existing
+// `?type=tournament` deep links don't crash readTypeParam), but it's hidden
+// from the chip list, and the hook excludes tournament rows when `type=all`.
 const eventTypeFilters: { value: EventTypeFilter; label: string; icon: React.ReactNode }[] = [
   { value: 'all', label: 'All', icon: <Calendar className="w-3.5 h-3.5" /> },
   { value: 'round_robin', label: 'Round Robin', icon: <Users className="w-3.5 h-3.5" /> },
-  { value: 'tournament', label: 'Tournament', icon: <Trophy className="w-3.5 h-3.5" /> },
   { value: 'open_play', label: 'Open Play', icon: <Gamepad2 className="w-3.5 h-3.5" /> },
   { value: 'clinic', label: 'Clinic', icon: <GraduationCap className="w-3.5 h-3.5" /> },
-  // League and Social used to be reachable only via a URL `?type=` deep link
-  // with no way to clear via UI — now they're first-class chips.
   { value: 'league', label: 'League', icon: <Star className="w-3.5 h-3.5" /> },
   { value: 'social', label: 'Social', icon: <Sparkles className="w-3.5 h-3.5" /> },
 ];
@@ -101,6 +103,11 @@ export default function FindEvents({ hideHeader = false }: FindEventsProps = {})
 
   const { data: events, isLoading, error } = useDiscoverEvents({
     eventType,
+    // Exclude tournament events from the player-side feed — tournaments are
+    // a venue/organizer concern now. If a user arrives via legacy
+    // /player/play?type=tournament deep link, eventType wins over the
+    // exclusion list (handled in the hook), so they still see their target.
+    excludeEventTypes: ['tournament'],
     dateRange,
     limit: 50,
   });
@@ -124,11 +131,11 @@ export default function FindEvents({ hideHeader = false }: FindEventsProps = {})
   const emptyStateCopy: Record<EventTypeFilter, { title: string; description: string }> = {
     all: {
       title: "No events found",
-      description: "No upcoming events match your filters. Try browsing venues to find places to play.",
+      description: "No upcoming events match your filters. Try clearing the date filter or checking back later.",
     },
     round_robin: {
       title: "No round robins available",
-      description: "Nothing scheduled yet. Try viewing all events, or explore venues that host round robins.",
+      description: "Nothing scheduled yet. Try viewing all events, or host your own.",
     },
     tournament: {
       title: "No tournaments listed",
@@ -136,11 +143,11 @@ export default function FindEvents({ hideHeader = false }: FindEventsProps = {})
     },
     open_play: {
       title: "No open play sessions",
-      description: "Nothing scheduled. Try viewing all events, or browse venues for drop-in courts.",
+      description: "Nothing scheduled. Try viewing all events.",
     },
     clinic: {
       title: "No clinics or lessons",
-      description: "Nothing scheduled. Try viewing all events, or browse venues for available coaches.",
+      description: "Nothing scheduled. Try viewing all events.",
     },
     league: {
       title: "No leagues running",
@@ -152,20 +159,13 @@ export default function FindEvents({ hideHeader = false }: FindEventsProps = {})
     },
   };
 
-  const switchToVenuesTab = () => {
-    const params = new URLSearchParams(searchParams);
-    params.delete("type");
-    params.set("tab", "venues");
-    setSearchParams(params, { replace: true });
-  };
-
   // Single search-bar block reused in both standalone and embedded modes —
   // previously this JSX was duplicated across two branches.
   const searchBar = (
     <div className="relative">
       <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
       <Input
-        placeholder="Search events, venues..."
+        placeholder="Search events..."
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
         className="pl-9 h-10 input-premium text-sm"
@@ -192,7 +192,7 @@ export default function FindEvents({ hideHeader = false }: FindEventsProps = {})
           <div className="max-w-3xl mx-auto">
             <h1 className="page-title">Find Events</h1>
             <p className="page-subtitle mt-0.5 mb-3">
-              Discover round robins, tournaments, and more
+              Round robins, open play, clinics, and more
             </p>
             {searchBar}
           </div>
@@ -294,20 +294,15 @@ export default function FindEvents({ hideHeader = false }: FindEventsProps = {})
                   Clear search
                 </Button>
               ) : (
-                <>
-                  {eventType !== 'all' && (
-                    <Button size="sm" onClick={() => setEventType('all')}>
-                      View all events
-                    </Button>
-                  )}
-                  <Button
-                    variant={eventType === 'all' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={switchToVenuesTab}
-                  >
-                    Browse venues
+                // Empty-state primary action: clear the filter back to "All"
+                // when a specific type returned nothing. The previous "Browse
+                // venues" fallback was removed as part of the player-first
+                // refocus (venue browsing isn't a player-side action now).
+                eventType !== 'all' && (
+                  <Button size="sm" onClick={() => setEventType('all')}>
+                    View all events
                   </Button>
-                </>
+                )
               )}
             </div>
           </div>

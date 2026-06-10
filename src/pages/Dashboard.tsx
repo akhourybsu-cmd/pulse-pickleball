@@ -23,7 +23,10 @@ import { StatsByCourtCard } from "@/components/dashboard/StatsByCourtCard";
 import { HomeFooterUtilities } from "@/components/dashboard/HomeFooterUtilities";
 import { VenueActivitySection } from "@/components/dashboard/VenueActivitySection";
 import { UpcomingEventsPreview } from "@/components/dashboard/UpcomingEventsPreview";
-import { ExploreCard } from "@/components/dashboard/ExploreCard";
+// ExploreCard removed from the dashboard as part of the player-first refocus —
+// its tiles (Round Robins, Tournaments, Venues) duplicated QuickActions and
+// referenced venue/tournament surfaces that now live behind the mode toggle.
+// Component file retained for potential future use; not imported anywhere.
 import { RoleSwitcherCard } from "@/components/dashboard/RoleSwitcherCard";
 
 interface Profile {
@@ -318,9 +321,6 @@ const Dashboard = () => {
             {/* 4. Recent matches — history preview */}
             <PerformanceModule userId={user?.id} />
 
-            {/* 5. Honest exploration (NOT personalized recs) */}
-            <ExploreCard />
-
             {/* Performance deep dives — kept below the player-first stack */}
             <div className="space-y-5">
               <StatsByCourtCard userId={user?.id} />
@@ -371,9 +371,6 @@ const Dashboard = () => {
 
               {/* Recent matches */}
               <PerformanceModule userId={user?.id} />
-
-              {/* Honest exploration */}
-              <ExploreCard />
 
               {/* Performance deep dives */}
               <StatsByCourtCard userId={user?.id} />

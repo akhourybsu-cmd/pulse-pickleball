@@ -1,0 +1,46 @@
+name: CI
+
+# Build gate for pull requests. This is the status check that branch
+# protection / auto-merge waits on before a PR can merge into main.
+#
+# Scope is intentionally build-only: `npm run build` runs the Vite production
+# build, which also performs the TypeScript typecheck. Lint is NOT gated here
+# because the project currently has a large backlog of pre-existing lint
+# errors that would block every merge — add a separate lint job once that
+# backlog is cleared.
+
+on:
+  pull_request:
+    branches: [main]
+  # Also run on direct pushes to the working branch so the check is green
+  # before a PR is even opened.
+  push:
+    branches: [pulse-reorg]
+
+# Cancel superseded runs on the same ref to save Actions minutes.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      # Use `npm install` rather than `npm ci`: the committed lockfile may be
+      # out of sync (Lovable-managed project), and a strict `npm ci` would
+      # hard-fail the gate for reasons unrelated to the code under review.
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Production build (includes TypeScript typecheck)
+        run: npm run build

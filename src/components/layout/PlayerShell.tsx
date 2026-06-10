@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Trophy, Compass, MapPin, User, LogOut, Plus } from 'lucide-react';
+import { Home, Trophy, Compass, User, LogOut, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { NotificationBell } from '@/components/NotificationBell';
@@ -13,11 +13,14 @@ import { supabase } from '@/integrations/supabase/client';
 import logo from '@/assets/pulse-logo-new.png';
 import { VenueModeBanner } from '@/components/mode/VenueModeBanner';
 
+// Player-first bottom nav. The previous "Venues" tab was removed as part of
+// the player/venue separation — venue discovery lives behind the mode toggle
+// (RoleSwitcherCard on the dashboard, ModeSwitcher in the page header for
+// dual-role users), not as a primary player navigation destination.
 const navItems = [
   { to: '/player/dashboard', icon: Home, label: 'Home' },
   { to: '/player/matches', icon: Trophy, label: 'Matches' },
   { to: '/player/play', icon: Compass, label: 'Play' },
-  { to: '/player/venues', icon: MapPin, label: 'Venues' },
   { to: '/player/profile', icon: User, label: 'Profile' },
 ];
 
@@ -26,7 +29,6 @@ const prefetchMap: Record<string, () => Promise<unknown>> = {
   '/player/dashboard': () => import('@/pages/player/PlayerDashboard'),
   '/player/matches': () => import('@/pages/MatchHistory'),
   '/player/play': () => import('@/pages/play/PlayHub'),
-  '/player/venues': () => import('@/pages/player/VenueDiscovery'),
   '/player/profile': () => import('@/pages/player/PlayerProfile'),
 };
 
