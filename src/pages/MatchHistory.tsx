@@ -7,7 +7,6 @@ import { ArrowLeft, AlertTriangle, CheckCircle2, Flag, History, Plus, Clock } fr
 import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import logo from "@/assets/pulse-logo-new.png";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,7 +27,6 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { z } from "zod";
 import { toLocaleDateStringEST } from "@/lib/utils";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { Footer } from "@/components/Footer";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -527,19 +525,9 @@ const MatchHistory = () => {
 
   return (
     <div className="min-h-screen bg-[hsl(var(--page-bg))]">
-      <nav className="bg-secondary border-b border-secondary-foreground/10 shadow-sm">
-        <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-5 flex items-center justify-between h-[72px]">
-          <img 
-            src={logo} 
-            alt="PULSE Logo"
-            className="h-[60px] sm:h-[75px] w-auto cursor-pointer hover:opacity-80 transition-opacity"
-            onClick={() => navigate("/player/dashboard")}
-          />
-          <div className="flex items-center gap-3">
-            <ThemeToggle />
-          </div>
-        </div>
-      </nav>
+      {/* PlayerShell now owns the top nav (logo + theme + notifications +
+          avatar + sign-out) across every player tab. Matches no longer
+          renders its own inline nav strip. */}
 
       {/* Page header — compact, primary CTA in the corner */}
       <div className="border-b bg-gradient-to-b from-primary/10 via-background to-background">

@@ -11,8 +11,6 @@ import { Footer } from "@/components/Footer";
 import { OnboardingWelcome } from "@/components/onboarding";
 import { SmartMatch } from "@/components/court/SmartMatch";
 import { LFGNotifications } from "@/components/court/LFGNotifications";
-import { NotificationCenter } from "@/components/notifications/NotificationCenter";
-import { useNotifications } from "@/hooks/useNotifications";
 
 // Dashboard Components
 import { ProfileHero } from "@/components/dashboard/ProfileHero";
@@ -60,8 +58,7 @@ const Dashboard = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const navigate = useNavigate();
 
-  // Notification state - using new real-time notification system
-  const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
+  // Notification UI lives in PlayerShell now; Dashboard just tracks home court.
   const [homeCourtId, setHomeCourtId] = useState<string | null>(null);
   
   // Partner/Opponent stats
@@ -73,17 +70,6 @@ const Dashboard = () => {
   
   // Onboarding welcome modal
   const [showOnboardingWelcome, setShowOnboardingWelcome] = useState(false);
-
-  // Real-time notifications
-  const {
-    notifications,
-    unreadCount,
-    markAsRead,
-    markAllAsRead,
-    deleteNotification,
-    clearAll,
-    groupedByTime,
-  } = useNotifications(user?.id);
 
   const fetchPartnerAndCourtStats = async (userId: string) => {
     try {
@@ -225,11 +211,6 @@ const Dashboard = () => {
     }
   };
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    navigate("/");
-  };
-
   const handleShare = async () => {
     const shareData = {
       title: 'Pulse Pickleball',
@@ -282,7 +263,8 @@ const Dashboard = () => {
         />
       )}
       
-      {/* Profile Hero Header - Unified Player Overview with embedded toggle */}
+      {/* Player Identity hero — PlayerShell now owns the top nav, so this
+          renders directly as the first body element. */}
       <ProfileHero
         userId={user?.id}
         fullName={profile?.full_name || null}
@@ -295,9 +277,6 @@ const Dashboard = () => {
         losses={profile?.losses}
         partnersCount={partnersCount}
         courtsPlayed={courtsPlayed}
-        unreadNotifications={unreadCount}
-        onNotificationOpen={() => setIsNotificationCenterOpen(true)}
-        onSignOut={handleSignOut}
         activeTab={activeTab}
         onTabChange={setActiveTab}
       />
@@ -399,17 +378,9 @@ const Dashboard = () => {
         </div>
       </div>
 
-      <NotificationCenter
-        isOpen={isNotificationCenterOpen}
-        onClose={() => setIsNotificationCenterOpen(false)}
-        notifications={notifications}
-        unreadCount={unreadCount}
-        onMarkAsRead={markAsRead}
-        onMarkAllAsRead={markAllAsRead}
-        onDelete={deleteNotification}
-        onClearAll={clearAll}
-        groupedByTime={groupedByTime}
-      />
+      {/* NotificationCenter + sign-out moved up to PlayerShell (the unified
+          top chrome owner). Dashboard no longer hosts a duplicate notification
+          modal or its own sign-out handler. */}
 
       <Footer />
     </div>
