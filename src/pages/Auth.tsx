@@ -231,6 +231,26 @@ const Auth = () => {
     navigate(redirectPath);
   };
 
+  const handleOAuth = async (provider: "google" | "apple") => {
+    setLoading(true);
+    try {
+      localStorage.setItem('pulse_persist_session', staySignedIn.toString());
+      const result = await lovable.auth.signInWithOAuth(provider, {
+        redirect_uri: window.location.origin + redirectPath,
+      });
+      if (result.error) {
+        toast.error((result.error as any)?.message || `Could not sign in with ${provider}`);
+        setLoading(false);
+        return;
+      }
+      if (result.redirected) return;
+      navigate(redirectPath);
+    } catch (err: any) {
+      toast.error(err?.message || "OAuth sign-in failed");
+      setLoading(false);
+    }
+  };
+
   const checkBiometricAvailability = async () => {
     if (!email || !isLogin) {
       setShowBiometric(false);
