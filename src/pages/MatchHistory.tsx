@@ -28,8 +28,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { z } from "zod";
 import { toLocaleDateStringEST } from "@/lib/utils";
 import { Footer } from "@/components/Footer";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PlayerPageHeader } from "@/components/layout/PlayerPageHeader";
+import { cn } from "@/lib/utils";
 
 const issueSchema = z.object({
   details: z.string().trim().max(500, "Details too long").optional(),
@@ -525,27 +526,18 @@ const MatchHistory = () => {
 
   return (
     <div className="min-h-screen bg-[hsl(var(--page-bg))]">
-      {/* PlayerShell now owns the top nav (logo + theme + notifications +
-          avatar + sign-out) across every player tab. Matches no longer
-          renders its own inline nav strip. */}
-
-      {/* Page header — compact, primary CTA in the corner */}
-      <div className="border-b bg-gradient-to-b from-primary/10 via-background to-background">
-        <div className="container mx-auto px-4 py-5 md:py-6 flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <History className="w-5 h-5 text-primary" />
-              <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">
-                {playerId ? `${playerName}'s Matches` : 'Matches'}
-              </h1>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              {playerId
-                ? `Review ${playerName}'s pickleball results.`
-                : 'Track your submitted, pending, and verified pickleball results.'}
-            </p>
-          </div>
-          {!playerId && (
+      {/* Page header — unified across the four player tabs via PlayerPageHeader. */}
+      <PlayerPageHeader
+        icon={History}
+        title={playerId ? `${playerName}'s Matches` : 'Matches'}
+        subtitle={
+          playerId
+            ? `Review ${playerName}'s pickleball results.`
+            : 'Track your submitted, pending, and verified pickleball results.'
+        }
+        background="gradient"
+        action={
+          !playerId && (
             <Button
               size="sm"
               onClick={() => navigate('/player/matches/new')}
@@ -555,27 +547,65 @@ const MatchHistory = () => {
               <span className="hidden sm:inline">Record Match</span>
               <span className="sm:hidden">Record</span>
             </Button>
-          )}
-        </div>
-      </div>
+          )
+        }
+      />
 
-      <div className="container mx-auto px-4 py-6 space-y-6">
-        {/* Tabs — only shown when viewing your own matches (not another player's).
-            Render even when both lists are empty so the player can switch tabs
-            and see the per-tab empty states. */}
-        {!playerId && (
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "all" | "pending" | "verified")}>
-            <TabsList className="grid w-full grid-cols-3 max-w-md">
-              <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="pending">
-                Pending{pendingMatches.length > 0 && ` (${pendingMatches.length})`}
-              </TabsTrigger>
-              <TabsTrigger value="verified">
-                Verified{matches.length > 0 && ` (${matches.length})`}
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-        )}
+      <div className="container mx-auto px-4 py-6 space-y-6 max-w-3xl">
+        {/* Tabs — custom strip with a sliding primary underline indicator
+            (matches PlayerShell's bottom-nav animation language). Default
+            shadcn TabsList swap was a "pill" treatment that felt visually
+            heavier; this is cleaner and signals "ledger view" instead. */}
+        {!playerId && (() => {
+          const tabs: { value: "all" | "pending" | "verified"; label: string; count?: number }[] = [
+            { value: "all", label: "All" },
+            { value: "pending", label: "Pending", count: pendingMatches.length || undefined },
+            { value: "verified", label: "Verified", count: matches.length || undefined },
+          ];
+          const activeIndex = tabs.findIndex((t) => t.value === activeTab);
+          return (
+            <div className="relative border-b border-border/40 max-w-md">
+              <div className="grid grid-cols-3">
+                {tabs.map((tab) => {
+                  const isActive = tab.value === activeTab;
+                  return (
+                    <button
+                      key={tab.value}
+                      onClick={() => setActiveTab(tab.value)}
+                      className={cn(
+                        "relative py-2.5 text-sm font-medium transition-colors duration-200",
+                        isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      <span>{tab.label}</span>
+                      {tab.count != null && (
+                        <span className={cn(
+                          "ml-1.5 text-xs font-semibold tabular-nums transition-colors",
+                          isActive ? "text-primary" : "text-muted-foreground/70"
+                        )}>
+                          {tab.count}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+              {/* Sliding underline indicator */}
+              <div
+                className="absolute bottom-0 h-[2px] bg-primary rounded-full transition-all duration-[240ms] ease-out"
+                style={{
+                  width: `${100 / tabs.length}%`,
+                  left: `${(100 / tabs.length) * activeIndex}%`,
+                }}
+              />
+            </div>
+          );
+        })()}
+
+        {/* Per-tab body — keyed so tab switches retrigger the fade-up animation
+            (the new content slides up + fades in for a satisfying transition
+            instead of swapping abruptly). */}
+        <div key={activeTab} className="space-y-6 animate-fade-up">
 
         {/* Empty state for the Pending tab when there's nothing pending */}
         {!playerId && activeTab === "pending" && pendingMatches.length === 0 && (
@@ -650,10 +680,14 @@ const MatchHistory = () => {
                         <p className="text-xs text-muted-foreground">{match.partner_name}</p>
                       </div>
                       <div className="text-center">
-                        <div className="text-3xl font-bold">
-                          {match.my_team === 1 ? match.team1_score : match.team2_score}
-                          <span className="mx-2 text-muted-foreground">-</span>
-                          {match.my_team === 1 ? match.team2_score : match.team1_score}
+                        <div className="text-4xl font-bold tabular-nums tracking-tight">
+                          <span className="text-foreground">
+                            {match.my_team === 1 ? match.team1_score : match.team2_score}
+                          </span>
+                          <span className="mx-2 text-muted-foreground/40 font-light">–</span>
+                          <span className="text-muted-foreground">
+                            {match.my_team === 1 ? match.team2_score : match.team1_score}
+                          </span>
                         </div>
                       </div>
                       <div className="text-center">
@@ -687,18 +721,22 @@ const MatchHistory = () => {
           };
 
           return (
-            <div className="space-y-6">
-              {/* Section 1: action required */}
+            <div className="space-y-8">
+              {/* Section 1: action required — primary CTA group */}
               {needsMyConfirmation.length > 0 && (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2">
-                    <AlertTriangle className="w-5 h-5 text-amber-500" />
-                    <h2 className="text-xl md:text-2xl font-bold">Needs your confirmation</h2>
-                    <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-300">
+                <div className="space-y-3">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                      <h2 className="text-xs font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400">
+                        Needs your confirmation
+                      </h2>
+                    </div>
+                    <span className="text-[11px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded-full px-2 py-0.5 tabular-nums">
                       {needsMyConfirmation.length}
-                    </Badge>
+                    </span>
                   </div>
-                  <p className="text-muted-foreground text-sm">
+                  <p className="text-sm text-muted-foreground leading-snug">
                     Tap <span className="font-medium text-foreground">Confirm Result</span> if the score looks right.
                     Once enough players confirm, the match is verified and saved to your PULSE history.
                   </p>
@@ -706,17 +744,21 @@ const MatchHistory = () => {
                 </div>
               )}
 
-              {/* Section 2: already confirmed by me */}
+              {/* Section 2: already confirmed by me — secondary group */}
               {waitingOnOthers.length > 0 && (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 mt-2">
-                    <Clock className="w-5 h-5 text-muted-foreground" />
-                    <h2 className="text-xl md:text-2xl font-bold">Waiting on other players</h2>
-                    <Badge variant="outline" className="bg-muted text-muted-foreground border-border">
+                <div className="space-y-3">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                      <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        Waiting on other players
+                      </h2>
+                    </div>
+                    <span className="text-[11px] font-semibold text-muted-foreground bg-muted border border-border rounded-full px-2 py-0.5 tabular-nums">
                       {waitingOnOthers.length}
-                    </Badge>
+                    </span>
                   </div>
-                  <p className="text-muted-foreground text-sm">
+                  <p className="text-sm text-muted-foreground leading-snug">
                     You've already confirmed these. They'll move to your verified history once enough players confirm.
                   </p>
                   {waitingOnOthers.map((match, i) => renderPendingCard(match, i, 'waiting'))}
@@ -728,9 +770,16 @@ const MatchHistory = () => {
 
         {/* Divider between pending and approved (only on the "all" tab) */}
         {!playerId && pendingMatches.length > 0 && matches.length > 0 && activeTab === "all" && (
-          <div className="flex items-center gap-3 mb-4 mt-8">
-            <History className="w-5 h-5 text-primary" />
-            <h2 className="text-2xl font-bold">Verified Match History</h2>
+          <div className="flex items-baseline justify-between gap-3 mb-3 mt-8">
+            <div className="flex items-center gap-2">
+              <History className="w-4 h-4 text-primary flex-shrink-0" />
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Verified history
+              </h2>
+            </div>
+            <span className="text-[11px] font-semibold text-muted-foreground bg-muted border border-border rounded-full px-2 py-0.5 tabular-nums">
+              {matches.length}
+            </span>
           </div>
         )}
 
@@ -841,10 +890,14 @@ const MatchHistory = () => {
                         </p>
                       </div>
                       <div className="text-center">
-                        <p className="text-2xl font-bold">
-                          {match.my_team === 1 ? match.team1_score : match.team2_score}
-                          {" - "}
-                          {match.my_team === 1 ? match.team2_score : match.team1_score}
+                        <p className="text-3xl font-bold tabular-nums tracking-tight">
+                          <span className={match.won ? "text-foreground" : "text-muted-foreground"}>
+                            {match.my_team === 1 ? match.team1_score : match.team2_score}
+                          </span>
+                          <span className="mx-1.5 text-muted-foreground/40 font-light">–</span>
+                          <span className={match.won ? "text-muted-foreground" : "text-foreground"}>
+                            {match.my_team === 1 ? match.team2_score : match.team1_score}
+                          </span>
                         </p>
                       </div>
                       <div className="text-right">
@@ -938,6 +991,7 @@ const MatchHistory = () => {
             })}
           </div>
         )}
+        </div>{/* /per-tab body keyed wrapper */}
       </div>
 
       <Sheet open={reportSheetOpen} onOpenChange={setReportSheetOpen}>
