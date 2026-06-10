@@ -376,6 +376,37 @@ const Auth = () => {
                 />
               </div>
             ) : (
+              <>
+                <div className="space-y-2 mb-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => handleOAuth("google")}
+                    disabled={loading}
+                  >
+                    <GoogleIcon />
+                    <span className="ml-2">Continue with Google</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => handleOAuth("apple")}
+                    disabled={loading}
+                  >
+                    <AppleIcon />
+                    <span className="ml-2">Continue with Apple</span>
+                  </Button>
+                </div>
+                <div className="relative my-4">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-card px-2 text-muted-foreground">or continue with email</span>
+                  </div>
+                </div>
               <form onSubmit={handleAuth} className="space-y-4">
                 {!isLogin && (
                   <>
