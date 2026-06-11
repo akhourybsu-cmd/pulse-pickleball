@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { PlayerScoreEntry } from "@/components/tournament/scoring/PlayerScoreEntry";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { ArrowLeft, Loader2 } from "lucide-react";
-import logo from "@/assets/pulse-logo-new.png";
+import logo from "@/assets/pulse-logo-premium.svg";
 
 interface EventInfo {
   id: string;

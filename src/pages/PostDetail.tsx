@@ -10,7 +10,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { ArrowLeft, MessageSquare, ThumbsUp, Flame, Laugh, Heart, Send, LogOut, User as UserIcon } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
-import logo from "@/assets/pulse-logo-new.png";
+import logo from "@/assets/pulse-logo-premium.svg";
 
 const POST_TYPE_LABELS: Record<string, { label: string; variant: any }> = {
   lfg: { label: "Looking for Game", variant: "default" },

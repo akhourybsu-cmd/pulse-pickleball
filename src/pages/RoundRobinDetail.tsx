@@ -42,7 +42,7 @@ import { RegistrationManagement } from "@/components/round-robin/RegistrationMan
 import { PlayerRoundRobinView } from "@/components/round-robin/PlayerRoundRobinView";
 import { PageHeader } from "@/components/PageHeader";
 import { z } from "zod";
-import logo from "@/assets/pulse-logo-new.png";
+import logo from "@/assets/pulse-logo-premium.svg";
 import { suggestRounds } from "@/lib/roundRobinFairness";
 import { isPlatformAdmin } from "@/lib/permissions";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";

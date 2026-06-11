@@ -194,12 +194,12 @@ const SwipeToConfirm = ({
         ref={containerRef}
         className={cn(
           "relative h-16 rounded-full overflow-hidden transition-all duration-300",
-          isConfirmed ? "bg-[#A9CF46]" : "bg-muted border-2 border-border"
+          isConfirmed ? "bg-[#B8945A]" : "bg-muted border-2 border-border"
         )}
       >
         {/* Progress fill */}
         <div
-          className="absolute inset-0 bg-[#A9CF46] transition-all duration-100"
+          className="absolute inset-0 bg-[#B8945A] transition-all duration-100"
           style={{
             width: isConfirmed ? "100%" : `${progress}%`,
             opacity: isConfirmed ? 1 : 0.3,
@@ -233,7 +233,7 @@ const SwipeToConfirm = ({
           }}
         >
           {isConfirmed ? (
-            <Check className="w-8 h-8 text-[#A9CF46] animate-scale-in" />
+            <Check className="w-8 h-8 text-[#B8945A] animate-scale-in" />
           ) : (
             <div className="flex gap-1">
               <div className="w-1 h-6 bg-primary-foreground rounded-full" />

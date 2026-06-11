@@ -17,7 +17,7 @@ import {
   Zap,
   Download
 } from "lucide-react";
-import logo from "@/assets/pulse-logo-new.png";
+import logo from "@/assets/pulse-logo-premium.svg";
 import leagueFlyer from "@/assets/league-flyer-nov-2025.png";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Footer } from "@/components/Footer";

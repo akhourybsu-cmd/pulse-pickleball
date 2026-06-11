@@ -8,73 +8,81 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 0 0% 97%;
-    --foreground: 195 70% 10%;
+    /* PULSE Premium identity — cream + ink + warm gold.
+       Old palette was lime-on-near-white; this refresh moves to a
+       parchment/ink scheme with a warm gold accent (#B8945A) that
+       matches the new logo. The variable names are kept stable so
+       components that reference --primary / --accent / --accent-lime
+       continue to work without per-component edits. */
+    --background: 44 33% 93%;       /* #F4F1E9 cream parchment */
+    --foreground: 220 10% 12%;      /* #1B1D21 ink */
 
-    --card: 0 0% 99%;
-    --card-foreground: 195 70% 10%;
+    --card: 44 30% 96%;             /* slightly lifted cream */
+    --card-foreground: 220 10% 12%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 195 70% 10%;
+    --popover: 44 30% 97%;
+    --popover-foreground: 220 10% 12%;
 
-    --primary: 74 65% 52%;
-    --primary-foreground: 195 60% 12%;
+    --primary: 37 40% 54%;          /* #B8945A warm gold */
+    --primary-foreground: 44 33% 96%;
 
-    --secondary: 195 60% 20%;
-    --secondary-foreground: 0 0% 100%;
+    --secondary: 220 9% 22%;        /* ink chrome */
+    --secondary-foreground: 44 33% 95%;
 
-    --muted: 195 20% 92%;
-    --muted-foreground: 195 40% 35%;
+    --muted: 44 18% 88%;
+    --muted-foreground: 220 8% 40%;
 
-    --accent: 74 65% 52%;
-    --accent-foreground: 195 60% 12%;
+    --accent: 37 40% 54%;
+    --accent-foreground: 44 33% 96%;
 
-    --destructive: 0 84% 60%;
+    --destructive: 0 60% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 195 25% 82%;
-    --input: 195 25% 82%;
-    --ring: 74 65% 52%;
+    --border: 44 15% 82%;
+    --input: 44 15% 82%;
+    --ring: 37 40% 54%;
 
     /* Pulse Accent Bar for Interactive Cards */
     --pulse-accent-bar: 4px;
 
     --radius: 0.75rem;
 
-    /* Light mode gradients for depth */
-    --gradient-hero: linear-gradient(135deg, #F8FCF4 0%, #FFFFFF 100%);
-    --gradient-card: linear-gradient(180deg, #FFFFFF 0%, #F9FBFC 100%);
-    
-    --shadow-glow: 0 0 40px hsl(74 65% 52% / 0.3);
-    --shadow-card: 0 4px 20px hsl(195 60% 12% / 0.08);
+    /* Light mode gradients for depth — warmer creams instead of cool whites */
+    --gradient-hero: linear-gradient(135deg, #F4F1E9 0%, #FAF8F2 100%);
+    --gradient-card: linear-gradient(180deg, #FAF8F2 0%, #F4F1E9 100%);
 
-    /* Premium Dashboard Tiles - Light Mode */
-    --accent-lime: 74 65% 52%;
-    --page-bg: 0 0% 98%;
-    --tile-card-bg: 0 0% 100%;
-    --tile-card-border: 195 30% 90%;
-    --ink-900: 195 60% 12%;
-    --ink-700: 195 60% 20%;
-    --tile-muted: 195 30% 96%;
-    --tile-shadow: 0 2px 8px hsl(195 40% 20% / 0.06);
-    --tile-gradient-lime: linear-gradient(90deg, hsl(74 65% 52% / 0.85), transparent 70%);
+    --shadow-glow: 0 0 40px hsl(37 40% 54% / 0.3);
+    --shadow-card: 0 4px 20px hsl(220 10% 12% / 0.08);
+
+    /* Premium Dashboard Tiles - Light Mode (cream-on-cream w/ gold accent).
+       --accent-lime keeps its name for backwards-compat but now points at
+       the new warm gold so existing consumers re-color automatically. */
+    --accent-lime: 37 40% 54%;
+    --page-bg: 44 33% 93%;
+    --tile-card-bg: 44 30% 96%;
+    --tile-card-border: 44 15% 84%;
+    --ink-900: 220 10% 12%;
+    --ink-700: 220 9% 22%;
+    --tile-muted: 44 22% 92%;
+    --tile-shadow: 0 2px 8px hsl(220 10% 15% / 0.06);
+    --tile-gradient-lime: linear-gradient(90deg, hsl(37 40% 54% / 0.85), transparent 70%);
     --tile-pattern-opacity: 0.05;
-    --tile-pattern-color: 11 42% 18%;
+    --tile-pattern-color: 220 10% 18%;
 
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 195 60% 12%;
-    --sidebar-primary: 74 65% 52%;
-    --sidebar-primary-foreground: 195 60% 12%;
-    --sidebar-accent: 195 10% 95%;
-    --sidebar-accent-foreground: 195 60% 12%;
-    --sidebar-border: 195 20% 88%;
-    --sidebar-ring: 74 65% 52%;
+    --sidebar-background: 44 28% 95%;
+    --sidebar-foreground: 220 10% 12%;
+    --sidebar-primary: 37 40% 54%;
+    --sidebar-primary-foreground: 44 33% 96%;
+    --sidebar-accent: 44 18% 90%;
+    --sidebar-accent-foreground: 220 10% 12%;
+    --sidebar-border: 44 15% 82%;
+    --sidebar-ring: 37 40% 54%;
 
-    /* Hero Banner - Light Mode */
-    --hero-bg: #F7FBF2;
-    --hero-border: rgba(166, 219, 90, 0.15);
-    --hero-heading: #0E4C58;
-    --hero-body: #0E4C58;
+    /* Hero Banner - Light Mode (premium parchment + ink) */
+    --hero-bg: #F4F1E9;
+    --hero-border: rgba(184, 148, 90, 0.18);
+    --hero-heading: #1B1D21;
+    --hero-body: #1B1D21;
 
     /* Per-event-type accent tokens (HSL triplets, used with hsl(var(--…) / α)).
        These replace the ad-hoc bg-blue-500/text-blue-600 literals scattered
@@ -89,69 +97,72 @@ All colors MUST be HSL.
   }
 
   .dark {
-    --page-bg: 207 44% 10%; /* Dark mode uses existing dark background */
-    --background: 207 44% 10%;
-    --foreground: 191 38% 94%;
+    /* PULSE Premium identity — warm dark companion to the cream light mode.
+       Old dark was teal-cool with lime accent; refreshed to warm-ink dark
+       with lifted gold accent so the brand reads consistently across modes. */
+    --page-bg: 220 10% 9%;
+    --background: 220 10% 9%;       /* deep warm ink */
+    --foreground: 44 25% 92%;       /* cream text */
 
-    --card: 206 34% 12%;
-    --card-foreground: 191 38% 94%;
+    --card: 220 10% 13%;
+    --card-foreground: 44 25% 92%;
 
-    --popover: 206 34% 12%;
-    --popover-foreground: 191 38% 94%;
+    --popover: 220 10% 13%;
+    --popover-foreground: 44 25% 92%;
 
-    --primary: 85 64% 61%;
-    --primary-foreground: 207 44% 10%;
+    --primary: 37 50% 65%;          /* lifted gold for dark-mode contrast */
+    --primary-foreground: 220 10% 10%;
 
-    --secondary: 204 48% 8%;
-    --secondary-foreground: 191 38% 94%;
+    --secondary: 220 10% 6%;
+    --secondary-foreground: 44 25% 92%;
 
-    --muted: 206 34% 12%;
-    --muted-foreground: 196 19% 75%;
+    --muted: 220 8% 16%;
+    --muted-foreground: 44 10% 72%;
 
-    --accent: 85 64% 61%;
-    --accent-foreground: 207 44% 10%;
+    --accent: 37 50% 65%;
+    --accent-foreground: 220 10% 10%;
 
     --destructive: 0 62.8% 50%;
-    --destructive-foreground: 191 38% 94%;
+    --destructive-foreground: 44 25% 92%;
 
     --border: 0 0% 100% / 0.06;
     --input: 0 0% 100% / 0.06;
-    --ring: 85 64% 61%;
+    --ring: 37 50% 65%;
 
-    /* Dark mode gradients for depth */
-    --gradient-hero: linear-gradient(135deg, #0E1013 0%, #1A1D22 100%);
-    --gradient-card: linear-gradient(180deg, #1A1D22 0%, #15171A 100%);
-    
-    --shadow-glow: 0 0 40px hsl(85 64% 61% / 0.5);
-    --shadow-card: 0 4px 20px hsl(207 44% 5% / 0.6);
+    /* Dark mode gradients for depth (warm ink) */
+    --gradient-hero: linear-gradient(135deg, #16181C 0%, #1B1D21 100%);
+    --gradient-card: linear-gradient(180deg, #1B1D21 0%, #16181C 100%);
+
+    --shadow-glow: 0 0 40px hsl(37 50% 65% / 0.5);
+    --shadow-card: 0 4px 20px hsl(220 10% 4% / 0.6);
 
     /* Premium Dashboard Tiles - Dark Mode */
-    --accent-lime: 85 64% 61%;
-    --page-bg: 207 44% 10%;
-    --tile-card-bg: 206 34% 12%;
+    --accent-lime: 37 50% 65%;
+    --page-bg: 220 10% 9%;
+    --tile-card-bg: 220 10% 13%;
     --tile-card-border: 0 0% 100% / 0.08;
-    --ink-900: 191 38% 94%;
-    --ink-700: 196 19% 75%;
-    --tile-muted: 206 34% 15%;
-    --tile-shadow: 0 1px 0 hsl(207 44% 5% / 0.6), 0 8px 24px hsl(207 44% 5% / 0.28);
-    --tile-gradient-lime: linear-gradient(90deg, hsl(85 64% 61% / 0.85), transparent 70%);
+    --ink-900: 44 25% 92%;
+    --ink-700: 44 10% 72%;
+    --tile-muted: 220 8% 16%;
+    --tile-shadow: 0 1px 0 hsl(220 10% 4% / 0.6), 0 8px 24px hsl(220 10% 4% / 0.28);
+    --tile-gradient-lime: linear-gradient(90deg, hsl(37 50% 65% / 0.85), transparent 70%);
     --tile-pattern-opacity: 0.03;
     --tile-pattern-color: 0 0% 100%;
 
-    --sidebar-background: 204 48% 8%;
-    --sidebar-foreground: 191 38% 94%;
-    --sidebar-primary: 85 64% 61%;
-    --sidebar-primary-foreground: 207 44% 10%;
-    --sidebar-accent: 206 34% 12%;
-    --sidebar-accent-foreground: 191 38% 94%;
+    --sidebar-background: 220 10% 6%;
+    --sidebar-foreground: 44 25% 92%;
+    --sidebar-primary: 37 50% 65%;
+    --sidebar-primary-foreground: 220 10% 10%;
+    --sidebar-accent: 220 10% 13%;
+    --sidebar-accent-foreground: 44 25% 92%;
     --sidebar-border: 0 0% 100% / 0.06;
-    --sidebar-ring: 85 64% 61%;
+    --sidebar-ring: 37 50% 65%;
 
-    /* Hero Banner - Dark Mode */
-    --hero-bg: #142029;
-    --hero-border: rgba(166, 219, 90, 0.1);
-    --hero-heading: #EAF3F5;
-    --hero-body: #B4C4CA;
+    /* Hero Banner - Dark Mode (warm dark) */
+    --hero-bg: #1B1D21;
+    --hero-border: rgba(184, 148, 90, 0.18);
+    --hero-heading: #F4F1E9;
+    --hero-body: #C7C2B5;
 
     /* Per-event-type accent tokens — dark-mode tuned for readable contrast
        on the dark card background. Lighter L values than the light-mode
@@ -198,19 +209,19 @@ All colors MUST be HSL.
 
 @keyframes banner-glow {
   0% {
-    box-shadow: 0 0 0px rgba(169, 207, 70, 0);
+    box-shadow: 0 0 0px rgba(184, 148, 90, 0);
   }
   50% {
-    box-shadow: 0 0 16px rgba(169, 207, 70, 0.5);
+    box-shadow: 0 0 16px rgba(184, 148, 90, 0.5);
   }
   100% {
-    box-shadow: 0 0 0px rgba(169, 207, 70, 0);
+    box-shadow: 0 0 0px rgba(184, 148, 90, 0);
   }
 }
 
 @keyframes pulseGlow {
-  0%, 100% { box-shadow: 0 0 0 rgba(169, 207, 70, 0); }
-  50% { box-shadow: 0 0 14px rgba(169, 207, 70, 0.6); }
+  0%, 100% { box-shadow: 0 0 0 rgba(184, 148, 90, 0); }
+  50% { box-shadow: 0 0 14px rgba(184, 148, 90, 0.6); }
 }
 
 @keyframes pulseBlink {
@@ -219,16 +230,16 @@ All colors MUST be HSL.
 }
 
 @keyframes pulseRipple {
-  0% { box-shadow: 0 0 0 0 rgba(169, 207, 70, 0.3); }
-  100% { box-shadow: 0 0 0 20px rgba(169, 207, 70, 0); }
+  0% { box-shadow: 0 0 0 0 rgba(184, 148, 90, 0.3); }
+  100% { box-shadow: 0 0 0 20px rgba(184, 148, 90, 0); }
 }
 
 @keyframes pulseScoreGlow {
   0%, 100% { 
-    box-shadow: 0 0 30px rgba(169, 207, 70, 0.15), 0 0 60px rgba(169, 207, 70, 0.1);
+    box-shadow: 0 0 30px rgba(184, 148, 90, 0.15), 0 0 60px rgba(184, 148, 90, 0.1);
   }
   50% { 
-    box-shadow: 0 0 40px rgba(169, 207, 70, 0.25), 0 0 80px rgba(169, 207, 70, 0.15);
+    box-shadow: 0 0 40px rgba(184, 148, 90, 0.25), 0 0 80px rgba(184, 148, 90, 0.15);
   }
 }
 
@@ -260,7 +271,7 @@ All colors MUST be HSL.
 .pulse-score-line {
   width: 20px;
   height: 2px;
-  background: #A9CF46;
+  background: #B8945A;
   animation: pulseGlow 1.8s ease-in-out infinite;
 }
 
@@ -368,23 +379,26 @@ All colors MUST be HSL.
 /* Live Badge Pulse Glow */
 @keyframes pulse-green-glow {
   0%, 100% {
-    box-shadow: 0 0 8px rgba(169, 207, 70, 0.4),
-                0 0 16px rgba(169, 207, 70, 0.2);
-    border-color: #A9CF46;
+    box-shadow: 0 0 8px rgba(184, 148, 90, 0.4),
+                0 0 16px rgba(184, 148, 90, 0.2);
+    border-color: #B8945A;
   }
   50% {
-    box-shadow: 0 0 16px rgba(169, 207, 70, 0.6),
-                0 0 24px rgba(169, 207, 70, 0.3),
-                0 0 32px rgba(169, 207, 70, 0.1);
-    border-color: #A9CF46;
+    box-shadow: 0 0 16px rgba(184, 148, 90, 0.6),
+                0 0 24px rgba(184, 148, 90, 0.3),
+                0 0 32px rgba(184, 148, 90, 0.1);
+    border-color: #B8945A;
   }
 }
 
 .badge-pulse-glow {
+  /* Gold-tinted live badge — keyframe renamed conceptually (was
+     pulse-green-glow on the lime palette); now reads as a warm-gold halo
+     that matches the new identity. */
   animation: pulse-green-glow 2s ease-in-out infinite;
-  background: #A9CF46 !important;
-  color: hsl(195, 60%, 12%) !important;
-  border: 1px solid #A9CF46 !important;
+  background: #B8945A !important;
+  color: hsl(220, 10%, 12%) !important;
+  border: 1px solid #B8945A !important;
   font-weight: 600;
 }
 
@@ -475,7 +489,7 @@ All colors MUST be HSL.
   }
   
   .badge-pulse-glow {
-    box-shadow: 0 0 8px rgba(169, 207, 70, 0.4);
+    box-shadow: 0 0 8px rgba(184, 148, 90, 0.4);
   }
   
   .tile-hover:hover:not(:disabled) {

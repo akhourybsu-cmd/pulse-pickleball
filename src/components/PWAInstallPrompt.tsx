@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Download, Bell, X, Share2, Plus } from 'lucide-react';
-import pulseLogo from '@/assets/pulse-logo-new.png';
+import pulseLogo from '@/assets/pulse-logo-premium.svg';
 
 export const PWAInstallPrompt = () => {
   const { isStandalone, isMobile, isIOS, canInstall, promptInstall } = usePWAInstall();

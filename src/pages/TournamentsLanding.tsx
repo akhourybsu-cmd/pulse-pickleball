@@ -13,7 +13,7 @@ import { PricingShowcase } from "@/components/tournament/PricingShowcase";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Footer } from "@/components/Footer";
 import { format } from "date-fns";
-import logo from "@/assets/pulse-logo-new.png";
+import logo from "@/assets/pulse-logo-premium.svg";
 
 interface Tournament {
   id: string;

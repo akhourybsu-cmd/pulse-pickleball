@@ -18,7 +18,7 @@ import {
   ArrowRight,
   HelpCircle
 } from "lucide-react";
-import logo from "@/assets/pulse-logo-new.png";
+import logo from "@/assets/pulse-logo-premium.svg";
 
 interface VenueDetails {
   id: string;

@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { FullscreenToggleButton } from "@/components/kiosk/FullscreenToggleButton";
 import { toast } from "sonner";
 import { Radio, Lock, Clock, Trophy, Palette } from "lucide-react";
-import pulseLogo from "@/assets/pulse-logo-new.png";
+import pulseLogo from "@/assets/pulse-logo-premium.svg";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import {
   DropdownMenu,
