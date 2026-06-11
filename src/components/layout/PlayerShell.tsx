@@ -41,6 +41,7 @@ export function PlayerShell() {
   // Real-time notifications
   const {
     notifications,
+    loading: notificationsLoading,
     unreadCount,
     markAsRead,
     markAllAsRead,
@@ -140,6 +141,7 @@ export function PlayerShell() {
         isOpen={isNotificationCenterOpen}
         onClose={() => setIsNotificationCenterOpen(false)}
         notifications={notifications}
+        loading={notificationsLoading}
         unreadCount={unreadCount}
         onMarkAsRead={markAsRead}
         onMarkAllAsRead={markAllAsRead}

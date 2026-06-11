@@ -6,6 +6,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface CourtStat {
   wins: number;
@@ -100,9 +101,7 @@ export const StatsByCourtCard = ({ userId }: StatsByCourtCardProps) => {
   }, [userId]);
 
   if (loading) {
-    return (
-      <div className="animate-pulse h-10 bg-muted rounded-full w-64" />
-    );
+    return <Skeleton className="h-10 w-64 rounded-full" />;
   }
 
   if (!topCourt) {

@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { motion, useMotionValue, useTransform, PanInfo } from "framer-motion";
-import { 
-  Trophy, 
-  Calendar, 
-  Users, 
-  Bell, 
-  Target, 
+import {
+  Trophy,
+  Calendar,
+  Users,
+  Bell,
+  Target,
   MessageCircle,
   UserPlus,
   CheckCircle,
@@ -16,8 +16,6 @@ import {
   Clock,
   Star,
   MapPin,
-  TrendingUp,
-  Megaphone,
   UserCheck,
   CreditCard,
   AlertCircle,
@@ -25,7 +23,6 @@ import {
   FileText,
   Swords,
   Flag,
-  Award
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -56,7 +53,9 @@ const typeIcons: Record<string, React.ElementType> = {
   match_forfeited: XCircle,
   next_match_ready: Swords,
   
-  // Tournament notifications
+  // Registration notifications — shared between round robins, open play,
+  // and (when re-enabled) tournaments. Kept active because round robins
+  // still surface these.
   registration_submitted: FileText,
   registration_approved: CheckCircle,
   registration_waitlisted: Clock,
@@ -66,33 +65,24 @@ const typeIcons: Record<string, React.ElementType> = {
   partner_joined_team: UserPlus,
   partner_left_team: AlertCircle,
   registration_cancelled: XCircle,
-  tournament_published: Trophy,
-  tournament_registration_open: Trophy,
   registration_closing_soon: Clock,
-  tournament_registration_closed: XCircle,
-  tournament_cancelled: XCircle,
-  tournament_rescheduled: Calendar,
   schedule_released: FileText,
-  tournament_completed: Trophy,
-  advanced_to_next_round: TrendingUp,
-  eliminated_from_tournament: Flag,
-  podium_finish: Award,
-  tournament_champion: Trophy,
-  standings_released: FileText,
-  
-  // Check-in notifications
+
+  // Check-in notifications (round-robin check-ins are still active)
   checkin_open: UserCheck,
   checkin_reminder: Bell,
   checked_in_confirmed: CheckCircle,
   checkin_missed: AlertCircle,
   weather_delay: AlertTriangle,
-  
+
   // Announcements
-  tournament_announcement: Megaphone,
-  tournament_update: Megaphone,
   schedule_change: Calendar,
   venue_change: MapPin,
-  
+
+  // Tournament-specific notification icons removed during the player-only
+  // beta. Tournament types still in the DB schema fall through to the
+  // generic Bell icon via the typeIcons[...] || Bell fallback below.
+
   // Payment notifications
   payment_confirmed: CreditCard,
   payment_failed: AlertCircle,
@@ -113,9 +103,10 @@ const typeIcons: Record<string, React.ElementType> = {
   event_registration_confirmed: CheckCircle,
 };
 
-// Category colors for icon backgrounds
+// Category colors for icon backgrounds. The `tournaments` category was
+// dropped during the player-only beta — any tournament notification still
+// in the DB falls back to the system color.
 const categoryColors: Record<string, string> = {
-  tournaments: "bg-primary/20 text-primary",
   matches: "bg-blue-500/20 text-blue-500",
   events: "bg-indigo-500/20 text-indigo-500",
   community: "bg-green-500/20 text-green-500",

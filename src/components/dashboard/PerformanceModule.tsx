@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { Trophy, TrendingUp, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DashboardModuleSkeleton } from "@/components/layout/DashboardModuleSkeleton";
 import { MatchCard } from "./MatchCard";
 
 interface Match {
@@ -140,10 +141,7 @@ export const PerformanceModule = ({ userId }: PerformanceModuleProps) => {
           <Trophy className="w-4 h-4 text-muted-foreground" />
           <h3 className="text-sm font-medium text-muted-foreground">Match History</h3>
         </div>
-        <div className="animate-pulse space-y-3">
-          <div className="h-24 bg-muted rounded-xl"></div>
-          <div className="h-24 bg-muted rounded-xl"></div>
-        </div>
+        <DashboardModuleSkeleton count={2} rowHeight="h-24" showHeader={false} />
       </div>
     );
   }

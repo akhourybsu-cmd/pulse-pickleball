@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,6 +36,10 @@ interface NotificationCenterProps {
   isOpen: boolean;
   notifications: Notification[];
   unreadCount: number;
+  /** True while the initial notification fetch is in flight. Drives the
+   *  skeleton state inside the active tab body so opening the bell before
+   *  the fetch settles doesn't show a misleading "all caught up" message. */
+  loading?: boolean;
   groupedByTime: () => {
     today: Notification[];
     yesterday: Notification[];
@@ -73,6 +78,7 @@ export function NotificationCenter({
   isOpen,
   notifications,
   unreadCount,
+  loading = false,
   groupedByTime,
   onClose,
   onMarkAsRead,
@@ -291,8 +297,24 @@ export function NotificationCenter({
           {/* Notification List */}
           <TabsContent value={activeCategory} className="m-0 h-[calc(100vh-180px)]">
             <ScrollArea className="h-full">
-              {filteredNotifications.length === 0 ? (
-                <motion.div 
+              {loading && notifications.length === 0 ? (
+                /* Initial fetch still in flight — show a skeleton so the
+                   tab body doesn't briefly render the "all caught up"
+                   empty state before notifications arrive. */
+                <div className="p-3 space-y-3">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="flex items-start gap-3 p-3">
+                      <Skeleton className="h-10 w-10 rounded-full flex-shrink-0" />
+                      <div className="flex-1 space-y-2">
+                        <Skeleton className="h-3.5 w-2/3" />
+                        <Skeleton className="h-3 w-full" />
+                        <Skeleton className="h-2.5 w-16" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : filteredNotifications.length === 0 ? (
+                <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   className="flex flex-col items-center justify-center py-16 px-4 text-center"
