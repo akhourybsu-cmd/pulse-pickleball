@@ -1,16 +1,15 @@
 import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  X, 
-  Bell, 
-  CheckCheck, 
-  Trash2, 
-  Settings, 
-  Trophy, 
-  Target, 
-  Calendar, 
-  Users, 
+import {
+  X,
+  Bell,
+  CheckCheck,
+  Trash2,
+  Settings,
+  Target,
+  Calendar,
+  Users,
   Award,
   Undo2
 } from "lucide-react";
@@ -50,9 +49,11 @@ interface NotificationCenterProps {
   onUndo?: (notification: Notification) => void;
 }
 
+// Tournament category dropped during the player-only beta — tournament
+// notification types still exist in the DB schema but no longer surface
+// as a tab here.
 const categories = [
   { value: "all", label: "All", icon: Bell },
-  { value: "tournaments", label: "Tournaments", icon: Trophy },
   { value: "matches", label: "Matches", icon: Target },
   { value: "events", label: "Events", icon: Calendar },
   { value: "community", label: "Social", icon: Users },
@@ -62,7 +63,6 @@ const categories = [
 // Category-specific empty state content
 const emptyStates: Record<string, { icon: React.ElementType; title: string; message: string }> = {
   all: { icon: Bell, title: "No notifications", message: "You're all caught up!" },
-  tournaments: { icon: Trophy, title: "No tournament updates", message: "Register for a tournament to get notifications here" },
   matches: { icon: Target, title: "No match notifications", message: "Your match updates will appear here" },
   events: { icon: Calendar, title: "No event notifications", message: "Event reminders will show up here" },
   community: { icon: Users, title: "No community activity", message: "Join groups to see activity here" },

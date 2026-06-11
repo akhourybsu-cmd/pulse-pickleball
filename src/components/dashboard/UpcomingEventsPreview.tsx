@@ -30,7 +30,14 @@ export function UpcomingEventsPreview({ userId }: UpcomingEventsPreviewProps) {
     );
   }
 
-  const hasEvents = registrations && registrations.length > 0;
+  // Player-only beta: filter tournament registrations out of the preview
+  // entirely. Players shouldn't be able to discover or register for new
+  // tournaments while the venue/tournament surfaces are hidden, but legacy
+  // registrations in the DB could still bubble up here.
+  const visibleRegistrations = (registrations || []).filter(
+    (r: { event?: { event_type?: string } }) => r.event?.event_type !== 'tournament',
+  );
+  const hasEvents = visibleRegistrations.length > 0;
 
   return (
     <div className="bg-card rounded-xl border border-border overflow-hidden">
@@ -57,10 +64,10 @@ export function UpcomingEventsPreview({ userId }: UpcomingEventsPreviewProps) {
       <div className="p-3">
         {hasEvents ? (
           <div className="space-y-2">
-            {registrations.map((registration: any) => {
+            {visibleRegistrations.map((registration: any) => {
               const event = registration.event;
               if (!event) return null;
-              
+
               const eventDate = new Date(event.start_time);
               const isToday = new Date().toDateString() === eventDate.toDateString();
 
@@ -68,10 +75,10 @@ export function UpcomingEventsPreview({ userId }: UpcomingEventsPreviewProps) {
                 <button
                   key={registration.id}
                   onClick={() => {
+                    // Tournament events filtered out above — only round_robin
+                    // and generic events reach this handler.
                     if (event.event_type === 'round_robin') {
                       navigate(`/round-robin/${event.id}`);
-                    } else if (event.event_type === 'tournament') {
-                      navigate(`/tournaments/${event.id}`);
                     } else {
                       navigate(`/events/${event.id}`);
                     }
@@ -114,17 +121,24 @@ export function UpcomingEventsPreview({ userId }: UpcomingEventsPreviewProps) {
             })}
           </div>
         ) : (
-          <div className="text-center py-6">
-            <Calendar className="w-10 h-10 mx-auto text-muted-foreground/30 mb-3" />
-            <p className="text-sm text-muted-foreground mb-3">
-              No upcoming events
+          <div className="text-center py-7 px-3">
+            {/* Tinted icon tile for a more premium empty state */}
+            <div className="mx-auto h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
+              <Calendar className="w-6 h-6 text-primary" />
+            </div>
+            <p className="text-sm font-medium text-foreground mb-1">
+              Nothing on your calendar
+            </p>
+            <p className="text-xs text-muted-foreground mb-4">
+              Round robins and open play near you are one tap away.
             </p>
             <Button
               size="sm"
               onClick={() => navigate("/player/play")}
-              className="h-8 text-xs"
+              className="h-9 gap-1.5 shadow-[0_2px_8px_-2px_hsl(var(--primary)/0.4)]"
             >
-              Find something to play
+              Find play
+              <ChevronRight className="h-3.5 w-3.5" />
             </Button>
           </div>
         )}

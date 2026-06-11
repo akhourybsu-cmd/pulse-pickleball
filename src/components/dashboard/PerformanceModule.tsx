@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { Trophy, TrendingUp, ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { MatchCard } from "./MatchCard";
 
 interface Match {
@@ -157,8 +158,8 @@ export const PerformanceModule = ({ userId }: PerformanceModuleProps) => {
             <h3 className="text-sm font-medium text-muted-foreground">Match History</h3>
           </div>
           {matches.length > 0 && (
-            <button 
-              onClick={() => navigate("/match/history")}
+            <button
+              onClick={() => navigate("/player/matches")}
               className="text-xs text-primary hover:underline flex items-center gap-1"
             >
               View All
@@ -168,14 +169,26 @@ export const PerformanceModule = ({ userId }: PerformanceModuleProps) => {
         </div>
 
         {matches.length === 0 ? (
-          <div className="text-center py-8 bg-muted/30 rounded-xl border border-border">
-            <Trophy className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-            <p className="text-sm text-muted-foreground">
-              No match history yet
+          <div className="text-center py-9 px-4 bg-muted/30 rounded-xl border border-border">
+            {/* Tinted icon tile + clear primary CTA so the empty state feels
+                like an onboarding moment instead of a dead end. */}
+            <div className="mx-auto h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
+              <Trophy className="w-6 h-6 text-primary" />
+            </div>
+            <p className="text-sm font-medium text-foreground mb-1">
+              No matches yet
             </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Record your first match to see it here
+            <p className="text-xs text-muted-foreground mb-4">
+              Log your first match to start building your PULSE rating.
             </p>
+            <Button
+              size="sm"
+              onClick={() => navigate("/player/matches/new")}
+              className="h-9 gap-1.5 shadow-[0_2px_8px_-2px_hsl(var(--primary)/0.4)]"
+            >
+              Record a match
+              <ChevronRight className="h-3.5 w-3.5" />
+            </Button>
           </div>
         ) : (
           <div className="space-y-4">
