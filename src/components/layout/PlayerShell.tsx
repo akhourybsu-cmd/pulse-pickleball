@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Trophy, Compass, User, LogOut, Plus } from 'lucide-react';
+import { Home, Trophy, Compass, User, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { NotificationBell } from '@/components/NotificationBell';
@@ -8,10 +8,10 @@ import { NotificationCenter } from '@/components/notifications/NotificationCente
 import { useNotifications } from '@/hooks/useNotifications';
 import { UnverifiedMatchesIndicator } from '@/components/UnverifiedMatchesIndicator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import logo from '@/assets/pulse-logo-new.png';
-import { VenueModeBanner } from '@/components/mode/VenueModeBanner';
+// VenueModeBanner removed during the player-only beta. Component file
+// stays put for easy revival when the venue surface is re-enabled.
 
 // Player-first bottom nav. The previous "Venues" tab was removed as part of
 // the player/venue separation — venue discovery lives behind the mode toggle
@@ -84,10 +84,8 @@ export function PlayerShell() {
     fetchUser();
   }, []);
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    navigate('/');
-  };
+  // Sign-out moved to PlayerProfile (Phase 5) — no longer surfaced from
+  // the shell's top header. One source of truth.
 
   const initials = user?.displayName
     ?.split(' ')
@@ -121,23 +119,17 @@ export function PlayerShell() {
               <UnverifiedMatchesIndicator />
               <ThemeToggle />
               <NotificationBell unreadCount={unreadCount} onOpen={() => setIsNotificationCenterOpen(true)} />
-              <Avatar 
+              {/* Avatar → Profile tab (was the public /profile/:id view,
+                  which surprised users expecting to land in their own hub). */}
+              <Avatar
                 className="h-8 w-8 sm:h-9 sm:w-9 border-2 border-primary/40 cursor-pointer hover:border-primary/60 transition-all hover:scale-105"
-                onClick={() => user && navigate(`/profile/${user.id}`)}
+                onClick={() => navigate('/player/profile')}
               >
                 <AvatarImage src={user?.avatarUrl} alt={user?.displayName} />
                 <AvatarFallback className="text-[10px] sm:text-xs font-bold bg-primary/20 text-primary">
                   {initials}
                 </AvatarFallback>
               </Avatar>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleSignOut}
-                className="text-secondary-foreground/80 hover:text-secondary-foreground hover:bg-secondary-foreground/10 h-8 w-8 sm:h-9 sm:w-9"
-              >
-                <LogOut className="h-4 w-4 sm:h-5 sm:w-5" />
-              </Button>
             </div>
           </div>
         </header>
@@ -155,9 +147,6 @@ export function PlayerShell() {
         onClearAll={clearAll}
         groupedByTime={groupedByTime}
       />
-
-      {/* Venue Mode Banner - shows when in venue mode on player routes */}
-      <VenueModeBanner />
 
       {/* Main Content */}
       <main className={isImmersiveRoute ? "flex-1" : "flex-1 pb-24 md:pb-20"}>

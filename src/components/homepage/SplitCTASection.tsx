@@ -23,7 +23,8 @@ export const SplitCTASection = () => {
             Join PULSE and start logging matches, joining round robins, and tracking your rating.
           </p>
 
-          {/* Single primary player CTA */}
+          {/* Single primary player CTA — venue/organizer link removed
+              during the player-only beta. */}
           <Button
             size="lg"
             onClick={() => navigate("/auth")}
@@ -32,16 +33,6 @@ export const SplitCTASection = () => {
             Create your free account
             <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
           </Button>
-
-          {/* Quiet venue link — secondary path, NOT co-equal */}
-          <div className="mt-6">
-            <button
-              onClick={() => navigate("/venues")}
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors underline-offset-4 hover:underline"
-            >
-              Running a venue or event? Learn about PULSE for venues →
-            </button>
-          </div>
         </div>
       </div>
     </section>

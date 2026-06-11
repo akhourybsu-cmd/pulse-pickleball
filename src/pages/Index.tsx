@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import {
   HomepageNav,
@@ -10,37 +11,30 @@ import {
   HomepageFooter,
 } from "@/components/homepage";
 
+/**
+ * Public landing page.
+ *
+ * QoL pass — if the user is already authenticated when they hit /, we
+ * bounce them straight to the player dashboard instead of showing the
+ * marketing page. The previous behavior dropped returning users on a
+ * "Get Started" CTA they didn't need; now opening the app behaves like
+ * a native app — straight into your hub.
+ *
+ * Venue/tournament surfaces have also been hidden from the landing
+ * page composition — the platform is player-only for the public
+ * beta. Routes still resolve directly so admins can reach them.
+ */
 const Index = () => {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userMode, setUserMode] = useState<"player" | "venue">("player");
-  const [isChecking, setIsChecking] = useState(true);
+  const [authState, setAuthState] = useState<"checking" | "anonymous" | "authenticated">("checking");
 
   useEffect(() => {
     const checkAuth = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        setIsLoggedIn(!!session);
-
-        if (session) {
-          // Check if user has venue access
-          const { data: venueAccess } = await supabase
-            .from("venue_staff")
-            .select("venue_id")
-            .eq("user_id", session.user.id)
-            .limit(1);
-          
-          if (venueAccess && venueAccess.length > 0) {
-            // User has venue access, check their preferred mode from localStorage
-            const savedMode = localStorage.getItem("pulse-mode");
-            if (savedMode === "venue") {
-              setUserMode("venue");
-            }
-          }
-        }
+        setAuthState(session ? "authenticated" : "anonymous");
       } catch (error) {
         console.error("Auth check error:", error);
-      } finally {
-        setIsChecking(false);
+        setAuthState("anonymous");
       }
     };
 
@@ -48,14 +42,14 @@ const Index = () => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
-        setIsLoggedIn(!!session);
+        setAuthState(session ? "authenticated" : "anonymous");
       }
     );
 
     return () => subscription.unsubscribe();
   }, []);
 
-  if (isChecking) {
+  if (authState === "checking") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
@@ -63,15 +57,18 @@ const Index = () => {
     );
   }
 
+  // Authenticated users → straight into the player hub.
+  if (authState === "authenticated") {
+    return <Navigate to="/player/dashboard" replace />;
+  }
+
   return (
     <div className="min-h-screen bg-background">
-      <HomepageNav isLoggedIn={isLoggedIn} userMode={userMode} />
+      <HomepageNav isLoggedIn={false} userMode="player" />
       <main>
-        {/* Player-first composition. DualLaneSection (the two co-equal player
-            vs venue cards) and TournamentSpotlight were dropped — venue and
-            tournament management live behind the mode toggle now, not on the
-            homepage. The quiet "I run a venue or event" link in HeroSection
-            and SplitCTASection is the single secondary affordance. */}
+        {/* Player-only public composition. Venue / tournament surfaces are
+            hidden during the player-focused beta — the routes still exist
+            for direct navigation, just no UI affordances surface them. */}
         <HeroSection />
         <QuickActionTiles />
         <HowItWorksSection />

@@ -49,7 +49,13 @@ const authSchema = z.object({
 const Auth = () => {
   const [searchParams] = useSearchParams();
   const redirectPath = searchParams.get('redirect') || '/player/dashboard';
-  
+
+  // Already-logged-in detection. If a returning user lands on /auth (via
+  // bookmark, deep link, or stale tab), bounce them to their dashboard
+  // instead of showing the sign-in form. QoL pass — no form-flash.
+  const [sessionChecked, setSessionChecked] = useState(false);
+  const [alreadyAuthed, setAlreadyAuthed] = useState(false);
+
   const [isLogin, setIsLogin] = useState(true);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -73,6 +79,28 @@ const Auth = () => {
   });
   const [tosAccepted, setTosAccepted] = useState(false);
   const navigate = useNavigate();
+
+  // Session check — runs once on mount. If the user is already signed in,
+  // we mark alreadyAuthed=true and show a brief redirect screen instead of
+  // the sign-in form.
+  useEffect(() => {
+    let cancelled = false;
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (cancelled) return;
+      if (session) {
+        setAlreadyAuthed(true);
+      }
+      setSessionChecked(true);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  // Once the session check confirms we're authed, send the user along.
+  useEffect(() => {
+    if (alreadyAuthed) {
+      navigate(redirectPath, { replace: true });
+    }
+  }, [alreadyAuthed, redirectPath, navigate]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -294,6 +322,22 @@ const Auth = () => {
       setBiometricAvailable(false);
     }
   }, [email, isLogin, showPasswordLogin]);
+
+  // Short-circuit while we check the session, or while we're bouncing
+  // an already-authed user. Avoids the sign-in form flashing on screen
+  // for returning users.
+  if (!sessionChecked || alreadyAuthed) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-secondary">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          {alreadyAuthed && (
+            <p className="text-sm text-muted-foreground">Already signed in — taking you in…</p>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-start md:items-center justify-center bg-secondary p-4 pt-8 md:py-12">

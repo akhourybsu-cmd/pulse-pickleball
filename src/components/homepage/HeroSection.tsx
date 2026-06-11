@@ -1,15 +1,14 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Building2 } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 /**
- * Hero — Player-first.
+ * Hero — Player-only.
  *
  * Single primary CTA ("Get Started") aimed at players. The venue/organizer
- * path is intentionally demoted to a quiet inline link below — the goal is
- * for everyday players to land here and immediately understand this app is
- * built for them. Venue and tournament management live behind a separate
- * mode toggle (a quieter pathway, not a co-equal lane).
+ * affordance that used to live here as a quiet inline link has been pulled
+ * for the player-focused beta. Venue and tournament management will return
+ * once those surfaces are ready for public use.
  */
 export const HeroSection = () => {
   const navigate = useNavigate();
@@ -37,7 +36,7 @@ export const HeroSection = () => {
         </p>
 
         {/* Single primary CTA */}
-        <div className="flex justify-center mb-6">
+        <div className="flex justify-center">
           <Button
             size="lg"
             onClick={() => navigate("/auth")}
@@ -47,16 +46,6 @@ export const HeroSection = () => {
             <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
           </Button>
         </div>
-
-        {/* Quiet venue/organizer affordance — small inline link, NOT a co-equal CTA */}
-        <button
-          onClick={() => navigate("/venues")}
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors underline-offset-4 hover:underline"
-        >
-          <Building2 className="h-3.5 w-3.5" />
-          I run a venue or event
-          <ArrowRight className="h-3.5 w-3.5" />
-        </button>
       </div>
     </section>
   );

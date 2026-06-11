@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { isPlatformAdmin } from "@/lib/permissions";
 import { toast } from "sonner";
 import type { User } from "@supabase/supabase-js";
 
@@ -22,7 +21,9 @@ import { ActivityModule } from "@/components/dashboard/ActivityModule";
 import { PerformanceModule } from "@/components/dashboard/PerformanceModule";
 import { StatsByCourtCard } from "@/components/dashboard/StatsByCourtCard";
 import { UpcomingEventsPreview } from "@/components/dashboard/UpcomingEventsPreview";
-import { RoleSwitcherCard } from "@/components/dashboard/RoleSwitcherCard";
+// RoleSwitcherCard hidden during the player-only beta. Re-import + render
+// when the venue surface returns.
+// import { RoleSwitcherCard } from "@/components/dashboard/RoleSwitcherCard";
 
 interface Profile {
   id: string;
@@ -51,7 +52,6 @@ const Dashboard = () => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
   const navigate = useNavigate();
 
   // Partner/Opponent stats (currently fetched but unused after Phase 2 reshuffle;
@@ -120,9 +120,8 @@ const Dashboard = () => {
         const user = session.user;
         setUser(user);
 
-        const [profileResult, isAdminResult, publicProfileResult] = await Promise.all([
+        const [profileResult, publicProfileResult] = await Promise.all([
           supabase.from("profiles").select("*").eq("id", user.id).single(),
-          isPlatformAdmin(user.id),
           supabase.from("profiles_public").select("home_court_id").eq("id", user.id).single()
         ]);
 
@@ -134,7 +133,6 @@ const Dashboard = () => {
         }
 
         setProfile(profileResult.data);
-        setIsAdmin(isAdminResult);
 
         // Show onboarding welcome for new users
         if (!profileResult.data.tutorial_completed && (profileResult.data.total_matches || 0) === 0) {
@@ -232,9 +230,6 @@ const Dashboard = () => {
               <QuickActionsBar />
             </div>
 
-            {/* Dual-role shortcut — only renders for venue staff / admins */}
-            <RoleSwitcherCard isAdmin={isAdmin} />
-
             {/* Up next — upcoming registered play */}
             <div
               className="opacity-0 animate-fade-up"
@@ -313,9 +308,6 @@ const Dashboard = () => {
             <SectionHeader label="Needs attention" />
             <ActivityModule userId={user?.id} />
           </div>
-
-          {/* Dual-role shortcut */}
-          <RoleSwitcherCard isAdmin={isAdmin} />
 
           {/* Up next */}
           <div
