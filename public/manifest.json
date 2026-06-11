@@ -4,15 +4,21 @@
   "description": "Track your pickleball rating with PULSE - Pickleball Universal Level and Skill Estimator",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0E1A24",
-  "theme_color": "#0EA5E9",
+  "background_color": "#F4F1E9",
+  "theme_color": "#1B1D21",
   "orientation": "any",
   "icons": [
     {
-      "src": "/pulse-icon.jpg",
-      "sizes": "512x512",
-      "type": "image/jpeg",
-      "purpose": "any maskable"
+      "src": "/pulse-favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/pulse-favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
     }
   ]
 }

@@ -2,15 +2,24 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" href="/pulse-icon.jpg" type="image/jpeg" />
+    <!-- Modern SVG favicon — scales cleanly from browser-tab 16x16 up
+         to PWA install icons. The focused mark (gold pulse beat on
+         cream) stays readable at every size. -->
+    <link rel="icon" href="/pulse-favicon.svg" type="image/svg+xml" />
+    <!-- Legacy .ico fallback for browsers without SVG favicon support. -->
+    <link rel="alternate icon" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#0EA5E9" />
+    <!-- Theme color matches the PlayerShell top chrome (ink) so the
+         mobile browser address bar blends with the app header. -->
+    <meta name="theme-color" content="#1B1D21" />
     <link rel="manifest" href="/manifest.json" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="PULSE" />
-    <link rel="apple-touch-icon" href="/pulse-icon.jpg" />
+    <!-- iOS 13+ supports SVG for apple-touch-icon. To support older iOS,
+         export a 180x180 PNG from pulse-favicon.svg and replace this. -->
+    <link rel="apple-touch-icon" href="/pulse-favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@600;700&display=swap" rel="stylesheet" />
