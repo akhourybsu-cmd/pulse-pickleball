@@ -3096,6 +3096,7 @@ export type Database = {
           num_courts: number
           num_rounds: number
           organizer_id: string
+          invite_code: string | null
           rating_eligible: boolean
           rating_type: Database["public"]["Enums"]["rating_type"]
           registration_deadline: string | null
@@ -3117,6 +3118,7 @@ export type Database = {
           format?: string
           games_per_player?: number | null
           id?: string
+          invite_code?: string | null
           is_published?: boolean | null
           location?: string | null
           max_players?: number | null
@@ -3146,6 +3148,7 @@ export type Database = {
           format?: string
           games_per_player?: number | null
           id?: string
+          invite_code?: string | null
           is_published?: boolean | null
           location?: string | null
           max_players?: number | null
