@@ -30,9 +30,11 @@ interface InviteCodeCardProps {
 export function InviteCodeCard({ code, eventId, eventName, className }: InviteCodeCardProps) {
   const [copied, setCopied] = useState(false);
 
-  // Deep link players can open to land directly on the join confirmation.
-  // Phase 4 wires up the ?invite=… search-param consumer.
-  const joinUrl = `${window.location.origin}/round-robin?invite=${encodeURIComponent(code)}`;
+  // Deep link players open to land directly on the join confirmation
+  // dialog. We route through /player/play (which is auth-gated, so
+  // unauthenticated visitors are bounced to /auth and back) and the
+  // PlayHub's invite-param consumer handles the rest.
+  const joinUrl = `${window.location.origin}/player/play?invite=${encodeURIComponent(code)}`;
 
   const handleCopyCode = async () => {
     try {
