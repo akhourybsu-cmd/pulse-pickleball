@@ -519,14 +519,13 @@ export default function RoundRobinDetail() {
 
   const handleSaveScore = async (match: ScheduleMatch) => {
     if (!event || !userId) return;
-    
+
     const score = scores[match.id];
     if (!score) {
       toast.error("Enter scores for both teams");
       return;
     }
 
-    // Validate scores
     const validation = scoreSchema.safeParse(score);
     if (!validation.success) {
       toast.error(validation.error.errors[0].message);
@@ -535,28 +534,30 @@ export default function RoundRobinDetail() {
 
     setSavingScore(match.id);
     try {
-      // Update schedule with scores
-      const { error: scheduleError } = await supabase
-        .from("round_robin_schedule")
-        .update({ 
-          team1_score: score.team1_score,
-          team2_score: score.team2_score 
-        })
-        .eq("id", match.id);
+      // Phase-2 immediate sync — submit_rr_match_score atomically updates
+      // round_robin_schedule AND upserts the corresponding matches +
+      // match_participants rows in one server-side transaction. The match
+      // appears in the player's history right away instead of waiting for
+      // event completion. The match-insert trigger fires the rating
+      // recalc automatically (when count_for_rating = true).
+      const { error } = await supabase.rpc("submit_rr_match_score", {
+        p_schedule_id: match.id,
+        p_team1_score: score.team1_score,
+        p_team2_score: score.team2_score,
+      });
 
-      if (scheduleError) throw scheduleError;
+      if (error) throw error;
 
-      // Scores are saved to schedule only - matches will be created when event is completed
-      toast.success("Score saved!");
+      toast.success("Score saved");
       fetchEventDetails();
-      
+
       setScores(prev => {
         const newScores = { ...prev };
         delete newScores[match.id];
         return newScores;
       });
     } catch (error: any) {
-      toast.error("Failed to save score");
+      toast.error(error?.message || "Failed to save score");
       console.error(error);
     } finally {
       setSavingScore(null);
@@ -580,119 +581,68 @@ export default function RoundRobinDetail() {
     }
     
     try {
-      let matchesCreated = 0;
+      // Phase-2 immediate-sync model: every score entered via
+      // handleSaveScore / handleEditMatchScore was already pushed into
+      // matches + match_participants by submit_rr_match_score. So
+      // completion has only two jobs left:
+      //   1. Backfill any scored schedule rows that DON'T yet have a
+      //      linked match_id (e.g. events scored before this migration
+      //      shipped). Idempotent via the same RPC.
+      //   2. Flip the event's status to 'completed'.
+      const needsBackfill = scoredMatches.filter(m => !m.match_id);
       const errors: string[] = [];
-      
-      for (const match of schedule) {
-        // Process all scored matches regardless of match_id (in case of re-completion)
-        if (!match.is_bye && match.team1_score !== null && match.team2_score !== null) {
-          try {
-            // Get court_id from event location (now stores court ID directly)
-            let courtId: string | null = null;
-            if (event.location) {
-              // Check if location is a valid UUID (court_id) first
-              const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-              if (uuidRegex.test(event.location)) {
-                courtId = event.location;
-              } else {
-                // Fallback: try to find court by name for backwards compatibility
-                const { data: courtData } = await supabase
-                  .from("courts")
-                  .select("id")
-                  .eq("name", event.location)
-                  .limit(1)
-                  .maybeSingle();
-                courtId = courtData?.id || null;
-              }
-            }
-            
-            // Collect all participant IDs for auto-verification
-            const participantIds = [
-              match.a1_player_id,
-              match.a2_player_id,
-              match.b1_player_id,
-              match.b2_player_id,
-            ].filter(Boolean) as string[];
+      let backfilled = 0;
 
-            // Insert match (don't set event_id for round_robin as it references events table, not round_robin_events)
-            const { data: matchData, error: matchError } = await supabase
-              .from("matches")
-              .insert({
-                match_date: event.date,
-                team1_score: match.team1_score,
-                team2_score: match.team2_score,
-                created_by: userId!,
-                source: "round_robin",
-                round_no: match.round_no,
-                court_no: match.court_no,
-                court_id: courtId,
-                other_location: courtId ? null : event.location,
-                match_type: event.rating_type,
-                status: "approved",
-                verified_by: participantIds, // Auto-verify all participants
-              })
-              .select()
-              .single();
-
-            if (matchError) {
-              errors.push(`Round ${match.round_no} Court ${match.court_no}: ${matchError.message}`);
-              continue;
-            }
-
-            // Insert participants
-            const participants = [
-              { match_id: matchData.id, player_id: match.a1_player_id!, team: 1 },
-              { match_id: matchData.id, player_id: match.a2_player_id!, team: 1 },
-              { match_id: matchData.id, player_id: match.b1_player_id!, team: 2 },
-              { match_id: matchData.id, player_id: match.b2_player_id!, team: 2 },
-            ];
-
-            const { error: participantsError } = await supabase
-              .from("match_participants")
-              .insert(participants);
-
-            if (participantsError) {
-              errors.push(`Round ${match.round_no} Court ${match.court_no} participants: ${participantsError.message}`);
-              // Try to clean up the orphaned match
-              await supabase.from("matches").delete().eq("id", matchData.id);
-              continue;
-            }
-
-            // Link match to schedule
-            const { error: linkError } = await supabase
-              .from("round_robin_schedule")
-              .update({ match_id: matchData.id })
-              .eq("id", match.id);
-              
-            if (linkError) {
-              console.error("Failed to link match to schedule:", linkError);
-            }
-            
-            matchesCreated++;
-          } catch (matchErr: any) {
-            errors.push(`Round ${match.round_no} Court ${match.court_no}: ${matchErr.message}`);
-          }
+      for (const m of needsBackfill) {
+        const { error } = await supabase.rpc("submit_rr_match_score", {
+          p_schedule_id: m.id,
+          p_team1_score: m.team1_score!,
+          p_team2_score: m.team2_score!,
+        });
+        if (error) {
+          errors.push(`Round ${m.round_no} Court ${m.court_no}: ${error.message}`);
+        } else {
+          backfilled += 1;
         }
       }
 
-      // Update event status to completed
-      const { error } = await supabase
+      const { error: statusError } = await supabase
         .from("round_robin_events")
-        .update({ 
+        .update({
           status: "completed",
           completed_at: new Date().toISOString(),
-          current_round: null
+          current_round: null,
         })
         .eq("id", id);
 
-      if (error) throw error;
-      
+      if (statusError) throw statusError;
+
+      // Audit the completion itself.
+      await supabase.from("round_robin_audit").insert({
+        event_id: event.id,
+        editor_id: userId!,
+        change_type: "event_complete",
+        changes: {
+          synced_total: scoredMatches.length,
+          backfilled,
+          unscored: unscoredMatches.length,
+        },
+        reason: "Event marked complete",
+      });
+
       if (errors.length > 0) {
-        toast.error(`Event completed with ${errors.length} error(s). ${matchesCreated} match(es) added successfully. Check console for details.`);
-        console.error("Match submission errors:", errors);
+        toast.error(`Completed with ${errors.length} sync error(s)`, {
+          description: errors.slice(0, 3).join("; "),
+        });
+        console.error("Match sync errors:", errors);
       } else {
-        toast.success(`Event completed! ${matchesCreated} match(es) added to match history and ratings will be calculated.`);
+        toast.success(
+          backfilled > 0
+            ? `Event completed · ${scoredMatches.length} matches in history (${backfilled} backfilled)`
+            : `Event completed · ${scoredMatches.length} matches in history`,
+        );
       }
+
       fetchEventDetails();
     } catch (error: any) {
       toast.error(`Failed to complete event: ${error.message}`);
@@ -1217,60 +1167,23 @@ export default function RoundRobinDetail() {
     if (!event || !userId) return;
 
     try {
-      const match = schedule.find(m => m.id === matchId);
-      if (!match) return;
-
-      const before = {
-        team1_score: match.team1_score,
-        team2_score: match.team2_score,
-      };
-
-      // Update score
-      const { error: updateError } = await supabase
-        .from("round_robin_schedule")
-        .update({
-          team1_score: team1Score,
-          team2_score: team2Score,
-        })
-        .eq("id", matchId);
-
-      if (updateError) throw updateError;
-
-      // Reset verification if match was linked to matches table
-      if (match.match_id) {
-        await supabase
-          .from("matches")
-          .update({
-            team1_score: team1Score,
-            team2_score: team2Score,
-            verified_by: [],
-          })
-          .eq("id", match.match_id);
-      }
-
-      // Audit entry
-      await supabase.from("round_robin_audit").insert({
-        event_id: event.id,
-        editor_id: userId,
-        change_type: "score_edit",
-        changes: {
-          match_id: matchId,
-          before,
-          after: { team1_score: team1Score, team2_score: team2Score },
-        },
-        reason: `Score edited for Round ${match.round_no}, Court ${match.court_no}`,
+      // matchId is the round_robin_schedule.id. submit_rr_match_score
+      // handles the full edit path: updates schedule + matches +
+      // match_participants, resets verification, writes the audit log,
+      // and (when the match row already exists) updates the linked
+      // matches row in place so ratings stay correct.
+      const { error } = await supabase.rpc("submit_rr_match_score", {
+        p_schedule_id: matchId,
+        p_team1_score: team1Score,
+        p_team2_score: team2Score,
       });
 
-      // If rating eligible and match is in matches table, trigger rating recalculation
-      if (event.rating_eligible && match.match_id) {
-        // Trigger rating recalculation by calling the recalculate function
-        await supabase.rpc("recalculate_all_ratings");
-      }
+      if (error) throw error;
 
-      toast.success("Score updated and verification reset");
+      toast.success("Score updated");
       await fetchEventDetails();
     } catch (error: any) {
-      toast.error("Failed to update score");
+      toast.error(error?.message || "Failed to update score");
       console.error(error);
       throw error;
     }

@@ -2445,6 +2445,7 @@ export type Database = {
       }
       matches: {
         Row: {
+          count_for_rating: boolean | null
           court_id: string | null
           court_no: number | null
           created_at: string | null
@@ -2473,6 +2474,7 @@ export type Database = {
           week_start: string | null
         }
         Insert: {
+          count_for_rating?: boolean | null
           court_id?: string | null
           court_no?: number | null
           created_at?: string | null
@@ -2501,6 +2503,7 @@ export type Database = {
           week_start?: string | null
         }
         Update: {
+          count_for_rating?: boolean | null
           court_id?: string | null
           court_no?: number | null
           created_at?: string | null
