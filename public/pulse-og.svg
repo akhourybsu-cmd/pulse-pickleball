@@ -1,0 +1,45 @@
+<svg viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg" font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif">
+  <!-- PULSE Open Graph card · 1200x630 (Facebook/Twitter/iMessage preview).
+       Cream parchment surface, premium ink wordmark, gold pulse beat,
+       supporting tagline. Same composition language as the brand mark
+       so social previews reinforce the identity. -->
+
+  <!-- Cream base -->
+  <rect width="1200" height="630" fill="#F4F1E9"/>
+
+  <!-- Subtle radial wash so the surface has the same depth as the app -->
+  <defs>
+    <radialGradient id="wash" cx="50%" cy="40%" r="70%">
+      <stop offset="0%" stop-color="#FAF8F2" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#F4F1E9" stop-opacity="1"/>
+    </radialGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#wash)"/>
+
+  <!-- Top tracker label -->
+  <text x="600" y="158" text-anchor="middle"
+        font-size="20" font-weight="600" letter-spacing="6"
+        fill="#8A8C8B">PICKLEBALL · UNIVERSAL LEVEL &amp; SKILL ESTIMATOR</text>
+
+  <!-- Wordmark "PULSE" — large, ink, generous letterspacing -->
+  <text x="600" y="320" text-anchor="middle"
+        font-size="180" font-weight="700" letter-spacing="24"
+        fill="#1B1D21">PULSE</text>
+
+  <!-- Pulse line under the wordmark — ink flats with the gold beat -->
+  <g stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 300 388 H 555" stroke="#1B1D21"/>
+    <path d="M 555 388 l 18 -42 l 28 80 l 18 -38" stroke="#CC9332"/>
+    <path d="M 619 388 H 900" stroke="#1B1D21"/>
+  </g>
+
+  <!-- Supporting tagline -->
+  <text x="600" y="468" text-anchor="middle"
+        font-size="30" font-weight="500"
+        fill="#3A3A3D">Track your matches. Earn your rating. Find your play.</text>
+
+  <!-- Bottom brand line: small mark + domain hint -->
+  <g transform="translate(600,560)" text-anchor="middle">
+    <text font-size="18" font-weight="600" letter-spacing="3" fill="#8A8C8B">PULSEPB.COM</text>
+  </g>
+</svg>

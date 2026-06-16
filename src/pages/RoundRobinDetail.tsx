@@ -34,6 +34,9 @@ import { EditEventDialog } from "@/components/round-robin/EditEventDialog";
 import { EditModeBanner } from "@/components/round-robin/EditModeBanner";
 import { InviteCodeCard } from "@/components/round-robin/InviteCodeCard";
 import { WhatsNextBanner } from "@/components/round-robin/WhatsNextBanner";
+import { RoundRobinTopBar } from "@/components/round-robin/RoundRobinTopBar";
+import { RoundRobinHostHero } from "@/components/round-robin/RoundRobinHostHero";
+import { HostControlsMenu } from "@/components/round-robin/HostControlsMenu";
 import { PlayerManagementDialog } from "@/components/round-robin/PlayerManagementDialog";
 import { CourtsRoundsDialog } from "@/components/round-robin/CourtsRoundsDialog";
 import { ScheduleEditorDialog } from "@/components/round-robin/ScheduleEditorDialog";
@@ -1421,198 +1424,103 @@ export default function RoundRobinDetail() {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
 
+  // Handler for the overflow menu "Regenerate schedule" action.
+  // Wraps the existing regenerateScheduleFromRound helper with a
+  // confirm + toast envelope, matching what the old inline button did.
+  const handleRegenerateSchedule = async () => {
+    if (!confirm("Regenerate the entire schedule from scratch? This will reset all court assignments to match current settings.")) {
+      return;
+    }
+    try {
+      toast.loading("Regenerating schedule...");
+      await regenerateScheduleFromRound(1);
+      await fetchEventDetails();
+      toast.success("Schedule regenerated successfully");
+    } catch (error: unknown) {
+      toast.error("Failed to regenerate schedule");
+      console.error(error);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
-      <PageHeader userId={userId} />
-      
+      {/* Slim top bar — back · "Round Robin" · share · overflow.
+          Replaces the global PULSE/Bell/Profile/Theme/Sign-out toolbar
+          on this route so the host has a focused command-center surface
+          and prime mobile real estate isn't eaten by app-wide chrome. */}
+      <RoundRobinTopBar
+        backHref="/player/play"
+        label="Round Robin"
+        onShare={isOrganizer || isParticipant ? handleShareEvent : undefined}
+        overflow={
+          isOrganizer && !event.voided ? (
+            <HostControlsMenu
+              status={event.status}
+              hasSchedule={hasSchedule}
+              isEditMode={isEditMode}
+              canDestroy={isOrganizer}
+              onSettings={() => setEditDialogOpen(true)}
+              onCourtsAndGames={() => setCourtsRoundsOpen(true)}
+              onRegenerateSchedule={handleRegenerateSchedule}
+              onOpenKiosk={() => {
+                const kioskUrl = `/round-robin/${event.id}/kiosk`;
+                window.open(kioskUrl, "_blank", "width=1920,height=1080");
+              }}
+              onDeleteOrVoid={() => setDeleteDialogOpen(true)}
+            />
+          ) : undefined
+        }
+      />
+
       {isEditMode && (
         <div className="bg-warning/20 border-b border-warning">
           <div className="container mx-auto px-4 py-2">
             <p className="text-sm text-warning-foreground font-medium text-center">
-              Edit Mode Active - Make changes to {event.name}
+              Edit Mode Active — Make changes to {event.name}
             </p>
           </div>
         </div>
       )}
-      
+
       <div className="pb-20">
-      {/* Refined hero — static gradient (no animated orb), tighter density,
-          horizontally-scrolling action row on mobile instead of wrapping. */}
-      <div
-        className="relative border-b border-border/50"
-        style={{
-          background:
-            "linear-gradient(180deg, hsl(var(--primary) / 0.08) 0%, hsl(var(--background)) 100%)",
-        }}
-      >
-        <div className="container relative mx-auto px-4 py-5 sm:py-6">
-          {/* Row 1: status + title + share */}
-          <div className="flex items-start gap-3 mb-3">
-            <div className="flex-1 min-w-0">
-              {/* Status row — single prominent pill */}
-              <div className="flex items-center gap-2 mb-2 flex-wrap">
-                {event.status === 'live' ? (
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary text-primary-foreground text-xs font-semibold tracking-wide">
-                    <span className="relative flex h-1.5 w-1.5">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
-                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white" />
-                    </span>
-                    LIVE
-                  </span>
-                ) : event.status === 'completed' ? (
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-secondary text-secondary-foreground text-xs font-semibold tracking-wide">
-                    <Trophy className="h-3 w-3" />
-                    COMPLETED
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-full border border-border bg-card/60 text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-                    Draft
-                  </span>
-                )}
-                {event.voided && (
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-destructive text-destructive-foreground text-xs font-semibold">
-                    Voided
-                  </span>
-                )}
-                {event.rating_eligible && (
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-full border border-primary/40 text-primary text-xs font-medium">
-                    Rating eligible
-                  </span>
-                )}
-              </div>
+        {/* Consolidated host hero — title, status, metadata, invite code.
+            No action row here; primary action lives in WhatsNextBanner
+            below, secondary actions live in the top-bar overflow menu. */}
+        <RoundRobinHostHero
+          name={event.name}
+          date={event.date}
+          startTime={event.start_time}
+          status={event.status}
+          voided={event.voided}
+          ratingEligible={event.rating_eligible}
+          format={event.format}
+          numRounds={event.num_rounds}
+          numCourts={event.num_courts}
+          playerCount={players.length}
+          hasSchedule={hasSchedule}
+          inviteCode={event.invite_code}
+          registrationMode={event.registration_mode}
+          eventId={event.id}
+        />
 
-              {/* Title with static accent line */}
-              <h1 className="text-2xl md:text-3xl font-bold text-foreground leading-tight">
-                {event.name}
-              </h1>
-              <div className="h-1 w-12 mt-1.5 bg-primary rounded-full" />
-            </div>
-
-            {/* Share — icon-only on mobile, full button on desktop */}
-            {isOrganizer && (
+        {/* Leave button for participants — kept here, just out of the hero.
+            Compact, only shown when relevant. */}
+        {!isOrganizer &&
+          isParticipant &&
+          !event.voided &&
+          event.status === "draft" &&
+          (!event.registration_deadline || new Date() < new Date(event.registration_deadline)) && (
+            <div className="container max-w-2xl mx-auto px-4 -mt-2 mb-4">
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
-                onClick={handleShareEvent}
-                className="flex-shrink-0 h-9 px-2.5 sm:px-3 hover:bg-primary/10"
+                onClick={() => setLeaveDialogOpen(true)}
+                className="border-destructive/50 text-destructive hover:bg-destructive/10"
               >
-                <Share2 className="h-4 w-4 sm:mr-1.5" />
-                <span className="hidden sm:inline">Share</span>
+                Leave Event
               </Button>
-            )}
-          </div>
-
-          {/* Row 2: key facts — inline icon row, single line on mobile */}
-          <div className="flex items-center gap-x-4 gap-y-1.5 flex-wrap text-sm text-muted-foreground">
-            <div className="inline-flex items-center gap-1.5">
-              <Calendar className="h-4 w-4 text-primary/80" />
-              <span>{format(parseISO(event.date + 'T00:00:00'), 'PP')}</span>
-            </div>
-            {event.start_time && (
-              <div className="inline-flex items-center gap-1.5">
-                <Clock className="h-4 w-4 text-primary/80" />
-                <span>{event.start_time}</span>
-              </div>
-            )}
-            <div className="inline-flex items-center gap-1.5">
-              <Users className="h-4 w-4 text-primary/80" />
-              <span>{players.length} {players.length === 1 ? 'player' : 'players'}</span>
-            </div>
-            <div className="inline-flex items-center gap-1.5">
-              <Trophy className="h-4 w-4 text-primary/80" />
-              <span>
-                {hasSchedule ? `${event.num_rounds} rounds` : 'Schedule TBD'}
-                {' · '}
-                Doubles
-              </span>
-            </div>
-          </div>
-
-          {/* Row 3 (organizers only): action row.
-              Horizontally scrolls on mobile so all actions fit in one row
-              instead of wrapping to multiple lines like the old version. */}
-          {(isOrganizer || (!isOrganizer && isParticipant && !event.voided && event.status === 'draft' && (!event.registration_deadline || new Date() < new Date(event.registration_deadline)))) && (
-            <div className="mt-4 flex items-center gap-2 -mx-4 sm:mx-0 overflow-x-auto scrollbar-hide pb-1">
-              <div className="flex items-center gap-2 px-4 sm:px-0">
-                {!isOrganizer && isParticipant && !event.voided &&
-                  event.status === 'draft' &&
-                  (!event.registration_deadline || new Date() < new Date(event.registration_deadline)) && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setLeaveDialogOpen(true)}
-                    className="border-destructive/50 text-destructive hover:bg-destructive/10 flex-shrink-0"
-                  >
-                    Leave Event
-                  </Button>
-                )}
-                {isOrganizer && !event.voided && (
-                  <>
-                    {event.status === 'live' && (
-                      <Button
-                        size="sm"
-                        onClick={() => {
-                          const kioskUrl = `/round-robin/${event.id}/kiosk`;
-                          window.open(kioskUrl, '_blank', 'width=1920,height=1080');
-                        }}
-                        className="flex-shrink-0 bg-primary text-primary-foreground hover:bg-primary/90"
-                      >
-                        <Monitor className="h-4 w-4 mr-1.5" />
-                        Kiosk
-                      </Button>
-                    )}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setEditDialogOpen(true)}
-                      disabled={isEditMode}
-                      className="flex-shrink-0"
-                    >
-                      <Settings className="h-4 w-4 mr-1.5" />
-                      Settings
-                    </Button>
-                    {event.status === 'draft' && (
-                      <>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setCourtsRoundsOpen(true)}
-                          className="flex-shrink-0"
-                        >
-                          <Edit className="h-4 w-4 mr-1.5" />
-                          Courts & Games
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={async () => {
-                            if (!confirm("Regenerate the entire schedule from scratch? This will reset all court assignments to match current settings.")) {
-                              return;
-                            }
-                            try {
-                              toast.loading("Regenerating schedule...");
-                              await regenerateScheduleFromRound(1);
-                              await fetchEventDetails();
-                              toast.success("Schedule regenerated successfully");
-                            } catch (error: unknown) {
-                              toast.error("Failed to regenerate schedule");
-                              console.error(error);
-                            }
-                          }}
-                          className="flex-shrink-0"
-                        >
-                          <RefreshCw className="h-4 w-4 mr-1.5" />
-                          Sync
-                        </Button>
-                      </>
-                    )}
-                  </>
-                )}
-              </div>
             </div>
           )}
-        </div>
-      </div>
 
       <main className="container max-w-[1280px] mx-auto px-4 py-6">
         {isOrganizer && isEditMode && (
@@ -1626,60 +1534,26 @@ export default function RoundRobinDetail() {
           </div>
         )}
 
-        {!hasSchedule && isOrganizer && (
-          <Alert className="mb-4">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              Add or confirm players, then generate your schedule.
-            </AlertDescription>
-          </Alert>
-        )}
+        {/* Removed: the redundant "Add or confirm players" Alert
+            (duplicate of WhatsNextBanner's prompt) and the four-dot
+            lifecycle stepper (also a duplicate). The InviteCodeCard
+            is folded inline into the new RoundRobinHostHero. The host
+            now sees exactly one primary action surface — the
+            WhatsNextBanner — below the hero. */}
 
-        {/* Lifecycle stepper — slimmer, design-system glow, no decorative motion.
-            Maps to the four organizer phases: roster → schedule → live play → results. */}
-        <div className="mb-6">
-          <div className="flex items-center justify-center gap-1.5 sm:gap-3 text-[11px] sm:text-sm p-3 rounded-xl bg-card border border-border/60 max-w-2xl mx-auto">
-            {[
-              { num: 1, full: "Add Players", short: "Players" },
-              { num: 2, full: "Generate", short: "Generate" },
-              { num: 3, full: "Play & Score", short: "Score" },
-              { num: 4, full: "Standings", short: "Done" },
-            ].map((step, idx, arr) => {
-              const active = currentStep >= step.num;
-              return (
-                <div key={step.num} className="flex items-center gap-1.5 sm:gap-3">
-                  <div className={`flex items-center gap-1.5 sm:gap-2 ${active ? "font-semibold" : "text-muted-foreground"}`}>
-                    <div
-                      className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold transition-colors ${
-                        active
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted text-muted-foreground"
-                      }`}
-                      style={active ? { boxShadow: "0 0 0 3px hsl(var(--primary) / 0.15)" } : undefined}
-                    >
-                      {step.num}
-                    </div>
-                    <span className="hidden sm:inline">{step.full}</span>
-                    <span className="sm:hidden">{step.short}</span>
-                  </div>
-                  {idx < arr.length - 1 && (
-                    <div className={`h-px w-4 sm:w-8 transition-colors ${currentStep > step.num ? "bg-primary" : "bg-border"}`} />
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* What's next — single primary action for the host, state-aware.
-            Sits ABOVE the invite-code card so the host's eye lands on the
-            action they need to take first. Players see no banner. */}
+        {/* What's next — the single host action surface.
+            All earlier duplicates (lifecycle stepper, Alert,
+            standalone InviteCodeCard) have been removed in favor of
+            this. The hero answers "what IS this event?", this banner
+            answers "what should I do right now?" */}
         {isOrganizer && (
-          <div className="mb-4 max-w-2xl mx-auto">
+          <div className="mb-6 max-w-2xl mx-auto">
             <WhatsNextBanner
               status={event.status}
               hasPlayers={players.length >= 4}
               hasSchedule={hasSchedule}
+              playerCount={players.length}
+              courtCount={event.num_courts}
               currentRound={event.current_round}
               totalRounds={event.num_rounds}
               currentRoundScoredCount={
@@ -1706,18 +1580,6 @@ export default function RoundRobinDetail() {
               onStartEvent={handleStartEvent}
               onCloseRound={() => event.current_round && handleCloseRound(event.current_round)}
               onCompleteEvent={handleCompleteEvent}
-            />
-          </div>
-        )}
-
-        {/* Invite-code share card — shown only when this is an invite-only
-            event AND the viewer is the organizer. */}
-        {isOrganizer && event.invite_code && event.registration_mode === "invite_only" && (
-          <div className="mb-6 max-w-2xl mx-auto">
-            <InviteCodeCard
-              code={event.invite_code}
-              eventId={event.id}
-              eventName={event.name}
             />
           </div>
         )}

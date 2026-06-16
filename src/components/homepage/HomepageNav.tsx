@@ -12,7 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import logo from "@/assets/pulse-logo-premium.svg";
+import { Logo } from "@/components/Logo";
 
 interface HomepageNavProps {
   isLoggedIn: boolean;
@@ -80,13 +80,15 @@ export const HomepageNav = ({ isLoggedIn }: HomepageNavProps) => {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-secondary/95 backdrop-blur supports-[backdrop-filter]:bg-secondary/80">
       <nav className="container mx-auto flex h-[72px] items-center justify-between px-4">
-        {/* Logo */}
-        <Link to="/">
-          <img
-            src={logo}
-            alt="PULSE Logo"
-            className="h-[60px] sm:h-[70px] w-auto cursor-pointer hover:opacity-80 transition-opacity"
-          />
+        {/* Logo — inherits cream from text-secondary-foreground so it
+            blends into the dark sticky header instead of reading as a
+            pasted card. */}
+        <Link
+          to="/"
+          className="text-secondary-foreground hover:opacity-80 transition-opacity"
+          aria-label="PULSE — home"
+        >
+          <Logo className="h-[60px] sm:h-[70px] w-auto" />
         </Link>
 
         {/* Desktop Navigation */}
@@ -179,19 +181,16 @@ export const HomepageNav = ({ isLoggedIn }: HomepageNavProps) => {
               side="right"
               className="w-[300px] sm:w-[340px] p-0 flex flex-col"
             >
-              {/* Header with logo */}
+              {/* Header with logo — cream wordmark on the dark sheet header */}
               <div className="p-6 border-b border-border/50 bg-secondary rounded-t-lg">
                 <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
                 <Link
                   to="/"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="inline-block"
+                  className="inline-block text-secondary-foreground"
+                  aria-label="PULSE — home"
                 >
-                  <img
-                    src={logo}
-                    alt="PULSE"
-                    className="h-12 w-auto"
-                  />
+                  <Logo className="h-12 w-auto" />
                 </Link>
               </div>
 
