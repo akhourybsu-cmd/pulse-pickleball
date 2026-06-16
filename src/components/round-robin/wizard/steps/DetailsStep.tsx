@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { FileText, MapPin } from "lucide-react";
+import { FileText, MapPin, Globe, Lock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { generateDefaultEventName } from "../hooks/useWizardSteps";
+import { cn } from "@/lib/utils";
 
 interface Court {
   id: string;
@@ -26,16 +27,21 @@ interface DetailsStepProps {
   onLocationIdChange: (v: string) => void;
   notes: string;
   onNotesChange: (v: string) => void;
+  /** Current event mode — controls whether the "Who can join?" picker
+   *  appears. Hidden for immediate-mode events (the host adds players
+   *  directly so visibility doesn't apply). */
+  eventMode: "immediate" | "open_registration";
+  isInviteOnly: boolean;
+  onIsInviteOnlyChange: (v: boolean) => void;
 }
 
 /**
  * Consolidated "Event Details" step — combines the previous Name, Location,
- * and Notes screens into one form. All three fields are optional (Name
- * auto-fills with a generated default, Location and Notes can stay blank).
+ * Notes screens into one form, plus the new "Who can join?" visibility
+ * picker for open-registration events.
  *
- * Reduces the wizard from 11 steps to a more reasonable count without
- * forcing the player through three minimally-different screens for what's
- * conceptually one form.
+ * All four sections are optional. Name auto-fills with a generated default,
+ * location and notes can stay blank, and visibility defaults to "Open".
  */
 export function DetailsStep({
   eventName,
@@ -44,6 +50,9 @@ export function DetailsStep({
   onLocationIdChange,
   notes,
   onNotesChange,
+  eventMode,
+  isInviteOnly,
+  onIsInviteOnlyChange,
 }: DetailsStepProps) {
   const [courts, setCourts] = useState<Court[]>([]);
   const defaultName = generateDefaultEventName();
@@ -124,6 +133,68 @@ export function DetailsStep({
             {notes.length}/500
           </p>
         </div>
+
+        {/* Who can join? — only shown for open-registration events.
+            Immediate-mode events have a fixed roster, so visibility doesn't
+            apply. */}
+        {eventMode === "open_registration" && (
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Who can join?</label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => onIsInviteOnlyChange(false)}
+                className={cn(
+                  "flex items-start gap-3 p-3 rounded-lg border-2 text-left transition-all",
+                  !isInviteOnly
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:border-border/80 hover:bg-muted/30",
+                )}
+              >
+                <div
+                  className={cn(
+                    "h-9 w-9 rounded-lg flex items-center justify-center flex-shrink-0",
+                    !isInviteOnly ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground",
+                  )}
+                >
+                  <Globe className="h-4 w-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium text-sm">Open to everyone</div>
+                  <div className="text-xs text-muted-foreground mt-0.5 leading-snug">
+                    Discoverable in the player Available feed.
+                  </div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onIsInviteOnlyChange(true)}
+                className={cn(
+                  "flex items-start gap-3 p-3 rounded-lg border-2 text-left transition-all",
+                  isInviteOnly
+                    ? "border-primary bg-primary/5"
+                    : "border-border hover:border-border/80 hover:bg-muted/30",
+                )}
+              >
+                <div
+                  className={cn(
+                    "h-9 w-9 rounded-lg flex items-center justify-center flex-shrink-0",
+                    isInviteOnly ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground",
+                  )}
+                >
+                  <Lock className="h-4 w-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium text-sm">Invite only</div>
+                  <div className="text-xs text-muted-foreground mt-0.5 leading-snug">
+                    Hidden from discovery. Players join with an invite code.
+                  </div>
+                </div>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

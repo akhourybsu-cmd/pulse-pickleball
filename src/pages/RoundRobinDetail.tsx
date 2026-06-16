@@ -32,6 +32,7 @@ import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
 import { EditEventDialog } from "@/components/round-robin/EditEventDialog";
 import { EditModeBanner } from "@/components/round-robin/EditModeBanner";
+import { InviteCodeCard } from "@/components/round-robin/InviteCodeCard";
 import { PlayerManagementDialog } from "@/components/round-robin/PlayerManagementDialog";
 import { CourtsRoundsDialog } from "@/components/round-robin/CourtsRoundsDialog";
 import { ScheduleEditorDialog } from "@/components/round-robin/ScheduleEditorDialog";
@@ -81,6 +82,9 @@ interface Event {
   registration_deadline?: string | null;
   registration_mode?: string | null;
   max_players?: number | null;
+  /** Auto-generated invite code for invite-only events (XYZ-ABCD format).
+   *  Surfaced to the host so they can share it with players. */
+  invite_code?: string | null;
 }
 
 interface Player {
@@ -1665,6 +1669,19 @@ export default function RoundRobinDetail() {
             })}
           </div>
         </div>
+
+        {/* Invite-code share card — shown only when this is an invite-only
+            event AND the viewer is the organizer. Players who joined via
+            code don't need to see it again. */}
+        {isOrganizer && event.invite_code && event.registration_mode === "invite_only" && (
+          <div className="mb-6 max-w-2xl mx-auto">
+            <InviteCodeCard
+              code={event.invite_code}
+              eventId={event.id}
+              eventName={event.name}
+            />
+          </div>
+        )}
 
         <div>
         <Tabs defaultValue="schedule" className="w-full">
