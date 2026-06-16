@@ -22,7 +22,7 @@ export const PlayStyleSnapshot = ({ power, control, consistency }: PlayStyleSnap
           </div>
           <div className="h-2 bg-muted rounded-full overflow-hidden">
             <div 
-              className="h-full bg-[#B8945A] rounded-full transition-all duration-500"
+              className="h-full bg-[#CC9332] rounded-full transition-all duration-500"
               style={{ width: `${style.value}%` }}
             />
           </div>

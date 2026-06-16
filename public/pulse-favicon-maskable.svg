@@ -1,0 +1,19 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- PULSE maskable app icon — for Android adaptive icons.
+       The W3C "maskable" spec requires content to sit inside a 80%
+       safe zone (a circle of radius 40 centered in a 100 viewBox).
+       Outside that area Android crops to circle / squircle / teardrop
+       / square depending on the launcher.
+       Cream fills the full viewBox (no rounded corners — Android
+       supplies the shape mask). The glyph sits inside the safe zone. -->
+  <rect width="100" height="100" fill="#F4F1E9"/>
+
+  <!-- Glyph: same proportions as the standard favicon but sized so
+       every stroke endpoint sits within a 40-radius circle from (50,50).
+       Span: x=20 → x=80 horizontally; spike peaks at y=33 / y=72. -->
+  <g stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 20 50 H 40" stroke="#1B1D21"/>
+    <path d="M 40 50 l 6 -17 l 11 33 l 6 -17" stroke="#CC9332"/>
+    <path d="M 63 50 H 80" stroke="#1B1D21"/>
+  </g>
+</svg>
