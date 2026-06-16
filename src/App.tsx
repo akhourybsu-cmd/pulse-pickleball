@@ -11,7 +11,13 @@ import { useAuthPersistence } from "@/hooks/useAuthPersistence";
 import { PlayerShell } from "@/components/layout/PlayerShell";
 import { AuthGuard, VenueGuard, AdminGuard } from "@/components/guards";
 import { VenueShell } from "@/components/layout/VenueShell";
-import { RoundRobinBanner } from "@/components/RoundRobinBanner";
+// RoundRobinBanner was a global "Round Robin Match In Progress" strip
+// shown above PlayerShell whenever a participant had a live event.
+// Replaced by MyRoundRobinsCard on the dashboard so live events surface
+// in context (alongside the host's own events) instead of as a
+// dismissible toast above every screen. The component file is kept on
+// disk in case we want to revive a global indicator later.
+// import { RoundRobinBanner } from "@/components/RoundRobinBanner";
 import { ScrollToTop } from "@/components/ScrollToTop";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -217,7 +223,6 @@ const AppContent = () => {
   return (
     <>
       <ScrollToTop />
-      <RoundRobinBanner />
       <PWAInstallPrompt />
       <Suspense fallback={<PageLoader />}>
         <Routes>
