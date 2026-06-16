@@ -10,6 +10,10 @@ interface WhatsNextBannerProps {
   hasPlayers: boolean;
   /** True when the schedule has been generated. */
   hasSchedule: boolean;
+  /** Number of confirmed players in the roster (used for status language). */
+  playerCount?: number;
+  /** Number of courts allocated to the event (used for status language). */
+  courtCount?: number;
   /** Number of scored matches in the current round (for live-state coaching). */
   currentRoundScoredCount: number;
   /** Total matches in the current round (excluding byes). */
@@ -60,6 +64,8 @@ export function WhatsNextBanner({
   status,
   hasPlayers,
   hasSchedule,
+  playerCount = 0,
+  courtCount = 0,
   currentRoundScoredCount,
   currentRoundTotalCount,
   currentRound,
@@ -151,28 +157,34 @@ export function WhatsNextBanner({
       if (!hasPlayers) {
         return {
           icon: Users,
-          pill: "STEP 1",
-          title: "Add players to get started",
-          hint: "Round Robins need at least 4 players. You can also enable open registration in Settings.",
-          cta: "Manage players",
+          pill: "SETUP",
+          title: "Add at least 4 players to get started",
+          hint:
+            playerCount > 0
+              ? `${playerCount} of 4 minimum confirmed. Open registration is also available in Settings.`
+              : "Round Robins need 4 players minimum. You can also enable open registration in Settings.",
+          cta: "Add players",
           onClick: onAddPlayers,
         };
       }
       if (!hasSchedule) {
         return {
           icon: Sparkles,
-          pill: "STEP 2",
+          pill: "READY TO GENERATE",
           title: "Generate the schedule",
-          hint: "Locks in rounds and matchups so you can start play.",
+          hint:
+            playerCount && courtCount
+              ? `${playerCount} confirmed players · ${courtCount} ${courtCount === 1 ? "court" : "courts"} available`
+              : "Locks in rounds and matchups so you can start play.",
           cta: "Generate schedule",
           onClick: onGenerateSchedule,
         };
       }
       return {
         icon: Play,
-        pill: "READY",
+        pill: "READY TO START",
         title: "Start the event",
-        hint: "Once you start, the schedule goes live and players can enter scores.",
+        hint: `${playerCount} confirmed players · ${totalRounds} ${totalRounds === 1 ? "round" : "rounds"} planned.`,
         cta: "Start event",
         onClick: onStartEvent,
       };
