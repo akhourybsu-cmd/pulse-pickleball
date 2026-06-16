@@ -2,7 +2,7 @@ import { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { OnboardingProgress } from "./OnboardingProgress";
-import logo from "@/assets/pulse-logo-new.png";
+import logo from "@/assets/pulse-logo-premium.svg";
 
 interface OnboardingLayoutProps {
   children: ReactNode;

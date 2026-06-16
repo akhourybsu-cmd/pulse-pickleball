@@ -14,7 +14,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { Footer } from "@/components/Footer";
 import { FreePlanBenefitsList } from "@/components/venue/FreePlanBenefitsList";
 import { VenueGoalsStep } from "@/components/venue/VenueGoalsStep";
-import logo from "@/assets/pulse-logo-new.png";
+import logo from "@/assets/pulse-logo-premium.svg";
 
 import { US_STATE_CODES } from "@/lib/us-states";
 

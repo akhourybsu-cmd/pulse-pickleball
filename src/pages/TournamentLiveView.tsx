@@ -9,7 +9,7 @@ import { LiveIndicator } from '@/components/tournament/LiveIndicator';
 import { AlertCircle, RefreshCw } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import logo from '@/assets/pulse-logo-new.png';
+import logo from '@/assets/pulse-logo-premium.svg';
 
 interface TournamentEvent {
   id: string;

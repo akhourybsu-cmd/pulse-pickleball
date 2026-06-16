@@ -55,6 +55,7 @@ export function WizardContainer() {
     notes: "",
     isPublished: false,
     maxPlayers: 20,
+    isInviteOnly: false,
   });
 
   const { steps, totalSteps, isStepValid } = useWizardSteps(formData);
@@ -183,18 +184,31 @@ export function WizardContainer() {
           rating_eligible: formData.ratingEligible,
           rating_type: formData.ratingType,
           format: formData.format,
-          registration_mode: formData.eventMode,
-          num_rounds: formData.eventMode === "immediate" 
-            ? metrics.rounds 
+          // Discriminator: 'immediate' / 'open_registration' / 'invite_only'.
+          // When isInviteOnly is checked alongside open_registration mode,
+          // we store 'invite_only' so the DB trigger generates a unique
+          // invite_code AND so the discovery feed query (which filters on
+          // registration_mode='open_registration') hides this event.
+          registration_mode:
+            formData.eventMode === "open_registration" && formData.isInviteOnly
+              ? "invite_only"
+              : formData.eventMode,
+          num_rounds: formData.eventMode === "immediate"
+            ? metrics.rounds
             : calculateScheduleMetrics(formData.maxPlayers, formData.courtCount, formData.gamesPerPlayer).rounds,
           date: formData.eventMode === "immediate"
             ? new Date().toISOString().split("T")[0]
             : new Date(formData.eventDate).toISOString().split("T")[0],
-          registration_deadline: formData.eventMode === "open_registration" 
-            ? new Date(formData.registrationDeadline).toISOString() 
+          registration_deadline: formData.eventMode === "open_registration"
+            ? new Date(formData.registrationDeadline).toISOString()
             : null,
           max_players: formData.eventMode === "open_registration" ? formData.maxPlayers : null,
-          is_published: formData.eventMode === "open_registration" ? formData.isPublished : null,
+          // Invite-only events are never published to the public Available
+          // feed — surface only through code entry.
+          is_published:
+            formData.eventMode === "open_registration"
+              ? (formData.isInviteOnly ? false : formData.isPublished)
+              : null,
         })
         .select()
         .single();
@@ -216,13 +230,22 @@ export function WizardContainer() {
         if (playersError) throw playersError;
       }
 
-      const successMessage = formData.eventMode === "immediate"
-        ? "Event created successfully!"
-        : formData.isPublished
-          ? "Event created and published!"
-          : "Event created in draft mode.";
-
-      toast.success(successMessage);
+      // Surface the auto-generated invite code prominently for invite-only
+      // events so the host can immediately share it. For other modes,
+      // keep the existing short toast.
+      if (formData.eventMode === "open_registration" && formData.isInviteOnly && event.invite_code) {
+        toast.success(`Invite code: ${event.invite_code}`, {
+          description: "Share this code so players can join. The full code is also on the event page.",
+          duration: 10000,
+        });
+      } else {
+        const successMessage = formData.eventMode === "immediate"
+          ? "Event created successfully!"
+          : formData.isPublished
+            ? "Event created and published!"
+            : "Event created in draft mode.";
+        toast.success(successMessage);
+      }
       // Venue-context creates land on the venue console RR detail so staff
       // stay inside their console. Player-organized creates land on the
       // public detail page they would naturally share.
@@ -262,7 +285,7 @@ export function WizardContainer() {
           />
         );
       case "details":
-        // Combined Name + Location + Notes — see DetailsStep for rationale.
+        // Combined Name + Location + Notes + "Who can join?" picker.
         return (
           <DetailsStep
             eventName={formData.eventName}
@@ -271,6 +294,9 @@ export function WizardContainer() {
             onLocationIdChange={(v) => updateFormData("locationId", v)}
             notes={formData.notes}
             onNotesChange={(v) => updateFormData("notes", v)}
+            eventMode={formData.eventMode}
+            isInviteOnly={formData.isInviteOnly}
+            onIsInviteOnlyChange={(v) => updateFormData("isInviteOnly", v)}
           />
         );
       case "players":

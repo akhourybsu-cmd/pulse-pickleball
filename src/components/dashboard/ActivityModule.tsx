@@ -11,6 +11,7 @@ import {
   Bell
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { DashboardModuleSkeleton } from "@/components/layout/DashboardModuleSkeleton";
 import { MatchVerificationDialog } from "./MatchVerificationDialog";
 
 interface ActionItem {
@@ -252,15 +253,7 @@ export const ActivityModule = ({ userId }: ActivityModuleProps) => {
   }, [userId]);
 
   if (loading) {
-    return (
-      <div className="space-y-4">
-        <div className="animate-pulse space-y-3">
-          <div className="h-4 bg-muted rounded w-1/3"></div>
-          <div className="h-16 bg-muted rounded-xl"></div>
-          <div className="h-16 bg-muted rounded-xl"></div>
-        </div>
-      </div>
-    );
+    return <DashboardModuleSkeleton count={2} />;
   }
 
   const hasContent = actionItems.length > 0 || alerts.length > 0 || systemUpdates.length > 0;

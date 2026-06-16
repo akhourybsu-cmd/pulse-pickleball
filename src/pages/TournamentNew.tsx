@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { TournamentWizard } from "@/components/tournament/TournamentWizard";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Footer } from "@/components/Footer";
-import logo from "@/assets/pulse-logo-new.png";
+import logo from "@/assets/pulse-logo-premium.svg";
 
 export default function TournamentNew() {
   const navigate = useNavigate();

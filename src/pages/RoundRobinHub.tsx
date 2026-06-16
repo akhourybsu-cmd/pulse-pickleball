@@ -24,7 +24,7 @@ import { BackToDashboard } from "@/components/BackToDashboard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AvailableRoundRobinEvents } from "@/components/round-robin/AvailableRoundRobinEvents";
 import { RoundRobinFeatureCard } from "@/components/round-robin/RoundRobinFeatureCard";
-import logo from "@/assets/pulse-logo-new.png";
+import logo from "@/assets/pulse-logo-premium.svg";
 import { motion } from "framer-motion";
 import CountUp from "react-countup";
 

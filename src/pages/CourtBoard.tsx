@@ -16,7 +16,7 @@ import { CommunityHub } from "@/components/court/feed/CommunityHub";
 import { useToast } from "@/hooks/use-toast";
 import { MapPin, MessageSquare, Activity, LogOut, User as UserIcon, ExternalLink, Calendar } from "lucide-react";
 import { motion } from "framer-motion";
-import logo from "@/assets/pulse-logo-new.png";
+import logo from "@/assets/pulse-logo-premium.svg";
 import pickleballCitiLogo from "@/assets/pickleball-citi-logo.png";
 import { JoinableCalendarEvents } from "@/components/citi-events/JoinableCalendarEvents";
 import { JoinableRoundRobinEvents } from "@/components/round-robin/JoinableRoundRobinEvents";

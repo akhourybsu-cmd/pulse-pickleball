@@ -18,6 +18,11 @@ export interface WizardFormData {
   notes: string;
   isPublished: boolean;
   maxPlayers: number;
+  /** Invite-only flag — meaningful only when eventMode = "open_registration".
+   *  When true, the event is hidden from the public Available feed and
+   *  players must enter an invite code to join. The DB trigger generates
+   *  a unique XYZ-ABCD code automatically on insert. */
+  isInviteOnly: boolean;
 }
 
 export interface WizardStep {

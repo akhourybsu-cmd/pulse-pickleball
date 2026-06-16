@@ -9,7 +9,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { Footer } from "@/components/Footer";
 import { TournamentVenueGate } from "@/components/tournament/TournamentVenueGate";
 import { TournamentWizard } from "@/components/tournament/TournamentWizard";
-import logo from "@/assets/pulse-logo-new.png";
+import logo from "@/assets/pulse-logo-premium.svg";
 
 export default function TournamentNewWithGating() {
   const navigate = useNavigate();

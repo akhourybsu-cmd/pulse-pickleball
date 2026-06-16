@@ -9,7 +9,7 @@ import { useTournamentRealtime } from '@/hooks/useTournamentRealtime';
 import { LiveIndicator } from '@/components/tournament/LiveIndicator';
 import { AlertCircle, Trophy, Users, Link2 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import logo from '@/assets/pulse-logo-new.png';
+import logo from '@/assets/pulse-logo-premium.svg';
 
 interface Team {
   id: string;

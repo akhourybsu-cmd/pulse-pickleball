@@ -32,7 +32,7 @@ import { formatTournamentLabel, formatSkillLevelRange, formatGenderLabel } from 
 import { checkDivisionEligibility, type EligibilityResult } from "@/lib/tournamentValidation";
 import { getDivisionPricing, type PricingInfo } from "@/lib/tournamentPricing";
 import { checkTournamentReadiness, type TournamentRequirements } from "@/lib/profileCompleteness";
-import logo from "@/assets/pulse-logo-new.png";
+import logo from "@/assets/pulse-logo-premium.svg";
 
 interface TournamentEvent {
   id: string;

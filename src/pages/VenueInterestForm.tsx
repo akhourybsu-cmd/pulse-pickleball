@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import pulseLogo from '@/assets/pulse-logo-new.png';
+import pulseLogo from '@/assets/pulse-logo-premium.svg';
 
 const VenueInterestForm = () => {
   const navigate = useNavigate();

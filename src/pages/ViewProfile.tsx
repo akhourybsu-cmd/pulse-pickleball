@@ -12,7 +12,7 @@ import { AnimatedStatChip } from "@/components/profile/AnimatedStatChip";
 import { LastPlayedBadge } from "@/components/profile/LastPlayedBadge";
 import { PlayStyleChip } from "@/components/profile/PlayStyleChip";
 import { cn } from "@/lib/utils";
-import logo from "@/assets/pulse-logo-new.png";
+import logo from "@/assets/pulse-logo-premium.svg";
 
 interface Profile {
   id: string;

@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Star, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
-import logo from "@/assets/pulse-logo-new.png";
+import logo from "@/assets/pulse-logo-premium.svg";
 import pickleballCitiLogo from "@/assets/pickleball-citi-logo.png";
 import { ThemeToggle } from "@/components/ThemeToggle";
 

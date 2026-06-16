@@ -19,7 +19,7 @@ import { BracketView } from "@/components/tournament/BracketView";
 import { ScoreEntryDialog } from "@/components/tournament/ScoreEntryDialog";
 import { SeedingManager } from "@/components/tournament/seeding/SeedingManager";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import logo from "@/assets/pulse-logo-new.png";
+import logo from "@/assets/pulse-logo-premium.svg";
 
 interface Division {
   id: string;

@@ -9,7 +9,7 @@ import { useNotifications } from '@/hooks/useNotifications';
 import { UnverifiedMatchesIndicator } from '@/components/UnverifiedMatchesIndicator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
-import logo from '@/assets/pulse-logo-new.png';
+import logo from '@/assets/pulse-logo-premium.svg';
 // VenueModeBanner removed during the player-only beta. Component file
 // stays put for easy revival when the venue surface is re-enabled.
 
@@ -41,6 +41,7 @@ export function PlayerShell() {
   // Real-time notifications
   const {
     notifications,
+    loading: notificationsLoading,
     unreadCount,
     markAsRead,
     markAllAsRead,
@@ -140,6 +141,7 @@ export function PlayerShell() {
         isOpen={isNotificationCenterOpen}
         onClose={() => setIsNotificationCenterOpen(false)}
         notifications={notifications}
+        loading={notificationsLoading}
         unreadCount={unreadCount}
         onMarkAsRead={markAsRead}
         onMarkAllAsRead={markAllAsRead}

@@ -27,7 +27,7 @@ import {
   Building2
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-import logo from "@/assets/pulse-logo-new.png";
+import logo from "@/assets/pulse-logo-premium.svg";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Footer } from "@/components/Footer";
 

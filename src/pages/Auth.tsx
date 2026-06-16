@@ -13,7 +13,7 @@ import { MFAChallenge } from "@/components/auth/MFAChallenge";
 import { EmailMFAChallenge } from "@/components/auth/EmailMFAChallenge";
 import { BiometricLogin } from "@/components/auth/BiometricLogin";
 import { lovable } from "@/integrations/lovable";
-import pulseLogo from "@/assets/pulse-logo-new.png";
+import pulseLogo from "@/assets/pulse-logo-premium.svg";
 
 const GoogleIcon = () => (
   <svg className="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">

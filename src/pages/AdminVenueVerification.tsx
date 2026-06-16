@@ -24,7 +24,7 @@ import {
   Search,
   RefreshCw
 } from "lucide-react";
-import logo from "@/assets/pulse-logo-new.png";
+import logo from "@/assets/pulse-logo-premium.svg";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Footer } from "@/components/Footer";
 

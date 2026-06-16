@@ -19,7 +19,7 @@ import { TournamentScheduler } from "@/components/tournament/scheduling/Tourname
 import { EmailTemplateEditor } from "@/components/tournament/communication/EmailTemplateEditor";
 import { format } from "date-fns";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import logo from "@/assets/pulse-logo-new.png";
+import logo from "@/assets/pulse-logo-premium.svg";
 
 interface TournamentEvent {
   id: string;

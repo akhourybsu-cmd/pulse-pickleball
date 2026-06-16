@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { LogOut, User as UserIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import logo from "@/assets/pulse-logo-new.png";
+import logo from "@/assets/pulse-logo-premium.svg";
 import { NotificationBell } from "@/components/NotificationBell";
 import { NotificationCenter } from "@/components/notifications/NotificationCenter";
 import { ModeSwitcher } from "@/components/mode/ModeSwitcher";
