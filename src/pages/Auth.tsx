@@ -13,7 +13,7 @@ import { MFAChallenge } from "@/components/auth/MFAChallenge";
 import { EmailMFAChallenge } from "@/components/auth/EmailMFAChallenge";
 import { BiometricLogin } from "@/components/auth/BiometricLogin";
 import { lovable } from "@/integrations/lovable";
-import pulseLogo from "@/assets/pulse-logo-premium.svg";
+import { Logo } from "@/components/Logo";
 
 const GoogleIcon = () => (
   <svg className="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
@@ -342,13 +342,16 @@ const Auth = () => {
   return (
     <div className="min-h-screen flex items-start md:items-center justify-center bg-secondary p-4 pt-8 md:py-12">
       <div className="w-full max-w-md">
-        <div className="text-center mb-4 md:mb-8">
-          <Link to="/">
-            <img 
-              src={pulseLogo} 
-              alt="PULSE" 
-              className="h-48 md:h-60 w-auto mx-auto cursor-pointer hover:opacity-80 transition-opacity"
-            />
+        {/* Logo — wordmark inherits cream from text-secondary-foreground
+            so it floats on the dark surface as a brand moment instead of
+            sitting in a foreign cream rectangle. */}
+        <div className="text-center mb-6 md:mb-10 text-secondary-foreground">
+          <Link
+            to="/"
+            className="inline-block hover:opacity-80 transition-opacity"
+            aria-label="PULSE — home"
+          >
+            <Logo className="h-28 md:h-36 w-auto mx-auto" />
           </Link>
         </div>
 

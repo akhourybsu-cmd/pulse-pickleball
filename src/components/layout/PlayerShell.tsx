@@ -9,7 +9,7 @@ import { useNotifications } from '@/hooks/useNotifications';
 import { UnverifiedMatchesIndicator } from '@/components/UnverifiedMatchesIndicator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
-import logo from '@/assets/pulse-logo-premium.svg';
+import { Logo } from '@/components/Logo';
 // VenueModeBanner removed during the player-only beta. Component file
 // stays put for easy revival when the venue surface is re-enabled.
 
@@ -109,12 +109,16 @@ export function PlayerShell() {
       {!isImmersiveRoute && (
         <header className="sticky top-0 z-50 border-b border-secondary-foreground/10 bg-secondary shadow-sm">
           <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-3 flex items-center justify-between h-[64px] sm:h-[72px]">
-            <NavLink to="/player/dashboard" className="ml-1">
-              <img 
-                src={logo} 
-                alt="PULSE Logo" 
-                className="h-[52px] sm:h-[65px] w-auto cursor-pointer hover:opacity-90 transition-opacity" 
-              />
+            {/* Logo now inherits color from text-secondary-foreground (cream)
+                so the wordmark + flat lines render cream on the ink top bar
+                instead of a pasted cream rectangle. Gold pulse beat stays
+                gold for brand recognition. */}
+            <NavLink
+              to="/player/dashboard"
+              className="ml-1 text-secondary-foreground hover:opacity-90 transition-opacity"
+              aria-label="Go to dashboard"
+            >
+              <Logo className="h-[52px] sm:h-[65px] w-auto" />
             </NavLink>
             <div className="flex items-center gap-1.5 sm:gap-2">
               <UnverifiedMatchesIndicator />
