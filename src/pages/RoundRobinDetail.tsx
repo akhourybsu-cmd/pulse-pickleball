@@ -33,6 +33,7 @@ import { format, parseISO } from "date-fns";
 import { EditEventDialog } from "@/components/round-robin/EditEventDialog";
 import { EditModeBanner } from "@/components/round-robin/EditModeBanner";
 import { InviteCodeCard } from "@/components/round-robin/InviteCodeCard";
+import { WhatsNextBanner } from "@/components/round-robin/WhatsNextBanner";
 import { PlayerManagementDialog } from "@/components/round-robin/PlayerManagementDialog";
 import { CourtsRoundsDialog } from "@/components/round-robin/CourtsRoundsDialog";
 import { ScheduleEditorDialog } from "@/components/round-robin/ScheduleEditorDialog";
@@ -1670,9 +1671,47 @@ export default function RoundRobinDetail() {
           </div>
         </div>
 
+        {/* What's next — single primary action for the host, state-aware.
+            Sits ABOVE the invite-code card so the host's eye lands on the
+            action they need to take first. Players see no banner. */}
+        {isOrganizer && (
+          <div className="mb-4 max-w-2xl mx-auto">
+            <WhatsNextBanner
+              status={event.status}
+              hasPlayers={players.length >= 4}
+              hasSchedule={hasSchedule}
+              currentRound={event.current_round}
+              totalRounds={event.num_rounds}
+              currentRoundScoredCount={
+                event.current_round != null
+                  ? schedule.filter(
+                      (m) =>
+                        m.round_no === event.current_round &&
+                        !m.is_bye &&
+                        m.team1_score != null &&
+                        m.team2_score != null,
+                    ).length
+                  : 0
+              }
+              currentRoundTotalCount={
+                event.current_round != null
+                  ? schedule.filter(
+                      (m) => m.round_no === event.current_round && !m.is_bye,
+                    ).length
+                  : 0
+              }
+              isOrganizer={isOrganizer}
+              onAddPlayers={() => setPlayerManagementOpen(true)}
+              onGenerateSchedule={handleGenerateSchedule}
+              onStartEvent={handleStartEvent}
+              onCloseRound={() => event.current_round && handleCloseRound(event.current_round)}
+              onCompleteEvent={handleCompleteEvent}
+            />
+          </div>
+        )}
+
         {/* Invite-code share card — shown only when this is an invite-only
-            event AND the viewer is the organizer. Players who joined via
-            code don't need to see it again. */}
+            event AND the viewer is the organizer. */}
         {isOrganizer && event.invite_code && event.registration_mode === "invite_only" && (
           <div className="mb-6 max-w-2xl mx-auto">
             <InviteCodeCard
