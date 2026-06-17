@@ -244,10 +244,10 @@ const Dashboard = () => {
                 label="My round robins"
                 action={
                   <Link
-                    to="/round-robin"
+                    to="/player/round-robins"
                     className="text-muted-foreground hover:text-foreground transition-colors font-medium"
                   >
-                    Browse all →
+                    View all →
                   </Link>
                 }
               />
@@ -341,8 +341,8 @@ const Dashboard = () => {
             <SectionHeader
               label="My round robins"
               action={
-                <Link to="/round-robin" className="text-muted-foreground hover:text-foreground transition-colors font-medium">
-                  Browse all →
+                <Link to="/player/round-robins" className="text-muted-foreground hover:text-foreground transition-colors font-medium">
+                  View all →
                 </Link>
               }
             />

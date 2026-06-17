@@ -140,6 +140,7 @@ const NotificationSettings = lazy(() => import("./pages/NotificationSettings"));
 // Player pages
 const PlayerDashboard = lazy(() => import("./pages/player/PlayerDashboard"));
 const PlayerProfile = lazy(() => import("./pages/player/PlayerProfile"));
+const MyRoundRobinsPage = lazy(() => import("./pages/player/MyRoundRobinsPage"));
 const PlayHub = lazy(() => import("./pages/play/PlayHub"));
 // PlayerCourts removed - Court Connector feature archived
 const PlayerEvents = lazy(() => import("./pages/player/PlayerEvents"));
@@ -282,6 +283,10 @@ const AppContent = () => {
             <Route path="matches/pending" element={<Navigate to="/player/matches?tab=pending" replace />} />
             <Route path="play" element={<PlayHub />} />
             <Route path="profile" element={<PlayerProfile />} />
+            {/* My Round Robins history — replaces the catch-all /round-robin
+                hub link that used to live on the dashboard. Past + active
+                events in one place. */}
+            <Route path="round-robins" element={<MyRoundRobinsPage />} />
             {/* Legacy aliases - kept functional, redirected from old paths */}
             <Route path="find" element={<RedirectWithParams to="/player/play" />} />
             <Route path="events" element={<PlayerEvents />} />

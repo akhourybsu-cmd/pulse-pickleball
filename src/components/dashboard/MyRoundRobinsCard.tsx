@@ -253,7 +253,7 @@ export function MyRoundRobinsCard({ userId }: MyRoundRobinsCardProps) {
 
       {entries.length > visible.length && (
         <button
-          onClick={() => navigate("/round-robin")}
+          onClick={() => navigate("/player/round-robins")}
           className="w-full text-xs text-muted-foreground hover:text-foreground transition-colors py-1.5 text-center"
         >
           See all {entries.length} →

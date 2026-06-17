@@ -48,11 +48,14 @@ const menuSections = {
       { label: "Community", href: "/player/community", icon: Users },
     ],
   },
+  // The "Play" section previously had a "Round Robins" link to the
+  // catch-all /round-robin hub. Removed during the player-only beta
+  // refocus — players reach round robins from their dashboard's
+  // "My round robins" card (and the /player/round-robins history page),
+  // which is purpose-built for the player rather than a generic hub.
   play: {
     title: "Play",
-    items: [
-      { label: "Round Robins", href: "/round-robin", icon: RotateCcw },
-    ],
+    items: [] as { label: string; href: string; icon: typeof RotateCcw }[],
   },
   account: {
     title: "Account",
@@ -111,15 +114,10 @@ export const HomepageNav = ({ isLoggedIn }: HomepageNavProps) => {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56 bg-popover">
-              <DropdownMenuLabel className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Play
-              </DropdownMenuLabel>
-              <DropdownMenuItem asChild>
-                <Link to="/round-robin" className="flex items-center gap-2 cursor-pointer">
-                  <RotateCcw className="h-4 w-4" />
-                  Round Robins
-                </Link>
-              </DropdownMenuItem>
+              {/* "Play" section emptied during the player-only beta — the
+                  Round Robins link routed to the catch-all /round-robin
+                  hub which is no longer surfaced to players. Reaches RRs
+                  via the dashboard's "My round robins" card instead. */}
 
               {isLoggedIn && (
                 <>
@@ -216,28 +214,8 @@ export const HomepageNav = ({ isLoggedIn }: HomepageNavProps) => {
                   </div>
                 </div>
 
-                {/* Divider */}
-                <div className="border-t border-border/50 my-2 mx-6" />
-
-                {/* Play Section */}
-                <div className="px-6 py-2">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 px-3">
-                    {menuSections.play.title}
-                  </p>
-                  <div className="space-y-1">
-                    {menuSections.play.items.map((link) => (
-                      <Link
-                        key={link.href}
-                        to={link.href}
-                        onClick={() => setMobileMenuOpen(false)}
-                        className="flex items-center gap-3 px-3 py-3 rounded-lg text-base font-medium text-foreground hover:bg-muted/50 transition-colors min-h-[44px]"
-                      >
-                        <link.icon className="h-5 w-5 text-muted-foreground" />
-                        {link.label}
-                      </Link>
-                    ))}
-                  </div>
-                </div>
+                {/* Play Section removed — the only item was a /round-robin
+                    link that's been sunsetted from player navigation. */}
 
                 {/* Account Section (only if logged in) */}
                 {isLoggedIn && (
