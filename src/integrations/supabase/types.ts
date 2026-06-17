@@ -1697,6 +1697,38 @@ export type Database = {
           },
         ]
       }
+      group_poll_votes: {
+        Row: {
+          created_at: string
+          id: string
+          option_idx: number
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          option_idx: number
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          option_idx?: number
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_poll_votes_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "group_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       group_post_comments: {
         Row: {
           content: string
@@ -5978,6 +6010,10 @@ export type Database = {
           partner_rating: number
           player_rating: number
         }
+        Returns: number
+      }
+      cast_group_poll_vote: {
+        Args: { p_option_idx: number; p_post_id: string }
         Returns: number
       }
       check_and_award_badges: {
