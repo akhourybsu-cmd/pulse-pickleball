@@ -284,20 +284,33 @@ const MatchHistory = () => {
       .map((m: any) => m.match_id);
 
     if (rrCandidateIds.length > 0) {
-      const { data: rrLinks } = await supabase
+      const { data: rrLinks, error: rrLinksError } = await supabase
         .from('round_robin_schedule')
-        .select('match_id, event_id, round_robin_events!inner(id, name, event_date)')
+        .select('match_id, event_id')
         .in('match_id', rrCandidateIds);
+
+      console.log('[RR group] schedule links:', rrLinks, 'error:', rrLinksError);
+
+      const eventIds = Array.from(
+        new Set((rrLinks || []).map((l: any) => l.event_id).filter(Boolean))
+      );
+
+      let eventsById = new Map<string, { id: string; name: string; date: string }>();
+      if (eventIds.length > 0) {
+        const { data: rrEvents, error: rrEventsError } = await supabase
+          .from('round_robin_events')
+          .select('id, name, event_date')
+          .in('id', eventIds);
+        console.log('[RR group] events:', rrEvents, 'error:', rrEventsError);
+        (rrEvents || []).forEach((e: any) => {
+          eventsById.set(e.id, { id: e.id, name: e.name, date: e.event_date });
+        });
+      }
 
       const matchToEvent = new Map<string, { id: string; name: string; date: string }>();
       (rrLinks || []).forEach((link: any) => {
-        if (link.match_id && link.round_robin_events) {
-          matchToEvent.set(link.match_id, {
-            id: link.round_robin_events.id,
-            name: link.round_robin_events.name,
-            date: link.round_robin_events.event_date,
-          });
-        }
+        const ev = link.event_id ? eventsById.get(link.event_id) : null;
+        if (link.match_id && ev) matchToEvent.set(link.match_id, ev);
       });
 
       matchesWithDetails.forEach((m: any) => {
@@ -308,6 +321,7 @@ const MatchHistory = () => {
           m.rr_event_date = ev.date;
         }
       });
+      console.log('[RR group] matchToEvent size:', matchToEvent.size);
     }
 
     // Sort by match_date DESC, then created_at DESC, then match_id DESC
