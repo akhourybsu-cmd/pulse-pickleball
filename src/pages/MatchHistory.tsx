@@ -61,6 +61,9 @@ interface Match {
   source?: string;
   round_no?: number;
   court_no?: number;
+  rr_event_id?: string | null;
+  rr_event_name?: string | null;
+  rr_event_date?: string | null;
 }
 
 const MatchHistory = () => {
