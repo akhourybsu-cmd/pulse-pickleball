@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Send, Image, BarChart3, Gamepad2 } from 'lucide-react';
+import { Send, Image, BarChart3, Gamepad2, Plus, X } from 'lucide-react';
 import {
   Drawer,
   DrawerContent,
@@ -31,6 +31,7 @@ interface QuickPostComposerProps {
     session_time?: string;
     max_players?: number;
     image_url?: string;
+    poll_options?: { idx: number; text: string }[];
   }) => Promise<boolean>;
 }
 
@@ -50,6 +51,9 @@ export function QuickPostComposer({
   const [sessionDate, setSessionDate] = useState('');
   const [sessionTime, setSessionTime] = useState('');
   const [maxPlayers, setMaxPlayers] = useState('4');
+  // Poll options — composer enforces 2..4 non-empty options. Start with two
+  // blanks so the form is immediately fillable.
+  const [pollOptions, setPollOptions] = useState<string[]>(['', '']);
   
   // Image state
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
@@ -84,6 +88,7 @@ export function QuickPostComposer({
     setSessionDate('');
     setSessionTime('');
     setMaxPlayers('4');
+    setPollOptions(['', '']);
     setSelectedImage(null);
     setImagePreview(null);
   };
@@ -123,9 +128,23 @@ export function QuickPostComposer({
           max_players: maxPlayers ? parseInt(maxPlayers) : undefined,
         };
         break;
-      case 'poll':
-        data = { type: 'poll', title: title.trim(), content: content.trim() };
+      case 'poll': {
+        // Pack the option strings into the {idx,text} shape stored in
+        // group_posts.poll_options. Empty options are dropped, and
+        // option_idx is reassigned from 0 so it always matches the
+        // array position the voter sees.
+        const cleaned = pollOptions
+          .map((o) => o.trim())
+          .filter((o) => o.length > 0)
+          .map((text, idx) => ({ idx, text }));
+        data = {
+          type: 'poll',
+          title: title.trim(),
+          content: content.trim(),
+          poll_options: cleaned,
+        };
         break;
+      }
       default:
         data = { type: 'feed', content: content.trim() };
     }
@@ -155,7 +174,10 @@ export function QuickPostComposer({
       case 'lfg':
         return title.trim().length > 0;
       case 'poll':
-        return title.trim().length > 0;
+        return (
+          title.trim().length > 0 &&
+          pollOptions.filter((o) => o.trim().length > 0).length >= 2
+        );
       default:
         return content.trim().length > 0;
     }
@@ -264,6 +286,56 @@ export function QuickPostComposer({
                   onChange={(e) => setTitle(e.target.value)}
                 />
               </div>
+
+              {/* Options (2–4). Each row is one option string. The composer
+                  ignores blank rows when packing into poll_options so users
+                  can add then ignore without manually pruning. */}
+              <div className="space-y-2">
+                <Label>Options ({pollOptions.filter((o) => o.trim()).length}/4)</Label>
+                <div className="space-y-2">
+                  {pollOptions.map((opt, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <Input
+                        placeholder={`Option ${i + 1}`}
+                        value={opt}
+                        maxLength={80}
+                        onChange={(e) => {
+                          const next = [...pollOptions];
+                          next[i] = e.target.value;
+                          setPollOptions(next);
+                        }}
+                      />
+                      {pollOptions.length > 2 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-9 w-9 flex-shrink-0 text-muted-foreground hover:text-destructive"
+                          aria-label={`Remove option ${i + 1}`}
+                          onClick={() => {
+                            setPollOptions(pollOptions.filter((_, j) => j !== i));
+                          }}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {pollOptions.length < 4 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-primary h-8 -ml-2"
+                    onClick={() => setPollOptions([...pollOptions, ''])}
+                  >
+                    <Plus className="h-3.5 w-3.5 mr-1.5" />
+                    Add option
+                  </Button>
+                )}
+              </div>
+
               <div className="space-y-2">
                 <Label>Additional details</Label>
                 <Textarea
