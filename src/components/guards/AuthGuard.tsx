@@ -42,9 +42,21 @@ export function AuthGuard({
     return <PageLoader />;
   }
 
-  // Not authenticated - redirect to auth
+  // Not authenticated - redirect to auth. Carry the full URL (pathname +
+  // search + hash) through `returnTo` so post-auth navigation lands the
+  // user back where they were trying to go — most importantly preserving
+  // ?invite=… deep links on /player/play, which otherwise get dropped on
+  // the auth bounce and leave the player on the dashboard wondering why
+  // their share link "didn't work". (Audit-flagged.)
   if (!isAuthenticated) {
-    return <Navigate to={fallbackPath} state={{ from: location }} replace />;
+    const returnTo = `${location.pathname}${location.search}${location.hash}`;
+    return (
+      <Navigate
+        to={fallbackPath}
+        state={{ from: location, returnTo }}
+        replace
+      />
+    );
   }
 
   // User is in onboarding and we require active state

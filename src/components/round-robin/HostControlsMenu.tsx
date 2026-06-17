@@ -11,7 +11,7 @@ import {
 
 interface HostControlsMenuProps {
   /** Event status — drives which entries are shown. */
-  status: "draft" | "live" | "completed";
+  status: "draft" | "live" | "completed" | "voided";
   /** Whether the schedule has been generated (gates the Sync action). */
   hasSchedule: boolean;
   /** Whether edit mode is currently active (disables Settings). */
@@ -69,7 +69,11 @@ export function HostControlsMenu({
           Event controls
         </DropdownMenuLabel>
 
-        {status === "live" && onOpenKiosk && (
+        {/* Kiosk display is available for live AND completed events. After
+            completion hosts often keep the standings on a TV at the venue
+            for a while; restricting to live-only forced them to leave the
+            page and re-open before the event status flipped. */}
+        {(status === "live" || status === "completed") && onOpenKiosk && (
           <DropdownMenuItem onClick={onOpenKiosk} className="gap-2 cursor-pointer">
             <Monitor className="h-4 w-4" />
             Open kiosk display
