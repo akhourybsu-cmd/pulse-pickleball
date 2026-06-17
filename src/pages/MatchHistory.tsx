@@ -264,6 +264,9 @@ const MatchHistory = () => {
           other_location: otherLocation,
           won,
           verified_by: p.matches.verified_by || [],
+          source: p.matches.source,
+          round_no: p.matches.round_no,
+          court_no: p.matches.court_no,
         };
         
         console.log('Match data for', p.match_id, ':', matchData);
@@ -272,6 +275,39 @@ const MatchHistory = () => {
         return matchData;
       })
     );
+
+    // Look up RR event linkage. matches.event_id is unreliable for RR
+    // matches; the authoritative link is round_robin_schedule.match_id.
+    const rrCandidateIds = matchesWithDetails
+      .filter((m: any) => m.source === 'round_robin')
+      .map((m: any) => m.match_id);
+
+    if (rrCandidateIds.length > 0) {
+      const { data: rrLinks } = await supabase
+        .from('round_robin_schedule')
+        .select('match_id, event_id, round_robin_events!inner(id, name, event_date)')
+        .in('match_id', rrCandidateIds);
+
+      const matchToEvent = new Map<string, { id: string; name: string; date: string }>();
+      (rrLinks || []).forEach((link: any) => {
+        if (link.match_id && link.round_robin_events) {
+          matchToEvent.set(link.match_id, {
+            id: link.round_robin_events.id,
+            name: link.round_robin_events.name,
+            date: link.round_robin_events.event_date,
+          });
+        }
+      });
+
+      matchesWithDetails.forEach((m: any) => {
+        const ev = matchToEvent.get(m.match_id);
+        if (ev) {
+          m.rr_event_id = ev.id;
+          m.rr_event_name = ev.name;
+          m.rr_event_date = ev.date;
+        }
+      });
+    }
 
     // Sort by match_date DESC, then created_at DESC, then match_id DESC
     matchesWithDetails.sort((a, b) => {
