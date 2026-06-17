@@ -917,9 +917,7 @@ const MatchHistory = () => {
             });
           });
           items.sort((a, b) => {
-            const aKey = a.kind === 'group' ? a.group.sortKey : a.sortKey;
-            const bKey = b.kind === 'group' ? b.group.sortKey : b.sortKey;
-            return bKey.localeCompare(aKey);
+            return b.sortKey.localeCompare(a.sortKey);
           });
 
           return (
