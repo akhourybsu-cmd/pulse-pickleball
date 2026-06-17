@@ -31,6 +31,7 @@ import { Footer } from "@/components/Footer";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PlayerPageHeader } from "@/components/layout/PlayerPageHeader";
 import { PremiumMatchCard } from "@/components/matches/PremiumMatchCard";
+import { RoundRobinMatchGroup, type RoundRobinGroup } from "@/components/matches/RoundRobinMatchGroup";
 import { cn } from "@/lib/utils";
 
 const issueSchema = z.object({
@@ -61,6 +62,9 @@ interface Match {
   source?: string;
   round_no?: number;
   court_no?: number;
+  rr_event_id?: string | null;
+  rr_event_name?: string | null;
+  rr_event_date?: string | null;
 }
 
 const MatchHistory = () => {
@@ -261,6 +265,9 @@ const MatchHistory = () => {
           other_location: otherLocation,
           won,
           verified_by: p.matches.verified_by || [],
+          source: p.matches.source,
+          round_no: p.matches.round_no,
+          court_no: p.matches.court_no,
         };
         
         console.log('Match data for', p.match_id, ':', matchData);
@@ -269,6 +276,39 @@ const MatchHistory = () => {
         return matchData;
       })
     );
+
+    // Look up RR event linkage. matches.event_id is unreliable for RR
+    // matches; the authoritative link is round_robin_schedule.match_id.
+    const rrCandidateIds = matchesWithDetails
+      .filter((m: any) => m.source === 'round_robin')
+      .map((m: any) => m.match_id);
+
+    if (rrCandidateIds.length > 0) {
+      const { data: rrLinks } = await supabase
+        .from('round_robin_schedule')
+        .select('match_id, event_id, round_robin_events!inner(id, name, event_date)')
+        .in('match_id', rrCandidateIds);
+
+      const matchToEvent = new Map<string, { id: string; name: string; date: string }>();
+      (rrLinks || []).forEach((link: any) => {
+        if (link.match_id && link.round_robin_events) {
+          matchToEvent.set(link.match_id, {
+            id: link.round_robin_events.id,
+            name: link.round_robin_events.name,
+            date: link.round_robin_events.event_date,
+          });
+        }
+      });
+
+      matchesWithDetails.forEach((m: any) => {
+        const ev = matchToEvent.get(m.match_id);
+        if (ev) {
+          m.rr_event_id = ev.id;
+          m.rr_event_name = ev.name;
+          m.rr_event_date = ev.date;
+        }
+      });
+    }
 
     // Sort by match_date DESC, then created_at DESC, then match_id DESC
     matchesWithDetails.sort((a, b) => {
@@ -833,56 +873,120 @@ const MatchHistory = () => {
           </Card>
         )}
 
-        {/* Approved Matches Section */}
-        {!playerId && activeTab === "pending" ? null : matches.length === 0 ? null : (
-          <div className="space-y-4">
-            {matches.map((match, index) => {
-              const { verifiedCount, totalPlayers, isCurrentUserVerified } = getVerificationStatus(match);
-              
-              return (
+        {/* Approved Matches Section — RR matches bundled by event */}
+        {!playerId && activeTab === "pending" ? null : matches.length === 0 ? null : (() => {
+          type Item =
+            | { kind: 'single'; match: Match; sortKey: string }
+            | { kind: 'group'; group: RoundRobinGroup; sortKey: string };
+
+          const groups = new Map<string, RoundRobinGroup & { sortKey: string }>();
+          const items: Item[] = [];
+
+          for (const m of matches) {
+            if (m.rr_event_id) {
+              const existing = groups.get(m.rr_event_id);
+              if (existing) {
+                existing.matches.push(m as any);
+                if (m.won) existing.wins += 1; else existing.losses += 1;
+                existing.netRating += m.rating_change || 0;
+                if (m.match_date > existing.sortKey) existing.sortKey = m.match_date;
+              } else {
+                const g = {
+                  eventId: m.rr_event_id,
+                  name: m.rr_event_name || 'Round Robin',
+                  date: m.rr_event_date || m.match_date,
+                  matches: [m as any],
+                  wins: m.won ? 1 : 0,
+                  losses: m.won ? 0 : 1,
+                  netRating: m.rating_change || 0,
+                  sortKey: m.match_date,
+                };
+                groups.set(m.rr_event_id, g);
+                items.push({ kind: 'group', group: g, sortKey: m.match_date });
+              }
+            } else {
+              items.push({ kind: 'single', match: m, sortKey: m.match_date });
+            }
+          }
+
+          // Sort each group's matches by round/court, then sort top-level by date DESC
+          groups.forEach((g) => {
+            g.matches.sort((a: any, b: any) => {
+              if ((a.round_no || 0) !== (b.round_no || 0)) return (a.round_no || 0) - (b.round_no || 0);
+              return (a.court_no || 0) - (b.court_no || 0);
+            });
+          });
+          items.sort((a, b) => {
+            return b.sortKey.localeCompare(a.sortKey);
+          });
+
+          return (
+            <div className="space-y-4">
+              {items.map((item, index) => (
                 <motion.div
-                  key={match.match_id}
+                  key={item.kind === 'group' ? `g-${item.group.eventId}` : `m-${item.match.match_id}`}
                   initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.35, delay: index * 0.04 }}
                 >
-                  <PremiumMatchCard
-                    matchId={match.match_id}
-                    matchDate={match.match_date}
-                    team1Score={match.team1_score}
-                    team2Score={match.team2_score}
-                    myTeam={match.my_team as 1 | 2}
-                    won={match.won}
-                    playerName={playerName}
-                    partnerName={match.partner_name}
-                    partnerId={match.partner_id}
-                    opponent1Name={match.opponent1_name}
-                    opponent1Id={match.opponent1_id}
-                    opponent2Name={match.opponent2_name}
-                    opponent2Id={match.opponent2_id}
-                    ratingChange={match.rating_change}
-                    courtName={match.court_name}
-                    source={match.source}
-                    roundNo={match.round_no}
-                    courtNo={match.court_no}
-                    verifiedCount={verifiedCount}
-                    totalPlayers={totalPlayers}
-                    isCurrentUserVerified={isCurrentUserVerified}
-                    showVerifyActions={!playerId}
-                    onVerify={() => {
-                      setMatchToVerify(match.match_id);
-                      setVerifyDialogOpen(true);
-                    }}
-                    onReport={() => {
-                      setSelectedMatchId(match.match_id);
-                      setReportSheetOpen(true);
-                    }}
-                  />
+                  {item.kind === 'group' ? (
+                    <RoundRobinMatchGroup
+                      group={item.group}
+                      playerName={playerName}
+                      showVerifyActions={!playerId}
+                      getVerificationStatus={(m) => getVerificationStatus(m)}
+                      onVerify={(matchId) => {
+                        setMatchToVerify(matchId);
+                        setVerifyDialogOpen(true);
+                      }}
+                      onReport={(matchId) => {
+                        setSelectedMatchId(matchId);
+                        setReportSheetOpen(true);
+                      }}
+                    />
+                  ) : (() => {
+                    const match = item.match;
+                    const { verifiedCount, totalPlayers, isCurrentUserVerified } = getVerificationStatus(match);
+                    return (
+                      <PremiumMatchCard
+                        matchId={match.match_id}
+                        matchDate={match.match_date}
+                        team1Score={match.team1_score}
+                        team2Score={match.team2_score}
+                        myTeam={match.my_team as 1 | 2}
+                        won={match.won}
+                        playerName={playerName}
+                        partnerName={match.partner_name}
+                        partnerId={match.partner_id}
+                        opponent1Name={match.opponent1_name}
+                        opponent1Id={match.opponent1_id}
+                        opponent2Name={match.opponent2_name}
+                        opponent2Id={match.opponent2_id}
+                        ratingChange={match.rating_change}
+                        courtName={match.court_name}
+                        source={match.source}
+                        roundNo={match.round_no}
+                        courtNo={match.court_no}
+                        verifiedCount={verifiedCount}
+                        totalPlayers={totalPlayers}
+                        isCurrentUserVerified={isCurrentUserVerified}
+                        showVerifyActions={!playerId}
+                        onVerify={() => {
+                          setMatchToVerify(match.match_id);
+                          setVerifyDialogOpen(true);
+                        }}
+                        onReport={() => {
+                          setSelectedMatchId(match.match_id);
+                          setReportSheetOpen(true);
+                        }}
+                      />
+                    );
+                  })()}
                 </motion.div>
-              );
-            })}
-          </div>
-        )}
+              ))}
+            </div>
+          );
+        })()}
         </div>{/* /per-tab body keyed wrapper */}
       </div>
 
