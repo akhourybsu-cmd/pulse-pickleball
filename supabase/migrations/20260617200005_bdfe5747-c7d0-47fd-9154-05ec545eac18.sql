@@ -1,0 +1,1 @@
+ALTER TYPE public.round_robin_status ADD VALUE IF NOT EXISTS 'voided';
