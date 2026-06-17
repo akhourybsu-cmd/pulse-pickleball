@@ -3091,6 +3091,7 @@ export type Database = {
           format: string
           games_per_player: number | null
           id: string
+          invite_code: string | null
           is_published: boolean | null
           location: string | null
           max_players: number | null
@@ -3099,7 +3100,6 @@ export type Database = {
           num_courts: number
           num_rounds: number
           organizer_id: string
-          invite_code: string | null
           rating_eligible: boolean
           rating_type: Database["public"]["Enums"]["rating_type"]
           registration_deadline: string | null
@@ -6017,6 +6017,7 @@ export type Database = {
         Returns: undefined
       }
       generate_group_invite_code: { Args: never; Returns: string }
+      generate_rr_invite_code: { Args: never; Returns: string }
       get_emergency_contact: {
         Args: { profile_id: string }
         Returns: {
@@ -6106,6 +6107,14 @@ export type Database = {
         Args: { _group_id: string; _user_id: string }
         Returns: boolean
       }
+      join_round_robin_by_code: {
+        Args: { p_code: string }
+        Returns: {
+          event_id: string
+          message: string
+          registration_status: string
+        }[]
+      }
       log_admin_action: {
         Args: {
           p_action: string
@@ -6115,6 +6124,24 @@ export type Database = {
         }
         Returns: string
       }
+      preview_round_robin_by_code: {
+        Args: { p_code: string }
+        Returns: {
+          already_joined: boolean
+          current_players: number
+          event_date: string
+          event_id: string
+          event_name: string
+          event_start_time: string
+          event_status: Database["public"]["Enums"]["round_robin_status"]
+          max_players: number
+          num_courts: number
+          num_rounds: number
+          organizer_avatar_url: string
+          organizer_name: string
+          registration_deadline: string
+        }[]
+      }
       promote_from_waitlist: { Args: { p_event_id: string }; Returns: string }
       recalculate_all_player_stats: { Args: never; Returns: undefined }
       recalculate_all_ratings: { Args: never; Returns: undefined }
@@ -6122,6 +6149,14 @@ export type Database = {
       recalculate_player_stats: {
         Args: { p_player_id: string }
         Returns: undefined
+      }
+      submit_rr_match_score: {
+        Args: {
+          p_schedule_id: string
+          p_team1_score: number
+          p_team2_score: number
+        }
+        Returns: string
       }
       user_created_match: {
         Args: { match_id_param: string; user_id_param: string }
@@ -6138,6 +6173,7 @@ export type Database = {
       verify_match: {
         Args: { p_match_id: string }
         Returns: {
+          count_for_rating: boolean | null
           court_id: string | null
           court_no: number | null
           created_at: string | null
@@ -6203,7 +6239,7 @@ export type Database = {
       player_state: "onboarding" | "active" | "inactive"
       rating_type: "ladder" | "league" | "playoffs" | "casual"
       registration_status: "pending" | "confirmed" | "waitlisted" | "cancelled"
-      round_robin_status: "draft" | "live" | "completed" | "voided"
+      round_robin_status: "draft" | "live" | "completed"
       subscription_tier: "free" | "plus" | "pro" | "enterprise"
       tournament_status:
         | "draft"
@@ -6376,7 +6412,7 @@ export const Constants = {
       player_state: ["onboarding", "active", "inactive"],
       rating_type: ["ladder", "league", "playoffs", "casual"],
       registration_status: ["pending", "confirmed", "waitlisted", "cancelled"],
-      round_robin_status: ["draft", "live", "completed", "voided"],
+      round_robin_status: ["draft", "live", "completed"],
       subscription_tier: ["free", "plus", "pro", "enterprise"],
       tournament_status: [
         "draft",
