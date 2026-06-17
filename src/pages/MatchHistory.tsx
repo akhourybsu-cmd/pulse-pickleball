@@ -30,6 +30,7 @@ import { toLocaleDateStringEST } from "@/lib/utils";
 import { Footer } from "@/components/Footer";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PlayerPageHeader } from "@/components/layout/PlayerPageHeader";
+import { PremiumMatchCard } from "@/components/matches/PremiumMatchCard";
 import { cn } from "@/lib/utils";
 
 const issueSchema = z.object({
@@ -841,161 +842,42 @@ const MatchHistory = () => {
               return (
                 <motion.div
                   key={match.match_id}
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4, delay: index * 0.05 }}
-                  whileHover={{ y: -4, transition: { duration: 0.2 } }}
+                  transition={{ duration: 0.35, delay: index * 0.04 }}
                 >
-                  <Card className="rounded-2xl border-2 border-border shadow-lg hover:shadow-[0_2px_6px_rgba(0,0,0,0.05),0_4px_12px_rgba(169,220,61,0.15)] transition-all duration-300 bg-card">
-                  <CardHeader>
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <CardTitle className="text-lg">{match.court_name}</CardTitle>
-                        {match.source === 'round_robin' && (
-                          <Badge variant="outline" className="text-xs mt-1">
-                            Round Robin • R{match.round_no} Court {match.court_no}
-                          </Badge>
-                        )}
-                        {match.other_location && (
-                          <p className="text-xs text-muted-foreground italic">
-                            Not an official community court
-                          </p>
-                        )}
-                        <p className="text-sm text-muted-foreground">
-                          {toLocaleDateStringEST(match.match_date)}
-                        </p>
-                      </div>
-                      <Badge variant={match.won ? "default" : "destructive"}>
-                        {match.won ? "Won" : "Lost"}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    <div className="grid grid-cols-3 gap-4 items-center">
-                      <div>
-                        <p className="text-sm font-semibold">Your Team</p>
-                        <p className={`text-sm flex items-center gap-1 ${
-                          match.verified_by.includes(playerId || currentUserId || '') 
-                            ? 'text-green-600 dark:text-green-500' 
-                            : 'text-red-600 dark:text-red-500'
-                        }`}>
-                          {match.verified_by.includes(playerId || currentUserId || '') ? (
-                            <CheckCircle2 className="w-3 h-3" />
-                          ) : (
-                            <AlertTriangle className="w-3 h-3" />
-                          )}
-                          {playerName}
-                        </p>
-                        <p className={`text-sm flex items-center gap-1 ${
-                          match.verified_by.includes(match.partner_id) 
-                            ? 'text-green-600 dark:text-green-500' 
-                            : 'text-red-600 dark:text-red-500'
-                        }`}>
-                          {match.verified_by.includes(match.partner_id) ? (
-                            <CheckCircle2 className="w-3 h-3" />
-                          ) : (
-                            <AlertTriangle className="w-3 h-3" />
-                          )}
-                          {match.partner_name}
-                        </p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-3xl font-bold tabular-nums tracking-tight">
-                          <span className={match.won ? "text-foreground" : "text-muted-foreground"}>
-                            {match.my_team === 1 ? match.team1_score : match.team2_score}
-                          </span>
-                          <span className="mx-1.5 text-muted-foreground/40 font-light">–</span>
-                          <span className={match.won ? "text-muted-foreground" : "text-foreground"}>
-                            {match.my_team === 1 ? match.team2_score : match.team1_score}
-                          </span>
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-semibold">Opponents</p>
-                        <p className={`text-sm flex items-center justify-end gap-1 ${
-                          match.verified_by.includes(match.opponent1_id) 
-                            ? 'text-green-600 dark:text-green-500' 
-                            : 'text-red-600 dark:text-red-500'
-                        }`}>
-                          {match.verified_by.includes(match.opponent1_id) ? (
-                            <CheckCircle2 className="w-3 h-3" />
-                          ) : (
-                            <AlertTriangle className="w-3 h-3" />
-                          )}
-                          {match.opponent1_name}
-                        </p>
-                        <p className={`text-sm flex items-center justify-end gap-1 ${
-                          match.verified_by.includes(match.opponent2_id) 
-                            ? 'text-green-600 dark:text-green-500' 
-                            : 'text-red-600 dark:text-red-500'
-                        }`}>
-                          {match.verified_by.includes(match.opponent2_id) ? (
-                            <CheckCircle2 className="w-3 h-3" />
-                          ) : (
-                            <AlertTriangle className="w-3 h-3" />
-                          )}
-                          {match.opponent2_name}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex justify-between pt-2 text-sm border-t">
-                      <span>Rating Change:</span>
-                      <span className={match.rating_change && match.rating_change > 0 ? "text-green-600" : "text-red-600"}>
-                        {match.rating_change !== null ? (
-                          <>
-                            {match.rating_change > 0 ? "+" : ""}
-                            {match.rating_change.toFixed(3)}
-                          </>
-                        ) : (
-                          "N/A"
-                        )}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span>Rating After:</span>
-                      <span className="font-semibold">
-                        {match.rating_after !== null ? match.rating_after.toFixed(2) : "N/A"}
-                      </span>
-                    </div>
-                    <div className="pt-2 border-t flex gap-2 items-center justify-between">
-                      {!isCurrentUserVerified ? (
-                        <Button 
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setMatchToVerify(match.match_id);
-                            setVerifyDialogOpen(true);
-                          }}
-                          className="flex-1"
-                        >
-                          <CheckCircle2 className="w-4 h-4 mr-2" />
-                          Verify Match
-                          <span className="ml-2 text-xs">
-                            ({verifiedCount}/{totalPlayers})
-                          </span>
-                        </Button>
-                      ) : (
-                        <div className="flex-1 flex items-center justify-center gap-2 text-sm text-green-600 dark:text-green-500">
-                          <CheckCircle2 className="w-4 h-4" />
-                          Verified ({verifiedCount}/{totalPlayers})
-                        </div>
-                      )}
-                      {!isCurrentUserVerified && (
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => {
-                            setSelectedMatchId(match.match_id);
-                            setReportSheetOpen(true);
-                          }}
-                          className="flex-shrink-0"
-                        >
-                          <Flag className="w-4 h-4" />
-                        </Button>
-                      )}
-                    </div>
-                    </CardContent>
-                  </Card>
+                  <PremiumMatchCard
+                    matchId={match.match_id}
+                    matchDate={match.match_date}
+                    team1Score={match.team1_score}
+                    team2Score={match.team2_score}
+                    myTeam={match.my_team as 1 | 2}
+                    won={match.won}
+                    playerName={playerName}
+                    partnerName={match.partner_name}
+                    partnerId={match.partner_id}
+                    opponent1Name={match.opponent1_name}
+                    opponent1Id={match.opponent1_id}
+                    opponent2Name={match.opponent2_name}
+                    opponent2Id={match.opponent2_id}
+                    ratingChange={match.rating_change}
+                    courtName={match.court_name}
+                    source={match.source}
+                    roundNo={match.round_no}
+                    courtNo={match.court_no}
+                    verifiedCount={verifiedCount}
+                    totalPlayers={totalPlayers}
+                    isCurrentUserVerified={isCurrentUserVerified}
+                    showVerifyActions={!playerId}
+                    onVerify={() => {
+                      setMatchToVerify(match.match_id);
+                      setVerifyDialogOpen(true);
+                    }}
+                    onReport={() => {
+                      setSelectedMatchId(match.match_id);
+                      setReportSheetOpen(true);
+                    }}
+                  />
                 </motion.div>
               );
             })}
