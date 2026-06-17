@@ -537,7 +537,10 @@ const MatchHistory = () => {
 
   return (
     <div className="min-h-screen bg-[hsl(var(--page-bg))]">
-      {/* Page header — unified across the four player tabs via PlayerPageHeader. */}
+      {/* Page header — unified across the four player tabs via PlayerPageHeader.
+          No top-right Record Match button: the global FAB in PlayerShell
+          handles that intent, and showing it in both places was the kind of
+          redundancy that made the page feel busy. */}
       <PlayerPageHeader
         icon={History}
         title={playerId ? `${playerName}'s Matches` : 'Matches'}
@@ -547,19 +550,6 @@ const MatchHistory = () => {
             : 'Track your submitted, pending, and verified pickleball results.'
         }
         background="gradient"
-        action={
-          !playerId && (
-            <Button
-              size="sm"
-              onClick={() => navigate('/player/matches/new')}
-              className="gap-1.5 flex-shrink-0"
-            >
-              <Plus className="w-4 h-4" />
-              <span className="hidden sm:inline">Record Match</span>
-              <span className="sm:hidden">Record</span>
-            </Button>
-          )
-        }
       />
 
       <div className="container mx-auto px-4 py-6 space-y-6 max-w-3xl">
@@ -651,8 +641,6 @@ const MatchHistory = () => {
           const renderPendingCard = (match: Match, index: number, sectionKey: string) => {
             const verificationCount = match.verified_by.length;
             const hasVerified = currentUserId ? match.verified_by.includes(currentUserId) : false;
-            // Total players that *could* verify — current user + partner + 2 opponents
-            // (partner_id is empty for singles). Filter out empty IDs.
             const totalApprovers = [
               currentUserId,
               match.partner_id,
@@ -667,72 +655,39 @@ const MatchHistory = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: index * 0.05 }}
               >
-                <Card className="rounded-2xl border-2 border-amber-200 bg-amber-50/30 shadow-md">
-                  <CardHeader className="pb-3">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <CardTitle className="text-lg font-semibold">
-                          {toLocaleDateStringEST(match.match_date)}
-                        </CardTitle>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {match.court_name}
-                        </p>
-                      </div>
-                      <Badge variant="outline" className="bg-amber-100 text-amber-800 border-amber-300">
-                        {verificationCount}/{totalApprovers || 4} confirmed
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="grid grid-cols-3 gap-4 items-center">
-                      <div className="text-center">
-                        <p className="font-semibold text-sm mb-1">Your Team</p>
-                        <p className="text-xs text-muted-foreground">{playerName}</p>
-                        <p className="text-xs text-muted-foreground">{match.partner_name}</p>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-4xl font-bold tabular-nums tracking-tight">
-                          <span className="text-foreground">
-                            {match.my_team === 1 ? match.team1_score : match.team2_score}
-                          </span>
-                          <span className="mx-2 text-muted-foreground/40 font-light">–</span>
-                          <span className="text-muted-foreground">
-                            {match.my_team === 1 ? match.team2_score : match.team1_score}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="text-center">
-                        <p className="font-semibold text-sm mb-1">Opponents</p>
-                        <p className="text-xs text-muted-foreground">{match.opponent1_name}</p>
-                        <p className="text-xs text-muted-foreground">{match.opponent2_name}</p>
-                      </div>
-                    </div>
-
-                    <div className="pt-3 border-t">
-                      {hasVerified ? (
-                        <div className="flex items-center justify-center gap-2 text-sm text-green-600">
-                          <CheckCircle2 className="w-4 h-4" />
-                          <span>You confirmed this — waiting on other players</span>
-                        </div>
-                      ) : (
-                        <Button
-                          onClick={() => handleVerifyPendingMatch(match.match_id)}
-                          className="w-full"
-                          variant="default"
-                        >
-                          <CheckCircle2 className="w-4 h-4 mr-2" />
-                          Confirm Result
-                        </Button>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
+                <PremiumMatchCard
+                  pending
+                  pendingConfirmedByMe={hasVerified}
+                  onConfirm={() => handleVerifyPendingMatch(match.match_id)}
+                  matchId={match.match_id}
+                  matchDate={match.match_date}
+                  team1Score={match.team1_score}
+                  team2Score={match.team2_score}
+                  myTeam={match.my_team as 1 | 2}
+                  won={match.won}
+                  playerName={playerName}
+                  partnerName={match.partner_name}
+                  partnerId={match.partner_id}
+                  opponent1Name={match.opponent1_name}
+                  opponent1Id={match.opponent1_id}
+                  opponent2Name={match.opponent2_name}
+                  opponent2Id={match.opponent2_id}
+                  ratingChange={null}
+                  courtName={match.court_name}
+                  source={match.source}
+                  roundNo={match.round_no}
+                  courtNo={match.court_no}
+                  verifiedCount={verificationCount}
+                  totalPlayers={totalApprovers || 4}
+                  isCurrentUserVerified={hasVerified}
+                  showVerifyActions={false}
+                />
               </motion.div>
             );
           };
 
           return (
-            <div className="space-y-8">
+            <div className="space-y-6">
               {/* Section 1: action required — primary CTA group */}
               {needsMyConfirmation.length > 0 && (
                 <div className="space-y-3">
@@ -747,10 +702,6 @@ const MatchHistory = () => {
                       {needsMyConfirmation.length}
                     </span>
                   </div>
-                  <p className="text-sm text-muted-foreground leading-snug">
-                    Tap <span className="font-medium text-foreground">Confirm Result</span> if the score looks right.
-                    Once enough players confirm, the match is verified and saved to your PULSE history.
-                  </p>
                   {needsMyConfirmation.map((match, i) => renderPendingCard(match, i, 'needs'))}
                 </div>
               )}
@@ -769,9 +720,6 @@ const MatchHistory = () => {
                       {waitingOnOthers.length}
                     </span>
                   </div>
-                  <p className="text-sm text-muted-foreground leading-snug">
-                    You've already confirmed these. They'll move to your verified history once enough players confirm.
-                  </p>
                   {waitingOnOthers.map((match, i) => renderPendingCard(match, i, 'waiting'))}
                 </div>
               )}
@@ -779,19 +727,12 @@ const MatchHistory = () => {
           );
         })()}
 
-        {/* Divider between pending and approved (only on the "all" tab) */}
+        {/* Subtle separator between pending block and verified block on the
+            "all" tab. The grouped pending sections already have their own
+            headers; verified rows speak for themselves so they need no label —
+            just breathing room. */}
         {!playerId && pendingMatches.length > 0 && matches.length > 0 && activeTab === "all" && (
-          <div className="flex items-baseline justify-between gap-3 mb-3 mt-8">
-            <div className="flex items-center gap-2">
-              <History className="w-4 h-4 text-primary flex-shrink-0" />
-              <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Verified history
-              </h2>
-            </div>
-            <span className="text-[11px] font-semibold text-muted-foreground bg-muted border border-border rounded-full px-2 py-0.5 tabular-nums">
-              {matches.length}
-            </span>
-          </div>
+          <div className="h-px bg-border/50 my-2" />
         )}
 
         {/* Per-tab empty states (only when viewing your own matches).
