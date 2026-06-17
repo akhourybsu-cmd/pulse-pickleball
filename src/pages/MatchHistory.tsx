@@ -323,7 +323,6 @@ const MatchHistory = () => {
       });
       console.log('[RR group] matchToEvent size:', matchToEvent.size);
     }
-    }
 
     // Sort by match_date DESC, then created_at DESC, then match_id DESC
     matchesWithDetails.sort((a, b) => {
