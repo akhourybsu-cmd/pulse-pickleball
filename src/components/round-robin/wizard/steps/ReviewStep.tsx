@@ -1,4 +1,4 @@
-import { Pencil, Calendar, MapPin, Users, LayoutGrid, Target, TrendingUp, FileText, Zap } from "lucide-react";
+import { Pencil, Calendar, MapPin, Users, LayoutGrid, Target, TrendingUp, FileText, Zap, Lock, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { WizardFormData, calculateScheduleMetrics } from "../hooks/useWizardSteps";
 
@@ -99,6 +99,20 @@ export function ReviewStep({ formData, onEdit, courts }: ReviewStepProps) {
       stepIndex: 6,
     },
   ];
+
+  // Show "Who can join?" only when the picker is actually relevant
+  // (open_registration events). Immediate-mode events never surface the
+  // toggle in DetailsStep, so listing it on Review would be confusing.
+  if (formData.eventMode === "open_registration") {
+    items.push({
+      icon: formData.isInviteOnly ? Lock : Globe,
+      label: "Who can join",
+      value: formData.isInviteOnly
+        ? "Invite only (hidden from discovery)"
+        : "Open to everyone",
+      stepIndex: 2,
+    });
+  }
 
   if (formData.notes) {
     items.push({

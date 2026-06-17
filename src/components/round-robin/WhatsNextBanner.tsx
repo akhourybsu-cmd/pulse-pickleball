@@ -5,7 +5,9 @@ import type { LucideIcon } from "lucide-react";
 
 interface WhatsNextBannerProps {
   /** Event state — drives which prompt is shown. */
-  status: "draft" | "live" | "completed";
+  status: "draft" | "live" | "completed" | "voided";
+  /** Whether the event was voided (drives the voided-state copy). */
+  voided?: boolean;
   /** True when the host has not yet added any players. */
   hasPlayers: boolean;
   /** True when the schedule has been generated. */
@@ -62,6 +64,7 @@ type Prompt = {
  */
 export function WhatsNextBanner({
   status,
+  voided = false,
   hasPlayers,
   hasSchedule,
   playerCount = 0,
@@ -142,6 +145,20 @@ export function WhatsNextBanner({
    * checks matters — earliest match wins.
    */
   function pickPrompt(): Prompt | null {
+    // Voided wins over the regular status branches — the host can void
+    // a draft or live event, and the banner should reflect that even
+    // before the row's status flips.
+    if (voided || status === "voided") {
+      return {
+        icon: Flag,
+        pill: "VOIDED",
+        title: "Event voided",
+        hint: "This event no longer counts toward player ratings. The schedule and standings remain visible as a record.",
+        cta: "",
+        informational: true,
+      };
+    }
+
     if (status === "completed") {
       return {
         icon: CheckCircle2,

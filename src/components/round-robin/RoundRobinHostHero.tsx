@@ -1,4 +1,19 @@
 import { format, parseISO } from "date-fns";
+
+/**
+ * Format a Postgres `time` value (e.g. "09:00:00" or "13:30:00") into a
+ * human-readable "9:00 AM" / "1:30 PM". Falls back to the raw string if
+ * the input doesn't match the HH:mm[:ss] shape.
+ */
+function formatStartTime(raw: string): string {
+  const m = raw.match(/^(\d{1,2}):(\d{2})/);
+  if (!m) return raw;
+  const h24 = parseInt(m[1], 10);
+  const min = m[2];
+  const period = h24 >= 12 ? "PM" : "AM";
+  const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+  return min === "00" ? `${h12} ${period}` : `${h12}:${min} ${period}`;
+}
 import { Calendar, Clock, Users, Trophy, Lock, Copy, Check, Share2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -170,7 +185,7 @@ export function RoundRobinHostHero({
               <>
                 <span className="text-muted-foreground/50">·</span>
                 <Clock className="h-4 w-4 text-primary/80 flex-shrink-0" />
-                <span>{startTime}</span>
+                <span>{formatStartTime(startTime)}</span>
               </>
             )}
             <span className="text-muted-foreground/50">·</span>

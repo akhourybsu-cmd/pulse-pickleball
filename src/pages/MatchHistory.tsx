@@ -168,7 +168,12 @@ const MatchHistory = () => {
 
     setPlayerName(profile?.display_name || profile?.full_name || "Player");
 
-    // Get all approved matches for this player
+    // Get all approved matches for this player.
+    // - Includes `source`, `round_no`, `court_no` so the RR badge can
+    //   render with "Round Robin · R{n} Court {n}". (Audit-flagged: the
+    //   pending-matches query selected these but the approved one didn't.)
+    // - Filters out voided matches so the host's cancelled events don't
+    //   pollute the verified history list.
     const { data: participantsData, error: fetchError } = await supabase
       .from("match_participants")
       .select(`
@@ -186,11 +191,16 @@ const MatchHistory = () => {
           court_id,
           other_location,
           verified_by,
+          source,
+          round_no,
+          court_no,
+          voided,
           courts(name)
         )
       `)
       .eq("player_id", playerIdToUse)
-      .eq("matches.status", "approved");
+      .eq("matches.status", "approved")
+      .not("matches.voided", "is", true);
 
     console.log('Fetched participants data:', participantsData);
     console.log('Fetch error:', fetchError);

@@ -6203,7 +6203,7 @@ export type Database = {
       player_state: "onboarding" | "active" | "inactive"
       rating_type: "ladder" | "league" | "playoffs" | "casual"
       registration_status: "pending" | "confirmed" | "waitlisted" | "cancelled"
-      round_robin_status: "draft" | "live" | "completed"
+      round_robin_status: "draft" | "live" | "completed" | "voided"
       subscription_tier: "free" | "plus" | "pro" | "enterprise"
       tournament_status:
         | "draft"
@@ -6376,7 +6376,7 @@ export const Constants = {
       player_state: ["onboarding", "active", "inactive"],
       rating_type: ["ladder", "league", "playoffs", "casual"],
       registration_status: ["pending", "confirmed", "waitlisted", "cancelled"],
-      round_robin_status: ["draft", "live", "completed"],
+      round_robin_status: ["draft", "live", "completed", "voided"],
       subscription_tier: ["free", "plus", "pro", "enterprise"],
       tournament_status: [
         "draft",

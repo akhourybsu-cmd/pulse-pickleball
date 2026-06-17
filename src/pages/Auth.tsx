@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, Link, useSearchParams } from "react-router-dom";
+import { useNavigate, Link, useSearchParams, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,7 +48,13 @@ const authSchema = z.object({
 
 const Auth = () => {
   const [searchParams] = useSearchParams();
-  const redirectPath = searchParams.get('redirect') || '/player/dashboard';
+  const location = useLocation();
+  // Auth bounce protocol: AuthGuard now passes the full URL (pathname +
+  // search + hash) as `returnTo` in location.state. Preferred over the
+  // legacy ?redirect=… query param because it preserves search params
+  // like ?invite=XYZ-ABCD that the player tried to deep-link with.
+  const returnFromState = (location.state as { returnTo?: string } | null)?.returnTo;
+  const redirectPath = returnFromState || searchParams.get('redirect') || '/player/dashboard';
 
   // Already-logged-in detection. If a returning user lands on /auth (via
   // bookmark, deep link, or stale tab), bounce them to their dashboard

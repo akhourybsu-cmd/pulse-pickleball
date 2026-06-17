@@ -619,6 +619,19 @@ export default function RoundRobinDetail() {
         }
       }
 
+      // QA-flagged: previously this loop silently swallowed per-match
+      // failures and then marked the event complete anyway, leaving
+      // scored matches orphaned from match history. Bail before status
+      // flip if anything in the backfill failed so the host knows their
+      // event isn't fully synced.
+      if (errors.length > 0) {
+        toast.error(`Cannot complete — ${errors.length} match(es) failed to sync`, {
+          description: errors.slice(0, 3).join("; "),
+        });
+        console.error("Match sync errors during completion:", errors);
+        return;
+      }
+
       const { error: statusError } = await supabase
         .from("round_robin_events")
         .update({
@@ -643,18 +656,11 @@ export default function RoundRobinDetail() {
         reason: "Event marked complete",
       });
 
-      if (errors.length > 0) {
-        toast.error(`Completed with ${errors.length} sync error(s)`, {
-          description: errors.slice(0, 3).join("; "),
-        });
-        console.error("Match sync errors:", errors);
-      } else {
-        toast.success(
-          backfilled > 0
-            ? `Event completed · ${scoredMatches.length} matches in history (${backfilled} backfilled)`
-            : `Event completed · ${scoredMatches.length} matches in history`,
-        );
-      }
+      toast.success(
+        backfilled > 0
+          ? `Event completed · ${scoredMatches.length} matches in history (${backfilled} backfilled)`
+          : `Event completed · ${scoredMatches.length} matches in history`,
+      );
 
       fetchEventDetails();
     } catch (error: any) {
@@ -1562,6 +1568,7 @@ export default function RoundRobinDetail() {
           <div className="mb-6 max-w-2xl mx-auto">
             <WhatsNextBanner
               status={event.status}
+              voided={event.voided}
               hasPlayers={players.length >= 4}
               hasSchedule={hasSchedule}
               playerCount={players.length}
