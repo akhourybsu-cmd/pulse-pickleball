@@ -29,6 +29,7 @@ import { useGroupMembers, type GroupMemberWithProfile } from '@/hooks/useGroupMe
 import { useFriends } from '@/hooks/useFriends';
 import { useDirectMessages } from '@/hooks/useDirectMessages';
 import { OnlineIndicator } from './OnlineIndicator';
+import { MemberActionSheet, type MemberActionTarget } from './MemberActionSheet';
 import { cn } from '@/lib/utils';
 
 interface GroupMembersProps {
@@ -57,6 +58,7 @@ const MemberCard = memo(function MemberCard({
   onStartDM,
   onSendFriendRequest,
   getFriendshipStatus,
+  onOpenSheet,
 }: {
   member: GroupMemberWithProfile;
   isPending?: boolean;
@@ -73,6 +75,8 @@ const MemberCard = memo(function MemberCard({
   onStartDM: (userId: string) => void;
   onSendFriendRequest: (userId: string) => void;
   getFriendshipStatus: (userId: string) => string;
+  /** Opens the call/text/message/profile bottom sheet for this member. */
+  onOpenSheet?: (member: GroupMemberWithProfile) => void;
 }) {
   const canManage = isAdmin && !isSelf && member.role !== 'owner';
   const canChangeRole = isOwner && !isSelf && member.role !== 'owner';
@@ -101,7 +105,21 @@ const MemberCard = memo(function MemberCard({
           />
         </div>
 
-        <div className="flex-1 min-w-0">
+        {/* Tap-target — opens MemberActionSheet for self/others alike. The
+            sheet hides call/text rows automatically when the row is the
+            current user (handled inside the sheet via target.userId check
+            upstream — here we pass through every non-pending row). For
+            pending requests this is non-tappable so admins focus on
+            approve/reject. */}
+        <button
+          type="button"
+          disabled={isPending}
+          onClick={() => !isPending && onOpenSheet?.(member)}
+          className={cn(
+            'flex-1 min-w-0 text-left rounded-md -mx-1 px-1 py-0.5',
+            !isPending && 'hover:bg-muted/30 active:bg-muted/50 transition-colors',
+          )}
+        >
           <div className="flex items-center gap-2">
             <span className="font-medium truncate">
               {member.profile?.display_name || member.profile?.full_name || 'Unknown'}
@@ -113,12 +131,12 @@ const MemberCard = memo(function MemberCard({
             )}
           </div>
           <div className="text-xs text-muted-foreground">
-            {isPending 
+            {isPending
               ? `Requested ${formatDistanceToNow(new Date(member.joined_at), { addSuffix: true })}`
               : `Joined ${formatDistanceToNow(new Date(member.joined_at), { addSuffix: true })}`
             }
           </div>
-        </div>
+        </button>
 
         {/* Role Badge */}
         {!isPending && (
@@ -277,6 +295,21 @@ export function GroupMembers({
     member: GroupMemberWithProfile | null;
   }>({ type: null, member: null });
 
+  // Bottom-sheet target for the per-member contact actions. Opens on
+  // row tap (avatar+name area) — replaces the prior pattern where DM
+  // was the only one-click affordance on the row.
+  const [sheetTarget, setSheetTarget] = useState<MemberActionTarget | null>(null);
+
+  const handleOpenSheet = useCallback((member: GroupMemberWithProfile) => {
+    setSheetTarget({
+      userId: member.user_id,
+      displayName: member.profile?.display_name || member.profile?.full_name || 'Unknown',
+      avatarUrl: member.profile?.avatar_url ?? null,
+      rating: member.profile?.current_rating ?? null,
+      phoneNumber: member.profile?.phone_number ?? null,
+    });
+  }, []);
+
   const handleAction = useCallback(async () => {
     if (!actionDialog.member) return;
     
@@ -346,6 +379,7 @@ export function GroupMembers({
               onStartDM={handleStartDM}
               onSendFriendRequest={sendFriendRequest}
               getFriendshipStatus={getFriendshipStatus}
+              onOpenSheet={handleOpenSheet}
             />
           ))}
         </div>
@@ -385,13 +419,21 @@ export function GroupMembers({
               onStartDM={handleStartDM}
               onSendFriendRequest={sendFriendRequest}
               getFriendshipStatus={getFriendshipStatus}
+              onOpenSheet={handleOpenSheet}
             />
           ))
         )}
       </div>
 
+      {/* Member action sheet — call / text / DM / profile */}
+      <MemberActionSheet
+        target={sheetTarget}
+        onClose={() => setSheetTarget(null)}
+        onMessage={handleStartDM}
+      />
+
       {/* Confirmation Dialog */}
-      <AlertDialog 
+      <AlertDialog
         open={actionDialog.type !== null} 
         onOpenChange={() => setActionDialog({ type: null, member: null })}
       >

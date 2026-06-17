@@ -8,6 +8,7 @@ import { GroupFeedPlaceholder } from './GroupFeedPlaceholder';
 import { CommunityPulse } from './CommunityPulse';
 import { ComposerQuickActions } from './ComposerQuickActions';
 import { ImageLightbox } from './ImageLightbox';
+import { PollCard } from './PollCard';
 import { formatDistanceToNow, isToday, isYesterday, format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -96,7 +97,7 @@ export function GroupFeed({
   onOpenQuickPost,
   onSwitchToEvents,
 }: GroupFeedProps) {
-  const { posts, loading, createPost, deletePost, toggleReaction, togglePin } = useGroupPosts(groupId);
+  const { posts, loading, createPost, deletePost, toggleReaction, togglePin, castPollVote } = useGroupPosts(groupId);
   const { events } = useGroupEvents(groupId);
   const [newPostContent, setNewPostContent] = useState('');
   const [isPosting, setIsPosting] = useState(false);
@@ -147,6 +148,10 @@ export function GroupFeed({
   const handleTogglePin = useCallback((postId: string, pinned: boolean) => {
     togglePin(postId, pinned);
   }, [togglePin]);
+
+  const handlePollVote = useCallback((postId: string, optionIdx: number) => {
+    castPollVote(postId, optionIdx);
+  }, [castPollVote]);
 
   // Group posts by date
   const pinnedPosts = useMemo(() => posts.filter(p => p.pinned), [posts]);
@@ -208,6 +213,7 @@ export function GroupFeed({
                 onTogglePin={handleTogglePin}
                 onOpenComments={() => setCommentsPostId(post.id)}
                 onImageClick={setLightboxImage}
+                onPollVote={handlePollVote}
               />
             ))}
           </div>
@@ -253,6 +259,7 @@ export function GroupFeed({
                     onTogglePin={handleTogglePin}
                     onOpenComments={() => setCommentsPostId(post.id)}
                     onImageClick={setLightboxImage}
+                    onPollVote={handlePollVote}
                   />
                 ))}
               </div>
@@ -310,6 +317,7 @@ interface PostCardProps {
   onTogglePin: (postId: string, pinned: boolean) => void;
   onOpenComments: () => void;
   onImageClick?: (imageUrl: string) => void;
+  onPollVote?: (postId: string, optionIdx: number) => void;
 }
 
 const PostCard = memo(function PostCard({
@@ -321,6 +329,7 @@ const PostCard = memo(function PostCard({
   onTogglePin,
   onOpenComments,
   onImageClick,
+  onPollVote,
 }: PostCardProps) {
   const typeInfo = POST_TYPE_BADGES[post.type] || POST_TYPE_BADGES.feed;
   const typeAccent = POST_TYPE_ACCENT[post.type] || POST_TYPE_ACCENT.feed;
@@ -417,6 +426,19 @@ const PostCard = memo(function PostCard({
               onClick={() => onImageClick?.(post.image_url!)}
             />
           </div>
+        )}
+
+        {/* Poll voting — rendered inline for type='poll' posts that have
+            options defined (legacy 'poll' posts without options fall back
+            to plain text-only rendering above). */}
+        {post.type === 'poll' && post.poll_options && post.poll_options.length >= 2 && (
+          <PollCard
+            options={post.poll_options}
+            counts={post.poll_vote_counts ?? post.poll_options.map(() => 0)}
+            myVote={post.poll_my_vote ?? null}
+            onVote={(idx) => onPollVote?.(post.id, idx)}
+            disabled={!onPollVote || !currentUserId}
+          />
         )}
       </div>
 

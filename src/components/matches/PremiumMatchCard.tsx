@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { format, parseISO, isToday, isYesterday, differenceInDays } from "date-fns";
-import { CheckCircle2, Flag, MapPin, Trophy } from "lucide-react";
+import { CheckCircle2, Clock, Flag, MapPin, Trophy } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 
@@ -33,6 +33,12 @@ export interface PremiumMatchCardProps {
   showVerifyActions: boolean;
   onVerify?: () => void;
   onReport?: () => void;
+  /** When true, render in awaiting-confirmation mode (amber accent, Pending pill, Confirm Result CTA). */
+  pending?: boolean;
+  /** Pending mode only — whether the current viewer already confirmed. */
+  pendingConfirmedByMe?: boolean;
+  /** Pending mode only — fires when the current viewer taps Confirm Result. */
+  onConfirm?: () => void;
 }
 
 /**
@@ -63,6 +69,7 @@ export function PremiumMatchCard(props: PremiumMatchCardProps) {
     ratingChange, courtName, source, roundNo, courtNo,
     verifiedCount, totalPlayers, isCurrentUserVerified,
     showVerifyActions, onVerify, onReport,
+    pending = false, pendingConfirmedByMe = false, onConfirm,
   } = props;
 
   const myScore = myTeam === 1 ? team1Score : team2Score;
@@ -95,16 +102,19 @@ export function PremiumMatchCard(props: PremiumMatchCardProps) {
         "group relative w-full text-left rounded-2xl bg-card overflow-hidden",
         "border transition-all duration-200",
         "hover:-translate-y-0.5",
-        won
-          ? "border-primary/25 hover:border-primary/45 hover:shadow-[0_12px_28px_-14px_hsl(var(--primary)/0.40)]"
-          : "border-border/60 hover:border-border hover:shadow-[0_12px_28px_-14px_hsl(var(--foreground)/0.10)]",
+        pending
+          ? "border-amber-300/60 hover:border-amber-400 hover:shadow-[0_12px_28px_-14px_hsl(var(--primary)/0.30)]"
+          : won
+            ? "border-primary/25 hover:border-primary/45 hover:shadow-[0_12px_28px_-14px_hsl(var(--primary)/0.40)]"
+            : "border-border/60 hover:border-border hover:shadow-[0_12px_28px_-14px_hsl(var(--foreground)/0.10)]",
       )}
     >
-      {/* Top accent stripe — gold gradient on wins only. Reads from a
-          distance as "this row is a win". */}
-      {won && (
+      {/* Top accent stripe — amber on pending, gold on wins, none on losses. */}
+      {pending ? (
+        <div className="h-[3px] w-full bg-gradient-to-r from-amber-400 via-amber-400 to-amber-400/30" />
+      ) : won ? (
         <div className="h-[3px] w-full bg-gradient-to-r from-primary via-primary to-primary/30" />
-      )}
+      ) : null}
 
       <div className="p-4 sm:p-5">
         {/* Row 1 — chips and rating delta */}
@@ -113,13 +123,15 @@ export function PremiumMatchCard(props: PremiumMatchCardProps) {
             <span
               className={cn(
                 "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider flex-shrink-0",
-                won
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground",
+                pending
+                  ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
+                  : won
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground",
               )}
             >
-              {won ? <Trophy className="h-2.5 w-2.5" /> : null}
-              {won ? "Won" : "Lost"}
+              {pending ? <Clock className="h-2.5 w-2.5" /> : won ? <Trophy className="h-2.5 w-2.5" /> : null}
+              {pending ? "Pending" : won ? "Won" : "Lost"}
             </span>
             <span className="text-xs text-muted-foreground truncate">{smartDate}</span>
             {isRRMatch && (
@@ -131,7 +143,14 @@ export function PremiumMatchCard(props: PremiumMatchCardProps) {
             )}
           </div>
 
-          {showRatingDelta && (
+          {pending ? (
+            <span
+              className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold tabular-nums flex-shrink-0 bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/30"
+              title="Players who have confirmed"
+            >
+              {verifiedCount}/{totalPlayers}
+            </span>
+          ) : showRatingDelta ? (
             <span
               className={cn(
                 "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold tabular-nums flex-shrink-0",
@@ -144,7 +163,7 @@ export function PremiumMatchCard(props: PremiumMatchCardProps) {
               {ratingChange! > 0 ? "+" : ""}
               {ratingChange!.toFixed(2)}
             </span>
-          )}
+          ) : null}
         </div>
 
         {/* Row 2 — score hero */}
@@ -178,7 +197,7 @@ export function PremiumMatchCard(props: PremiumMatchCardProps) {
             <div
               className={cn(
                 "font-bold tabular-nums leading-none tracking-tight text-4xl sm:text-5xl",
-                won ? "text-foreground" : "text-muted-foreground/60",
+                pending ? "text-foreground" : won ? "text-foreground" : "text-muted-foreground/60",
               )}
             >
               {myScore}
@@ -189,7 +208,7 @@ export function PremiumMatchCard(props: PremiumMatchCardProps) {
             <div
               className={cn(
                 "font-bold tabular-nums leading-none tracking-tight text-4xl sm:text-5xl",
-                won ? "text-muted-foreground/60" : "text-foreground",
+                pending ? "text-foreground" : won ? "text-muted-foreground/60" : "text-foreground",
               )}
             >
               {theirScore}
@@ -226,7 +245,23 @@ export function PremiumMatchCard(props: PremiumMatchCardProps) {
             <span className="truncate">{courtName}</span>
           </span>
 
-          {showVerifyActions ? (
+          {pending ? (
+            pendingConfirmedByMe ? (
+              <span className="flex items-center gap-1 text-muted-foreground font-medium flex-shrink-0">
+                <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
+                You confirmed — waiting on others
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={onConfirm}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-primary text-primary-foreground font-semibold hover:bg-primary/90 active:scale-95 transition-all flex-shrink-0"
+              >
+                <CheckCircle2 className="h-3 w-3" />
+                Confirm Result
+              </button>
+            )
+          ) : showVerifyActions ? (
             isCurrentUserVerified ? (
               <span className="flex items-center gap-1 text-primary font-semibold flex-shrink-0">
                 <CheckCircle2 className="h-3.5 w-3.5" />

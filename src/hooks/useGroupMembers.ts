@@ -16,6 +16,9 @@ export interface GroupMemberWithProfile {
     full_name: string;
     avatar_url: string | null;
     current_rating: number | null;
+    /** Surfaced to fellow group members for tap-to-call/text from the roster.
+     *  Null when the member hasn't set one. */
+    phone_number: string | null;
   };
 }
 
@@ -33,7 +36,7 @@ async function fetchGroupMembers(groupId: string): Promise<{ members: GroupMembe
   const userIds = (membersData || []).map(m => m.user_id);
   const { data: profilesData } = await supabase
     .from('profiles')
-    .select('id, display_name, full_name, avatar_url, current_rating')
+    .select('id, display_name, full_name, avatar_url, current_rating, phone_number')
     .in('id', userIds);
 
   const profilesMap = new Map((profilesData || []).map(p => [p.id, p]));

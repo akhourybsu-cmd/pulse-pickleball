@@ -1,13 +1,15 @@
-import { useState } from 'react';
-import { Calendar, Clock, MapPin, Users, Check, HelpCircle, X, Plus, Trash2 } from 'lucide-react';
-import { format } from 'date-fns';
+import { useMemo, useState } from 'react';
+import { Calendar, Clock, MapPin, Users, Check, HelpCircle, X, Plus, Trash2, List, CalendarDays } from 'lucide-react';
+import { format, isSameDay, parseISO } from 'date-fns';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { GroupEmptyState } from './GroupEmptyState';
 import { EventWizardContainer } from './event-wizard/EventWizardContainer';
+import { GroupScheduleCalendar } from './GroupScheduleCalendar';
 import { useGroupEvents } from '@/hooks/useGroupEvents';
+import { cn } from '@/lib/utils';
 
 interface GroupScheduleProps {
   groupId: string;
@@ -18,6 +20,17 @@ interface GroupScheduleProps {
 export function GroupSchedule({ groupId, isAdmin, currentUserId }: GroupScheduleProps) {
   const { events, loading, deleteEvent, updateRsvp } = useGroupEvents(groupId);
   const [wizardOpen, setWizardOpen] = useState(false);
+  // View toggle — list (default, "what's next") vs month (glanceable
+  // calendar with day dots; tapping a day filters the list to that day).
+  const [view, setView] = useState<'list' | 'month'>('list');
+  const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+
+  // When filtering by day-of-selection, the list below only shows events
+  // on that day. Otherwise show everything in chronological order.
+  const visibleEvents = useMemo(() => {
+    if (!selectedDay) return events;
+    return events.filter((e) => isSameDay(parseISO(e.start_time), selectedDay));
+  }, [events, selectedDay]);
 
   if (loading) {
     return (
@@ -45,6 +58,49 @@ export function GroupSchedule({ groupId, isAdmin, currentUserId }: GroupSchedule
         </Button>
       )}
 
+      {/* View toggle pill — hidden when there are no events (cleaner empty state). */}
+      {!wizardOpen && events.length > 0 && (
+        <div className="flex items-center justify-between gap-2">
+          <div className="inline-flex items-center rounded-full border border-border/60 bg-card p-0.5 text-xs">
+            <button
+              type="button"
+              onClick={() => { setView('list'); setSelectedDay(null); }}
+              className={cn(
+                'flex items-center gap-1.5 px-3 py-1 rounded-full font-medium transition-colors',
+                view === 'list' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              <List className="h-3 w-3" />
+              List
+            </button>
+            <button
+              type="button"
+              onClick={() => setView('month')}
+              className={cn(
+                'flex items-center gap-1.5 px-3 py-1 rounded-full font-medium transition-colors',
+                view === 'month' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              <CalendarDays className="h-3 w-3" />
+              Month
+            </button>
+          </div>
+          <span className="text-xs text-muted-foreground tabular-nums">
+            {visibleEvents.length} {visibleEvents.length === 1 ? 'event' : 'events'}
+          </span>
+        </div>
+      )}
+
+      {/* Month calendar (only in month view). The calendar drives selectedDay,
+          which filters the list below. */}
+      {!wizardOpen && view === 'month' && events.length > 0 && (
+        <GroupScheduleCalendar
+          events={events.map((e) => ({ id: e.id, start_time: e.start_time, title: e.title }))}
+          selectedDate={selectedDay}
+          onSelectDate={setSelectedDay}
+        />
+      )}
+
       {/* Events List */}
       {events.length === 0 && !wizardOpen ? (
         <GroupEmptyState
@@ -56,8 +112,16 @@ export function GroupSchedule({ groupId, isAdmin, currentUserId }: GroupSchedule
           ]}
           size="sm"
         />
+      ) : visibleEvents.length === 0 && selectedDay ? (
+        <GroupEmptyState
+          icon={Calendar}
+          title={`Nothing on ${format(selectedDay, 'EEE, MMM d')}`}
+          description="Tap another day on the calendar or clear the filter."
+          variant="compact"
+          size="sm"
+        />
       ) : (
-        events.map((event) => {
+        visibleEvents.map((event) => {
           const startDate = new Date(event.start_time);
           const endDate = event.end_time ? new Date(event.end_time) : null;
           const isCreator = currentUserId === event.created_by;

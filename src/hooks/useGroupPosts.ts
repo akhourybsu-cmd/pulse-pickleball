@@ -14,7 +14,7 @@ export interface GroupPost {
   session_time: string | null;
   max_players: number | null;
   image_url: string | null;
-  poll_options: any;
+  poll_options: { idx: number; text: string }[] | null;
   last_activity_at: string;
   created_at: string;
   updated_at: string;
@@ -29,6 +29,10 @@ export interface GroupPost {
   comment_count?: number;
   participant_count?: number;
   user_joined?: boolean;
+  /** Per-option vote counts (length matches poll_options). Only set for type='poll'. */
+  poll_vote_counts?: number[];
+  /** The current viewer's option_idx, or null if they haven't voted. */
+  poll_my_vote?: number | null;
 }
 
 async function fetchGroupPosts(groupId: string): Promise<GroupPost[]> {
@@ -101,16 +105,44 @@ async function fetchGroupPosts(groupId: string): Promise<GroupPost[]> {
     commentCountMap.set(c.post_id, (commentCountMap.get(c.post_id) || 0) + 1);
   });
 
+  // Fetch poll votes (only for poll posts that have options defined).
+  const pollIds = (postsData || [])
+    .filter((p: any) => p.type === 'poll' && Array.isArray(p.poll_options) && p.poll_options.length > 0)
+    .map(p => p.id);
+  const pollVotesByPost = new Map<string, { counts: number[]; myVote: number | null }>();
+  if (pollIds.length > 0) {
+    const { data: votesData } = await supabase
+      .from('group_poll_votes')
+      .select('post_id, user_id, option_idx')
+      .in('post_id', pollIds);
+
+    (postsData || []).forEach((p: any) => {
+      if (!pollIds.includes(p.id)) return;
+      const counts = (p.poll_options as any[]).map(() => 0);
+      let myVote: number | null = null;
+      (votesData || []).forEach((v: any) => {
+        if (v.post_id !== p.id) return;
+        if (v.option_idx >= 0 && v.option_idx < counts.length) counts[v.option_idx]++;
+        if (user && v.user_id === user.id) myVote = v.option_idx;
+      });
+      pollVotesByPost.set(p.id, { counts, myVote });
+    });
+  }
+
   return (postsData || []).map(p => {
     const participantInfo = participantsMap.get(p.id);
+    const pollInfo = pollVotesByPost.get(p.id);
     return {
       ...p,
       type: p.type as GroupPost['type'],
+      poll_options: (p.poll_options as GroupPost['poll_options']) ?? null,
       profile: profilesMap.get(p.user_id),
       reactions: reactionsMap.get(p.id) || [],
       comment_count: commentCountMap.get(p.id) || 0,
       participant_count: participantInfo?.count || 0,
       user_joined: participantInfo?.userJoined || false,
+      poll_vote_counts: pollInfo?.counts,
+      poll_my_vote: pollInfo?.myVote ?? null,
     };
   });
 }
@@ -137,6 +169,7 @@ export function useGroupPosts(groupId: string | undefined) {
       max_players?: number;
       pinned?: boolean;
       image_url?: string;
+      poll_options?: { idx: number; text: string }[];
     }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
@@ -275,6 +308,53 @@ export function useGroupPosts(groupId: string | undefined) {
     }
   };
 
+  /**
+   * Cast / change / toggle-off a poll vote via the cast_group_poll_vote RPC.
+   * Optimistically updates the local cache so the bars animate immediately
+   * — the realtime invalidation that follows reconciles with the server.
+   */
+  const castPollVote = async (postId: string, optionIdx: number) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      // Optimistic update: mutate cached posts in place so the bar moves now.
+      queryClient.setQueryData<GroupPost[] | undefined>(['group-posts', groupId], (prev) => {
+        if (!prev) return prev;
+        return prev.map((p) => {
+          if (p.id !== postId || !p.poll_options) return p;
+          const counts = [...(p.poll_vote_counts ?? p.poll_options.map(() => 0))];
+          const wasVote = p.poll_my_vote;
+          let nextVote: number | null = optionIdx;
+          if (wasVote === optionIdx) {
+            // Toggle off
+            counts[optionIdx] = Math.max(0, counts[optionIdx] - 1);
+            nextVote = null;
+          } else {
+            if (wasVote != null) counts[wasVote] = Math.max(0, counts[wasVote] - 1);
+            counts[optionIdx] = (counts[optionIdx] ?? 0) + 1;
+          }
+          return { ...p, poll_vote_counts: counts, poll_my_vote: nextVote };
+        });
+      });
+
+      const { error } = await supabase.rpc('cast_group_poll_vote', {
+        p_post_id: postId,
+        p_option_idx: optionIdx,
+      });
+      if (error) throw error;
+    } catch (error: any) {
+      console.error('Error casting poll vote:', error);
+      toast({
+        title: 'Vote failed',
+        description: error.message || 'Could not record your vote',
+        variant: 'destructive',
+      });
+      // Reconcile on error
+      queryClient.invalidateQueries({ queryKey: ['group-posts', groupId] });
+    }
+  };
+
   const leaveLfgPost = async (postId: string) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -311,6 +391,7 @@ export function useGroupPosts(groupId: string | undefined) {
     togglePin,
     joinLfgPost,
     leaveLfgPost,
+    castPollVote,
     refetch,
   };
 }
