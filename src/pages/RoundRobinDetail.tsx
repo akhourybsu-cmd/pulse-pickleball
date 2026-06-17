@@ -47,6 +47,7 @@ import { RegistrationManagement } from "@/components/round-robin/RegistrationMan
 import { PlayerRoundRobinView } from "@/components/round-robin/PlayerRoundRobinView";
 import { PageHeader } from "@/components/PageHeader";
 import { z } from "zod";
+import { cn } from "@/lib/utils";
 import logo from "@/assets/pulse-logo-premium.svg";
 import { suggestRounds } from "@/lib/roundRobinFairness";
 import { isPlatformAdmin } from "@/lib/permissions";
@@ -144,7 +145,11 @@ export default function RoundRobinDetail() {
   // When the user arrived via /venue/round-robins/:id (now a redirect with
   // ?ctx=venue), back-nav should return them to the venue console rather
   // than the public RR hub.
-  const backHref = searchParams.get("ctx") === "venue" ? "/venue/round-robins" : "/round-robin";
+  // Venue context still goes back to the venue console RR list; player
+  // context now lands on the player's own history page (not the
+  // catch-all /round-robin hub, which we're sunsetting from player
+  // navigation).
+  const backHref = searchParams.get("ctx") === "venue" ? "/venue/round-robins" : "/player/round-robins";
   const [loading, setLoading] = useState(true);
   const [event, setEvent] = useState<Event | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
@@ -668,21 +673,28 @@ export default function RoundRobinDetail() {
           p_reason: 'Event voided by organizer'
         });
         if (error) throw error;
-        toast.success("Event voided. Results will not affect ratings.");
+        toast.success("Event voided. Results no longer count toward ratings.");
+        // After voiding the host should return to their history — the
+        // event itself is now read-only and there's nothing more to do
+        // on the detail page in the moment.
+        setDeleteDialogOpen(false);
+        navigate(backHref);
+        return;
       } else {
         const { error } = await supabase.rpc('delete_round_robin_event', {
           p_event_id: event.id
         });
         if (error) throw error;
-        toast.success("Event deleted successfully.");
+        toast.success("Event deleted.");
+        setDeleteDialogOpen(false);
         navigate(backHref);
         return;
       }
-      
-      setDeleteDialogOpen(false);
-      fetchEventDetails();
     } catch (error: any) {
-      toast.error(error.message || "Failed to delete event");
+      // RPC errors surface here. The void/delete RPCs raise sharp
+      // messages on permission failure and on the "scored event can't
+      // be hard-deleted by non-admin" guard — show them verbatim.
+      toast.error(error.message || "Failed to update event");
       console.error(error);
     }
   };
@@ -1449,7 +1461,7 @@ export default function RoundRobinDetail() {
           on this route so the host has a focused command-center surface
           and prime mobile real estate isn't eaten by app-wide chrome. */}
       <RoundRobinTopBar
-        backHref="/player/play"
+        backHref={backHref}
         label="Round Robin"
         onShare={isOrganizer || isParticipant ? handleShareEvent : undefined}
         overflow={
@@ -2074,26 +2086,86 @@ export default function RoundRobinDetail() {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>
-              {deleteMode === 'void' ? 'Void this Round Robin?' : 'Delete this Round Robin?'}
-            </AlertDialogTitle>
+            <AlertDialogTitle>Cancel this Round Robin?</AlertDialogTitle>
             <AlertDialogDescription>
-              {deleteMode === 'void' ? (
-                <>
-                  This will mark the event as voided. The schedule and results will remain visible with a "Voided" badge, but matches will not affect player ratings. This action can be undone by an admin.
-                </>
-              ) : (
-                <>
-                  This will permanently remove the schedule and all results for this event. <strong>This cannot be undone.</strong>
-                  {hasScores && !isAdmin && (
-                    <p className="mt-2 text-destructive font-semibold">
-                      Only admins can hard delete events with scores. Use "Void & Keep record" instead.
-                    </p>
-                  )}
-                </>
-              )}
+              Pick how to handle the event. Both options remove it from
+              your active list.
             </AlertDialogDescription>
           </AlertDialogHeader>
+
+          {/* Two-mode picker — replaces the previous single-mode dialog
+              that couldn't be toggled in place. Each option is a
+              tappable card with copy + warning. */}
+          <div className="grid grid-cols-1 gap-2 my-2">
+            {/* VOID — soft cancel. Always available to the host. */}
+            <button
+              type="button"
+              onClick={() => setDeleteMode('void')}
+              className={cn(
+                "text-left rounded-lg border-2 p-3 transition-all",
+                deleteMode === 'void'
+                  ? "border-primary bg-primary/5"
+                  : "border-border hover:border-border/80 hover:bg-muted/30",
+              )}
+            >
+              <div className="flex items-start gap-3">
+                <div
+                  className={cn(
+                    "h-9 w-9 rounded-lg flex items-center justify-center flex-shrink-0",
+                    deleteMode === 'void'
+                      ? "bg-primary/15 text-primary"
+                      : "bg-muted text-muted-foreground",
+                  )}
+                >
+                  <Ban className="h-4 w-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium text-sm">Void event</div>
+                  <div className="text-xs text-muted-foreground mt-0.5 leading-snug">
+                    Keeps the record with a "Voided" badge. Matches stop
+                    counting toward ratings. Reversible by an admin.
+                  </div>
+                </div>
+              </div>
+            </button>
+
+            {/* DELETE — hard, irreversible. Disabled (not just warned)
+                when the event has scores and the user is not an admin. */}
+            <button
+              type="button"
+              onClick={() => setDeleteMode('hard')}
+              disabled={hasScores && !isAdmin}
+              className={cn(
+                "text-left rounded-lg border-2 p-3 transition-all",
+                deleteMode === 'hard'
+                  ? "border-destructive bg-destructive/5"
+                  : "border-border hover:border-border/80 hover:bg-muted/30",
+                hasScores && !isAdmin && "opacity-50 cursor-not-allowed",
+              )}
+            >
+              <div className="flex items-start gap-3">
+                <div
+                  className={cn(
+                    "h-9 w-9 rounded-lg flex items-center justify-center flex-shrink-0",
+                    deleteMode === 'hard'
+                      ? "bg-destructive/15 text-destructive"
+                      : "bg-muted text-muted-foreground",
+                  )}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium text-sm">Delete permanently</div>
+                  <div className="text-xs text-muted-foreground mt-0.5 leading-snug">
+                    {hasScores && !isAdmin
+                      ? "Disabled — this event has saved scores. Void instead, or ask an admin to hard-delete."
+                      : "Removes the schedule, players, and all records. Cannot be undone."}
+                  </div>
+                </div>
+              </div>
+            </button>
+          </div>
+
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
@@ -2101,7 +2173,7 @@ export default function RoundRobinDetail() {
               disabled={deleteMode === 'hard' && hasScores && !isAdmin}
               className={deleteMode === 'hard' ? 'bg-destructive text-destructive-foreground hover:bg-destructive/90' : ''}
             >
-              {deleteMode === 'void' ? 'Void & Keep Record' : 'Delete'}
+              {deleteMode === 'void' ? 'Void event' : 'Delete permanently'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

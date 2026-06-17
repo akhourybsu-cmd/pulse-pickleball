@@ -351,7 +351,7 @@ const Auth = () => {
             className="inline-block hover:opacity-80 transition-opacity"
             aria-label="PULSE — home"
           >
-            <Logo className="h-28 md:h-36 w-auto mx-auto" />
+            <Logo className="h-28 md:h-36 w-auto mx-auto" showSubtitle />
           </Link>
         </div>
 

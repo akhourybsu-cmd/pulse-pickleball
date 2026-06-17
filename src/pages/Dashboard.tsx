@@ -21,6 +21,7 @@ import { ActivityModule } from "@/components/dashboard/ActivityModule";
 import { PerformanceModule } from "@/components/dashboard/PerformanceModule";
 import { StatsByCourtCard } from "@/components/dashboard/StatsByCourtCard";
 import { UpcomingEventsPreview } from "@/components/dashboard/UpcomingEventsPreview";
+import { MyRoundRobinsCard } from "@/components/dashboard/MyRoundRobinsCard";
 // RoleSwitcherCard hidden during the player-only beta. Re-import + render
 // when the venue surface returns.
 // import { RoleSwitcherCard } from "@/components/dashboard/RoleSwitcherCard";
@@ -230,10 +231,33 @@ const Dashboard = () => {
               <QuickActionsBar />
             </div>
 
+            {/* My round robins — active + upcoming RRs where you're hosting
+                or playing. Replaces the dropped "Round Robins" QuickAction
+                tile AND the global RoundRobinBanner that used to flash above
+                PlayerShell. The card surfaces the actual events with
+                tappable rows that go straight to the event detail. */}
+            <div
+              className="opacity-0 animate-fade-up"
+              style={{ animationDelay: '160ms', animationFillMode: 'forwards' }}
+            >
+              <SectionHeader
+                label="My round robins"
+                action={
+                  <Link
+                    to="/player/round-robins"
+                    className="text-muted-foreground hover:text-foreground transition-colors font-medium"
+                  >
+                    View all →
+                  </Link>
+                }
+              />
+              <MyRoundRobinsCard userId={user?.id} />
+            </div>
+
             {/* Up next — upcoming registered play */}
             <div
               className="opacity-0 animate-fade-up"
-              style={{ animationDelay: '180ms', animationFillMode: 'forwards' }}
+              style={{ animationDelay: '200ms', animationFillMode: 'forwards' }}
             >
               <SectionHeader
                 label="Up next"
@@ -309,10 +333,26 @@ const Dashboard = () => {
             <ActivityModule userId={user?.id} />
           </div>
 
+          {/* My round robins — see desktop comment above for rationale. */}
+          <div
+            className="opacity-0 animate-fade-up"
+            style={{ animationDelay: '160ms', animationFillMode: 'forwards' }}
+          >
+            <SectionHeader
+              label="My round robins"
+              action={
+                <Link to="/player/round-robins" className="text-muted-foreground hover:text-foreground transition-colors font-medium">
+                  View all →
+                </Link>
+              }
+            />
+            <MyRoundRobinsCard userId={user?.id} />
+          </div>
+
           {/* Up next */}
           <div
             className="opacity-0 animate-fade-up"
-            style={{ animationDelay: '180ms', animationFillMode: 'forwards' }}
+            style={{ animationDelay: '200ms', animationFillMode: 'forwards' }}
           >
             <SectionHeader
               label="Up next"

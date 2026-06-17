@@ -11,7 +11,13 @@ import { useAuthPersistence } from "@/hooks/useAuthPersistence";
 import { PlayerShell } from "@/components/layout/PlayerShell";
 import { AuthGuard, VenueGuard, AdminGuard } from "@/components/guards";
 import { VenueShell } from "@/components/layout/VenueShell";
-import { RoundRobinBanner } from "@/components/RoundRobinBanner";
+// RoundRobinBanner was a global "Round Robin Match In Progress" strip
+// shown above PlayerShell whenever a participant had a live event.
+// Replaced by MyRoundRobinsCard on the dashboard so live events surface
+// in context (alongside the host's own events) instead of as a
+// dismissible toast above every screen. The component file is kept on
+// disk in case we want to revive a global indicator later.
+// import { RoundRobinBanner } from "@/components/RoundRobinBanner";
 import { ScrollToTop } from "@/components/ScrollToTop";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -134,6 +140,7 @@ const NotificationSettings = lazy(() => import("./pages/NotificationSettings"));
 // Player pages
 const PlayerDashboard = lazy(() => import("./pages/player/PlayerDashboard"));
 const PlayerProfile = lazy(() => import("./pages/player/PlayerProfile"));
+const MyRoundRobinsPage = lazy(() => import("./pages/player/MyRoundRobinsPage"));
 const PlayHub = lazy(() => import("./pages/play/PlayHub"));
 // PlayerCourts removed - Court Connector feature archived
 const PlayerEvents = lazy(() => import("./pages/player/PlayerEvents"));
@@ -217,7 +224,6 @@ const AppContent = () => {
   return (
     <>
       <ScrollToTop />
-      <RoundRobinBanner />
       <PWAInstallPrompt />
       <Suspense fallback={<PageLoader />}>
         <Routes>
@@ -277,6 +283,10 @@ const AppContent = () => {
             <Route path="matches/pending" element={<Navigate to="/player/matches?tab=pending" replace />} />
             <Route path="play" element={<PlayHub />} />
             <Route path="profile" element={<PlayerProfile />} />
+            {/* My Round Robins history — replaces the catch-all /round-robin
+                hub link that used to live on the dashboard. Past + active
+                events in one place. */}
+            <Route path="round-robins" element={<MyRoundRobinsPage />} />
             {/* Legacy aliases - kept functional, redirected from old paths */}
             <Route path="find" element={<RedirectWithParams to="/player/play" />} />
             <Route path="events" element={<PlayerEvents />} />
