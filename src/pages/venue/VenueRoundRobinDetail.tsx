@@ -48,7 +48,7 @@ interface Event {
   num_rounds: number;
   games_per_player?: number;
   current_round: number | null;
-  status: "draft" | "live" | "completed";
+  status: "draft" | "live" | "completed" | "voided";
   rating_eligible: boolean;
   rating_type: string;
   format?: string;
