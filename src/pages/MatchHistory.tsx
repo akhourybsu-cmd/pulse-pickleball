@@ -299,18 +299,24 @@ const MatchHistory = () => {
       if (eventIds.length > 0) {
         const { data: rrEvents, error: rrEventsError } = await supabase
           .from('round_robin_events')
-          .select('id, name, event_date')
+          .select('id, name, date')
           .in('id', eventIds);
         console.log('[RR group] events:', rrEvents, 'error:', rrEventsError);
         (rrEvents || []).forEach((e: any) => {
-          eventsById.set(e.id, { id: e.id, name: e.name, date: e.event_date });
+          eventsById.set(e.id, { id: e.id, name: e.name, date: e.date });
         });
       }
 
       const matchToEvent = new Map<string, { id: string; name: string; date: string }>();
       (rrLinks || []).forEach((link: any) => {
         const ev = link.event_id ? eventsById.get(link.event_id) : null;
-        if (link.match_id && ev) matchToEvent.set(link.match_id, ev);
+        if (link.match_id && link.event_id) {
+          matchToEvent.set(link.match_id, {
+            id: link.event_id,
+            name: ev?.name || 'Round Robin',
+            date: ev?.date || '',
+          });
+        }
       });
 
       matchesWithDetails.forEach((m: any) => {
@@ -318,7 +324,7 @@ const MatchHistory = () => {
         if (ev) {
           m.rr_event_id = ev.id;
           m.rr_event_name = ev.name;
-          m.rr_event_date = ev.date;
+          m.rr_event_date = ev.date || m.match_date;
         }
       });
       console.log('[RR group] matchToEvent size:', matchToEvent.size);
