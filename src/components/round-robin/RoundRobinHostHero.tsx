@@ -23,7 +23,7 @@ interface RoundRobinHostHeroProps {
   name: string;
   date: string;           // YYYY-MM-DD
   startTime: string | null;
-  status: "draft" | "live" | "completed";
+  status: "draft" | "live" | "completed" | "voided";
   voided?: boolean;
   ratingEligible: boolean;
   format?: string;        // 'open' | 'mixed' | 'male' | 'female'
