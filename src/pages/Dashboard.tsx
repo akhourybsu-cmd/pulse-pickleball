@@ -22,6 +22,7 @@ import { PerformanceModule } from "@/components/dashboard/PerformanceModule";
 import { StatsByCourtCard } from "@/components/dashboard/StatsByCourtCard";
 import { UpcomingEventsPreview } from "@/components/dashboard/UpcomingEventsPreview";
 import { MyRoundRobinsCard } from "@/components/dashboard/MyRoundRobinsCard";
+import { MyCommunitiesRail } from "@/components/dashboard/MyCommunitiesRail";
 // RoleSwitcherCard hidden during the player-only beta. Re-import + render
 // when the venue surface returns.
 // import { RoleSwitcherCard } from "@/components/dashboard/RoleSwitcherCard";
@@ -253,6 +254,24 @@ const Dashboard = () => {
               />
               <MyRoundRobinsCard userId={user?.id} />
             </div>
+            {/* My communities — quick-tap rail to any group the user is in */}
+            <div
+              className="opacity-0 animate-fade-up"
+              style={{ animationDelay: '180ms', animationFillMode: 'forwards' }}
+            >
+              <SectionHeader
+                label="My communities"
+                action={
+                  <Link
+                    to="/player/community"
+                    className="text-muted-foreground hover:text-foreground transition-colors font-medium"
+                  >
+                    See all →
+                  </Link>
+                }
+              />
+              <MyCommunitiesRail />
+            </div>
 
             {/* Up next — upcoming registered play */}
             <div
@@ -347,6 +366,22 @@ const Dashboard = () => {
               }
             />
             <MyRoundRobinsCard userId={user?.id} />
+          </div>
+
+          {/* My communities — quick-tap rail */}
+          <div
+            className="opacity-0 animate-fade-up"
+            style={{ animationDelay: '180ms', animationFillMode: 'forwards' }}
+          >
+            <SectionHeader
+              label="My communities"
+              action={
+                <Link to="/player/community" className="text-muted-foreground hover:text-foreground transition-colors font-medium">
+                  See all →
+                </Link>
+              }
+            />
+            <MyCommunitiesRail />
           </div>
 
           {/* Up next */}
