@@ -34,7 +34,21 @@ export function useAuthState(): AuthState & { refresh: () => Promise<void> } {
 
   const fetchState = useCallback(async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        setState({
+          user: null,
+          profile: null,
+          loading: false,
+          isAuthenticated: false,
+          isOnboarding: false,
+          isActive: false,
+        });
+        return;
+      }
+
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
       
       if (user) {
         const { data: profile } = await supabase
@@ -72,8 +86,10 @@ export function useAuthState(): AuthState & { refresh: () => Promise<void> } {
   useEffect(() => {
     fetchState();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
-      fetchState();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      setTimeout(() => {
+        fetchState();
+      }, event === 'INITIAL_SESSION' ? 0 : 50);
     });
 
     return () => subscription.unsubscribe();

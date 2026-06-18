@@ -46,6 +46,21 @@ const authSchema = z.object({
   }).optional(),
 });
 
+const waitForAuthenticatedUser = async () => {
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error || !user) {
+    throw error || new Error("Sign-in completed, but the session was not ready. Please try again.");
+  }
+  return user;
+};
+
+const sanitizeRedirectPath = (path: string | null | undefined) => {
+  if (!path || !path.startsWith('/') || path.startsWith('//') || path === '/auth' || path.startsWith('/auth?')) {
+    return '/player/dashboard';
+  }
+  return path;
+};
+
 const Auth = () => {
   const [searchParams] = useSearchParams();
   const location = useLocation();
@@ -58,7 +73,7 @@ const Auth = () => {
   // destination in sessionStorage and restore it after the provider bounces
   // back to /auth (or directly to origin).
   const stashedReturn = typeof window !== 'undefined' ? sessionStorage.getItem('pulse_oauth_return') : null;
-  const redirectPath = returnFromState || searchParams.get('redirect') || stashedReturn || '/player/dashboard';
+  const redirectPath = sanitizeRedirectPath(returnFromState || searchParams.get('redirect') || stashedReturn);
 
   // Already-logged-in detection. If a returning user lands on /auth (via
   // bookmark, deep link, or stale tab), bounce them to their dashboard
@@ -95,14 +110,25 @@ const Auth = () => {
   // the sign-in form.
   useEffect(() => {
     let cancelled = false;
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
       if (cancelled) return;
-      if (session) {
+      if (user) {
         setAlreadyAuthed(true);
       }
       setSessionChecked(true);
     });
-    return () => { cancelled = true; };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!cancelled && session?.user) {
+        setAlreadyAuthed(true);
+        setSessionChecked(true);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
   }, []);
 
   // Once the session check confirms we're authed, send the user along.
@@ -188,8 +214,9 @@ const Auth = () => {
           return;
         }
 
+        await waitForAuthenticatedUser();
         toast.success("Logged in successfully!");
-        navigate(redirectPath);
+        navigate(redirectPath, { replace: true });
       } else {
         const { data: authData, error: authError } = await supabase.auth.signUp({
           email,
@@ -206,14 +233,17 @@ const Auth = () => {
 
         if (authError) throw authError;
 
-        if (authData.user) {
+        if (authData.session) {
+          await waitForAuthenticatedUser();
           toast.success("Account created! Welcome to PULSE!");
-          navigate(redirectPath);
+          navigate(redirectPath, { replace: true });
+        } else if (authData.user) {
+          toast.success("Account created! Check your email to finish signing in.");
         }
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("Auth error:", error);
-      toast.error(error.message || "Authentication failed");
+      toast.error(error instanceof Error ? error.message : "Authentication failed");
     } finally {
       setLoading(false);
     }
@@ -254,7 +284,7 @@ const Auth = () => {
     setShowEmailMFA(false);
     toast.success("Logged in successfully!");
     setTimeout(() => {
-      navigate(redirectPath);
+      navigate(redirectPath, { replace: true });
     }, 100);
   };
 
@@ -267,7 +297,7 @@ const Auth = () => {
 
   const handleBiometricSuccess = () => {
     toast.success("Logged in successfully!");
-    navigate(redirectPath);
+    navigate(redirectPath, { replace: true });
   };
 
   const handleOAuth = async (provider: "google" | "apple") => {
@@ -284,15 +314,16 @@ const Auth = () => {
         redirect_uri: window.location.origin,
       });
       if (result.error) {
-        toast.error((result.error as any)?.message || `Could not sign in with ${provider}`);
+        toast.error(result.error.message || `Could not sign in with ${provider}`);
         sessionStorage.removeItem('pulse_oauth_return');
         setLoading(false);
         return;
       }
       if (result.redirected) return;
-      navigate(redirectPath);
-    } catch (err: any) {
-      toast.error(err?.message || "OAuth sign-in failed");
+      await waitForAuthenticatedUser();
+      navigate(redirectPath, { replace: true });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "OAuth sign-in failed");
       sessionStorage.removeItem('pulse_oauth_return');
       setLoading(false);
     }
