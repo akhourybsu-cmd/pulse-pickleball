@@ -1,38 +1,28 @@
-# Integrate Friends into Community Hub
+# Swap "Play" → "Community" in Bottom Nav
 
-Keep the clean 2-tab Community design (My Community | Explore) and surface Friends as a prominent entry point that routes to its own full page — visible, but not cluttering the hub.
+The Play tab in the player bottom nav becomes the Community tab. `/player/play` (PlayHub) stays reachable from the Home dashboard tiles and existing deep links — it just leaves the primary nav.
 
 ## Changes
 
-### 1. New `FriendsEntryCard` inside My Community
-Add a compact card/row under the action buttons in the **My Community** tab, above "Your Groups":
+### `src/components/layout/PlayerShell.tsx`
+1. **Imports:** swap `Compass` for `Users` from `lucide-react`.
+2. **`navItems` array:** replace
+   ```
+   { to: '/player/play', icon: Compass, label: 'Play' }
+   ```
+   with
+   ```
+   { to: '/player/community', icon: Users, label: 'Community' }
+   ```
+3. **`prefetchMap`:** replace the `'/player/play'` entry with `'/player/community': () => import('@/pages/player/Community')`.
+4. **Active-route detection:** the existing `activeIndex` logic uses `location.pathname.startsWith(item.to)`, so `/player/community`, `/player/community/group/:id`, and `/player/friends` all need consideration. To keep Community highlighted on its sub-routes (groups, friends), add `/player/friends` to the same match group — e.g. treat `pathname.startsWith('/player/community') || pathname.startsWith('/player/friends')` as the Community tab.
 
-- Avatar stack of up to 4 friends (using `useFriends` + cached profiles)
-- Title: "Friends"
-- Subline: "{N} friends · {M} pending" (pending count uses `pendingRequests.length`; hidden when 0)
-- Right-side chevron
-- Entire card is a button → navigates to `/player/friends`
-
-If user has 0 friends and 0 pending: show empty-state variant ("Add friends to play with" + "Find friends" CTA) routing to the same page.
-
-### 2. New dedicated page: `/player/friends`
-Create `src/pages/player/Friends.tsx` with a standard player-mode header (back button → `/player/community`, title "Friends") and three sub-tabs:
-
-- **Friends** — accepted friends list with message + remove actions
-- **Requests** — pending received (accept/decline) + sent requests (cancel), with a count badge on the tab
-- **Suggestions** — `useFriendSuggestions` results with "Add" button
-
-Reuses existing `useFriends` and `useFriendSuggestions` hooks; no new backend work.
-
-### 3. Route registration
-Add `<Route path="/player/friends" element={<Friends />} />` in the player routes section of `src/App.tsx` (lazy-loaded to match siblings).
-
-### 4. No removal of existing surfaces
-The existing `Friends` references elsewhere (DM list, profile pages) stay untouched — this only adds the dedicated hub page and the Community entry point.
+### No other files change
+- `/player/play` route stays registered; PlayHub is still linked from Home (`ExploreCard`, `QuickActionsBar`) and any existing redirects.
+- Community page already exists at `/player/community` with the new 2-tab hub design and Friends entry.
+- No backend or schema changes.
 
 ## Technical notes
 
-- Files created: `src/components/community/FriendsEntryCard.tsx`, `src/pages/player/Friends.tsx`
-- Files edited: `src/pages/player/Community.tsx` (insert `FriendsEntryCard` in My Community tab), `src/App.tsx` (route)
-- Styling follows existing `GroupCard` / player-mode card conventions (white card, 8pt spacing, Outfit/Inter typography)
-- No schema, RLS, or edge-function changes
+- Icon choice: `Users` matches the Community concept and is already used inside the Community page action row.
+- The animated underline pill in PlayerShell is index-driven, so swapping the array entry is enough — no width math changes.
