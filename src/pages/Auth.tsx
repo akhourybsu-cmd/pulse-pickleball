@@ -17,7 +17,6 @@ import { Logo } from "@/components/Logo";
 import {
   clearPostAuthRedirect,
   consumePostAuthRedirect,
-  DEFAULT_AUTH_DESTINATION,
   peekPostAuthRedirect,
   sanitizeRedirectPath,
   stashPostAuthRedirect,
@@ -135,7 +134,7 @@ const Auth = () => {
   // Once the session check confirms we're authed, send the user along.
   useEffect(() => {
     if (alreadyAuthed) {
-      sessionStorage.removeItem('pulse_oauth_return');
+      clearPostAuthRedirect();
       navigate(redirectPath, { replace: true });
     }
   }, [alreadyAuthed, redirectPath, navigate]);
@@ -307,7 +306,7 @@ const Auth = () => {
       localStorage.setItem('pulse_persist_session', staySignedIn.toString());
       // Stash the intended deep link — OAuth strips React Router location.state
       // when the browser bounces back from the provider.
-      sessionStorage.setItem('pulse_oauth_return', redirectPath);
+      stashPostAuthRedirect(redirectPath);
       // IMPORTANT: redirect_uri must be the bare origin. Passing a deep path
       // (e.g. /player/dashboard) is not in the OAuth allow-list and causes
       // the provider to bounce the user back to /auth without a session.
@@ -316,16 +315,16 @@ const Auth = () => {
       });
       if (result.error) {
         toast.error(result.error.message || `Could not sign in with ${provider}`);
-        sessionStorage.removeItem('pulse_oauth_return');
+        clearPostAuthRedirect();
         setLoading(false);
         return;
       }
       if (result.redirected) return;
       await waitForAuthenticatedUser();
-      navigate(redirectPath, { replace: true });
+      navigate(consumePostAuthRedirect(), { replace: true });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "OAuth sign-in failed");
-      sessionStorage.removeItem('pulse_oauth_return');
+      clearPostAuthRedirect();
       setLoading(false);
     }
   };
