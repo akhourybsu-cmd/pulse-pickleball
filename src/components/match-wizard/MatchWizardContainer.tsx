@@ -61,6 +61,7 @@ export function MatchWizardContainer() {
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
+    let createdMatchId: string | null = null;
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
