@@ -5,6 +5,7 @@ import { Separator } from "@/components/ui/separator";
 import { KeyRound, Download } from "lucide-react";
 import { MFAManagement } from "@/components/auth/MFAManagement";
 import { BiometricSetup } from "@/components/auth/BiometricSetup";
+import { LinkedAccounts } from "@/components/profile/LinkedAccounts";
 import { useNavigate } from "react-router-dom";
 
 interface SecurityTabProps {
@@ -63,6 +64,9 @@ export function SecurityTab({
           </div>
         </CardContent>
       </Card>
+
+      {/* Linked Sign-In Accounts */}
+      <LinkedAccounts />
 
       {/* MFA Management */}
       <MFAManagement />
