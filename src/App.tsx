@@ -311,23 +311,6 @@ const AppContent = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  // Listen for service worker updates and show toast
-  useEffect(() => {
-    const handleSWUpdate = () => {
-      toast('Update available', {
-        description: 'Refresh to get the latest version',
-        action: {
-          label: 'Refresh',
-          onClick: () => window.location.reload()
-        },
-        duration: Infinity
-      });
-    };
-
-    window.addEventListener('sw-update-available', handleSWUpdate);
-    return () => window.removeEventListener('sw-update-available', handleSWUpdate);
-  }, []);
-
   if (!authRecoveryChecked) {
     return <PageLoader />;
   }
