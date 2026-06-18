@@ -6,7 +6,7 @@ import {
   HeroSection,
   QuickActionTiles,
   HowItWorksSection,
-  TrustBandSection,
+  PlayerFeaturesSection,
   SplitCTASection,
   HomepageFooter,
 } from "@/components/homepage";
@@ -74,8 +74,8 @@ const Index = () => {
             for direct navigation, just no UI affordances surface them. */}
         <HeroSection />
         <QuickActionTiles />
+        <PlayerFeaturesSection />
         <HowItWorksSection />
-        <TrustBandSection />
         <SplitCTASection />
       </main>
       <HomepageFooter />

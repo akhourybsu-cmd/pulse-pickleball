@@ -3,7 +3,6 @@ import { Github, Twitter, Instagram, Youtube } from "lucide-react";
 
 const productLinks = [
   { label: "Players", href: "/players" },
-  { label: "Venues", href: "/venues" },
   { label: "Events", href: "/events/browse" },
   { label: "Community", href: "/player/community" },
 ];
@@ -81,7 +80,7 @@ export const HomepageFooter = () => {
               </span>
             </div>
             <p className="text-sm text-muted-foreground">
-              The all-in-one pickleball platform for players and venues.
+              The pickleball app built for everyday players — rate, record, and rally.
             </p>
           </div>
         </div>

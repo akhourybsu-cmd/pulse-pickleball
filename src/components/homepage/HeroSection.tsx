@@ -1,14 +1,13 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, LogIn } from "lucide-react";
 
 /**
  * Hero — Player-only.
  *
- * Single primary CTA ("Get Started") aimed at players. The venue/organizer
- * affordance that used to live here as a quiet inline link has been pulled
- * for the player-focused beta. Venue and tournament management will return
- * once those surfaces are ready for public use.
+ * Primary CTA gets people to sign up; secondary "Sign In" makes returning
+ * to the dashboard a one-tap action for existing users. Venue/organizer
+ * affordances are gone for the player-focused beta.
  */
 export const HeroSection = () => {
   const navigate = useNavigate();
@@ -32,18 +31,27 @@ export const HeroSection = () => {
 
         {/* Subheadline */}
         <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10">
-          Record matches in seconds, track your PULSE rating, and join round robins with friends. Built for everyday players.
+          Record matches in seconds, watch your PULSE rating evolve, and play round robins with your crew. Built for everyday players.
         </p>
 
-        {/* Single primary CTA */}
-        <div className="flex justify-center">
+        {/* Primary + secondary CTAs */}
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center">
           <Button
             size="lg"
             onClick={() => navigate("/auth")}
-            className="group h-14 px-10 text-lg font-semibold bg-gradient-to-r from-primary to-primary/85 hover:shadow-xl hover:shadow-primary/25 hover:scale-105 transition-all duration-300"
+            className="group h-14 px-10 text-lg font-semibold bg-gradient-to-r from-primary to-primary/85 hover:shadow-xl hover:shadow-primary/25 hover:scale-105 transition-all duration-300 w-full sm:w-auto"
           >
             Get Started — Free
             <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+          </Button>
+          <Button
+            size="lg"
+            variant="outline"
+            onClick={() => navigate("/auth")}
+            className="h-14 px-8 text-lg font-semibold w-full sm:w-auto"
+          >
+            <LogIn className="mr-2 h-5 w-5" />
+            Sign In
           </Button>
         </div>
       </div>

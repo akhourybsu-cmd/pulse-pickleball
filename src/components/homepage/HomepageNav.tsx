@@ -30,32 +30,23 @@ interface HomepageNavProps {
  * we just no longer surface them from the public chrome.
  */
 
-// Desktop nav links — Players is the brand surface, Events + Community
-// are the everyday discovery surfaces.
+// Desktop nav links — Events + Community are the two discovery surfaces
+// a logged-out visitor can browse before signing up. The old "Players"
+// link pointed to /players which is itself a marketing landing — redundant
+// when the visitor is already on the homepage, so it's been removed.
 const desktopNavLinks = [
-  { label: "Players", href: "/players", icon: User },
   { label: "Events", href: "/events/browse", icon: Calendar },
   { label: "Community", href: "/player/community", icon: Users },
 ];
 
-// Menu sections (used for both mobile and desktop)
+// Menu sections (used for the mobile sheet)
 const menuSections = {
   explore: {
     title: "Explore",
     items: [
-      { label: "Players", href: "/players", icon: User },
       { label: "Events", href: "/events/browse", icon: Calendar },
       { label: "Community", href: "/player/community", icon: Users },
     ],
-  },
-  // The "Play" section previously had a "Round Robins" link to the
-  // catch-all /round-robin hub. Removed during the player-only beta
-  // refocus — players reach round robins from their dashboard's
-  // "My round robins" card (and the /player/round-robins history page),
-  // which is purpose-built for the player rather than a generic hub.
-  play: {
-    title: "Play",
-    items: [] as { label: string; href: string; icon: typeof RotateCcw }[],
   },
   account: {
     title: "Account",
