@@ -43,8 +43,7 @@ export function CollapsedComposerBar({
             'flex items-center gap-2'
           )}
         >
-          <Send className="h-3.5 w-3.5 opacity-50" />
-          <span>What's happening?</span>
+          <span>Share an update...</span>
         </button>
         
         {/* Quick action shortcuts */}
