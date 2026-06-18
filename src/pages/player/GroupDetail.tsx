@@ -437,17 +437,60 @@ export default function GroupDetail() {
             )}
           </TabsContent>
 
-          {/* Files Tab */}
+          {/* More Tab — Files + group utilities */}
           <TabsContent 
-            value="files" 
+            value="more" 
             className={cn(
-              "h-full m-0 overflow-y-auto p-4",
-              activeTab !== 'files' && "hidden"
+              "h-full m-0 overflow-y-auto p-4 space-y-6",
+              activeTab !== 'more' && "hidden"
             )}
-            forceMount={visitedTabs.has('files') ? true : undefined}
+            forceMount={visitedTabs.has('more') ? true : undefined}
           >
-            {visitedTabs.has('files') && (
-              <GroupFiles groupId={groupId!} isAdmin={isAdmin} currentUserId={currentUserId} />
+            {visitedTabs.has('more') && (
+              <>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground px-1">
+                    <FolderOpen className="h-3.5 w-3.5" />
+                    <span className="font-medium uppercase tracking-wide">Files</span>
+                  </div>
+                  <GroupFiles groupId={groupId!} isAdmin={isAdmin} currentUserId={currentUserId} />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground px-1">
+                    Community
+                  </div>
+                  <div className="rounded-xl border border-border/40 bg-card divide-y divide-border/30 overflow-hidden">
+                    {group.invite_code && (
+                      <button
+                        onClick={() => setInviteModalOpen(true)}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/40 transition-colors"
+                      >
+                        <Share2 className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm">Share invite link</span>
+                      </button>
+                    )}
+                    {isVenueGroup && group.venue?.slug && (
+                      <button
+                        onClick={() => navigate(`/v/${group.venue!.slug}`)}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/40 transition-colors"
+                      >
+                        <Building2 className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm">Visit venue page</span>
+                      </button>
+                    )}
+                    {isAdmin && (
+                      <button
+                        onClick={() => navigate(`/player/community/group/${groupId}/manage`)}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/40 transition-colors"
+                      >
+                        <Settings className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm">Group settings</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </>
             )}
           </TabsContent>
         </div>
