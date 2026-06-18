@@ -100,7 +100,7 @@ export function MatchWizardContainer() {
           team1_score: team1Score,
           team2_score: team2Score,
           created_by: user.id,
-          match_type: formData.matchFormat === 'singles' ? 'singles' : 'doubles',
+          match_type: 'casual',
           match_format: formData.matchFormat,
           court_id: locationId,
           status: 'pending',
