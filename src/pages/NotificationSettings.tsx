@@ -60,6 +60,10 @@ export default function NotificationSettings() {
           Control which notifications you receive in the app.
         </p>
 
+        <BrowserPushCard />
+
+
+
         {categoryConfig.map((cat) => {
           const Icon = cat.icon;
           const enabled = isEnabled(cat.id);
@@ -90,3 +94,38 @@ export default function NotificationSettings() {
     </div>
   );
 }
+
+function BrowserPushCard() {
+  const { state, busy, supported, enable, disable } = usePushSubscription();
+  const enabled = state === "enabled";
+  const disabledControl = busy || state === "loading" || state === "unsupported" || state === "denied";
+
+  let helper = "Get notified on this device even when the app is closed.";
+  if (state === "unsupported") helper = "Your browser doesn't support push notifications.";
+  else if (state === "denied") helper = "Notifications are blocked. Enable them in your browser site settings.";
+  else if (state === "enabled") helper = "Push notifications are on for this device.";
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+              <BellRing className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <CardTitle className="text-base">Browser notifications</CardTitle>
+              <CardDescription className="text-xs">{helper}</CardDescription>
+            </div>
+          </div>
+          <Switch
+            checked={enabled}
+            disabled={disabledControl}
+            onCheckedChange={(checked) => (checked ? enable() : disable())}
+          />
+        </div>
+      </CardHeader>
+    </Card>
+  );
+}
+
