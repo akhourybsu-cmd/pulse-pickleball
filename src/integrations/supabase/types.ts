@@ -1712,6 +1712,47 @@ export type Database = {
           },
         ]
       }
+      group_notification_prefs: {
+        Row: {
+          announcements: boolean
+          chat: boolean
+          events: boolean
+          group_id: string
+          muted_all: boolean
+          posts: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          announcements?: boolean
+          chat?: boolean
+          events?: boolean
+          group_id: string
+          muted_all?: boolean
+          posts?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          announcements?: boolean
+          chat?: boolean
+          events?: boolean
+          group_id?: string
+          muted_all?: boolean
+          posts?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_notification_prefs_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       group_poll_votes: {
         Row: {
           created_at: string
@@ -6154,6 +6195,10 @@ export type Database = {
         Args: { _group_id: string; _user_id: string }
         Returns: boolean
       }
+      is_group_channel_enabled: {
+        Args: { p_channel: string; p_group_id: string; p_user_id: string }
+        Returns: boolean
+      }
       is_group_member: {
         Args: { _group_id: string; _user_id: string }
         Returns: boolean
@@ -6203,6 +6248,10 @@ export type Database = {
       }
       set_group_message_pin: {
         Args: { p_message_id: string; p_pinned: boolean }
+        Returns: undefined
+      }
+      set_group_notification_pref: {
+        Args: { p_channel: string; p_enabled: boolean; p_group_id: string }
         Returns: undefined
       }
       submit_rr_match_score: {
