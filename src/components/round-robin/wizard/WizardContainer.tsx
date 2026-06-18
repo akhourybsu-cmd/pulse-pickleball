@@ -238,18 +238,56 @@ export function WizardContainer() {
 
         if (playersError) throw playersError;
       }
-      // If shared with a group, post it to the group's feed (pinned).
+      // If shared with a group, post it to the group's feed (unpinned) and
+      // add it to the group's calendar so it shows up in one feed slot plus
+      // the schedule — no rail duplication.
       if (formData.groupVisibility === "shared_group" && formData.groupId) {
+        // Build the actual event start/end for both the post copy and the
+        // calendar entry. Immediate mode starts now; scheduled modes use the
+        // user-picked date + time.
+        let eventStart: Date;
+        if (formData.eventMode === "immediate") {
+          eventStart = new Date();
+        } else {
+          const time = formData.startTime || "10:00";
+          eventStart = new Date(`${new Date(formData.eventDate).toISOString().split("T")[0]}T${time}`);
+        }
+        const eventEnd = new Date(eventStart.getTime() + 2 * 60 * 60 * 1000); // default 2h block
+
+        const dateLabel = eventStart.toLocaleDateString(undefined, {
+          weekday: "short",
+          month: "short",
+          day: "numeric",
+        });
+        const timeLabel = eventStart.toLocaleTimeString(undefined, {
+          hour: "numeric",
+          minute: "2-digit",
+        });
+
         const { error: postError } = await supabase.from("group_posts").insert({
           group_id: formData.groupId,
           user_id: user.id,
           type: "round_robin",
           title: name,
-          content: formData.notes.trim() || `Round Robin on ${event.date}`,
-          pinned: true,
+          content: formData.notes.trim() || `Round Robin on ${dateLabel} at ${timeLabel}`,
+          pinned: false,
           round_robin_event_id: event.id,
         } as never);
         if (postError) console.error("Failed to post RR to group:", postError);
+
+        const { error: calError } = await supabase.from("group_events").insert({
+          group_id: formData.groupId,
+          created_by: user.id,
+          title: name,
+          description: formData.notes.trim() || `Round Robin event`,
+          start_time: eventStart.toISOString(),
+          end_time: eventEnd.toISOString(),
+          location_type: "custom",
+          venue_id: null,
+          custom_location: courts.find((c) => c.id === formData.locationId)?.name || null,
+          capacity: formData.eventMode === "open_registration" ? formData.maxPlayers : null,
+        } as never);
+        if (calError) console.error("Failed to add RR to group calendar:", calError);
       }
 
 
