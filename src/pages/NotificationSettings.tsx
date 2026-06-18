@@ -4,8 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Bell, Target, Calendar, Users, Trophy, Settings } from "lucide-react";
+import { ArrowLeft, Bell, BellRing, Target, Calendar, Users, Trophy, Settings, Loader2 } from "lucide-react";
 import { useNotificationPreferences } from "@/hooks/useNotifications";
+import { usePushSubscription } from "@/hooks/usePushSubscription";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const categoryConfig = [
@@ -27,6 +28,7 @@ export default function NotificationSettings() {
   }, []);
 
   const { preferences, loading, updatePreference, isEnabled } = useNotificationPreferences(userId);
+  const push = usePushSubscription();
 
   if (loading) {
     return (
@@ -59,6 +61,47 @@ export default function NotificationSettings() {
         <p className="text-sm text-muted-foreground">
           Control which notifications you receive in the app.
         </p>
+
+        {/* Browser push — gates the OS-level notification. Independent of
+            per-category in-app toggles below: a category needs to be
+            ON *and* push to be enabled for a notification to leave the
+            browser tab. */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  {push.enabled ? (
+                    <BellRing className="h-5 w-5 text-primary" />
+                  ) : (
+                    <Bell className="h-5 w-5 text-primary" />
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <CardTitle className="text-base">Browser notifications</CardTitle>
+                  <CardDescription className="text-xs">
+                    {!push.supported
+                      ? 'Not available in this browser yet'
+                      : push.permission === 'denied'
+                        ? 'Blocked by browser — open site permissions to re-enable'
+                        : push.enabled
+                          ? 'Receiving push for the categories below'
+                          : 'Enable to get pings when the app is closed'}
+                  </CardDescription>
+                </div>
+              </div>
+              {push.loading ? (
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              ) : (
+                <Switch
+                  checked={push.enabled}
+                  disabled={!push.supported || push.permission === 'denied'}
+                  onCheckedChange={(v) => (v ? push.enable() : push.disable())}
+                />
+              )}
+            </div>
+          </CardHeader>
+        </Card>
 
         {categoryConfig.map((cat) => {
           const Icon = cat.icon;
