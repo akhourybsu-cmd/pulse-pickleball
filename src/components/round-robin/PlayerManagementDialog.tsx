@@ -418,7 +418,7 @@ export function PlayerManagementDialog({
                 }
               />
             </div>
-            </div>
+
 
             <div className="space-y-2">
               <Label>Scope</Label>
