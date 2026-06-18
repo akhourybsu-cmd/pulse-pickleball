@@ -1,0 +1,118 @@
+import { useEffect, useState } from "react";
+import { Bell, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { usePushSubscription } from "@/hooks/usePushSubscription";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+
+const DISMISS_KEY = "pulse.enablePushBanner.dismissedAt";
+const DISMISS_TTL_MS = 1000 * 60 * 60 * 24 * 7; // 7 days
+
+function isIOS() {
+  if (typeof navigator === "undefined") return false;
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+}
+function isStandalone() {
+  if (typeof window === "undefined") return false;
+  return (
+    (window.navigator as any).standalone === true ||
+    window.matchMedia?.("(display-mode: standalone)").matches
+  );
+}
+
+export function EnablePushBanner() {
+  const navigate = useNavigate();
+  const { state, busy, supported, enable } = usePushSubscription();
+  const [dismissed, setDismissed] = useState(true);
+
+  useEffect(() => {
+    const raw = localStorage.getItem(DISMISS_KEY);
+    if (!raw) return setDismissed(false);
+    const ts = Number(raw);
+    if (!Number.isFinite(ts) || Date.now() - ts > DISMISS_TTL_MS) {
+      setDismissed(false);
+    }
+  }, []);
+
+  if (dismissed) return null;
+  if (state === "loading" || state === "enabled") return null;
+
+  const iosNeedsInstall = isIOS() && !isStandalone();
+
+  const dismiss = () => {
+    localStorage.setItem(DISMISS_KEY, String(Date.now()));
+    setDismissed(true);
+  };
+
+  const handleEnable = async () => {
+    await enable();
+    // Best-effort: fire a confirming test push
+    try {
+      const { data: u } = await supabase.auth.getUser();
+      if (u.user) {
+        await supabase.functions.invoke("push-send", {
+          body: {
+            user_id: u.user.id,
+            title: "Notifications enabled 🎉",
+            body: "You'll now get pings for posts, friends, and messages.",
+            url: "/",
+          },
+        });
+        toast.success("Notifications enabled — check for a test push!");
+      }
+    } catch (e) {
+      console.error("test push failed", e);
+    }
+  };
+
+  let title = "Turn on notifications";
+  let body = "Get pinged for new posts, friend requests, and messages.";
+  let action: React.ReactNode = (
+    <Button size="sm" onClick={handleEnable} disabled={busy || !supported}>
+      Enable
+    </Button>
+  );
+
+  if (!supported) {
+    title = "Notifications not supported";
+    body = "Your browser doesn't support push notifications.";
+    action = null;
+  } else if (state === "denied") {
+    title = "Notifications are blocked";
+    body = "Enable notifications for PULSE in your browser settings.";
+    action = (
+      <Button size="sm" variant="outline" onClick={() => navigate("/settings/notifications")}>
+        Settings
+      </Button>
+    );
+  } else if (iosNeedsInstall) {
+    title = "Install PULSE to get notifications";
+    body = "On iPhone, tap Share → Add to Home Screen, then open PULSE from your home screen.";
+    action = null;
+  }
+
+  return (
+    <div className="rounded-2xl border border-primary/30 bg-primary/10 p-4 flex items-start gap-3">
+      <div className="rounded-full bg-primary/20 p-2 shrink-0">
+        <Bell className="h-4 w-4 text-primary" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-foreground">{title}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">{body}</p>
+        {action && <div className="mt-3 flex gap-2">{action}
+          <Button size="sm" variant="ghost" onClick={() => navigate("/settings/notifications")}>
+            Manage
+          </Button>
+        </div>}
+      </div>
+      <button
+        onClick={dismiss}
+        aria-label="Dismiss"
+        className="text-muted-foreground hover:text-foreground shrink-0"
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
