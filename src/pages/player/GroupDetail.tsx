@@ -375,11 +375,13 @@ export default function GroupDetail() {
             forceMount={visitedTabs.has('chat') ? true : undefined}
           >
             {visitedTabs.has('chat') && (
-              <GroupChat 
-                groupId={groupId!} 
+              <GroupChat
+                groupId={groupId!}
                 currentUserId={currentUserId}
                 onlineCount={onlineCount}
                 isConnected={isConnected}
+                isAdmin={isAdmin}
+                lastReadAt={membership?.last_read_at ?? null}
               />
             )}
           </TabsContent>

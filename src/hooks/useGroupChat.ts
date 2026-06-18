@@ -9,6 +9,12 @@ export interface GroupMessage {
   content: string;
   created_at: string;
   updated_at: string;
+  /** Phase 2 polish — see migration 20260617210000_group_chat_polish. */
+  is_pinned?: boolean;
+  pinned_by?: string | null;
+  pinned_at?: string | null;
+  edited_at?: string | null;
+  image_url?: string | null;
   profile?: {
     id: string;
     display_name: string | null;
@@ -40,7 +46,7 @@ async function fetchGroupMessages(groupId: string): Promise<GroupMessage[]> {
   return (messagesData || []).map(m => ({
     ...m,
     profile: profilesMap.get(m.user_id),
-  }));
+  })) as GroupMessage[];
 }
 
 export function useGroupChat(groupId: string | undefined) {
@@ -56,7 +62,7 @@ export function useGroupChat(groupId: string | undefined) {
   });
 
   const sendMessageMutation = useMutation({
-    mutationFn: async (content: string) => {
+    mutationFn: async (input: { content: string; imageUrl?: string }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
@@ -65,8 +71,12 @@ export function useGroupChat(groupId: string | undefined) {
         .insert({
           group_id: groupId,
           user_id: user.id,
-          content: content.trim(),
-        })
+          content: input.content.trim(),
+          // image_url column is added by 20260617210000_group_chat_polish;
+          // older DB schemas silently drop it (PostgREST returns the
+          // inserted row without it).
+          ...(input.imageUrl ? { image_url: input.imageUrl } : {}),
+        } as any)
         .select()
         .single();
 
@@ -108,12 +118,69 @@ export function useGroupChat(groupId: string | undefined) {
     },
   });
 
+  /**
+   * Edit your own message content. Sets edited_at = now() so the UI can
+   * render a small "(edited)" hint. Existing RLS lets the author update
+   * their row, which is exactly what we want.
+   */
+  const editMessageMutation = useMutation({
+    mutationFn: async ({ messageId, content }: { messageId: string; content: string }) => {
+      const { error } = await supabase
+        .from('group_messages')
+        .update({
+          content: content.trim(),
+          edited_at: new Date().toISOString(),
+        } as any)
+        .eq('id', messageId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['group-messages', groupId] });
+    },
+    onError: (error: any) => {
+      console.error('Error editing message:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update message',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  /**
+   * Pin / unpin a chat message. Goes through the set_group_message_pin
+   * SECURITY DEFINER RPC so the role check (owner/moderator/author)
+   * happens server-side, and so that pinning one message implicitly
+   * unpins any other pinned message in the same group.
+   */
+  const togglePinMessage = async (messageId: string, pinned: boolean) => {
+    try {
+      const { error } = await supabase.rpc('set_group_message_pin', {
+        p_message_id: messageId,
+        p_pinned: pinned,
+      });
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['group-messages', groupId] });
+      toast({ title: pinned ? 'Pinned' : 'Unpinned' });
+    } catch (error: any) {
+      console.error('Error toggling pin:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update pin',
+        variant: 'destructive',
+      });
+    }
+  };
+
   return {
     messages,
     loading,
     sending: sendMessageMutation.isPending,
-    sendMessage: sendMessageMutation.mutateAsync,
+    sendMessage: (content: string, imageUrl?: string) =>
+      sendMessageMutation.mutateAsync({ content, imageUrl }),
     deleteMessage: deleteMessageMutation.mutateAsync,
+    editMessage: editMessageMutation.mutateAsync,
+    togglePinMessage,
     refetch,
   };
 }
