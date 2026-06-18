@@ -376,10 +376,12 @@ function FriendsList({
   selectedIds,
   onToggle,
   genderFilter,
+  excludeSet,
 }: {
   selectedIds: Set<string>;
   onToggle: (p: PickerPlayer) => void;
   genderFilter?: "male" | "female";
+  excludeSet?: Set<string>;
 }) {
   const { friends, loading } = useFriends();
   const items = friends
@@ -390,12 +392,12 @@ function FriendsList({
       avatar_url: f.profile.avatar_url,
       current_rating: f.profile.current_rating,
     }))
-    .filter((p) => p.full_name || p.display_name);
+    .filter((p) => (p.full_name || p.display_name) && !excludeSet?.has(p.id));
 
   if (loading) return <EmptyState message="Loading friends…" />;
   if (items.length === 0)
     return (
-      <EmptyState message="No friends yet — add some from Community, or use Search." />
+      <EmptyState message="No friends available — add some from Community, or use Search." />
     );
 
   return (
@@ -419,31 +421,37 @@ function GroupList({
   selectedIds,
   onToggle,
   genderFilter,
+  excludeSet,
+  showAddAll = true,
 }: {
   groupId: string;
   selectedIds: Set<string>;
   onToggle: (p: PickerPlayer) => void;
   genderFilter?: "male" | "female";
+  excludeSet?: Set<string>;
+  showAddAll?: boolean;
 }) {
   const { members, loading } = useGroupMembers(groupId);
-  const items = members.map((m) => ({
-    id: m.profile.id,
-    full_name: m.profile.full_name,
-    display_name: m.profile.display_name,
-    avatar_url: m.profile.avatar_url,
-    current_rating: m.profile.current_rating,
-  }));
+  const items = members
+    .map((m) => ({
+      id: m.profile.id,
+      full_name: m.profile.full_name,
+      display_name: m.profile.display_name,
+      avatar_url: m.profile.avatar_url,
+      current_rating: m.profile.current_rating,
+    }))
+    .filter((p) => !excludeSet?.has(p.id));
 
   if (loading) return <EmptyState message="Loading group members…" />;
   if (items.length === 0)
-    return <EmptyState message="This group doesn't have any members yet." />;
+    return <EmptyState message="No group members available." />;
 
   const remaining = items.filter((p) => !selectedIds.has(p.id));
 
   return (
     <ScrollArea className="h-full">
       <div className="py-2">
-        {remaining.length > 0 && (
+        {showAddAll && remaining.length > 0 && (
           <div className="px-4 pb-2">
             <Button
               variant="ghost"
@@ -472,18 +480,22 @@ function RecentList({
   selectedIds,
   onToggle,
   genderFilter,
+  excludeSet,
 }: {
   selectedIds: Set<string>;
   onToggle: (p: PickerPlayer) => void;
   genderFilter?: "male" | "female";
+  excludeSet?: Set<string>;
 }) {
   const { data = [], isLoading } = useRecentCoPlayers();
-  const items = data.filter((p) => matchGender(p.gender, genderFilter));
+  const items = data
+    .filter((p) => matchGender(p.gender, genderFilter))
+    .filter((p) => !excludeSet?.has(p.id));
 
   if (isLoading) return <EmptyState message="Loading recent players…" />;
   if (items.length === 0)
     return (
-      <EmptyState message="No recent co-players yet. Once you've organized a round robin, regulars will show up here." />
+      <EmptyState message="No recent co-players available." />
     );
 
   return (
@@ -507,11 +519,13 @@ function SearchList({
   selectedIds,
   onToggle,
   genderFilter,
+  excludeSet,
 }: {
   query: string;
   selectedIds: Set<string>;
   onToggle: (p: PickerPlayer) => void;
   genderFilter?: "male" | "female";
+  excludeSet?: Set<string>;
 }) {
   const { data = [], isFetching } = useQuery({
     queryKey: ["picker-search", query, genderFilter ?? "any"],
@@ -529,15 +543,17 @@ function SearchList({
     staleTime: 30_000,
   });
 
+  const items = data.filter((p) => !excludeSet?.has(p.id));
+
   if (query.trim().length < 2)
     return <EmptyState message="Type at least 2 characters to search." />;
   if (isFetching) return <EmptyState message="Searching…" />;
-  if (data.length === 0) return <EmptyState message="No players found." />;
+  if (items.length === 0) return <EmptyState message="No players found." />;
 
   return (
     <ScrollArea className="h-[calc(100%-72px)]">
       <div className="py-2">
-        {data.map((p) => (
+        {items.map((p) => (
           <PlayerRow
             key={p.id}
             p={p}
@@ -549,3 +565,4 @@ function SearchList({
     </ScrollArea>
   );
 }
+
