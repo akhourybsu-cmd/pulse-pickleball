@@ -6,7 +6,7 @@ import {
   HeroSection,
   QuickActionTiles,
   HowItWorksSection,
-  TrustBandSection,
+  PlayerFeaturesSection,
   SplitCTASection,
   HomepageFooter,
 } from "@/components/homepage";
