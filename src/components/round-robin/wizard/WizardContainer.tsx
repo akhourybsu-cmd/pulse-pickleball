@@ -217,7 +217,7 @@ export function WizardContainer() {
               : null,
           group_id: formData.groupVisibility !== "personal" ? formData.groupId : null,
           group_visibility: formData.groupVisibility,
-        })
+        } as never)
         .select()
         .single();
 
