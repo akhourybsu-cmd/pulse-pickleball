@@ -1905,6 +1905,7 @@ export type Database = {
           max_players: number | null
           pinned: boolean | null
           poll_options: Json | null
+          round_robin_event_id: string | null
           session_date: string | null
           session_time: string | null
           title: string | null
@@ -1922,6 +1923,7 @@ export type Database = {
           max_players?: number | null
           pinned?: boolean | null
           poll_options?: Json | null
+          round_robin_event_id?: string | null
           session_date?: string | null
           session_time?: string | null
           title?: string | null
@@ -1939,6 +1941,7 @@ export type Database = {
           max_players?: number | null
           pinned?: boolean | null
           poll_options?: Json | null
+          round_robin_event_id?: string | null
           session_date?: string | null
           session_time?: string | null
           title?: string | null
@@ -1952,6 +1955,13 @@ export type Database = {
             columns: ["group_id"]
             isOneToOne: false
             referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_posts_round_robin_event_id_fkey"
+            columns: ["round_robin_event_id"]
+            isOneToOne: false
+            referencedRelation: "round_robin_events"
             referencedColumns: ["id"]
           },
         ]
@@ -3181,6 +3191,8 @@ export type Database = {
           date: string
           format: string
           games_per_player: number | null
+          group_id: string | null
+          group_visibility: string
           id: string
           invite_code: string | null
           is_published: boolean | null
@@ -3211,6 +3223,8 @@ export type Database = {
           date?: string
           format?: string
           games_per_player?: number | null
+          group_id?: string | null
+          group_visibility?: string
           id?: string
           invite_code?: string | null
           is_published?: boolean | null
@@ -3241,6 +3255,8 @@ export type Database = {
           date?: string
           format?: string
           games_per_player?: number | null
+          group_id?: string | null
+          group_visibility?: string
           id?: string
           invite_code?: string | null
           is_published?: boolean | null
@@ -3265,6 +3281,13 @@ export type Database = {
           voided_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "round_robin_events_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "round_robin_events_venue_id_fkey"
             columns: ["venue_id"]

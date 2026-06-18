@@ -6,7 +6,7 @@ export interface GroupPost {
   id: string;
   group_id: string;
   user_id: string;
-  type: 'feed' | 'lfg' | 'announcement' | 'highlight' | 'poll';
+  type: 'feed' | 'lfg' | 'announcement' | 'highlight' | 'poll' | 'round_robin';
   title: string | null;
   content: string | null;
   pinned: boolean;
@@ -18,6 +18,19 @@ export interface GroupPost {
   last_activity_at: string;
   created_at: string;
   updated_at: string;
+  round_robin_event_id?: string | null;
+  round_robin?: {
+    id: string;
+    name: string;
+    date: string;
+    start_time: string | null;
+    num_courts: number;
+    max_players: number | null;
+    status: string;
+    invite_code: string | null;
+    registration_mode: string | null;
+    player_count: number;
+  } | null;
   profile?: {
     id: string;
     display_name: string | null;
@@ -129,6 +142,34 @@ async function fetchGroupPosts(groupId: string): Promise<GroupPost[]> {
     });
   }
 
+  // Fetch linked round-robin events for round_robin posts.
+  const rrIds = Array.from(
+    new Set(
+      (postsData || [])
+        .filter((p: any) => p.type === 'round_robin' && p.round_robin_event_id)
+        .map((p: any) => p.round_robin_event_id as string)
+    )
+  );
+  const rrMap = new Map<string, GroupPost['round_robin']>();
+  if (rrIds.length > 0) {
+    const { data: rrData } = await supabase
+      .from('round_robin_events')
+      .select('id, name, date, start_time, num_courts, max_players, status, invite_code, registration_mode')
+      .in('id', rrIds);
+    const { data: rrPlayers } = await supabase
+      .from('round_robin_players')
+      .select('event_id')
+      .in('event_id', rrIds)
+      .eq('active', true);
+    const countMap = new Map<string, number>();
+    (rrPlayers || []).forEach((row: any) => {
+      countMap.set(row.event_id, (countMap.get(row.event_id) || 0) + 1);
+    });
+    (rrData || []).forEach((rr: any) => {
+      rrMap.set(rr.id, { ...rr, player_count: countMap.get(rr.id) || 0 });
+    });
+  }
+
   return (postsData || []).map(p => {
     const participantInfo = participantsMap.get(p.id);
     const pollInfo = pollVotesByPost.get(p.id);
@@ -143,6 +184,7 @@ async function fetchGroupPosts(groupId: string): Promise<GroupPost[]> {
       user_joined: participantInfo?.userJoined || false,
       poll_vote_counts: pollInfo?.counts,
       poll_my_vote: pollInfo?.myVote ?? null,
+      round_robin: (p as any).round_robin_event_id ? rrMap.get((p as any).round_robin_event_id) ?? null : null,
     };
   });
 }

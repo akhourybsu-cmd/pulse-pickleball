@@ -1,90 +1,80 @@
+## Goal
 
-# Friends Section Redesign
+Let users post Round Robins (RR) to their Community Groups, with two clear modes:
 
-## Problem
+1. **Private to a group** — only members of the chosen group can see and join the RR (no public discovery).
+2. **Shared/Advertised to a group** — RR is published publicly AND auto-posted to the chosen group's feed, so members can sign up with one tap and share the link.
 
-Today the "Add Friend" flow is a single open search field that queries `profiles` by name. That means anyone can browse the entire user base by typing names — bad for privacy, and also not the easiest way to actually connect with people you already know. The Friends tab itself is functional but flat: search bar + Add button + list, with no real prioritization, no suggestions, and no entry points beyond name search.
+Only users who are `owner` or `moderator` (group admin) of a group can post a RR to that group.
 
-## Goals
+## UX Flow (Create Round Robin Wizard)
 
-1. Remove open-ended discovery of strangers by name.
-2. Give players multiple low-friction ways to connect with people they actually know or have played with.
-3. Make name search still possible, but **scoped** to a trusted graph (mutual friends, shared groups, shared events).
-4. Polish the Friends tab UI so it feels on-brand with the rest of the player app (Outfit headings, white-card system, 8pt spacing, on-brand primary).
+Add one new step near the end of the wizard, after `EventModeStep` and before `ReviewStep`:
 
----
-
-## New connection model
-
-Replace the single "search everyone" entry point with a **Connect** hub that surfaces five paths, in order of friction:
-
-1. **Your Pulse handle / QR code** — every player gets a personal invite. Tap to reveal a large QR + shareable handle (e.g. `pulse.app/u/alex-7Q4`). Share sheet uses native share on mobile.
-2. **Enter a handle or invite code** — paste/type a short code instead of searching names. Direct lookup, no browsing.
-3. **People you've played with** — auto-suggested from shared `matches`, `event_registrations`, `tournament_registrations`, and `group_members`. This is the highest-signal source and replaces 90% of what name search is doing today.
-4. **Friends of friends** — second-degree suggestions from `friendships`, with mutual-count badge ("3 mutual").
-5. **Search by name — scoped** — only returns users who share at least one group, event, tournament, or mutual friend. Strangers never appear.
-
-Pending requests (incoming + outgoing) get their own dedicated surface so they aren't buried.
-
-## Friends tab — visual redesign
-
-Bring the tab in line with the player visual identity:
-
-- Header row: count pill ("12 Friends") + segmented control [ All · Online · Requests (n) ] instead of one flat list with a hidden requests block.
-- Friend cards: white-card surface, Outfit name + Inter rating, online dot inline with name, primary action = Message, overflow menu = View profile / Remove / Block.
-- Sticky "+ Connect" CTA bottom-right (FAB style) opens the new Connect sheet.
-- Empty state: illustrated, with three quick actions (Show my QR · Enter code · See suggestions).
-
-## Connect sheet (replaces AddFriendDialog)
-
-Bottom sheet on mobile, dialog on desktop. Single screen with collapsible sections in the order above. Each section:
-
-- **My code** — QR + handle + Copy + Share buttons.
-- **Enter code** — single input, validates against handle, shows the matched player card with one-tap Add.
-- **Suggestions** — horizontally scrollable cards for "Played with" and "Mutual friends", each card shows avatar, name, context line ("Played 3 matches" / "5 mutual"), Add button.
-- **Search** — name input, scoped server-side; empty state explains the scope ("We only show players you share a group, event, or friend with").
-
-## Backend changes
-
-1. **Add `handle` column to `profiles`**: `text unique`, auto-generated on profile insert via trigger (`<slug>-<3char>`). Add `GRANT SELECT` so the public `profiles_public` view exposes only `id, display_name, avatar_url, handle, current_rating`.
-2. **New RPC `search_connectable_users(q text)`** (security definer): returns at most 20 profiles whose `display_name`/`handle` match `q` AND the caller shares a group, event, tournament, friendship, or mutual friend with. Replaces the current open `profiles.ilike` query.
-3. **New RPC `suggest_friends()`** (security definer): returns ranked list of (user_id, reason, weight) drawn from shared matches, events, groups, and mutual friends. Excludes existing friends, pending, blocked.
-4. **New RPC `lookup_by_handle(h text)`**: exact-match handle resolver for the "Enter code" path.
-5. Update `AddFriendDialog`'s `profiles.ilike` call to call `search_connectable_users` instead. Keep RLS as-is on `profiles`.
-
-## File-level changes
-
-- `src/components/community/FriendsTab.tsx` — rework header into segmented control, polish cards, add FAB, route requests to their own segment.
-- `src/components/community/AddFriendDialog.tsx` → rename to `ConnectSheet.tsx`. New layout with the five sections above.
-- `src/components/community/MyHandleCard.tsx` *(new)* — QR + handle + share, using `qrcode.react`.
-- `src/components/community/SuggestedFriendsRow.tsx` *(new)* — horizontal scroller bound to `useFriendSuggestions`.
-- `src/hooks/useFriendSuggestions.ts` *(new)* — wraps `suggest_friends` RPC, React Query cached.
-- `src/hooks/useFriends.ts` — add `lookupByHandle`, swap search to `search_connectable_users`.
-- `supabase/migrations/<ts>_friend_connections.sql` — `handle` column + backfill + trigger, three RPCs above, GRANTs.
-
-## ASCII layout
+**Step: "Where should this Round Robin live?"** — three cards:
 
 ```text
- Friends                         (12)
- [ All ][ Online ][ Requests • 2 ]
- ─────────────────────────────────
- ● Alex Kim       4.25       💬
-   Played 3 matches together
- ─────────────────────────────────
- ○ Sam Patel      3.80       💬
-   Member of "Sunset Doubles"
- ─────────────────────────────────
-                              ╭───╮
-                              │ + │  Connect
-                              ╰───╯
+┌─────────────────────────────────────────┐
+│  Just me / friends I add manually       │  ← default (current behavior)
+│  Invite-only, no group post             │
+├─────────────────────────────────────────┤
+│  Private to a group                     │
+│  → pick from groups I admin             │
+│  Only group members can see & join      │
+├─────────────────────────────────────────┤
+│  Share to a group (recommended)         │
+│  → pick from groups I admin             │
+│  Auto-posts to group feed + public link │
+└─────────────────────────────────────────┘
 ```
 
-## Out of scope
+If the user has zero admin groups, the two group options show "Create a group first" and link to `/player/community`.
 
-- Contact-book import (iOS/Android permissions) — flagged as a follow-up.
-- Push notifications for new requests — assumed already covered by existing notification system.
-- Changes to the Messages or Groups tabs.
+The `ReviewStep` shows the selected group and visibility, with a "Change" link back to the new step.
 
-## Open question
+On submit:
+- Save RR with new `group_id` + `group_visibility` columns.
+- If "Share to a group": insert a `group_posts` row of new `type='round_robin'` linking back to the RR, pinned for 24h, with title/date/court count/CTA "Join Round Robin".
 
-Do you want a single global handle like `@alex-7q4` (visible to everyone, used everywhere), or a rotating short invite code that expires after N days? Global handle is simpler and matches the QR pattern; rotating code is more private.
+## Group Feed Card
+
+In `useGroupPosts` and the group post renderer, add a new post type `round_robin`:
+- Card shows RR name, date/time, location, players-joined/max, "Join Round Robin" button → `/round-robin/join/:invite_code` (existing flow).
+- Live-updates participant count via existing `round_robin_players` realtime subscription.
+- Admin overflow menu: "Unpin", "Remove post" (does not delete the RR itself).
+
+## Group Detail Page
+
+Add a small "Upcoming Round Robins" rail above the feed on `GroupDetail.tsx` that lists RRs where `group_id = this group`. Admins see a "+ New Round Robin" button that opens the wizard pre-seeded with this group selected.
+
+## Permissions & Visibility
+
+- New RR RLS policies:
+  - `group_visibility = 'private_group'` → only active members of `group_id` can `SELECT`.
+  - `group_visibility = 'shared_group'` → public discovery as today, plus group members get it in their feed.
+  - `group_visibility = 'personal'` → current invite-only behavior, unchanged.
+- Insert policy: when `group_id IS NOT NULL`, the organizer must be group admin (`is_group_admin(auth.uid(), group_id)`).
+- `delete_round_robin_event` + existing host policies unchanged.
+
+## Technical Details
+
+**Migration** (one file):
+- `ALTER TABLE round_robin_events ADD COLUMN group_id uuid REFERENCES groups(id) ON DELETE SET NULL`.
+- `ALTER TABLE round_robin_events ADD COLUMN group_visibility text NOT NULL DEFAULT 'personal' CHECK (group_visibility IN ('personal','private_group','shared_group'))`.
+- Index on `(group_id, date)`.
+- New/updated RLS SELECT policy on `round_robin_events` using `is_group_member()` for `private_group` and combining with existing public discovery for `shared_group`.
+- New RLS INSERT/UPDATE check: if `group_id IS NOT NULL` then `is_group_admin(auth.uid(), group_id)`.
+- Add `'round_robin'` to allowed values for `group_posts.type` (drop+recreate CHECK constraint).
+- `ALTER TABLE group_posts ADD COLUMN round_robin_event_id uuid REFERENCES round_robin_events(id) ON DELETE CASCADE` (nullable).
+
+**Frontend files to add/edit:**
+- New: `src/components/round-robin/wizard/steps/GroupShareStep.tsx`.
+- New: `src/components/community/posts/RoundRobinPostCard.tsx`.
+- New: `src/components/groups/GroupRoundRobinsRail.tsx`.
+- New hook: `src/hooks/useAdminGroups.ts` (filters `useGroups().myGroups` by `role in ('owner','moderator')`).
+- Edit: `src/components/round-robin/wizard/WizardContainer.tsx` to insert the step + persist `group_id`/`group_visibility`, and to insert the group post on success.
+- Edit: `src/hooks/useGroupPosts.ts` + `src/types/groupSettings.ts` to recognize `round_robin` type and join the RR row.
+- Edit: `src/pages/player/GroupDetail.tsx` to render the new rail.
+- Edit: `src/hooks/useVenueRoundRobins.ts` / `useGroups`-driven lists if needed for filtering.
+
+Out of scope: paid registration, cross-group sharing, venue-mode posting changes.
