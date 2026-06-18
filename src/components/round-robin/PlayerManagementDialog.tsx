@@ -78,11 +78,14 @@ export function PlayerManagementDialog({
   const inactivePlayers = players.filter(p => !p.active);
 
   const handleAddPlayer = async () => {
-    if (!selectedPlayer) return;
+    if (!addPick) return;
     setLoading(true);
     try {
-      await onAddPlayer(selectedPlayer);
-      setSelectedPlayer("");
+      await onAddPlayer({
+        playerId: addPick.isGuest ? null : addPick.id,
+        guestName: addPick.isGuest ? addPick.display_name || addPick.full_name : undefined,
+      });
+      setAddPick(null);
       setMode(null);
     } finally {
       setLoading(false);
@@ -271,12 +274,44 @@ export function PlayerManagementDialog({
             </Alert>
 
             <div className="space-y-2">
-              <Label>Select Player to Add</Label>
-              <PlayerSelector
-                value={selectedPlayer}
-                onValueChange={setSelectedPlayer}
-                placeholder="Search for a player..."
-                excludePlayerIds={players.map(p => p.player_id)}
+              <Label>Player to Add</Label>
+              <PlayerPickerSheet
+                mode="single"
+                allowGuest
+                selectedPlayers={addPick ? [addPick] : []}
+                onPlayersChange={(arr) => setAddPick(arr[0] ?? null)}
+                genderFilter={genderFilter}
+                groupId={groupId}
+                excludePlayerIds={players.map(p => p.player_id).filter(Boolean)}
+                trigger={
+                  <button
+                    type="button"
+                    className="w-full flex items-center justify-between p-3 rounded-lg border-2 border-dashed border-border hover:border-primary/50 transition-all text-left"
+                  >
+                    {addPick ? (
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Avatar className="h-7 w-7">
+                          <AvatarFallback className="text-[10px] bg-primary/15 text-primary">
+                            {(addPick.display_name || addPick.full_name)
+                              .split(" ").map(s => s[0]).filter(Boolean).slice(0,2).join("").toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="text-sm font-medium truncate">
+                          {addPick.display_name || addPick.full_name}
+                        </span>
+                        {addPick.isGuest && (
+                          <Badge variant="outline" className="text-[10px] uppercase">guest</Badge>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <UserPlus className="h-4 w-4" />
+                        <span className="text-sm">Choose from friends, group, recent, search, or guest</span>
+                      </div>
+                    )}
+                    <Pencil className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  </button>
+                }
               />
             </div>
           </div>
@@ -339,25 +374,50 @@ export function PlayerManagementDialog({
 
             <div className="space-y-2">
               <Label>New Player (substitute)</Label>
-              <PlayerSelector
-                value={substituteNew}
-                onValueChange={async (value) => {
-                  setSubstituteNew(value);
-                  if (value) {
-                    const name = await getPlayerName(value);
-                    setSubstituteNewName(name);
-                  } else {
-                    setSubstituteNewName("");
-                  }
+              <PlayerPickerSheet
+                mode="single"
+                allowGuest={false}
+                selectedPlayers={substituteNewPick ? [substituteNewPick] : []}
+                onPlayersChange={(arr) => {
+                  const p = arr[0] ?? null;
+                  setSubstituteNewPick(p);
+                  setSubstituteNew(p?.id ?? "");
+                  setSubstituteNewName(p ? (p.display_name || p.full_name) : "");
                 }}
-                placeholder="Search for replacement player..."
-                excludePlayerIds={substituteOriginal ? [substituteOriginal] : []}
+                genderFilter={genderFilter}
+                groupId={groupId}
+                excludePlayerIds={[
+                  ...(substituteOriginal ? [substituteOriginal] : []),
+                  ...players.map(p => p.player_id).filter(Boolean),
+                ]}
+                trigger={
+                  <button
+                    type="button"
+                    className="w-full flex items-center justify-between p-3 rounded-lg border-2 border-dashed border-border hover:border-primary/50 transition-all text-left"
+                  >
+                    {substituteNewPick ? (
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Avatar className="h-7 w-7">
+                          <AvatarFallback className="text-[10px] bg-primary/15 text-primary">
+                            {(substituteNewPick.display_name || substituteNewPick.full_name)
+                              .split(" ").map(s => s[0]).filter(Boolean).slice(0,2).join("").toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="text-sm font-medium truncate">
+                          {substituteNewPick.display_name || substituteNewPick.full_name}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Users className="h-4 w-4" />
+                        <span className="text-sm">Choose replacement</span>
+                      </div>
+                    )}
+                    <Pencil className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  </button>
+                }
               />
-              {substituteNew && substituteNewName && (
-                <div className="text-sm text-muted-foreground mt-1">
-                  Selected: <strong>{substituteNewName}</strong>
-                </div>
-              )}
+            </div>
             </div>
 
             <div className="space-y-2">
