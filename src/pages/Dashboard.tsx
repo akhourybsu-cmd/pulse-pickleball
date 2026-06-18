@@ -346,6 +346,7 @@ const Dashboard = () => {
             then the player-first stack. Quick Actions already render inside
             ProfileHero above on mobile. */}
         <div className="lg:hidden space-y-7 mt-4">
+          <EnablePushBanner />
           <div
             className="opacity-0 animate-fade-up"
             style={{ animationDelay: '120ms', animationFillMode: 'forwards' }}
