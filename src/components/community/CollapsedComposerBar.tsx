@@ -1,4 +1,4 @@
-import { Camera, Send } from 'lucide-react';
+import { Camera } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
