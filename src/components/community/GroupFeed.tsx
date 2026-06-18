@@ -49,6 +49,7 @@ const POST_TYPE_BADGES: Record<string, { label: string; className: string }> = {
   lfg: { label: 'LFG', className: 'bg-emerald-500/10 text-emerald-600 border-emerald-200' },
   highlight: { label: 'Highlight', className: 'bg-purple-500/10 text-purple-600 border-purple-200' },
   poll: { label: 'Poll', className: 'bg-blue-500/10 text-blue-600 border-blue-200' },
+  round_robin: { label: 'Round Robin', className: 'bg-primary/10 text-primary border-primary/30' },
   feed: { label: 'Post', className: 'bg-muted text-muted-foreground' },
 };
 
@@ -58,6 +59,7 @@ const POST_TYPE_ACCENT: Record<string, string> = {
   lfg: 'border-l-emerald-500',
   highlight: 'border-l-purple-500',
   poll: 'border-l-blue-500',
+  round_robin: 'border-l-primary',
   venue: 'border-l-primary',
   feed: 'border-l-transparent',
 };
@@ -439,6 +441,11 @@ const PostCard = memo(function PostCard({
             onVote={(idx) => onPollVote?.(post.id, idx)}
             disabled={!onPollVote || !currentUserId}
           />
+        )}
+
+        {/* Round Robin card — embedded sign-up CTA */}
+        {post.type === 'round_robin' && post.round_robin && (
+          <RoundRobinPostCard rr={post.round_robin} />
         )}
       </div>
 
