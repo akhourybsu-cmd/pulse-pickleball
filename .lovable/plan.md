@@ -1,80 +1,50 @@
 ## Goal
 
-Let users post Round Robins (RR) to their Community Groups, with two clear modes:
+Replace the cramped search-only "Add Players" UI in the Round Robin wizard with a **picker sheet** that lets organizers grab people from sources they already trust — friends, group members, recent co-players — and only falls back to typed search when needed. Plus a way to add guests who aren't on the app.
 
-1. **Private to a group** — only members of the chosen group can see and join the RR (no public discovery).
-2. **Shared/Advertised to a group** — RR is published publicly AND auto-posted to the chosen group's feed, so members can sign up with one tap and share the link.
+## New player picker sheet
 
-Only users who are `owner` or `moderator` (group admin) of a group can post a RR to that group.
+Replace `MultiPlayerCombobox` (inside `PlayersStep.tsx`) with a full-height bottom sheet, `PlayerPickerSheet.tsx`. Trigger button shows `+ Add Players` and the running count of selected players as chips below.
 
-## UX Flow (Create Round Robin Wizard)
+Inside the sheet, a sticky header with:
+- Selected players as removable chips (wraps, scrollable)
+- A clean search input (full-width, larger touch target, proper contrast — fixes the "hard to read text window")
+- Tabs: **Friends · Group · Recent · Search · Guest**
 
-Add one new step near the end of the wizard, after `EventModeStep` and before `ReviewStep`:
+### Tab contents
 
-**Step: "Where should this Round Robin live?"** — three cards:
+1. **Friends** — `useFriends()` accepted friends. Avatar + name + rating. Tap to toggle. "Add all" action at top when list ≤ remaining slots.
+2. **Group** — only visible when the RR is linked to a group (`group_id` from wizard state). Lists `group_members` for that group via `useGroupMembers`. Same toggle pattern, plus "Add all members".
+3. **Recent** — players the organizer played with in the last ~10 round-robins / matches. Single batched query against `round_robin_players` joined to events they organized, dedup + sort by most recent.
+4. **Search** — current behavior, but with the bigger input and avatar-rich list rows. Only this tab hits the broad `profiles` query.
+5. **Guest** — quick form: name + optional gender (when format requires it). Creates a `{ id: 'guest-<uuid>', full_name, isGuest: true }` entry. Handled downstream the same way placeholder count slots are (no profile lookup required at submit).
 
-```text
-┌─────────────────────────────────────────┐
-│  Just me / friends I add manually       │  ← default (current behavior)
-│  Invite-only, no group post             │
-├─────────────────────────────────────────┤
-│  Private to a group                     │
-│  → pick from groups I admin             │
-│  Only group members can see & join      │
-├─────────────────────────────────────────┤
-│  Share to a group (recommended)         │
-│  → pick from groups I admin             │
-│  Auto-posts to group feed + public link │
-└─────────────────────────────────────────┘
-```
+Gender filter from the `format` prop applies across all tabs (Friends/Group/Recent are filtered client-side; Search keeps the server filter).
 
-If the user has zero admin groups, the two group options show "Create a group first" and link to `/player/community`.
+### Selection model
 
-The `ReviewStep` shows the selected group and visibility, with a "Change" link back to the new step.
+Sheet maintains a local `Set<string>` plus a `guests[]` array, only commits to parent `onPlayersChange` when the user taps **Done (N)** in the sticky footer. Footer also shows minimum-player warning inline.
 
-On submit:
-- Save RR with new `group_id` + `group_visibility` columns.
-- If "Share to a group": insert a `group_posts` row of new `type='round_robin'` linking back to the RR, pinned for 24h, with title/date/court count/CTA "Join Round Robin".
+## Wizard integration
 
-## Group Feed Card
+`PlayersStep.tsx`:
+- Remove the `MultiPlayerCombobox` block.
+- Render a summary card: avatars stack + "X players added" + Edit button that opens `PlayerPickerSheet`.
+- Pass through `groupId` (already on wizard state) and `format` for gender filtering.
+- Keep the "Or just enter a player count instead" escape hatch.
 
-In `useGroupPosts` and the group post renderer, add a new post type `round_robin`:
-- Card shows RR name, date/time, location, players-joined/max, "Join Round Robin" button → `/round-robin/join/:invite_code` (existing flow).
-- Live-updates participant count via existing `round_robin_players` realtime subscription.
-- Admin overflow menu: "Unpin", "Remove post" (does not delete the RR itself).
+`WizardContainer.tsx`: extend the player payload to accept guest entries — on submit, guest rows insert into `round_robin_players` with `player_id = null` and a `guest_name` column.
 
-## Group Detail Page
+## Technical details
 
-Add a small "Upcoming Round Robins" rail above the feed on `GroupDetail.tsx` that lists RRs where `group_id = this group`. Admins see a "+ New Round Robin" button that opens the wizard pre-seeded with this group selected.
+- **New file:** `src/components/round-robin/PlayerPickerSheet.tsx` (uses shadcn `Sheet`, `Tabs`, `Command` only inside the Search tab).
+- **New hook:** `src/hooks/useRecentCoPlayers.ts` — single batched query, React Query cached.
+- **Edit:** `src/components/round-robin/wizard/steps/PlayersStep.tsx`, `src/components/round-robin/wizard/WizardContainer.tsx`.
+- **Schema:** add nullable `guest_name text` to `round_robin_players` (migration), so guests don't require a profile row. RLS unchanged.
+- `MultiPlayerCombobox.tsx` stays for other callers; the RR wizard simply stops using it.
 
-## Permissions & Visibility
+## Out of scope
 
-- New RR RLS policies:
-  - `group_visibility = 'private_group'` → only active members of `group_id` can `SELECT`.
-  - `group_visibility = 'shared_group'` → public discovery as today, plus group members get it in their feed.
-  - `group_visibility = 'personal'` → current invite-only behavior, unchanged.
-- Insert policy: when `group_id IS NOT NULL`, the organizer must be group admin (`is_group_admin(auth.uid(), group_id)`).
-- `delete_round_robin_event` + existing host policies unchanged.
-
-## Technical Details
-
-**Migration** (one file):
-- `ALTER TABLE round_robin_events ADD COLUMN group_id uuid REFERENCES groups(id) ON DELETE SET NULL`.
-- `ALTER TABLE round_robin_events ADD COLUMN group_visibility text NOT NULL DEFAULT 'personal' CHECK (group_visibility IN ('personal','private_group','shared_group'))`.
-- Index on `(group_id, date)`.
-- New/updated RLS SELECT policy on `round_robin_events` using `is_group_member()` for `private_group` and combining with existing public discovery for `shared_group`.
-- New RLS INSERT/UPDATE check: if `group_id IS NOT NULL` then `is_group_admin(auth.uid(), group_id)`.
-- Add `'round_robin'` to allowed values for `group_posts.type` (drop+recreate CHECK constraint).
-- `ALTER TABLE group_posts ADD COLUMN round_robin_event_id uuid REFERENCES round_robin_events(id) ON DELETE CASCADE` (nullable).
-
-**Frontend files to add/edit:**
-- New: `src/components/round-robin/wizard/steps/GroupShareStep.tsx`.
-- New: `src/components/community/posts/RoundRobinPostCard.tsx`.
-- New: `src/components/groups/GroupRoundRobinsRail.tsx`.
-- New hook: `src/hooks/useAdminGroups.ts` (filters `useGroups().myGroups` by `role in ('owner','moderator')`).
-- Edit: `src/components/round-robin/wizard/WizardContainer.tsx` to insert the step + persist `group_id`/`group_visibility`, and to insert the group post on success.
-- Edit: `src/hooks/useGroupPosts.ts` + `src/types/groupSettings.ts` to recognize `round_robin` type and join the RR row.
-- Edit: `src/pages/player/GroupDetail.tsx` to render the new rail.
-- Edit: `src/hooks/useVenueRoundRobins.ts` / `useGroups`-driven lists if needed for filtering.
-
-Out of scope: paid registration, cross-group sharing, venue-mode posting changes.
+- No changes to the friends/community system itself.
+- No SMS/email invites for guests (just local-name placeholders for this RR).
+- No changes to the open-registration max-players UI.

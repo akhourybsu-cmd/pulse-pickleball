@@ -3302,27 +3302,30 @@ export type Database = {
           active: boolean
           bye_count: number
           event_id: string
+          guest_name: string | null
           id: string
           joined_at: string
-          player_id: string
+          player_id: string | null
           registration_status: string | null
         }
         Insert: {
           active?: boolean
           bye_count?: number
           event_id: string
+          guest_name?: string | null
           id?: string
           joined_at?: string
-          player_id: string
+          player_id?: string | null
           registration_status?: string | null
         }
         Update: {
           active?: boolean
           bye_count?: number
           event_id?: string
+          guest_name?: string | null
           id?: string
           joined_at?: string
-          player_id?: string
+          player_id?: string | null
           registration_status?: string | null
         }
         Relationships: [
