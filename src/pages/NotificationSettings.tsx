@@ -4,8 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Bell, Target, Calendar, Users, Trophy, Settings } from "lucide-react";
+import { ArrowLeft, Bell, BellRing, Target, Calendar, Users, Trophy, Settings } from "lucide-react";
 import { useNotificationPreferences } from "@/hooks/useNotifications";
+import { usePushSubscription } from "@/hooks/usePushSubscription";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const categoryConfig = [
