@@ -1,25 +1,24 @@
-import { 
-  Sparkles, 
-  Wrench, 
-  Bug, 
-  Users, 
-  LayoutDashboard, 
-  MapPin, 
-  Shield, 
+import {
+  Sparkles,
+  Wrench,
+  Shield,
   Zap,
-  Calendar,
-  MessageSquare,
-  Upload,
-  GripVertical,
+  LayoutDashboard,
   UserCog,
   Building2,
   Trophy,
   Bell,
-  Star,
-  Target,
   TrendingUp,
   QrCode,
-  type LucideIcon
+  Target,
+  Fingerprint,
+  Link2,
+  MessageCircle,
+  Users,
+  RefreshCw,
+  Calendar,
+  Heart,
+  type LucideIcon,
 } from "lucide-react";
 
 export interface ChangeCategory {
@@ -38,6 +37,123 @@ export interface ChangelogEntry {
 
 export const changelog: ChangelogEntry[] = [
   {
+    version: "2.3.0",
+    date: "2026-06-18",
+    type: "feature",
+    title: "Sign-In Hardening & Live Updates",
+    categories: [
+      {
+        name: "Authentication",
+        icon: Shield,
+        changes: [
+          "Rebuilt Google and Apple sign-in so a successful login lands you on the dashboard every time — no more bounce back to the auth screen",
+          "Added an OAuth recovery layer that finishes the handshake automatically when returning from Google / Apple",
+          "Hardened session detection so the app waits for a confirmed session before routing",
+          "Sanitized redirects to prevent post-login loops back to /auth",
+        ],
+      },
+      {
+        name: "Account Linking",
+        icon: Link2,
+        changes: [
+          "New Linked Accounts panel in Profile → Security lets email-only users connect Google or Apple after the fact",
+          "One-tap linking and unlinking with clear status indicators per provider",
+        ],
+      },
+      {
+        name: "Automatic Updates",
+        icon: RefreshCw,
+        changes: [
+          "Service worker bumped to v5 — navigations always fetch fresh HTML so new releases appear without a hard refresh",
+          "App now auto-reloads the moment a new build is activated",
+          "Stale service workers are detected and unregistered to clear cached auth state",
+        ],
+      },
+    ],
+  },
+  {
+    version: "2.2.0",
+    date: "2026-05-12",
+    type: "feature",
+    title: "Biometric Sign-In & Profile Refresh",
+    categories: [
+      {
+        name: "Biometric Authentication",
+        icon: Fingerprint,
+        changes: [
+          "Sign in with Face ID, Touch ID, or device biometrics via WebAuthn",
+          "New verify-biometric-auth edge function for secure server-side validation",
+          "Enroll, manage, and revoke biometric credentials from Profile → Security",
+        ],
+      },
+      {
+        name: "Profile Editor Redesign",
+        icon: UserCog,
+        changes: [
+          "/profile/edit now lives inside the player shell with the standard header, bottom nav, and gradient wash",
+          "Floating save bar that stays clear of the bottom navigation",
+          "Preserves deep-link query params (focus, return) when redirecting",
+          "First and last name are now required fields and enforced on save",
+        ],
+      },
+      {
+        name: "Notifications",
+        icon: Bell,
+        changes: [
+          "Notification Center polish: swipe-to-delete, colored category icons, deep linking to the relevant screen",
+          "38+ tournament notification triggers wired up with scheduled Cron alerts",
+        ],
+      },
+    ],
+  },
+  {
+    version: "2.1.0",
+    date: "2026-03-20",
+    type: "major",
+    title: "Tournaments, Messaging & Social",
+    categories: [
+      {
+        name: "Tournament System",
+        icon: Trophy,
+        changes: [
+          "Launched the full tournament platform: discovery, registration, day-planner, seeding, and templates",
+          "Single-page /tournament/:eventId/register flow with profile-readiness checks",
+          "Custom tournament URLs with slug validation",
+          "Unified event discovery — tournaments sync into the shared /player/find feed via a Postgres trigger",
+          "Bidirectional event roster integration between venues and players",
+        ],
+      },
+      {
+        name: "Friends & Messaging",
+        icon: MessageCircle,
+        changes: [
+          "New friendships and direct_messages systems with real-time delivery",
+          "Supabase Presence powers live online status and typing indicators",
+          "Bottom-anchored composer pattern for fast mobile messaging",
+        ],
+      },
+      {
+        name: "Community & Venues",
+        icon: Heart,
+        changes: [
+          "Player favorite venues with a dedicated hook and UI",
+          "Venue following + announcements creating a marketing flywheel",
+          "Bidirectional venue ↔ community group linking with shared branding",
+          "Public venue pages now bundle Schedule, Events, and Coaching in a tabbed bottom nav",
+        ],
+      },
+      {
+        name: "Payments",
+        icon: Zap,
+        changes: [
+          "Stripe Connect architecture with platform fee routing",
+          "Subscription tiers, feature limits, and admin bypass for internal accounts",
+          "Financial transactions table with refund processing and full audit log",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.0.0",
     date: "2026-01-03",
     type: "major",
@@ -48,56 +164,26 @@ export const changelog: ChangelogEntry[] = [
         icon: Sparkles,
         changes: [
           "Launched Community Hub with groups, posts, events, and file sharing",
-          "Added group creation with public, private, and invite-only options",
-          "Implemented group admin panel with roles, permissions, and privacy settings",
-          "Added group avatar upload for admins",
-          "Implemented drag-and-drop group reordering for personalized display order",
-          "Added group events with RSVP system and calendar integration",
-          "Implemented real-time group chat with message threads",
-          "Added post reactions and nested comments",
-          "Implemented group file storage with member uploads",
-          "Added comprehensive changelog with privacy & legal section",
-        ]
+          "Group creation with public, private, and invite-only options",
+          "Group admin panel with roles, permissions, and privacy settings",
+          "Drag-and-drop group reordering for personalized display",
+          "Group events with RSVP and calendar integration",
+          "Real-time group chat with message threads",
+          "Post reactions and nested comments",
+          "Comprehensive changelog with privacy & legal section",
+        ],
       },
       {
         name: "Improvements",
         icon: Wrench,
         changes: [
-          "Enhanced group member management with role hierarchy (Owner, Admin, Moderator, Member)",
-          "Premium UI refinements with breathing room and visual hierarchy",
+          "Role hierarchy: Owner, Admin, Moderator, Member",
+          "Premium UI refinements with better visual hierarchy",
           "Improved mobile responsiveness across all group views",
-          "Added group discovery with search and filters",
-        ]
-      }
-    ]
-  },
-  {
-    version: "1.9.0",
-    date: "2025-12-28",
-    type: "feature",
-    title: "Demo Tour Overhaul",
-    categories: [
-      {
-        name: "New Features",
-        icon: Sparkles,
-        changes: [
-          "Completely rebuilt Demo Tour with realistic sample data",
-          "Added interactive demo showcasing full dashboard experience",
-          "Demo mode with 'Pickle Pete' sample profile",
-          "Strategic CTAs guiding new users to sign up",
-          "Demo match history with realistic statistics",
-        ]
+          "Group discovery with search and filters",
+        ],
       },
-      {
-        name: "Improvements",
-        icon: Wrench,
-        changes: [
-          "Enhanced onboarding flow with clearer value propositions",
-          "Improved demo data accuracy for rating calculations",
-          "Better demo-to-signup conversion flow",
-        ]
-      }
-    ]
+    ],
   },
   {
     version: "1.8.0",
@@ -109,25 +195,24 @@ export const changelog: ChangelogEntry[] = [
         name: "New Features",
         icon: LayoutDashboard,
         changes: [
-          "New ProfileHero component with unified player overview",
-          "Added SpacesPreviewRow for home court and groups at a glance",
-          "Added StatsByCourtCard for venue-specific performance tracking",
+          "New ProfileHero with a unified player overview",
+          "SpacesPreviewRow for home court and groups at a glance",
+          "StatsByCourtCard for venue-specific performance tracking",
           "Redesigned PerformanceModule with match history and trends",
-          "Added ActivityModule with pending actions and notifications",
-          "Implemented mobile-responsive tab toggle for dashboard sections",
-        ]
+          "ActivityModule with pending actions and notifications",
+          "Mobile-responsive tab toggle for dashboard sections",
+        ],
       },
       {
         name: "Improvements",
         icon: Wrench,
         changes: [
-          "Added win rate visualization ring with animated progress",
-          "Enhanced rating display with week-over-week delta indicator",
-          "Improved data loading states with skeleton placeholders",
-          "Better visual hierarchy across all dashboard cards",
-        ]
-      }
-    ]
+          "Animated win-rate ring",
+          "Rating display with week-over-week delta",
+          "Skeleton loading states everywhere",
+        ],
+      },
+    ],
   },
   {
     version: "1.7.0",
@@ -139,27 +224,18 @@ export const changelog: ChangelogEntry[] = [
         name: "New Features",
         icon: Building2,
         changes: [
-          "Launched comprehensive venue management platform",
-          "Added venue onboarding wizard with step-by-step setup",
-          "Implemented venue courts, bookings, and events management",
-          "Added Round Robin event system with fairness algorithms",
-          "Added venue kiosk mode for public displays",
-          "Implemented venue analytics dashboard with insights",
-          "Added venue branding with custom logos and colors",
-          "Launched public venue landing pages (white-label ready)",
-          "Added venue staff management with role-based access",
-        ]
+          "Comprehensive venue management platform",
+          "Step-by-step venue onboarding wizard",
+          "Courts, bookings, and events management",
+          "Round Robin event system with fairness algorithms",
+          "Venue kiosk mode for public displays",
+          "Venue analytics dashboard with insights",
+          "Custom venue branding (logos, colors)",
+          "Public white-label venue landing pages",
+          "Staff management with role-based access",
+        ],
       },
-      {
-        name: "Improvements",
-        icon: Wrench,
-        changes: [
-          "Enhanced venue search with location-based discovery",
-          "Improved booking flow with real-time availability",
-          "Better venue-player connection tools",
-        ]
-      }
-    ]
+    ],
   },
   {
     version: "1.6.0",
@@ -171,23 +247,13 @@ export const changelog: ChangelogEntry[] = [
         name: "New Features",
         icon: QrCode,
         changes: [
-          "Added session queue management system",
-          "Implemented kiosk display mode for organizers",
-          "Added QR code check-in functionality",
-          "Enforced one active session per court rule",
-          "Removed admin-only restriction for creating sessions",
-          "Added organizer-specific kiosk access control",
-        ]
+          "Session queue management system",
+          "Kiosk display mode for organizers",
+          "QR code check-in",
+          "One active session per court enforcement",
+        ],
       },
-      {
-        name: "Improvements",
-        icon: Wrench,
-        changes: [
-          "Moved 'Record New Match' button to top of dashboard",
-          "Improved session flow for faster check-ins",
-        ]
-      }
-    ]
+    ],
   },
   {
     version: "1.5.0",
@@ -199,22 +265,14 @@ export const changelog: ChangelogEntry[] = [
         name: "New Features",
         icon: TrendingUp,
         changes: [
-          "Implemented PULSE rating system with cumulative calculations",
-          "Added provisional match bonuses for new players",
-          "Enhanced match type support (ladder, league, playoffs, casual)",
-          "Added weekly rating snapshots for trend tracking",
-        ]
+          "PULSE rating system with cumulative calculations",
+          "Provisional match bonuses for new players",
+          "Match-type support (ladder, league, playoffs, casual)",
+          "Weekly rating snapshots for trend tracking",
+          "Margin-of-victory multipliers",
+        ],
       },
-      {
-        name: "Improvements",
-        icon: Wrench,
-        changes: [
-          "Improved rating calculation with margin of victory multipliers",
-          "Better opponent rating tracking for accuracy",
-          "Enhanced rating display throughout the app",
-        ]
-      }
-    ]
+    ],
   },
   {
     version: "1.4.0",
@@ -226,14 +284,13 @@ export const changelog: ChangelogEntry[] = [
         name: "New Features",
         icon: Trophy,
         changes: [
-          "Launched badge system with achievement tracking",
-          "Added court connector for finding playing partners",
-          "Implemented real-time participant notifications",
-          "Enhanced profile customization options",
-          "Added paddle preferences and player metadata",
-        ]
-      }
-    ]
+          "Badge system with achievement tracking",
+          "Court connector for finding playing partners",
+          "Real-time participant notifications",
+          "Paddle preferences and player metadata",
+        ],
+      },
+    ],
   },
   {
     version: "1.3.0",
@@ -245,21 +302,12 @@ export const changelog: ChangelogEntry[] = [
         name: "New Features",
         icon: Shield,
         changes: [
-          "Added match approval workflow for verified results",
-          "Implemented contested match system",
-          "Enhanced match history with detailed analytics",
-          "Added point differential tracking",
-        ]
+          "Match approval workflow for verified results",
+          "Contested match system",
+          "Detailed match analytics with point differential",
+        ],
       },
-      {
-        name: "Improvements",
-        icon: Wrench,
-        changes: [
-          "Improved opponent rating calculations",
-          "Better match verification flow",
-        ]
-      }
-    ]
+    ],
   },
   {
     version: "1.2.0",
@@ -271,21 +319,19 @@ export const changelog: ChangelogEntry[] = [
         name: "New Features",
         icon: UserCog,
         changes: [
-          "Added user authentication system",
-          "Implemented profile management",
-          "Created admin dashboard",
-          "Added court management functionality",
-        ]
+          "User authentication and profile management",
+          "Admin dashboard and court management",
+        ],
       },
       {
         name: "Security",
         icon: Shield,
         changes: [
-          "Enhanced security with Row-Level Security policies",
-          "Implemented secure session management",
-        ]
-      }
-    ]
+          "Row-Level Security policies across all tables",
+          "Secure session management",
+        ],
+      },
+    ],
   },
   {
     version: "1.1.0",
@@ -297,21 +343,12 @@ export const changelog: ChangelogEntry[] = [
         name: "New Features",
         icon: Target,
         changes: [
-          "Launched match recording feature",
-          "Added basic rating system",
-          "Implemented win/loss tracking",
-          "Created match history view",
-        ]
+          "Match recording with basic rating system",
+          "Win/loss tracking and match history view",
+          "Mobile-optimized match entry",
+        ],
       },
-      {
-        name: "Improvements",
-        icon: Wrench,
-        changes: [
-          "Added responsive design improvements",
-          "Better mobile experience for recording matches",
-        ]
-      }
-    ]
+    ],
   },
   {
     version: "1.0.0",
@@ -324,12 +361,12 @@ export const changelog: ChangelogEntry[] = [
         icon: Zap,
         changes: [
           "Initial release of PULSE",
-          "Basic player profiles with customization",
-          "Court database setup with locations",
+          "Player profiles with customization",
+          "Court database with locations",
           "Match tracking foundation",
           "Light/dark theme support",
-        ]
-      }
-    ]
+        ],
+      },
+    ],
   },
 ];
