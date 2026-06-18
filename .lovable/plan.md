@@ -1,38 +1,36 @@
-## Goal
-Add backend notification triggers (in-app + push) for **community**, **friends**, and **direct messages** events that currently have no notifications, then send live test pushes to your device.
+## Diagnosis
+The push plumbing is in place — service worker registered, VAPID keys configured both client (`VITE_VAPID_PUBLIC_KEY`) and server (`VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_CONTACT`), `push-send` edge function deployed, dispatch trigger live on `user_notifications`.
 
-## Current state
-- `user_notifications` table + `useNotifications` hook + `push-send` edge function (web-push) + `push_subscriptions` table all exist and work.
-- Tournament/venue/event reminders already create notifications via edge functions.
-- **No triggers exist** for community posts, group events, friend requests, or DMs — so they're silent today.
+But `push_subscriptions` is empty for every user — meaning **no device has ever tapped "Enable push"**. The toggle only exists buried at `/settings/notifications`, so notifications create rows in `user_notifications` (bell icon works) but never deliver a web push.
 
-## What gets added (DB triggers + push fan-out)
+There's also a platform gotcha worth surfacing in-app: **iOS Safari requires the site to be installed to the Home Screen first** before it'll allow web push at all. Plain Mobile Safari will not show a "Allow notifications" prompt.
 
-| Trigger source | When | Recipients | Notification |
-|---|---|---|---|
-| `group_posts` INSERT | New post in a group | All active group members except author | "New post in {group}" → opens group feed |
-| `group_events` INSERT | New event scheduled | All active group members except creator | "New event: {title} on {date}" → opens schedule |
-| `friendships` INSERT (status=`pending`) | Friend request received | The `friend_id` recipient | "{actor} sent you a friend request" → `/player/friends` |
-| `friendships` UPDATE → `accepted` | Friend request accepted | The original requester | "{actor} accepted your friend request" → friend's profile |
-| `direct_messages` INSERT | New DM | All conversation participants except sender | "{sender}: {preview}" → `/player/messages/:conversationId` |
-| `group_messages` INSERT | New group chat message | All active group members except sender | "{sender} in {group}: {preview}" → group chat |
+## Plan
 
-Each trigger:
-1. Inserts a row into `user_notifications` (respecting `notification_preferences.in_app_enabled` for the category).
-2. Calls `push-send` via `pg_net.http_post` with the dispatch secret (respecting `push_enabled`), so registered devices get a real web-push.
-3. Uses `category` values: `community`, `social`, `messages` (so users can toggle each independently in notification settings).
+### 1. Surface a "Turn on notifications" prompt where users will see it
+- Add a dismissible banner at the top of the player dashboard (`Dashboard.tsx`) that shows when:
+  - `usePushSubscription` reports `supported && state === "disabled"` (not denied, not already enabled)
+  - User hasn't dismissed it in this session (localStorage flag)
+- Banner copy: "Get notified about new posts, friend requests, and messages." → **Enable** button calls `enable()` from the hook.
+- On iOS Safari (not standalone PWA), show different copy: "Install PULSE to your Home Screen first to enable notifications" with a short how-to (Share → Add to Home Screen). Detect via `navigator.standalone === false && /iPad|iPhone|iPod/.test(navigator.userAgent)`.
+- On denied state, show: "Notifications are blocked. Enable them in your browser settings."
 
-A small SQL helper `public.enqueue_notification(user_id, type, category, title, message, link, actor_id, metadata)` will do the insert + push dispatch in one call to keep triggers tidy.
+### 2. Make the existing settings page more findable
+- Add a quick link/button in the banner: "Manage in settings →" that goes to `/settings/notifications`.
 
-## Test pushes
-After the migration is approved and applied, I'll call `push-send` directly through the edge-function test tool, targeting your user id, with three sample payloads:
-1. **Community** — "New post in Demo Group"
-2. **Friends** — "Alex sent you a friend request"
-3. **Messages** — "Alex: Hey, ready for tonight?"
+### 3. Verify after enable
+- Once the user taps Enable and grants permission, the hook upserts into `push_subscriptions`. I'll then immediately fire a test push via `push-send` so they get an OS notification on the spot confirming it works.
 
-You'll need to have allowed push notifications on the device/browser (i.e. `push_subscriptions` has a row for you). If you haven't subscribed yet, I'll point you at the notification settings page first — otherwise tests will return `sent: 0`.
+### 4. Improve the SW push payload safety
+- Minor: the current SW push listener already handles the payload shape `push-send` emits (`title`, `body`, `url`, `tag`, `priority`). Leave it as-is.
 
-## Out of scope
-- Email delivery (notification_preferences.email_enabled is respected for the flag, but no email send is wired here).
-- Per-group muting beyond the existing `group_notification_prefs` table — I'll honor it for `group_posts`/`group_events`/`group_messages` if a row exists, default = on.
-- Bulk backfill for past posts/messages — only new activity going forward triggers notifications.
+### Technical notes
+- New component: `src/components/dashboard/EnablePushBanner.tsx`
+- No backend changes — fix is purely client-side UX so the subscription actually gets registered.
+- No new dependencies.
+
+## What you'll need to do
+- On **Android Chrome** or **desktop Chrome/Edge**: just tap the new "Enable" banner → grant permission → I'll fire a test push.
+- On **iPhone Safari**: first install PULSE (Share → Add to Home Screen), then **open the installed app from the home screen**, then tap Enable. iOS will only show the permission prompt inside the installed PWA.
+
+Reply once you've tapped Enable on a device and I'll send the test push.

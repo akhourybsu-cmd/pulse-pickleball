@@ -23,6 +23,7 @@ import { StatsByCourtCard } from "@/components/dashboard/StatsByCourtCard";
 import { UpcomingEventsPreview } from "@/components/dashboard/UpcomingEventsPreview";
 import { MyRoundRobinsCard } from "@/components/dashboard/MyRoundRobinsCard";
 import { MyCommunitiesRail } from "@/components/dashboard/MyCommunitiesRail";
+import { EnablePushBanner } from "@/components/dashboard/EnablePushBanner";
 // RoleSwitcherCard hidden during the player-only beta. Re-import + render
 // when the venue surface returns.
 // import { RoleSwitcherCard } from "@/components/dashboard/RoleSwitcherCard";
@@ -223,6 +224,7 @@ const Dashboard = () => {
         {/* Desktop: Two-column — action stack left, sticky activity right */}
         <div className="hidden lg:grid lg:grid-cols-12 lg:gap-6">
           <div className="lg:col-span-7 space-y-8">
+            <EnablePushBanner />
             {/* Quick Actions — primary action surface (Record Match etc.) */}
             <div
               className="opacity-0 animate-fade-up"
@@ -344,6 +346,7 @@ const Dashboard = () => {
             then the player-first stack. Quick Actions already render inside
             ProfileHero above on mobile. */}
         <div className="lg:hidden space-y-7 mt-4">
+          <EnablePushBanner />
           <div
             className="opacity-0 animate-fade-up"
             style={{ animationDelay: '120ms', animationFillMode: 'forwards' }}
