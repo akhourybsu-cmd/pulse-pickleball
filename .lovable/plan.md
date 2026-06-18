@@ -1,50 +1,42 @@
 ## Goal
 
-Replace the cramped search-only "Add Players" UI in the Round Robin wizard with a **picker sheet** that lets organizers grab people from sources they already trust — friends, group members, recent co-players — and only falls back to typed search when needed. Plus a way to add guests who aren't on the app.
+Bring the same tabbed picker UX into the live Round Robin settings — specifically the **Player Management** dialog opened from a running event (RoundRobinDetail and VenueRoundRobinDetail). Today both the "Add player" and "Substitute → new player" flows use a single-select `PlayerSelector` combobox, which has the same cramped, search-only feel the wizard had.
 
-## New player picker sheet
+## What changes
 
-Replace `MultiPlayerCombobox` (inside `PlayersStep.tsx`) with a full-height bottom sheet, `PlayerPickerSheet.tsx`. Trigger button shows `+ Add Players` and the running count of selected players as chips below.
+### 1. New single-select picker
 
-Inside the sheet, a sticky header with:
-- Selected players as removable chips (wraps, scrollable)
-- A clean search input (full-width, larger touch target, proper contrast — fixes the "hard to read text window")
-- Tabs: **Friends · Group · Recent · Search · Guest**
+Add a `mode: "single" | "multi"` prop to the existing `PlayerPickerSheet` (or a thin `SinglePlayerPickerSheet` wrapper). Behavior:
+- Same Friends · Group · Recent · Search tabs and clean search input.
+- Tapping a player in single mode commits immediately (no Done button) and closes the sheet, returning `{ id, name, isGuest }` to the parent.
+- `excludePlayerIds` prop hides players already in the event (or the substitute "original").
+- Gender filter respects the event's format.
 
-### Tab contents
+### 2. PlayerManagementDialog rewrite of the two PlayerSelector spots
 
-1. **Friends** — `useFriends()` accepted friends. Avatar + name + rating. Tap to toggle. "Add all" action at top when list ≤ remaining slots.
-2. **Group** — only visible when the RR is linked to a group (`group_id` from wizard state). Lists `group_members` for that group via `useGroupMembers`. Same toggle pattern, plus "Add all members".
-3. **Recent** — players the organizer played with in the last ~10 round-robins / matches. Single batched query against `round_robin_players` joined to events they organized, dedup + sort by most recent.
-4. **Search** — current behavior, but with the bigger input and avatar-rich list rows. Only this tab hits the broad `profiles` query.
-5. **Guest** — quick form: name + optional gender (when format requires it). Creates a `{ id: 'guest-<uuid>', full_name, isGuest: true }` entry. Handled downstream the same way placeholder count slots are (no profile lookup required at submit).
+- **Add player tab**: replace `PlayerSelector` with the picker sheet trigger. Include the **Guest** tab — guests insert into `round_robin_players` with `player_id = null` + `guest_name` (schema already supports this from the wizard work). Show a chip preview of the chosen player before confirm.
+- **Substitute → new player**: replace `PlayerSelector` with the picker sheet trigger, **no Guest tab** (substitution writes into `round_robin_schedule.player_id` which requires a real UUID). Show selected name as a chip.
+- "Original player" select and "Mark inactive" select stay as-is — they're picking from existing roster, dropdown is fine.
 
-Gender filter from the `format` prop applies across all tabs (Friends/Group/Recent are filtered client-side; Search keeps the server filter).
+### 3. Thread `groupId` through
 
-### Selection model
+- `RoundRobinDetail.tsx` and `VenueRoundRobinDetail.tsx` already load the event row, which has `group_id`. Pass it into `PlayerManagementDialog`, which forwards it to the picker so the **Group** tab appears when the event is linked to a community group.
 
-Sheet maintains a local `Set<string>` plus a `guests[]` array, only commits to parent `onPlayersChange` when the user taps **Done (N)** in the sticky footer. Footer also shows minimum-player warning inline.
+### 4. Guest add path on `RoundRobinDetail`
 
-## Wizard integration
-
-`PlayersStep.tsx`:
-- Remove the `MultiPlayerCombobox` block.
-- Render a summary card: avatars stack + "X players added" + Edit button that opens `PlayerPickerSheet`.
-- Pass through `groupId` (already on wizard state) and `format` for gender filtering.
-- Keep the "Or just enter a player count instead" escape hatch.
-
-`WizardContainer.tsx`: extend the player payload to accept guest entries — on submit, guest rows insert into `round_robin_players` with `player_id = null` and a `guest_name` column.
-
-## Technical details
-
-- **New file:** `src/components/round-robin/PlayerPickerSheet.tsx` (uses shadcn `Sheet`, `Tabs`, `Command` only inside the Search tab).
-- **New hook:** `src/hooks/useRecentCoPlayers.ts` — single batched query, React Query cached.
-- **Edit:** `src/components/round-robin/wizard/steps/PlayersStep.tsx`, `src/components/round-robin/wizard/WizardContainer.tsx`.
-- **Schema:** add nullable `guest_name text` to `round_robin_players` (migration), so guests don't require a profile row. RLS unchanged.
-- `MultiPlayerCombobox.tsx` stays for other callers; the RR wizard simply stops using it.
+- `handleAddPlayer` currently takes a `playerId: string`. Widen to `({ playerId, guestName }: { playerId: string | null; guestName?: string })` and write `player_id` / `guest_name` accordingly when inserting into `round_robin_players`. Schedule regeneration logic stays the same (guest rows just appear in the rotation by name).
+- `VenueRoundRobinDetail` mirrors the same change.
 
 ## Out of scope
 
-- No changes to the friends/community system itself.
-- No SMS/email invites for guests (just local-name placeholders for this RR).
-- No changes to the open-registration max-players UI.
+- `EditMatchSheet` (admin tool) keeps `PlayerSelector` for now — different surface, low traffic.
+- No changes to substitution or mark-inactive logic itself.
+- No changes to the wizard.
+
+## Technical details
+
+- **Edit:** `src/components/round-robin/PlayerPickerSheet.tsx` — add `mode` and `excludePlayerIds` props; in single mode hide multi-select chips and footer, commit on tap.
+- **Edit:** `src/components/round-robin/PlayerManagementDialog.tsx` — swap both `PlayerSelector` usages, add `groupId` prop, render selected chip for confirm step.
+- **Edit:** `src/pages/RoundRobinDetail.tsx` — pass `event.group_id` to dialog; update `handleAddPlayer` signature + insert payload to support guests.
+- **Edit:** `src/pages/venue/VenueRoundRobinDetail.tsx` — same two changes.
+- No new tables, no new migrations — `guest_name` already exists on `round_robin_players`.
