@@ -219,7 +219,6 @@ const getPostAuthDestination = () => {
 };
 
 const AppContent = () => {
-  const location = useLocation();
   const navigate = useNavigate();
   useAuthPersistence();
 
