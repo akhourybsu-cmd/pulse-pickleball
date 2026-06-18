@@ -367,6 +367,17 @@ export function WizardContainer() {
             onRatingTypeChange={(v) => updateFormData("ratingType", v)}
           />
         );
+      case "sharing":
+        return (
+          <GroupShareStep
+            visibility={formData.groupVisibility}
+            groupId={formData.groupId}
+            onChange={(v, gid) => {
+              updateFormData("groupVisibility", v);
+              updateFormData("groupId", gid);
+            }}
+          />
+        );
       case "review":
         return (
           <ReviewStep
