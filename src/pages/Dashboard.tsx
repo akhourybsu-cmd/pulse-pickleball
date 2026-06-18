@@ -224,6 +224,7 @@ const Dashboard = () => {
         {/* Desktop: Two-column — action stack left, sticky activity right */}
         <div className="hidden lg:grid lg:grid-cols-12 lg:gap-6">
           <div className="lg:col-span-7 space-y-8">
+            <EnablePushBanner />
             {/* Quick Actions — primary action surface (Record Match etc.) */}
             <div
               className="opacity-0 animate-fade-up"
