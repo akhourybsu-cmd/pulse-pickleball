@@ -1,19 +1,32 @@
 <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-  <!-- PULSE maskable app icon — for Android adaptive icons.
-       The W3C "maskable" spec requires content to sit inside a 80%
-       safe zone (a circle of radius 40 centered in a 100 viewBox).
-       Outside that area Android crops to circle / squircle / teardrop
-       / square depending on the launcher.
-       Cream fills the full viewBox (no rounded corners — Android
-       supplies the shape mask). The glyph sits inside the safe zone. -->
+  <!-- Maskable app icon for Android adaptive launchers.
+       Content sits inside the 80 % safe zone (circle radius 40 centered at 50,50).
+       Cream fills the full viewBox — Android supplies the mask shape. -->
+
+  <defs>
+    <linearGradient id="maskableStroke" x1="15" y1="50" x2="85" y2="50" gradientUnits="userSpaceOnUse">
+      <stop offset="0"    stop-color="#1B1D21"/>
+      <stop offset="0.28" stop-color="#1B1D21"/>
+      <stop offset="0.38" stop-color="#CC9332"/>
+      <stop offset="0.62" stop-color="#CC9332"/>
+      <stop offset="0.72" stop-color="#1B1D21"/>
+      <stop offset="1"    stop-color="#1B1D21"/>
+    </linearGradient>
+
+    <filter id="maskableShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="1.5" stdDeviation="2.5"
+                    flood-color="#1B1D21" flood-opacity="0.12"/>
+    </filter>
+  </defs>
+
   <rect width="100" height="100" fill="#F4F1E9"/>
 
-  <!-- Glyph: same proportions as the standard favicon but sized so
-       every stroke endpoint sits within a 40-radius circle from (50,50).
-       Span: x=20 → x=80 horizontally; spike peaks at y=33 / y=72. -->
-  <g stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none">
-    <path d="M 20 50 H 40" stroke="#1B1D21"/>
-    <path d="M 40 50 l 6 -17 l 11 33 l 6 -17" stroke="#CC9332"/>
-    <path d="M 63 50 H 80" stroke="#1B1D21"/>
-  </g>
+  <!-- Glyph: scaled to stay well inside the safe zone. -->
+  <path d="M 20 50 H 40 l 6 -17 l 11 33 l 6 -17 H 80"
+        fill="none"
+        stroke="url(#maskableStroke)"
+        stroke-width="6"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        filter="url(#maskableShadow)"/>
 </svg>
