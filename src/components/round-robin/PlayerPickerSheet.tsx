@@ -140,13 +140,17 @@ export function PlayerPickerSheet({
         {/* Sticky header */}
         <div className="px-4 pt-4 pb-2 border-b bg-background">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-lg font-semibold">Add Players</h3>
-            <span className="text-sm text-muted-foreground">
-              {local.length} selected
-            </span>
+            <h3 className="text-lg font-semibold">
+              {mode === "single" ? "Choose a player" : "Add Players"}
+            </h3>
+            {mode === "multi" && (
+              <span className="text-sm text-muted-foreground">
+                {local.length} selected
+              </span>
+            )}
           </div>
 
-          {local.length > 0 && (
+          {mode === "multi" && local.length > 0 && (
             <ScrollArea className="max-h-20 mb-3">
               <div className="flex flex-wrap gap-1.5 pb-1">
                 {local.map((p) => (
@@ -182,7 +186,14 @@ export function PlayerPickerSheet({
           onValueChange={setTab}
           className="flex-1 flex flex-col min-h-0"
         >
-          <TabsList className="mx-4 mt-3 grid grid-cols-5 h-auto">
+          <TabsList
+            className="mx-4 mt-3 h-auto grid"
+            style={{
+              gridTemplateColumns: `repeat(${
+                3 + (groupId ? 1 : 0) + (showGuest ? 1 : 0)
+              }, minmax(0, 1fr))`,
+            }}
+          >
             <TabsTrigger value="friends" className="text-xs py-2 gap-1">
               <Users className="h-3.5 w-3.5" />
               Friends
@@ -201,10 +212,12 @@ export function PlayerPickerSheet({
               <Search className="h-3.5 w-3.5" />
               Search
             </TabsTrigger>
-            <TabsTrigger value="guest" className="text-xs py-2 gap-1">
-              <UserPlus className="h-3.5 w-3.5" />
-              Guest
-            </TabsTrigger>
+            {showGuest && (
+              <TabsTrigger value="guest" className="text-xs py-2 gap-1">
+                <UserPlus className="h-3.5 w-3.5" />
+                Guest
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <div className="flex-1 min-h-0 overflow-hidden">
@@ -213,6 +226,7 @@ export function PlayerPickerSheet({
                 selectedIds={selectedIds}
                 onToggle={toggle}
                 genderFilter={genderFilter}
+                excludeSet={excludeSet}
               />
             </TabsContent>
 
@@ -223,6 +237,8 @@ export function PlayerPickerSheet({
                   selectedIds={selectedIds}
                   onToggle={toggle}
                   genderFilter={genderFilter}
+                  excludeSet={excludeSet}
+                  showAddAll={mode === "multi"}
                 />
               </TabsContent>
             )}
@@ -232,6 +248,7 @@ export function PlayerPickerSheet({
                 selectedIds={selectedIds}
                 onToggle={toggle}
                 genderFilter={genderFilter}
+                excludeSet={excludeSet}
               />
             </TabsContent>
 
@@ -253,48 +270,54 @@ export function PlayerPickerSheet({
                 selectedIds={selectedIds}
                 onToggle={toggle}
                 genderFilter={genderFilter}
+                excludeSet={excludeSet}
               />
             </TabsContent>
 
-            <TabsContent value="guest" className="h-full m-0 p-4">
-              <p className="text-sm text-muted-foreground mb-3">
-                Add someone who isn't on the app. They'll appear in the lineup
-                by name only — no profile or rating.
-              </p>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Guest name"
-                  value={guestName}
-                  onChange={(e) => setGuestName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      addGuest();
-                    }
-                  }}
-                  className="h-11 text-base"
-                />
-                <Button onClick={addGuest} disabled={!guestName.trim()}>
-                  Add
-                </Button>
-              </div>
-            </TabsContent>
+            {showGuest && (
+              <TabsContent value="guest" className="h-full m-0 p-4">
+                <p className="text-sm text-muted-foreground mb-3">
+                  Add someone who isn't on the app. They'll appear in the
+                  lineup by name only — no profile or rating.
+                </p>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Guest name"
+                    value={guestName}
+                    onChange={(e) => setGuestName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addGuest();
+                      }
+                    }}
+                    className="h-11 text-base"
+                  />
+                  <Button onClick={addGuest} disabled={!guestName.trim()}>
+                    Add
+                  </Button>
+                </div>
+              </TabsContent>
+            )}
           </div>
         </Tabs>
 
-        {/* Sticky footer */}
-        <div className="border-t bg-background p-4 flex items-center justify-between gap-3">
-          <span className="text-sm text-muted-foreground">
-            {local.length} player{local.length === 1 ? "" : "s"}
-          </span>
-          <Button onClick={commit} className="flex-1 max-w-[180px]">
-            Done
-          </Button>
-        </div>
+        {/* Sticky footer — only in multi mode */}
+        {mode === "multi" && (
+          <div className="border-t bg-background p-4 flex items-center justify-between gap-3">
+            <span className="text-sm text-muted-foreground">
+              {local.length} player{local.length === 1 ? "" : "s"}
+            </span>
+            <Button onClick={commit} className="flex-1 max-w-[180px]">
+              Done
+            </Button>
+          </div>
+        )}
       </SheetContent>
     </Sheet>
   );
 }
+
 
 interface RowProps {
   p: PickerPlayer;
