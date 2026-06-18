@@ -1666,24 +1666,39 @@ export type Database = {
         Row: {
           content: string
           created_at: string | null
+          edited_at: string | null
           group_id: string
           id: string
+          image_url: string | null
+          is_pinned: boolean
+          pinned_at: string | null
+          pinned_by: string | null
           updated_at: string | null
           user_id: string
         }
         Insert: {
           content: string
           created_at?: string | null
+          edited_at?: string | null
           group_id: string
           id?: string
+          image_url?: string | null
+          is_pinned?: boolean
+          pinned_at?: string | null
+          pinned_by?: string | null
           updated_at?: string | null
           user_id: string
         }
         Update: {
           content?: string
           created_at?: string | null
+          edited_at?: string | null
           group_id?: string
           id?: string
+          image_url?: string | null
+          is_pinned?: boolean
+          pinned_at?: string | null
+          pinned_by?: string | null
           updated_at?: string | null
           user_id?: string
         }
@@ -6184,6 +6199,10 @@ export type Database = {
       recalculate_all_ratings_authenticated: { Args: never; Returns: undefined }
       recalculate_player_stats: {
         Args: { p_player_id: string }
+        Returns: undefined
+      }
+      set_group_message_pin: {
+        Args: { p_message_id: string; p_pinned: boolean }
         Returns: undefined
       }
       submit_rr_match_score: {
