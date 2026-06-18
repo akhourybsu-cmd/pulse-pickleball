@@ -23,6 +23,9 @@ export interface WizardFormData {
    *  players must enter an invite code to join. The DB trigger generates
    *  a unique XYZ-ABCD code automatically on insert. */
   isInviteOnly: boolean;
+  /** Group sharing — links the RR to a community group. */
+  groupVisibility: "personal" | "private_group" | "shared_group";
+  groupId: string | null;
 }
 
 export interface WizardStep {
@@ -46,6 +49,7 @@ const ALL_STEPS: WizardStep[] = [
   { id: "schedule", label: "Schedule", isOptional: false },
   { id: "datetime", label: "Date & Time", isOptional: false },
   { id: "ratings", label: "Ratings", isOptional: false },
+  { id: "sharing", label: "Sharing", isOptional: false },
   { id: "review", label: "Review", isOptional: false },
 ];
 
@@ -98,6 +102,9 @@ export function useWizardSteps(formData: WizardFormData) {
           return !!formData.ratingType;
         }
         return true;
+      case "sharing":
+        if (formData.groupVisibility === "personal") return true;
+        return !!formData.groupId;
       case "review":
         return true;
       default:
