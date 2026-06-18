@@ -54,7 +54,11 @@ const Auth = () => {
   // legacy ?redirect=… query param because it preserves search params
   // like ?invite=XYZ-ABCD that the player tried to deep-link with.
   const returnFromState = (location.state as { returnTo?: string } | null)?.returnTo;
-  const redirectPath = returnFromState || searchParams.get('redirect') || '/player/dashboard';
+  // OAuth redirects strip location.state, so we also persist the intended
+  // destination in sessionStorage and restore it after the provider bounces
+  // back to /auth (or directly to origin).
+  const stashedReturn = typeof window !== 'undefined' ? sessionStorage.getItem('pulse_oauth_return') : null;
+  const redirectPath = returnFromState || searchParams.get('redirect') || stashedReturn || '/player/dashboard';
 
   // Already-logged-in detection. If a returning user lands on /auth (via
   // bookmark, deep link, or stale tab), bounce them to their dashboard
@@ -104,6 +108,7 @@ const Auth = () => {
   // Once the session check confirms we're authed, send the user along.
   useEffect(() => {
     if (alreadyAuthed) {
+      sessionStorage.removeItem('pulse_oauth_return');
       navigate(redirectPath, { replace: true });
     }
   }, [alreadyAuthed, redirectPath, navigate]);
@@ -269,11 +274,18 @@ const Auth = () => {
     setLoading(true);
     try {
       localStorage.setItem('pulse_persist_session', staySignedIn.toString());
+      // Stash the intended deep link — OAuth strips React Router location.state
+      // when the browser bounces back from the provider.
+      sessionStorage.setItem('pulse_oauth_return', redirectPath);
+      // IMPORTANT: redirect_uri must be the bare origin. Passing a deep path
+      // (e.g. /player/dashboard) is not in the OAuth allow-list and causes
+      // the provider to bounce the user back to /auth without a session.
       const result = await lovable.auth.signInWithOAuth(provider, {
-        redirect_uri: window.location.origin + redirectPath,
+        redirect_uri: window.location.origin,
       });
       if (result.error) {
         toast.error((result.error as any)?.message || `Could not sign in with ${provider}`);
+        sessionStorage.removeItem('pulse_oauth_return');
         setLoading(false);
         return;
       }
@@ -281,6 +293,7 @@ const Auth = () => {
       navigate(redirectPath);
     } catch (err: any) {
       toast.error(err?.message || "OAuth sign-in failed");
+      sessionStorage.removeItem('pulse_oauth_return');
       setLoading(false);
     }
   };

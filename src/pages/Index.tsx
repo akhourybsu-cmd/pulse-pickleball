@@ -57,9 +57,12 @@ const Index = () => {
     );
   }
 
-  // Authenticated users → straight into the player hub.
+  // Authenticated users → straight into the player hub, or the deep link
+  // they were trying to reach before the OAuth round-trip.
   if (authState === "authenticated") {
-    return <Navigate to="/player/dashboard" replace />;
+    const stashed = typeof window !== 'undefined' ? sessionStorage.getItem('pulse_oauth_return') : null;
+    if (stashed) sessionStorage.removeItem('pulse_oauth_return');
+    return <Navigate to={stashed || "/player/dashboard"} replace />;
   }
 
   return (
