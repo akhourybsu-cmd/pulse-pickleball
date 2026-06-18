@@ -110,6 +110,7 @@ export function MatchWizardContainer() {
         .single();
 
       if (matchError) throw matchError;
+      createdMatchId = match.id;
 
       // 3. Create guest players if any
       const guestPlayerMap = new Map<string, string>(); // guestName -> guestPlayerId
