@@ -29,6 +29,7 @@ import { useGroupPosts } from '@/hooks/useGroupPosts';
 import { useGroupPresence } from '@/hooks/useGroupPresence';
 import { useGroupRealtime } from '@/hooks/useGroupRealtime';
 import { OnlineIndicator } from '@/components/community/OnlineIndicator';
+import { GroupRoundRobinsRail } from '@/components/community/GroupRoundRobinsRail';
 import { DEFAULT_VENUE_COLORS } from '@/lib/venueBranding';
 
 export default function GroupDetail() {
@@ -340,14 +341,17 @@ export default function GroupDetail() {
             forceMount={visitedTabs.has('feed') ? true : undefined}
           >
             {visitedTabs.has('feed') && (
-              <GroupFeed 
-                groupId={groupId!} 
-                groupName={group.name}
-                isAdmin={isAdmin} 
-                currentUserId={currentUserId}
-                onOpenQuickPost={(type) => openQuickPost(type as PostType)}
-                onSwitchToEvents={() => handleTabChange('schedule')}
-              />
+              <>
+                <GroupRoundRobinsRail groupId={groupId!} isAdmin={isAdmin} />
+                <GroupFeed 
+                  groupId={groupId!} 
+                  groupName={group.name}
+                  isAdmin={isAdmin} 
+                  currentUserId={currentUserId}
+                  onOpenQuickPost={(type) => openQuickPost(type as PostType)}
+                  onSwitchToEvents={() => handleTabChange('schedule')}
+                />
+              </>
             )}
           </TabsContent>
 
