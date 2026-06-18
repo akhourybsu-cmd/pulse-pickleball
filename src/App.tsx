@@ -202,8 +202,39 @@ const queryClient = new QueryClient({
   },
 });
 
+const AUTH_ROUTES = new Set(['/auth', '/']);
+const DEFAULT_AUTH_DESTINATION = '/player/dashboard';
+
+const getPostAuthDestination = () => {
+  const stashed = sessionStorage.getItem('pulse_oauth_return');
+  if (stashed) {
+    sessionStorage.removeItem('pulse_oauth_return');
+  }
+
+  if (!stashed || stashed === '/auth' || stashed.startsWith('/auth?')) {
+    return DEFAULT_AUTH_DESTINATION;
+  }
+
+  return stashed;
+};
+
 const AppContent = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
   useAuthPersistence();
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') && session?.user) {
+        const currentPath = window.location.pathname;
+        if (AUTH_ROUTES.has(currentPath)) {
+          navigate(getPostAuthDestination(), { replace: true });
+        }
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
 
   // Listen for service worker updates and show toast
   useEffect(() => {
