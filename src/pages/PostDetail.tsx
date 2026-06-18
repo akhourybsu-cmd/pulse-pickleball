@@ -264,7 +264,7 @@ export default function PostDetail() {
             <Button 
               variant="outline" 
               size="icon" 
-              onClick={() => navigate(`/profile/${currentUserId}`)} 
+              onClick={() => navigate('/player/profile')} 
               className="rounded-full h-[38px] w-[38px]"
             >
               <UserIcon className="h-[1.2rem] w-[1.2rem]" />

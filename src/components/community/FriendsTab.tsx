@@ -224,7 +224,7 @@ function FriendCard({
       className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border/30 hover:bg-muted/30 transition-colors"
     >
       <button 
-        onClick={() => navigate(`/profile/${friend.profile.id}`)}
+        onClick={() => navigate('/player/profile')}
         className="relative"
       >
         <Avatar className="h-10 w-10">
@@ -239,7 +239,7 @@ function FriendCard({
       </button>
       
       <button 
-        onClick={() => navigate(`/profile/${friend.profile.id}`)}
+        onClick={() => navigate('/player/profile')}
         className="flex-1 min-w-0 text-left"
       >
         <p className="font-medium text-sm truncate">{name}</p>

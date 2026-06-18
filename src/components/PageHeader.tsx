@@ -56,7 +56,7 @@ export function PageHeader({ userId }: PageHeaderProps) {
               <Button 
                 variant="outline" 
                 size="icon" 
-                onClick={() => navigate(`/profile/${userId}`)} 
+                onClick={() => navigate('/player/profile')} 
                 className="rounded-full"
               >
                 <UserIcon className="h-[1.2rem] w-[1.2rem]" />

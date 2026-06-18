@@ -78,7 +78,7 @@ export const PulseScoreCard = ({
   const handleCardClick = () => {
     // Only navigate if not dragging
     if (!isDragging.current && userId) {
-      navigate(`/profile/${userId}`);
+      navigate('/player/profile');
     }
   };
 

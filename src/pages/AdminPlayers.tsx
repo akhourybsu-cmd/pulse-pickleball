@@ -82,7 +82,7 @@ export default function AdminPlayers() {
   };
 
   const handleViewProfile = (playerId: string) => {
-    navigate(`/profile/${playerId}`);
+    navigate('/player/profile');
   };
 
   if (loading) {
