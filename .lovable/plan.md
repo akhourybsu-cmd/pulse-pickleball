@@ -1,32 +1,38 @@
 ## Goal
-Add a "My communities" quick-access section to the player home screen so users can jump into any group they're a member of in one tap.
+Add backend notification triggers (in-app + push) for **community**, **friends**, and **direct messages** events that currently have no notifications, then send live test pushes to your device.
 
-## Where it lands
-On `Dashboard.tsx` (player home), inserted on both desktop (left column) and mobile stacks, positioned **after "My round robins"** and **before "Up next"** — communities are a higher-frequency destination than match history but shouldn't displace active RR events.
+## Current state
+- `user_notifications` table + `useNotifications` hook + `push-send` edge function (web-push) + `push_subscriptions` table all exist and work.
+- Tournament/venue/event reminders already create notifications via edge functions.
+- **No triggers exist** for community posts, group events, friend requests, or DMs — so they're silent today.
 
-## What it looks like
-A horizontal scrollable rail of compact group cards (avatar + name, optional unread/activity dot), plus a "See all →" link to `/player/community`.
+## What gets added (DB triggers + push fan-out)
 
-```text
-My communities                                    See all →
-┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐
-│ [G1] │ │ [G2] │ │ [G3] │ │ [G4] │ │ [G5] │  →
-│ Name │ │ Name │ │ Name │ │ Name │ │ Name │
-└──────┘ └──────┘ └──────┘ └──────┘ └──────┘
-```
+| Trigger source | When | Recipients | Notification |
+|---|---|---|---|
+| `group_posts` INSERT | New post in a group | All active group members except author | "New post in {group}" → opens group feed |
+| `group_events` INSERT | New event scheduled | All active group members except creator | "New event: {title} on {date}" → opens schedule |
+| `friendships` INSERT (status=`pending`) | Friend request received | The `friend_id` recipient | "{actor} sent you a friend request" → `/player/friends` |
+| `friendships` UPDATE → `accepted` | Friend request accepted | The original requester | "{actor} accepted your friend request" → friend's profile |
+| `direct_messages` INSERT | New DM | All conversation participants except sender | "{sender}: {preview}" → `/player/messages/:conversationId` |
+| `group_messages` INSERT | New group chat message | All active group members except sender | "{sender} in {group}: {preview}" → group chat |
 
-- Tap a card → `/player/community/:groupId`
-- Empty state (user in zero groups): single CTA card "Find a community →" → `/player/community`
-- Section hidden entirely if the data query is still loading (skeleton) or fails silently
+Each trigger:
+1. Inserts a row into `user_notifications` (respecting `notification_preferences.in_app_enabled` for the category).
+2. Calls `push-send` via `pg_net.http_post` with the dispatch secret (respecting `push_enabled`), so registered devices get a real web-push.
+3. Uses `category` values: `community`, `social`, `messages` (so users can toggle each independently in notification settings).
 
-## Technical notes
-- New component: `src/components/dashboard/MyCommunitiesRail.tsx`
-- Data source: existing `useGroups()` hook (already filters to groups the user is a member of)
-- Limit to ~8 most recently active groups in the rail; the rest are reachable via "See all"
-- Use existing `SectionHeader` for consistency with other dashboard sections
-- 8pt spacing, dark theme tokens, Outfit headings per project standards
+A small SQL helper `public.enqueue_notification(user_id, type, category, title, message, link, actor_id, metadata)` will do the insert + push dispatch in one call to keep triggers tidy.
+
+## Test pushes
+After the migration is approved and applied, I'll call `push-send` directly through the edge-function test tool, targeting your user id, with three sample payloads:
+1. **Community** — "New post in Demo Group"
+2. **Friends** — "Alex sent you a friend request"
+3. **Messages** — "Alex: Hey, ready for tonight?"
+
+You'll need to have allowed push notifications on the device/browser (i.e. `push_subscriptions` has a row for you). If you haven't subscribed yet, I'll point you at the notification settings page first — otherwise tests will return `sent: 0`.
 
 ## Out of scope
-- Unread message badges (would need a separate query for last-read timestamps — happy to do as a follow-up)
-- Reordering/pinning favorite groups
-- Changes to the `/player/community` index page itself
+- Email delivery (notification_preferences.email_enabled is respected for the flag, but no email send is wired here).
+- Per-group muting beyond the existing `group_notification_prefs` table — I'll honor it for `group_posts`/`group_events`/`group_messages` if a row exists, default = on.
+- Bulk backfill for past posts/messages — only new activity going forward triggers notifications.
