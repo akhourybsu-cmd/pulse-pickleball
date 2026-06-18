@@ -46,6 +46,14 @@ const authSchema = z.object({
   }).optional(),
 });
 
+const waitForAuthenticatedUser = async () => {
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error || !user) {
+    throw error || new Error("Sign-in completed, but the session was not ready. Please try again.");
+  }
+  return user;
+};
+
 const Auth = () => {
   const [searchParams] = useSearchParams();
   const location = useLocation();
@@ -95,14 +103,25 @@ const Auth = () => {
   // the sign-in form.
   useEffect(() => {
     let cancelled = false;
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
       if (cancelled) return;
-      if (session) {
+      if (user) {
         setAlreadyAuthed(true);
       }
       setSessionChecked(true);
     });
-    return () => { cancelled = true; };
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!cancelled && session?.user) {
+        setAlreadyAuthed(true);
+        setSessionChecked(true);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
   }, []);
 
   // Once the session check confirms we're authed, send the user along.
