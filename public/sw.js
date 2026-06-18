@@ -27,6 +27,12 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
 // Fetch - network first, fallback to cache
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
