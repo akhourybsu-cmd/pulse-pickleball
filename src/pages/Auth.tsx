@@ -54,7 +54,11 @@ const Auth = () => {
   // legacy ?redirect=… query param because it preserves search params
   // like ?invite=XYZ-ABCD that the player tried to deep-link with.
   const returnFromState = (location.state as { returnTo?: string } | null)?.returnTo;
-  const redirectPath = returnFromState || searchParams.get('redirect') || '/player/dashboard';
+  // OAuth redirects strip location.state, so we also persist the intended
+  // destination in sessionStorage and restore it after the provider bounces
+  // back to /auth (or directly to origin).
+  const stashedReturn = typeof window !== 'undefined' ? sessionStorage.getItem('pulse_oauth_return') : null;
+  const redirectPath = returnFromState || searchParams.get('redirect') || stashedReturn || '/player/dashboard';
 
   // Already-logged-in detection. If a returning user lands on /auth (via
   // bookmark, deep link, or stale tab), bounce them to their dashboard
