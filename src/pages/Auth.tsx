@@ -108,6 +108,7 @@ const Auth = () => {
   // Once the session check confirms we're authed, send the user along.
   useEffect(() => {
     if (alreadyAuthed) {
+      sessionStorage.removeItem('pulse_oauth_return');
       navigate(redirectPath, { replace: true });
     }
   }, [alreadyAuthed, redirectPath, navigate]);
