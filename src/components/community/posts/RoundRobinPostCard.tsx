@@ -14,11 +14,7 @@ export function RoundRobinPostCard({ rr }: RoundRobinPostCardProps) {
   const isClosed = rr.status === "completed" || rr.status === "live";
 
   const handleJoin = () => {
-    if (rr.registration_mode === "invite_only" && rr.invite_code) {
-      navigate(`/round-robin/join/${rr.invite_code}`);
-    } else {
-      navigate(`/round-robin/${rr.id}`);
-    }
+    navigate(`/round-robin/${rr.id}`);
   };
 
   return (
