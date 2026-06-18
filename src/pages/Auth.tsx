@@ -241,9 +241,9 @@ const Auth = () => {
           toast.success("Account created! Check your email to finish signing in.");
         }
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("Auth error:", error);
-      toast.error(error.message || "Authentication failed");
+      toast.error(error instanceof Error ? error.message : "Authentication failed");
     } finally {
       setLoading(false);
     }
@@ -314,7 +314,7 @@ const Auth = () => {
         redirect_uri: window.location.origin,
       });
       if (result.error) {
-        toast.error((result.error as any)?.message || `Could not sign in with ${provider}`);
+        toast.error(result.error.message || `Could not sign in with ${provider}`);
         sessionStorage.removeItem('pulse_oauth_return');
         setLoading(false);
         return;
@@ -322,8 +322,8 @@ const Auth = () => {
       if (result.redirected) return;
       await waitForAuthenticatedUser();
       navigate(redirectPath, { replace: true });
-    } catch (err: any) {
-      toast.error(err?.message || "OAuth sign-in failed");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "OAuth sign-in failed");
       sessionStorage.removeItem('pulse_oauth_return');
       setLoading(false);
     }
