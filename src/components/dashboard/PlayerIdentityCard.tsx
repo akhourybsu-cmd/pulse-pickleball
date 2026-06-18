@@ -72,7 +72,7 @@ export const PlayerIdentityCard = ({
           <Avatar 
             className="h-14 w-14 min-[360px]:h-16 min-[360px]:w-16 sm:h-[72px] sm:w-[72px] ring-2 ring-primary/60 shadow-lg cursor-pointer hover:ring-primary transition-all opacity-0 animate-scale-in flex-shrink-0"
             style={{ animationDelay: '80ms', animationFillMode: 'forwards' }}
-            onClick={() => navigate(`/profile/${userId}`)}
+            onClick={() => navigate('/player/profile')}
           >
             <AvatarImage src={avatarUrl || undefined} alt={name} />
             <AvatarFallback className="text-base min-[360px]:text-lg sm:text-xl font-bold bg-primary/20 text-primary">
@@ -87,7 +87,7 @@ export const PlayerIdentityCard = ({
           >
             <h2 
               className="text-xl sm:text-2xl font-display font-bold text-foreground leading-tight cursor-pointer hover:text-primary/90 transition-colors line-clamp-2"
-              onClick={() => navigate(`/profile/${userId}`)}
+              onClick={() => navigate('/player/profile')}
             >
               {name}
             </h2>
