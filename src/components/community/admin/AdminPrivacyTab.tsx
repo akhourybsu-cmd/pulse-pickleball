@@ -4,11 +4,13 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
+import { GroupInviteAnalytics } from '../GroupInviteAnalytics';
 
 interface AdminPrivacyTabProps {
   visibility: string;
   joinMethod: string;
   inviteCode: string | null;
+  groupId: string;
   onVisibilityChange: (visibility: string) => void;
   onJoinMethodChange: (method: string) => void;
   onRegenerateCode: () => Promise<void>;
@@ -30,6 +32,7 @@ export function AdminPrivacyTab({
   visibility,
   joinMethod,
   inviteCode,
+  groupId,
   onVisibilityChange,
   onJoinMethodChange,
   onRegenerateCode,
@@ -142,6 +145,13 @@ export function AdminPrivacyTab({
           <p className="text-xs text-muted-foreground">
             Regenerating will invalidate the old code. Anyone with the old code won't be able to join.
           </p>
+
+          {/* Invite analytics — joined / pending / duplicate / failed
+              counts + a recent-attempts list so the host can confirm
+              their share actually landed. */}
+          <div className="pt-4 border-t border-border/40">
+            <GroupInviteAnalytics groupId={groupId} />
+          </div>
         </CardContent>
       </Card>
     </div>

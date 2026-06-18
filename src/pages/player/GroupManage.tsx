@@ -332,6 +332,7 @@ export default function GroupManage() {
             visibility={visibility}
             joinMethod={joinMethod}
             inviteCode={group.invite_code}
+            groupId={groupId!}
             onVisibilityChange={(v) => setVisibility(v as Group['visibility'])}
             onJoinMethodChange={(v) => setJoinMethod(v as Group['join_method'])}
             onRegenerateCode={regenerateInviteCode}

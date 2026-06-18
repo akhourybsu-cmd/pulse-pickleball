@@ -24,10 +24,30 @@ export const EVENT_WIZARD_STEPS: EventWizardStep[] = [
 ];
 
 export const EVENT_TYPE_OPTIONS = [
-  { value: 'open_play', label: 'Open Play', icon: '🏓' },
-  { value: 'practice', label: 'Practice', icon: '🎯' },
-  { value: 'social', label: 'Social', icon: '🎉' },
-  { value: 'other', label: 'Other', icon: '📅' },
+  {
+    value: 'open_play',
+    label: 'Open Play',
+    icon: '🏓',
+    blurb: 'Drop-in session for the whole crew',
+  },
+  {
+    value: 'practice',
+    label: 'Practice',
+    icon: '🎯',
+    blurb: 'Drilling, lessons, or focused reps',
+  },
+  {
+    value: 'social',
+    label: 'Social',
+    icon: '🎉',
+    blurb: 'Hangout, food, no pressure to play',
+  },
+  {
+    value: 'other',
+    label: 'Other',
+    icon: '📅',
+    blurb: 'Tournament, league night, anything else',
+  },
 ] as const;
 
 export function generateDefaultEventTitle(eventType: EventWizardFormData['eventType']): string {

@@ -213,15 +213,33 @@ export function useGroups() {
       return null;
     }
 
+    const normalizedCode = code.toUpperCase().trim();
+
+    // Records an outcome to group_invite_uses for the admin analytics
+    // UI. Fire-and-forget — failing to log shouldn't break the join
+    // flow, so we don't await the response and we don't toast on error.
+    const record = (
+      outcome: 'joined' | 'pending' | 'duplicate' | 'failed',
+      groupId: string | null,
+    ) => {
+      void supabase.from('group_invite_uses').insert({
+        group_id: groupId,
+        invite_code: normalizedCode,
+        user_id: currentUserId,
+        outcome,
+      });
+    };
+
     try {
       // Find group by invite code
       const { data: group, error: findError } = await supabase
         .from('groups')
         .select('*')
-        .eq('invite_code', code.toUpperCase().trim())
+        .eq('invite_code', normalizedCode)
         .single();
 
       if (findError || !group) {
+        record('failed', null);
         toast({ title: 'Not Found', description: 'Invalid group code', variant: 'destructive' });
         return null;
       }
@@ -236,14 +254,17 @@ export function useGroups() {
 
       if (existingMember) {
         if (existingMember.status === 'active') {
+          record('duplicate', group.id);
           toast({ title: 'Already a Member', description: 'You are already in this group' });
           return group;
         }
         if (existingMember.status === 'banned') {
+          record('failed', group.id);
           toast({ title: 'Access Denied', description: 'You have been banned from this group', variant: 'destructive' });
           return null;
         }
         if (existingMember.status === 'pending') {
+          record('duplicate', group.id);
           toast({ title: 'Pending', description: 'Your join request is still pending' });
           return group;
         }
@@ -251,6 +272,7 @@ export function useGroups() {
 
       // Check join method
       if (group.join_method === 'invite_only') {
+        record('failed', group.id);
         toast({ title: 'Invite Only', description: 'This group requires an invitation', variant: 'destructive' });
         return null;
       }
@@ -267,6 +289,8 @@ export function useGroups() {
         });
 
       if (joinError) throw joinError;
+
+      record(status === 'pending' ? 'pending' : 'joined', group.id);
 
       if (status === 'pending') {
         toast({ title: 'Request Sent', description: 'Your join request has been sent to the group admins' });
