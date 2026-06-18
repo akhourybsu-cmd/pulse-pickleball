@@ -1,77 +1,90 @@
-## Goal
 
-In Match History, bundle every match that came from the same Round Robin event into a single collapsible card so the player can immediately see "these 5 matches all came from Pickleball Palace RR — Wed Jun 17" instead of a flat scrolling list of individual cards.
+# Friends Section Redesign
 
-Non-RR matches (pickup matches, tournament matches, manually recorded matches) continue to render as standalone cards exactly like today.
+## Problem
 
-## Behavior
+Today the "Add Friend" flow is a single open search field that queries `profiles` by name. That means anyone can browse the entire user base by typing names — bad for privacy, and also not the easiest way to actually connect with people you already know. The Friends tab itself is functional but flat: search bar + Add button + list, with no real prioritization, no suggestions, and no entry points beyond name search.
 
-- An RR-grouped card shows, collapsed by default:
-  - Event name (e.g. "Test 1")
-  - Event date
-  - Match count + W-L record from the player's perspective (e.g. "5 matches · 3-2")
-  - Net rating change across the group (e.g. "+24")
-  - Chevron to expand
-- Expanded: the existing `PremiumMatchCard` for each match in the group, ordered by round / court, with the standard RR badge "R{round} · Court {court}".
-- Standalone (non-RR) matches render unchanged.
-- Sort order of the overall list is preserved: each group sorts by the most-recent match inside it; standalone matches sort by their own date. Same DESC-by-date behavior as today.
-- Applies to the **Verified** / **All** lists. Pending matches stay flat (they're already in their own action-required sections and grouping there would hide the CTA).
-- Viewing another player's history (`?player=...`) gets the same grouping.
+## Goals
 
-## Visual
+1. Remove open-ended discovery of strangers by name.
+2. Give players multiple low-friction ways to connect with people they actually know or have played with.
+3. Make name search still possible, but **scoped** to a trusted graph (mutual friends, shared groups, shared events).
+4. Polish the Friends tab UI so it feels on-brand with the rest of the player app (Outfit headings, white-card system, 8pt spacing, on-brand primary).
 
-- Reuse existing rounded-2xl border-2 Card styling for consistency.
-- Header row: trophy/grid icon, event title, small muted date, right side shows W-L pill + net rating delta (green/red), chevron.
-- Use `framer-motion` height animation on expand (same easing as existing entrance animation).
-- Inside, matches render with reduced top padding so the group reads as one unit.
+---
 
-## Technical details
+## New connection model
 
-**Data linkage.** `matches.event_id` is unreliable for RR matches (the RR pipeline does not set it — see comment in `delete_round_robin_event`). The authoritative link is `round_robin_schedule.match_id → matches.id`, and `round_robin_schedule.event_id → round_robin_events.id`.
+Replace the single "search everyone" entry point with a **Connect** hub that surfaces five paths, in order of friction:
 
-**Fetch (in `MatchHistory.tsx`, `fetchMatches`).**
-After `matchesWithDetails` is built, do one batched lookup:
+1. **Your Pulse handle / QR code** — every player gets a personal invite. Tap to reveal a large QR + shareable handle (e.g. `pulse.app/u/alex-7Q4`). Share sheet uses native share on mobile.
+2. **Enter a handle or invite code** — paste/type a short code instead of searching names. Direct lookup, no browsing.
+3. **People you've played with** — auto-suggested from shared `matches`, `event_registrations`, `tournament_registrations`, and `group_members`. This is the highest-signal source and replaces 90% of what name search is doing today.
+4. **Friends of friends** — second-degree suggestions from `friendships`, with mutual-count badge ("3 mutual").
+5. **Search by name — scoped** — only returns users who share at least one group, event, tournament, or mutual friend. Strangers never appear.
 
-```ts
-const rrCandidateIds = matchesWithDetails
-  .filter(m => m.source === 'round_robin')      // already selected
-  .map(m => m.match_id);
+Pending requests (incoming + outgoing) get their own dedicated surface so they aren't buried.
 
-const { data: rrLinks } = await supabase
-  .from('round_robin_schedule')
-  .select('match_id, event_id, round_robin_events!inner(id, name, event_date, status)')
-  .in('match_id', rrCandidateIds);
-```
+## Friends tab — visual redesign
 
-Build `matchIdToEvent: Map<matchId, { eventId, name, eventDate, status }>`. Attach `rr_event_id`, `rr_event_name`, `rr_event_date` to each `Match`. Extend the `Match` interface accordingly (optional fields).
+Bring the tab in line with the player visual identity:
 
-**Grouping (pure, in render).**
-Walk the already-sorted `matches` array and fold consecutive-or-not RR matches by `rr_event_id` into group objects; non-RR matches become singleton entries. Then sort the resulting list of `(group | singleton)` items by their representative date DESC so RR groups land at the date of their most-recent match.
+- Header row: count pill ("12 Friends") + segmented control [ All · Online · Requests (n) ] instead of one flat list with a hidden requests block.
+- Friend cards: white-card surface, Outfit name + Inter rating, online dot inline with name, primary action = Message, overflow menu = View profile / Remove / Block.
+- Sticky "+ Connect" CTA bottom-right (FAB style) opens the new Connect sheet.
+- Empty state: illustrated, with three quick actions (Show my QR · Enter code · See suggestions).
+
+## Connect sheet (replaces AddFriendDialog)
+
+Bottom sheet on mobile, dialog on desktop. Single screen with collapsible sections in the order above. Each section:
+
+- **My code** — QR + handle + Copy + Share buttons.
+- **Enter code** — single input, validates against handle, shows the matched player card with one-tap Add.
+- **Suggestions** — horizontally scrollable cards for "Played with" and "Mutual friends", each card shows avatar, name, context line ("Played 3 matches" / "5 mutual"), Add button.
+- **Search** — name input, scoped server-side; empty state explains the scope ("We only show players you share a group, event, or friend with").
+
+## Backend changes
+
+1. **Add `handle` column to `profiles`**: `text unique`, auto-generated on profile insert via trigger (`<slug>-<3char>`). Add `GRANT SELECT` so the public `profiles_public` view exposes only `id, display_name, avatar_url, handle, current_rating`.
+2. **New RPC `search_connectable_users(q text)`** (security definer): returns at most 20 profiles whose `display_name`/`handle` match `q` AND the caller shares a group, event, tournament, friendship, or mutual friend with. Replaces the current open `profiles.ilike` query.
+3. **New RPC `suggest_friends()`** (security definer): returns ranked list of (user_id, reason, weight) drawn from shared matches, events, groups, and mutual friends. Excludes existing friends, pending, blocked.
+4. **New RPC `lookup_by_handle(h text)`**: exact-match handle resolver for the "Enter code" path.
+5. Update `AddFriendDialog`'s `profiles.ilike` call to call `search_connectable_users` instead. Keep RLS as-is on `profiles`.
+
+## File-level changes
+
+- `src/components/community/FriendsTab.tsx` — rework header into segmented control, polish cards, add FAB, route requests to their own segment.
+- `src/components/community/AddFriendDialog.tsx` → rename to `ConnectSheet.tsx`. New layout with the five sections above.
+- `src/components/community/MyHandleCard.tsx` *(new)* — QR + handle + share, using `qrcode.react`.
+- `src/components/community/SuggestedFriendsRow.tsx` *(new)* — horizontal scroller bound to `useFriendSuggestions`.
+- `src/hooks/useFriendSuggestions.ts` *(new)* — wraps `suggest_friends` RPC, React Query cached.
+- `src/hooks/useFriends.ts` — add `lookupByHandle`, swap search to `search_connectable_users`.
+- `supabase/migrations/<ts>_friend_connections.sql` — `handle` column + backfill + trigger, three RPCs above, GRANTs.
+
+## ASCII layout
 
 ```text
-items: Array<
-  | { kind: 'single'; match: Match }
-  | { kind: 'rr_group'; eventId: string; name: string; date: string;
-      matches: Match[]; wins: number; losses: number; netRating: number }
->
+ Friends                         (12)
+ [ All ][ Online ][ Requests • 2 ]
+ ─────────────────────────────────
+ ● Alex Kim       4.25       💬
+   Played 3 matches together
+ ─────────────────────────────────
+ ○ Sam Patel      3.80       💬
+   Member of "Sunset Doubles"
+ ─────────────────────────────────
+                              ╭───╮
+                              │ + │  Connect
+                              ╰───╯
 ```
 
-**New component.** `src/components/matches/RoundRobinMatchGroup.tsx`
-- Props: the group object + the same `onVerify` / `onReport` / `playerName` / `playerId` plumbing that `PremiumMatchCard` already needs.
-- Internal `useState` for `expanded` (default `false`).
-- Uses shadcn `Collapsible` (already in the project) + `ChevronDown` rotation.
-- Inside, maps over `group.matches` and renders the existing `PremiumMatchCard` unchanged.
+## Out of scope
 
-**Render site (`MatchHistory.tsx` ~line 838).**
-Replace the current `matches.map(...) → PremiumMatchCard` block with `items.map(...)` that switches on `kind` and renders either `PremiumMatchCard` (single) or `RoundRobinMatchGroup` (group). All wiring (verify dialog, report sheet) is passed through identically.
+- Contact-book import (iOS/Android permissions) — flagged as a follow-up.
+- Push notifications for new requests — assumed already covered by existing notification system.
+- Changes to the Messages or Groups tabs.
 
-**Out of scope.**
-- No DB migrations.
-- No changes to pending-match grouping.
-- No changes to `PremiumMatchCard` itself.
-- No changes to RR detail pages or the score pipeline.
+## Open question
 
-## Files touched
-
-- `src/pages/MatchHistory.tsx` — extend `Match` interface, add RR lookup in `fetchMatches`, build `items`, swap the render loop.
-- `src/components/matches/RoundRobinMatchGroup.tsx` — new collapsible group card.
+Do you want a single global handle like `@alex-7q4` (visible to everyone, used everywhere), or a rotating short invite code that expires after N days? Global handle is simpler and matches the QR pattern; rotating code is more private.
