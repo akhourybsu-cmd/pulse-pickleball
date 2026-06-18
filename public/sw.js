@@ -1,12 +1,11 @@
-const CACHE_VERSION = 'pulse-v4-oauth-fix';
+const CACHE_VERSION = 'pulse-v5-auto-update';
 const urlsToCache = [
-  '/',
-  '/index.html',
   '/pulse-icon.jpg'
 ];
 
 // Install - cache resources
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_VERSION)
       .then((cache) => cache.addAll(urlsToCache))
@@ -24,8 +23,17 @@ self.addEventListener('activate', (event) => {
           }
         })
       );
-    }).then(() => self.clients.claim())
+    })
+      .then(() => self.clients.claim())
+      .then(() => self.clients.matchAll({ type: 'window', includeUncontrolled: true }))
+      .then((clients) => Promise.allSettled(clients.map((client) => client.navigate(client.url))))
   );
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 // Fetch - network first, fallback to cache
@@ -48,6 +56,13 @@ self.addEventListener('fetch', (event) => {
 
   // Don't cache cross-origin requests (Supabase, Stripe, etc.)
   if (url.origin !== self.location.origin) return;
+
+  // Always fetch app navigations from the network so auth redirects and new
+  // releases cannot be trapped behind stale cached HTML.
+  if (event.request.mode === 'navigate' || event.request.destination === 'document') {
+    event.respondWith(fetch(event.request));
+    return;
+  }
 
   event.respondWith(
     fetch(event.request)

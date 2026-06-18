@@ -27,25 +27,34 @@ if ('serviceWorker' in navigator && shouldRegisterServiceWorker) {
     navigator.serviceWorker.register('/sw.js')
       .then((registration) => {
         console.log('Service Worker registered');
+        const hadController = Boolean(navigator.serviceWorker.controller);
+
+        if (registration.waiting) {
+          registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+        }
         
         // Check for updates periodically
         setInterval(() => {
           registration.update();
         }, 60000);
 
-        // Listen for updates but don't auto-reload
+        // Listen for updates and activate them automatically.
         registration.addEventListener('updatefound', () => {
           const newWorker = registration.installing;
           if (newWorker) {
             newWorker.addEventListener('statechange', () => {
-              if (newWorker.state === 'activated' && navigator.serviceWorker.controller) {
-                // New version available - show toast instead of auto-reloading
-                console.log('New version available');
-                // Dispatch custom event for the app to handle
-                window.dispatchEvent(new CustomEvent('sw-update-available'));
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                newWorker.postMessage({ type: 'SKIP_WAITING' });
               }
             });
           }
+        });
+
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (!hadController || refreshing) return;
+          refreshing = true;
+          window.location.reload();
         });
       })
       .catch((error) => {

@@ -14,6 +14,13 @@ import { EmailMFAChallenge } from "@/components/auth/EmailMFAChallenge";
 import { BiometricLogin } from "@/components/auth/BiometricLogin";
 import { lovable } from "@/integrations/lovable";
 import { Logo } from "@/components/Logo";
+import {
+  clearPostAuthRedirect,
+  consumePostAuthRedirect,
+  peekPostAuthRedirect,
+  sanitizeRedirectPath,
+  stashPostAuthRedirect,
+} from "@/lib/authRedirect";
 
 const GoogleIcon = () => (
   <svg className="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
@@ -54,13 +61,6 @@ const waitForAuthenticatedUser = async () => {
   return user;
 };
 
-const sanitizeRedirectPath = (path: string | null | undefined) => {
-  if (!path || !path.startsWith('/') || path.startsWith('//') || path === '/auth' || path.startsWith('/auth?')) {
-    return '/player/dashboard';
-  }
-  return path;
-};
-
 const Auth = () => {
   const [searchParams] = useSearchParams();
   const location = useLocation();
@@ -72,7 +72,7 @@ const Auth = () => {
   // OAuth redirects strip location.state, so we also persist the intended
   // destination in sessionStorage and restore it after the provider bounces
   // back to /auth (or directly to origin).
-  const stashedReturn = typeof window !== 'undefined' ? sessionStorage.getItem('pulse_oauth_return') : null;
+  const stashedReturn = typeof window !== 'undefined' ? peekPostAuthRedirect() : null;
   const redirectPath = sanitizeRedirectPath(returnFromState || searchParams.get('redirect') || stashedReturn);
 
   // Already-logged-in detection. If a returning user lands on /auth (via
@@ -134,7 +134,7 @@ const Auth = () => {
   // Once the session check confirms we're authed, send the user along.
   useEffect(() => {
     if (alreadyAuthed) {
-      sessionStorage.removeItem('pulse_oauth_return');
+      clearPostAuthRedirect();
       navigate(redirectPath, { replace: true });
     }
   }, [alreadyAuthed, redirectPath, navigate]);
@@ -306,7 +306,7 @@ const Auth = () => {
       localStorage.setItem('pulse_persist_session', staySignedIn.toString());
       // Stash the intended deep link — OAuth strips React Router location.state
       // when the browser bounces back from the provider.
-      sessionStorage.setItem('pulse_oauth_return', redirectPath);
+      stashPostAuthRedirect(redirectPath);
       // IMPORTANT: redirect_uri must be the bare origin. Passing a deep path
       // (e.g. /player/dashboard) is not in the OAuth allow-list and causes
       // the provider to bounce the user back to /auth without a session.
@@ -315,16 +315,16 @@ const Auth = () => {
       });
       if (result.error) {
         toast.error(result.error.message || `Could not sign in with ${provider}`);
-        sessionStorage.removeItem('pulse_oauth_return');
+        clearPostAuthRedirect();
         setLoading(false);
         return;
       }
       if (result.redirected) return;
       await waitForAuthenticatedUser();
-      navigate(redirectPath, { replace: true });
+      navigate(consumePostAuthRedirect(), { replace: true });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "OAuth sign-in failed");
-      sessionStorage.removeItem('pulse_oauth_return');
+      clearPostAuthRedirect();
       setLoading(false);
     }
   };
