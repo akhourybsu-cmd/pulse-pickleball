@@ -34,6 +34,7 @@ import {
 import { useGroupPosts, type GroupPost } from '@/hooks/useGroupPosts';
 import { useGroupEvents } from '@/hooks/useGroupEvents';
 import { cn } from '@/lib/utils';
+import { RoundRobinPostCard } from '@/components/community/posts/RoundRobinPostCard';
 
 interface GroupFeedProps {
   groupId: string;
