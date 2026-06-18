@@ -14,7 +14,12 @@ const isPreviewHost =
   window.location.hostname === 'beta.lovable.dev' ||
   window.location.hostname.endsWith('.beta.lovable.dev');
 
-const isIframe = window.self !== window.top;
+let isIframe = false;
+try {
+  isIframe = window.self !== window.top;
+} catch {
+  isIframe = true;
+}
 const shouldRegisterServiceWorker = import.meta.env.PROD && !isPreviewHost && !isIframe;
 
 if ('serviceWorker' in navigator && shouldRegisterServiceWorker) {
