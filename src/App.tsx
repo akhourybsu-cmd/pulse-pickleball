@@ -256,6 +256,19 @@ const AppContent = () => {
           if (error) throw error;
         }
 
+        [
+          "code",
+          "state",
+          "type",
+          "error",
+          "error_code",
+          "error_description",
+          "access_token",
+          "refresh_token",
+          "expires_in",
+          "expires_at",
+          "token_type",
+        ].forEach((key) => url.searchParams.delete(key));
         window.history.replaceState({}, document.title, `${url.pathname}${url.searchParams.size ? `?${url.searchParams}` : ""}`);
 
         if (!errorMessage && isAuthEntryPath(url.pathname)) {
