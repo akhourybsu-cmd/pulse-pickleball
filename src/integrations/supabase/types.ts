@@ -2812,6 +2812,7 @@ export type Database = {
           full_name: string
           gender: string | null
           handedness: string | null
+          handle: string
           home_court_id: string | null
           id: string
           is_test_account: boolean | null
@@ -2865,6 +2866,7 @@ export type Database = {
           full_name: string
           gender?: string | null
           handedness?: string | null
+          handle: string
           home_court_id?: string | null
           id: string
           is_test_account?: boolean | null
@@ -2918,6 +2920,7 @@ export type Database = {
           full_name?: string
           gender?: string | null
           handedness?: string | null
+          handle?: string
           home_court_id?: string | null
           id?: string
           is_test_account?: boolean | null
@@ -5850,6 +5853,7 @@ export type Database = {
           first_name: string | null
           full_name: string | null
           handedness: string | null
+          handle: string | null
           home_court_id: string | null
           id: string | null
           last_name: string | null
@@ -5868,6 +5872,7 @@ export type Database = {
           first_name?: string | null
           full_name?: string | null
           handedness?: string | null
+          handle?: string | null
           home_court_id?: string | null
           id?: string | null
           last_name?: string | null
@@ -5886,6 +5891,7 @@ export type Database = {
           first_name?: string | null
           full_name?: string | null
           handedness?: string | null
+          handle?: string | null
           home_court_id?: string | null
           id?: string | null
           last_name?: string | null
@@ -6110,6 +6116,7 @@ export type Database = {
       }
       generate_group_invite_code: { Args: never; Returns: string }
       generate_rr_invite_code: { Args: never; Returns: string }
+      generate_unique_handle: { Args: { base_name: string }; Returns: string }
       get_emergency_contact: {
         Args: { profile_id: string }
         Returns: {
@@ -6220,6 +6227,17 @@ export type Database = {
         }
         Returns: string
       }
+      lookup_player_by_handle: {
+        Args: { _handle: string }
+        Returns: {
+          avatar_url: string
+          current_rating: number
+          display_name: string
+          full_name: string
+          handle: string
+          id: string
+        }[]
+      }
       preview_round_robin_by_code: {
         Args: { p_code: string }
         Returns: {
@@ -6246,6 +6264,18 @@ export type Database = {
         Args: { p_player_id: string }
         Returns: undefined
       }
+      search_connectable_users: {
+        Args: { _query: string }
+        Returns: {
+          avatar_url: string
+          current_rating: number
+          display_name: string
+          full_name: string
+          handle: string
+          id: string
+          reason: string
+        }[]
+      }
       set_group_message_pin: {
         Args: { p_message_id: string; p_pinned: boolean }
         Returns: undefined
@@ -6254,6 +6284,7 @@ export type Database = {
         Args: { p_channel: string; p_enabled: boolean; p_group_id: string }
         Returns: undefined
       }
+      slugify_name: { Args: { input: string }; Returns: string }
       submit_rr_match_score: {
         Args: {
           p_schedule_id: string
@@ -6261,6 +6292,19 @@ export type Database = {
           p_team2_score: number
         }
         Returns: string
+      }
+      suggest_friends: {
+        Args: never
+        Returns: {
+          avatar_url: string
+          current_rating: number
+          display_name: string
+          full_name: string
+          handle: string
+          id: string
+          reason: string
+          weight: number
+        }[]
       }
       user_created_match: {
         Args: { match_id_param: string; user_id_param: string }
