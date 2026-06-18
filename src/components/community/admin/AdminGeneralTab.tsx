@@ -127,52 +127,56 @@ export function AdminGeneralTab({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Avatar Upload Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Group Avatar</CardTitle>
+      <Card className="overflow-hidden border-border/60">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Group Avatar</CardTitle>
           <CardDescription>
-            Upload an image to represent your group.
+            A square image works best. Shown across feeds, chat, and member lists.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-4">
-            <div className="relative">
-              <Avatar className="h-20 w-20 cursor-pointer" onClick={handleAvatarClick}>
-                <AvatarImage src={iconUrl || undefined} alt={name} />
-                <AvatarFallback className="text-lg bg-muted">{getInitials(name || 'GR')}</AvatarFallback>
-              </Avatar>
-              {uploading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-background/80 rounded-full">
-                  <Loader2 className="h-6 w-6 animate-spin" />
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5">
+            <button
+              type="button"
+              onClick={handleAvatarClick}
+              disabled={uploading}
+              className="group relative h-28 w-28 shrink-0 rounded-2xl overflow-hidden ring-1 ring-border bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-60"
+              aria-label="Upload group avatar"
+            >
+              {iconUrl ? (
+                <img src={iconUrl} alt={name} className="h-full w-full object-cover" />
+              ) : (
+                <div className="h-full w-full flex items-center justify-center text-2xl font-semibold text-muted-foreground">
+                  {getInitials(name || 'GR')}
                 </div>
               )}
-            </div>
-            <div className="space-y-2">
-              <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={handleAvatarClick}
-                  disabled={uploading}
-                >
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                <Camera className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
+              {uploading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-background/80">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                </div>
+              )}
+            </button>
+            <div className="flex-1 space-y-3 text-center sm:text-left">
+              <div className="flex flex-wrap justify-center sm:justify-start gap-2">
+                <Button variant="default" size="sm" onClick={handleAvatarClick} disabled={uploading}>
                   <Camera className="h-4 w-4 mr-2" />
-                  {iconUrl ? 'Change' : 'Upload'}
+                  {iconUrl ? 'Change photo' : 'Upload photo'}
                 </Button>
                 {iconUrl && (
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={handleRemoveAvatar}
-                    disabled={uploading}
-                  >
+                  <Button variant="ghost" size="sm" onClick={handleRemoveAvatar} disabled={uploading}>
                     <X className="h-4 w-4 mr-2" />
                     Remove
                   </Button>
                 )}
               </div>
-              <p className="text-xs text-muted-foreground">JPG, PNG or GIF. Max 2MB.</p>
+              <p className="text-xs text-muted-foreground">
+                JPG, PNG or GIF · Max 2MB · Recommended 512×512
+              </p>
             </div>
             <input
               ref={fileInputRef}
@@ -186,16 +190,19 @@ export function AdminGeneralTab({
       </Card>
 
       {/* Basic Info Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Basic Information</CardTitle>
+      <Card className="border-border/60">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Basic Information</CardTitle>
           <CardDescription>
             Update your group's name, description, and type.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="group-name">Group Name</Label>
+        <CardContent className="space-y-5">
+          <div className="space-y-1.5">
+            <div className="flex items-baseline justify-between">
+              <Label htmlFor="group-name">Group Name</Label>
+              <span className="text-[10px] text-muted-foreground tabular-nums">{name.length}/50</span>
+            </div>
             <Input
               id="group-name"
               value={name}
@@ -203,11 +210,13 @@ export function AdminGeneralTab({
               placeholder="Enter group name"
               maxLength={50}
             />
-            <p className="text-xs text-muted-foreground">{name.length}/50 characters</p>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="group-description">Description</Label>
+          <div className="space-y-1.5">
+            <div className="flex items-baseline justify-between">
+              <Label htmlFor="group-description">Description</Label>
+              <span className="text-[10px] text-muted-foreground tabular-nums">{description.length}/500</span>
+            </div>
             <Textarea
               id="group-description"
               value={description}
@@ -216,10 +225,9 @@ export function AdminGeneralTab({
               rows={4}
               maxLength={500}
             />
-            <p className="text-xs text-muted-foreground">{description.length}/500 characters</p>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <Label htmlFor="group-type">Group Type</Label>
             <Select value={type} onValueChange={onTypeChange}>
               <SelectTrigger id="group-type">
