@@ -234,7 +234,13 @@ const AppContent = () => {
       const accessToken = hashParams.get("access_token") || queryParams.get("access_token");
       const refreshToken = hashParams.get("refresh_token") || queryParams.get("refresh_token");
       const code = queryParams.get("code") || hashParams.get("code");
-      const canUseCode = Boolean(code && (isAuthEntryPath(url.pathname) || url.pathname.startsWith("/profile")));
+      const canUseCode = Boolean(
+        code &&
+        (queryParams.has("state") ||
+          isAuthEntryPath(url.pathname) ||
+          url.pathname.startsWith("/profile") ||
+          url.pathname.startsWith("/player/profile")),
+      );
 
       if (!errorMessage && !accessToken && !refreshToken && !canUseCode) {
         finish();
