@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Trophy, Compass, User, Plus } from 'lucide-react';
+import { Home, Trophy, Users, User, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { NotificationBell } from '@/components/NotificationBell';
@@ -20,7 +20,7 @@ import { Logo } from '@/components/Logo';
 const navItems = [
   { to: '/player/dashboard', icon: Home, label: 'Home' },
   { to: '/player/matches', icon: Trophy, label: 'Matches' },
-  { to: '/player/play', icon: Compass, label: 'Play' },
+  { to: '/player/community', icon: Users, label: 'Community' },
   { to: '/player/profile', icon: User, label: 'Profile' },
 ];
 
@@ -28,7 +28,7 @@ const navItems = [
 const prefetchMap: Record<string, () => Promise<unknown>> = {
   '/player/dashboard': () => import('@/pages/player/PlayerDashboard'),
   '/player/matches': () => import('@/pages/MatchHistory'),
-  '/player/play': () => import('@/pages/play/PlayHub'),
+  '/player/community': () => import('@/pages/player/Community'),
   '/player/profile': () => import('@/pages/player/PlayerProfile'),
 };
 
@@ -60,10 +60,14 @@ export function PlayerShell() {
     location.pathname === '/player/matches/new';
 
   // Calculate active tab index for sliding indicator
-  const activeIndex = navItems.findIndex(item => 
-    location.pathname === item.to || 
-    (item.to !== '/player/dashboard' && location.pathname.startsWith(item.to))
-  );
+  const activeIndex = navItems.findIndex(item => {
+    if (item.to === '/player/community') {
+      return location.pathname.startsWith('/player/community') ||
+        location.pathname.startsWith('/player/friends');
+    }
+    return location.pathname === item.to ||
+      (item.to !== '/player/dashboard' && location.pathname.startsWith(item.to));
+  });
 
   useEffect(() => {
     const fetchUser = async () => {
