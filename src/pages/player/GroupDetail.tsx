@@ -28,7 +28,7 @@ import { CollapsedComposerBar } from '@/components/community/CollapsedComposerBa
 import { useGroupPosts } from '@/hooks/useGroupPosts';
 import { useGroupPresence } from '@/hooks/useGroupPresence';
 import { useGroupRealtime } from '@/hooks/useGroupRealtime';
-import { OnlineIndicator } from '@/components/community/OnlineIndicator';
+
 
 import { DEFAULT_VENUE_COLORS } from '@/lib/venueBranding';
 
