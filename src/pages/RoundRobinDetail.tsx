@@ -90,6 +90,7 @@ interface Event {
   /** Auto-generated invite code for invite-only events (XYZ-ABCD format).
    *  Surfaced to the host so they can share it with players. */
   invite_code?: string | null;
+  group_id?: string | null;
 }
 
 interface Player {
@@ -795,17 +796,21 @@ export default function RoundRobinDetail() {
     }
   };
 
-  const handleAddPlayer = async (playerId: string) => {
+  const handleAddPlayer = async ({
+    playerId,
+    guestName,
+  }: { playerId: string | null; guestName?: string }) => {
     if (!event || !userId) return;
 
     try {
-      // Add player to event
+      // Add player (or guest placeholder) to event
       const { error: insertError } = await supabase
         .from("round_robin_players")
         .insert({
           event_id: event.id,
           player_id: playerId,
-        });
+          guest_name: guestName ?? null,
+        } as never);
 
       if (insertError) throw insertError;
 
@@ -814,15 +819,21 @@ export default function RoundRobinDetail() {
         event_id: event.id,
         editor_id: userId,
         change_type: "player_add",
-        changes: { player_id: playerId },
-        reason: "Player added by organizer",
+        changes: { player_id: playerId, guest_name: guestName ?? null },
+        reason: guestName
+          ? `Guest player added by organizer (${guestName})`
+          : "Player added by organizer",
       });
 
       // Regenerate from current round
       const fromRound = event.current_round || 1;
       await regenerateScheduleFromRound(fromRound);
 
-      toast.success("Player added - they will see this event in their events list");
+      toast.success(
+        guestName
+          ? `${guestName} added as a guest`
+          : "Player added - they will see this event in their events list",
+      );
     } catch (error: any) {
       toast.error("Failed to add player");
       console.error(error);
@@ -2202,6 +2213,8 @@ export default function RoundRobinDetail() {
             players={players}
             currentRound={event.current_round}
             totalRounds={event.num_rounds}
+            groupId={event.group_id}
+            genderFilter={event.format === "male" ? "male" : event.format === "female" ? "female" : undefined}
             onAddPlayer={handleAddPlayer}
             onMarkInactive={handleMarkInactive}
             onSubstitute={handleSubstitute}
