@@ -156,6 +156,7 @@ const GroupDetail = lazy(() => import("./pages/player/GroupDetail"));
 const GroupManage = lazy(() => import("./pages/player/GroupManage"));
 const DirectMessages = lazy(() => import("./pages/player/DirectMessages"));
 const DirectMessageChat = lazy(() => import("./pages/player/DirectMessageChat"));
+const Friends = lazy(() => import("./pages/player/Friends"));
 
 // Venue pages
 const VenueOverview = lazy(() => import("./pages/venue/VenueOverview"));
@@ -393,6 +394,7 @@ const AppContent = () => {
             <Route path="my-bookings" element={<MyBookings />} />
             <Route path="my-events" element={<MyEvents />} />
             <Route path="community" element={<Community />} />
+            <Route path="friends" element={<Friends />} />
             <Route path="community/group/:groupId" element={<GroupDetail />} />
             <Route path="community/group/:groupId/manage" element={<GroupManage />} />
             <Route path="messages" element={<DirectMessages />} />
