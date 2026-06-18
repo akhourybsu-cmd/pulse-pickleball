@@ -31,15 +31,13 @@ export default function Community() {
   return (
     <div className="flex flex-col min-h-[calc(100vh-120px)]">
       {/* Page Header */}
-      <div className="px-4 sm:px-6 pt-5 pb-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h1 className="text-3xl font-semibold tracking-tight font-display">Community</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Groups, players, and local pickleball activity
-            </p>
-          </div>
-          <div className="flex items-center gap-2 shrink-0 pt-1">
+      <PlayerPageHeader
+        icon={Users}
+        title="Community"
+        subtitle="Groups, players, and local pickleball activity"
+        background="gradient"
+        action={
+          <div className="flex items-center gap-2">
             <Button
               variant="ghost"
               size="icon"
@@ -57,26 +55,42 @@ export default function Community() {
               Create
             </Button>
           </div>
-        </div>
-      </div>
+        }
+      />
 
-      {/* Segmented Tabs */}
+      {/* Sliding-underline Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-        <div className="px-4 sm:px-6">
-          <TabsList className="w-full h-11 bg-muted/40 p-1 rounded-xl grid grid-cols-2">
-            <TabsTrigger
-              value="my-community"
-              className="h-9 rounded-lg text-sm font-medium data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm"
-            >
-              My Community
-            </TabsTrigger>
-            <TabsTrigger
-              value="explore"
-              className="h-9 rounded-lg text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm"
-            >
-              Explore
-            </TabsTrigger>
-          </TabsList>
+        <div className="px-4 sm:px-6 pt-4">
+          <div className="relative border-b border-border/40">
+            <div className="grid grid-cols-2">
+              {[
+                { value: 'my-community', label: 'My Community' },
+                { value: 'explore', label: 'Explore' },
+              ].map((tab) => {
+                const isActive = activeTab === tab.value;
+                return (
+                  <button
+                    key={tab.value}
+                    onClick={() => setActiveTab(tab.value)}
+                    className={cn(
+                      'relative py-2.5 text-sm font-medium transition-colors duration-200',
+                      isActive ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+            {/* Sliding underline indicator */}
+            <div
+              className="absolute bottom-0 h-[2px] bg-primary rounded-full transition-all duration-[240ms] ease-out"
+              style={{
+                width: '50%',
+                left: activeTab === 'my-community' ? '0%' : '50%',
+              }}
+            />
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto">
