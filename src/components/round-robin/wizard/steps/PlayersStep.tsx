@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { UserPlus, Hash, Plus, Minus, Users, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { MultiPlayerCombobox } from "@/components/MultiPlayerCombobox";
+
 import { PlayerPickerSheet } from "@/components/round-robin/PlayerPickerSheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
