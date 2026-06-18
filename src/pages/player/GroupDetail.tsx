@@ -159,14 +159,31 @@ export default function GroupDetail() {
   const isVenueGroup = group?.type === 'venue_official' && group?.is_venue_verified && group?.venue;
   const venueColor = isVenueGroup ? (group.venue?.primary_color || DEFAULT_VENUE_COLORS.primary) : null;
 
-  // Memoize tab config
+  // Memoize tab config — labeled tabs with More holding Files/Settings
   const tabs = useMemo(() => [
     { value: 'feed', icon: MessageSquare, label: 'Feed' },
     { value: 'schedule', icon: Calendar, label: 'Events' },
     { value: 'chat', icon: MessageCircle, label: 'Chat' },
     { value: 'members', icon: Users, label: 'Members' },
-    { value: 'files', icon: FolderOpen, label: 'Files' },
+    { value: 'more', icon: MoreHorizontal, label: 'More' },
   ], []);
+
+  // Human-readable subtitle: "{Visibility} {Type} · N members"
+  const typeLabel = useMemo(() => {
+    const map: Record<string, string> = {
+      crew: 'Crew',
+      league: 'League',
+      open_play: 'Open Play',
+      venue_official: 'Venue',
+      tournament: 'Tournament',
+    };
+    return group ? (map[group.type] || 'Group') : 'Group';
+  }, [group]);
+  const visibilityLabel = group?.visibility === 'private'
+    ? 'Private'
+    : group?.visibility === 'unlisted' ? 'Unlisted' : 'Public';
+  const memberCount = group?.member_count ?? 0;
+  const subtitle = `${visibilityLabel} ${typeLabel} · ${memberCount} ${memberCount === 1 ? 'member' : 'members'}`;
 
   if (loading) {
     return (
