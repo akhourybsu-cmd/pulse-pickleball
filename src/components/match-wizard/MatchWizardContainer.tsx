@@ -175,7 +175,11 @@ export function MatchWizardContainer() {
           approved_at: playerId === user.id ? new Date().toISOString() : null,
         }));
 
-        await supabase.from('match_approvals').insert(approvals);
+        const { error: approvalsError } = await supabase
+          .from('match_approvals')
+          .insert(approvals);
+
+        if (approvalsError) throw approvalsError;
       }
 
       toast.success('Match submitted — pending player verification.');
@@ -184,8 +188,18 @@ export function MatchWizardContainer() {
       // confirmation from the other players.
       navigate('/player/matches?tab=pending');
     } catch (error: any) {
-      console.error('Error recording match:', error);
-      toast.error(error.message || 'Failed to record match');
+      console.error('Error recording match:', {
+        message: error?.message,
+        details: error?.details,
+        hint: error?.hint,
+        code: error?.code,
+      });
+      // Roll back the orphan match row so the user can retry without
+      // leaving stale data behind.
+      if (createdMatchId) {
+        await supabase.from('matches').delete().eq('id', createdMatchId);
+      }
+      toast.error(error?.message || 'Failed to record match');
     } finally {
       setIsSubmitting(false);
     }
