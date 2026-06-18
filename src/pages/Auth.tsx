@@ -54,6 +54,13 @@ const waitForAuthenticatedUser = async () => {
   return user;
 };
 
+const sanitizeRedirectPath = (path: string | null | undefined) => {
+  if (!path || !path.startsWith('/') || path.startsWith('//') || path === '/auth' || path.startsWith('/auth?')) {
+    return '/player/dashboard';
+  }
+  return path;
+};
+
 const Auth = () => {
   const [searchParams] = useSearchParams();
   const location = useLocation();
@@ -66,7 +73,7 @@ const Auth = () => {
   // destination in sessionStorage and restore it after the provider bounces
   // back to /auth (or directly to origin).
   const stashedReturn = typeof window !== 'undefined' ? sessionStorage.getItem('pulse_oauth_return') : null;
-  const redirectPath = returnFromState || searchParams.get('redirect') || stashedReturn || '/player/dashboard';
+  const redirectPath = sanitizeRedirectPath(returnFromState || searchParams.get('redirect') || stashedReturn);
 
   // Already-logged-in detection. If a returning user lands on /auth (via
   // bookmark, deep link, or stale tab), bounce them to their dashboard
