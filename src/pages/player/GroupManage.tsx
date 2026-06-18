@@ -263,55 +263,85 @@ export default function GroupManage() {
     );
   }
 
+  const TABS: { value: string; label: string; icon: typeof Settings }[] = [
+    { value: 'general', label: 'General', icon: Settings },
+    { value: 'privacy', label: 'Privacy', icon: Lock },
+    { value: 'permissions', label: 'Permissions', icon: Shield },
+    { value: 'roles', label: 'Roles', icon: Users },
+    { value: 'danger', label: 'Danger', icon: AlertTriangle },
+  ];
+
   return (
-    <div className="container max-w-3xl mx-auto px-4 py-6 space-y-6">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button 
-            variant="ghost" 
-            size="icon"
-            onClick={() => navigate(`/player/community/group/${groupId}`)}
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Admin Suite</h1>
-            <p className="text-sm text-muted-foreground">{group.name}</p>
+      <header className="sticky top-0 z-30 bg-background/85 backdrop-blur-xl border-b border-border/60">
+        <div className="container max-w-3xl mx-auto px-4 py-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 shrink-0"
+                onClick={() => navigate(`/player/community/group/${groupId}`)}
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="h-10 w-10 shrink-0 rounded-xl bg-primary/10 text-primary flex items-center justify-center ring-1 ring-primary/20">
+                  <Shield className="h-5 w-5" />
+                </div>
+                <div className="min-w-0">
+                  <h1 className="text-lg font-semibold tracking-tight leading-tight truncate">Admin Suite</h1>
+                  <p className="text-xs text-muted-foreground truncate">{group.name}</p>
+                  <div className="h-[3px] w-10 mt-1 bg-primary rounded-full" />
+                </div>
+              </div>
+            </div>
+            {(activeTab === 'general' || activeTab === 'privacy') && (
+              <Button onClick={handleSave} disabled={saving || !name.trim()} size="sm" className="shrink-0">
+                <Save className="h-4 w-4 mr-2" />
+                {saving ? 'Saving' : 'Save'}
+              </Button>
+            )}
           </div>
         </div>
-        {(activeTab === 'general' || activeTab === 'privacy') && (
-          <Button onClick={handleSave} disabled={saving || !name.trim()} size="sm">
-            <Save className="h-4 w-4 mr-2" />
-            {saving ? 'Saving...' : 'Save'}
-          </Button>
-        )}
-      </div>
 
-      {/* Admin Tabs */}
+        {/* Sliding-underline tabs */}
+        <div className="container max-w-3xl mx-auto px-2 sm:px-4">
+          <div
+            role="tablist"
+            className="flex items-center gap-1 overflow-x-auto scrollbar-none -mb-px"
+          >
+            {TABS.map((t) => {
+              const Icon = t.icon;
+              const active = activeTab === t.value;
+              return (
+                <button
+                  key={t.value}
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setActiveTab(t.value)}
+                  className={`relative shrink-0 px-3 sm:px-4 py-2.5 flex items-center gap-1.5 text-sm font-medium transition-colors ${
+                    active ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  <span>{t.label}</span>
+                  <span
+                    className={`absolute left-2 right-2 -bottom-px h-[2px] rounded-full transition-all ${
+                      active ? 'bg-primary opacity-100' : 'opacity-0'
+                    }`}
+                  />
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </header>
+
+      <div className="container max-w-3xl mx-auto px-4 py-6">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="general" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-2 min-h-[44px]">
-            <Settings className="h-3.5 w-3.5" />
-            <span className="text-[10px] sm:text-sm">General</span>
-          </TabsTrigger>
-          <TabsTrigger value="privacy" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-2 min-h-[44px]">
-            <Lock className="h-3.5 w-3.5" />
-            <span className="text-[10px] sm:text-sm">Privacy</span>
-          </TabsTrigger>
-          <TabsTrigger value="permissions" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-2 min-h-[44px]">
-            <Shield className="h-3.5 w-3.5" />
-            <span className="text-[10px] sm:text-sm">Permissions</span>
-          </TabsTrigger>
-          <TabsTrigger value="roles" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-2 min-h-[44px]">
-            <Users className="h-3.5 w-3.5" />
-            <span className="text-[10px] sm:text-sm">Roles</span>
-          </TabsTrigger>
-          <TabsTrigger value="danger" className="flex flex-col sm:flex-row gap-0.5 sm:gap-1.5 py-2 min-h-[44px]">
-            <AlertTriangle className="h-3.5 w-3.5" />
-            <span className="text-[10px] sm:text-sm">Danger</span>
-          </TabsTrigger>
-        </TabsList>
+        {/* TabsList intentionally omitted — custom header tabstrip above drives state */}
 
         <TabsContent value="general" className="mt-6">
           <AdminGeneralTab
