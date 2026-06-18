@@ -29,6 +29,7 @@ import { useGroupPosts } from '@/hooks/useGroupPosts';
 import { useGroupPresence } from '@/hooks/useGroupPresence';
 import { useGroupRealtime } from '@/hooks/useGroupRealtime';
 import { OnlineIndicator } from '@/components/community/OnlineIndicator';
+import { GroupNotificationMenu } from '@/components/community/GroupNotificationMenu';
 import { DEFAULT_VENUE_COLORS } from '@/lib/venueBranding';
 
 export default function GroupDetail() {
@@ -254,9 +255,11 @@ export default function GroupDetail() {
         )}
 
         {/* Compact action buttons - smaller on mobile */}
+        <GroupNotificationMenu groupId={groupId!} />
+
         {group.invite_code && (
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             size="icon"
             className="h-7 w-7 sm:h-8 sm:w-8"
             onClick={() => setInviteModalOpen(true)}
