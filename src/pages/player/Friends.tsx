@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, MessageCircle, UserMinus, Check, X, UserPlus, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -7,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useFriends } from '@/hooks/useFriends';
 import { useFriendSuggestions } from '@/hooks/useFriendSuggestions';
+import { ConnectSheet } from '@/components/community/ConnectSheet';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -15,6 +17,7 @@ const initials = (name: string | null) =>
 
 export default function Friends() {
   const navigate = useNavigate();
+  const [connectOpen, setConnectOpen] = useState(false);
   const {
     friends,
     pendingRequests,
