@@ -1,15 +1,13 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { useNavigate, Link, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Save, UserCog, User, Trophy, Gamepad2, Bell, Shield } from "lucide-react";
-import { motion } from "framer-motion";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
-import logo from "@/assets/pulse-logo-premium.svg";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
+import { PlayerPageHeader } from "@/components/layout/PlayerPageHeader";
 
 // Profile tab components
 import { ProfileBasicsTab } from "@/components/profile/ProfileBasicsTab";
@@ -342,92 +340,25 @@ const EditProfile = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background">
-        <nav className="bg-secondary border-b border-secondary-foreground/10 shadow-sm">
-          <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-5 flex items-center justify-between h-[72px]">
-            <Link to="/player/dashboard">
-              <img src={logo} alt="PULSE Logo" className="h-[60px] sm:h-[75px] w-auto cursor-pointer hover:opacity-80 transition-opacity" />
-            </Link>
-            <ThemeToggle />
-          </div>
-        </nav>
-        <div className="min-h-screen flex items-center justify-center">
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-muted-foreground text-sm">Loading...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <nav className="bg-secondary border-b border-secondary-foreground/10 shadow-sm">
-        <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-5 flex items-center justify-between h-[72px]">
-          <Link to="/player/dashboard">
-            <img src={logo} alt="PULSE Logo" className="h-[60px] sm:h-[75px] w-auto cursor-pointer hover:opacity-80 transition-opacity" />
-          </Link>
-          <ThemeToggle />
-        </div>
-      </nav>
+    <div>
+      <PlayerPageHeader
+        icon={UserCog}
+        title="Edit Profile"
+        subtitle={formData.display_name || formData.first_name || "Your account settings"}
+        background="gradient"
+        action={
+          <TournamentReadinessCard completeness={completeness} compact />
+        }
+      />
 
-      {/* Pulse Header - Full Width */}
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="mb-6 bg-gradient-to-b from-primary/10 via-background to-background border-b border-primary/15"
-      >
-        <div className="container mx-auto px-4 py-6 md:py-8">
-          <div className="flex items-start gap-3 md:gap-6">
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-              className="flex-shrink-0"
-            >
-              <UserCog 
-                className="w-8 h-8 md:w-12 md:h-12"
-                style={{ 
-                  color: '#A9DC3D',
-                  filter: 'drop-shadow(0px 2px 4px rgba(169, 220, 61, 0.3))'
-                }} 
-              />
-            </motion.div>
-            <div className="flex-1 min-w-0">
-              <motion.h1
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-                className="text-2xl md:text-4xl lg:text-5xl font-bold mb-2 md:mb-4 relative inline-block pb-2 text-foreground border-l-[3px] border-primary pl-3"
-                style={{
-                  letterSpacing: '0.02em',
-                }}
-              >
-                Edit Profile
-                <motion.span
-                  className="absolute bottom-0 left-3 h-0.5 bg-gradient-to-r from-primary to-transparent"
-                  initial={{ width: 0 }}
-                  animate={{ width: '100%' }}
-                  transition={{ duration: 0.8, delay: 0.5 }}
-                  style={{ display: 'block' }}
-                />
-              </motion.h1>
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.5, delay: 0.3 }}
-                className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4"
-              >
-                <span className="text-sm md:text-base text-muted-foreground">
-                  {formData.display_name || formData.first_name || 'User'}
-                </span>
-                <TournamentReadinessCard completeness={completeness} compact />
-              </motion.div>
-            </div>
-          </div>
-        </div>
-      </motion.div>
-
-      <div className="container mx-auto px-4 pb-8">
+      <div className="container mx-auto px-4 pt-4 pb-8 max-w-3xl">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-5 mb-6 h-auto">
             <TabsTrigger value="basics" className="flex items-center gap-1.5 py-2.5 px-2 text-xs sm:text-sm">
