@@ -213,136 +213,148 @@ export default function GroupDetail() {
         '--venue-primary': venueColor,
       } as React.CSSProperties : undefined}
     >
-      {/* Minimal Immersive Header - Mobile Optimized */}
+      {/* Refined Community Header */}
       <div 
-        className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-2 border-b border-border/20 bg-background shrink-0"
+        className="px-3 sm:px-4 pt-3 pb-2 border-b border-border/30 bg-background shrink-0"
         style={isVenueGroup ? { 
           borderColor: `${venueColor}30`,
-          background: `linear-gradient(to right, ${venueColor}08, transparent)`
+          background: `linear-gradient(to bottom, ${venueColor}06, transparent)`
         } : undefined}
       >
-        <Button 
-          variant="ghost" 
-          size="icon"
-          className="h-8 w-8 sm:h-9 sm:w-9 -ml-0.5 sm:-ml-1"
-          onClick={() => navigate('/player/community')}
-        >
-          <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
-        </Button>
-        
-        <div className="flex-1 min-w-0">
-          <h1 className="text-sm font-semibold truncate">{group.name}</h1>
-        </div>
-
-        {/* Online indicator - compact on mobile */}
-        <div className="flex items-center gap-1 sm:gap-1.5 text-xs text-muted-foreground">
-          <OnlineIndicator isOnline={isConnected} size="sm" />
-          <span className="hidden xs:inline">{onlineCount}</span>
-          <span className="hidden sm:inline">online</span>
-        </div>
-
-        {/* Visit Venue button for venue_official groups */}
-        {isVenueGroup && group.venue?.slug && (
-          <Button 
-            variant="outline" 
-            size="sm"
-            className="h-7 text-xs gap-1 hidden sm:flex"
-            onClick={() => navigate(`/v/${group.venue!.slug}`)}
-            style={{ 
-              borderColor: venueColor || undefined,
-              color: venueColor || undefined 
-            }}
-          >
-            <Building2 className="h-3 w-3" />
-            <span>Visit Venue</span>
-          </Button>
-        )}
-
-        {/* Mobile venue button (icon only) */}
-        {isVenueGroup && group.venue?.slug && (
+        <div className="flex items-start gap-2">
           <Button 
             variant="ghost" 
             size="icon"
-            className="h-7 w-7 sm:hidden"
-            onClick={() => navigate(`/v/${group.venue!.slug}`)}
-            style={{ color: venueColor || undefined }}
+            className="h-9 w-9 -ml-1 shrink-0"
+            onClick={() => navigate('/player/community')}
           >
-            <Building2 className="h-3.5 w-3.5" />
+            <ArrowLeft className="h-5 w-5" />
           </Button>
-        )}
 
-        {/* Compact action buttons - smaller on mobile */}
-        {group.invite_code && (
-          <Button 
-            variant="ghost" 
-            size="icon"
-            className="h-7 w-7 sm:h-8 sm:w-8"
-            onClick={() => setInviteModalOpen(true)}
-          >
-            <Share2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-          </Button>
-        )}
-        
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8">
-              <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => openQuickPost('post')}>
-              <MessageSquare className="h-4 w-4 mr-2" />
-              Post Update
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => { handleTabChange('schedule'); }}>
-              <Calendar className="h-4 w-4 mr-2" />
-              Create Event
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => openQuickPost('poll')}>
-              <MessageSquare className="h-4 w-4 mr-2" />
-              Create Poll
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+          <div className="flex-1 min-w-0 pt-0.5">
+            <h1 className="text-lg sm:text-xl font-semibold truncate leading-tight">
+              {group.name}
+            </h1>
+            <p className="text-xs text-muted-foreground mt-0.5 truncate">
+              {subtitle}
+            </p>
+            {/* Active indicator — readable, not a mystery dot */}
+            <div className="flex items-center gap-1.5 mt-1">
+              <span className="relative flex h-2 w-2">
+                {isConnected && (
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500/60 opacity-75" />
+                )}
+                <span className={cn(
+                  "relative inline-flex rounded-full h-2 w-2",
+                  isConnected ? "bg-emerald-500" : "bg-muted-foreground/40"
+                )} />
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {onlineCount > 0 ? `${onlineCount} active` : 'Idle'}
+              </span>
+            </div>
+          </div>
 
-        {isAdmin && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-8 sm:w-8">
-                <MoreVertical className="h-4 w-4" />
+          {/* Right-side action cluster */}
+          <div className="flex items-center gap-0.5 shrink-0">
+            {group.invite_code && (
+              <Button 
+                variant="ghost" 
+                size="icon"
+                className="h-9 w-9"
+                onClick={() => setInviteModalOpen(true)}
+                aria-label="Invite"
+              >
+                <UserPlus className="h-[18px] w-[18px]" />
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => navigate(`/player/community/group/${groupId}/manage`)}>
-                <Settings className="h-4 w-4 mr-2" />
-                Group Settings
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
+            )}
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-9 w-9" aria-label="Create">
+                  <Plus className="h-[18px] w-[18px]" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => openQuickPost('post')}>
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Post Update
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleTabChange('schedule')}>
+                  <Calendar className="h-4 w-4 mr-2" />
+                  Create Event
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => openQuickPost('poll')}>
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Create Poll
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-9 w-9" aria-label="More">
+                  <MoreVertical className="h-[18px] w-[18px]" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {group.invite_code && (
+                  <DropdownMenuItem onClick={() => setInviteModalOpen(true)}>
+                    <Share2 className="h-4 w-4 mr-2" />
+                    Share invite
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onClick={() => handleTabChange('more')}>
+                  <FolderOpen className="h-4 w-4 mr-2" />
+                  Files
+                </DropdownMenuItem>
+                {isVenueGroup && group.venue?.slug && (
+                  <DropdownMenuItem onClick={() => navigate(`/v/${group.venue!.slug}`)}>
+                    <Building2 className="h-4 w-4 mr-2" />
+                    Visit Venue
+                  </DropdownMenuItem>
+                )}
+                {isAdmin && (
+                  <DropdownMenuItem onClick={() => navigate(`/player/community/group/${groupId}/manage`)}>
+                    <Settings className="h-4 w-4 mr-2" />
+                    Group Settings
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
       </div>
 
-      {/* Minimal Tab Bar */}
+      {/* Labeled Tab Bar */}
       <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col overflow-hidden">
         <div 
-          className="border-b border-border/30 px-2"
+          className="border-b border-border/30 bg-background shrink-0"
           style={isVenueGroup ? { borderColor: `${venueColor}20` } : undefined}
         >
-          <TabsList className="h-10 bg-transparent p-0 w-full justify-start gap-0">
-            {tabs.map((tab) => (
-              <TabsTrigger 
-                key={tab.value}
-                value={tab.value} 
-                className="flex-1 h-10 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-1 text-xs px-2"
-                style={isVenueGroup && activeTab === tab.value ? {
-                  borderColor: venueColor || undefined,
-                  color: venueColor || undefined
-                } : undefined}
-              >
-                <tab.icon className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">{tab.label}</span>
-              </TabsTrigger>
-            ))}
+          <TabsList className="h-14 bg-transparent p-0 w-full justify-between gap-0 rounded-none">
+            {tabs.map((tab) => {
+              const active = activeTab === tab.value;
+              return (
+                <TabsTrigger 
+                  key={tab.value}
+                  value={tab.value} 
+                  className={cn(
+                    "flex-1 h-14 rounded-none border-b-2 border-transparent bg-transparent",
+                    "data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none",
+                    "flex flex-col items-center justify-center gap-1 px-1 text-[11px] font-medium",
+                    active ? "text-primary" : "text-muted-foreground"
+                  )}
+                  style={isVenueGroup && active ? {
+                    borderColor: venueColor || undefined,
+                    color: venueColor || undefined
+                  } : undefined}
+                >
+                  <tab.icon className="h-[18px] w-[18px]" strokeWidth={active ? 2.25 : 1.75} />
+                  <span>{tab.label}</span>
+                </TabsTrigger>
+              );
+            })}
           </TabsList>
         </div>
 
