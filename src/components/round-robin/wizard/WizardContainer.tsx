@@ -15,6 +15,7 @@ import { ScheduleStep } from "./steps/ScheduleStep";
 import { DateTimeStep } from "./steps/DateTimeStep";
 import { RatingsStep } from "./steps/RatingsStep";
 import { ReviewStep } from "./steps/ReviewStep";
+import { GroupShareStep } from "./steps/GroupShareStep";
 
 interface Court {
   id: string;
@@ -32,6 +33,9 @@ export function WizardContainer() {
   // event to that venue so it shows up in the venue's RR list. Falls back
   // to a free-standing player-organized event if absent.
   const venueId = searchParams.get("venueId");
+  // Optional ?groupId=… — when launched from a group page, pre-select that
+  // group and default to "shared_group" visibility.
+  const presetGroupId = searchParams.get("groupId");
   const [loading, setLoading] = useState(false);
   const [courts, setCourts] = useState<Court[]>([]);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -56,6 +60,8 @@ export function WizardContainer() {
     isPublished: false,
     maxPlayers: 20,
     isInviteOnly: false,
+    groupVisibility: presetGroupId ? "shared_group" : "personal",
+    groupId: presetGroupId,
   });
 
   const { steps, totalSteps, isStepValid } = useWizardSteps(formData);
