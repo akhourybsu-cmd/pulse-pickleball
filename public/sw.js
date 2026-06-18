@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'pulse-v3';
+const CACHE_VERSION = 'pulse-v4-oauth-fix';
 const urlsToCache = [
   '/',
   '/index.html',
