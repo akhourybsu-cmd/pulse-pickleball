@@ -341,17 +341,14 @@ export default function GroupDetail() {
             forceMount={visitedTabs.has('feed') ? true : undefined}
           >
             {visitedTabs.has('feed') && (
-              <>
-                <GroupRoundRobinsRail groupId={groupId!} isAdmin={isAdmin} />
-                <GroupFeed 
-                  groupId={groupId!} 
-                  groupName={group.name}
-                  isAdmin={isAdmin} 
-                  currentUserId={currentUserId}
-                  onOpenQuickPost={(type) => openQuickPost(type as PostType)}
-                  onSwitchToEvents={() => handleTabChange('schedule')}
-                />
-              </>
+              <GroupFeed 
+                groupId={groupId!} 
+                groupName={group.name}
+                isAdmin={isAdmin} 
+                currentUserId={currentUserId}
+                onOpenQuickPost={(type) => openQuickPost(type as PostType)}
+                onSwitchToEvents={() => handleTabChange('schedule')}
+              />
             )}
           </TabsContent>
 
