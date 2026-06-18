@@ -29,7 +29,7 @@ import { useGroupPosts } from '@/hooks/useGroupPosts';
 import { useGroupPresence } from '@/hooks/useGroupPresence';
 import { useGroupRealtime } from '@/hooks/useGroupRealtime';
 import { OnlineIndicator } from '@/components/community/OnlineIndicator';
-import { GroupRoundRobinsRail } from '@/components/community/GroupRoundRobinsRail';
+
 import { DEFAULT_VENUE_COLORS } from '@/lib/venueBranding';
 
 export default function GroupDetail() {
