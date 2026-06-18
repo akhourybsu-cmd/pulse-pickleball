@@ -63,7 +63,11 @@ export const peekPostAuthRedirect = () => {
 
 export const consumePostAuthRedirect = () => {
   const redirect = peekPostAuthRedirect();
+  clearPostAuthRedirect();
+  return redirect || DEFAULT_AUTH_DESTINATION;
+};
+
+export const clearPostAuthRedirect = () => {
   safeStorageRemove(sessionStorage, AUTH_RETURN_STORAGE_KEY);
   safeStorageRemove(localStorage, AUTH_RETURN_STORAGE_KEY);
-  return redirect || DEFAULT_AUTH_DESTINATION;
 };
