@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useEffect } from "react";
+import React, { Suspense, lazy, useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -23,7 +23,7 @@ import { ScrollToTop } from "@/components/ScrollToTop";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { consumePostAuthRedirect, isAuthEntryPath } from "@/lib/authRedirect";
+import { clearPostAuthRedirect, consumePostAuthRedirect, isAuthEntryPath } from "@/lib/authRedirect";
 
 /**
  * Forward the current location's `search` (and `hash`) when redirecting from a
@@ -205,7 +205,78 @@ const queryClient = new QueryClient({
 
 const AppContent = () => {
   const navigate = useNavigate();
+  const [authRecoveryChecked, setAuthRecoveryChecked] = useState(false);
   useAuthPersistence();
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const finish = () => {
+      if (!cancelled) setAuthRecoveryChecked(true);
+    };
+
+    const recoverOAuthReturn = async () => {
+      const url = new URL(window.location.href);
+      const hashParams = new URLSearchParams(url.hash.replace(/^#/, ""));
+      const queryParams = url.searchParams;
+      const authType = hashParams.get("type") || queryParams.get("type");
+
+      if (authType === "recovery" || url.pathname === "/reset-password") {
+        finish();
+        return;
+      }
+
+      const errorMessage =
+        hashParams.get("error_description") ||
+        queryParams.get("error_description") ||
+        hashParams.get("error") ||
+        queryParams.get("error");
+      const accessToken = hashParams.get("access_token") || queryParams.get("access_token");
+      const refreshToken = hashParams.get("refresh_token") || queryParams.get("refresh_token");
+      const code = queryParams.get("code") || hashParams.get("code");
+      const canUseCode = Boolean(code && (isAuthEntryPath(url.pathname) || url.pathname.startsWith("/profile")));
+
+      if (!errorMessage && !accessToken && !refreshToken && !canUseCode) {
+        finish();
+        return;
+      }
+
+      try {
+        if (errorMessage) {
+          clearPostAuthRedirect();
+          toast.error(errorMessage);
+        } else if (accessToken && refreshToken) {
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+          if (error) throw error;
+        } else if (code) {
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) throw error;
+        }
+
+        window.history.replaceState({}, document.title, `${url.pathname}${url.searchParams.size ? `?${url.searchParams}` : ""}`);
+
+        if (!errorMessage && isAuthEntryPath(url.pathname)) {
+          navigate(consumePostAuthRedirect(), { replace: true });
+          return;
+        }
+      } catch (error) {
+        console.error("OAuth return handling failed:", error);
+        clearPostAuthRedirect();
+        toast.error(error instanceof Error ? error.message : "Sign-in could not be completed");
+      } finally {
+        finish();
+      }
+    };
+
+    recoverOAuthReturn();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [navigate]);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -236,6 +307,10 @@ const AppContent = () => {
     window.addEventListener('sw-update-available', handleSWUpdate);
     return () => window.removeEventListener('sw-update-available', handleSWUpdate);
   }, []);
+
+  if (!authRecoveryChecked) {
+    return <PageLoader />;
+  }
 
   return (
     <>
