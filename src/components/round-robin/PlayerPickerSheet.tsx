@@ -31,6 +31,13 @@ interface PlayerPickerSheetProps {
   genderFilter?: "male" | "female";
   groupId?: string | null;
   trigger: React.ReactNode;
+  /** "multi" keeps a Done button; "single" commits on the first tap. */
+  mode?: "multi" | "single";
+  /** Player IDs to hide from all tabs (already-in-event roster, etc.). */
+  excludePlayerIds?: string[];
+  /** Show the Guest tab. Default: true in multi mode, false in single mode
+   *  (single is used for substitution which writes to schedule.player_id). */
+  allowGuest?: boolean;
 }
 
 function initials(p: { full_name: string; display_name: string | null }) {
@@ -55,6 +62,9 @@ export function PlayerPickerSheet({
   genderFilter,
   groupId,
   trigger,
+  mode = "multi",
+  excludePlayerIds,
+  allowGuest,
 }: PlayerPickerSheetProps) {
   const [open, setOpen] = useState(false);
   const [local, setLocal] = useState<PickerPlayer[]>(selectedPlayers);
@@ -62,6 +72,12 @@ export function PlayerPickerSheet({
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 250);
   const [guestName, setGuestName] = useState("");
+
+  const showGuest = allowGuest ?? mode === "multi";
+  const excludeSet = useMemo(
+    () => new Set(excludePlayerIds ?? []),
+    [excludePlayerIds],
+  );
 
   // Reset local state every time the sheet opens
   const handleOpenChange = (v: boolean) => {
@@ -72,6 +88,12 @@ export function PlayerPickerSheet({
   const selectedIds = useMemo(() => new Set(local.map((p) => p.id)), [local]);
 
   const toggle = (p: PickerPlayer) => {
+    if (mode === "single") {
+      // Commit immediately and close
+      onPlayersChange([p]);
+      setOpen(false);
+      return;
+    }
     setLocal((prev) =>
       prev.some((x) => x.id === p.id)
         ? prev.filter((x) => x.id !== p.id)
@@ -92,6 +114,12 @@ export function PlayerPickerSheet({
       display_name: name,
       isGuest: true,
     };
+    if (mode === "single") {
+      onPlayersChange([guest]);
+      setGuestName("");
+      setOpen(false);
+      return;
+    }
     setLocal((prev) => [...prev, guest]);
     setGuestName("");
   };
@@ -100,6 +128,7 @@ export function PlayerPickerSheet({
     onPlayersChange(local);
     setOpen(false);
   };
+
 
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
