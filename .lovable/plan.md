@@ -1,28 +1,60 @@
-# Swap "Play" → "Community" in Bottom Nav
+## Root cause
 
-The Play tab in the player bottom nav becomes the Community tab. `/player/play` (PlayHub) stays reachable from the Home dashboard tiles and existing deep links — it just leaves the primary nav.
+The match wizard submission fails on the **`match_approvals` insert step** because of an overly strict RLS policy.
 
-## Changes
+In `src/components/match-wizard/MatchWizardContainer.tsx` (step 5 of `handleSubmit`) the creator inserts one approval row **for every real player in the match** — themselves plus opponents/partners. But the only INSERT policy on `match_approvals` is:
 
-### `src/components/layout/PlayerShell.tsx`
-1. **Imports:** swap `Compass` for `Users` from `lucide-react`.
-2. **`navItems` array:** replace
-   ```
-   { to: '/player/play', icon: Compass, label: 'Play' }
-   ```
-   with
-   ```
-   { to: '/player/community', icon: Users, label: 'Community' }
-   ```
-3. **`prefetchMap`:** replace the `'/player/play'` entry with `'/player/community': () => import('@/pages/player/Community')`.
-4. **Active-route detection:** the existing `activeIndex` logic uses `location.pathname.startsWith(item.to)`, so `/player/community`, `/player/community/group/:id`, and `/player/friends` all need consideration. To keep Community highlighted on its sub-routes (groups, friends), add `/player/friends` to the same match group — e.g. treat `pathname.startsWith('/player/community') || pathname.startsWith('/player/friends')` as the Community tab.
+```
+with_check: auth.uid() = player_id
+```
 
-### No other files change
-- `/player/play` route stays registered; PlayHub is still linked from Home (`ExploreCard`, `QuickActionsBar`) and any existing redirects.
-- Community page already exists at `/player/community` with the new 2-tab hub design and Friends entry.
-- No backend or schema changes.
+So any row whose `player_id` is not the current user is rejected by RLS, which fails the whole batch insert and surfaces as a generic "Failed to record match" toast. (The earlier `matches` and `match_participants` inserts succeed, which is why the user sees the error only on final submit — and orphan rows are likely left behind.)
 
-## Technical notes
+The other parts of the flow check out:
+- `matches` INSERT policy (`auth.uid() IS NOT NULL`) — fine.
+- `match_participants` INSERT policy already allows match creators to insert rows for any participant.
+- All triggers on `matches` are gated on `status = 'approved'`/`'completed'`, and the wizard inserts `status = 'pending'`, so none of them fire destructively.
+- `guest_match_players` policy allows match creators to insert — fine.
 
-- Icon choice: `Users` matches the Community concept and is already used inside the Community page action row.
-- The animated underline pill in PlayerShell is index-driven, so swapping the array entry is enough — no width math changes.
+## Fix
+
+Add a second INSERT policy on `match_approvals` that mirrors the pattern already used for `match_participants`: the creator of the match can insert approval rows for any player in that match. Keep the existing self-insert policy so players can still create their own approval row when a match was created by someone else.
+
+New policy (migration):
+
+```sql
+CREATE POLICY "Match creators can insert approvals for their match"
+ON public.match_approvals
+FOR INSERT
+TO authenticated
+WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM public.matches m
+    WHERE m.id = match_approvals.match_id
+      AND m.created_by = auth.uid()
+  )
+);
+```
+
+No GRANT change needed — `match_approvals` already has the standard role grants.
+
+## Defensive client cleanup (same file)
+
+While I'm in `MatchWizardContainer.tsx`, harden `handleSubmit` so a future RLS failure doesn't leave orphan rows and so the user sees the real Postgres error:
+
+1. Check the result of the `match_approvals` insert (currently the error is swallowed) and `throw` on failure.
+2. On any thrown error after the `matches` row is created, delete the orphan match (`supabase.from('matches').delete().eq('id', match.id)`) before showing the toast.
+3. Surface `error.message` plus `error.details`/`error.hint` in the console log so the next regression is diagnosable.
+
+No UI, wizard step, or data-shape changes.
+
+## Files touched
+
+- New migration: add the `Match creators can insert approvals for their match` policy on `public.match_approvals`.
+- `src/components/match-wizard/MatchWizardContainer.tsx`: check approval-insert error, roll back the match row on failure, log richer error info.
+
+## Verification
+
+1. Record a doubles match with three other real players → submit → toast `Match submitted — pending player verification.`, redirect to `/player/matches?tab=pending`, one row in `matches`, four rows in `match_participants`, four rows in `match_approvals` (creator `approved = true`, others `null`).
+2. Record a singles match with one guest opponent → succeeds, one `guest_match_players` row, one `match_approvals` row (creator only).
+3. Force a failure (e.g. temporarily revoke `match_participants` insert) → no orphan `matches` row remains and the toast shows the real error.
