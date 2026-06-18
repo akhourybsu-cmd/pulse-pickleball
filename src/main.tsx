@@ -27,6 +27,7 @@ if ('serviceWorker' in navigator && shouldRegisterServiceWorker) {
     navigator.serviceWorker.register('/sw.js')
       .then((registration) => {
         console.log('Service Worker registered');
+        const hadController = Boolean(navigator.serviceWorker.controller);
 
         if (registration.waiting) {
           registration.waiting.postMessage({ type: 'SKIP_WAITING' });
@@ -51,7 +52,7 @@ if ('serviceWorker' in navigator && shouldRegisterServiceWorker) {
 
         let refreshing = false;
         navigator.serviceWorker.addEventListener('controllerchange', () => {
-          if (refreshing) return;
+          if (!hadController || refreshing) return;
           refreshing = true;
           window.location.reload();
         });
