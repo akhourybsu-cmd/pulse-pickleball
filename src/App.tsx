@@ -360,7 +360,7 @@ const AppContent = () => {
           <Route path="/dashboard" element={<Navigate to="/player/dashboard" replace />} />
 
           {/* Existing routes */}
-          <Route path="/profile/edit" element={<Navigate to="/player/profile/edit" replace />} />
+          <Route path="/profile/edit" element={<RedirectWithParams to="/player/profile/edit" />} />
           <Route path="/profile/:userId" element={<Navigate to="/player/profile" replace />} />
           {/* Match routes: legacy /match/* paths now redirect into the player shell */}
           <Route path="/match/new" element={<Navigate to="/player/matches/new" replace />} />
