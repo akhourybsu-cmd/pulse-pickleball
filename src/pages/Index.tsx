@@ -10,6 +10,7 @@ import {
   SplitCTASection,
   HomepageFooter,
 } from "@/components/homepage";
+import { consumePostAuthRedirect } from "@/lib/authRedirect";
 
 /**
  * Public landing page.
@@ -60,9 +61,7 @@ const Index = () => {
   // Authenticated users → straight into the player hub, or the deep link
   // they were trying to reach before the OAuth round-trip.
   if (authState === "authenticated") {
-    const stashed = typeof window !== 'undefined' ? sessionStorage.getItem('pulse_oauth_return') : null;
-    if (stashed) sessionStorage.removeItem('pulse_oauth_return');
-    return <Navigate to={stashed || "/player/dashboard"} replace />;
+    return <Navigate to={consumePostAuthRedirect()} replace />;
   }
 
   return (
