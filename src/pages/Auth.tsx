@@ -207,8 +207,9 @@ const Auth = () => {
           return;
         }
 
+        await waitForAuthenticatedUser();
         toast.success("Logged in successfully!");
-        navigate(redirectPath);
+        navigate(redirectPath, { replace: true });
       } else {
         const { data: authData, error: authError } = await supabase.auth.signUp({
           email,
@@ -225,9 +226,12 @@ const Auth = () => {
 
         if (authError) throw authError;
 
-        if (authData.user) {
+        if (authData.session) {
+          await waitForAuthenticatedUser();
           toast.success("Account created! Welcome to PULSE!");
-          navigate(redirectPath);
+          navigate(redirectPath, { replace: true });
+        } else if (authData.user) {
+          toast.success("Account created! Check your email to finish signing in.");
         }
       }
     } catch (error: any) {
@@ -273,7 +277,7 @@ const Auth = () => {
     setShowEmailMFA(false);
     toast.success("Logged in successfully!");
     setTimeout(() => {
-      navigate(redirectPath);
+      navigate(redirectPath, { replace: true });
     }, 100);
   };
 
@@ -286,7 +290,7 @@ const Auth = () => {
 
   const handleBiometricSuccess = () => {
     toast.success("Logged in successfully!");
-    navigate(redirectPath);
+    navigate(redirectPath, { replace: true });
   };
 
   const handleOAuth = async (provider: "google" | "apple") => {
@@ -309,7 +313,8 @@ const Auth = () => {
         return;
       }
       if (result.redirected) return;
-      navigate(redirectPath);
+      await waitForAuthenticatedUser();
+      navigate(redirectPath, { replace: true });
     } catch (err: any) {
       toast.error(err?.message || "OAuth sign-in failed");
       sessionStorage.removeItem('pulse_oauth_return');
