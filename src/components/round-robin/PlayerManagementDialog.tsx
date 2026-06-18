@@ -10,7 +10,8 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { PlayerSelector } from "./PlayerSelector";
+import { PlayerPickerSheet, type PickerPlayer } from "./PlayerPickerSheet";
+import { Pencil } from "lucide-react";
 import { UserPlus, UserMinus, Users, ChevronRight, ChevronLeft } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -40,7 +41,11 @@ interface PlayerManagementDialogProps {
   players: Player[];
   currentRound: number | null;
   totalRounds: number;
-  onAddPlayer: (playerId: string) => Promise<void>;
+  /** Group this event is linked to (if any) — surfaces the Group tab in the picker. */
+  groupId?: string | null;
+  /** Restrict picker results when the event has a gender format. */
+  genderFilter?: "male" | "female";
+  onAddPlayer: (input: { playerId: string | null; guestName?: string }) => Promise<void>;
   onMarkInactive: (playerEventId: string) => Promise<void>;
   onSubstitute: (originalPlayerId: string, newPlayerId: string, scope: 'global' | number) => Promise<void>;
 }
@@ -53,14 +58,18 @@ export function PlayerManagementDialog({
   players,
   currentRound,
   totalRounds,
+  groupId,
+  genderFilter,
   onAddPlayer,
   onMarkInactive,
   onSubstitute,
 }: PlayerManagementDialogProps) {
   const [mode, setMode] = useState<ActionMode>(null);
   const [selectedPlayer, setSelectedPlayer] = useState<string>("");
+  const [addPick, setAddPick] = useState<PickerPlayer | null>(null);
   const [substituteOriginal, setSubstituteOriginal] = useState<string>("");
   const [substituteNew, setSubstituteNew] = useState<string>("");
+  const [substituteNewPick, setSubstituteNewPick] = useState<PickerPlayer | null>(null);
   const [substituteScope, setSubstituteScope] = useState<'global' | number>('global');
   const [loading, setLoading] = useState(false);
   const [substituteNewName, setSubstituteNewName] = useState<string>("");
