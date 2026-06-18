@@ -1,42 +1,38 @@
-## Goal
+## Why your link preview looks wrong
 
-Bring the same tabbed picker UX into the live Round Robin settings — specifically the **Player Management** dialog opened from a running event (RoundRobinDetail and VenueRoundRobinDetail). Today both the "Add player" and "Substitute → new player" flows use a single-select `PlayerSelector` combobox, which has the same cramped, search-only feel the wizard had.
+Two things are happening in the screenshot:
 
-## What changes
+1. **The little heart icon** next to "pulsepb.com" is not Lovable branding — it's the fallback icon iMessage shows when it can't render the OG image. Our `og:image` points to `/pulse-og.svg`, and most messaging apps (iMessage, WhatsApp, Messenger, Slack on mobile) **do not render SVG OG images**. They need PNG or JPG. So they fall back to a generic shape.
+2. **The title** "PULSE - Pickleball Rating System" is outdated — the app is no longer just a rating tracker.
 
-### 1. New single-select picker
+## Plan
 
-Add a `mode: "single" | "multi"` prop to the existing `PlayerPickerSheet` (or a thin `SinglePlayerPickerSheet` wrapper). Behavior:
-- Same Friends · Group · Recent · Search tabs and clean search input.
-- Tapping a player in single mode commits immediately (no Done button) and closes the sheet, returning `{ id, name, isGuest }` to the parent.
-- `excludePlayerIds` prop hides players already in the event (or the substitute "original").
-- Gender filter respects the event's format.
+### 1. Generate a real PNG OG image (1200x630)
+Use the existing `public/pulse-og.svg` composition (cream background, PULSE wordmark, pulse beat, tagline, pulsepb.com footer) and render it as a branded **PNG** at 1200x630. Save to `public/pulse-og.png`.
 
-### 2. PlayerManagementDialog rewrite of the two PlayerSelector spots
+This is what iMessage/WhatsApp/Slack will actually display — large, on-brand, no Lovable fallback.
 
-- **Add player tab**: replace `PlayerSelector` with the picker sheet trigger. Include the **Guest** tab — guests insert into `round_robin_players` with `player_id = null` + `guest_name` (schema already supports this from the wizard work). Show a chip preview of the chosen player before confirm.
-- **Substitute → new player**: replace `PlayerSelector` with the picker sheet trigger, **no Guest tab** (substitution writes into `round_robin_schedule.player_id` which requires a real UUID). Show selected name as a chip.
-- "Original player" select and "Mark inactive" select stay as-is — they're picking from existing roster, dropdown is fine.
+### 2. Update `index.html` head tags
+- **Title:** `PULSE — Play. Connect. Compete.` (or similar — see question below)
+- **Description:** rewrite to reflect the current app: find events, join round robins, connect with players, run tournaments — not just "track your rating"
+- **og:title / og:description:** match the above
+- **og:image:** swap `/pulse-og.svg` → `/pulse-og.png` (+ update `og:image:type` to `image/png`)
+- **twitter:image:** same swap
+- Add `og:url` and `og:site_name` pointing at `https://pulsepb.com` / `PULSE`
 
-### 3. Thread `groupId` through
-
-- `RoundRobinDetail.tsx` and `VenueRoundRobinDetail.tsx` already load the event row, which has `group_id`. Pass it into `PlayerManagementDialog`, which forwards it to the picker so the **Group** tab appears when the event is linked to a community group.
-
-### 4. Guest add path on `RoundRobinDetail`
-
-- `handleAddPlayer` currently takes a `playerId: string`. Widen to `({ playerId, guestName }: { playerId: string | null; guestName?: string })` and write `player_id` / `guest_name` accordingly when inserting into `round_robin_players`. Schedule regeneration logic stays the same (guest rows just appear in the rotation by name).
-- `VenueRoundRobinDetail` mirrors the same change.
+### 3. Heads-up on cache
+iMessage, WhatsApp, and friends cache link previews aggressively. The old preview will keep showing in existing threads until the platform re-scrapes. I'll mention this when shipped — users can force a refresh by sharing in a new thread or using each platform's debugger (e.g. Facebook Sharing Debugger).
 
 ## Out of scope
+- Per-route OG tags (would need react-helmet-async wiring — happy to add in a follow-up if you want round-robin or group share links to have their own previews).
+- Replacing the favicon — current `pulse-favicon.svg` is already on-brand.
 
-- `EditMatchSheet` (admin tool) keeps `PlayerSelector` for now — different surface, low traffic.
-- No changes to substitution or mark-inactive logic itself.
-- No changes to the wizard.
+## One question before I build
 
-## Technical details
+**What tagline do you want under the PULSE name?** Pick one or write your own:
+- "Play. Connect. Compete." (broad, action-oriented)
+- "The home for pickleball players and venues." (descriptive)
+- "Find games. Join events. Build your pickleball community." (longer, more specific)
+- Custom — tell me what to use.
 
-- **Edit:** `src/components/round-robin/PlayerPickerSheet.tsx` — add `mode` and `excludePlayerIds` props; in single mode hide multi-select chips and footer, commit on tap.
-- **Edit:** `src/components/round-robin/PlayerManagementDialog.tsx` — swap both `PlayerSelector` usages, add `groupId` prop, render selected chip for confirm step.
-- **Edit:** `src/pages/RoundRobinDetail.tsx` — pass `event.group_id` to dialog; update `handleAddPlayer` signature + insert payload to support guests.
-- **Edit:** `src/pages/venue/VenueRoundRobinDetail.tsx` — same two changes.
-- No new tables, no new migrations — `guest_name` already exists on `round_robin_players`.
+This drives the title, description, and the text rendered into the new PNG OG card.
