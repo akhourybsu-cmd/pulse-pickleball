@@ -274,11 +274,18 @@ const Auth = () => {
     setLoading(true);
     try {
       localStorage.setItem('pulse_persist_session', staySignedIn.toString());
+      // Stash the intended deep link — OAuth strips React Router location.state
+      // when the browser bounces back from the provider.
+      sessionStorage.setItem('pulse_oauth_return', redirectPath);
+      // IMPORTANT: redirect_uri must be the bare origin. Passing a deep path
+      // (e.g. /player/dashboard) is not in the OAuth allow-list and causes
+      // the provider to bounce the user back to /auth without a session.
       const result = await lovable.auth.signInWithOAuth(provider, {
-        redirect_uri: window.location.origin + redirectPath,
+        redirect_uri: window.location.origin,
       });
       if (result.error) {
         toast.error((result.error as any)?.message || `Could not sign in with ${provider}`);
+        sessionStorage.removeItem('pulse_oauth_return');
         setLoading(false);
         return;
       }
@@ -286,6 +293,7 @@ const Auth = () => {
       navigate(redirectPath);
     } catch (err: any) {
       toast.error(err?.message || "OAuth sign-in failed");
+      sessionStorage.removeItem('pulse_oauth_return');
       setLoading(false);
     }
   };
