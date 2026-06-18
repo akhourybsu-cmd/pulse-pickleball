@@ -60,8 +60,17 @@ export default function Friends() {
         >
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <h1 className="text-lg font-semibold font-display">Friends</h1>
+        <h1 className="text-lg font-semibold font-display flex-1">Friends</h1>
+        <Button
+          onClick={() => setConnectOpen(true)}
+          size="sm"
+          className="h-9 rounded-full btn-premium"
+        >
+          <UserPlus className="h-4 w-4 mr-1.5" />
+          Add
+        </Button>
       </div>
+      <ConnectSheet open={connectOpen} onOpenChange={setConnectOpen} />
 
       <Tabs defaultValue="friends" className="flex-1 flex flex-col">
         <div className="px-4 sm:px-6 pt-3">
