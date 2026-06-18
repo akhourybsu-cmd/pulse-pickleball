@@ -282,9 +282,9 @@ export function WizardContainer() {
           description: formData.notes.trim() || `Round Robin event`,
           start_time: eventStart.toISOString(),
           end_time: eventEnd.toISOString(),
-          location_type: formData.venueId ? "venue" : "custom",
-          venue_id: formData.venueId || null,
-          custom_location: formData.venueId ? null : (formData.location || null),
+          location_type: "custom",
+          venue_id: null,
+          custom_location: courts.find((c) => c.id === formData.locationId)?.name || null,
           capacity: formData.eventMode === "open_registration" ? formData.maxPlayers : null,
         } as never);
         if (calError) console.error("Failed to add RR to group calendar:", calError);
