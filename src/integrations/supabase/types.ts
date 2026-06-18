@@ -6135,6 +6135,19 @@ export type Database = {
         Args: { p_event_id: string }
         Returns: undefined
       }
+      enqueue_notification: {
+        Args: {
+          p_actor_id?: string
+          p_category: string
+          p_link?: string
+          p_message: string
+          p_metadata?: Json
+          p_title: string
+          p_type: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
       export_user_data: { Args: never; Returns: Json }
       freeze_week_ratings: {
         Args: { target_week_start: string }
@@ -6264,6 +6277,8 @@ export type Database = {
           id: string
         }[]
       }
+      notif_actor_name: { Args: { p_user_id: string }; Returns: string }
+      notif_preview: { Args: { p_text: string }; Returns: string }
       preview_round_robin_by_code: {
         Args: { p_code: string }
         Returns: {
