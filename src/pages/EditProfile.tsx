@@ -458,9 +458,9 @@ const EditProfile = () => {
           </TabsContent>
         </Tabs>
 
-        {/* Sticky Save Bar */}
-        <div className="sticky bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-t border-border py-4 mt-6 -mx-4 px-4">
-          <div className="flex gap-4 justify-end max-w-full">
+        {/* Sticky Save Bar — sits above the player bottom nav */}
+        <div className="sticky bottom-[88px] md:bottom-[72px] left-0 right-0 bg-background/95 backdrop-blur-sm border-t border-border py-3 mt-6 -mx-4 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <div className="container mx-auto max-w-3xl flex gap-3 justify-end">
             <Button variant="outline" onClick={() => navigate("/player/dashboard")}>
               Cancel
             </Button>
