@@ -1,36 +1,38 @@
-## Diagnosis
-The push plumbing is in place — service worker registered, VAPID keys configured both client (`VITE_VAPID_PUBLIC_KEY`) and server (`VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_CONTACT`), `push-send` edge function deployed, dispatch trigger live on `user_notifications`.
+# Integrate Friends into Community Hub
 
-But `push_subscriptions` is empty for every user — meaning **no device has ever tapped "Enable push"**. The toggle only exists buried at `/settings/notifications`, so notifications create rows in `user_notifications` (bell icon works) but never deliver a web push.
+Keep the clean 2-tab Community design (My Community | Explore) and surface Friends as a prominent entry point that routes to its own full page — visible, but not cluttering the hub.
 
-There's also a platform gotcha worth surfacing in-app: **iOS Safari requires the site to be installed to the Home Screen first** before it'll allow web push at all. Plain Mobile Safari will not show a "Allow notifications" prompt.
+## Changes
 
-## Plan
+### 1. New `FriendsEntryCard` inside My Community
+Add a compact card/row under the action buttons in the **My Community** tab, above "Your Groups":
 
-### 1. Surface a "Turn on notifications" prompt where users will see it
-- Add a dismissible banner at the top of the player dashboard (`Dashboard.tsx`) that shows when:
-  - `usePushSubscription` reports `supported && state === "disabled"` (not denied, not already enabled)
-  - User hasn't dismissed it in this session (localStorage flag)
-- Banner copy: "Get notified about new posts, friend requests, and messages." → **Enable** button calls `enable()` from the hook.
-- On iOS Safari (not standalone PWA), show different copy: "Install PULSE to your Home Screen first to enable notifications" with a short how-to (Share → Add to Home Screen). Detect via `navigator.standalone === false && /iPad|iPhone|iPod/.test(navigator.userAgent)`.
-- On denied state, show: "Notifications are blocked. Enable them in your browser settings."
+- Avatar stack of up to 4 friends (using `useFriends` + cached profiles)
+- Title: "Friends"
+- Subline: "{N} friends · {M} pending" (pending count uses `pendingRequests.length`; hidden when 0)
+- Right-side chevron
+- Entire card is a button → navigates to `/player/friends`
 
-### 2. Make the existing settings page more findable
-- Add a quick link/button in the banner: "Manage in settings →" that goes to `/settings/notifications`.
+If user has 0 friends and 0 pending: show empty-state variant ("Add friends to play with" + "Find friends" CTA) routing to the same page.
 
-### 3. Verify after enable
-- Once the user taps Enable and grants permission, the hook upserts into `push_subscriptions`. I'll then immediately fire a test push via `push-send` so they get an OS notification on the spot confirming it works.
+### 2. New dedicated page: `/player/friends`
+Create `src/pages/player/Friends.tsx` with a standard player-mode header (back button → `/player/community`, title "Friends") and three sub-tabs:
 
-### 4. Improve the SW push payload safety
-- Minor: the current SW push listener already handles the payload shape `push-send` emits (`title`, `body`, `url`, `tag`, `priority`). Leave it as-is.
+- **Friends** — accepted friends list with message + remove actions
+- **Requests** — pending received (accept/decline) + sent requests (cancel), with a count badge on the tab
+- **Suggestions** — `useFriendSuggestions` results with "Add" button
 
-### Technical notes
-- New component: `src/components/dashboard/EnablePushBanner.tsx`
-- No backend changes — fix is purely client-side UX so the subscription actually gets registered.
-- No new dependencies.
+Reuses existing `useFriends` and `useFriendSuggestions` hooks; no new backend work.
 
-## What you'll need to do
-- On **Android Chrome** or **desktop Chrome/Edge**: just tap the new "Enable" banner → grant permission → I'll fire a test push.
-- On **iPhone Safari**: first install PULSE (Share → Add to Home Screen), then **open the installed app from the home screen**, then tap Enable. iOS will only show the permission prompt inside the installed PWA.
+### 3. Route registration
+Add `<Route path="/player/friends" element={<Friends />} />` in the player routes section of `src/App.tsx` (lazy-loaded to match siblings).
 
-Reply once you've tapped Enable on a device and I'll send the test push.
+### 4. No removal of existing surfaces
+The existing `Friends` references elsewhere (DM list, profile pages) stay untouched — this only adds the dedicated hub page and the Community entry point.
+
+## Technical notes
+
+- Files created: `src/components/community/FriendsEntryCard.tsx`, `src/pages/player/Friends.tsx`
+- Files edited: `src/pages/player/Community.tsx` (insert `FriendsEntryCard` in My Community tab), `src/App.tsx` (route)
+- Styling follows existing `GroupCard` / player-mode card conventions (white card, 8pt spacing, Outfit/Inter typography)
+- No schema, RLS, or edge-function changes

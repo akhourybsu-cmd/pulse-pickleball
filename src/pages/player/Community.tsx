@@ -9,6 +9,7 @@ import { ReorderableGroupList } from '@/components/community/ReorderableGroupLis
 import { CreateGroupDialog } from '@/components/community/CreateGroupDialog';
 import { JoinGroupDialog } from '@/components/community/JoinGroupDialog';
 import { CommunityActivityFeed } from '@/components/community/CommunityActivityFeed';
+import { FriendsEntryCard } from '@/components/community/FriendsEntryCard';
 import { useGroups } from '@/hooks/useGroups';
 
 export default function Community() {
@@ -96,6 +97,11 @@ export default function Community() {
                 <span className="text-sm font-medium">Create Group</span>
               </button>
             </div>
+
+            {/* Friends entry */}
+            <FriendsEntryCard />
+
+
 
             {/* Your Groups */}
             <section className="space-y-3">
