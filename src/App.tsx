@@ -269,7 +269,8 @@ const AppContent = () => {
           "expires_at",
           "token_type",
         ].forEach((key) => url.searchParams.delete(key));
-        window.history.replaceState({}, document.title, `${url.pathname}${url.searchParams.size ? `?${url.searchParams}` : ""}`);
+        const remainingSearch = url.searchParams.toString();
+        window.history.replaceState({}, document.title, `${url.pathname}${remainingSearch ? `?${remainingSearch}` : ""}`);
 
         if (!errorMessage && isAuthEntryPath(url.pathname)) {
           navigate(consumePostAuthRedirect(), { replace: true });
