@@ -23,7 +23,10 @@ self.addEventListener('activate', (event) => {
           }
         })
       );
-    }).then(() => self.clients.claim())
+    })
+      .then(() => self.clients.claim())
+      .then(() => self.clients.matchAll({ type: 'window', includeUncontrolled: true }))
+      .then((clients) => Promise.allSettled(clients.map((client) => client.navigate(client.url))))
   );
 });
 
