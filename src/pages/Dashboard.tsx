@@ -22,6 +22,7 @@ import { PerformanceModule } from "@/components/dashboard/PerformanceModule";
 import { StatsByCourtCard } from "@/components/dashboard/StatsByCourtCard";
 import { UpcomingEventsPreview } from "@/components/dashboard/UpcomingEventsPreview";
 import { MyRoundRobinsCard } from "@/components/dashboard/MyRoundRobinsCard";
+import { MyCommunitiesRail } from "@/components/dashboard/MyCommunitiesRail";
 // RoleSwitcherCard hidden during the player-only beta. Re-import + render
 // when the venue surface returns.
 // import { RoleSwitcherCard } from "@/components/dashboard/RoleSwitcherCard";
