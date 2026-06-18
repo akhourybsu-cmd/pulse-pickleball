@@ -396,6 +396,7 @@ export default function GroupManage() {
           />
         </TabsContent>
       </Tabs>
+      </div>
     </div>
   );
 }
