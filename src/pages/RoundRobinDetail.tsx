@@ -90,6 +90,7 @@ interface Event {
   /** Auto-generated invite code for invite-only events (XYZ-ABCD format).
    *  Surfaced to the host so they can share it with players. */
   invite_code?: string | null;
+  group_id?: string | null;
 }
 
 interface Player {

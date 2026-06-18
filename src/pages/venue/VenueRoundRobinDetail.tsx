@@ -53,6 +53,7 @@ interface Event {
   rating_type: string;
   format?: string;
   venue_id: string | null;
+  group_id?: string | null;
 }
 
 interface Player {
