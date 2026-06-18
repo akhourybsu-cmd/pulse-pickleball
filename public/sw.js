@@ -31,13 +31,34 @@ self.addEventListener('activate', (event) => {
 // Fetch - network first, fallback to cache
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+
+  const url = new URL(event.request.url);
+
+  // CRITICAL: never intercept OAuth broker paths or auth callbacks.
+  // The Lovable proxy worker handles /~oauth/initiate and /~oauth/callback;
+  // caching or replaying them breaks Google/Apple sign-in (user bounces
+  // back to /auth without a session). Also skip Supabase auth endpoints.
+  if (
+    url.pathname.startsWith('/~oauth') ||
+    url.pathname.startsWith('/auth/v1') ||
+    url.pathname.includes('/auth/callback')
+  ) {
+    return; // let the browser handle it directly
+  }
+
+  // Don't cache cross-origin requests (Supabase, Stripe, etc.)
+  if (url.origin !== self.location.origin) return;
+
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        const responseToCache = response.clone();
-        caches.open(CACHE_VERSION).then((cache) => {
-          try { cache.put(event.request, responseToCache); } catch (_) {}
-        });
+        // Only cache successful, basic responses — never redirects or opaque ones.
+        if (response && response.ok && response.type === 'basic') {
+          const responseToCache = response.clone();
+          caches.open(CACHE_VERSION).then((cache) => {
+            try { cache.put(event.request, responseToCache); } catch (_) {}
+          });
+        }
         return response;
       })
       .catch(() => caches.match(event.request))
