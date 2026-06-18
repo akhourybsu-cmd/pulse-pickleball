@@ -215,6 +215,8 @@ export function WizardContainer() {
             formData.eventMode === "open_registration"
               ? (formData.isInviteOnly ? false : formData.isPublished)
               : null,
+          group_id: formData.groupVisibility !== "personal" ? formData.groupId : null,
+          group_visibility: formData.groupVisibility,
         })
         .select()
         .single();
@@ -235,6 +237,20 @@ export function WizardContainer() {
 
         if (playersError) throw playersError;
       }
+      // If shared with a group, post it to the group's feed (pinned).
+      if (formData.groupVisibility === "shared_group" && formData.groupId) {
+        const { error: postError } = await supabase.from("group_posts").insert({
+          group_id: formData.groupId,
+          user_id: user.id,
+          type: "round_robin",
+          title: name,
+          content: formData.notes.trim() || `Round Robin on ${event.date}`,
+          pinned: true,
+          round_robin_event_id: event.id,
+        } as never);
+        if (postError) console.error("Failed to post RR to group:", postError);
+      }
+
 
       // Surface the auto-generated invite code prominently for invite-only
       // events so the host can immediately share it. For other modes,
