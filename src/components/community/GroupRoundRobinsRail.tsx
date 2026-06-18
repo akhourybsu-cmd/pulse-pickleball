@@ -31,7 +31,7 @@ export function GroupRoundRobinsRail({ groupId, isAdmin }: Props) {
     let cancelled = false;
     (async () => {
       const today = new Date().toISOString().split("T")[0];
-      const { data } = await supabase
+      const { data } = await (supabase as any)
         .from("round_robin_events")
         .select(
           "id, name, date, start_time, num_courts, max_players, status, group_visibility"
