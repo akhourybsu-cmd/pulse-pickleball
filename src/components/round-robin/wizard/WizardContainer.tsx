@@ -223,17 +223,18 @@ export function WizardContainer() {
 
       if (eventError) throw eventError;
 
-      // Add players for immediate mode with selected players
+      // Add players for immediate mode with selected players (real + guests)
       if (formData.eventMode === "immediate" && formData.selectedPlayers.length > 0) {
         const playerInserts = formData.selectedPlayers.map((p) => ({
           event_id: event.id,
-          player_id: p.id,
+          player_id: p.isGuest ? null : p.id,
+          guest_name: p.isGuest ? (p.display_name || p.full_name) : null,
           registration_status: "confirmed",
         }));
 
         const { error: playersError } = await supabase
           .from("round_robin_players")
-          .insert(playerInserts);
+          .insert(playerInserts as never);
 
         if (playersError) throw playersError;
       }
@@ -334,6 +335,7 @@ export function WizardContainer() {
             format={formData.format}
             maxPlayers={formData.maxPlayers}
             onMaxPlayersChange={(v) => updateFormData("maxPlayers", v)}
+            groupId={formData.groupVisibility !== "personal" ? formData.groupId : null}
           />
         );
       case "schedule":

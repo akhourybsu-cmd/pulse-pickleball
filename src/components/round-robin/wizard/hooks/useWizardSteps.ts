@@ -5,7 +5,7 @@ export interface WizardFormData {
   eventName: string;
   locationId: string;
   format: "open" | "mixed" | "male" | "female";
-  selectedPlayers: { id: string; full_name: string; display_name: string | null; gender?: string | null }[];
+  selectedPlayers: { id: string; full_name: string; display_name: string | null; gender?: string | null; isGuest?: boolean; avatar_url?: string | null }[];
   playerCount: number;
   playerInputMethod: "add" | "count" | null;
   courtCount: number;
