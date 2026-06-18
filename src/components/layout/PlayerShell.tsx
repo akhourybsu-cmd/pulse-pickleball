@@ -159,22 +159,41 @@ export function PlayerShell() {
         <Outlet />
       </main>
 
-      {/* Record Match FAB — hidden on immersive routes and on the match entry page itself */}
-      {!isImmersiveRoute && !location.pathname.startsWith('/match/new') && !location.pathname.startsWith('/player/matches/new') && (
-        <button
-          onClick={() => navigate('/player/matches/new')}
-          aria-label="Record a match"
-          className={cn(
-            'fixed right-4 z-40 flex items-center gap-2 rounded-full bg-primary text-primary-foreground shadow-lg',
-            'h-14 pl-5 pr-6 font-semibold text-sm',
-            'hover:bg-primary/90 active:scale-95 transition-all',
-            'bottom-[88px] md:bottom-[72px] pb-[env(safe-area-inset-bottom)]'
-          )}
-        >
-          <Plus className="h-5 w-5" strokeWidth={2.5} />
-          <span>Record Match</span>
-        </button>
-      )}
+      {/* Record Match FAB — only surfaced on the player tabs where logging
+          a match is a natural next action: the Home dashboard, the Matches
+          history list, and the Play hub. Hidden on Profile (settings-y),
+          the match entry page itself (would loop), and immersive routes
+          (community groups, DMs) where the FAB would clash with their own
+          fixed bottom chrome. */}
+      {(() => {
+        const recordMatchRoutes = [
+          '/player/dashboard',
+          '/player/matches',
+          '/player/play',
+        ];
+        const showFab =
+          !isImmersiveRoute &&
+          recordMatchRoutes.some(
+            (r) => location.pathname === r || location.pathname.startsWith(`${r}/`)
+          ) &&
+          !location.pathname.startsWith('/player/matches/new');
+        if (!showFab) return null;
+        return (
+          <button
+            onClick={() => navigate('/player/matches/new')}
+            aria-label="Record a match"
+            className={cn(
+              'fixed right-4 z-40 flex items-center gap-2 rounded-full bg-primary text-primary-foreground shadow-lg',
+              'h-14 pl-5 pr-6 font-semibold text-sm',
+              'hover:bg-primary/90 active:scale-95 transition-all',
+              'bottom-[88px] md:bottom-[72px] pb-[env(safe-area-inset-bottom)]'
+            )}
+          >
+            <Plus className="h-5 w-5" strokeWidth={2.5} />
+            <span>Record Match</span>
+          </button>
+        );
+      })()}
 
       {/* Bottom Navigation - Mobile Only - Premium Polish */}
       {!isImmersiveRoute && (
