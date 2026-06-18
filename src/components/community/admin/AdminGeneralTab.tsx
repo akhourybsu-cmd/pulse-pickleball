@@ -69,13 +69,13 @@ export function AdminGeneralTab({
 
     setUploading(true);
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${groupId}-${Date.now()}.${fileExt}`;
-      const filePath = `group-avatars/${fileName}`;
+      const fileExt = (file.name.split('.').pop() || 'jpg').toLowerCase();
+      // IMPORTANT: storage RLS expects the first folder segment to be the groupId UUID.
+      const filePath = `${groupId}/avatar-${Date.now()}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from('groups')
-        .upload(filePath, file, { upsert: true });
+        .upload(filePath, file, { upsert: true, contentType: file.type });
 
       if (uploadError) throw uploadError;
 
