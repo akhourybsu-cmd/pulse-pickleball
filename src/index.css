@@ -184,8 +184,59 @@ All colors MUST be HSL.
     @apply border-border;
   }
 
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
+    font-feature-settings: "ss01", "cv11", "calt";
+    letter-spacing: -0.005em;
+  }
+
+  /* Display treatment for headings — Sora, tight tracking, balanced wrapping */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display;
+    font-feature-settings: "ss01", "tnum";
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+  h1 { letter-spacing: -0.03em; font-weight: 700; }
+  h2 { letter-spacing: -0.025em; font-weight: 700; }
+  h3 { letter-spacing: -0.02em; font-weight: 600; }
+
+  /* Premium, crisp button text */
+  button, [role="tab"], [role="button"] {
+    @apply font-display;
+    font-feature-settings: "ss01", "tnum";
+    letter-spacing: -0.005em;
+  }
+
+  /* Numbers everywhere render with tabular figures by default in Sora display contexts */
+  .font-display, .font-numeric {
+    font-feature-settings: "tnum", "ss01";
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer utilities {
+  /* Stat / rating / score numbers — confident, tabular, tight */
+  .stat-num {
+    @apply font-display font-bold tracking-tight;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum", "ss01";
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+  /* Refined section eyebrow labels */
+  .eyebrow {
+    @apply font-display uppercase text-xs;
+    letter-spacing: 0.08em;
+    font-weight: 600;
   }
 }
 
