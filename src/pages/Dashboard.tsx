@@ -368,6 +368,22 @@ const Dashboard = () => {
             <MyRoundRobinsCard userId={user?.id} />
           </div>
 
+          {/* My communities — quick-tap rail */}
+          <div
+            className="opacity-0 animate-fade-up"
+            style={{ animationDelay: '180ms', animationFillMode: 'forwards' }}
+          >
+            <SectionHeader
+              label="My communities"
+              action={
+                <Link to="/player/community" className="text-muted-foreground hover:text-foreground transition-colors font-medium">
+                  See all →
+                </Link>
+              }
+            />
+            <MyCommunitiesRail />
+          </div>
+
           {/* Up next */}
           <div
             className="opacity-0 animate-fade-up"
