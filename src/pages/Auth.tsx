@@ -14,6 +14,14 @@ import { EmailMFAChallenge } from "@/components/auth/EmailMFAChallenge";
 import { BiometricLogin } from "@/components/auth/BiometricLogin";
 import { lovable } from "@/integrations/lovable";
 import { Logo } from "@/components/Logo";
+import {
+  clearPostAuthRedirect,
+  consumePostAuthRedirect,
+  DEFAULT_AUTH_DESTINATION,
+  peekPostAuthRedirect,
+  sanitizeRedirectPath,
+  stashPostAuthRedirect,
+} from "@/lib/authRedirect";
 
 const GoogleIcon = () => (
   <svg className="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
@@ -54,13 +62,6 @@ const waitForAuthenticatedUser = async () => {
   return user;
 };
 
-const sanitizeRedirectPath = (path: string | null | undefined) => {
-  if (!path || !path.startsWith('/') || path.startsWith('//') || path === '/auth' || path.startsWith('/auth?')) {
-    return '/player/dashboard';
-  }
-  return path;
-};
-
 const Auth = () => {
   const [searchParams] = useSearchParams();
   const location = useLocation();
@@ -72,7 +73,7 @@ const Auth = () => {
   // OAuth redirects strip location.state, so we also persist the intended
   // destination in sessionStorage and restore it after the provider bounces
   // back to /auth (or directly to origin).
-  const stashedReturn = typeof window !== 'undefined' ? sessionStorage.getItem('pulse_oauth_return') : null;
+  const stashedReturn = typeof window !== 'undefined' ? peekPostAuthRedirect() : null;
   const redirectPath = sanitizeRedirectPath(returnFromState || searchParams.get('redirect') || stashedReturn);
 
   // Already-logged-in detection. If a returning user lands on /auth (via
