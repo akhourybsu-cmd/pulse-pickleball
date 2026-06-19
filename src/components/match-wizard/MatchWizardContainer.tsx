@@ -68,25 +68,32 @@ export function MatchWizardContainer() {
 
       const slotsPerTeam = formData.matchFormat === 'singles' ? 1 : 2;
 
-      // 1. Save custom location if new
-      const locationId = formData.locationId;
-      if (formData.customLocation && !formData.customLocation.id) {
+      // 1. Persist the chosen city/town to user_recent_locations so the next
+      //    match defaults are sensible. PULSE no longer pins matches to a
+      //    specific court — the wizard captures a normalized location label
+      //    (e.g. "Brooklyn, NY 11201") that's stored on matches.other_location.
+      const customLoc = formData.customLocation;
+      if (customLoc && !customLoc.id) {
         await supabase
           .from('user_recent_locations')
           .upsert({
             user_id: user.id,
-            name: formData.customLocation.name,
-            city: formData.customLocation.city || null,
-            state: formData.customLocation.state || null,
+            name: customLoc.name,
+            city: customLoc.city || null,
+            state: customLoc.state || null,
             used_at: new Date().toISOString(),
-          }, { onConflict: 'user_id,name' })
-      } else if (formData.customLocation?.id) {
-        // Update used_at for existing custom location
+          }, { onConflict: 'user_id,name' });
+      } else if (customLoc?.id) {
         await supabase
           .from('user_recent_locations')
           .update({ used_at: new Date().toISOString() })
-          .eq('id', formData.customLocation.id);
+          .eq('id', customLoc.id);
       }
+
+      const locationLabel =
+        customLoc?.name?.trim() ||
+        [customLoc?.city, customLoc?.state].filter(Boolean).join(', ').trim() ||
+        null;
 
       // Determine scores based on winner
       const team1Score = formData.winner === 1 ? formData.winnerScore : formData.loserScore;
@@ -102,7 +109,8 @@ export function MatchWizardContainer() {
           created_by: user.id,
           match_type: 'casual',
           match_format: formData.matchFormat,
-          court_id: locationId,
+          court_id: null,
+          other_location: locationLabel,
           status: 'pending',
           rating_eligible: formData.updateRatings,
         })
