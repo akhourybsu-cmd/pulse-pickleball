@@ -396,6 +396,7 @@ const AppContent = () => {
             <Route path="my-events" element={<MyEvents />} />
             <Route path="community" element={<Community />} />
             <Route path="friends" element={<Friends />} />
+            <Route path="community/join/:code" element={<JoinGroupByCode />} />
             <Route path="community/group/:groupId" element={<GroupDetail />} />
             <Route path="community/group/:groupId/manage" element={<GroupManage />} />
             <Route path="messages" element={<DirectMessages />} />
