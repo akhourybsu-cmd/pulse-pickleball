@@ -68,7 +68,7 @@ export function useMatchWizardSteps(formData: MatchWizardFormData) {
   const isStepValid = (stepId: string): boolean => {
     switch (stepId) {
       case 'date-location':
-        return !!(formData.matchDate && (formData.locationId || formData.customLocation));
+        return !!(formData.matchDate && formData.customLocation);
       
       case 'match-type':
         return !!formData.matchFormat;
