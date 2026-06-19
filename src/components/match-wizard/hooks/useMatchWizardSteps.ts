@@ -1,4 +1,4 @@
-import { todayInEST } from "@/lib/utils";
+import { todayInEasternTime } from "@/lib/utils";
 
 export interface PlayerSlot {
   playerId: string | null;
