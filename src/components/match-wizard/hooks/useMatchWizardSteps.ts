@@ -1,3 +1,5 @@
+import { todayInEST } from "@/lib/utils";
+
 export interface PlayerSlot {
   playerId: string | null;
   isGuest: boolean;
@@ -66,7 +68,7 @@ export function useMatchWizardSteps(formData: MatchWizardFormData) {
   const isStepValid = (stepId: string): boolean => {
     switch (stepId) {
       case 'date-location':
-        return !!(formData.matchDate && (formData.locationId || formData.customLocation));
+        return !!(formData.matchDate && formData.customLocation);
       
       case 'match-type':
         return !!formData.matchFormat;
@@ -112,7 +114,9 @@ export function useMatchWizardSteps(formData: MatchWizardFormData) {
 }
 
 export function getInitialFormData(): MatchWizardFormData {
-  const today = new Date().toISOString().split('T')[0];
+  // Anchor "today" in America/New_York so a player past UTC midnight isn't
+  // silently bumped to tomorrow by `toISOString()`.
+  const today = todayInEST();
   const savedFormat = localStorage.getItem('pulse-last-match-format') as 'singles' | 'doubles' | null;
   
   return {

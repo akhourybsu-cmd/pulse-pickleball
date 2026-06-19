@@ -51,6 +51,7 @@ const PendingMatches = () => {
           team2_score,
           status,
           court_id,
+          other_location,
           courts(name)
         )
       `)
@@ -91,7 +92,7 @@ const PendingMatches = () => {
           team2_score: p.matches.team2_score,
           team1_players: team1,
           team2_players: team2,
-          court_name: p.matches.courts?.name || "Unknown Court",
+          court_name: p.matches.other_location || p.matches.courts?.name || "Unknown Location",
           my_approval: myApproval,
           total_approvals: totalApprovals,
         };
