@@ -153,6 +153,7 @@ const MyEvents = lazy(() => import("./pages/player/MyEvents"));
 const FindEvents = lazy(() => import("./pages/player/FindEvents"));
 const Community = lazy(() => import("./pages/player/Community"));
 const GroupDetail = lazy(() => import("./pages/player/GroupDetail"));
+const JoinGroupByCode = lazy(() => import("./pages/player/JoinGroupByCode"));
 const GroupManage = lazy(() => import("./pages/player/GroupManage"));
 const DirectMessages = lazy(() => import("./pages/player/DirectMessages"));
 const DirectMessageChat = lazy(() => import("./pages/player/DirectMessageChat"));
