@@ -30,7 +30,7 @@ export default function JoinGroupByCode() {
       // If not signed in yet, bounce to auth and come back here.
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        storePostAuthRedirect(`/player/community/join/${code}`);
+        stashPostAuthRedirect(`/player/community/join/${code}`);
         navigate('/auth', { replace: true });
         return;
       }
