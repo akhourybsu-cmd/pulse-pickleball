@@ -4,7 +4,7 @@ import { Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useGroups } from '@/hooks/useGroups';
 import { Button } from '@/components/ui/button';
-import { storePostAuthRedirect } from '@/lib/authRedirect';
+import { stashPostAuthRedirect } from '@/lib/authRedirect';
 
 /**
  * Handles invite links of the form /player/community/join/:code.
