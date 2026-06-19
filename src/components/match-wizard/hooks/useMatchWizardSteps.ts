@@ -111,8 +111,12 @@ export function useMatchWizardSteps(formData: MatchWizardFormData) {
   };
 }
 
+import { todayInEST } from "@/lib/utils";
+
 export function getInitialFormData(): MatchWizardFormData {
-  const today = new Date().toISOString().split('T')[0];
+  // Anchor "today" in America/New_York so a player past UTC midnight isn't
+  // silently bumped to tomorrow by `toISOString()`.
+  const today = todayInEST();
   const savedFormat = localStorage.getItem('pulse-last-match-format') as 'singles' | 'doubles' | null;
   
   return {
