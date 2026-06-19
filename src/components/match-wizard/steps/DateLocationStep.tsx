@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { MatchWizardFormData } from "../hooks/useMatchWizardSteps";
-import { todayInEST, parseDateLocal, formatDateLocal, cn } from "@/lib/utils";
+import { todayInEasternTime, parseDateLocal, formatDateLocal, cn } from "@/lib/utils";
 
 interface DateLocationStepProps {
   formData: MatchWizardFormData;
