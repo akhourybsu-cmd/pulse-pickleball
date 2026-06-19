@@ -116,7 +116,7 @@ export function useMatchWizardSteps(formData: MatchWizardFormData) {
 export function getInitialFormData(): MatchWizardFormData {
   // Anchor "today" in America/New_York so a player past UTC midnight isn't
   // silently bumped to tomorrow by `toISOString()`.
-  const today = todayInEST();
+  const today = todayInEasternTime();
   const savedFormat = localStorage.getItem('pulse-last-match-format') as 'singles' | 'doubles' | null;
   
   return {
