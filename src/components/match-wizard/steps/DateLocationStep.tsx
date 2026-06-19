@@ -45,7 +45,7 @@ export function DateLocationStep({ formData, updateFormData }: DateLocationStepP
 
   // Today is anchored in America/New_York so the Today button always matches
   // the calendar date the user sees on their wall clock, even across DST.
-  const todayStr = todayInEST();
+  const todayStr = todayInEasternTime();
   const todayDate = parseDateLocal(todayStr);
   const isCustomDate = formData.matchDate !== todayStr;
 
