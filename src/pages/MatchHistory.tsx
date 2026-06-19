@@ -236,7 +236,7 @@ const MatchHistory = () => {
         const won = p.rating_change !== null && p.rating_change > 0;
 
         // Determine court name
-        let courtName = "Unknown Court";
+        let courtName = "Unknown Location";
         let otherLocation = null;
         
         if (p.matches.other_location) {
@@ -397,7 +397,7 @@ const MatchHistory = () => {
         const opponents = allParticipants?.filter(part => part.team !== myTeam);
         const verifiedBy = approvals?.filter(a => a.approved === true).map(a => a.player_id) || [];
         
-        let courtName = "Unknown Court";
+        let courtName = "Unknown Location";
         let otherLocation = null;
         if (p.matches.other_location) {
           courtName = p.matches.other_location;

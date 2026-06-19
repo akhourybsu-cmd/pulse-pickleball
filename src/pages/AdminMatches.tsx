@@ -161,7 +161,7 @@ const AdminMatches = () => {
           console.warn("No participants found for match", match.id);
         }
 
-        let courtName = "Unknown Court";
+        let courtName = "Unknown Location";
         if (match.other_location) {
           courtName = match.other_location;
         } else if (match.courts?.name) {
