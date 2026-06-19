@@ -8,13 +8,17 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
- * Returns today's date as YYYY-MM-DD anchored in America/New_York.
+ * Returns today's date as YYYY-MM-DD anchored in America/New_York
+ * (Eastern Time — DST-aware, so it swings between EST and EDT correctly).
  * Using a TZ-aware formatter avoids `toISOString()` shifting the date
  * backwards for users whose local clock is past UTC midnight.
  */
-export function todayInEST(): string {
+export function todayInEasternTime(): string {
   return formatInTimeZone(new Date(), "America/New_York", "yyyy-MM-dd");
 }
+
+/** @deprecated Use `todayInEasternTime` — the helper is DST-aware, not fixed EST. */
+export const todayInEST = todayInEasternTime;
 
 /**
  * Parse a YYYY-MM-DD string into a `Date` at local noon, so calendar

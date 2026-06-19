@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { MatchWizardFormData } from "../hooks/useMatchWizardSteps";
-import { todayInEST, parseDateLocal, formatDateLocal, cn } from "@/lib/utils";
+import { todayInEasternTime, parseDateLocal, formatDateLocal, cn } from "@/lib/utils";
 
 interface DateLocationStepProps {
   formData: MatchWizardFormData;
@@ -45,7 +45,7 @@ export function DateLocationStep({ formData, updateFormData }: DateLocationStepP
 
   // Today is anchored in America/New_York so the Today button always matches
   // the calendar date the user sees on their wall clock, even across DST.
-  const todayStr = todayInEST();
+  const todayStr = todayInEasternTime();
   const todayDate = parseDateLocal(todayStr);
   const isCustomDate = formData.matchDate !== todayStr;
 
