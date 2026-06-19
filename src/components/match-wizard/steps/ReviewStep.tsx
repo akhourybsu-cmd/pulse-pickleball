@@ -78,21 +78,17 @@ export function ReviewStep({ formData, updateFormData }: ReviewStepProps) {
     setTeam1Players(t1);
     setTeam2Players(t2);
 
-    // Load location name
-    if (formData.locationId) {
-      const { data } = await supabase
-        .from('courts')
-        .select('name, city, state')
-        .eq('id', formData.locationId)
-        .single();
-      if (data) {
-        setLocationName(`${data.name}, ${data.city}`);
-      }
-    } else if (formData.customLocation) {
+    // Location label — the wizard now stores a city/town string in
+    // customLocation.name; we no longer reach into the courts table.
+    if (formData.customLocation) {
       const loc = formData.customLocation;
       setLocationName(
-        [loc.name, loc.city, loc.state].filter(Boolean).join(', ')
+        loc.name?.trim() ||
+          [loc.city, loc.state].filter(Boolean).join(', ') ||
+          'Unknown Location'
       );
+    } else {
+      setLocationName('Unknown Location');
     }
   };
 
