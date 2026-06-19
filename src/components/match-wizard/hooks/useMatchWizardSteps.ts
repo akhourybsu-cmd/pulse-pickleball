@@ -1,3 +1,5 @@
+import { todayInEST } from "@/lib/utils";
+
 export interface PlayerSlot {
   playerId: string | null;
   isGuest: boolean;
@@ -110,8 +112,6 @@ export function useMatchWizardSteps(formData: MatchWizardFormData) {
     getRequiredPlayerCount,
   };
 }
-
-import { todayInEST } from "@/lib/utils";
 
 export function getInitialFormData(): MatchWizardFormData {
   // Anchor "today" in America/New_York so a player past UTC midnight isn't
