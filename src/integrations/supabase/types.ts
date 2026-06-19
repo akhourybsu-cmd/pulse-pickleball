@@ -6149,6 +6149,20 @@ export type Database = {
         Returns: undefined
       }
       export_user_data: { Args: never; Returns: Json }
+      find_group_by_invite_code: {
+        Args: { p_code: string }
+        Returns: {
+          cover_url: string
+          description: string
+          icon_url: string
+          id: string
+          join_method: string
+          member_count: number
+          name: string
+          type: string
+          visibility: string
+        }[]
+      }
       freeze_week_ratings: {
         Args: { target_week_start: string }
         Returns: undefined
@@ -6249,6 +6263,7 @@ export type Database = {
         Args: { _group_id: string; _user_id: string }
         Returns: boolean
       }
+      join_group_by_code: { Args: { p_code: string }; Returns: Json }
       join_round_robin_by_code: {
         Args: { p_code: string }
         Returns: {
@@ -6277,6 +6292,7 @@ export type Database = {
           id: string
         }[]
       }
+      normalize_invite_code: { Args: { p_code: string }; Returns: string }
       notif_actor_name: { Args: { p_user_id: string }; Returns: string }
       notif_preview: { Args: { p_text: string }; Returns: string }
       preview_round_robin_by_code: {

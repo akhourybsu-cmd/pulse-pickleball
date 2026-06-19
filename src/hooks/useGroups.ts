@@ -213,69 +213,42 @@ export function useGroups() {
       return null;
     }
 
+    const trimmed = (code || '').trim();
+    if (!trimmed) {
+      toast({ title: 'Code Required', description: 'Enter an invite code', variant: 'destructive' });
+      return null;
+    }
+
     try {
-      // Find group by invite code
-      const { data: group, error: findError } = await supabase
-        .from('groups')
-        .select('*')
-        .eq('invite_code', code.toUpperCase().trim())
-        .single();
+      const { data, error } = await supabase.rpc('join_group_by_code' as any, { p_code: trimmed });
+      if (error) throw error;
 
-      if (findError || !group) {
-        toast({ title: 'Not Found', description: 'Invalid group code', variant: 'destructive' });
-        return null;
-      }
+      const result = (data ?? {}) as {
+        status?: string;
+        group_id?: string;
+        group_name?: string;
+        message?: string;
+      };
 
-      // Check if already a member
-      const { data: existingMember } = await supabase
-        .from('group_members')
-        .select('*')
-        .eq('group_id', group.id)
-        .eq('user_id', currentUserId)
-        .single();
-
-      if (existingMember) {
-        if (existingMember.status === 'active') {
+      switch (result.status) {
+        case 'joined':
+          toast({ title: 'Joined!', description: `Welcome to ${result.group_name}!` });
+          await fetchMyGroups();
+          return { id: result.group_id, name: result.group_name } as any;
+        case 'pending':
+          toast({ title: 'Request Sent', description: 'Your join request has been sent to the group admins' });
+          return { id: result.group_id, name: result.group_name } as any;
+        case 'already_member':
           toast({ title: 'Already a Member', description: 'You are already in this group' });
-          return group;
-        }
-        if (existingMember.status === 'banned') {
-          toast({ title: 'Access Denied', description: 'You have been banned from this group', variant: 'destructive' });
+          return { id: result.group_id, name: result.group_name } as any;
+        case 'banned':
+          toast({ title: 'Access Denied', description: result.message || 'You have been banned from this group', variant: 'destructive' });
           return null;
-        }
-        if (existingMember.status === 'pending') {
-          toast({ title: 'Pending', description: 'Your join request is still pending' });
-          return group;
-        }
+        case 'not_found':
+        default:
+          toast({ title: 'Not Found', description: result.message || 'Invalid invite code', variant: 'destructive' });
+          return null;
       }
-
-      // Check join method
-      if (group.join_method === 'invite_only') {
-        toast({ title: 'Invite Only', description: 'This group requires an invitation', variant: 'destructive' });
-        return null;
-      }
-
-      const status = group.join_method === 'request_to_join' ? 'pending' : 'active';
-
-      const { error: joinError } = await supabase
-        .from('group_members')
-        .insert({
-          group_id: group.id,
-          user_id: currentUserId,
-          role: 'member',
-          status,
-        });
-
-      if (joinError) throw joinError;
-
-      if (status === 'pending') {
-        toast({ title: 'Request Sent', description: 'Your join request has been sent to the group admins' });
-      } else {
-        toast({ title: 'Joined!', description: `Welcome to ${group.name}!` });
-        await fetchMyGroups();
-      }
-
-      return group;
     } catch (error: any) {
       console.error('Error joining group:', error);
       toast({
