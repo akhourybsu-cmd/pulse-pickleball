@@ -79,14 +79,12 @@ export function useDirectMessages() {
 
         const otherUserId = otherParticipants[0].user_id;
         
-        // Get profile
+        // Get profile from public view (profiles table is owner-only)
         const { data: profile } = await supabase
-          .from('profiles')
+          .from('profiles_public')
           .select('id, display_name, full_name, avatar_url, current_rating')
           .eq('id', otherUserId)
-          .single();
-
-        if (!profile) continue;
+          .maybeSingle();
 
         // Get last message
         const { data: messages } = await supabase
@@ -113,12 +111,12 @@ export function useDirectMessages() {
           id: convo.id,
           updated_at: convo.updated_at,
           participant: {
-            id: profile.id,
-            user_id: profile.id,
-            display_name: profile.display_name,
-            full_name: profile.full_name,
-            avatar_url: profile.avatar_url,
-            current_rating: profile.current_rating
+            id: otherUserId,
+            user_id: otherUserId,
+            display_name: profile?.display_name ?? null,
+            full_name: profile?.full_name ?? null,
+            avatar_url: profile?.avatar_url ?? null,
+            current_rating: profile?.current_rating ?? null
           },
           lastMessage,
           unreadCount: unreadCount || 0
@@ -224,22 +222,21 @@ export function useConversation(conversationId: string | null) {
         .neq('user_id', user.id);
 
       if (participants && participants.length > 0) {
+        const otherId = participants[0].user_id;
         const { data: profile } = await supabase
-          .from('profiles')
+          .from('profiles_public')
           .select('id, display_name, full_name, avatar_url, current_rating')
-          .eq('id', participants[0].user_id)
-          .single();
+          .eq('id', otherId)
+          .maybeSingle();
 
-        if (profile) {
-          setParticipant({
-            id: profile.id,
-            user_id: profile.id,
-            display_name: profile.display_name,
-            full_name: profile.full_name,
-            avatar_url: profile.avatar_url,
-            current_rating: profile.current_rating
-          });
-        }
+        setParticipant({
+          id: otherId,
+          user_id: otherId,
+          display_name: profile?.display_name ?? null,
+          full_name: profile?.full_name ?? null,
+          avatar_url: profile?.avatar_url ?? null,
+          current_rating: profile?.current_rating ?? null
+        });
       }
 
       // Mark as read
