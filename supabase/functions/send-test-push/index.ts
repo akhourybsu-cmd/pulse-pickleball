@@ -24,11 +24,14 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
+    console.log("[send-test-push] invoked", { method: req.method });
     if (!VAPID_PUBLIC || !VAPID_PRIVATE) {
+      console.error("[send-test-push] VAPID not configured");
       return new Response(JSON.stringify({ error: "push_not_configured" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
 
     const authHeader = req.headers.get("Authorization") ?? "";
     const token = authHeader.replace("Bearer ", "");
