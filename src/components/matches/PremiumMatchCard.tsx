@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { format, parseISO, isToday, isYesterday, differenceInDays } from "date-fns";
 import { CheckCircle2, Clock, Flag, MapPin, Trophy } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 
 export interface PremiumMatchCardProps {
