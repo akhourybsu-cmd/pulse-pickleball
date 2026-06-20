@@ -1,113 +1,89 @@
 project_id = "ryxklkayezjnwwunuphn"
 
 [api]
-enabled = true
-port = 54321
-schemas = ["public", "graphql_public"]
-extra_search_path = ["public", "extensions"]
-max_rows = 1000
+  enabled = true
+  extra_search_path = ["public", "extensions"]
+  max_rows = 1000
+  port = 54321
+  schemas = ["public", "graphql_public"]
 
 [auth]
-enabled = true
-
-[functions.notify-contested-match]
-verify_jwt = false
-
-[functions.delete-old-posts]
-verify_jwt = false
-
-[functions.calculate-badges]
-verify_jwt = true
-
-[functions.send-mfa-code]
-verify_jwt = true
-
-[functions.verify-mfa-code]
-verify_jwt = false
-
-[functions.get-biometric-credentials]
-verify_jwt = false
-
-[functions.verify-biometric-auth]
-verify_jwt = false
-
-[functions.send-event-reminders]
-verify_jwt = false
-
-[functions.send-password-reset]
-verify_jwt = false
-
-[functions.stripe-connect-onboard]
-verify_jwt = true
-
-[functions.stripe-connect-status]
-verify_jwt = false
-
-[functions.create-venue-checkout]
-verify_jwt = false
-
-[functions.stripe-connect-webhook]
-verify_jwt = false
-
-[functions.create-tournament-checkout]
-verify_jwt = false
-
-[functions.tournament-stripe-webhook]
-verify_jwt = false
-
-[functions.subscription-webhook]
-verify_jwt = false
-
-[functions.process-waitlist]
-verify_jwt = false
-
-[functions.cleanup-old-messages]
-verify_jwt = false
-
-[functions.send-venue-announcement]
-verify_jwt = true
-
-[functions.send-court-assignment]
-verify_jwt = true
-
-[functions.send-tournament-notification]
-verify_jwt = false
-
-[functions.send-tournament-reminders]
-verify_jwt = false
+  enabled = true
 
 [edge_runtime]
-policy = "per_worker"
+  policy = "per_worker"
 
-# Run event reminders every 10 minutes
-[[edge_runtime.cron]]
-name = "send-event-reminders"
-schedule = "*/10 * * * *"
-function_name = "send-event-reminders"
+  [[edge_runtime.cron]]
+    function_name = "send-event-reminders"
+    name = "send-event-reminders"
+    schedule = "*/10 * * * *"
 
-# Process waitlist promotions every 5 minutes
-[[edge_runtime.cron]]
-name = "process-waitlist"
-schedule = "*/5 * * * *"
-function_name = "process-waitlist"
+  [[edge_runtime.cron]]
+    function_name = "process-waitlist"
+    name = "process-waitlist"
+    schedule = "*/5 * * * *"
 
-# Clean up old channel messages every 6 hours
-[[edge_runtime.cron]]
-name = "cleanup-old-messages"
-schedule = "0 */6 * * *"
-function_name = "cleanup-old-messages"
+  [[edge_runtime.cron]]
+    function_name = "cleanup-old-messages"
+    name = "cleanup-old-messages"
+    schedule = "0 */6 * * *"
 
-# Delete old court posts daily at 3 AM
-[[edge_runtime.cron]]
-name = "delete-old-posts"
-schedule = "0 3 * * *"
-function_name = "delete-old-posts"
+  [[edge_runtime.cron]]
+    function_name = "delete-old-posts"
+    name = "delete-old-posts"
+    schedule = "0 3 * * *"
 
-# Send tournament reminders every 5 minutes
-[[edge_runtime.cron]]
-name = "send-tournament-reminders"
-schedule = "*/5 * * * *"
-function_name = "send-tournament-reminders"
+  [[edge_runtime.cron]]
+    function_name = "send-tournament-reminders"
+    name = "send-tournament-reminders"
+    schedule = "*/5 * * * *"
 
-[functions.process-email-queue]
-verify_jwt = true
+[functions]
+  [functions.auth-email-hook]
+    verify_jwt = false
+  [functions.calculate-badges]
+    verify_jwt = true
+  [functions.cleanup-old-messages]
+    verify_jwt = false
+  [functions.create-tournament-checkout]
+    verify_jwt = false
+  [functions.create-venue-checkout]
+    verify_jwt = false
+  [functions.delete-old-posts]
+    verify_jwt = false
+  [functions.get-biometric-credentials]
+    verify_jwt = false
+  [functions.notify-contested-match]
+    verify_jwt = false
+  [functions.process-email-queue]
+    verify_jwt = true
+  [functions.process-waitlist]
+    verify_jwt = false
+  [functions.send-court-assignment]
+    verify_jwt = true
+  [functions.send-event-reminders]
+    verify_jwt = false
+  [functions.send-mfa-code]
+    verify_jwt = true
+  [functions.send-password-reset]
+    verify_jwt = false
+  [functions.send-tournament-notification]
+    verify_jwt = false
+  [functions.send-tournament-reminders]
+    verify_jwt = false
+  [functions.send-venue-announcement]
+    verify_jwt = true
+  [functions.stripe-connect-onboard]
+    verify_jwt = true
+  [functions.stripe-connect-status]
+    verify_jwt = false
+  [functions.stripe-connect-webhook]
+    verify_jwt = false
+  [functions.subscription-webhook]
+    verify_jwt = false
+  [functions.tournament-stripe-webhook]
+    verify_jwt = false
+  [functions.verify-biometric-auth]
+    verify_jwt = false
+  [functions.verify-mfa-code]
+    verify_jwt = false
