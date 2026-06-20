@@ -78,7 +78,7 @@ export const MatchCard = ({
           {eventName || courtName || "Open Play"}
         </p>
         <div className="flex items-center gap-1 text-xs text-muted-foreground">
-          <span>{format(new Date(matchDate), "MMMM d, yyyy")}</span>
+          <span>{format(new Date(matchDate), "MMMM do, yyyy")}</span>
           {location && (
             <>
               <span>•</span>

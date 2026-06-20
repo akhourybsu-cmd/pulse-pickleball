@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { format, parseISO, isToday, isYesterday, differenceInDays } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { CheckCircle2, Clock, Flag, MapPin, Trophy } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
@@ -54,7 +54,7 @@ export interface PremiumMatchCardProps {
  *
  *  - Top accent stripe on wins (gold gradient → fades) so wins read at a
  *    glance from across the room
- *  - WON/LOST status pill + smart date ("Today", "Yesterday", "Sun · Nov 30")
+ *  - WON/LOST status pill + date ("June 17th, 2026")
  *  - Round-Robin badge inline when source === 'round_robin'
  *  - Rating delta pill (+0.12 / −0.08) — the part the player actually
  *    cares about, prominent on the row
@@ -85,11 +85,7 @@ export function PremiumMatchCard(props: PremiumMatchCardProps) {
   const smartDate = useMemo(() => {
     try {
       const d = parseISO(matchDate + "T00:00:00");
-      if (isToday(d)) return "Today";
-      if (isYesterday(d)) return "Yesterday";
-      const days = differenceInDays(new Date(), d);
-      if (days > 0 && days < 7) return format(d, "EEEE"); // Monday, Tuesday…
-      return format(d, "EEE · MMM d");                    // Sun · Nov 30
+      return format(d, "MMMM do, yyyy");
     } catch {
       return matchDate;
     }
