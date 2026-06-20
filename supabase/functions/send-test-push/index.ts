@@ -136,9 +136,11 @@ Deno.serve(async (req) => {
       console.warn("in-app record skipped", e);
     }
 
+    console.log("[send-test-push] done", { sent, pruned: deadIds.length, total: subs.length });
     return new Response(JSON.stringify({ sent, pruned: deadIds.length, total: subs.length }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
+
   } catch (e: any) {
     console.error("send-test-push error", e);
     return new Response(JSON.stringify({ error: "internal" }), {
