@@ -172,18 +172,29 @@ export function MatchWizardContainer() {
 
       if (participantsError) throw participantsError;
 
-      // 5. Create match approvals for real players
-      const realPlayerIds = participants
-        .filter(p => p.player_id)
-        .map(p => p.player_id!);
+      // 5. Create match approvals for real players.
+      //    Auto-approve everyone on the SUBMITTER'S team — the submitter and
+      //    their partner played the same game on the same side, so the
+      //    submitter is effectively confirming the result for that side.
+      //    Opponents still need to individually confirm.
+      const submitterTeam =
+        participants.find(p => p.player_id === user.id)?.team ?? null;
 
-      if (realPlayerIds.length > 0) {
-        const approvals = realPlayerIds.map(playerId => ({
-          match_id: match.id,
-          player_id: playerId,
-          approved: playerId === user.id ? true : null, // Auto-approve for creator
-          approved_at: playerId === user.id ? new Date().toISOString() : null,
-        }));
+      const realPlayers = participants.filter(p => p.player_id);
+
+      if (realPlayers.length > 0) {
+        const nowIso = new Date().toISOString();
+        const approvals = realPlayers.map(p => {
+          const autoApprove =
+            p.player_id === user.id ||
+            (submitterTeam !== null && p.team === submitterTeam);
+          return {
+            match_id: match.id,
+            player_id: p.player_id,
+            approved: autoApprove ? true : null,
+            approved_at: autoApprove ? nowIso : null,
+          };
+        });
 
         const { error: approvalsError } = await supabase
           .from('match_approvals')
