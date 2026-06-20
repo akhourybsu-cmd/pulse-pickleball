@@ -502,22 +502,28 @@ export type Database = {
         Row: {
           conversation_id: string
           id: string
+          is_muted: boolean
           joined_at: string
           last_read_at: string
+          left_at: string | null
           user_id: string
         }
         Insert: {
           conversation_id: string
           id?: string
+          is_muted?: boolean
           joined_at?: string
           last_read_at?: string
+          left_at?: string | null
           user_id: string
         }
         Update: {
           conversation_id?: string
           id?: string
+          is_muted?: boolean
           joined_at?: string
           last_read_at?: string
+          left_at?: string | null
           user_id?: string
         }
         Relationships: [
@@ -2660,6 +2666,63 @@ export type Database = {
           },
         ]
       }
+      message_reports: {
+        Row: {
+          conversation_id: string | null
+          created_at: string
+          details: string | null
+          id: string
+          message_id: string | null
+          reason: string
+          reported_user_id: string
+          reporter_id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+        }
+        Insert: {
+          conversation_id?: string | null
+          created_at?: string
+          details?: string | null
+          id?: string
+          message_id?: string | null
+          reason: string
+          reported_user_id: string
+          reporter_id: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+        }
+        Update: {
+          conversation_id?: string | null
+          created_at?: string
+          details?: string | null
+          id?: string
+          message_id?: string | null
+          reason?: string
+          reported_user_id?: string
+          reporter_id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_reports_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_reports_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "direct_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mfa_verification_codes: {
         Row: {
           code: string
@@ -4559,6 +4622,30 @@ export type Database = {
         }
         Relationships: []
       }
+      user_blocks: {
+        Row: {
+          blocked_id: string
+          blocker_id: string
+          created_at: string
+          id: string
+          reason: string | null
+        }
+        Insert: {
+          blocked_id: string
+          blocker_id: string
+          created_at?: string
+          id?: string
+          reason?: string | null
+        }
+        Update: {
+          blocked_id?: string
+          blocker_id?: string
+          created_at?: string
+          id?: string
+          reason?: string | null
+        }
+        Relationships: []
+      }
       user_court_prefs: {
         Row: {
           court_id: string
@@ -4593,6 +4680,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_messaging_prefs: {
+        Row: {
+          created_at: string
+          dm_privacy: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          dm_privacy?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          dm_privacy?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       user_notifications: {
         Row: {
@@ -6063,6 +6171,7 @@ export type Database = {
       }
     }
     Functions: {
+      are_friends: { Args: { _a: string; _b: string }; Returns: boolean }
       assign_players_to_courts: {
         Args: { p_session_id: string }
         Returns: undefined
@@ -6254,6 +6363,7 @@ export type Database = {
         }
         Returns: string
       }
+      is_blocked_between: { Args: { _a: string; _b: string }; Returns: boolean }
       is_event_participant: {
         Args: { _event_id: string; _user_id: string }
         Returns: boolean
