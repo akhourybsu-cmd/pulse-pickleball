@@ -13,12 +13,16 @@ export interface PremiumMatchCardProps {
   myTeam: 1 | 2;
   won: boolean;
   playerName: string;       // "you"
+  playerAvatarUrl?: string | null;
   partnerName: string;
   partnerId: string;
+  partnerAvatarUrl?: string | null;
   opponent1Name: string;
   opponent1Id: string;
+  opponent1AvatarUrl?: string | null;
   opponent2Name: string;
   opponent2Id: string;
+  opponent2AvatarUrl?: string | null;
   /** Rating delta from match_participants.rating_change (signed decimal). */
   ratingChange: number | null;
   courtName: string;
