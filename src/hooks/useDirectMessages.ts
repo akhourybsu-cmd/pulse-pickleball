@@ -79,14 +79,12 @@ export function useDirectMessages() {
 
         const otherUserId = otherParticipants[0].user_id;
         
-        // Get profile
+        // Get profile from public view (profiles table is owner-only)
         const { data: profile } = await supabase
-          .from('profiles')
+          .from('profiles_public')
           .select('id, display_name, full_name, avatar_url, current_rating')
           .eq('id', otherUserId)
-          .single();
-
-        if (!profile) continue;
+          .maybeSingle();
 
         // Get last message
         const { data: messages } = await supabase
