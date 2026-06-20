@@ -1590,6 +1590,9 @@ export default function RoundRobinDetail() {
           inviteCode={event.invite_code}
           registrationMode={event.registration_mode}
           eventId={event.id}
+          location={event.location}
+          canEditLocation={isOrganizer}
+          onLocationUpdated={fetchEventDetails}
         />
 
         {/* Leave button for participants — kept here, just out of the hero.
