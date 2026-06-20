@@ -1551,7 +1551,7 @@ export default function RoundRobinDetail() {
             </div>
           )}
 
-      <main className="container max-w-[1280px] mx-auto px-4 py-6">
+      <main className="container max-w-[1280px] mx-auto px-4 pt-3 pb-6">
         {isOrganizer && isEditMode && (
           <div className="mb-6">
             <EditModeBanner
