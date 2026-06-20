@@ -213,18 +213,21 @@ function TestNotificationCard() {
       }
 
       // Make sure this device's subscription is recorded server-side
-      try {
-        const j = sub.toJSON() as any;
-        await supabase.from("push_subscriptions").upsert({
-          user_id: u.user.id,
-          endpoint: sub.endpoint,
-          p256dh: j.keys?.p256dh ?? "",
-          auth: j.keys?.auth ?? "",
-          user_agent: navigator.userAgent,
-        }, { onConflict: "endpoint" });
-      } catch (e) {
-        console.warn("[send-test-push] upsert sub failed (continuing)", e);
+      const j = sub.toJSON() as any;
+      const { error: upsertErr } = await supabase.from("push_subscriptions").upsert({
+        user_id: u.user.id,
+        endpoint: sub.endpoint,
+        p256dh: j.keys?.p256dh ?? "",
+        auth: j.keys?.auth ?? "",
+        user_agent: navigator.userAgent,
+      }, { onConflict: "endpoint" });
+      if (upsertErr) {
+        console.error("[send-test-push] upsert sub failed", upsertErr);
+        toast.error(`Couldn't register this device: ${upsertErr.message}`);
+        setSending(false);
+        return;
       }
+
 
       const { data, error } = await supabase.functions.invoke("send-test-push", {
         body: { endpoint: sub.endpoint },
