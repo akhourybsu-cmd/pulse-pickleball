@@ -140,11 +140,33 @@ function BrowserPushCard() {
   );
 }
 
+function isLovablePreviewContext() {
+  if (typeof window === "undefined") return false;
+  const h = window.location.hostname;
+  const previewHost =
+    h.startsWith("id-preview--") ||
+    h.startsWith("preview--") ||
+    h === "lovableproject.com" ||
+    h.endsWith(".lovableproject.com") ||
+    h === "lovableproject-dev.com" ||
+    h.endsWith(".lovableproject-dev.com") ||
+    h === "beta.lovable.dev" ||
+    h.endsWith(".beta.lovable.dev");
+  let inIframe = false;
+  try { inIframe = window.self !== window.top; } catch { inIframe = true; }
+  return previewHost || inIframe;
+}
+
 function TestNotificationCard() {
   const { state, supported, enable, busy: pushBusy } = usePushSubscription();
   const [sending, setSending] = useState(false);
+  const isPreview = isLovablePreviewContext();
 
   const handleSend = async () => {
+    if (isPreview) {
+      toast.error("Push notifications are disabled in the Lovable preview. Open the published app to test.");
+      return;
+    }
     if (!supported) {
       toast.error("Notifications are not supported in this browser.");
       return;
@@ -155,11 +177,10 @@ function TestNotificationCard() {
     }
     setSending(true);
     try {
-      // Ensure push permission + subscription
+      // Ensure push permission + subscription on this device
       if (state !== "enabled") {
         toast.message("Enabling notifications on this device…");
         await enable();
-        // Re-check permission after enable
         if (typeof Notification !== "undefined" && Notification.permission !== "granted") {
           toast.error("Notifications are not enabled for this device.");
           setSending(false);
@@ -167,8 +188,16 @@ function TestNotificationCard() {
         }
       }
 
-      // Confirm the current device has a subscription registered
-      const reg = await navigator.serviceWorker.ready;
+      // Wait for the service worker, with a timeout so we never hang
+      const reg = await Promise.race<ServiceWorkerRegistration | null>([
+        navigator.serviceWorker.ready,
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000)),
+      ]);
+      if (!reg) {
+        toast.error("Service worker isn't ready on this device. Reload the app and try again.");
+        setSending(false);
+        return;
+      }
       const sub = await reg.pushManager.getSubscription();
       if (!sub) {
         toast.error("This device is not registered for notifications.");
@@ -186,6 +215,7 @@ function TestNotificationCard() {
       const { data, error } = await supabase.functions.invoke("send-test-push", {
         body: { endpoint: sub.endpoint },
       });
+      console.log("[send-test-push] response", { data, error });
       if (error) {
         console.error("send-test-push error", error);
         toast.error("Could not send test notification. Please try again.");
@@ -224,7 +254,7 @@ function TestNotificationCard() {
       <CardContent>
         <Button
           onClick={handleSend}
-          disabled={sending || pushBusy || !supported}
+          disabled={sending || pushBusy || !supported || isPreview}
           className="w-full"
         >
           {sending ? (
@@ -233,15 +263,26 @@ function TestNotificationCard() {
             <><Send className="h-4 w-4 mr-2" /> Send Test Notification</>
           )}
         </Button>
-        {state === "denied" && (
+        {isPreview && (
+          <p className="text-xs text-muted-foreground mt-2">
+            Push notifications are disabled in the Lovable preview. Open your published app on the device to run this test.
+          </p>
+        )}
+        {!isPreview && state === "denied" && (
           <p className="text-xs text-destructive mt-2">
             Notifications are blocked. Enable them in your device/browser settings.
+          </p>
+        )}
+        {!isPreview && !supported && (
+          <p className="text-xs text-muted-foreground mt-2">
+            This browser doesn't support web push notifications.
           </p>
         )}
       </CardContent>
     </Card>
   );
 }
+
 
 function MessagingPrivacyCard() {
   const { privacy, loading, update } = useMessagingPrivacy();
