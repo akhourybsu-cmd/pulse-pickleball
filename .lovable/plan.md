@@ -1,39 +1,35 @@
-## Goal
-Fix the Add Player feature in the Round Robin organizer's "Manage Players" dialog so a host can pick multiple players in one shot and the **Add Player** button actually submits them.
+# Auto-Adjust Round Count When Roster Changes
 
-## Root cause
-In `src/components/round-robin/PlayerManagementDialog.tsx`, the Add Player footer button is wired to the wrong state:
+## Problem
 
-```tsx
-<Button onClick={handleAddPlayer} disabled={!selectedPlayer || loading} ...>
-```
+`games_per_player` is the host's source of truth, but `num_rounds` is only recalculated when courts or games-per-player change — never when players are added or removed. So a 4-round, 8-player event that drops to 6 players keeps 4 rounds, leaving players short of their target games.
 
-`selectedPlayer` belongs to the *Remove* flow. The Add flow stores its pick in `addPick`, so the button stays permanently disabled even after the host selects someone in the picker sheet. That's why "press add to add them" does nothing.
+Today `suggestRounds(players, courts, gpp)` already exists in `src/lib/roundRobinFairness.ts` and is used by court/games-per-player handlers and the Edit Event dialog. The roster handlers in `src/pages/RoundRobinDetail.tsx` (`handleAddPlayer`, `handleMarkInactive`, substitute flow) just call `regenerateScheduleFromRound`, which forwards the stale `event.num_rounds` straight to the edge function.
 
-Additionally, the picker is forced to `mode="single"`, so the host can only pick one person at a time.
+## Fix
 
-## Changes
+Make `regenerateScheduleFromRound` the single chokepoint that rederives rounds from the current active roster every time the schedule is rebuilt.
 
-### 1. `src/components/round-robin/PlayerManagementDialog.tsx`
-- Replace single-pick state `addPick: PickerPlayer | null` with multi-pick state `addPicks: PickerPlayer[]`.
-- Switch `PlayerPickerSheet` to `mode="multi"`, `allowGuest`, `selectedPlayers={addPicks}`, `onPlayersChange={setAddPicks}`.
-- Update the trigger button content:
-  - When empty: prompt "Choose players from friends, group, recent, search, or guest".
-  - When 1 pick: show that player's avatar + name (existing single-pick visual).
-  - When 2+ picks: show stacked avatars + "N players selected".
-- Rewrite `handleAddPlayer` to loop over `addPicks` and `await onAddPlayer({ playerId, guestName })` for each (sequential so audit/order is stable). Reset `addPicks` and `mode` on success.
-- Fix the footer Add button: `disabled={addPicks.length === 0 || loading}` and label `"Add Player"` / `"Add N Players"` (singular/plural). Loading label `"Adding…"`.
-- Clear `addPicks` in the Back and Cancel/close handlers.
+### `src/pages/RoundRobinDetail.tsx` — `regenerateScheduleFromRound`
+1. After the active-players check, compute:
+   - `desiredRounds = suggestRounds(activePlayers.length, event.num_courts, event.games_per_player || 3)`
+   - `completedRoundsCount` = highest `round_no` in `round_robin_schedule` for this event where any score is set (so we never shrink below already-played rounds)
+   - `targetRounds = Math.max(desiredRounds, completedRoundsCount, fromRound - 1)`
+2. If `targetRounds !== event.num_rounds`, update the `round_robin_events` row (`num_rounds: targetRounds`) and write a `round_robin_audit` entry with `change_type: "rounds_auto_adjusted"` and a reason explaining it was driven by the roster change (include before/after counts and player count).
+3. Use `targetRounds` (not `event.num_rounds`) in the `generate-round-robin-schedule` invoke body.
+4. `fetchEventDetails()` already runs at the end, so local state refreshes.
 
-### 2. `src/pages/RoundRobinDetail.tsx` — `handleAddPlayer`
-Current handler regenerates the schedule on every call. When the dialog now loops over N picks, that would regenerate N times. Keep `onAddPlayer` per-player (clean contract, matches venue page caller too), but make the regenerate cheaper by:
-- Leaving `handleAddPlayer` itself unchanged in behavior (insert + audit + regenerate). The dialog already awaits each call sequentially, so correctness is fine; the extra regenerates are acceptable for the typical "add 2–4 late arrivals" case and avoid touching the venue page.
+### Light UX touch
+- In `handleAddPlayer` / `handleMarkInactive` / substitute success toasts, when rounds changed, append "· Schedule now N rounds to keep G games/player." Pull the new value from the refreshed event.
+- No other call sites need to change: court and games-per-player handlers already call `suggestRounds` themselves, and the Edit Event dialog still drives manual edits.
 
-No DB / RLS / edge function changes. No changes to the picker component, the regenerate logic, or the Remove/Substitute flows.
+### Out of scope
+- No schema, RLS, or edge-function changes.
+- No change to the fairness algorithm, court count, or `games_per_player` semantics.
+- Wizard creation flow untouched — it already derives rounds from the configured roster size.
 
-## Verification
-- Open a round robin you organize → Manage Players → Add Player.
-- Pick 2–3 players in the sheet, confirm picks render in the trigger, and confirm the **Add Player** button enables.
-- Press it → toast(s) appear, dialog returns to the menu, new players appear in the Active roster, and the schedule from the current round shows the new players.
-- Picking a single player still works (button label reads "Add Player").
-- Picking zero keeps the button disabled.
+## Technical notes
+
+- `suggestRounds` formula (already implemented): `ceil(desiredGamesPerPlayer × players / (4 × min(courts, floor(players / 4))))`. With 6 players, 2 courts, 4 games/player it returns 6 rounds (vs. the stale 4).
+- The "never shrink below completed" guard handles mid-event removals where some rounds are already scored.
+- Because `regenerateScheduleFromRound` is the single helper used by every roster mutation (add, remove, substitute, reactivate), one edit covers all entry points.
