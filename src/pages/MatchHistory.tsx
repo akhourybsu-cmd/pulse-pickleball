@@ -171,11 +171,12 @@ const MatchHistory = () => {
     // Get player name
     const { data: profile } = await supabase
       .from("profiles")
-      .select("full_name, display_name")
+      .select("full_name, display_name, avatar_url")
       .eq("id", playerIdToUse)
       .single();
 
     setPlayerName(profile?.display_name || profile?.full_name || "Player");
+    setPlayerAvatarUrl(profile?.avatar_url || null);
 
     // Get all approved matches for this player.
     // - Includes `source`, `round_no`, `court_no` so the RR badge can
