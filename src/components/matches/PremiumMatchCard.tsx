@@ -233,11 +233,21 @@ export function PremiumMatchCard(props: PremiumMatchCardProps) {
           <div className="min-w-0 text-right">
             <div className="flex -space-x-2 mb-1.5 justify-end">
               <Avatar className="h-7 w-7 ring-2 ring-card">
+                <AvatarImage
+                  src={opponent1AvatarUrl || undefined}
+                  alt={opponent1Name}
+                  className="h-full w-full object-cover"
+                />
                 <AvatarFallback className="text-[10px] font-bold bg-muted text-foreground/80">
                   {initials(opponent1Name)}
                 </AvatarFallback>
               </Avatar>
               <Avatar className="h-7 w-7 ring-2 ring-card">
+                <AvatarImage
+                  src={opponent2AvatarUrl || undefined}
+                  alt={opponent2Name}
+                  className="h-full w-full object-cover"
+                />
                 <AvatarFallback className="text-[10px] font-bold bg-muted text-foreground/80">
                   {initials(opponent2Name)}
                 </AvatarFallback>
