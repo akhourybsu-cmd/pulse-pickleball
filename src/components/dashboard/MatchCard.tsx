@@ -1,5 +1,6 @@
 import { format } from "date-fns";
 import { MapPin, ChevronRight } from "lucide-react";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 
 interface MatchCardProps {
@@ -8,8 +9,8 @@ interface MatchCardProps {
   userTeam: number;
   team1Score: number;
   team2Score: number;
-  team1Players: { name: string; initials: string }[];
-  team2Players: { name: string; initials: string }[];
+  team1Players: { name: string; initials: string; avatar_url?: string | null }[];
+  team2Players: { name: string; initials: string; avatar_url?: string | null }[];
   courtName?: string | null;
   location?: string | null;
   eventName?: string | null;
@@ -95,12 +96,19 @@ export const MatchCard = ({
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <div className="flex -space-x-1">
               {userTeamPlayers.slice(0, 2).map((player, idx) => (
-                <div
+                <Avatar
                   key={idx}
-                  className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-bold text-primary border-2 border-card"
+                  className="h-6 w-6 rounded-full border-2 border-card"
                 >
-                  {player.initials}
-                </div>
+                  <AvatarImage
+                    src={player.avatar_url || undefined}
+                    alt={player.name}
+                    className="h-full w-full object-cover"
+                  />
+                  <AvatarFallback className="text-[10px] font-bold bg-primary/20 text-primary">
+                    {player.initials}
+                  </AvatarFallback>
+                </Avatar>
               ))}
             </div>
             <div className="flex-1 min-w-0">
@@ -127,12 +135,19 @@ export const MatchCard = ({
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <div className="flex -space-x-1">
               {oppTeamPlayers.slice(0, 2).map((player, idx) => (
-                <div
+                <Avatar
                   key={idx}
-                  className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-[10px] font-bold text-muted-foreground border-2 border-card"
+                  className="h-6 w-6 rounded-full border-2 border-card"
                 >
-                  {player.initials}
-                </div>
+                  <AvatarImage
+                    src={player.avatar_url || undefined}
+                    alt={player.name}
+                    className="h-full w-full object-cover"
+                  />
+                  <AvatarFallback className="text-[10px] font-bold bg-muted text-muted-foreground">
+                    {player.initials}
+                  </AvatarFallback>
+                </Avatar>
               ))}
             </div>
             <div className="flex-1 min-w-0">

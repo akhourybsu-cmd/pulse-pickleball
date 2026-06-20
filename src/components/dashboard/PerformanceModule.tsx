@@ -13,8 +13,8 @@ interface Match {
   team1_score: number;
   team2_score: number;
   userTeam: number;
-  team1Players: { id: string; name: string; initials: string }[];
-  team2Players: { id: string; name: string; initials: string }[];
+  team1Players: { id: string; name: string; initials: string; avatar_url?: string | null }[];
+  team2Players: { id: string; name: string; initials: string; avatar_url?: string | null }[];
   courtName: string | null;
   location: string | null;
   eventName: string | null;
@@ -66,7 +66,7 @@ export const PerformanceModule = ({ userId }: PerformanceModuleProps) => {
         // Batch fetch all participants for all matches in single query
         const { data: allParticipants } = await supabase
           .from("match_participants")
-          .select("match_id, player_id, team, player:profiles!match_participants_player_id_fkey(id, display_name, full_name, first_name, last_name)")
+          .select("match_id, player_id, team, player:profiles!match_participants_player_id_fkey(id, display_name, full_name, first_name, last_name, avatar_url)")
           .in("match_id", matchIds);
         
         // Group participants by match_id for O(1) lookup
@@ -82,8 +82,8 @@ export const PerformanceModule = ({ userId }: PerformanceModuleProps) => {
             const match = p.match as any;
             const matchParticipants = participantsByMatch[match.id] || [];
             
-            const team1Players: { id: string; name: string; initials: string }[] = [];
-            const team2Players: { id: string; name: string; initials: string }[] = [];
+            const team1Players: { id: string; name: string; initials: string; avatar_url?: string | null }[] = [];
+            const team2Players: { id: string; name: string; initials: string; avatar_url?: string | null }[] = [];
 
             matchParticipants.forEach((participant: any) => {
               const player = participant.player;
@@ -91,7 +91,7 @@ export const PerformanceModule = ({ userId }: PerformanceModuleProps) => {
                 `${player?.first_name || ''} ${player?.last_name || ''}`.trim() || 'Unknown';
               const initials = name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
               
-              const playerData = { id: player?.id || '', name, initials };
+              const playerData = { id: player?.id || '', name, initials, avatar_url: player?.avatar_url || null };
               
               if (participant.team === 1) {
                 team1Players.push(playerData);

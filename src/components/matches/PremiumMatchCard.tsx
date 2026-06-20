@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { format, parseISO, isToday, isYesterday, differenceInDays } from "date-fns";
 import { CheckCircle2, Clock, Flag, MapPin, Trophy } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 
 export interface PremiumMatchCardProps {
@@ -13,12 +13,16 @@ export interface PremiumMatchCardProps {
   myTeam: 1 | 2;
   won: boolean;
   playerName: string;       // "you"
+  playerAvatarUrl?: string | null;
   partnerName: string;
   partnerId: string;
+  partnerAvatarUrl?: string | null;
   opponent1Name: string;
   opponent1Id: string;
+  opponent1AvatarUrl?: string | null;
   opponent2Name: string;
   opponent2Id: string;
+  opponent2AvatarUrl?: string | null;
   /** Rating delta from match_participants.rating_change (signed decimal). */
   ratingChange: number | null;
   courtName: string;
@@ -65,7 +69,7 @@ export interface PremiumMatchCardProps {
 export function PremiumMatchCard(props: PremiumMatchCardProps) {
   const {
     matchDate, team1Score, team2Score, myTeam, won,
-    playerName, partnerName, opponent1Name, opponent2Name,
+    playerName, playerAvatarUrl, partnerName, partnerAvatarUrl, opponent1Name, opponent1AvatarUrl, opponent2Name, opponent2AvatarUrl,
     ratingChange, courtName, source, roundNo, courtNo,
     verifiedCount, totalPlayers, isCurrentUserVerified,
     showVerifyActions, onVerify, onReport,
@@ -172,12 +176,22 @@ export function PremiumMatchCard(props: PremiumMatchCardProps) {
           <div className="min-w-0">
             <div className="flex -space-x-2 mb-1.5">
               <Avatar className="h-7 w-7 ring-2 ring-card">
+                <AvatarImage
+                  src={playerAvatarUrl || undefined}
+                  alt={playerName}
+                  className="h-full w-full object-cover"
+                />
                 <AvatarFallback className="text-[10px] font-bold bg-primary/20 text-primary">
                   {initials(playerName)}
                 </AvatarFallback>
               </Avatar>
               {partnerName && partnerName !== "Unknown" && (
                 <Avatar className="h-7 w-7 ring-2 ring-card">
+                  <AvatarImage
+                    src={partnerAvatarUrl || undefined}
+                    alt={partnerName}
+                    className="h-full w-full object-cover"
+                  />
                   <AvatarFallback className="text-[10px] font-bold bg-muted text-foreground/80">
                     {initials(partnerName)}
                   </AvatarFallback>
@@ -219,11 +233,21 @@ export function PremiumMatchCard(props: PremiumMatchCardProps) {
           <div className="min-w-0 text-right">
             <div className="flex -space-x-2 mb-1.5 justify-end">
               <Avatar className="h-7 w-7 ring-2 ring-card">
+                <AvatarImage
+                  src={opponent1AvatarUrl || undefined}
+                  alt={opponent1Name}
+                  className="h-full w-full object-cover"
+                />
                 <AvatarFallback className="text-[10px] font-bold bg-muted text-foreground/80">
                   {initials(opponent1Name)}
                 </AvatarFallback>
               </Avatar>
               <Avatar className="h-7 w-7 ring-2 ring-card">
+                <AvatarImage
+                  src={opponent2AvatarUrl || undefined}
+                  alt={opponent2Name}
+                  className="h-full w-full object-cover"
+                />
                 <AvatarFallback className="text-[10px] font-bold bg-muted text-foreground/80">
                   {initials(opponent2Name)}
                 </AvatarFallback>

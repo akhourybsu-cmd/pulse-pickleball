@@ -49,10 +49,13 @@ interface Match {
   my_team: number;
   partner_name: string;
   partner_id: string;
+  partner_avatar_url?: string | null;
   opponent1_name: string;
   opponent1_id: string;
+  opponent1_avatar_url?: string | null;
   opponent2_name: string;
   opponent2_id: string;
+  opponent2_avatar_url?: string | null;
   rating_change: number;
   rating_after: number;
   court_name: string;
@@ -72,6 +75,7 @@ const MatchHistory = () => {
   const [matches, setMatches] = useState<Match[]>([]);
   const [pendingMatches, setPendingMatches] = useState<Match[]>([]);
   const [playerName, setPlayerName] = useState("");
+  const [playerAvatarUrl, setPlayerAvatarUrl] = useState<string | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const playerId = searchParams.get("player");
@@ -167,11 +171,12 @@ const MatchHistory = () => {
     // Get player name
     const { data: profile } = await supabase
       .from("profiles")
-      .select("full_name, display_name")
+      .select("full_name, display_name, avatar_url")
       .eq("id", playerIdToUse)
       .single();
 
     setPlayerName(profile?.display_name || profile?.full_name || "Player");
+    setPlayerAvatarUrl(profile?.avatar_url || null);
 
     // Get all approved matches for this player.
     // - Includes `source`, `round_no`, `court_no` so the RR badge can
@@ -223,7 +228,7 @@ const MatchHistory = () => {
           .select(`
             player_id,
             team,
-            profiles(full_name, display_name)
+            profiles(full_name, display_name, avatar_url)
           `)
           .eq("match_id", p.match_id);
 
@@ -255,10 +260,13 @@ const MatchHistory = () => {
           my_team: myTeam,
           partner_name: teammates?.[0]?.profiles?.display_name || teammates?.[0]?.profiles?.full_name || "Unknown",
           partner_id: teammates?.[0]?.player_id || "",
+          partner_avatar_url: teammates?.[0]?.profiles?.avatar_url || null,
           opponent1_name: opponents?.[0]?.profiles?.display_name || opponents?.[0]?.profiles?.full_name || "Unknown",
           opponent1_id: opponents?.[0]?.player_id || "",
+          opponent1_avatar_url: opponents?.[0]?.profiles?.avatar_url || null,
           opponent2_name: opponents?.[1]?.profiles?.display_name || opponents?.[1]?.profiles?.full_name || "Unknown",
           opponent2_id: opponents?.[1]?.player_id || "",
+          opponent2_avatar_url: opponents?.[1]?.profiles?.avatar_url || null,
           rating_change: p.rating_change ?? null,
           rating_after: p.rating_after ?? null,
           court_name: courtName,
@@ -381,7 +389,7 @@ const MatchHistory = () => {
           .select(`
             player_id,
             team,
-            profiles(full_name, display_name)
+            profiles(full_name, display_name, avatar_url)
           `)
           .eq("match_id", p.match_id);
 
@@ -415,10 +423,13 @@ const MatchHistory = () => {
           my_team: myTeam,
           partner_name: teammates?.[0]?.profiles?.display_name || teammates?.[0]?.profiles?.full_name || "Unknown",
           partner_id: teammates?.[0]?.player_id || "",
+          partner_avatar_url: teammates?.[0]?.profiles?.avatar_url || null,
           opponent1_name: opponents?.[0]?.profiles?.display_name || opponents?.[0]?.profiles?.full_name || "Unknown",
           opponent1_id: opponents?.[0]?.player_id || "",
+          opponent1_avatar_url: opponents?.[0]?.profiles?.avatar_url || null,
           opponent2_name: opponents?.[1]?.profiles?.display_name || opponents?.[1]?.profiles?.full_name || "Unknown",
           opponent2_id: opponents?.[1]?.player_id || "",
+          opponent2_avatar_url: opponents?.[1]?.profiles?.avatar_url || null,
           rating_change: 0,
           rating_after: 0,
           court_name: courtName,
@@ -743,12 +754,16 @@ const MatchHistory = () => {
                   myTeam={match.my_team as 1 | 2}
                   won={match.won}
                   playerName={playerName}
+                  playerAvatarUrl={playerAvatarUrl}
                   partnerName={match.partner_name}
                   partnerId={match.partner_id}
+                  partnerAvatarUrl={match.partner_avatar_url}
                   opponent1Name={match.opponent1_name}
                   opponent1Id={match.opponent1_id}
+                  opponent1AvatarUrl={match.opponent1_avatar_url}
                   opponent2Name={match.opponent2_name}
                   opponent2Id={match.opponent2_id}
+                  opponent2AvatarUrl={match.opponent2_avatar_url}
                   ratingChange={null}
                   courtName={match.court_name}
                   source={match.source}
@@ -947,12 +962,16 @@ const MatchHistory = () => {
                         myTeam={match.my_team as 1 | 2}
                         won={match.won}
                         playerName={playerName}
+                        playerAvatarUrl={playerAvatarUrl}
                         partnerName={match.partner_name}
                         partnerId={match.partner_id}
+                        partnerAvatarUrl={match.partner_avatar_url}
                         opponent1Name={match.opponent1_name}
                         opponent1Id={match.opponent1_id}
+                        opponent1AvatarUrl={match.opponent1_avatar_url}
                         opponent2Name={match.opponent2_name}
                         opponent2Id={match.opponent2_id}
+                        opponent2AvatarUrl={match.opponent2_avatar_url}
                         ratingChange={match.rating_change}
                         courtName={match.court_name}
                         source={match.source}
