@@ -357,12 +357,12 @@ const AdminMatches = () => {
 
               <Select value={venueFilter} onValueChange={setVenueFilter}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Venue" />
+                  <SelectValue placeholder="Location" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All venues</SelectItem>
-                  <SelectItem value="official">Official only</SelectItem>
-                  <SelectItem value="other">Other only</SelectItem>
+                  <SelectItem value="all">All locations</SelectItem>
+                  <SelectItem value="official">Community location</SelectItem>
+                  <SelectItem value="other">Custom location</SelectItem>
                 </SelectContent>
               </Select>
             </div>
