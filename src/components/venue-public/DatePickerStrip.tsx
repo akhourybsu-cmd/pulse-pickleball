@@ -26,9 +26,7 @@ export function DatePickerStrip({ selectedDate, onSelectDate, numberOfDays = 14,
   }, []);
 
   const getDateLabel = (date: Date) => {
-    if (isToday(date)) return 'Today';
-    if (isTomorrow(date)) return 'Tomorrow';
-    return format(date, 'EEE, M/d');
+    return format(date, 'MMMM do, yyyy');
   };
 
   return (
