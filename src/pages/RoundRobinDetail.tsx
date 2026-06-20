@@ -756,7 +756,9 @@ export default function RoundRobinDetail() {
     setIsEditMode(!isEditMode);
   };
 
-  const regenerateScheduleFromRound = async (fromRound: number) => {
+  const regenerateScheduleFromRound = async (
+    fromRound: number
+  ): Promise<{ previousRounds: number; targetRounds: number; roundsChanged: boolean } | undefined> => {
     if (!event) return;
 
     const activePlayers = players.filter(p => p.active);
@@ -777,20 +779,67 @@ export default function RoundRobinDetail() {
 
       if (deleteError) throw deleteError;
 
+      // Auto-derive the round count from the host's games-per-player target
+      // and the new active roster size. Never shrink below already-played rounds.
+      const gamesPerPlayer = event.games_per_player || 3;
+      const desiredRounds = suggestRounds(
+        activePlayers.length,
+        event.num_courts,
+        gamesPerPlayer
+      );
+
+      const { data: scoredRows } = await supabase
+        .from("round_robin_schedule")
+        .select("round_no")
+        .eq("event_id", event.id)
+        .or("team1_score.not.is.null,team2_score.not.is.null")
+        .order("round_no", { ascending: false })
+        .limit(1);
+      const completedRoundsCount = (scoredRows?.[0]?.round_no as number | undefined) || 0;
+
+      const previousRounds = event.num_rounds;
+      const targetRounds = Math.max(desiredRounds, completedRoundsCount, fromRound - 1, 1);
+      const roundsChanged = targetRounds !== previousRounds;
+
+      if (roundsChanged) {
+        const { error: updateRoundsError } = await supabase
+          .from("round_robin_events")
+          .update({ num_rounds: targetRounds })
+          .eq("id", event.id);
+        if (updateRoundsError) throw updateRoundsError;
+
+        if (userId) {
+          await supabase.from("round_robin_audit").insert({
+            event_id: event.id,
+            editor_id: userId,
+            change_type: "rounds_auto_adjusted",
+            changes: {
+              previous_rounds: previousRounds,
+              new_rounds: targetRounds,
+              active_players: activePlayers.length,
+              games_per_player: gamesPerPlayer,
+              num_courts: event.num_courts,
+            },
+            reason: `Rounds auto-adjusted from ${previousRounds} to ${targetRounds} to keep ${gamesPerPlayer} games/player for ${activePlayers.length} active players`,
+          });
+        }
+      }
+
       // Regenerate schedule
       const { error: generateError } = await supabase.functions.invoke("generate-round-robin-schedule", {
         body: {
           event_id: event.id,
           player_ids: activePlayers.map(p => p.player_id),
           num_courts: event.num_courts,
-          num_rounds: event.num_rounds,
-          games_per_player: event.games_per_player || 3,
+          num_rounds: targetRounds,
+          games_per_player: gamesPerPlayer,
         },
       });
 
       if (generateError) throw generateError;
 
       await fetchEventDetails();
+      return { previousRounds, targetRounds, roundsChanged };
     } catch (error: any) {
       throw error;
     }
@@ -827,12 +876,16 @@ export default function RoundRobinDetail() {
 
       // Regenerate from current round
       const fromRound = event.current_round || 1;
-      await regenerateScheduleFromRound(fromRound);
+      const regenResult = await regenerateScheduleFromRound(fromRound);
+
+      const roundsSuffix = regenResult?.roundsChanged
+        ? ` · Schedule now ${regenResult.targetRounds} rounds to keep ${event.games_per_player || 3} games/player.`
+        : "";
 
       toast.success(
-        guestName
+        (guestName
           ? `${guestName} added as a guest`
-          : "Player added - they will see this event in their events list",
+          : "Player added - they will see this event in their events list") + roundsSuffix,
       );
     } catch (error: any) {
       toast.error("Failed to add player");
@@ -870,9 +923,13 @@ export default function RoundRobinDetail() {
 
       // Regenerate from current round
       const fromRound = event.current_round || 1;
-      await regenerateScheduleFromRound(fromRound);
+      const regenResult = await regenerateScheduleFromRound(fromRound);
 
-      toast.success("Player removed and schedule regenerated - they can rejoin later");
+      const roundsSuffix = regenResult?.roundsChanged
+        ? ` · Schedule now ${regenResult.targetRounds} rounds to keep ${event.games_per_player || 3} games/player.`
+        : "";
+
+      toast.success("Player removed and schedule regenerated - they can rejoin later" + roundsSuffix);
     } catch (error: any) {
       toast.error("Failed to remove player");
       console.error(error);
@@ -934,13 +991,16 @@ export default function RoundRobinDetail() {
 
         // Regenerate schedule from current round for fair redistribution
         const fromRound = event.current_round || 1;
-        await regenerateScheduleFromRound(fromRound);
+        const regenResult = await regenerateScheduleFromRound(fromRound);
 
         await fetchEventDetails();
+        const roundsSuffix = regenResult?.roundsChanged
+          ? ` · Schedule now ${regenResult.targetRounds} rounds to keep ${event.games_per_player || 3} games/player.`
+          : "";
         toast.success(
-          wasInactive 
-            ? "Player reactivated and schedule regenerated" 
-            : "Player substituted and schedule regenerated"
+          (wasInactive
+            ? "Player reactivated and schedule regenerated"
+            : "Player substituted and schedule regenerated") + roundsSuffix
         );
       } else {
         // Single round substitution: update specific unstarted matches
