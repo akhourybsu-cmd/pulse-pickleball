@@ -876,12 +876,16 @@ export default function RoundRobinDetail() {
 
       // Regenerate from current round
       const fromRound = event.current_round || 1;
-      await regenerateScheduleFromRound(fromRound);
+      const regenResult = await regenerateScheduleFromRound(fromRound);
+
+      const roundsSuffix = regenResult?.roundsChanged
+        ? ` · Schedule now ${regenResult.targetRounds} rounds to keep ${event.games_per_player || 3} games/player.`
+        : "";
 
       toast.success(
-        guestName
+        (guestName
           ? `${guestName} added as a guest`
-          : "Player added - they will see this event in their events list",
+          : "Player added - they will see this event in their events list") + roundsSuffix,
       );
     } catch (error: any) {
       toast.error("Failed to add player");
