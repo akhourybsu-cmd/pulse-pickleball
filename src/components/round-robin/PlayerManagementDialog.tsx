@@ -66,7 +66,7 @@ export function PlayerManagementDialog({
 }: PlayerManagementDialogProps) {
   const [mode, setMode] = useState<ActionMode>(null);
   const [selectedPlayer, setSelectedPlayer] = useState<string>("");
-  const [addPick, setAddPick] = useState<PickerPlayer | null>(null);
+  const [addPicks, setAddPicks] = useState<PickerPlayer[]>([]);
   const [substituteOriginal, setSubstituteOriginal] = useState<string>("");
   const [substituteNew, setSubstituteNew] = useState<string>("");
   const [substituteNewPick, setSubstituteNewPick] = useState<PickerPlayer | null>(null);
@@ -78,14 +78,16 @@ export function PlayerManagementDialog({
   const inactivePlayers = players.filter(p => !p.active);
 
   const handleAddPlayer = async () => {
-    if (!addPick) return;
+    if (addPicks.length === 0) return;
     setLoading(true);
     try {
-      await onAddPlayer({
-        playerId: addPick.isGuest ? null : addPick.id,
-        guestName: addPick.isGuest ? addPick.display_name || addPick.full_name : undefined,
-      });
-      setAddPick(null);
+      for (const pick of addPicks) {
+        await onAddPlayer({
+          playerId: pick.isGuest ? null : pick.id,
+          guestName: pick.isGuest ? pick.display_name || pick.full_name : undefined,
+        });
+      }
+      setAddPicks([]);
       setMode(null);
     } finally {
       setLoading(false);
