@@ -4,13 +4,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Bell, BellRing, Target, Calendar, Users, Trophy, Settings, MessageCircle, Shield, ChevronRight } from "lucide-react";
+import { ArrowLeft, Bell, BellRing, Target, Calendar, Users, Trophy, Settings, MessageCircle, Shield, ChevronRight, Send, Loader2 } from "lucide-react";
 import { useNotificationPreferences } from "@/hooks/useNotifications";
 import { usePushSubscription } from "@/hooks/usePushSubscription";
 import { useMessagingPrivacy } from "@/hooks/useMessagingSafety";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 
 const categoryConfig = [
   { id: "matches", label: "Matches", description: "Match recordings, verifications, and results", icon: Target },
@@ -65,6 +66,7 @@ export default function NotificationSettings() {
         </p>
 
         <BrowserPushCard />
+        <TestNotificationCard />
 
         <MessagingPrivacyCard />
         <BlockedUsersLinkCard onClick={() => navigate('/settings/blocked')} />
