@@ -66,7 +66,7 @@ export function PlayerManagementDialog({
 }: PlayerManagementDialogProps) {
   const [mode, setMode] = useState<ActionMode>(null);
   const [selectedPlayer, setSelectedPlayer] = useState<string>("");
-  const [addPick, setAddPick] = useState<PickerPlayer | null>(null);
+  const [addPicks, setAddPicks] = useState<PickerPlayer[]>([]);
   const [substituteOriginal, setSubstituteOriginal] = useState<string>("");
   const [substituteNew, setSubstituteNew] = useState<string>("");
   const [substituteNewPick, setSubstituteNewPick] = useState<PickerPlayer | null>(null);
@@ -78,14 +78,16 @@ export function PlayerManagementDialog({
   const inactivePlayers = players.filter(p => !p.active);
 
   const handleAddPlayer = async () => {
-    if (!addPick) return;
+    if (addPicks.length === 0) return;
     setLoading(true);
     try {
-      await onAddPlayer({
-        playerId: addPick.isGuest ? null : addPick.id,
-        guestName: addPick.isGuest ? addPick.display_name || addPick.full_name : undefined,
-      });
-      setAddPick(null);
+      for (const pick of addPicks) {
+        await onAddPlayer({
+          playerId: pick.isGuest ? null : pick.id,
+          guestName: pick.isGuest ? pick.display_name || pick.full_name : undefined,
+        });
+      }
+      setAddPicks([]);
       setMode(null);
     } finally {
       setLoading(false);
@@ -121,6 +123,7 @@ export function PlayerManagementDialog({
   const handleClose = () => {
     setMode(null);
     setSelectedPlayer("");
+    setAddPicks([]);
     setSubstituteOriginal("");
     setSubstituteNew("");
     setSubstituteScope('global');
@@ -276,10 +279,10 @@ export function PlayerManagementDialog({
             <div className="space-y-2">
               <Label>Player to Add</Label>
               <PlayerPickerSheet
-                mode="single"
+                mode="multi"
                 allowGuest
-                selectedPlayers={addPick ? [addPick] : []}
-                onPlayersChange={(arr) => setAddPick(arr[0] ?? null)}
+                selectedPlayers={addPicks}
+                onPlayersChange={setAddPicks}
                 genderFilter={genderFilter}
                 groupId={groupId}
                 excludePlayerIds={players.map(p => p.player_id).filter(Boolean)}
@@ -288,20 +291,36 @@ export function PlayerManagementDialog({
                     type="button"
                     className="w-full flex items-center justify-between p-3 rounded-lg border-2 border-dashed border-border hover:border-primary/50 transition-all text-left"
                   >
-                    {addPick ? (
+                    {addPicks.length === 1 ? (
                       <div className="flex items-center gap-2 min-w-0">
                         <Avatar className="h-7 w-7">
                           <AvatarFallback className="text-[10px] bg-primary/15 text-primary">
-                            {(addPick.display_name || addPick.full_name)
+                            {(addPicks[0].display_name || addPicks[0].full_name)
                               .split(" ").map(s => s[0]).filter(Boolean).slice(0,2).join("").toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
                         <span className="text-sm font-medium truncate">
-                          {addPick.display_name || addPick.full_name}
+                          {addPicks[0].display_name || addPicks[0].full_name}
                         </span>
-                        {addPick.isGuest && (
+                        {addPicks[0].isGuest && (
                           <Badge variant="outline" className="text-[10px] uppercase">guest</Badge>
                         )}
+                      </div>
+                    ) : addPicks.length > 1 ? (
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="flex -space-x-2">
+                          {addPicks.slice(0, 3).map((p) => (
+                            <Avatar key={p.id} className="h-7 w-7 border-2 border-background">
+                              <AvatarFallback className="text-[10px] bg-primary/15 text-primary">
+                                {(p.display_name || p.full_name)
+                                  .split(" ").map(s => s[0]).filter(Boolean).slice(0,2).join("").toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                          ))}
+                        </div>
+                        <span className="text-sm font-medium">
+                          {addPicks.length} players selected
+                        </span>
                       </div>
                     ) : (
                       <div className="flex items-center gap-2 text-muted-foreground">
@@ -452,6 +471,7 @@ export function PlayerManagementDialog({
               onClick={() => {
                 setMode(null);
                 setSelectedPlayer("");
+                setAddPicks([]);
                 setSubstituteOriginal("");
                 setSubstituteNew("");
                 setSubstituteScope('global');
@@ -466,9 +486,13 @@ export function PlayerManagementDialog({
             Cancel
           </Button>
           {mode === 'add' && (
-            <Button onClick={handleAddPlayer} disabled={!selectedPlayer || loading} className="gap-1.5">
+            <Button onClick={handleAddPlayer} disabled={addPicks.length === 0 || loading} className="gap-1.5">
               <UserPlus className="h-4 w-4" />
-              {loading ? "Adding…" : "Add Player"}
+              {loading
+                ? "Adding…"
+                : addPicks.length > 1
+                  ? `Add ${addPicks.length} Players`
+                  : "Add Player"}
             </Button>
           )}
           {mode === 'remove' && (
