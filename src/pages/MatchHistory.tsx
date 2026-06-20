@@ -754,12 +754,16 @@ const MatchHistory = () => {
                   myTeam={match.my_team as 1 | 2}
                   won={match.won}
                   playerName={playerName}
+                  playerAvatarUrl={playerAvatarUrl}
                   partnerName={match.partner_name}
                   partnerId={match.partner_id}
+                  partnerAvatarUrl={match.partner_avatar_url}
                   opponent1Name={match.opponent1_name}
                   opponent1Id={match.opponent1_id}
+                  opponent1AvatarUrl={match.opponent1_avatar_url}
                   opponent2Name={match.opponent2_name}
                   opponent2Id={match.opponent2_id}
+                  opponent2AvatarUrl={match.opponent2_avatar_url}
                   ratingChange={null}
                   courtName={match.court_name}
                   source={match.source}
