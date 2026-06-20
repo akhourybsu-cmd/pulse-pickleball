@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'pulse-v5-auto-update';
+const CACHE_VERSION = 'pulse-v6-icon-update';
 const urlsToCache = [
   '/pulse-icon.jpg'
 ];
