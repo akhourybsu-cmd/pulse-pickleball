@@ -27,6 +27,7 @@ import { template as eventReminder } from './event-reminder.tsx'
 import { template as groupEventReminder } from './group-event-reminder.tsx'
 import { template as contestedMatchAlert } from './contested-match-alert.tsx'
 import { template as venueInquiryAlert } from './venue-inquiry-alert.tsx'
+import { template as matchVerificationRequest } from './match-verification-request.tsx'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'registration-confirmation': registrationConfirmation,
@@ -43,4 +44,5 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'group-event-reminder': groupEventReminder,
   'contested-match-alert': contestedMatchAlert,
   'venue-inquiry-alert': venueInquiryAlert,
+  'match-verification-request': matchVerificationRequest,
 }
