@@ -123,6 +123,7 @@ export function PlayerManagementDialog({
   const handleClose = () => {
     setMode(null);
     setSelectedPlayer("");
+    setAddPicks([]);
     setSubstituteOriginal("");
     setSubstituteNew("");
     setSubstituteScope('global');
