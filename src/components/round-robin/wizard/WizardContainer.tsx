@@ -45,6 +45,7 @@ export function WizardContainer() {
     eventMode: "immediate",
     eventName: "",
     locationId: "",
+    locationLabel: "",
     format: "open",
     selectedPlayers: [],
     playerCount: 8,
