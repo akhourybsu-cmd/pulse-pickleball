@@ -1866,21 +1866,25 @@ export default function RoundRobinDetail() {
                         </div>
 
                         {byeMatches.length > 0 && (
-                          <Card className="mt-4 bg-muted/30">
-                            <CardContent className="p-4">
-                              <div className="flex items-center gap-2 mb-3">
-                                <Badge variant="outline" className="font-mono">BYE</Badge>
-                                <span className="text-sm text-muted-foreground">Players resting this round</span>
-                              </div>
-                              <div className="flex flex-wrap gap-2">
-                                {byeMatches.map((match) => (
-                                  <Badge key={match.id} variant="secondary" className="text-sm">
-                                    {getPlayerName(match.a1_player_id, match)}
-                                  </Badge>
-                                ))}
-                              </div>
-                            </CardContent>
-                          </Card>
+                          <div className="mt-3 rounded-2xl border border-border/50 bg-muted/30 p-3">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-primary/15 text-primary text-[10px] font-bold tracking-wider uppercase">
+                                Bye
+                              </span>
+                              <span className="text-xs text-muted-foreground">Players resting this round</span>
+                            </div>
+                            <div className="flex flex-wrap gap-1.5">
+                              {byeMatches.map((match) => (
+                                <span
+                                  key={match.id}
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-card border border-border/60 text-xs font-medium text-foreground"
+                                >
+                                  <Users className="h-3 w-3 text-muted-foreground" />
+                                  {getPlayerName(match.a1_player_id, match)}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
                         )}
                       </div>
                     );
