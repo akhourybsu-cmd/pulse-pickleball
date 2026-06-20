@@ -1,5 +1,5 @@
 import { useRef, useEffect } from 'react';
-import { format, addDays, startOfToday, isSameDay, isToday, isTomorrow } from 'date-fns';
+import { format, addDays, startOfToday, isSameDay } from 'date-fns';
 import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
@@ -26,9 +26,7 @@ export function DatePickerStrip({ selectedDate, onSelectDate, numberOfDays = 14,
   }, []);
 
   const getDateLabel = (date: Date) => {
-    if (isToday(date)) return 'Today';
-    if (isTomorrow(date)) return 'Tomorrow';
-    return format(date, 'EEE, M/d');
+    return format(date, 'MMMM do, yyyy');
   };
 
   return (
