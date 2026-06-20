@@ -137,9 +137,9 @@ export function RoundRobinHostHero({
         className,
       )}
     >
-      <div className="container max-w-2xl mx-auto px-4 py-6 sm:py-8">
+      <div className="container max-w-2xl mx-auto px-4 pt-4 pb-3 sm:pt-5 sm:pb-4">
         {/* Status chips first — small, restrained */}
-        <div className="flex items-center gap-1.5 flex-wrap mb-3">
+        <div className="flex items-center gap-1.5 flex-wrap mb-2">
           {status === "live" ? (
             <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold tracking-wider uppercase">
               <span className="relative flex h-1.5 w-1.5">
