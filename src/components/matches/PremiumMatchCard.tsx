@@ -54,7 +54,7 @@ export interface PremiumMatchCardProps {
  *
  *  - Top accent stripe on wins (gold gradient → fades) so wins read at a
  *    glance from across the room
- *  - WON/LOST status pill + smart date ("Today", "Yesterday", "Sun · Nov 30")
+ *  - WON/LOST status pill + date ("June 17th, 2026")
  *  - Round-Robin badge inline when source === 'round_robin'
  *  - Rating delta pill (+0.12 / −0.08) — the part the player actually
  *    cares about, prominent on the row
