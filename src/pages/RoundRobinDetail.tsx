@@ -1688,39 +1688,6 @@ export default function RoundRobinDetail() {
               </Card>
             ) : (
               <>
-                {isOrganizer && event.status === "draft" && (
-                  <Button 
-                    onClick={handleStartEvent} 
-                    className="w-full mb-4 bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20"
-                  >
-                    <Play className="h-4 w-4 mr-2" />
-                    Start Event
-                  </Button>
-                )}
-
-                {isOrganizer && !event.voided && event.status !== 'completed' && (
-                  <div className="flex gap-2 mb-4">
-                    <Button 
-                      variant="outline" 
-                      onClick={() => setScheduleEditorOpen(true)}
-                      className="flex-1 hover:bg-muted/80"
-                    >
-                      <Edit className="h-4 w-4 mr-2" />
-                      Edit Schedule
-                    </Button>
-                    {hasScores && (
-                      <Button 
-                        variant="outline" 
-                        onClick={() => setScoreManagementOpen(true)}
-                        className="flex-1 hover:bg-muted/80"
-                      >
-                        <Edit3 className="h-4 w-4 mr-2" />
-                        Manage Scores
-                      </Button>
-                    )}
-                  </div>
-                )}
-
                 {isOrganizer && event.status === "live" && (
                   <Button 
                     onClick={handleCompleteEvent} 
@@ -1730,6 +1697,8 @@ export default function RoundRobinDetail() {
                     Complete Event & Submit to Match History
                   </Button>
                 )}
+
+
 
                 <ScheduleRoundCarousel 
                   totalRounds={event.num_rounds} 
