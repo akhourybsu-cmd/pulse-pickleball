@@ -69,7 +69,7 @@ export interface PremiumMatchCardProps {
 export function PremiumMatchCard(props: PremiumMatchCardProps) {
   const {
     matchDate, team1Score, team2Score, myTeam, won,
-    playerName, partnerName, opponent1Name, opponent2Name,
+    playerName, playerAvatarUrl, partnerName, partnerAvatarUrl, opponent1Name, opponent1AvatarUrl, opponent2Name, opponent2AvatarUrl,
     ratingChange, courtName, source, roundNo, courtNo,
     verifiedCount, totalPlayers, isCurrentUserVerified,
     showVerifyActions, onVerify, onReport,
