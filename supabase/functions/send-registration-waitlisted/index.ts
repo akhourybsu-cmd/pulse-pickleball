@@ -1,3 +1,4 @@
+// Sends waitlisted notification using the branded transactional template.
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 
@@ -6,10 +7,10 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const SITE_URL = "https://pulsepb.com";
+
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
     const supabase = createClient(
@@ -18,6 +19,12 @@ serve(async (req) => {
     );
 
     const { registrationId } = await req.json();
+    if (!registrationId) {
+      return new Response(JSON.stringify({ error: "registrationId required" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const { data: registration, error: regError } = await supabase
       .from("tournament_registrations")
@@ -31,84 +38,61 @@ serve(async (req) => {
       .eq("id", registrationId)
       .single();
 
-    if (regError) throw regError;
+    if (regError || !registration) throw regError ?? new Error("Registration not found");
 
-    const resendApiKey = Deno.env.get("RESEND_API_KEY");
-    if (!resendApiKey) throw new Error("RESEND_API_KEY not configured");
+    const eventUrl = registration.event?.id
+      ? `${SITE_URL}/tournament/${registration.event.id}`
+      : SITE_URL;
 
-    const eventDate = new Date(registration.event.start_date).toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-
-    const emailHtml = `
-      <h1>Registration Waitlisted</h1>
-      <p>Thank you for your interest in <strong>${registration.event.name}</strong>.</p>
-      
-      <h2>Team Details</h2>
-      <p><strong>Team Name:</strong> ${registration.team_name}</p>
-      <p><strong>Division:</strong> ${registration.division.name}</p>
-      <p><strong>Status:</strong> Waitlist</p>
-      
-      <h3>What This Means</h3>
-      <p>The ${registration.division.name} division is currently at capacity. You've been placed on the waitlist and will be notified immediately if a spot opens up.</p>
-      
-      <p><strong>Event Date:</strong> ${eventDate}</p>
-      <p><strong>Location:</strong> ${registration.event.location || 'TBD'}</p>
-      
-      <p>We'll contact you as soon as a spot becomes available. Please keep an eye on your email!</p>
-      
-      <p>If you have any questions, reply to this email.</p>
-      
-      <p>Best regards,<br>The Tournament Team</p>
-    `;
-
-    // Send to captain
-    await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${resendApiKey}`,
-      },
-      body: JSON.stringify({
-        from: "PULSE <support@pulsepb.com>",
-        to: [registration.captain.email],
-        subject: `Waitlisted: ${registration.event.name}`,
-        html: emailHtml,
-      }),
-    });
-
-    // Send to partner if exists
-    if (registration.partner) {
-      await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${resendApiKey}`,
+    const sendTo = async (
+      email: string,
+      role: "captain" | "partner",
+      displayName?: string
+    ) => {
+      await supabase.functions.invoke("send-transactional-email", {
+        body: {
+          templateName: "registration-waitlisted",
+          recipientEmail: email,
+          idempotencyKey: `reg-waitlisted-${registrationId}-${role}`,
+          templateData: {
+            playerName: displayName?.split(" ")[0] || "Player",
+            eventName: registration.event?.name,
+            eventUrl,
+          },
         },
-        body: JSON.stringify({
-          from: "PULSE <support@pulsepb.com>",
-          to: [registration.partner.email],
-          subject: `Waitlisted: ${registration.event.name}`,
-          html: emailHtml,
-        }),
       });
+    };
+
+    if (registration.captain?.email) {
+      await sendTo(
+        registration.captain.email,
+        "captain",
+        registration.captain.display_name || registration.captain.full_name
+      );
+    }
+    if (registration.partner?.email) {
+      await sendTo(
+        registration.partner.email,
+        "partner",
+        registration.partner.display_name || registration.partner.full_name
+      );
     }
 
-    // Log notifications
     await supabase.from("tournament_registration_notifications").insert([
       {
         registration_id: registrationId,
         notification_type: "waitlisted",
-        to_email: registration.captain.email,
+        to_email: registration.captain?.email,
       },
-      ...(registration.partner ? [{
-        registration_id: registrationId,
-        notification_type: "waitlisted",
-        to_email: registration.partner.email,
-      }] : [])
+      ...(registration.partner?.email
+        ? [
+            {
+              registration_id: registrationId,
+              notification_type: "waitlisted",
+              to_email: registration.partner.email,
+            },
+          ]
+        : []),
     ]);
 
     return new Response(JSON.stringify({ success: true }), {
