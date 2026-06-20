@@ -102,23 +102,6 @@ Deno.serve(async (req) => {
     )
   }
 
-  // Resolve effective recipient: template-level `to` takes precedence over
-  // the caller-provided recipientEmail. This allows notification templates
-  // to always send to a fixed address (e.g., site owner from env var).
-  const effectiveRecipient = template.to || recipientEmail
-
-  if (!effectiveRecipient) {
-    return new Response(
-      JSON.stringify({
-        error: 'recipientEmail is required (unless the template defines a fixed recipient)',
-      }),
-      {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
-    )
-  }
-
   // Create Supabase client with service role (bypasses RLS)
   const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
@@ -132,6 +115,23 @@ Deno.serve(async (req) => {
     if (profile?.email) {
       recipientEmail = profile.email
     }
+  }
+
+  // Resolve effective recipient: template-level `to` takes precedence over
+  // the caller-provided recipientEmail. This allows notification templates
+  // to always send to a fixed address (e.g., site owner from env var).
+  const effectiveRecipient = template.to || recipientEmail
+
+  if (!effectiveRecipient) {
+    return new Response(
+      JSON.stringify({
+        error: 'recipientEmail or recipientUserId is required (unless the template defines a fixed recipient)',
+      }),
+      {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      }
+    )
   }
 
   // 2. Check suppression list (fail-closed: if we can't verify, don't send)
