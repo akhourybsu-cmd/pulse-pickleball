@@ -111,12 +111,12 @@ export function useDirectMessages() {
           id: convo.id,
           updated_at: convo.updated_at,
           participant: {
-            id: profile.id,
-            user_id: profile.id,
-            display_name: profile.display_name,
-            full_name: profile.full_name,
-            avatar_url: profile.avatar_url,
-            current_rating: profile.current_rating
+            id: otherUserId,
+            user_id: otherUserId,
+            display_name: profile?.display_name ?? null,
+            full_name: profile?.full_name ?? null,
+            avatar_url: profile?.avatar_url ?? null,
+            current_rating: profile?.current_rating ?? null
           },
           lastMessage,
           unreadCount: unreadCount || 0
