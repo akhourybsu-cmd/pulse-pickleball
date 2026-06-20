@@ -138,6 +138,7 @@ const AdminBiometrics = lazy(() => import("./pages/AdminBiometrics"));
 const AdminSystemHealth = lazy(() => import("./pages/AdminSystemHealth"));
 const AdminVenueVerification = lazy(() => import("./pages/AdminVenueVerification"));
 const NotificationSettings = lazy(() => import("./pages/NotificationSettings"));
+const BlockedUsers = lazy(() => import("./pages/BlockedUsers"));
 
 // Player pages
 const PlayerDashboard = lazy(() => import("./pages/player/PlayerDashboard"));
@@ -498,6 +499,7 @@ const AppContent = () => {
           <Route path="/pickleball-citi-memberships" element={<PickleballCitiMemberships />} />
           <Route path="/profile/data-export" element={<DataExport />} />
           <Route path="/settings/notifications" element={<NotificationSettings />} />
+          <Route path="/settings/blocked" element={<BlockedUsers />} />
           <Route path="/events" element={<Events />} />
           <Route path="/events/new" element={<NewEvent />} />
           <Route path="/events/:eventId" element={<EventDetail />} />

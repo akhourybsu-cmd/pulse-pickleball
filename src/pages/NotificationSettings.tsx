@@ -4,10 +4,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Bell, BellRing, Target, Calendar, Users, Trophy, Settings } from "lucide-react";
+import { ArrowLeft, Bell, BellRing, Target, Calendar, Users, Trophy, Settings, MessageCircle, Shield, ChevronRight } from "lucide-react";
 import { useNotificationPreferences } from "@/hooks/useNotifications";
 import { usePushSubscription } from "@/hooks/usePushSubscription";
+import { useMessagingPrivacy } from "@/hooks/useMessagingSafety";
 import { Skeleton } from "@/components/ui/skeleton";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 
 const categoryConfig = [
   { id: "matches", label: "Matches", description: "Match recordings, verifications, and results", icon: Target },
@@ -62,6 +65,11 @@ export default function NotificationSettings() {
         </p>
 
         <BrowserPushCard />
+
+        <MessagingPrivacyCard />
+        <BlockedUsersLinkCard onClick={() => navigate('/settings/blocked')} />
+
+
 
 
 
@@ -127,6 +135,71 @@ function BrowserPushCard() {
         </div>
       </CardHeader>
     </Card>
+  );
+}
+
+function MessagingPrivacyCard() {
+  const { privacy, loading, update } = useMessagingPrivacy();
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+            <MessageCircle className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <CardTitle className="text-base">Who can message me</CardTitle>
+            <CardDescription className="text-xs">Controls who can start a direct message with you.</CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <RadioGroup
+          value={privacy}
+          onValueChange={(v) => update(v as any)}
+          disabled={loading}
+          className="space-y-2"
+        >
+          <div className="flex items-center gap-3 rounded-lg border p-3">
+            <RadioGroupItem value="friends" id="dm-friends" />
+            <Label htmlFor="dm-friends" className="flex-1 cursor-pointer">
+              <div className="text-sm font-medium">Friends only</div>
+              <div className="text-xs text-muted-foreground">Recommended. Only approved friends can DM you.</div>
+            </Label>
+          </div>
+          <div className="flex items-center gap-3 rounded-lg border p-3">
+            <RadioGroupItem value="nobody" id="dm-nobody" />
+            <Label htmlFor="dm-nobody" className="flex-1 cursor-pointer">
+              <div className="text-sm font-medium">Nobody</div>
+              <div className="text-xs text-muted-foreground">No one can start a new DM with you. Existing threads stay visible.</div>
+            </Label>
+          </div>
+        </RadioGroup>
+      </CardContent>
+    </Card>
+  );
+}
+
+function BlockedUsersLinkCard({ onClick }: { onClick: () => void }) {
+  return (
+    <button onClick={onClick} className="w-full text-left">
+      <Card className="hover:bg-muted/30 transition-colors">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <Shield className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <CardTitle className="text-base">Blocked users</CardTitle>
+                <CardDescription className="text-xs">Manage who you've blocked.</CardDescription>
+              </div>
+            </div>
+            <ChevronRight className="h-5 w-5 text-muted-foreground" />
+          </div>
+        </CardHeader>
+      </Card>
+    </button>
   );
 }
 
