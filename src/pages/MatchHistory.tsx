@@ -797,7 +797,20 @@ const MatchHistory = () => {
                       {waitingOnOthers.length}
                     </span>
                   </div>
-                  {waitingOnOthers.map((match, i) => renderPendingCard(match, i, 'waiting'))}
+                  {waitingOnOthers.map((match, i) => (
+                    <div key={`waiting-wrap-${match.match_id}`} className="space-y-2">
+                      {renderPendingCard(match, i, 'waiting')}
+                      <div className="flex justify-end">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleNudgeOpponents(match.match_id)}
+                        >
+                          Remind opponents
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
