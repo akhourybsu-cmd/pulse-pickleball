@@ -97,7 +97,7 @@ function ConversationCard({
   onClick: () => void;
   getInitials: (name: string | null) => string;
 }) {
-  const name = conversation.participant.display_name || conversation.participant.full_name || 'Unknown';
+  const name = conversation.participant.display_name || conversation.participant.full_name || 'Player';
   const hasUnread = conversation.unreadCount > 0;
 
   return (

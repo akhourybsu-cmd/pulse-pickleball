@@ -76,7 +76,7 @@ export default function DirectMessageChat() {
     return timeDiff < 60000; // Group if within 1 minute
   };
 
-  const name = participant?.display_name || participant?.full_name || 'Unknown';
+  const name = participant?.display_name || participant?.full_name || 'Player';
 
   if (loading) {
     return (
