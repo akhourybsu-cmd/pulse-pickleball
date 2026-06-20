@@ -11,12 +11,15 @@ import { motion } from "framer-motion";
 interface ScheduleRoundCarouselProps {
   totalRounds: number;
   currentRound?: number;
+  /** Optional action rendered to the right of the round selector (e.g. Edit schedule). */
+  rightAction?: React.ReactNode;
   children: (roundNo: number, isActive: boolean) => React.ReactNode;
 }
 
 export function ScheduleRoundCarousel({
   totalRounds,
   currentRound = 1,
+  rightAction,
   children,
 }: ScheduleRoundCarouselProps) {
   const [carouselApi, setCarouselApi] = useState<CarouselApi>();
