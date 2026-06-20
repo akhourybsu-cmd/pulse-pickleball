@@ -176,12 +176,22 @@ export function PremiumMatchCard(props: PremiumMatchCardProps) {
           <div className="min-w-0">
             <div className="flex -space-x-2 mb-1.5">
               <Avatar className="h-7 w-7 ring-2 ring-card">
+                <AvatarImage
+                  src={playerAvatarUrl || undefined}
+                  alt={playerName}
+                  className="h-full w-full object-cover"
+                />
                 <AvatarFallback className="text-[10px] font-bold bg-primary/20 text-primary">
                   {initials(playerName)}
                 </AvatarFallback>
               </Avatar>
               {partnerName && partnerName !== "Unknown" && (
                 <Avatar className="h-7 w-7 ring-2 ring-card">
+                  <AvatarImage
+                    src={partnerAvatarUrl || undefined}
+                    alt={partnerName}
+                    className="h-full w-full object-cover"
+                  />
                   <AvatarFallback className="text-[10px] font-bold bg-muted text-foreground/80">
                     {initials(partnerName)}
                   </AvatarFallback>
