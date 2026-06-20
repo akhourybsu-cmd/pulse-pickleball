@@ -250,7 +250,7 @@ const AdminMatches = () => {
   };
 
   const exportToCSV = () => {
-    const headers = ["Date", "Event", "Venue", "Teams", "Score", "Type", "Verified", "Created By", "Match ID"];
+    const headers = ["Date", "Event", "Location", "Teams", "Score", "Type", "Verified", "Created By", "Match ID"];
     const rows = filteredMatches.map(m => [
       toLocaleDateStringEST(m.match_date),
       m.event_name || "—",
@@ -357,12 +357,12 @@ const AdminMatches = () => {
 
               <Select value={venueFilter} onValueChange={setVenueFilter}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Venue" />
+                  <SelectValue placeholder="Location" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All venues</SelectItem>
-                  <SelectItem value="official">Official only</SelectItem>
-                  <SelectItem value="other">Other only</SelectItem>
+                  <SelectItem value="all">All locations</SelectItem>
+                  <SelectItem value="official">Community location</SelectItem>
+                  <SelectItem value="other">Custom location</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -397,13 +397,8 @@ const AdminMatches = () => {
                     </div>
 
                     <div className="text-sm">
-                      <span className="text-muted-foreground">Venue: </span>
+                      <span className="text-muted-foreground">Location: </span>
                       <span>{match.court_name}</span>
-                      {match.other_location && (
-                        <span className="text-xs text-muted-foreground italic ml-2">
-                          Not an official community court
-                        </span>
-                      )}
                     </div>
 
                     <div className="text-sm">

@@ -25,6 +25,8 @@ interface DetailsStepProps {
   onEventNameChange: (v: string) => void;
   locationId: string;
   onLocationIdChange: (v: string) => void;
+  locationLabel: string;
+  onLocationLabelChange: (v: string) => void;
   notes: string;
   onNotesChange: (v: string) => void;
   /** Current event mode — controls whether the "Who can join?" picker
@@ -48,6 +50,8 @@ export function DetailsStep({
   onEventNameChange,
   locationId,
   onLocationIdChange,
+  locationLabel,
+  onLocationLabelChange,
   notes,
   onNotesChange,
   eventMode,
@@ -112,6 +116,16 @@ export function DetailsStep({
               </SelectContent>
             </Select>
           </div>
+          {/* Free-text town/city — what actually shows on the match card.
+              Stored separately from the court selection so hosts can name
+              a town even when no community court applies. */}
+          <Input
+            value={locationLabel}
+            onChange={(e) => onLocationLabelChange(e.target.value)}
+            placeholder="Town or city (shown on the match card)"
+            className="h-11"
+            maxLength={80}
+          />
         </div>
 
         {/* Notes */}

@@ -4,6 +4,10 @@ export interface WizardFormData {
   eventMode: "immediate" | "open_registration";
   eventName: string;
   locationId: string;
+  /** Free-text town/city label shown on the match card. Persisted to
+   *  round_robin_events.location (preferred over the court UUID so the
+   *  detail screen can render a human-readable place). */
+  locationLabel: string;
   format: "open" | "mixed" | "male" | "female";
   selectedPlayers: { id: string; full_name: string; display_name: string | null; gender?: string | null; isGuest?: boolean; avatar_url?: string | null }[];
   playerCount: number;

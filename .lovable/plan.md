@@ -1,35 +1,40 @@
-# Auto-Adjust Round Count When Roster Changes
+## Scope
+Four small, related changes — all UI/wording plus one tiny RR data capture tweak. No schema changes.
 
-## Problem
+---
 
-`games_per_player` is the host's source of truth, but `num_rounds` is only recalculated when courts or games-per-player change — never when players are added or removed. So a 4-round, 8-player event that drops to 6 players keeps 4 rounds, leaving players short of their target games.
+### 1. Admin Match History wording (`src/pages/AdminMatches.tsx`)
+- Match row label: `"Venue:"` → `"Location:"` (line 400).
+- Remove the `"Not an official community court"` italic note entirely (lines 402–406). Just show whatever `court_name` / `other_location` resolved to, no qualifier.
+- Filter dropdown still functions, but rename the label/placeholder from `"Venue"` / `"All venues"` to `"Location"` / `"All locations"` (lines 358–363) and update the CSV header `"Venue"` → `"Location"` (line 253) so the admin side stops referencing "court" as a tracked entity.
+- The filter options `"official"` / `"other"` keep their logic (they're the only way to distinguish community-court rows from free-text rows under the hood), but the visible labels become `"Community location"` / `"Custom location"`.
 
-Today `suggestRounds(players, courts, gpp)` already exists in `src/lib/roundRobinFairness.ts` and is used by court/games-per-player handlers and the Edit Event dialog. The roster handlers in `src/pages/RoundRobinDetail.tsx` (`handleAddPlayer`, `handleMarkInactive`, substitute flow) just call `regenerateScheduleFromRound`, which forwards the stale `event.num_rounds` straight to the edge function.
+### 2. Remove "Most Played" court card from the home screen
+- `src/pages/Dashboard.tsx`: delete both `<StatsByCourtCard userId={user?.id} />` usages (lines 314 and 420) and drop the unused import on line 22.
+- Leave `StatsByCourtCard.tsx` and `DashboardModuleSkeleton`'s reference comment in place (no other consumers, but keeping the file avoids touching unrelated code). If you'd rather fully delete the component file too, say so and I'll include it.
 
-## Fix
+### 3. Player-side parity for "not an official community court"
+- Quick sweep with ripgrep for any remaining `"Not an official community court"` / `"official community court"` strings outside Admin. Current search shows the only live occurrence is in `AdminMatches.tsx`, so step 1 covers it. If the sweep surfaces anything else (e.g. match detail, match ticket), strip the same phrasing there.
 
-Make `regenerateScheduleFromRound` the single chokepoint that rederives rounds from the current active roster every time the schedule is rebuilt.
+### 4. Round Robin — capture & display town/city
+The wizard's "Location" today is a court dropdown that stores a court UUID in `round_robin_events.location`. That's why city/town never shows up on the match card. Two-part fix, no migration needed (the `location` column already accepts free text):
 
-### `src/pages/RoundRobinDetail.tsx` — `regenerateScheduleFromRound`
-1. After the active-players check, compute:
-   - `desiredRounds = suggestRounds(activePlayers.length, event.num_courts, event.games_per_player || 3)`
-   - `completedRoundsCount` = highest `round_no` in `round_robin_schedule` for this event where any score is set (so we never shrink below already-played rounds)
-   - `targetRounds = Math.max(desiredRounds, completedRoundsCount, fromRound - 1)`
-2. If `targetRounds !== event.num_rounds`, update the `round_robin_events` row (`num_rounds: targetRounds`) and write a `round_robin_audit` entry with `change_type: "rounds_auto_adjusted"` and a reason explaining it was driven by the roster change (include before/after counts and player count).
-3. Use `targetRounds` (not `event.num_rounds`) in the `generate-round-robin-schedule` invoke body.
-4. `fetchEventDetails()` already runs at the end, so local state refreshes.
+- **DetailsStep (`src/components/round-robin/wizard/steps/DetailsStep.tsx`)**: keep the existing court Select, but add a sibling text input directly below it labeled `"Town or city (shown on the match card)"`. Persist into a new wizard field `formData.locationLabel`.
+- **WizardContainer (`src/components/round-robin/wizard/WizardContainer.tsx`)**: 
+  - Add `locationLabel: ""` to initial state and type.
+  - When saving, prefer the free-text label for `round_robin_events.location` if provided; otherwise fall back to the court name (resolved from `locationId`) so the column always holds a human-readable string, not a UUID. Keep `venue_id` / `custom_location` writes intact for the unified-events sync.
+- **ReviewStep**: show the resolved label in the "Location" row.
+- **RoundRobinDetail control center**: add an inline "Edit location" affordance in the host hero (`RoundRobinHostHero.tsx`) that opens a small prompt/sheet to update `round_robin_events.location` post-creation, so existing events (like the test one) can be backfilled by the host without re-running the wizard.
+- **Match card display**: wherever an RR match card renders the venue/location line (host hero subtitle and any player-facing event card), use `event.location` directly now that it's guaranteed to be a readable string. No changes needed if those components already render `event.location` — they will just start showing the new value.
 
-### Light UX touch
-- In `handleAddPlayer` / `handleMarkInactive` / substitute success toasts, when rounds changed, append "· Schedule now N rounds to keep G games/player." Pull the new value from the refreshed event.
-- No other call sites need to change: court and games-per-player handlers already call `suggestRounds` themselves, and the Edit Event dialog still drives manual edits.
+---
 
 ### Out of scope
-- No schema, RLS, or edge-function changes.
-- No change to the fairness algorithm, court count, or `games_per_player` semantics.
-- Wizard creation flow untouched — it already derives rounds from the configured roster size.
+- No DB schema changes, no RLS changes, no edge-function changes.
+- Court entity itself (`courts` table, court detail pages, CourtStats analytics elsewhere) is untouched — only the home-screen card and admin-history wording.
+- Round Robin scheduling / rounds logic untouched.
 
-## Technical notes
-
-- `suggestRounds` formula (already implemented): `ceil(desiredGamesPerPlayer × players / (4 × min(courts, floor(players / 4))))`. With 6 players, 2 courts, 4 games/player it returns 6 rounds (vs. the stale 4).
-- The "never shrink below completed" guard handles mid-event removals where some rounds are already scored.
-- Because `regenerateScheduleFromRound` is the single helper used by every roster mutation (add, remove, substitute, reactivate), one edit covers all entry points.
+### Verification
+- Admin > Match History: label reads "Location", italic note gone, filter + CSV say "Location".
+- Home screen (`/app/home`): no "Most Played" pill in either layout column.
+- New RR via wizard with a town typed in → match card on the host hero shows that town. Existing RR → host can edit location inline and it appears on the card.

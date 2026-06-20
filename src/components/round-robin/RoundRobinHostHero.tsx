@@ -14,10 +14,12 @@ function formatStartTime(raw: string): string {
   const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
   return min === "00" ? `${h12} ${period}` : `${h12}:${min} ${period}`;
 }
-import { Calendar, Clock, Users, Trophy, Lock, Copy, Check, Share2 } from "lucide-react";
+import { Calendar, Clock, Users, Trophy, Lock, Copy, Check, Share2, MapPin, Pencil } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { useCourtName } from "@/hooks/useCourtName";
 
 interface RoundRobinHostHeroProps {
   name: string;
@@ -34,6 +36,11 @@ interface RoundRobinHostHeroProps {
   inviteCode?: string | null;
   registrationMode?: string | null;
   eventId: string;
+  location?: string | null;
+  /** When true, show the inline "edit location" pencil. */
+  canEditLocation?: boolean;
+  /** Called after a successful location update so the parent can refetch. */
+  onLocationUpdated?: () => void;
   className?: string;
 }
 
@@ -74,9 +81,34 @@ export function RoundRobinHostHero({
   inviteCode,
   registrationMode,
   eventId,
+  location,
+  canEditLocation,
+  onLocationUpdated,
   className,
 }: RoundRobinHostHeroProps) {
   const [copied, setCopied] = useState(false);
+  // Resolve UUIDs (legacy: location used to hold a court_id) to a readable
+  // name. Free-text values pass through unchanged.
+  const resolvedLocation = useCourtName(location || null);
+
+  const handleEditLocation = async () => {
+    const next = window.prompt(
+      "Where is this Round Robin? (town, city, or venue name)",
+      resolvedLocation || ""
+    );
+    if (next === null) return;
+    const trimmed = next.trim();
+    const { error } = await supabase
+      .from("round_robin_events")
+      .update({ location: trimmed || null } as never)
+      .eq("id", eventId);
+    if (error) {
+      toast.error("Could not update location");
+      return;
+    }
+    toast.success(trimmed ? "Location updated" : "Location cleared");
+    onLocationUpdated?.();
+  };
 
   const showInviteCode = !!inviteCode && registrationMode === "invite_only";
   const joinUrl = showInviteCode
@@ -198,6 +230,25 @@ export function RoundRobinHostHero({
             <span className="text-muted-foreground/50">·</span>
             <span>{scheduleStatus}</span>
           </div>
+          {/* Location row — free-text town/city. Host can tap the pencil
+              to set or update it inline. Hidden entirely for non-hosts
+              when there's nothing to show. */}
+          {(resolvedLocation || canEditLocation) && (
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <MapPin className="h-3.5 w-3.5 text-primary/80 flex-shrink-0" />
+              <span>{resolvedLocation || "Add a location"}</span>
+              {canEditLocation && (
+                <button
+                  type="button"
+                  onClick={handleEditLocation}
+                  className="inline-flex items-center justify-center h-5 w-5 rounded hover:bg-muted text-muted-foreground/70 hover:text-foreground transition-colors"
+                  aria-label="Edit location"
+                >
+                  <Pencil className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Invite-code row — compact, inline. Only when invite-only. */}

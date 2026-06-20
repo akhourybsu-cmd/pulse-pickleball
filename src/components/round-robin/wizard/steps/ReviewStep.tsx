@@ -15,9 +15,10 @@ export function ReviewStep({ formData, onEdit, courts }: ReviewStepProps) {
   
   const metrics = calculateScheduleMetrics(playerCount, formData.courtCount, formData.gamesPerPlayer);
   
-  const locationName = formData.locationId && formData.locationId !== "none"
-    ? courts.find(c => c.id === formData.locationId)?.name || "Selected court"
-    : "Not specified";
+  const locationName = formData.locationLabel.trim()
+    || (formData.locationId && formData.locationId !== "none"
+      ? courts.find(c => c.id === formData.locationId)?.name || "Selected court"
+      : "Not specified");
 
   const formatLabels = {
     open: "Open",

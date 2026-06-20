@@ -45,6 +45,7 @@ export function WizardContainer() {
     eventMode: "immediate",
     eventName: "",
     locationId: "",
+    locationLabel: "",
     format: "open",
     selectedPlayers: [],
     playerCount: 8,
@@ -178,7 +179,14 @@ export function WizardContainer() {
         .from("round_robin_events")
         .insert({
           name: name,
-          location: formData.locationId && formData.locationId !== "none" ? formData.locationId : null,
+          // Prefer the free-text town/city label so the match card shows
+          // a human-readable place. Fall back to the selected court's name,
+          // then null. (Schema accepts any string.)
+          location:
+            formData.locationLabel.trim() ||
+            (formData.locationId && formData.locationId !== "none"
+              ? courts.find((c) => c.id === formData.locationId)?.name ?? null
+              : null),
           notes: formData.notes.trim() || null,
           organizer_id: user.id,
           // Link to a venue when the wizard was launched from the venue console
@@ -353,6 +361,8 @@ export function WizardContainer() {
             onEventNameChange={(v) => updateFormData("eventName", v)}
             locationId={formData.locationId}
             onLocationIdChange={(v) => updateFormData("locationId", v)}
+            locationLabel={formData.locationLabel}
+            onLocationLabelChange={(v) => updateFormData("locationLabel", v)}
             notes={formData.notes}
             onNotesChange={(v) => updateFormData("notes", v)}
             eventMode={formData.eventMode}
