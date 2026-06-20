@@ -19,7 +19,7 @@ import { ProfileHero } from "@/components/dashboard/ProfileHero";
 import { QuickActionsBar } from "@/components/dashboard/QuickActionsBar";
 import { ActivityModule } from "@/components/dashboard/ActivityModule";
 import { PerformanceModule } from "@/components/dashboard/PerformanceModule";
-import { StatsByCourtCard } from "@/components/dashboard/StatsByCourtCard";
+// StatsByCourtCard removed from home — court-as-tracked-entity is being retired.
 import { UpcomingEventsPreview } from "@/components/dashboard/UpcomingEventsPreview";
 import { MyRoundRobinsCard } from "@/components/dashboard/MyRoundRobinsCard";
 import { MyCommunitiesRail } from "@/components/dashboard/MyCommunitiesRail";
