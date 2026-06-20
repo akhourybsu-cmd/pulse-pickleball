@@ -13,8 +13,8 @@ interface Match {
   team1_score: number;
   team2_score: number;
   userTeam: number;
-  team1Players: { id: string; name: string; initials: string }[];
-  team2Players: { id: string; name: string; initials: string }[];
+  team1Players: { id: string; name: string; initials: string; avatar_url?: string | null }[];
+  team2Players: { id: string; name: string; initials: string; avatar_url?: string | null }[];
   courtName: string | null;
   location: string | null;
   eventName: string | null;
