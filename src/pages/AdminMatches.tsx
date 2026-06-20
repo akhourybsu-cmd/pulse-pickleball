@@ -250,7 +250,7 @@ const AdminMatches = () => {
   };
 
   const exportToCSV = () => {
-    const headers = ["Date", "Event", "Venue", "Teams", "Score", "Type", "Verified", "Created By", "Match ID"];
+    const headers = ["Date", "Event", "Location", "Teams", "Score", "Type", "Verified", "Created By", "Match ID"];
     const rows = filteredMatches.map(m => [
       toLocaleDateStringEST(m.match_date),
       m.event_name || "—",
