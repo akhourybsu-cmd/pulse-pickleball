@@ -108,3 +108,6 @@ function_name = "delete-old-posts"
 name = "send-tournament-reminders"
 schedule = "*/5 * * * *"
 function_name = "send-tournament-reminders"
+
+[functions.process-email-queue]
+verify_jwt = true
