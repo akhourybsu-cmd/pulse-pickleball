@@ -466,6 +466,23 @@ const MatchHistory = () => {
     }
   };
 
+  const handleNudgeOpponents = async (matchId: string) => {
+    try {
+      const { data, error } = await supabase.rpc('nudge_match_opponents', {
+        p_match_id: matchId,
+      });
+      if (error) throw error;
+      const count = Array.isArray(data) ? data.length : 0;
+      if (count === 0) {
+        toast.info("Already reminded recently — try again later.");
+      } else {
+        toast.success(`Reminded ${count} player${count === 1 ? '' : 's'}.`);
+      }
+    } catch (e: any) {
+      toast.error(e?.message || "Could not send reminder");
+    }
+  };
+
   const handleReportIssue = async (issueType: string) => {
     if (!selectedMatchId || !currentUserId) return;
 
