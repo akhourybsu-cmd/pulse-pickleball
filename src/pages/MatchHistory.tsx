@@ -228,7 +228,7 @@ const MatchHistory = () => {
           .select(`
             player_id,
             team,
-            profiles(full_name, display_name)
+            profiles(full_name, display_name, avatar_url)
           `)
           .eq("match_id", p.match_id);
 
