@@ -1703,6 +1703,32 @@ export default function RoundRobinDetail() {
                 <ScheduleRoundCarousel 
                   totalRounds={event.num_rounds} 
                   currentRound={event.current_round || 1}
+                  rightAction={
+                    isOrganizer && !event.voided && event.status !== 'completed' ? (
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setScheduleEditorOpen(true)}
+                          className="text-primary hover:text-primary hover:bg-primary/10 gap-1.5 h-9 px-2.5"
+                        >
+                          <Edit className="h-4 w-4" />
+                          <span className="text-sm font-medium">Edit schedule</span>
+                        </Button>
+                        {hasScores && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setScoreManagementOpen(true)}
+                            className="text-muted-foreground hover:text-foreground h-9 w-9 p-0"
+                            aria-label="Manage scores"
+                          >
+                            <Edit3 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    ) : undefined
+                  }
                 >
                   {(roundNo, isActiveSlide) => {
                     const allMatches = getRoundMatches(roundNo);
@@ -1713,31 +1739,33 @@ export default function RoundRobinDetail() {
                     const allRoundScored = courtMatches.every(m => m.team1_score !== null && m.team2_score !== null);
                     
                     return (
-                      <div className={`space-y-4 ${isFutureRound ? 'opacity-50' : ''}`}>
-                        <div className="flex items-center justify-center gap-3">
-                          <div className="h-px bg-border flex-1 max-w-12" />
-                          <div 
-                            className={`text-lg font-bold px-5 py-2.5 rounded-full transition-all ${
-                              isCurrentRound && event.status === 'live' 
-                                ? 'bg-primary text-primary-foreground shadow-[0_0_20px_rgba(197,232,108,0.4)]' 
-                                : 'bg-muted'
-                            }`}
-                          >
-                            Round {roundNo}
-                            {isCurrentRound && event.status === 'live' && <span className="ml-2 text-xs opacity-90">(Active)</span>}
+                      <div className={`space-y-3 ${isFutureRound ? 'opacity-60' : ''}`}>
+                        {/* Section label + optional close-round action */}
+                        <div className="flex items-center justify-between pt-1">
+                          <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                            Court Assignments
+                            {isCurrentRound && event.status === 'live' && (
+                              <span className="ml-2 inline-flex items-center gap-1 text-primary normal-case font-bold tracking-normal">
+                                <span className="relative flex h-1.5 w-1.5">
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-60" />
+                                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary" />
+                                </span>
+                                Active
+                              </span>
+                            )}
                           </div>
-                          <div className="h-px bg-border flex-1 max-w-12" />
                           {isOrganizer && event.status === "live" && isCurrentRound && allRoundScored && roundNo < event.num_rounds && (
                             <Button 
                               size="sm" 
                               onClick={() => handleCloseRound(roundNo)}
-                              className="bg-secondary text-secondary-foreground hover:bg-secondary/90"
+                              className="bg-secondary text-secondary-foreground hover:bg-secondary/90 h-8"
                             >
-                              <CheckCircle className="h-4 w-4 mr-2" />
+                              <CheckCircle className="h-4 w-4 mr-1.5" />
                               Close Round
                             </Button>
                           )}
                         </div>
+
                         
                         <div className="grid gap-4 md:grid-cols-2">
                           {courtMatches.map((match, idx) => {
