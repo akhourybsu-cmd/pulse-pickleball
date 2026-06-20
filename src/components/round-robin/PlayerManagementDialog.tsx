@@ -471,6 +471,7 @@ export function PlayerManagementDialog({
               onClick={() => {
                 setMode(null);
                 setSelectedPlayer("");
+                setAddPicks([]);
                 setSubstituteOriginal("");
                 setSubstituteNew("");
                 setSubstituteScope('global');
@@ -485,9 +486,13 @@ export function PlayerManagementDialog({
             Cancel
           </Button>
           {mode === 'add' && (
-            <Button onClick={handleAddPlayer} disabled={!selectedPlayer || loading} className="gap-1.5">
+            <Button onClick={handleAddPlayer} disabled={addPicks.length === 0 || loading} className="gap-1.5">
               <UserPlus className="h-4 w-4" />
-              {loading ? "Adding…" : "Add Player"}
+              {loading
+                ? "Adding…"
+                : addPicks.length > 1
+                  ? `Add ${addPicks.length} Players`
+                  : "Add Player"}
             </Button>
           )}
           {mode === 'remove' && (
