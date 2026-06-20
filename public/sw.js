@@ -86,10 +86,11 @@ self.addEventListener('push', (event) => {
   try { data = event.data ? event.data.json() : {}; } catch (_) { data = { title: 'PULSE', body: event.data ? event.data.text() : '' }; }
 
   const title = data.title || 'PULSE';
+  const base = self.location.origin;
   const options = {
     body: data.body || '',
-    icon: '/pulse-icon.jpg',
-    badge: '/pulse-icon.jpg',
+    icon: data.icon || `${base}/pulse-icon.jpg`,
+    badge: data.badge || `${base}/pulse-icon.jpg`,
     tag: data.tag || 'pulse',
     data: { url: data.url || '/', ...data },
     requireInteraction: data.priority === 'high',
