@@ -4,13 +4,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Bell, BellRing, Target, Calendar, Users, Trophy, Settings, MessageCircle, Shield, ChevronRight } from "lucide-react";
+import { ArrowLeft, Bell, BellRing, Target, Calendar, Users, Trophy, Settings, MessageCircle, Shield, ChevronRight, Send, Loader2 } from "lucide-react";
 import { useNotificationPreferences } from "@/hooks/useNotifications";
 import { usePushSubscription } from "@/hooks/usePushSubscription";
 import { useMessagingPrivacy } from "@/hooks/useMessagingSafety";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 
 const categoryConfig = [
   { id: "matches", label: "Matches", description: "Match recordings, verifications, and results", icon: Target },
@@ -65,6 +66,7 @@ export default function NotificationSettings() {
         </p>
 
         <BrowserPushCard />
+        <TestNotificationCard />
 
         <MessagingPrivacyCard />
         <BlockedUsersLinkCard onClick={() => navigate('/settings/blocked')} />
@@ -134,6 +136,109 @@ function BrowserPushCard() {
           />
         </div>
       </CardHeader>
+    </Card>
+  );
+}
+
+function TestNotificationCard() {
+  const { state, supported, enable, busy: pushBusy } = usePushSubscription();
+  const [sending, setSending] = useState(false);
+
+  const handleSend = async () => {
+    if (!supported) {
+      toast.error("Notifications are not supported in this browser.");
+      return;
+    }
+    if (state === "denied") {
+      toast.error("Notifications are blocked. Enable them in your device/browser settings.");
+      return;
+    }
+    setSending(true);
+    try {
+      // Ensure push permission + subscription
+      if (state !== "enabled") {
+        toast.message("Enabling notifications on this device…");
+        await enable();
+        // Re-check permission after enable
+        if (typeof Notification !== "undefined" && Notification.permission !== "granted") {
+          toast.error("Notifications are not enabled for this device.");
+          setSending(false);
+          return;
+        }
+      }
+
+      // Confirm the current device has a subscription registered
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      if (!sub) {
+        toast.error("This device is not registered for notifications.");
+        setSending(false);
+        return;
+      }
+
+      const { data: u } = await supabase.auth.getUser();
+      if (!u.user) {
+        toast.error("You must be signed in.");
+        setSending(false);
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke("send-test-push", {
+        body: { endpoint: sub.endpoint },
+      });
+      if (error) {
+        console.error("send-test-push error", error);
+        toast.error("Could not send test notification. Please try again.");
+      } else if (data?.error === "no_subscriptions") {
+        toast.error("This device is not registered for notifications.");
+      } else if ((data?.sent ?? 0) === 0) {
+        toast.error("Could not deliver to this device. Try re-enabling notifications.");
+      } else {
+        toast.success("Test notification sent. Check your device.");
+      }
+    } catch (e) {
+      console.error("test push failed", e);
+      toast.error("Could not send test notification. Please try again.");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+              <Send className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <CardTitle className="text-base">Send Test Notification</CardTitle>
+              <CardDescription className="text-xs">
+                Send a test push to this device to confirm notifications are working.
+              </CardDescription>
+            </div>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <Button
+          onClick={handleSend}
+          disabled={sending || pushBusy || !supported}
+          className="w-full"
+        >
+          {sending ? (
+            <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Sending test notification…</>
+          ) : (
+            <><Send className="h-4 w-4 mr-2" /> Send Test Notification</>
+          )}
+        </Button>
+        {state === "denied" && (
+          <p className="text-xs text-destructive mt-2">
+            Notifications are blocked. Enable them in your device/browser settings.
+          </p>
+        )}
+      </CardContent>
     </Card>
   );
 }
