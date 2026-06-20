@@ -1,60 +1,39 @@
+## Goal
+Fix the Add Player feature in the Round Robin organizer's "Manage Players" dialog so a host can pick multiple players in one shot and the **Add Player** button actually submits them.
+
 ## Root cause
+In `src/components/round-robin/PlayerManagementDialog.tsx`, the Add Player footer button is wired to the wrong state:
 
-The match wizard submission fails on the **`match_approvals` insert step** because of an overly strict RLS policy.
-
-In `src/components/match-wizard/MatchWizardContainer.tsx` (step 5 of `handleSubmit`) the creator inserts one approval row **for every real player in the match** — themselves plus opponents/partners. But the only INSERT policy on `match_approvals` is:
-
-```
-with_check: auth.uid() = player_id
+```tsx
+<Button onClick={handleAddPlayer} disabled={!selectedPlayer || loading} ...>
 ```
 
-So any row whose `player_id` is not the current user is rejected by RLS, which fails the whole batch insert and surfaces as a generic "Failed to record match" toast. (The earlier `matches` and `match_participants` inserts succeed, which is why the user sees the error only on final submit — and orphan rows are likely left behind.)
+`selectedPlayer` belongs to the *Remove* flow. The Add flow stores its pick in `addPick`, so the button stays permanently disabled even after the host selects someone in the picker sheet. That's why "press add to add them" does nothing.
 
-The other parts of the flow check out:
-- `matches` INSERT policy (`auth.uid() IS NOT NULL`) — fine.
-- `match_participants` INSERT policy already allows match creators to insert rows for any participant.
-- All triggers on `matches` are gated on `status = 'approved'`/`'completed'`, and the wizard inserts `status = 'pending'`, so none of them fire destructively.
-- `guest_match_players` policy allows match creators to insert — fine.
+Additionally, the picker is forced to `mode="single"`, so the host can only pick one person at a time.
 
-## Fix
+## Changes
 
-Add a second INSERT policy on `match_approvals` that mirrors the pattern already used for `match_participants`: the creator of the match can insert approval rows for any player in that match. Keep the existing self-insert policy so players can still create their own approval row when a match was created by someone else.
+### 1. `src/components/round-robin/PlayerManagementDialog.tsx`
+- Replace single-pick state `addPick: PickerPlayer | null` with multi-pick state `addPicks: PickerPlayer[]`.
+- Switch `PlayerPickerSheet` to `mode="multi"`, `allowGuest`, `selectedPlayers={addPicks}`, `onPlayersChange={setAddPicks}`.
+- Update the trigger button content:
+  - When empty: prompt "Choose players from friends, group, recent, search, or guest".
+  - When 1 pick: show that player's avatar + name (existing single-pick visual).
+  - When 2+ picks: show stacked avatars + "N players selected".
+- Rewrite `handleAddPlayer` to loop over `addPicks` and `await onAddPlayer({ playerId, guestName })` for each (sequential so audit/order is stable). Reset `addPicks` and `mode` on success.
+- Fix the footer Add button: `disabled={addPicks.length === 0 || loading}` and label `"Add Player"` / `"Add N Players"` (singular/plural). Loading label `"Adding…"`.
+- Clear `addPicks` in the Back and Cancel/close handlers.
 
-New policy (migration):
+### 2. `src/pages/RoundRobinDetail.tsx` — `handleAddPlayer`
+Current handler regenerates the schedule on every call. When the dialog now loops over N picks, that would regenerate N times. Keep `onAddPlayer` per-player (clean contract, matches venue page caller too), but make the regenerate cheaper by:
+- Leaving `handleAddPlayer` itself unchanged in behavior (insert + audit + regenerate). The dialog already awaits each call sequentially, so correctness is fine; the extra regenerates are acceptable for the typical "add 2–4 late arrivals" case and avoid touching the venue page.
 
-```sql
-CREATE POLICY "Match creators can insert approvals for their match"
-ON public.match_approvals
-FOR INSERT
-TO authenticated
-WITH CHECK (
-  EXISTS (
-    SELECT 1 FROM public.matches m
-    WHERE m.id = match_approvals.match_id
-      AND m.created_by = auth.uid()
-  )
-);
-```
-
-No GRANT change needed — `match_approvals` already has the standard role grants.
-
-## Defensive client cleanup (same file)
-
-While I'm in `MatchWizardContainer.tsx`, harden `handleSubmit` so a future RLS failure doesn't leave orphan rows and so the user sees the real Postgres error:
-
-1. Check the result of the `match_approvals` insert (currently the error is swallowed) and `throw` on failure.
-2. On any thrown error after the `matches` row is created, delete the orphan match (`supabase.from('matches').delete().eq('id', match.id)`) before showing the toast.
-3. Surface `error.message` plus `error.details`/`error.hint` in the console log so the next regression is diagnosable.
-
-No UI, wizard step, or data-shape changes.
-
-## Files touched
-
-- New migration: add the `Match creators can insert approvals for their match` policy on `public.match_approvals`.
-- `src/components/match-wizard/MatchWizardContainer.tsx`: check approval-insert error, roll back the match row on failure, log richer error info.
+No DB / RLS / edge function changes. No changes to the picker component, the regenerate logic, or the Remove/Substitute flows.
 
 ## Verification
-
-1. Record a doubles match with three other real players → submit → toast `Match submitted — pending player verification.`, redirect to `/player/matches?tab=pending`, one row in `matches`, four rows in `match_participants`, four rows in `match_approvals` (creator `approved = true`, others `null`).
-2. Record a singles match with one guest opponent → succeeds, one `guest_match_players` row, one `match_approvals` row (creator only).
-3. Force a failure (e.g. temporarily revoke `match_participants` insert) → no orphan `matches` row remains and the toast shows the real error.
+- Open a round robin you organize → Manage Players → Add Player.
+- Pick 2–3 players in the sheet, confirm picks render in the trigger, and confirm the **Add Player** button enables.
+- Press it → toast(s) appear, dialog returns to the menu, new players appear in the Active roster, and the schedule from the current round shows the new players.
+- Picking a single player still works (button label reads "Add Player").
+- Picking zero keeps the button disabled.
