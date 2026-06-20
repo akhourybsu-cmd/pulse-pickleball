@@ -65,7 +65,7 @@ Deno.serve(async (req) => {
       .select("id, endpoint, p256dh, auth")
       .eq("user_id", userId);
     if (endpointFilter) q = q.eq("endpoint", endpointFilter);
-    const { data: subs, error: subsErr } = await q;
+    let { data: subs, error: subsErr } = await q;
 
     if (subsErr) {
       console.error("subs query error", subsErr);
@@ -74,11 +74,24 @@ Deno.serve(async (req) => {
       });
     }
 
+    console.log("[send-test-push] sub lookup", { userId, endpointFilter: endpointFilter ? endpointFilter.slice(0, 60) + "..." : null, count: subs?.length ?? 0 });
+
+    // Fallback: if endpoint filter didn't match (e.g. stale on the device), try all of this user's subs
+    if ((!subs || subs.length === 0) && endpointFilter) {
+      const { data: allSubs } = await admin
+        .from("push_subscriptions")
+        .select("id, endpoint, p256dh, auth")
+        .eq("user_id", userId);
+      subs = allSubs ?? [];
+      console.log("[send-test-push] fallback to all user subs", { count: subs.length });
+    }
+
     if (!subs || subs.length === 0) {
       return new Response(JSON.stringify({ sent: 0, error: "no_subscriptions" }), {
         status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
 
     const payload = JSON.stringify({
       title: "PULSE Test Notification",
