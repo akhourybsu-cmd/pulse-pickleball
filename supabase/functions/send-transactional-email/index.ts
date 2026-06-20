@@ -122,6 +122,18 @@ Deno.serve(async (req) => {
   // Create Supabase client with service role (bypasses RLS)
   const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
+  // Resolve email from user ID if provided and no explicit email given
+  if (!recipientEmail && recipientUserId) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('email')
+      .eq('id', recipientUserId)
+      .maybeSingle()
+    if (profile?.email) {
+      recipientEmail = profile.email
+    }
+  }
+
   // 2. Check suppression list (fail-closed: if we can't verify, don't send)
   const { data: suppressed, error: suppressionError } = await supabase
     .from('suppressed_emails')
