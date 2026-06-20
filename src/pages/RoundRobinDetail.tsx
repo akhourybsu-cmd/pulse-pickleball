@@ -1551,7 +1551,7 @@ export default function RoundRobinDetail() {
             </div>
           )}
 
-      <main className="container max-w-[1280px] mx-auto px-4 py-6">
+      <main className="container max-w-[1280px] mx-auto px-4 pt-3 pb-6">
         {isOrganizer && isEditMode && (
           <div className="mb-6">
             <EditModeBanner
@@ -1576,7 +1576,7 @@ export default function RoundRobinDetail() {
             this. The hero answers "what IS this event?", this banner
             answers "what should I do right now?" */}
         {isOrganizer && (
-          <div className="mb-6 max-w-2xl mx-auto">
+          <div className="mb-4 max-w-2xl mx-auto">
             <WhatsNextBanner
               status={event.status}
               voided={event.voided}
@@ -1617,7 +1617,7 @@ export default function RoundRobinDetail() {
         <div>
         <Tabs defaultValue="schedule" className="w-full">
           {/* Tab strip — design-system styling, no decorative blur/shadow. */}
-          <TabsList className="w-full max-w-md mx-auto grid grid-cols-3 mb-6 p-1 bg-muted rounded-xl h-auto">
+          <TabsList className="w-full max-w-md mx-auto grid grid-cols-3 mb-4 p-1 bg-muted rounded-xl h-auto">
             <TabsTrigger
               value="schedule"
               className="data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm rounded-lg transition-colors py-2 gap-1.5"
@@ -1688,39 +1688,6 @@ export default function RoundRobinDetail() {
               </Card>
             ) : (
               <>
-                {isOrganizer && event.status === "draft" && (
-                  <Button 
-                    onClick={handleStartEvent} 
-                    className="w-full mb-4 bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20"
-                  >
-                    <Play className="h-4 w-4 mr-2" />
-                    Start Event
-                  </Button>
-                )}
-
-                {isOrganizer && !event.voided && event.status !== 'completed' && (
-                  <div className="flex gap-2 mb-4">
-                    <Button 
-                      variant="outline" 
-                      onClick={() => setScheduleEditorOpen(true)}
-                      className="flex-1 hover:bg-muted/80"
-                    >
-                      <Edit className="h-4 w-4 mr-2" />
-                      Edit Schedule
-                    </Button>
-                    {hasScores && (
-                      <Button 
-                        variant="outline" 
-                        onClick={() => setScoreManagementOpen(true)}
-                        className="flex-1 hover:bg-muted/80"
-                      >
-                        <Edit3 className="h-4 w-4 mr-2" />
-                        Manage Scores
-                      </Button>
-                    )}
-                  </div>
-                )}
-
                 {isOrganizer && event.status === "live" && (
                   <Button 
                     onClick={handleCompleteEvent} 
@@ -1731,9 +1698,37 @@ export default function RoundRobinDetail() {
                   </Button>
                 )}
 
+
+
                 <ScheduleRoundCarousel 
                   totalRounds={event.num_rounds} 
                   currentRound={event.current_round || 1}
+                  rightAction={
+                    isOrganizer && !event.voided && event.status !== 'completed' ? (
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setScheduleEditorOpen(true)}
+                          className="text-primary hover:text-primary hover:bg-primary/10 gap-1.5 h-9 px-2.5"
+                        >
+                          <Edit className="h-4 w-4" />
+                          <span className="text-sm font-medium">Edit schedule</span>
+                        </Button>
+                        {hasScores && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setScoreManagementOpen(true)}
+                            className="text-muted-foreground hover:text-foreground h-9 w-9 p-0"
+                            aria-label="Manage scores"
+                          >
+                            <Edit3 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    ) : undefined
+                  }
                 >
                   {(roundNo, isActiveSlide) => {
                     const allMatches = getRoundMatches(roundNo);
@@ -1744,31 +1739,33 @@ export default function RoundRobinDetail() {
                     const allRoundScored = courtMatches.every(m => m.team1_score !== null && m.team2_score !== null);
                     
                     return (
-                      <div className={`space-y-4 ${isFutureRound ? 'opacity-50' : ''}`}>
-                        <div className="flex items-center justify-center gap-3">
-                          <div className="h-px bg-border flex-1 max-w-12" />
-                          <div 
-                            className={`text-lg font-bold px-5 py-2.5 rounded-full transition-all ${
-                              isCurrentRound && event.status === 'live' 
-                                ? 'bg-primary text-primary-foreground shadow-[0_0_20px_rgba(197,232,108,0.4)]' 
-                                : 'bg-muted'
-                            }`}
-                          >
-                            Round {roundNo}
-                            {isCurrentRound && event.status === 'live' && <span className="ml-2 text-xs opacity-90">(Active)</span>}
+                      <div className={`space-y-3 ${isFutureRound ? 'opacity-60' : ''}`}>
+                        {/* Section label + optional close-round action */}
+                        <div className="flex items-center justify-between pt-1">
+                          <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                            Court Assignments
+                            {isCurrentRound && event.status === 'live' && (
+                              <span className="ml-2 inline-flex items-center gap-1 text-primary normal-case font-bold tracking-normal">
+                                <span className="relative flex h-1.5 w-1.5">
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-60" />
+                                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary" />
+                                </span>
+                                Active
+                              </span>
+                            )}
                           </div>
-                          <div className="h-px bg-border flex-1 max-w-12" />
                           {isOrganizer && event.status === "live" && isCurrentRound && allRoundScored && roundNo < event.num_rounds && (
                             <Button 
                               size="sm" 
                               onClick={() => handleCloseRound(roundNo)}
-                              className="bg-secondary text-secondary-foreground hover:bg-secondary/90"
+                              className="bg-secondary text-secondary-foreground hover:bg-secondary/90 h-8"
                             >
-                              <CheckCircle className="h-4 w-4 mr-2" />
+                              <CheckCircle className="h-4 w-4 mr-1.5" />
                               Close Round
                             </Button>
                           )}
                         </div>
+
                         
                         <div className="grid gap-4 md:grid-cols-2">
                           {courtMatches.map((match, idx) => {
@@ -1869,21 +1866,25 @@ export default function RoundRobinDetail() {
                         </div>
 
                         {byeMatches.length > 0 && (
-                          <Card className="mt-4 bg-muted/30">
-                            <CardContent className="p-4">
-                              <div className="flex items-center gap-2 mb-3">
-                                <Badge variant="outline" className="font-mono">BYE</Badge>
-                                <span className="text-sm text-muted-foreground">Players resting this round</span>
-                              </div>
-                              <div className="flex flex-wrap gap-2">
-                                {byeMatches.map((match) => (
-                                  <Badge key={match.id} variant="secondary" className="text-sm">
-                                    {getPlayerName(match.a1_player_id, match)}
-                                  </Badge>
-                                ))}
-                              </div>
-                            </CardContent>
-                          </Card>
+                          <div className="mt-3 rounded-2xl border border-border/50 bg-muted/30 p-3">
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-primary/15 text-primary text-[10px] font-bold tracking-wider uppercase">
+                                Bye
+                              </span>
+                              <span className="text-xs text-muted-foreground">Players resting this round</span>
+                            </div>
+                            <div className="flex flex-wrap gap-1.5">
+                              {byeMatches.map((match) => (
+                                <span
+                                  key={match.id}
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-card border border-border/60 text-xs font-medium text-foreground"
+                                >
+                                  <Users className="h-3 w-3 text-muted-foreground" />
+                                  {getPlayerName(match.a1_player_id, match)}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
                         )}
                       </div>
                     );

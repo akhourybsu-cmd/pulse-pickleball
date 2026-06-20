@@ -137,9 +137,9 @@ export function RoundRobinHostHero({
         className,
       )}
     >
-      <div className="container max-w-2xl mx-auto px-4 py-6 sm:py-8">
+      <div className="container max-w-2xl mx-auto px-4 pt-4 pb-3 sm:pt-5 sm:pb-4">
         {/* Status chips first — small, restrained */}
-        <div className="flex items-center gap-1.5 flex-wrap mb-3">
+        <div className="flex items-center gap-1.5 flex-wrap mb-2">
           {status === "live" ? (
             <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold tracking-wider uppercase">
               <span className="relative flex h-1.5 w-1.5">
@@ -170,21 +170,20 @@ export function RoundRobinHostHero({
           )}
         </div>
 
-        {/* Title — generous, premium */}
-        <h1 className="text-[26px] sm:text-3xl md:text-[34px] font-bold tracking-tight text-foreground leading-[1.1] mb-1">
+        {/* Title — compact, premium */}
+        <h1 className="text-[22px] sm:text-2xl md:text-[28px] font-bold tracking-tight text-foreground leading-[1.1] mb-3">
           {name}
         </h1>
-        <div className="h-[3px] w-10 bg-primary rounded-full mb-4" />
 
         {/* Metadata — two restrained lines instead of an icon-soup chip row */}
-        <div className="space-y-1 text-[15px] text-muted-foreground">
+        <div className="space-y-0.5 text-[13px] sm:text-sm text-muted-foreground">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <Calendar className="h-4 w-4 text-primary/80 flex-shrink-0" />
+            <Calendar className="h-3.5 w-3.5 text-primary/80 flex-shrink-0" />
             <span>{format(parseISO(date + "T00:00:00"), "PP")}</span>
             {startTime && (
               <>
                 <span className="text-muted-foreground/50">·</span>
-                <Clock className="h-4 w-4 text-primary/80 flex-shrink-0" />
+                <Clock className="h-3.5 w-3.5 text-primary/80 flex-shrink-0" />
                 <span>{formatStartTime(startTime)}</span>
               </>
             )}
@@ -192,9 +191,9 @@ export function RoundRobinHostHero({
             <span>{formatLabel}</span>
           </div>
           <div className="flex items-center gap-1.5 flex-wrap">
-            <Users className="h-4 w-4 text-primary/80 flex-shrink-0" />
+            <Users className="h-3.5 w-3.5 text-primary/80 flex-shrink-0" />
             <span>
-              {playerCount} {playerCount === 1 ? "confirmed player" : "confirmed players"}
+              {playerCount} {playerCount === 1 ? "player" : "players"}
             </span>
             <span className="text-muted-foreground/50">·</span>
             <span>{scheduleStatus}</span>
@@ -203,7 +202,7 @@ export function RoundRobinHostHero({
 
         {/* Invite-code row — compact, inline. Only when invite-only. */}
         {showInviteCode && (
-          <div className="mt-5 pt-5 border-t border-border/60">
+          <div className="mt-3 pt-3 border-t border-border/60">
             <div className="flex items-center gap-3">
               <div className="flex-shrink-0 h-9 w-9 rounded-lg bg-primary/15 text-primary flex items-center justify-center">
                 <Lock className="h-4 w-4" />
