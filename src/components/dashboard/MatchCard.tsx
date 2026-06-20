@@ -1,5 +1,6 @@
 import { format } from "date-fns";
 import { MapPin, ChevronRight } from "lucide-react";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 
 interface MatchCardProps {
@@ -8,8 +9,8 @@ interface MatchCardProps {
   userTeam: number;
   team1Score: number;
   team2Score: number;
-  team1Players: { name: string; initials: string }[];
-  team2Players: { name: string; initials: string }[];
+  team1Players: { name: string; initials: string; avatar_url?: string | null }[];
+  team2Players: { name: string; initials: string; avatar_url?: string | null }[];
   courtName?: string | null;
   location?: string | null;
   eventName?: string | null;
