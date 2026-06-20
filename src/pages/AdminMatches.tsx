@@ -397,13 +397,8 @@ const AdminMatches = () => {
                     </div>
 
                     <div className="text-sm">
-                      <span className="text-muted-foreground">Venue: </span>
+                      <span className="text-muted-foreground">Location: </span>
                       <span>{match.court_name}</span>
-                      {match.other_location && (
-                        <span className="text-xs text-muted-foreground italic ml-2">
-                          Not an official community court
-                        </span>
-                      )}
                     </div>
 
                     <div className="text-sm">
