@@ -278,10 +278,10 @@ export function PlayerManagementDialog({
             <div className="space-y-2">
               <Label>Player to Add</Label>
               <PlayerPickerSheet
-                mode="single"
+                mode="multi"
                 allowGuest
-                selectedPlayers={addPick ? [addPick] : []}
-                onPlayersChange={(arr) => setAddPick(arr[0] ?? null)}
+                selectedPlayers={addPicks}
+                onPlayersChange={setAddPicks}
                 genderFilter={genderFilter}
                 groupId={groupId}
                 excludePlayerIds={players.map(p => p.player_id).filter(Boolean)}
@@ -290,20 +290,36 @@ export function PlayerManagementDialog({
                     type="button"
                     className="w-full flex items-center justify-between p-3 rounded-lg border-2 border-dashed border-border hover:border-primary/50 transition-all text-left"
                   >
-                    {addPick ? (
+                    {addPicks.length === 1 ? (
                       <div className="flex items-center gap-2 min-w-0">
                         <Avatar className="h-7 w-7">
                           <AvatarFallback className="text-[10px] bg-primary/15 text-primary">
-                            {(addPick.display_name || addPick.full_name)
+                            {(addPicks[0].display_name || addPicks[0].full_name)
                               .split(" ").map(s => s[0]).filter(Boolean).slice(0,2).join("").toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
                         <span className="text-sm font-medium truncate">
-                          {addPick.display_name || addPick.full_name}
+                          {addPicks[0].display_name || addPicks[0].full_name}
                         </span>
-                        {addPick.isGuest && (
+                        {addPicks[0].isGuest && (
                           <Badge variant="outline" className="text-[10px] uppercase">guest</Badge>
                         )}
+                      </div>
+                    ) : addPicks.length > 1 ? (
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="flex -space-x-2">
+                          {addPicks.slice(0, 3).map((p) => (
+                            <Avatar key={p.id} className="h-7 w-7 border-2 border-background">
+                              <AvatarFallback className="text-[10px] bg-primary/15 text-primary">
+                                {(p.display_name || p.full_name)
+                                  .split(" ").map(s => s[0]).filter(Boolean).slice(0,2).join("").toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                          ))}
+                        </div>
+                        <span className="text-sm font-medium">
+                          {addPicks.length} players selected
+                        </span>
                       </div>
                     ) : (
                       <div className="flex items-center gap-2 text-muted-foreground">
