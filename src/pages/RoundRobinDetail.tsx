@@ -991,13 +991,16 @@ export default function RoundRobinDetail() {
 
         // Regenerate schedule from current round for fair redistribution
         const fromRound = event.current_round || 1;
-        await regenerateScheduleFromRound(fromRound);
+        const regenResult = await regenerateScheduleFromRound(fromRound);
 
         await fetchEventDetails();
+        const roundsSuffix = regenResult?.roundsChanged
+          ? ` · Schedule now ${regenResult.targetRounds} rounds to keep ${event.games_per_player || 3} games/player.`
+          : "";
         toast.success(
-          wasInactive 
-            ? "Player reactivated and schedule regenerated" 
-            : "Player substituted and schedule regenerated"
+          (wasInactive
+            ? "Player reactivated and schedule regenerated"
+            : "Player substituted and schedule regenerated") + roundsSuffix
         );
       } else {
         // Single round substitution: update specific unstarted matches
