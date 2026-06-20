@@ -39,9 +39,13 @@ export default function Friends() {
       });
       if (error) throw error;
       navigate(`/player/messages/${data}`);
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      toast.error('Could not open conversation');
+      const msg = e?.message || '';
+      if (/friends/i.test(msg)) toast.error('You can only message friends');
+      else if (/not accepting/i.test(msg)) toast.error('This user is not accepting messages');
+      else if (/can.?t message/i.test(msg)) toast.error("You can't message this user");
+      else toast.error('Could not open conversation');
     }
   };
 

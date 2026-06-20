@@ -268,25 +268,18 @@ export function useFriends() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      // Check for existing friendship
-      const { data: existing } = await supabase
-        .from('friendships')
-        .select('id')
-        .or(`and(user_id.eq.${user.id},friend_id.eq.${userId}),and(user_id.eq.${userId},friend_id.eq.${user.id})`)
-        .maybeSingle();
+      // Insert into user_blocks (canonical block source of truth).
+      const { error: blockErr } = await (supabase as any)
+        .from('user_blocks')
+        .insert({ blocker_id: user.id, blocked_id: userId });
 
-      if (existing) {
-        // Update existing to blocked
-        await supabase
-          .from('friendships')
-          .update({ status: 'blocked' })
-          .eq('id', existing.id);
-      } else {
-        // Create new blocked entry
-        await supabase
-          .from('friendships')
-          .insert({ user_id: user.id, friend_id: userId, status: 'blocked' });
-      }
+      if (blockErr && !/duplicate/i.test(blockErr.message)) throw blockErr;
+
+      // Remove any friendship so they no longer appear as a friend.
+      await supabase
+        .from('friendships')
+        .delete()
+        .or(`and(user_id.eq.${user.id},friend_id.eq.${userId}),and(user_id.eq.${userId},friend_id.eq.${user.id})`);
 
       toast.success('User blocked');
       await fetchFriends();
