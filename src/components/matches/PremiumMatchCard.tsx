@@ -85,11 +85,7 @@ export function PremiumMatchCard(props: PremiumMatchCardProps) {
   const smartDate = useMemo(() => {
     try {
       const d = parseISO(matchDate + "T00:00:00");
-      if (isToday(d)) return "Today";
-      if (isYesterday(d)) return "Yesterday";
-      const days = differenceInDays(new Date(), d);
-      if (days > 0 && days < 7) return format(d, "EEEE"); // Monday, Tuesday…
-      return format(d, "EEE · MMM d");                    // Sun · Nov 30
+      return format(d, "MMMM do, yyyy");
     } catch {
       return matchDate;
     }
