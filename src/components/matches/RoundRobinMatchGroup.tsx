@@ -15,10 +15,13 @@ interface GroupMatch {
   my_team: number;
   partner_name: string;
   partner_id: string;
+  partner_avatar_url?: string | null;
   opponent1_name: string;
   opponent1_id: string;
+  opponent1_avatar_url?: string | null;
   opponent2_name: string;
   opponent2_id: string;
+  opponent2_avatar_url?: string | null;
   rating_change: number;
   court_name: string;
   source?: string;
