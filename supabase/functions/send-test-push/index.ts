@@ -110,11 +110,11 @@ Deno.serve(async (req) => {
     try {
       await admin.from("user_notifications").insert({
         user_id: userId,
+        notification_type: "test",
         title: "PULSE Test Notification",
-        body: "Notifications are working on this device.",
+        message: "Notifications are working on this device.",
         category: "system",
-        type: "test",
-        link_url: "/settings/notifications",
+        link: "/settings/notifications",
       });
     } catch (e) {
       console.warn("in-app record skipped", e);
