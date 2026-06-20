@@ -203,6 +203,29 @@ export function MatchWizardContainer() {
         if (approvalsError) throw approvalsError;
       }
 
+      // Notify opponents (anyone NOT on submitter's team) that a match needs
+      // verification. The DB trigger already inserts verification rows on
+      // approval-row creation, but we add a richer per-opponent toast-style
+      // notification so they see who submitted and where to go.
+      const opponents = realPlayers.filter(
+        p => submitterTeam !== null && p.team !== submitterTeam
+      );
+      if (opponents.length > 0) {
+        await supabase.from('user_notifications').insert(
+          opponents.map(p => ({
+            user_id: p.player_id!,
+            notification_type: 'match_submitted_for_verification',
+            category: 'matches',
+            priority: 'high',
+            title: 'New match needs your verification',
+            message: 'A teammate submitted a match — tap to confirm the result.',
+            link: '/player/matches?tab=pending',
+            actor_id: user.id,
+            metadata: { match_id: match.id },
+          }))
+        );
+      }
+
       toast.success('Match submitted — pending player verification.');
       // Land on the player's matches page with the Pending tab pre-selected
       // so they immediately see the match they just submitted awaiting

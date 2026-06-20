@@ -6149,6 +6149,13 @@ export type Database = {
         Returns: undefined
       }
       export_user_data: { Args: never; Returns: Json }
+      finalize_stale_pending_matches: {
+        Args: never
+        Returns: {
+          match_id: string
+          new_status: string
+        }[]
+      }
       find_group_by_invite_code: {
         Args: { p_code: string }
         Returns: {
@@ -6295,6 +6302,12 @@ export type Database = {
       normalize_invite_code: { Args: { p_code: string }; Returns: string }
       notif_actor_name: { Args: { p_user_id: string }; Returns: string }
       notif_preview: { Args: { p_text: string }; Returns: string }
+      nudge_match_opponents: {
+        Args: { p_match_id: string }
+        Returns: {
+          notified_user_id: string
+        }[]
+      }
       preview_round_robin_by_code: {
         Args: { p_code: string }
         Returns: {
