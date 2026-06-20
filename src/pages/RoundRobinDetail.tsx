@@ -1576,7 +1576,7 @@ export default function RoundRobinDetail() {
             this. The hero answers "what IS this event?", this banner
             answers "what should I do right now?" */}
         {isOrganizer && (
-          <div className="mb-6 max-w-2xl mx-auto">
+          <div className="mb-4 max-w-2xl mx-auto">
             <WhatsNextBanner
               status={event.status}
               voided={event.voided}
