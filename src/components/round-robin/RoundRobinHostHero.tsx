@@ -202,7 +202,7 @@ export function RoundRobinHostHero({
 
         {/* Invite-code row — compact, inline. Only when invite-only. */}
         {showInviteCode && (
-          <div className="mt-5 pt-5 border-t border-border/60">
+          <div className="mt-3 pt-3 border-t border-border/60">
             <div className="flex items-center gap-3">
               <div className="flex-shrink-0 h-9 w-9 rounded-lg bg-primary/15 text-primary flex items-center justify-center">
                 <Lock className="h-4 w-4" />
