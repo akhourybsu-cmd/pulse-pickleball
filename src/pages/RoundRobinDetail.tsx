@@ -1617,7 +1617,7 @@ export default function RoundRobinDetail() {
         <div>
         <Tabs defaultValue="schedule" className="w-full">
           {/* Tab strip — design-system styling, no decorative blur/shadow. */}
-          <TabsList className="w-full max-w-md mx-auto grid grid-cols-3 mb-6 p-1 bg-muted rounded-xl h-auto">
+          <TabsList className="w-full max-w-md mx-auto grid grid-cols-3 mb-4 p-1 bg-muted rounded-xl h-auto">
             <TabsTrigger
               value="schedule"
               className="data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm rounded-lg transition-colors py-2 gap-1.5"
