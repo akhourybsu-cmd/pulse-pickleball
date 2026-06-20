@@ -224,7 +224,74 @@ export function MatchWizardContainer() {
             metadata: { match_id: match.id },
           }))
         );
+
+        // Send branded verification email to each opponent (best-effort).
+        try {
+          // Build human-readable context from submitter + match details.
+          const playerIds = [
+            user.id,
+            ...realPlayers.map(p => p.player_id!).filter(id => id !== user.id),
+          ];
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id, full_name, display_name')
+            .in('id', playerIds);
+          const nameFor = (id: string) => {
+            const p = profiles?.find(pr => pr.id === id);
+            return p?.display_name || p?.full_name || 'A player';
+          };
+          const submittedByName = nameFor(user.id);
+          const scoreStr = `${team1Score}–${team2Score}`;
+          const playedAt = new Date(formData.matchDate).toLocaleString('en-US', {
+            weekday: 'long',
+            month: 'long',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+          });
+          const verifyUrl = `${window.location.origin}/player/matches?tab=pending`;
+          const formatLabel =
+            formData.matchFormat === 'singles' ? 'Singles' : 'Doubles';
+
+          await Promise.all(
+            opponents.map(async (opp) => {
+              const oppId = opp.player_id!;
+              // Opponent's partner is the other person on their team.
+              const partnerId = realPlayers.find(
+                p => p.team === opp.team && p.player_id !== oppId
+              )?.player_id;
+              // The submitter's team (team opposite to opp.team)
+              const submitterSide = realPlayers
+                .filter(p => p.team !== opp.team)
+                .map(p => nameFor(p.player_id!))
+                .join(' & ');
+
+              await supabase.functions.invoke('send-transactional-email', {
+                body: {
+                  templateName: 'match-verification-request',
+                  recipientUserId: oppId,
+                  idempotencyKey: `match-verify-${match.id}-${oppId}`,
+                  templateData: {
+                    recipientName: nameFor(oppId).split(' ')[0],
+                    submittedByName,
+                    matchSummary: formatLabel,
+                    score: scoreStr,
+                    partner: partnerId ? nameFor(partnerId) : undefined,
+                    opponents: submitterSide,
+                    playedAt,
+                    location: locationLabel || undefined,
+                    verifyUrl,
+                  },
+                },
+              });
+            })
+          );
+        } catch (emailErr) {
+          // Email is non-blocking — the in-app notification already fired.
+          console.warn('Match verification email failed', emailErr);
+        }
       }
+
 
       toast.success('Match submitted — pending player verification.');
       // Land on the player's matches page with the Pending tab pre-selected

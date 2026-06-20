@@ -52,6 +52,7 @@ Deno.serve(async (req) => {
   // Parse request body
   let templateName: string
   let recipientEmail: string
+  let recipientUserId: string | undefined
   let idempotencyKey: string
   let messageId: string
   let templateData: Record<string, any> = {}
@@ -59,6 +60,7 @@ Deno.serve(async (req) => {
     const body = await req.json()
     templateName = body.templateName || body.template_name
     recipientEmail = body.recipientEmail || body.recipient_email
+    recipientUserId = body.recipientUserId || body.recipient_user_id
     messageId = crypto.randomUUID()
     idempotencyKey = body.idempotencyKey || body.idempotency_key || messageId
     if (body.templateData && typeof body.templateData === 'object') {
@@ -100,6 +102,21 @@ Deno.serve(async (req) => {
     )
   }
 
+  // Create Supabase client with service role (bypasses RLS)
+  const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
+  // Resolve email from user ID if provided and no explicit email given
+  if (!recipientEmail && recipientUserId) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('email')
+      .eq('id', recipientUserId)
+      .maybeSingle()
+    if (profile?.email) {
+      recipientEmail = profile.email
+    }
+  }
+
   // Resolve effective recipient: template-level `to` takes precedence over
   // the caller-provided recipientEmail. This allows notification templates
   // to always send to a fixed address (e.g., site owner from env var).
@@ -108,7 +125,7 @@ Deno.serve(async (req) => {
   if (!effectiveRecipient) {
     return new Response(
       JSON.stringify({
-        error: 'recipientEmail is required (unless the template defines a fixed recipient)',
+        error: 'recipientEmail or recipientUserId is required (unless the template defines a fixed recipient)',
       }),
       {
         status: 400,
@@ -116,9 +133,6 @@ Deno.serve(async (req) => {
       }
     )
   }
-
-  // Create Supabase client with service role (bypasses RLS)
-  const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
   // 2. Check suppression list (fail-closed: if we can't verify, don't send)
   const { data: suppressed, error: suppressionError } = await supabase
