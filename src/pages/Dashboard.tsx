@@ -311,7 +311,7 @@ const Dashboard = () => {
                 }
               />
               <PerformanceModule userId={user?.id} />
-              <StatsByCourtCard userId={user?.id} />
+              {/* StatsByCourtCard removed — see import comment */}
             </div>
 
             {/* Discover play — player-to-player LFG features */}
@@ -417,7 +417,7 @@ const Dashboard = () => {
               }
             />
             <PerformanceModule userId={user?.id} />
-            <StatsByCourtCard userId={user?.id} />
+            {/* StatsByCourtCard removed — see import comment */}
           </div>
 
           {/* Discover play */}
