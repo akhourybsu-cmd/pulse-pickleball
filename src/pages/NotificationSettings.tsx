@@ -111,10 +111,10 @@ function BrowserPushCard() {
   const enabled = state === "enabled";
   const disabledControl = busy || state === "loading" || state === "unsupported" || state === "denied";
 
-  let helper = "Get notified on this device even when the app is closed.";
-  if (state === "unsupported") helper = "Your browser doesn't support push notifications.";
-  else if (state === "denied") helper = "Notifications are blocked. Enable them in your browser site settings.";
-  else if (state === "enabled") helper = "Push notifications are on for this device.";
+  let helper = "Get notified on your phone or device even when the app is closed. On iPhone, add this app to your Home Screen first (Share → Add to Home Screen).";
+  if (state === "unsupported") helper = "Your browser doesn't support push notifications. On iPhone, open this site in Safari and add it to your Home Screen.";
+  else if (state === "denied") helper = "Notifications are blocked. Enable them in your device's settings for this app.";
+  else if (state === "enabled") helper = "Mobile push notifications are on for this device.";
 
   return (
     <Card>
@@ -125,7 +125,7 @@ function BrowserPushCard() {
               <BellRing className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <CardTitle className="text-base">Browser notifications</CardTitle>
+              <CardTitle className="text-base">Mobile push notifications</CardTitle>
               <CardDescription className="text-xs">{helper}</CardDescription>
             </div>
           </div>
