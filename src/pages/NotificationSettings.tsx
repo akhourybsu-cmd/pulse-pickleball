@@ -200,7 +200,7 @@ function TestNotificationCard() {
       }
       const sub = await reg.pushManager.getSubscription();
       if (!sub) {
-        toast.error("This device is not registered for notifications.");
+        toast.error("This device is not registered for notifications. Toggle Mobile push notifications off and on again.");
         setSending(false);
         return;
       }
@@ -212,27 +212,57 @@ function TestNotificationCard() {
         return;
       }
 
+      // Make sure this device's subscription is recorded server-side
+      try {
+        const j = sub.toJSON() as any;
+        await supabase.from("push_subscriptions").upsert({
+          user_id: u.user.id,
+          endpoint: sub.endpoint,
+          p256dh: j.keys?.p256dh ?? "",
+          auth: j.keys?.auth ?? "",
+          user_agent: navigator.userAgent,
+        }, { onConflict: "endpoint" });
+      } catch (e) {
+        console.warn("[send-test-push] upsert sub failed (continuing)", e);
+      }
+
       const { data, error } = await supabase.functions.invoke("send-test-push", {
         body: { endpoint: sub.endpoint },
       });
       console.log("[send-test-push] response", { data, error });
-      if (error) {
+
+      // supabase-js puts the parsed body on error.context for non-2xx
+      let payload: any = data;
+      if (error && !payload) {
+        try {
+          const ctx: any = (error as any).context;
+          if (ctx && typeof ctx.json === "function") payload = await ctx.json();
+        } catch (_) { /* ignore */ }
+      }
+      const code = payload?.error;
+
+      if (code === "no_subscriptions") {
+        toast.error("This device isn't registered yet. Toggle Mobile push notifications off and on, then try again.");
+      } else if (code === "push_not_configured") {
+        toast.error("Push isn't configured on the server (missing VAPID keys).");
+      } else if (code === "unauthorized") {
+        toast.error("Your session expired. Sign in again and retry.");
+      } else if (error) {
         console.error("send-test-push error", error);
-        toast.error("Could not send test notification. Please try again.");
-      } else if (data?.error === "no_subscriptions") {
-        toast.error("This device is not registered for notifications.");
-      } else if ((data?.sent ?? 0) === 0) {
-        toast.error("Could not deliver to this device. Try re-enabling notifications.");
+        toast.error(`Could not send test notification: ${error.message || "unknown error"}`);
+      } else if ((payload?.sent ?? 0) === 0) {
+        toast.error("Server accepted the request but the device didn't receive it. Try re-enabling notifications.");
       } else {
         toast.success("Test notification sent. Check your device.");
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error("test push failed", e);
-      toast.error("Could not send test notification. Please try again.");
+      toast.error(`Could not send test notification: ${e?.message || "unknown error"}`);
     } finally {
       setSending(false);
     }
   };
+
 
   return (
     <Card>
