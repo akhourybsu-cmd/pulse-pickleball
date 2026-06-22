@@ -35,8 +35,8 @@ async function fetchGroupMembers(groupId: string): Promise<{ members: GroupMembe
   // Fetch profiles
   const userIds = (membersData || []).map(m => m.user_id);
   const { data: profilesData } = await supabase
-    .from('profiles')
-    .select('id, display_name, full_name, avatar_url, current_rating, phone_number')
+    .from('profiles_public')
+    .select('id, display_name, full_name, avatar_url, current_rating')
     .in('id', userIds);
 
   const profilesMap = new Map((profilesData || []).map(p => [p.id, p]));
