@@ -73,7 +73,7 @@ export function CourtPresence({ courtId, channelId }: CourtPresenceProps) {
   const fetchCheckedInUsers = async () => {
     const { data } = await (supabase as any)
       .from("court_checkins")
-      .select("user_id, profiles(id, full_name, avatar_url)")
+      .select("user_id, profiles:profiles_public!court_checkins_user_id_fkey(id, full_name, avatar_url)")
       .eq("court_id", courtId)
       .gt("ends_at", new Date().toISOString());
 
