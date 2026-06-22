@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { Logo } from "@/components/Logo";
 import { MatchWizardProgress } from "./MatchWizardProgress";
 import { MatchWizardCard } from "./MatchWizardCard";
 import { MatchWizardNavigation } from "./MatchWizardNavigation";
@@ -18,7 +19,6 @@ import {
   getInitialFormData, 
   MatchWizardFormData 
 } from "./hooks/useMatchWizardSteps";
-import logo from "@/assets/pulse-logo-premium.svg";
 
 export function MatchWizardContainer() {
   const navigate = useNavigate();
