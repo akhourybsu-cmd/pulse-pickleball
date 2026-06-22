@@ -94,7 +94,7 @@ export const PerformanceModule = ({ userId }: PerformanceModuleProps) => {
 
       const { data: allParticipants } = await supabase
         .from("match_participants")
-        .select("match_id, player_id, team, player:profiles!match_participants_player_id_fkey(id, display_name, full_name, first_name, last_name, avatar_url)")
+        .select("match_id, player_id, team, player:profiles_public!match_participants_player_id_fkey(id, display_name, full_name, first_name, last_name, avatar_url)")
         .in("match_id", matchIds);
 
       const participantsByMatch = (allParticipants || []).reduce((acc: Record<string, any[]>, p: any) => {
