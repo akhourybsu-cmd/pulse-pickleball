@@ -138,6 +138,7 @@ export function RoundRobinMatchGroup({
                     myTeam={match.my_team as 1 | 2}
                     won={match.won}
                     playerName={playerName}
+                    playerAvatarUrl={playerAvatarUrl}
                     partnerName={match.partner_name}
                     partnerId={match.partner_id}
                     partnerAvatarUrl={match.partner_avatar_url}
