@@ -1,11 +1,17 @@
 import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import type { GroupMessage } from './useGroupChat';
+import type { GroupPost } from './useGroupPosts';
+import type { PostComment } from './useGroupPostComments';
 
 /**
- * Consolidated realtime subscription for a group.
- * Listens to all group-related tables and invalidates React Query caches.
- * Call this once at the group detail level to avoid duplicate subscriptions.
+ * Granular realtime: patch React Query caches in place instead of invalidating.
+ * This keeps the feed/chat snappy and avoids re-running the multi-query fetch
+ * for every reaction or comment that streams in.
+ *
+ * Self-originated events are skipped because optimistic mutations already
+ * applied the change locally.
  */
 export function useGroupRealtime(groupId: string | undefined) {
   const queryClient = useQueryClient();
@@ -13,65 +19,246 @@ export function useGroupRealtime(groupId: string | undefined) {
   useEffect(() => {
     if (!groupId) return;
 
+    let currentUserId: string | null = null;
+    supabase.auth.getUser().then(({ data }) => {
+      currentUserId = data.user?.id || null;
+    });
+
+    const messagesKey = ['group-messages', groupId];
+    const postsKey = ['group-posts', groupId];
+
+    const hydrateProfile = async (userId: string) => {
+      // Try cache first via any existing message/post with the same author
+      const fromMessages = (queryClient.getQueryData<GroupMessage[]>(messagesKey) || [])
+        .find((m) => m.user_id === userId)?.profile;
+      if (fromMessages) return fromMessages;
+      const fromPosts = (queryClient.getQueryData<GroupPost[]>(postsKey) || [])
+        .find((p) => p.user_id === userId)?.profile;
+      if (fromPosts) return fromPosts;
+      const { data } = await supabase
+        .from('profiles')
+        .select('id, display_name, full_name, avatar_url, current_rating')
+        .eq('id', userId)
+        .maybeSingle();
+      return data || undefined;
+    };
+
     const channel = supabase
       .channel(`group_realtime_${groupId}`)
-      // Posts changes
+
+      // ===== Messages =====
       .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'group_posts',
+        event: 'INSERT', schema: 'public', table: 'group_messages',
         filter: `group_id=eq.${groupId}`,
-      }, () => {
-        queryClient.invalidateQueries({ queryKey: ['group-posts', groupId] });
+      }, async (payload) => {
+        const row = payload.new as any;
+        if (row.user_id === currentUserId) {
+          // Replace optimistic temp row matched by user+content+recent window.
+          queryClient.setQueryData<GroupMessage[]>(messagesKey, (prev = []) => {
+            if (prev.some((m) => m.id === row.id)) return prev;
+            const idx = prev.findIndex(
+              (m) => m._status === 'sending' && m.user_id === row.user_id && m.content === row.content,
+            );
+            if (idx >= 0) {
+              const next = [...prev];
+              const author = prev.find((m) => m.user_id === row.user_id)?.profile;
+              next[idx] = { ...row, profile: author, _status: 'sent' };
+              return next;
+            }
+            const author = prev.find((m) => m.user_id === row.user_id)?.profile;
+            return [...prev, { ...row, profile: author, _status: 'sent' }];
+          });
+          return;
+        }
+        const profile = await hydrateProfile(row.user_id);
+        queryClient.setQueryData<GroupMessage[]>(messagesKey, (prev = []) => {
+          if (prev.some((m) => m.id === row.id)) return prev;
+          return [...prev, { ...row, profile, _status: 'sent' }];
+        });
       })
-      // Post reactions
       .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'group_post_reactions',
-      }, () => {
-        // Invalidate posts to refresh reaction counts
-        queryClient.invalidateQueries({ queryKey: ['group-posts', groupId] });
+        event: 'UPDATE', schema: 'public', table: 'group_messages',
+        filter: `group_id=eq.${groupId}`,
+      }, (payload) => {
+        const row = payload.new as any;
+        queryClient.setQueryData<GroupMessage[]>(messagesKey, (prev = []) =>
+          prev.map((m) => (m.id === row.id ? { ...m, ...row } : (
+            // If this row was pinned, unpin any others to keep single-pin invariant.
+            row.is_pinned && m.is_pinned ? { ...m, is_pinned: false } : m
+          ))),
+        );
       })
-      // Post comments
       .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'group_post_comments',
-      }, () => {
-        queryClient.invalidateQueries({ queryKey: ['group-posts', groupId] });
+        event: 'DELETE', schema: 'public', table: 'group_messages',
+        filter: `group_id=eq.${groupId}`,
+      }, (payload) => {
+        const oldRow = payload.old as any;
+        queryClient.setQueryData<GroupMessage[]>(messagesKey, (prev = []) =>
+          prev.filter((m) => m.id !== oldRow.id),
+        );
       })
-      // Events changes
+
+      // ===== Posts =====
       .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'group_events',
+        event: 'INSERT', schema: 'public', table: 'group_posts',
+        filter: `group_id=eq.${groupId}`,
+      }, async (payload) => {
+        const row = payload.new as any;
+        if (row.user_id === currentUserId) {
+          // Self post: optimistic row is already in cache. Swap temp id for real.
+          queryClient.setQueryData<GroupPost[]>(postsKey, (prev = []) => {
+            if (prev.some((p) => p.id === row.id)) return prev;
+            const idx = prev.findIndex(
+              (p) => p.id.startsWith('temp-') && p.user_id === row.user_id && p.content === row.content,
+            );
+            if (idx >= 0) {
+              const next = [...prev];
+              next[idx] = { ...next[idx], ...row, id: row.id };
+              return next;
+            }
+            return prev;
+          });
+          return;
+        }
+        const profile = await hydrateProfile(row.user_id);
+        queryClient.setQueryData<GroupPost[]>(postsKey, (prev = []) => {
+          if (prev.some((p) => p.id === row.id)) return prev;
+          const newPost = {
+            ...row,
+            profile,
+            reactions: [],
+            comment_count: 0,
+            participant_count: 0,
+            user_joined: false,
+          } as GroupPost;
+          // Keep pinned-first ordering, otherwise prepend.
+          const pinned = prev.filter((p) => p.pinned);
+          const rest = prev.filter((p) => !p.pinned);
+          return row.pinned ? [newPost, ...pinned, ...rest] : [...pinned, newPost, ...rest];
+        });
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE', schema: 'public', table: 'group_posts',
+        filter: `group_id=eq.${groupId}`,
+      }, (payload) => {
+        const row = payload.new as any;
+        queryClient.setQueryData<GroupPost[]>(postsKey, (prev = []) =>
+          prev.map((p) => (p.id === row.id ? { ...p, ...row } : p)),
+        );
+      })
+      .on('postgres_changes', {
+        event: 'DELETE', schema: 'public', table: 'group_posts',
+        filter: `group_id=eq.${groupId}`,
+      }, (payload) => {
+        const oldRow = payload.old as any;
+        queryClient.setQueryData<GroupPost[]>(postsKey, (prev = []) =>
+          prev.filter((p) => p.id !== oldRow.id),
+        );
+      })
+
+      // ===== Post reactions (patch single post) =====
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'group_post_reactions',
+      }, (payload) => {
+        const row = (payload.new || payload.old) as any;
+        if (!row?.post_id) return;
+        const isSelf = row.user_id === currentUserId;
+        if (isSelf) return; // optimistic already applied
+        queryClient.setQueryData<GroupPost[]>(postsKey, (prev = []) =>
+          prev.map((p) => {
+            if (p.id !== row.post_id) return p;
+            const reactions = [...(p.reactions || [])];
+            const entry = reactions.find((r) => r.emoji === row.emoji);
+            if (payload.eventType === 'INSERT') {
+              if (entry) entry.count += 1;
+              else reactions.push({ emoji: row.emoji, count: 1, user_reacted: false });
+            } else if (payload.eventType === 'DELETE') {
+              if (entry) {
+                entry.count = Math.max(0, entry.count - 1);
+              }
+            }
+            return { ...p, reactions: reactions.filter((r) => r.count > 0) };
+          }),
+        );
+      })
+
+      // ===== Post comments (bump parent count + patch comments cache) =====
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'group_post_comments',
+      }, async (payload) => {
+        const row = (payload.new || payload.old) as any;
+        if (!row?.post_id) return;
+        const delta = payload.eventType === 'INSERT' ? 1
+          : payload.eventType === 'DELETE' ? -1 : 0;
+        if (delta !== 0) {
+          queryClient.setQueryData<GroupPost[]>(postsKey, (prev = []) =>
+            prev.map((p) =>
+              p.id === row.post_id
+                ? { ...p, comment_count: Math.max(0, (p.comment_count || 0) + delta) }
+                : p,
+            ),
+          );
+        }
+        // If a comments sheet is open for this post, patch its cache too.
+        const commentsKey = ['post-comments', row.post_id];
+        const cached = queryClient.getQueryData<PostComment[]>(commentsKey);
+        if (!cached) return; // sheet not open
+        if (payload.eventType === 'INSERT') {
+          if (row.user_id === currentUserId) return; // optimistic handled it
+          const profile = await hydrateProfile(row.user_id);
+          queryClient.setQueryData<PostComment[]>(commentsKey, (prev = []) => {
+            if (prev.some((c) => c.id === row.id)) return prev;
+            const newC: PostComment = { ...row, profile, replies: [] };
+            if (row.parent_comment_id) {
+              return prev.map((c) =>
+                c.id === row.parent_comment_id
+                  ? { ...c, replies: [...(c.replies || []), newC] }
+                  : c,
+              );
+            }
+            return [...prev, newC];
+          });
+        } else if (payload.eventType === 'DELETE') {
+          queryClient.setQueryData<PostComment[]>(commentsKey, (prev = []) =>
+            prev
+              .filter((c) => c.id !== row.id)
+              .map((c) => ({ ...c, replies: (c.replies || []).filter((r) => r.id !== row.id) })),
+          );
+        }
+      })
+
+      // ===== LFG participants (patch participant_count on the post) =====
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'group_post_participants',
+      }, (payload) => {
+        const row = (payload.new || payload.old) as any;
+        if (!row?.post_id || row.user_id === currentUserId) return;
+        const delta = payload.eventType === 'INSERT' ? 1
+          : payload.eventType === 'DELETE' ? -1 : 0;
+        if (!delta) return;
+        queryClient.setQueryData<GroupPost[]>(postsKey, (prev = []) =>
+          prev.map((p) =>
+            p.id === row.post_id
+              ? { ...p, participant_count: Math.max(0, (p.participant_count || 0) + delta) }
+              : p,
+          ),
+        );
+      })
+
+      // ===== Lower-frequency tables — invalidate as before =====
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'group_events',
         filter: `group_id=eq.${groupId}`,
       }, () => {
         queryClient.invalidateQueries({ queryKey: ['group-events', groupId] });
       })
-      // Event RSVPs
       .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'group_event_rsvps',
+        event: '*', schema: 'public', table: 'group_event_rsvps',
       }, () => {
         queryClient.invalidateQueries({ queryKey: ['group-events', groupId] });
       })
-      // Messages changes
       .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'group_messages',
-        filter: `group_id=eq.${groupId}`,
-      }, () => {
-        queryClient.invalidateQueries({ queryKey: ['group-messages', groupId] });
-      })
-      // Members changes
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'group_members',
+        event: '*', schema: 'public', table: 'group_members',
         filter: `group_id=eq.${groupId}`,
       }, () => {
         queryClient.invalidateQueries({ queryKey: ['group-members', groupId] });

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -19,162 +19,187 @@ export interface PostComment {
   replies?: PostComment[];
 }
 
-export function useGroupPostComments(postId: string | undefined) {
-  const [comments, setComments] = useState<PostComment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [creating, setCreating] = useState(false);
-  const { toast } = useToast();
+/**
+ * Returns a flat list of top-level comments, each with `replies` populated.
+ * Realtime updates are handled centrally by `useGroupRealtime` against the
+ * `['post-comments', postId]` key.
+ */
+async function fetchComments(postId: string): Promise<PostComment[]> {
+  const { data: commentsData, error } = await supabase
+    .from('group_post_comments')
+    .select('*')
+    .eq('post_id', postId)
+    .order('created_at', { ascending: true });
 
-  const fetchComments = useCallback(async () => {
-    if (!postId) return;
-    
-    setLoading(true);
-    try {
-      // Fetch all comments for this post
-      const { data: commentsData, error } = await supabase
-        .from('group_post_comments')
-        .select('*')
-        .eq('post_id', postId)
-        .order('created_at', { ascending: true });
+  if (error) throw error;
 
-      if (error) throw error;
-
-      // Fetch profiles for comment authors
-      const userIds = [...new Set((commentsData || []).map(c => c.user_id))];
-      const { data: profilesData } = await supabase
+  const userIds = [...new Set((commentsData || []).map((c) => c.user_id))];
+  const { data: profilesData } = userIds.length
+    ? await supabase
         .from('profiles')
         .select('id, display_name, full_name, avatar_url')
-        .in('id', userIds);
+        .in('id', userIds)
+    : { data: [] as any[] };
 
-      const profilesMap = new Map((profilesData || []).map(p => [p.id, p]));
+  const profilesMap = new Map((profilesData || []).map((p) => [p.id, p]));
 
-      // Build nested comment structure
-      const commentsWithProfiles = (commentsData || []).map(c => ({
-        ...c,
-        profile: profilesMap.get(c.user_id),
-        replies: [] as PostComment[],
-      }));
+  const enriched = (commentsData || []).map((c) => ({
+    ...c,
+    profile: profilesMap.get(c.user_id),
+    replies: [] as PostComment[],
+  }));
 
-      // Separate top-level comments and replies
-      const topLevel: PostComment[] = [];
-      const repliesMap = new Map<string, PostComment[]>();
-
-      commentsWithProfiles.forEach(c => {
-        if (c.parent_comment_id) {
-          const existing = repliesMap.get(c.parent_comment_id) || [];
-          existing.push(c);
-          repliesMap.set(c.parent_comment_id, existing);
-        } else {
-          topLevel.push(c);
-        }
-      });
-
-      // Attach replies to parents
-      topLevel.forEach(c => {
-        c.replies = repliesMap.get(c.id) || [];
-      });
-
-      setComments(topLevel);
-    } catch (error) {
-      console.error('Error fetching comments:', error);
-    } finally {
-      setLoading(false);
+  const topLevel: PostComment[] = [];
+  const repliesMap = new Map<string, PostComment[]>();
+  enriched.forEach((c) => {
+    if (c.parent_comment_id) {
+      const arr = repliesMap.get(c.parent_comment_id) || [];
+      arr.push(c);
+      repliesMap.set(c.parent_comment_id, arr);
+    } else {
+      topLevel.push(c);
     }
-  }, [postId]);
+  });
+  topLevel.forEach((c) => {
+    c.replies = repliesMap.get(c.id) || [];
+  });
+  return topLevel;
+}
 
-  useEffect(() => {
-    fetchComments();
-  }, [fetchComments]);
+export function useGroupPostComments(postId: string | undefined) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const queryKey = ['post-comments', postId];
 
-  // Realtime subscription
-  useEffect(() => {
-    if (!postId) return;
+  const { data: comments = [], isLoading: loading, refetch } = useQuery({
+    queryKey,
+    queryFn: () => fetchComments(postId!),
+    enabled: !!postId,
+    staleTime: Infinity,
+    gcTime: 5 * 60 * 1000,
+  });
 
-    const channel = supabase
-      .channel(`post_comments_${postId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'group_post_comments',
-          filter: `post_id=eq.${postId}`,
-        },
-        () => fetchComments()
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [postId, fetchComments]);
-
-  const createComment = async (content: string, parentCommentId?: string) => {
-    if (!postId || !content.trim()) return null;
-
-    setCreating(true);
-    try {
+  const createMutation = useMutation({
+    mutationFn: async (input: { content: string; parentCommentId?: string; clientId: string }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
-
       const { data, error } = await supabase
         .from('group_post_comments')
         .insert({
           post_id: postId,
           user_id: user.id,
-          content: content.trim(),
-          parent_comment_id: parentCommentId || null,
+          content: input.content.trim(),
+          parent_comment_id: input.parentCommentId || null,
         })
         .select()
         .single();
-
       if (error) throw error;
-
-      await fetchComments();
-      return data;
-    } catch (error: any) {
-      console.error('Error creating comment:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to post comment',
-        variant: 'destructive',
+      return { row: data, clientId: input.clientId };
+    },
+    onMutate: async ({ content, parentCommentId, clientId }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const cachedAuthor = (queryClient.getQueryData<PostComment[]>(queryKey) || [])
+        .flatMap((c) => [c, ...(c.replies || [])])
+        .find((c) => c.user_id === user.id)?.profile;
+      const now = new Date().toISOString();
+      const optimistic: PostComment = {
+        id: `temp-${clientId}`,
+        post_id: postId!,
+        user_id: user.id,
+        content: content.trim(),
+        parent_comment_id: parentCommentId || null,
+        created_at: now,
+        updated_at: now,
+        profile: cachedAuthor,
+        replies: [],
+      };
+      queryClient.setQueryData<PostComment[]>(queryKey, (prev = []) => {
+        if (parentCommentId) {
+          return prev.map((c) =>
+            c.id === parentCommentId ? { ...c, replies: [...(c.replies || []), optimistic] } : c,
+          );
+        }
+        return [...prev, optimistic];
       });
-      return null;
-    } finally {
-      setCreating(false);
-    }
-  };
+      // Optimistically bump the parent post's comment_count
+      const postsQueries = queryClient.getQueriesData<any[]>({ queryKey: ['group-posts'] });
+      postsQueries.forEach(([key, data]) => {
+        if (!Array.isArray(data)) return;
+        queryClient.setQueryData(key, data.map((p: any) =>
+          p.id === postId ? { ...p, comment_count: (p.comment_count || 0) + 1 } : p,
+        ));
+      });
+    },
+    onSuccess: ({ row, clientId }) => {
+      queryClient.setQueryData<PostComment[]>(queryKey, (prev = []) => {
+        const swap = (c: PostComment): PostComment =>
+          c.id === `temp-${clientId}` ? { ...c, ...row } : c;
+        return prev.map((c) => ({
+          ...swap(c),
+          replies: (c.replies || []).map(swap),
+        }));
+      });
+    },
+    onError: (error: any, { clientId }) => {
+      queryClient.setQueryData<PostComment[]>(queryKey, (prev = []) =>
+        prev
+          .filter((c) => c.id !== `temp-${clientId}`)
+          .map((c) => ({ ...c, replies: (c.replies || []).filter((r) => r.id !== `temp-${clientId}`) })),
+      );
+      const postsQueries = queryClient.getQueriesData<any[]>({ queryKey: ['group-posts'] });
+      postsQueries.forEach(([key, data]) => {
+        if (!Array.isArray(data)) return;
+        queryClient.setQueryData(key, data.map((p: any) =>
+          p.id === postId ? { ...p, comment_count: Math.max(0, (p.comment_count || 0) - 1) } : p,
+        ));
+      });
+      toast({ title: 'Error', description: error.message || 'Failed to post comment', variant: 'destructive' });
+    },
+  });
 
-  const deleteComment = async (commentId: string) => {
-    try {
-      const { error } = await supabase
-        .from('group_post_comments')
-        .delete()
-        .eq('id', commentId);
-
+  const deleteMutation = useMutation({
+    mutationFn: async (commentId: string) => {
+      const { error } = await supabase.from('group_post_comments').delete().eq('id', commentId);
       if (error) throw error;
-
-      toast({ title: 'Deleted', description: 'Comment removed' });
-      await fetchComments();
-      return true;
-    } catch (error: any) {
-      console.error('Error deleting comment:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to delete comment',
-        variant: 'destructive',
+      return commentId;
+    },
+    onMutate: async (commentId) => {
+      const prev = queryClient.getQueryData<PostComment[]>(queryKey);
+      queryClient.setQueryData<PostComment[]>(queryKey, (p = []) =>
+        p
+          .filter((c) => c.id !== commentId)
+          .map((c) => ({ ...c, replies: (c.replies || []).filter((r) => r.id !== commentId) })),
+      );
+      const postsQueries = queryClient.getQueriesData<any[]>({ queryKey: ['group-posts'] });
+      postsQueries.forEach(([key, data]) => {
+        if (!Array.isArray(data)) return;
+        queryClient.setQueryData(key, data.map((p: any) =>
+          p.id === postId ? { ...p, comment_count: Math.max(0, (p.comment_count || 0) - 1) } : p,
+        ));
       });
-      return false;
-    }
-  };
+      return { prev };
+    },
+    onError: (error: any, _id, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(queryKey, ctx.prev);
+      toast({ title: 'Error', description: error.message || 'Failed to delete comment', variant: 'destructive' });
+    },
+  });
+
+  const totalCount = comments.reduce((acc, c) => acc + 1 + (c.replies?.length || 0), 0);
 
   return {
     comments,
     loading,
-    creating,
-    createComment,
-    deleteComment,
-    refetch: fetchComments,
-    totalCount: comments.reduce((acc, c) => acc + 1 + (c.replies?.length || 0), 0),
+    creating: createMutation.isPending,
+    createComment: (content: string, parentCommentId?: string) =>
+      createMutation.mutateAsync({
+        content,
+        parentCommentId,
+        clientId: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      }),
+    deleteComment: deleteMutation.mutateAsync,
+    refetch,
+    totalCount,
   };
 }
