@@ -84,7 +84,7 @@ export default function PostDetail() {
         .from("court_post_comments")
         .select(`
           *,
-          author:profiles!court_post_comments_author_user_id_fkey (
+          author:profiles_public!court_post_comments_author_user_id_fkey (
             id,
             display_name,
             avatar_url
