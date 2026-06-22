@@ -18,6 +18,7 @@ import {
   getInitialFormData, 
   MatchWizardFormData 
 } from "./hooks/useMatchWizardSteps";
+import logo from "@/assets/pulse-logo-premium.svg";
 
 export function MatchWizardContainer() {
   const navigate = useNavigate();
