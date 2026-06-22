@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { Logo } from "@/components/Logo";
 import { MatchWizardProgress } from "./MatchWizardProgress";
 import { MatchWizardCard } from "./MatchWizardCard";
 import { MatchWizardNavigation } from "./MatchWizardNavigation";
@@ -18,7 +19,6 @@ import {
   getInitialFormData, 
   MatchWizardFormData 
 } from "./hooks/useMatchWizardSteps";
-import logo from "@/assets/pulse-logo-premium.svg";
 
 export function MatchWizardContainer() {
   const navigate = useNavigate();
@@ -348,12 +348,11 @@ export function MatchWizardContainer() {
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <Link to="/player/dashboard">
-            <img
-              src={logo}
-              alt="PULSE"
-              className="h-[60px] sm:h-[75px] w-auto cursor-pointer hover:opacity-80 transition-opacity"
-            />
+          <Link
+            to="/player/dashboard"
+            className="text-secondary-foreground hover:opacity-90 transition-opacity"
+          >
+            <Logo className="h-[52px] sm:h-[65px] w-auto" />
           </Link>
           <div className="h-9 w-9" aria-hidden="true" />
         </div>
