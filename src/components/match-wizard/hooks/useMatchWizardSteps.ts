@@ -123,7 +123,7 @@ export function getInitialFormData(): MatchWizardFormData {
     matchDate: today,
     locationId: null,
     customLocation: null,
-    matchFormat: savedFormat || 'doubles',
+    matchFormat: 'doubles',
     team1: [
       { playerId: null, isGuest: false },
       { playerId: null, isGuest: false },
