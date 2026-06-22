@@ -58,7 +58,7 @@ export default function PostDetail() {
         .from("court_posts")
         .select(`
           *,
-          user:profiles!court_posts_user_id_fkey (
+          user:profiles_public!court_posts_user_id_fkey (
             id,
             display_name,
             avatar_url
