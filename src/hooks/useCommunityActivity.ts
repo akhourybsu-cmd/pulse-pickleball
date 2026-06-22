@@ -91,7 +91,7 @@ export function useCommunityActivity() {
       // Get profiles for post authors
       const userIds = [...new Set(postsData?.map(p => p.user_id) || [])];
       const { data: profiles } = await supabase
-        .from('profiles')
+        .from('profiles_public')
         .select('id, display_name, avatar_url')
         .in('id', userIds);
 

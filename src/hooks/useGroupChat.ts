@@ -38,7 +38,7 @@ async function fetchGroupMessages(groupId: string): Promise<GroupMessage[]> {
   const userIds = [...new Set((messagesData || []).map(m => m.user_id))];
   const { data: profilesData } = userIds.length
     ? await supabase
-        .from('profiles')
+        .from('profiles_public')
         .select('id, display_name, full_name, avatar_url')
         .in('id', userIds)
     : { data: [] as any[] };

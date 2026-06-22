@@ -36,7 +36,7 @@ export function useGroupRealtime(groupId: string | undefined) {
         .find((p) => p.user_id === userId)?.profile;
       if (fromPosts) return fromPosts;
       const { data } = await supabase
-        .from('profiles')
+        .from('profiles_public')
         .select('id, display_name, full_name, avatar_url, current_rating')
         .eq('id', userId)
         .maybeSingle();

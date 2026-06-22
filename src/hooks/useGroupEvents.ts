@@ -51,7 +51,7 @@ async function fetchGroupEvents(groupId: string): Promise<GroupEvent[]> {
   // Fetch creator profiles
   const creatorIds = [...new Set((eventsData || []).map(e => e.created_by))];
   const { data: profilesData } = await supabase
-    .from('profiles')
+    .from('profiles_public')
     .select('id, display_name, full_name, avatar_url')
     .in('id', creatorIds);
 

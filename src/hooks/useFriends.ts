@@ -62,7 +62,7 @@ export function useFriends() {
       
       if (friendUserIds.length > 0) {
         const { data: profiles } = await supabase
-          .from('profiles')
+          .from('profiles_public')
           .select('id, display_name, full_name, avatar_url, current_rating')
           .in('id', friendUserIds);
         
@@ -99,7 +99,7 @@ export function useFriends() {
       
       if (pendingUserIds.length > 0) {
         const { data: pendingProfiles } = await supabase
-          .from('profiles')
+          .from('profiles_public')
           .select('id, display_name, full_name, avatar_url, current_rating')
           .in('id', pendingUserIds);
         
@@ -132,7 +132,7 @@ export function useFriends() {
       
       if (sentUserIds.length > 0) {
         const { data: sentProfiles } = await supabase
-          .from('profiles')
+          .from('profiles_public')
           .select('id, display_name, full_name, avatar_url, current_rating')
           .in('id', sentUserIds);
         
