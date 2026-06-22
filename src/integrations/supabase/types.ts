@@ -2973,7 +2973,6 @@ export type Database = {
           gender: string | null
           handedness: string | null
           handle: string
-          home_court_id: string | null
           id: string
           is_test_account: boolean | null
           last_name: string | null
@@ -3027,7 +3026,6 @@ export type Database = {
           gender?: string | null
           handedness?: string | null
           handle: string
-          home_court_id?: string | null
           id: string
           is_test_account?: boolean | null
           last_name?: string | null
@@ -3081,7 +3079,6 @@ export type Database = {
           gender?: string | null
           handedness?: string | null
           handle?: string
-          home_court_id?: string | null
           id?: string
           is_test_account?: boolean | null
           last_name?: string | null
@@ -3117,15 +3114,7 @@ export type Database = {
           week_start_rating?: number | null
           wins?: number | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "profiles_home_court_id_fkey"
-            columns: ["home_court_id"]
-            isOneToOne: false
-            referencedRelation: "courts"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       push_subscriptions: {
         Row: {
@@ -6099,7 +6088,6 @@ export type Database = {
           full_name: string | null
           handedness: string | null
           handle: string | null
-          home_court_id: string | null
           id: string | null
           last_name: string | null
           losses: number | null
@@ -6118,7 +6106,6 @@ export type Database = {
           full_name?: string | null
           handedness?: string | null
           handle?: string | null
-          home_court_id?: string | null
           id?: string | null
           last_name?: string | null
           losses?: number | null
@@ -6137,7 +6124,6 @@ export type Database = {
           full_name?: string | null
           handedness?: string | null
           handle?: string | null
-          home_court_id?: string | null
           id?: string | null
           last_name?: string | null
           losses?: number | null
@@ -6147,15 +6133,7 @@ export type Database = {
           total_matches?: number | null
           wins?: number | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "profiles_home_court_id_fkey"
-            columns: ["home_court_id"]
-            isOneToOne: false
-            referencedRelation: "courts"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       v_browse_events: {
         Row: {
