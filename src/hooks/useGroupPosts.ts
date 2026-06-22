@@ -192,12 +192,14 @@ async function fetchGroupPosts(groupId: string): Promise<GroupPost[]> {
 export function useGroupPosts(groupId: string | undefined) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const queryKey = ['group-posts', groupId];
 
   const { data: posts = [], isLoading: loading, refetch } = useQuery({
-    queryKey: ['group-posts', groupId],
+    queryKey,
     queryFn: () => fetchGroupPosts(groupId!),
-    staleTime: 30 * 1000, // 30 seconds
-    gcTime: 5 * 60 * 1000, // 5 minutes
+    // Realtime patches the cache directly — no periodic refetch needed.
+    staleTime: Infinity,
+    gcTime: 10 * 60 * 1000,
     enabled: !!groupId,
   });
 
@@ -212,164 +214,224 @@ export function useGroupPosts(groupId: string | undefined) {
       pinned?: boolean;
       image_url?: string;
       poll_options?: { idx: number; text: string }[];
+      _clientId: string;
     }) => {
+      const { _clientId, ...insertData } = postData;
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
-
       const { data, error } = await supabase
         .from('group_posts')
-        .insert({
-          group_id: groupId,
-          user_id: user.id,
-          ...postData,
-        })
+        .insert({ group_id: groupId, user_id: user.id, ...insertData })
         .select()
         .single();
-
       if (error) throw error;
-      return data;
+      return { row: data, clientId: _clientId };
     },
-    onSuccess: () => {
-      toast({ title: 'Posted!', description: 'Your post has been shared with the group' });
-      queryClient.invalidateQueries({ queryKey: ['group-posts', groupId] });
-    },
-    onError: (error: any) => {
-      console.error('Error creating post:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to create post',
-        variant: 'destructive',
+    onMutate: async (postData) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const cachedAuthor = (queryClient.getQueryData<GroupPost[]>(queryKey) || [])
+        .find((p) => p.user_id === user.id)?.profile;
+      const now = new Date().toISOString();
+      const optimistic: GroupPost = {
+        id: `temp-${postData._clientId}`,
+        group_id: groupId!,
+        user_id: user.id,
+        type: postData.type,
+        title: postData.title ?? null,
+        content: postData.content ?? null,
+        pinned: postData.pinned ?? false,
+        session_date: postData.session_date ?? null,
+        session_time: postData.session_time ?? null,
+        max_players: postData.max_players ?? null,
+        image_url: postData.image_url ?? null,
+        poll_options: postData.poll_options ?? null,
+        last_activity_at: now,
+        created_at: now,
+        updated_at: now,
+        profile: cachedAuthor,
+        reactions: [],
+        comment_count: 0,
+        participant_count: 0,
+        user_joined: false,
+        poll_vote_counts: postData.poll_options?.map(() => 0),
+        poll_my_vote: null,
+      };
+      queryClient.setQueryData<GroupPost[]>(queryKey, (prev = []) => {
+        const pinned = prev.filter((p) => p.pinned);
+        const rest = prev.filter((p) => !p.pinned);
+        return optimistic.pinned
+          ? [optimistic, ...pinned, ...rest]
+          : [...pinned, optimistic, ...rest];
       });
+    },
+    onSuccess: ({ row, clientId }) => {
+      queryClient.setQueryData<GroupPost[]>(queryKey, (prev = []) =>
+        prev.map((p) =>
+          p.id === `temp-${clientId}`
+            ? { ...p, ...(row as any), id: row.id }
+            : p,
+        ),
+      );
+      toast({ title: 'Posted!', description: 'Your post has been shared with the group' });
+    },
+    onError: (error: any, postData) => {
+      queryClient.setQueryData<GroupPost[]>(queryKey, (prev = []) =>
+        prev.filter((p) => p.id !== `temp-${postData._clientId}`),
+      );
+      console.error('Error creating post:', error);
+      toast({ title: 'Error', description: error.message || 'Failed to create post', variant: 'destructive' });
     },
   });
 
   const deletePostMutation = useMutation({
     mutationFn: async (postId: string) => {
-      const { error } = await supabase
-        .from('group_posts')
-        .delete()
-        .eq('id', postId);
-
+      const { error } = await supabase.from('group_posts').delete().eq('id', postId);
       if (error) throw error;
+    },
+    onMutate: async (postId) => {
+      const prev = queryClient.getQueryData<GroupPost[]>(queryKey);
+      queryClient.setQueryData<GroupPost[]>(queryKey, (p = []) => p.filter((x) => x.id !== postId));
+      return { prev };
     },
     onSuccess: () => {
       toast({ title: 'Deleted', description: 'Post has been removed' });
-      queryClient.invalidateQueries({ queryKey: ['group-posts', groupId] });
     },
-    onError: (error: any) => {
-      console.error('Error deleting post:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to delete post',
-        variant: 'destructive',
-      });
+    onError: (error: any, _id, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(queryKey, ctx.prev);
+      toast({ title: 'Error', description: error.message || 'Failed to delete post', variant: 'destructive' });
     },
   });
 
   const toggleReaction = async (postId: string, emoji: string) => {
+    const prev = queryClient.getQueryData<GroupPost[]>(queryKey);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // Optimistic: flip the reaction now.
+    let wasReacted = false;
+    queryClient.setQueryData<GroupPost[]>(queryKey, (p = []) =>
+      p.map((post) => {
+        if (post.id !== postId) return post;
+        const reactions = [...(post.reactions || [])];
+        const entry = reactions.find((r) => r.emoji === emoji);
+        if (entry?.user_reacted) {
+          wasReacted = true;
+          entry.count = Math.max(0, entry.count - 1);
+          entry.user_reacted = false;
+        } else if (entry) {
+          entry.count += 1;
+          entry.user_reacted = true;
+        } else {
+          reactions.push({ emoji, count: 1, user_reacted: true });
+        }
+        return { ...post, reactions: reactions.filter((r) => r.count > 0) };
+      }),
+    );
+
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
-
-      const { data: existing } = await supabase
-        .from('group_post_reactions')
-        .select('id')
-        .eq('post_id', postId)
-        .eq('user_id', user.id)
-        .eq('emoji', emoji)
-        .single();
-
-      if (existing) {
+      if (wasReacted) {
         await supabase
           .from('group_post_reactions')
           .delete()
-          .eq('id', existing.id);
+          .eq('post_id', postId)
+          .eq('user_id', user.id)
+          .eq('emoji', emoji);
       } else {
         await supabase
           .from('group_post_reactions')
-          .insert({
-            post_id: postId,
-            user_id: user.id,
-            emoji,
-          });
+          .insert({ post_id: postId, user_id: user.id, emoji });
       }
-
-      queryClient.invalidateQueries({ queryKey: ['group-posts', groupId] });
     } catch (error: any) {
       console.error('Error toggling reaction:', error);
+      if (prev) queryClient.setQueryData(queryKey, prev);
     }
   };
 
   const togglePin = async (postId: string, pinned: boolean) => {
+    const prev = queryClient.getQueryData<GroupPost[]>(queryKey);
+    queryClient.setQueryData<GroupPost[]>(queryKey, (p = []) => {
+      const next = p.map((post) => (post.id === postId ? { ...post, pinned } : post));
+      // re-sort pinned-first
+      return [...next.filter((x) => x.pinned), ...next.filter((x) => !x.pinned)];
+    });
     try {
-      const { error } = await supabase
-        .from('group_posts')
-        .update({ pinned })
-        .eq('id', postId);
-
+      const { error } = await supabase.from('group_posts').update({ pinned }).eq('id', postId);
       if (error) throw error;
-
       toast({ title: pinned ? 'Pinned' : 'Unpinned', description: `Post has been ${pinned ? 'pinned' : 'unpinned'}` });
-      queryClient.invalidateQueries({ queryKey: ['group-posts', groupId] });
     } catch (error: any) {
-      console.error('Error toggling pin:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to update post',
-        variant: 'destructive',
-      });
+      if (prev) queryClient.setQueryData(queryKey, prev);
+      toast({ title: 'Error', description: error.message || 'Failed to update post', variant: 'destructive' });
     }
   };
 
   const joinLfgPost = async (postId: string) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return false;
+    const prev = queryClient.getQueryData<GroupPost[]>(queryKey);
+    queryClient.setQueryData<GroupPost[]>(queryKey, (p = []) =>
+      p.map((post) =>
+        post.id === postId
+          ? { ...post, user_joined: true, participant_count: (post.participant_count || 0) + 1 }
+          : post,
+      ),
+    );
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
-
       const { error } = await supabase
         .from('group_post_participants')
-        .insert({
-          post_id: postId,
-          user_id: user.id,
-          status: 'joined',
-        });
-
+        .insert({ post_id: postId, user_id: user.id, status: 'joined' });
       if (error) throw error;
-
       toast({ title: "You're in!", description: 'You have joined this session' });
-      queryClient.invalidateQueries({ queryKey: ['group-posts', groupId] });
       return true;
     } catch (error: any) {
-      console.error('Error joining LFG post:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to join',
-        variant: 'destructive',
-      });
+      if (prev) queryClient.setQueryData(queryKey, prev);
+      toast({ title: 'Error', description: error.message || 'Failed to join', variant: 'destructive' });
       return false;
     }
   };
 
-  /**
-   * Cast / change / toggle-off a poll vote via the cast_group_poll_vote RPC.
-   * Optimistically updates the local cache so the bars animate immediately
-   * — the realtime invalidation that follows reconciles with the server.
-   */
+  const leaveLfgPost = async (postId: string) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return false;
+    const prev = queryClient.getQueryData<GroupPost[]>(queryKey);
+    queryClient.setQueryData<GroupPost[]>(queryKey, (p = []) =>
+      p.map((post) =>
+        post.id === postId
+          ? { ...post, user_joined: false, participant_count: Math.max(0, (post.participant_count || 0) - 1) }
+          : post,
+      ),
+    );
+    try {
+      const { error } = await supabase
+        .from('group_post_participants')
+        .delete()
+        .eq('post_id', postId)
+        .eq('user_id', user.id);
+      if (error) throw error;
+      toast({ title: 'Left', description: 'You have left this session' });
+      return true;
+    } catch (error: any) {
+      if (prev) queryClient.setQueryData(queryKey, prev);
+      toast({ title: 'Error', description: error.message || 'Failed to leave', variant: 'destructive' });
+      return false;
+    }
+  };
+
+  /** Cast / change / toggle-off a poll vote (optimistic, unchanged behavior). */
   const castPollVote = async (postId: string, optionIdx: number) => {
+    const prev = queryClient.getQueryData<GroupPost[]>(queryKey);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      // Optimistic update: mutate cached posts in place so the bar moves now.
-      queryClient.setQueryData<GroupPost[] | undefined>(['group-posts', groupId], (prev) => {
-        if (!prev) return prev;
-        return prev.map((p) => {
+      queryClient.setQueryData<GroupPost[]>(queryKey, (prevPosts) => {
+        if (!prevPosts) return prevPosts;
+        return prevPosts.map((p) => {
           if (p.id !== postId || !p.poll_options) return p;
           const counts = [...(p.poll_vote_counts ?? p.poll_options.map(() => 0))];
           const wasVote = p.poll_my_vote;
           let nextVote: number | null = optionIdx;
           if (wasVote === optionIdx) {
-            // Toggle off
             counts[optionIdx] = Math.max(0, counts[optionIdx] - 1);
             nextVote = null;
           } else {
@@ -387,47 +449,31 @@ export function useGroupPosts(groupId: string | undefined) {
       if (error) throw error;
     } catch (error: any) {
       console.error('Error casting poll vote:', error);
-      toast({
-        title: 'Vote failed',
-        description: error.message || 'Could not record your vote',
-        variant: 'destructive',
-      });
-      // Reconcile on error
-      queryClient.invalidateQueries({ queryKey: ['group-posts', groupId] });
+      if (prev) queryClient.setQueryData(queryKey, prev);
+      toast({ title: 'Vote failed', description: error.message || 'Could not record your vote', variant: 'destructive' });
     }
   };
 
-  const leaveLfgPost = async (postId: string) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
-
-      const { error } = await supabase
-        .from('group_post_participants')
-        .delete()
-        .eq('post_id', postId)
-        .eq('user_id', user.id);
-
-      if (error) throw error;
-
-      toast({ title: 'Left', description: 'You have left this session' });
-      queryClient.invalidateQueries({ queryKey: ['group-posts', groupId] });
-      return true;
-    } catch (error: any) {
-      console.error('Error leaving LFG post:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to leave',
-        variant: 'destructive',
-      });
-      return false;
-    }
+  type CreatePostInput = {
+    type: GroupPost['type'];
+    title?: string;
+    content?: string;
+    session_date?: string;
+    session_time?: string;
+    max_players?: number;
+    pinned?: boolean;
+    image_url?: string;
+    poll_options?: { idx: number; text: string }[];
   };
 
   return {
     posts,
     loading,
-    createPost: createPostMutation.mutateAsync,
+    createPost: (data: CreatePostInput) =>
+      createPostMutation.mutateAsync({
+        ...data,
+        _clientId: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      }),
     deletePost: deletePostMutation.mutateAsync,
     toggleReaction,
     togglePin,

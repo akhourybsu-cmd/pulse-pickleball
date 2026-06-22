@@ -9,12 +9,14 @@ export interface GroupMessage {
   content: string;
   created_at: string;
   updated_at: string;
-  /** Phase 2 polish — see migration 20260617210000_group_chat_polish. */
   is_pinned?: boolean;
   pinned_by?: string | null;
   pinned_at?: string | null;
   edited_at?: string | null;
   image_url?: string | null;
+  /** Client-only fields for optimistic UI. Never persisted. */
+  _status?: 'sending' | 'sent' | 'failed';
+  _clientId?: string;
   profile?: {
     id: string;
     display_name: string | null;
@@ -24,7 +26,6 @@ export interface GroupMessage {
 }
 
 async function fetchGroupMessages(groupId: string): Promise<GroupMessage[]> {
-  // Fetch last 100 messages
   const { data: messagesData, error } = await supabase
     .from('group_messages')
     .select('*')
@@ -34,35 +35,39 @@ async function fetchGroupMessages(groupId: string): Promise<GroupMessage[]> {
 
   if (error) throw error;
 
-  // Fetch profiles for message authors
   const userIds = [...new Set((messagesData || []).map(m => m.user_id))];
-  const { data: profilesData } = await supabase
-    .from('profiles')
-    .select('id, display_name, full_name, avatar_url')
-    .in('id', userIds);
+  const { data: profilesData } = userIds.length
+    ? await supabase
+        .from('profiles')
+        .select('id, display_name, full_name, avatar_url')
+        .in('id', userIds)
+    : { data: [] as any[] };
 
   const profilesMap = new Map((profilesData || []).map(p => [p.id, p]));
 
   return (messagesData || []).map(m => ({
     ...m,
     profile: profilesMap.get(m.user_id),
+    _status: 'sent' as const,
   })) as GroupMessage[];
 }
 
 export function useGroupChat(groupId: string | undefined) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const queryKey = ['group-messages', groupId];
 
   const { data: messages = [], isLoading: loading, refetch } = useQuery({
-    queryKey: ['group-messages', groupId],
+    queryKey,
     queryFn: () => fetchGroupMessages(groupId!),
-    staleTime: 10 * 1000, // 10 seconds - shorter for chat
-    gcTime: 5 * 60 * 1000, // 5 minutes
+    // Realtime is the source of truth — we patch the cache directly.
+    staleTime: Infinity,
+    gcTime: 10 * 60 * 1000,
     enabled: !!groupId,
   });
 
   const sendMessageMutation = useMutation({
-    mutationFn: async (input: { content: string; imageUrl?: string }) => {
+    mutationFn: async (input: { content: string; imageUrl?: string; clientId: string }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
@@ -72,25 +77,57 @@ export function useGroupChat(groupId: string | undefined) {
           group_id: groupId,
           user_id: user.id,
           content: input.content.trim(),
-          // image_url column is added by 20260617210000_group_chat_polish;
-          // older DB schemas silently drop it (PostgREST returns the
-          // inserted row without it).
           ...(input.imageUrl ? { image_url: input.imageUrl } : {}),
         } as any)
         .select()
         .single();
 
       if (error) throw error;
-      return data;
+      return { row: data, clientId: input.clientId, userId: user.id };
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['group-messages', groupId] });
+    onMutate: async ({ content, imageUrl, clientId }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      // Pull author profile from cache if we have it
+      const cachedAuthor = (queryClient.getQueryData<GroupMessage[]>(queryKey) || [])
+        .find((m) => m.user_id === user.id)?.profile;
+      const now = new Date().toISOString();
+      const optimistic: GroupMessage = {
+        id: `temp-${clientId}`,
+        _clientId: clientId,
+        _status: 'sending',
+        group_id: groupId!,
+        user_id: user.id,
+        content: content.trim(),
+        image_url: imageUrl ?? null,
+        created_at: now,
+        updated_at: now,
+        profile: cachedAuthor,
+      };
+      queryClient.setQueryData<GroupMessage[]>(queryKey, (prev = []) => [...prev, optimistic]);
     },
-    onError: (error: any) => {
+    onSuccess: ({ row, clientId, userId }) => {
+      queryClient.setQueryData<GroupMessage[]>(queryKey, (prev = []) => {
+        const author = prev.find((m) => m.user_id === userId)?.profile;
+        // If realtime already replaced the temp row, do nothing
+        if (prev.some((m) => m.id === row.id)) {
+          return prev.filter((m) => m._clientId !== clientId || m.id === row.id);
+        }
+        return prev.map((m) =>
+          m._clientId === clientId
+            ? { ...(row as any), profile: author, _status: 'sent' as const }
+            : m,
+        );
+      });
+    },
+    onError: (error: any, { clientId }) => {
+      queryClient.setQueryData<GroupMessage[]>(queryKey, (prev = []) =>
+        prev.map((m) => (m._clientId === clientId ? { ...m, _status: 'failed' as const } : m)),
+      );
       console.error('Error sending message:', error);
       toast({
-        title: 'Error',
-        description: error.message || 'Failed to send message',
+        title: 'Message failed',
+        description: error.message || 'Tap to retry',
         variant: 'destructive',
       });
     },
@@ -102,27 +139,21 @@ export function useGroupChat(groupId: string | undefined) {
         .from('group_messages')
         .delete()
         .eq('id', messageId);
-
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['group-messages', groupId] });
+    onMutate: async (messageId) => {
+      const prev = queryClient.getQueryData<GroupMessage[]>(queryKey);
+      queryClient.setQueryData<GroupMessage[]>(queryKey, (p = []) =>
+        p.filter((m) => m.id !== messageId),
+      );
+      return { prev };
     },
-    onError: (error: any) => {
-      console.error('Error deleting message:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to delete message',
-        variant: 'destructive',
-      });
+    onError: (error: any, _id, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(queryKey, ctx.prev);
+      toast({ title: 'Error', description: error.message || 'Failed to delete', variant: 'destructive' });
     },
   });
 
-  /**
-   * Edit your own message content. Sets edited_at = now() so the UI can
-   * render a small "(edited)" hint. Existing RLS lets the author update
-   * their row, which is exactly what we want.
-   */
   const editMessageMutation = useMutation({
     mutationFn: async ({ messageId, content }: { messageId: string; content: string }) => {
       const { error } = await supabase
@@ -134,41 +165,43 @@ export function useGroupChat(groupId: string | undefined) {
         .eq('id', messageId);
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['group-messages', groupId] });
+    onMutate: async ({ messageId, content }) => {
+      const prev = queryClient.getQueryData<GroupMessage[]>(queryKey);
+      queryClient.setQueryData<GroupMessage[]>(queryKey, (p = []) =>
+        p.map((m) =>
+          m.id === messageId
+            ? { ...m, content: content.trim(), edited_at: new Date().toISOString() }
+            : m,
+        ),
+      );
+      return { prev };
     },
-    onError: (error: any) => {
-      console.error('Error editing message:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to update message',
-        variant: 'destructive',
-      });
+    onError: (error: any, _v, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(queryKey, ctx.prev);
+      toast({ title: 'Error', description: error.message || 'Failed to update message', variant: 'destructive' });
     },
   });
 
-  /**
-   * Pin / unpin a chat message. Goes through the set_group_message_pin
-   * SECURITY DEFINER RPC so the role check (owner/moderator/author)
-   * happens server-side, and so that pinning one message implicitly
-   * unpins any other pinned message in the same group.
-   */
   const togglePinMessage = async (messageId: string, pinned: boolean) => {
+    // Optimistic: flip pin state on the target, clear other pins.
+    const prev = queryClient.getQueryData<GroupMessage[]>(queryKey);
+    queryClient.setQueryData<GroupMessage[]>(queryKey, (p = []) =>
+      p.map((m) => {
+        if (m.id === messageId) return { ...m, is_pinned: pinned };
+        if (pinned && m.is_pinned) return { ...m, is_pinned: false };
+        return m;
+      }),
+    );
     try {
       const { error } = await supabase.rpc('set_group_message_pin', {
         p_message_id: messageId,
         p_pinned: pinned,
       });
       if (error) throw error;
-      queryClient.invalidateQueries({ queryKey: ['group-messages', groupId] });
       toast({ title: pinned ? 'Pinned' : 'Unpinned' });
     } catch (error: any) {
-      console.error('Error toggling pin:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to update pin',
-        variant: 'destructive',
-      });
+      if (prev) queryClient.setQueryData(queryKey, prev);
+      toast({ title: 'Error', description: error.message || 'Failed to update pin', variant: 'destructive' });
     }
   };
 
@@ -176,10 +209,15 @@ export function useGroupChat(groupId: string | undefined) {
     messages,
     loading,
     sending: sendMessageMutation.isPending,
-    sendMessage: (content: string, imageUrl?: string) =>
-      sendMessageMutation.mutateAsync({ content, imageUrl }),
+    sendMessage: (content: string, imageUrl?: string, clientId?: string) =>
+      sendMessageMutation.mutateAsync({
+        content,
+        imageUrl,
+        clientId: clientId || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      }),
     deleteMessage: deleteMessageMutation.mutateAsync,
-    editMessage: editMessageMutation.mutateAsync,
+    editMessage: (messageId: string, content: string) =>
+      editMessageMutation.mutateAsync({ messageId, content }),
     togglePinMessage,
     refetch,
   };
