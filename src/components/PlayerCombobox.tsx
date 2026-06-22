@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useDebounce } from "@/hooks/useDebounce";
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -40,16 +41,23 @@ export function PlayerCombobox({
 }: PlayerComboboxProps) {
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const debouncedQuery = useDebounce(searchQuery, 120);
 
   const selectedPlayer = players.find((player) => player.id === value);
-  
-  // Filter players based on search query
-  const filteredPlayers = searchQuery.trim() === ""
-    ? []
-    : players.filter((player) => {
-        const displayName = player.display_name || player.full_name;
-        return displayName.toLowerCase().includes(searchQuery.toLowerCase());
-      });
+
+  // Filter against the debounced query and cap to 50 visible results so the
+  // popover stays light even for large player lists.
+  const filteredPlayers = useMemo(() => {
+    const q = debouncedQuery.trim().toLowerCase();
+    if (!q) return [] as Player[];
+    const out: Player[] = [];
+    for (const p of players) {
+      const name = (p.display_name || p.full_name || "").toLowerCase();
+      if (name.includes(q)) out.push(p);
+      if (out.length >= 50) break;
+    }
+    return out;
+  }, [players, debouncedQuery]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -73,10 +81,11 @@ export function PlayerCombobox({
       </PopoverTrigger>
       <PopoverContent className="w-full p-0" align="start">
         <Command shouldFilter={false}>
-          <CommandInput 
-            placeholder={placeholder} 
+          <CommandInput
+            placeholder={placeholder}
             value={searchQuery}
             onValueChange={setSearchQuery}
+            autoFocus
           />
           <CommandList>
             <CommandEmpty>

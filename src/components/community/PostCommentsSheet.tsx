@@ -173,10 +173,10 @@ export function PostCommentsSheet({
               onChange={(e) => setNewComment(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Write a comment..."
-              disabled={creating}
+              autoFocus
             />
-            <Button onClick={handleSubmit} disabled={!newComment.trim() || creating}>
-              {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            <Button onClick={handleSubmit} disabled={!newComment.trim()}>
+              <Send className="h-4 w-4" />
             </Button>
           </div>
         )}
