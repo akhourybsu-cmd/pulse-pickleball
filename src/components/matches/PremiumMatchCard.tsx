@@ -88,7 +88,6 @@ export function PremiumMatchCard(props: PremiumMatchCardProps) {
   const myScore = myTeam === 1 ? team1Score : team2Score;
   const theirScore = myTeam === 1 ? team2Score : team1Score;
 
-  const initials = resolvePlayerInitials;
 
   const smartDate = useMemo(() => {
     try {
