@@ -29,6 +29,7 @@ export function PlayerSelectionStep({ formData, updateFormData }: PlayerSelectio
   const [searchResults, setSearchResults] = useState<Player[]>([]);
   const [recentPlayers, setRecentPlayers] = useState<Player[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentUserProfile, setCurrentUserProfile] = useState<Player | null>(null);
   const [loading, setLoading] = useState(false);
   const [showGuestModal, setShowGuestModal] = useState(false);
   const [guestData, setGuestData] = useState({ name: '', notes: '' });
@@ -45,10 +46,16 @@ export function PlayerSelectionStep({ formData, updateFormData }: PlayerSelectio
     
     setCurrentUserId(user.id);
 
-    // Submitter is no longer auto-filled — they must add themselves like any
-    // other player so the wizard treats every participant uniformly.
+    // Fetch current user profile so they can quick-pick themselves
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('id, display_name, full_name, avatar_url, dupr_rating')
+      .eq('id', user.id)
+      .single();
 
-
+    if (profile) {
+      setCurrentUserProfile(profile as Player);
+    }
 
     // Load recent players from match history
     const { data: recentMatches } = await supabase
@@ -217,6 +224,16 @@ export function PlayerSelectionStep({ formData, updateFormData }: PlayerSelectio
       {/* Quick Pick Chips */}
       {!searchQuery && (
         <div className="flex flex-wrap gap-2">
+          {currentUserProfile && !selectedIds.has(currentUserProfile.id) && (
+            <Badge
+              key="you"
+              variant="secondary"
+              className="cursor-pointer hover:bg-accent py-1.5 px-3 bg-primary/10 text-primary border-primary/20"
+              onClick={() => handlePlayerSelect(currentUserProfile)}
+            >
+              You
+            </Badge>
+          )}
           {filteredRecent.slice(0, 4).map(player => (
             <Badge
               key={player.id}
