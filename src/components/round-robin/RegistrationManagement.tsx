@@ -31,7 +31,7 @@ export function RegistrationManagement({
           player_id,
           registration_status,
           joined_at,
-          profiles(full_name, display_name)
+          profiles:profiles_public!round_robin_players_player_id_fkey(full_name, display_name)
         `)
         .eq('event_id', eventId)
         .order('joined_at', { ascending: true });
