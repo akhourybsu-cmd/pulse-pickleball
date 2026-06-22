@@ -88,8 +88,8 @@ const TournamentTeamView = () => {
               public_view_enabled
             )
           ),
-          player1:profiles!tournaments_teams_player1_id_fkey(display_name, full_name),
-          player2:profiles!tournaments_teams_player2_id_fkey(display_name, full_name)
+          player1:profiles_public!tournaments_teams_player1_id_fkey(display_name, full_name),
+          player2:profiles_public!tournaments_teams_player2_id_fkey(display_name, full_name)
         `)
         .eq('id', teamId)
         .single();
