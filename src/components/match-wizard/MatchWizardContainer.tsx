@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } [MOCK - truncated for brevity] ... } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
