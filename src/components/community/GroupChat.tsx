@@ -79,12 +79,20 @@ export const GroupChat = memo(function GroupChat({
     fetchDisplayName();
   }, [currentUserId]);
 
-  // Auto-scroll to bottom when new messages arrive
+  // Auto-scroll to bottom only when (a) user is near the bottom already, or
+  // (b) the newest message is from the current user. Avoids yanking the view
+  // while reading older history as new messages stream in.
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    const el = scrollRef.current;
+    if (!el) return;
+    const lastMsg = messages[messages.length - 1];
+    const isOwnLast = lastMsg?.user_id === currentUserId;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+    if (isOwnLast || nearBottom) {
+      el.scrollTop = el.scrollHeight;
     }
-  }, [messages]);
+  }, [messages, currentUserId]);
+
 
   // Build a preview URL when an image is staged.
   useEffect(() => {
@@ -113,22 +121,28 @@ export const GroupChat = memo(function GroupChat({
 
   const handleSend = async () => {
     const trimmed = newMessage.trim();
-    if ((!trimmed && !pendingImage) || sending || uploading) return;
+    if ((!trimmed && !pendingImage) || uploading) return;
 
-    let imageUrl: string | undefined;
-    if (pendingImage) {
-      const result = await uploadImage(pendingImage);
-      if (!result) return; // toast surfaced inside hook
-      imageUrl = result.url;
-    }
-
+    // Capture & clear synchronously so the input is ready for the next message
+    // before the network round-trip completes.
+    const stagedImage = pendingImage;
     const content = trimmed;
     setNewMessage('');
     setPendingImage(null);
     stopTyping();
-    await sendMessage(content, imageUrl);
+
+    let imageUrl: string | undefined;
+    if (stagedImage) {
+      const result = await uploadImage(stagedImage);
+      if (!result) return; // toast surfaced inside hook
+      imageUrl = result.url;
+    }
+
+    // sendMessage applies the optimistic bubble immediately via React Query.
+    sendMessage(content, imageUrl).catch(() => {/* error toast handled in hook */});
     textareaRef.current?.focus();
   };
+
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setNewMessage(e.target.value);
@@ -356,7 +370,7 @@ export const GroupChat = memo(function GroupChat({
               onFocus={() => setFocusMode(true)}
               onBlur={() => setFocusMode(false)}
               placeholder={pendingImage ? 'Add a caption (optional)…' : 'Message...'}
-              disabled={sending || uploading}
+              disabled={uploading}
               rows={1}
               className={cn(
                 "resize-none py-2 sm:py-2.5 pr-9 sm:pr-10 text-sm",
@@ -370,6 +384,7 @@ export const GroupChat = memo(function GroupChat({
                 overflow: newMessage.split('\n').length > 3 || focusMode ? 'auto' : 'hidden'
               }}
             />
+
 
             {/* Image Button (inside input) — picks a file and stages it
                 in pendingImage; actual upload happens on send. */}
@@ -402,7 +417,7 @@ export const GroupChat = memo(function GroupChat({
             <Button
               size="icon"
               onClick={handleSend}
-              disabled={(!newMessage.trim() && !pendingImage) || sending || uploading}
+              disabled={(!newMessage.trim() && !pendingImage) || uploading}
               className={cn(
                 "h-9 w-9 sm:h-10 sm:w-10 shrink-0 rounded-full transition-all",
                 (newMessage.trim() || pendingImage)
@@ -410,12 +425,13 @@ export const GroupChat = memo(function GroupChat({
                   : "bg-muted text-muted-foreground"
               )}
             >
-              {sending || uploading ? (
+              {uploading ? (
                 <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin" />
               ) : (
                 <Send className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               )}
             </Button>
+
           </motion.div>
         </div>
       </motion.div>
