@@ -1,9 +1,6 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { TournamentReadinessCard } from "./TournamentReadinessCard";
-import type { ProfileCompletenessResult } from "@/lib/profileCompleteness";
 import { differenceInYears } from "date-fns";
 
 interface TournamentInfoTabProps {
@@ -11,19 +8,14 @@ interface TournamentInfoTabProps {
     phone_number: string | null;
     date_of_birth: string | null;
     gender: string | null;
-    shirt_size: string | null;
-    emergency_contact_name: string | null;
-    emergency_contact_phone: string | null;
     skill_level_self: string | null;
   };
   onFormChange: (updates: Partial<TournamentInfoTabProps['formData']>) => void;
-  completeness: ProfileCompletenessResult;
 }
 
 export function TournamentInfoTab({
   formData,
   onFormChange,
-  completeness,
 }: TournamentInfoTabProps) {
   // Calculate age if date of birth is provided
   const age = formData.date_of_birth 
