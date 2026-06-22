@@ -287,10 +287,10 @@ export default function RoundRobinDetail() {
         .from("round_robin_schedule")
         .select(`
           *,
-          a1_profile:profiles!round_robin_schedule_a1_player_id_fkey(display_name, full_name),
-          a2_profile:profiles!round_robin_schedule_a2_player_id_fkey(display_name, full_name),
-          b1_profile:profiles!round_robin_schedule_b1_player_id_fkey(display_name, full_name),
-          b2_profile:profiles!round_robin_schedule_b2_player_id_fkey(display_name, full_name)
+          a1_profile:profiles_public!round_robin_schedule_a1_player_id_fkey(display_name, full_name),
+          a2_profile:profiles_public!round_robin_schedule_a2_player_id_fkey(display_name, full_name),
+          b1_profile:profiles_public!round_robin_schedule_b1_player_id_fkey(display_name, full_name),
+          b2_profile:profiles_public!round_robin_schedule_b2_player_id_fkey(display_name, full_name)
         `)
         .eq("event_id", id)
         .order("round_no")
