@@ -454,14 +454,24 @@ export function useGroupPosts(groupId: string | undefined) {
     }
   };
 
+  type CreatePostInput = {
+    type: GroupPost['type'];
+    title?: string;
+    content?: string;
+    session_date?: string;
+    session_time?: string;
+    max_players?: number;
+    pinned?: boolean;
+    image_url?: string;
+    poll_options?: { idx: number; text: string }[];
+  };
+
   return {
     posts,
     loading,
-    createPost: (data: Parameters<typeof createPostMutation.mutateAsync>[0] extends infer T
-      ? T extends { _clientId: string } ? Omit<T, '_clientId'> : T
-      : never) =>
+    createPost: (data: CreatePostInput) =>
       createPostMutation.mutateAsync({
-        ...(data as any),
+        ...data,
         _clientId: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       }),
     deletePost: deletePostMutation.mutateAsync,
