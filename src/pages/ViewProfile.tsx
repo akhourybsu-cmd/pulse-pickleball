@@ -428,7 +428,53 @@ const ViewProfile = () => {
               </h2>
               <LastPlayedBadge days={getDaysSinceLastMatch()} />
             </div>
-            <RecentMatches matches={recentMatches} />
+            {/* W/L sparkline summary */}
+            <div className="flex gap-1.5 mb-3 overflow-x-auto scrollbar-hide">
+              {recentMatches.map((m) => (
+                <div
+                  key={`dot-${m.id}`}
+                  className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                    m.won
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-destructive/80 text-destructive-foreground'
+                  }`}
+                >
+                  {m.won ? 'W' : 'L'}
+                </div>
+              ))}
+            </div>
+            <div className="space-y-2">
+              {recentMatches.map((m) => (
+                <PremiumMatchCard
+                  key={m.id}
+                  perspective="other"
+                  matchId={m.id}
+                  matchDate={m.match_date}
+                  team1Score={m.team1_score}
+                  team2Score={m.team2_score}
+                  myTeam={m.my_team}
+                  won={m.won}
+                  playerName={displayName}
+                  playerAvatarUrl={profile.avatar_url}
+                  partnerName={m.partner_name}
+                  partnerId={m.partner_id}
+                  partnerAvatarUrl={m.partner_avatar_url}
+                  opponent1Name={m.opponent1_name}
+                  opponent1Id={m.opponent1_id}
+                  opponent1AvatarUrl={m.opponent1_avatar_url}
+                  opponent2Name={m.opponent2_name}
+                  opponent2Id={m.opponent2_id}
+                  opponent2AvatarUrl={m.opponent2_avatar_url}
+                  ratingChange={m.rating_change}
+                  courtName={m.court_name}
+                  source={m.source}
+                  verifiedCount={m.verified_count}
+                  totalPlayers={m.total_players}
+                  isCurrentUserVerified={false}
+                  showVerifyActions={false}
+                />
+              ))}
+            </div>
           </div>
         )}
 
