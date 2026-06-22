@@ -40,7 +40,7 @@ export function useGroupFiles(groupId: string | undefined) {
       // Fetch uploader profiles
       const uploaderIds = [...new Set((filesData || []).map(f => f.uploader_id))];
       const { data: profilesData } = await supabase
-        .from('profiles')
+        .from('profiles_public')
         .select('id, display_name, full_name, avatar_url')
         .in('id', uploaderIds);
 
