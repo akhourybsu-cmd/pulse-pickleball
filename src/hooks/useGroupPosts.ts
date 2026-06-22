@@ -64,7 +64,7 @@ async function fetchGroupPosts(groupId: string): Promise<GroupPost[]> {
   // Fetch profiles for post authors
   const userIds = [...new Set((postsData || []).map(p => p.user_id))];
   const { data: profilesData } = await supabase
-    .from('profiles')
+    .from('profiles_public')
     .select('id, display_name, full_name, avatar_url, current_rating')
     .in('id', userIds);
 
