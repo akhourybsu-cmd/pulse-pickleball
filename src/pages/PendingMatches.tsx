@@ -88,7 +88,7 @@ const PendingMatches = () => {
           .select(`
             player_id,
             team,
-            profiles(id, display_name, full_name, first_name, last_name, avatar_url)
+            profiles:profiles_public!match_participants_player_id_fkey(id, display_name, full_name, first_name, last_name, avatar_url)
           `)
           .eq("match_id", p.match_id);
 
