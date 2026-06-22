@@ -28,11 +28,6 @@ interface Profile {
   play_side: string | null;
   paddle_brand: string | null;
   paddle_model: string | null;
-  home_court_id: string | null;
-  courts?: {
-    id: string;
-    name: string;
-  } | null;
 }
 
 interface RecentMatch {
@@ -78,12 +73,7 @@ const ViewProfile = () => {
           handedness,
           play_side,
           paddle_brand,
-          paddle_model,
-          home_court_id,
-          courts:home_court_id (
-            id,
-            name
-          )
+          paddle_model
         `)
         .eq("id", userId)
         .single();
@@ -316,13 +306,6 @@ const ViewProfile = () => {
                   <span className="text-primary/70 text-xs">Rating</span>
                 </div>
 
-                {/* Home court */}
-                {profile.courts && (
-                  <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                    <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
-                    <span className="truncate">{profile.courts.name}</span>
-                  </div>
-                )}
               </div>
 
               {/* Win Rate Ring */}

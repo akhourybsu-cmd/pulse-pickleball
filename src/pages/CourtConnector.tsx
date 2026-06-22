@@ -33,7 +33,6 @@ interface CourtWithLFGCount extends Court {
   lfgCount: number;
   isHidden: boolean;
   isAdded: boolean;
-  isHomeCourt?: boolean;
 }
 
 export default function CourtConnector() {
@@ -46,7 +45,7 @@ export default function CourtConnector() {
   const [loading, setLoading] = useState(true);
   const [addCourtDialogOpen, setAddCourtDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [homeCourtId, setHomeCourtId] = useState<string | null>(null);
+  
 
   useEffect(() => {
     checkUser();
@@ -81,15 +80,6 @@ export default function CourtConnector() {
     }
     
     setLoading(true);
-
-    // Fetch user's home court
-    const { data: profileData } = await supabase
-      .from("profiles_public")
-      .select("home_court_id")
-      .eq("id", currentUserId)
-      .single();
-
-    setHomeCourtId(profileData?.home_court_id || null);
 
     // Fetch all courts
     const { data: courtsData, error: courtsError } = await supabase
@@ -149,16 +139,11 @@ export default function CourtConnector() {
           lfgCount: lfgCountMap.get(court.id) || 0,
           isHidden: pref.hidden,
           isAdded: true,
-          isHomeCourt: court.id === profileData?.home_court_id,
         };
       }) || [];
 
-    // Sort courts: home court first, then by name
-    courtsWithData.sort((a, b) => {
-      if (a.isHomeCourt && !b.isHomeCourt) return -1;
-      if (!a.isHomeCourt && b.isHomeCourt) return 1;
-      return a.name.localeCompare(b.name);
-    });
+    // Sort courts by name
+    courtsWithData.sort((a, b) => a.name.localeCompare(b.name));
 
     setCourts(courtsWithData);
     setLoading(false);
@@ -363,11 +348,7 @@ export default function CourtConnector() {
           {visibleCourts.map((court) => (
             <Card 
               key={court.id}
-              className={`cursor-pointer rounded-2xl border-2 shadow-lg transition-all duration-300 h-full ${
-                court.isHomeCourt 
-                  ? 'border-primary shadow-primary/20 hover:shadow-primary/30 bg-gradient-to-br from-card to-primary/5' 
-                  : 'border-border hover:shadow-md bg-card'
-              } ${court.isHidden ? 'opacity-60' : ''}`}
+              className={`cursor-pointer rounded-2xl border-2 border-border shadow-lg hover:shadow-md bg-card transition-all duration-300 h-full ${court.isHidden ? 'opacity-60' : ''}`}
               onClick={() => {
                 if (court.id === '4a5d9fb8-981b-42f1-9504-595cb8f22fca') {
                   navigate('/masonfield');
@@ -381,9 +362,6 @@ export default function CourtConnector() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <CardTitle className="text-xl">{court.name}</CardTitle>
-                      {court.isHomeCourt && (
-                        <Badge variant="default" className="text-xs">Home Court</Badge>
-                      )}
                     </div>
                     <CardDescription className="flex items-center gap-1 mt-1.5">
                       <MapPin className="w-3 h-3" />
