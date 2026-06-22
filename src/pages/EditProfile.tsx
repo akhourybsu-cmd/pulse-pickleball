@@ -1,23 +1,26 @@
-import { useState, useEffect, useRef, useMemo } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useState, useEffect, useMemo } from "react";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Save, UserCog, User, Trophy, Gamepad2, Bell, Shield } from "lucide-react";
+import { UserCog, User, MapPin, Trophy, Gamepad2, Bell, KeyRound, ChevronRight, Loader2 } from "lucide-react";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { cn } from "@/lib/utils";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { PlayerPageHeader } from "@/components/layout/PlayerPageHeader";
 
-// Profile tab components
-import { ProfileBasicsTab } from "@/components/profile/ProfileBasicsTab";
+import {
+  ProfileIdentitySection,
+  ProfileLocationSection,
+} from "@/components/profile/ProfileBasicsTab";
 import { TournamentInfoTab } from "@/components/profile/TournamentInfoTab";
 import { PlayStyleTab } from "@/components/profile/PlayStyleTab";
-import { NotificationsTab } from "@/components/profile/NotificationsTab";
-import { SecurityTab } from "@/components/profile/SecurityTab";
 import { TournamentReadinessCard } from "@/components/profile/TournamentReadinessCard";
 
-// Profile completeness utilities
 import { calculateProfileCompleteness } from "@/lib/profileCompleteness";
 
 interface Court {
@@ -32,105 +35,68 @@ interface ProfileData {
   first_name: string | null;
   last_name: string | null;
   avatar_url: string | null;
-  phonetic_name: string | null;
   town: string | null;
   state: string | null;
-  notify_score_email: boolean;
-  notify_score_sms: boolean;
-  notify_score_push: boolean;
-  notify_badges_email: boolean;
-  notify_badges_sms: boolean;
-  notify_badges_push: boolean;
   home_court_id: string | null;
   handedness: string | null;
   play_side: string | null;
-  paddle_brand: string | null;
-  paddle_model: string | null;
   phone_number: string | null;
   date_of_birth: string | null;
   gender: string | null;
-  shirt_size: string | null;
-  emergency_contact_name: string | null;
-  emergency_contact_phone: string | null;
   skill_level_self: string | null;
 }
+
+type SectionKey = "identity" | "location" | "tournament" | "playstyle";
+
+const focusToSection = (focus: string | null): SectionKey | null => {
+  if (focus === "tournament") return "tournament";
+  if (focus === "playstyle") return "playstyle";
+  if (focus === "location") return "location";
+  if (focus === "basics") return "identity";
+  return null;
+};
 
 const EditProfile = () => {
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [resettingPassword, setResettingPassword] = useState(false);
+  const [savingSection, setSavingSection] = useState<SectionKey | null>(null);
   const [courts, setCourts] = useState<Court[]>([]);
-  const [highlightLocation, setHighlightLocation] = useState(false);
-  const locationSectionRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  
-  // Tab state with URL param support
-  const focusParam = searchParams.get('focus');
-  const returnUrl = searchParams.get('return');
-  const [activeTab, setActiveTab] = useState(() => {
-    if (focusParam === 'tournament') return 'tournament';
-    if (focusParam === 'playstyle') return 'playstyle';
-    if (focusParam === 'notifications') return 'notifications';
-    if (focusParam === 'security') return 'security';
-    if (focusParam === 'location') return 'basics';
-    return 'basics';
-  });
+
+  const returnUrl = searchParams.get("return");
+  const focusSection = focusToSection(searchParams.get("focus"));
+
+  const [openSections, setOpenSections] = useState<string[]>(
+    focusSection ? [focusSection] : ["identity"]
+  );
 
   const [formData, setFormData] = useState<ProfileData>({
     display_name: null,
     first_name: null,
     last_name: null,
     avatar_url: null,
-    phonetic_name: null,
     town: null,
     state: null,
-    notify_score_email: true,
-    notify_score_sms: false,
-    notify_score_push: true,
-    notify_badges_email: true,
-    notify_badges_sms: false,
-    notify_badges_push: true,
     home_court_id: null,
     handedness: null,
     play_side: null,
-    paddle_brand: null,
-    paddle_model: null,
     phone_number: null,
     date_of_birth: null,
     gender: null,
-    shirt_size: null,
-    emergency_contact_name: null,
-    emergency_contact_phone: null,
     skill_level_self: null,
   });
 
-  // Calculate profile completeness
   const completeness = useMemo(() => calculateProfileCompleteness(formData), [formData]);
-
-  // Section completion status for tab indicators
-  const sectionStatus = useMemo(() => ({
-    basics: completeness.sections.basics.status,
-    tournament: completeness.sections.tournament.status,
-    playStyle: completeness.sections.playStyle.status,
-  }), [completeness]);
-
-  // Scroll to location section if requested
-  useEffect(() => {
-    if (searchParams.get('focus') === 'location' && !loading && locationSectionRef.current) {
-      locationSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      setHighlightLocation(true);
-      const timer = setTimeout(() => setHighlightLocation(false), 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [searchParams, loading]);
 
   useEffect(() => {
     const fetchData = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
       if (!user) {
         navigate("/auth");
         return;
@@ -138,7 +104,6 @@ const EditProfile = () => {
 
       setUser(user);
 
-      // Fetch profile
       const { data: profileData, error } = await supabase
         .from("profiles")
         .select("*")
@@ -150,46 +115,29 @@ const EditProfile = () => {
         return;
       }
 
-      // Populate form with existing data
       setFormData({
         display_name: profileData.display_name,
         first_name: profileData.first_name,
         last_name: profileData.last_name,
         avatar_url: profileData.avatar_url,
-        phonetic_name: profileData.phonetic_name,
         town: profileData.town,
         state: profileData.state,
-        notify_score_email: profileData.notify_score_email ?? true,
-        notify_score_sms: profileData.notify_score_sms ?? false,
-        notify_score_push: profileData.notify_score_push ?? true,
-        notify_badges_email: profileData.notify_badges_email ?? true,
-        notify_badges_sms: profileData.notify_badges_sms ?? false,
-        notify_badges_push: profileData.notify_badges_push ?? true,
         home_court_id: profileData.home_court_id,
         handedness: profileData.handedness,
         play_side: profileData.play_side,
-        paddle_brand: profileData.paddle_brand,
-        paddle_model: profileData.paddle_model,
         phone_number: profileData.phone_number,
         date_of_birth: profileData.date_of_birth,
         gender: profileData.gender,
-        shirt_size: profileData.shirt_size,
-        emergency_contact_name: profileData.emergency_contact_name,
-        emergency_contact_phone: profileData.emergency_contact_phone,
         skill_level_self: profileData.skill_level_self,
       });
 
-      // Fetch courts
       const { data: courtsData } = await supabase
         .from("courts")
         .select("*")
         .order("state", { ascending: true })
         .order("city", { ascending: true });
 
-      if (courtsData) {
-        setCourts(courtsData);
-      }
-
+      if (courtsData) setCourts(courtsData);
       setLoading(false);
     };
 
@@ -197,20 +145,17 @@ const EditProfile = () => {
   }, [navigate]);
 
   const handleFormChange = (updates: Partial<ProfileData>) => {
-    setFormData(prev => ({ ...prev, ...updates }));
+    setFormData((prev) => ({ ...prev, ...updates }));
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !user?.id) return;
 
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
+    if (!file.type.startsWith("image/")) {
       toast.error("Please upload an image file");
       return;
     }
-
-    // Validate file size (5MB)
     if (file.size > 5242880) {
       toast.error("Image must be less than 5MB");
       return;
@@ -218,34 +163,32 @@ const EditProfile = () => {
 
     setUploading(true);
     try {
-      // Delete old avatar if exists
       if (formData.avatar_url) {
-        const oldPath = formData.avatar_url.split('/').pop();
+        const oldPath = formData.avatar_url.split("/").pop();
         if (oldPath) {
-          await supabase.storage
-            .from('avatars')
-            .remove([`${user.id}/${oldPath}`]);
+          await supabase.storage.from("avatars").remove([`${user.id}/${oldPath}`]);
         }
       }
 
-      // Upload new avatar
-      const fileExt = file.name.split('.').pop();
+      const fileExt = file.name.split(".").pop();
       const fileName = `${Date.now()}.${fileExt}`;
       const filePath = `${user.id}/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
-        .from('avatars')
+        .from("avatars")
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(filePath);
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("avatars").getPublicUrl(filePath);
 
-      setFormData(prev => ({ ...prev, avatar_url: publicUrl }));
-      toast.success("Profile picture uploaded!");
+      setFormData((prev) => ({ ...prev, avatar_url: publicUrl }));
+
+      // Persist avatar immediately
+      await supabase.from("profiles").update({ avatar_url: publicUrl }).eq("id", user.id);
+      toast.success("Profile picture updated");
     } catch (error) {
       console.error("Error uploading avatar:", error);
       toast.error("Failed to upload profile picture");
@@ -256,16 +199,13 @@ const EditProfile = () => {
 
   const handleRemoveAvatar = async () => {
     if (!user?.id || !formData.avatar_url) return;
-
     try {
-      const oldPath = formData.avatar_url.split('/').pop();
+      const oldPath = formData.avatar_url.split("/").pop();
       if (oldPath) {
-        await supabase.storage
-          .from('avatars')
-          .remove([`${user.id}/${oldPath}`]);
+        await supabase.storage.from("avatars").remove([`${user.id}/${oldPath}`]);
       }
-
-      setFormData(prev => ({ ...prev, avatar_url: null }));
+      setFormData((prev) => ({ ...prev, avatar_url: null }));
+      await supabase.from("profiles").update({ avatar_url: null }).eq("id", user.id);
       toast.success("Profile picture removed");
     } catch (error) {
       console.error("Error removing avatar:", error);
@@ -275,15 +215,12 @@ const EditProfile = () => {
 
   const handleResetPassword = async () => {
     if (!user?.email) return;
-
     setResettingPassword(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
         redirectTo: `${window.location.origin}/auth`,
       });
-
       if (error) throw error;
-
       toast.success("Password reset email sent! Check your inbox.");
     } catch (error) {
       console.error("Error sending password reset:", error);
@@ -293,49 +230,27 @@ const EditProfile = () => {
     }
   };
 
-  const handleSave = async () => {
+  const saveSection = async (section: SectionKey, payload: Partial<ProfileData>) => {
     if (!user?.id) return;
 
-    // Validate required fields
-    if (!formData.first_name?.trim() || !formData.last_name?.trim()) {
-      toast.error("First name and last name are required");
-      return;
-    }
-
-    setSaving(true);
-    try {
-      const { error } = await supabase
-        .from("profiles")
-        .update(formData)
-        .eq("id", user.id);
-
-      if (error) throw error;
-
-      toast.success("Profile updated successfully!");
-      
-      // If there's a return URL, navigate there instead of dashboard
-      if (returnUrl) {
-        navigate(returnUrl);
-      } else {
-        navigate("/player/dashboard");
+    if (section === "identity") {
+      if (!payload.first_name?.toString().trim() || !payload.last_name?.toString().trim()) {
+        toast.error("First and last name are required");
+        return;
       }
-    } catch (error) {
-      console.error("Error updating profile:", error);
-      toast.error("Failed to update profile");
-    } finally {
-      setSaving(false);
     }
-  };
 
-  // Status dot component for tabs
-  const StatusDot = ({ status }: { status: 'complete' | 'partial' | 'incomplete' }) => {
-    if (status === 'complete') return null;
-    return (
-      <span className={cn(
-        "w-2 h-2 rounded-full ml-1.5",
-        status === 'incomplete' ? "bg-destructive" : "bg-amber-500"
-      )} />
-    );
+    setSavingSection(section);
+    try {
+      const { error } = await supabase.from("profiles").update(payload).eq("id", user.id);
+      if (error) throw error;
+      toast.success("Saved");
+    } catch (error) {
+      console.error("Error saving section:", error);
+      toast.error("Failed to save");
+    } finally {
+      setSavingSection(null);
+    }
   };
 
   if (loading) {
@@ -346,6 +261,52 @@ const EditProfile = () => {
     );
   }
 
+  const SectionSaveButton = ({
+    section,
+    onClick,
+  }: {
+    section: SectionKey;
+    onClick: () => void;
+  }) => (
+    <Button
+      size="sm"
+      onClick={onClick}
+      disabled={savingSection === section}
+      className="w-full sm:w-auto"
+    >
+      {savingSection === section ? (
+        <>
+          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+          Saving...
+        </>
+      ) : (
+        "Save"
+      )}
+    </Button>
+  );
+
+  const SectionHeader = ({
+    icon: Icon,
+    title,
+    hint,
+  }: {
+    icon: typeof User;
+    title: string;
+    hint?: string;
+  }) => (
+    <div className="flex items-center gap-3 text-left w-full">
+      <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+        <Icon className="w-4 h-4 text-primary" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="text-sm font-medium">{title}</div>
+        {hint && (
+          <div className="text-xs text-muted-foreground truncate">{hint}</div>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <div>
       <PlayerPageHeader
@@ -353,122 +314,212 @@ const EditProfile = () => {
         title="Edit Profile"
         subtitle={formData.display_name || formData.first_name || "Your account settings"}
         background="gradient"
-        action={
-          <TournamentReadinessCard completeness={completeness} compact />
-        }
       />
 
-      <div className="container mx-auto px-4 pt-4 pb-8 max-w-3xl">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-5 mb-6 h-auto">
-            <TabsTrigger value="basics" className="flex items-center gap-1.5 py-2.5 px-2 text-xs sm:text-sm">
-              <User className="h-4 w-4 flex-shrink-0" />
-              <span className="hidden sm:inline">Basics</span>
-              <StatusDot status={sectionStatus.basics} />
-            </TabsTrigger>
-            <TabsTrigger value="tournament" className="flex items-center gap-1.5 py-2.5 px-2 text-xs sm:text-sm">
-              <Trophy className="h-4 w-4 flex-shrink-0" />
-              <span className="hidden sm:inline">Tournament</span>
-              <StatusDot status={sectionStatus.tournament} />
-            </TabsTrigger>
-            <TabsTrigger value="playstyle" className="flex items-center gap-1.5 py-2.5 px-2 text-xs sm:text-sm">
-              <Gamepad2 className="h-4 w-4 flex-shrink-0" />
-              <span className="hidden sm:inline">Play Style</span>
-              <StatusDot status={sectionStatus.playStyle} />
-            </TabsTrigger>
-            <TabsTrigger value="notifications" className="flex items-center gap-1.5 py-2.5 px-2 text-xs sm:text-sm">
-              <Bell className="h-4 w-4 flex-shrink-0" />
-              <span className="hidden sm:inline">Notifications</span>
-            </TabsTrigger>
-            <TabsTrigger value="security" className="flex items-center gap-1.5 py-2.5 px-2 text-xs sm:text-sm">
-              <Shield className="h-4 w-4 flex-shrink-0" />
-              <span className="hidden sm:inline">Security</span>
-            </TabsTrigger>
-          </TabsList>
+      <div className="container mx-auto px-4 pt-4 pb-24 max-w-2xl space-y-4">
+        <TournamentReadinessCard completeness={completeness} />
 
-          <TabsContent value="basics">
-            <ProfileBasicsTab
-              formData={{
-                first_name: formData.first_name,
-                last_name: formData.last_name,
-                display_name: formData.display_name,
-                avatar_url: formData.avatar_url,
-                phonetic_name: formData.phonetic_name,
-                town: formData.town,
-                state: formData.state,
-              }}
-              onFormChange={handleFormChange}
-              onFileUpload={handleFileUpload}
-              onRemoveAvatar={handleRemoveAvatar}
-              uploading={uploading}
-              highlightLocation={highlightLocation}
-              locationRef={locationSectionRef}
-            />
-          </TabsContent>
+        <Accordion
+          type="multiple"
+          value={openSections}
+          onValueChange={setOpenSections}
+          className="space-y-3"
+        >
+          <AccordionItem
+            value="identity"
+            className="border rounded-xl bg-card px-4 data-[state=open]:shadow-sm"
+          >
+            <AccordionTrigger className="hover:no-underline py-3">
+              <SectionHeader
+                icon={User}
+                title="Photo & Identity"
+                hint={
+                  formData.first_name && formData.last_name
+                    ? `${formData.first_name} ${formData.last_name}`
+                    : "Add your name"
+                }
+              />
+            </AccordionTrigger>
+            <AccordionContent className="pt-2 pb-4 space-y-4">
+              <ProfileIdentitySection
+                formData={{
+                  first_name: formData.first_name,
+                  last_name: formData.last_name,
+                  display_name: formData.display_name,
+                  avatar_url: formData.avatar_url,
+                }}
+                onFormChange={handleFormChange}
+                onFileUpload={handleFileUpload}
+                onRemoveAvatar={handleRemoveAvatar}
+                uploading={uploading}
+              />
+              <div className="flex justify-end">
+                <SectionSaveButton
+                  section="identity"
+                  onClick={() =>
+                    saveSection("identity", {
+                      first_name: formData.first_name,
+                      last_name: formData.last_name,
+                      display_name: formData.display_name,
+                    })
+                  }
+                />
+              </div>
+            </AccordionContent>
+          </AccordionItem>
 
-          <TabsContent value="tournament">
-            <TournamentInfoTab
-              formData={{
-                phone_number: formData.phone_number,
-                date_of_birth: formData.date_of_birth,
-                gender: formData.gender,
-                shirt_size: formData.shirt_size,
-                emergency_contact_name: formData.emergency_contact_name,
-                emergency_contact_phone: formData.emergency_contact_phone,
-                skill_level_self: formData.skill_level_self,
-              }}
-              onFormChange={handleFormChange}
-              completeness={completeness}
-            />
-          </TabsContent>
+          <AccordionItem
+            value="location"
+            className="border rounded-xl bg-card px-4 data-[state=open]:shadow-sm"
+          >
+            <AccordionTrigger className="hover:no-underline py-3">
+              <SectionHeader
+                icon={MapPin}
+                title="Location"
+                hint={
+                  formData.town || formData.state
+                    ? [formData.town, formData.state].filter(Boolean).join(", ")
+                    : "Where you play"
+                }
+              />
+            </AccordionTrigger>
+            <AccordionContent className="pt-2 pb-4 space-y-4">
+              <ProfileLocationSection
+                formData={{ town: formData.town, state: formData.state }}
+                onFormChange={handleFormChange}
+              />
+              <div className="flex justify-end">
+                <SectionSaveButton
+                  section="location"
+                  onClick={() =>
+                    saveSection("location", { town: formData.town, state: formData.state })
+                  }
+                />
+              </div>
+            </AccordionContent>
+          </AccordionItem>
 
-          <TabsContent value="playstyle">
-            <PlayStyleTab
-              formData={{
-                home_court_id: formData.home_court_id,
-                handedness: formData.handedness,
-                play_side: formData.play_side,
-                paddle_brand: formData.paddle_brand,
-                paddle_model: formData.paddle_model,
-              }}
-              onFormChange={handleFormChange}
-              courts={courts}
-            />
-          </TabsContent>
+          <AccordionItem
+            value="tournament"
+            className="border rounded-xl bg-card px-4 data-[state=open]:shadow-sm"
+          >
+            <AccordionTrigger className="hover:no-underline py-3">
+              <SectionHeader
+                icon={Trophy}
+                title="Tournament Info"
+                hint={
+                  completeness.sections.tournament.status === "complete"
+                    ? "Ready for tournaments"
+                    : "Phone, DOB, gender, skill"
+                }
+              />
+            </AccordionTrigger>
+            <AccordionContent className="pt-2 pb-4 space-y-4">
+              <TournamentInfoTab
+                formData={{
+                  phone_number: formData.phone_number,
+                  date_of_birth: formData.date_of_birth,
+                  gender: formData.gender,
+                  skill_level_self: formData.skill_level_self,
+                }}
+                onFormChange={handleFormChange}
+              />
+              <div className="flex justify-end">
+                <SectionSaveButton
+                  section="tournament"
+                  onClick={() =>
+                    saveSection("tournament", {
+                      phone_number: formData.phone_number,
+                      date_of_birth: formData.date_of_birth,
+                      gender: formData.gender,
+                      skill_level_self: formData.skill_level_self,
+                    })
+                  }
+                />
+              </div>
+            </AccordionContent>
+          </AccordionItem>
 
-          <TabsContent value="notifications">
-            <NotificationsTab
-              formData={{
-                notify_score_email: formData.notify_score_email,
-                notify_score_sms: formData.notify_score_sms,
-                notify_score_push: formData.notify_score_push,
-                notify_badges_email: formData.notify_badges_email,
-                notify_badges_sms: formData.notify_badges_sms,
-                notify_badges_push: formData.notify_badges_push,
-              }}
-              onFormChange={handleFormChange}
-            />
-          </TabsContent>
+          <AccordionItem
+            value="playstyle"
+            className="border rounded-xl bg-card px-4 data-[state=open]:shadow-sm"
+          >
+            <AccordionTrigger className="hover:no-underline py-3">
+              <SectionHeader
+                icon={Gamepad2}
+                title="Play Style"
+                hint="Home court, handedness, side"
+              />
+            </AccordionTrigger>
+            <AccordionContent className="pt-2 pb-4 space-y-4">
+              <PlayStyleTab
+                formData={{
+                  home_court_id: formData.home_court_id,
+                  handedness: formData.handedness,
+                  play_side: formData.play_side,
+                }}
+                onFormChange={handleFormChange}
+                courts={courts}
+              />
+              <div className="flex justify-end">
+                <SectionSaveButton
+                  section="playstyle"
+                  onClick={() =>
+                    saveSection("playstyle", {
+                      home_court_id: formData.home_court_id,
+                      handedness: formData.handedness,
+                      play_side: formData.play_side,
+                    })
+                  }
+                />
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
 
-          <TabsContent value="security">
-            <SecurityTab
-              onResetPassword={handleResetPassword}
-              resettingPassword={resettingPassword}
-            />
-          </TabsContent>
-        </Tabs>
+        {/* Account utilities */}
+        <div className="border rounded-xl bg-card divide-y divide-border overflow-hidden">
+          <Link
+            to="/notifications/settings"
+            className="flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors"
+          >
+            <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <Bell className="w-4 h-4 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium">Notification preferences</div>
+              <div className="text-xs text-muted-foreground">Email, SMS, and push alerts</div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+          </Link>
 
-        {/* Sticky Save Bar — sits above the player bottom nav */}
-        <div className="sticky bottom-[88px] md:bottom-[72px] left-0 right-0 bg-background/95 backdrop-blur-sm border-t border-border py-3 mt-6 -mx-4 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-          <div className="container mx-auto max-w-3xl flex gap-3 justify-end">
-            <Button variant="outline" onClick={() => navigate("/player/dashboard")}>
-              Cancel
-            </Button>
-            <Button onClick={handleSave} disabled={saving}>
-              <Save className="w-4 h-4 mr-2" />
-              {saving ? "Saving..." : "Save Changes"}
-            </Button>
-          </div>
+          <button
+            type="button"
+            onClick={handleResetPassword}
+            disabled={resettingPassword}
+            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors disabled:opacity-60"
+          >
+            <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <KeyRound className="w-4 h-4 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0 text-left">
+              <div className="text-sm font-medium">
+                {resettingPassword ? "Sending reset email..." : "Reset password"}
+              </div>
+              <div className="text-xs text-muted-foreground">Sends a link to your email</div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+          </button>
+        </div>
+
+        <div className="flex justify-center pt-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate(returnUrl || "/player/dashboard")}
+          >
+            Done
+          </Button>
         </div>
       </div>
     </div>

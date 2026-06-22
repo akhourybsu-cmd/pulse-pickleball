@@ -56,25 +56,22 @@ const ALWAYS_REQUIRED = [
 const SOMETIMES_REQUIRED = [
   { field: 'date_of_birth', label: 'Date of Birth', reason: 'Required for age-restricted divisions' },
   { field: 'gender', label: 'Gender', reason: 'Required for gender-specific divisions' },
-  { field: 'emergency_contact_name', label: 'Emergency Contact Name', reason: 'Required by some tournaments' },
-  { field: 'emergency_contact_phone', label: 'Emergency Contact Phone', reason: 'Required by some tournaments' },
 ];
 
 // Recommended fields for better tournament experience
 const RECOMMENDED = [
   { field: 'avatar_url', label: 'Profile Picture', reason: 'Helps others recognize you' },
-  { field: 'shirt_size', label: 'Shirt Size', reason: 'For tournament merchandise' },
   { field: 'skill_level_self', label: 'Skill Level', reason: 'Helps with fair matchmaking' },
 ];
 
 // Basics section fields
-const BASICS_FIELDS = ['first_name', 'last_name', 'display_name', 'avatar_url', 'phonetic_name', 'town', 'state'];
+const BASICS_FIELDS = ['first_name', 'last_name', 'display_name', 'avatar_url', 'town', 'state'];
 
-// Tournament section fields  
-const TOURNAMENT_FIELDS = ['date_of_birth', 'gender', 'phone_number', 'shirt_size', 'emergency_contact_name', 'emergency_contact_phone', 'skill_level_self'];
+// Tournament section fields
+const TOURNAMENT_FIELDS = ['date_of_birth', 'gender', 'phone_number', 'skill_level_self'];
 
 // Play style section fields
-const PLAY_STYLE_FIELDS = ['home_court_id', 'handedness', 'play_side', 'paddle_brand', 'paddle_model'];
+const PLAY_STYLE_FIELDS = ['home_court_id', 'handedness', 'play_side'];
 
 function hasValue(value: string | null | undefined): boolean {
   return value !== null && value !== undefined && value.trim() !== '';
