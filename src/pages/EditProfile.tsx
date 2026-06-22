@@ -23,12 +23,6 @@ import { TournamentReadinessCard } from "@/components/profile/TournamentReadines
 
 import { calculateProfileCompleteness } from "@/lib/profileCompleteness";
 
-interface Court {
-  id: string;
-  name: string;
-  city: string;
-  state: string;
-}
 
 interface ProfileData {
   display_name: string | null;
@@ -37,7 +31,7 @@ interface ProfileData {
   avatar_url: string | null;
   town: string | null;
   state: string | null;
-  home_court_id: string | null;
+  
   handedness: string | null;
   play_side: string | null;
   phone_number: string | null;
@@ -62,7 +56,7 @@ const EditProfile = () => {
   const [uploading, setUploading] = useState(false);
   const [resettingPassword, setResettingPassword] = useState(false);
   const [savingSection, setSavingSection] = useState<SectionKey | null>(null);
-  const [courts, setCourts] = useState<Court[]>([]);
+  
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -80,7 +74,7 @@ const EditProfile = () => {
     avatar_url: null,
     town: null,
     state: null,
-    home_court_id: null,
+    
     handedness: null,
     play_side: null,
     phone_number: null,
@@ -122,7 +116,7 @@ const EditProfile = () => {
         avatar_url: profileData.avatar_url,
         town: profileData.town,
         state: profileData.state,
-        home_court_id: profileData.home_court_id,
+        
         handedness: profileData.handedness,
         play_side: profileData.play_side,
         phone_number: profileData.phone_number,
@@ -131,13 +125,6 @@ const EditProfile = () => {
         skill_level_self: profileData.skill_level_self,
       });
 
-      const { data: courtsData } = await supabase
-        .from("courts")
-        .select("*")
-        .order("state", { ascending: true })
-        .order("city", { ascending: true });
-
-      if (courtsData) setCourts(courtsData);
       setLoading(false);
     };
 
@@ -448,25 +435,22 @@ const EditProfile = () => {
               <SectionHeader
                 icon={Gamepad2}
                 title="Play Style"
-                hint="Home court, handedness, side"
+              hint="Handedness, side"
               />
             </AccordionTrigger>
             <AccordionContent className="pt-2 pb-4 space-y-4">
               <PlayStyleTab
                 formData={{
-                  home_court_id: formData.home_court_id,
                   handedness: formData.handedness,
                   play_side: formData.play_side,
                 }}
                 onFormChange={handleFormChange}
-                courts={courts}
               />
               <div className="flex justify-end">
                 <SectionSaveButton
                   section="playstyle"
                   onClick={() =>
                     saveSection("playstyle", {
-                      home_court_id: formData.home_court_id,
                       handedness: formData.handedness,
                       play_side: formData.play_side,
                     })

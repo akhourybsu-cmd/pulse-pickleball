@@ -123,10 +123,7 @@ const Dashboard = () => {
         const user = session.user;
         setUser(user);
 
-        const [profileResult, publicProfileResult] = await Promise.all([
-          supabase.from("profiles").select("*").eq("id", user.id).single(),
-          supabase.from("profiles_public").select("home_court_id").eq("id", user.id).single()
-        ]);
+        const profileResult = await supabase.from("profiles").select("*").eq("id", user.id).single();
 
         if (profileResult.error) {
           console.error("Profile fetch error:", profileResult.error);
@@ -141,10 +138,6 @@ const Dashboard = () => {
         if (!profileResult.data.tutorial_completed && (profileResult.data.total_matches || 0) === 0) {
           setShowOnboardingWelcome(true);
         }
-
-        // home_court_id fetched but unused after Phase 2 reshuffle; query
-        // stays so the prefetched join doesn't change.
-        void publicProfileResult.data?.home_court_id;
 
         fetchPartnerAndCourtStats(user.id);
 
