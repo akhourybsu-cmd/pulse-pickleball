@@ -231,7 +231,7 @@ export function PlayerSelectionStep({ formData, updateFormData }: PlayerSelectio
               className="cursor-pointer hover:bg-accent py-1.5 px-3 bg-primary/10 text-primary border-primary/20"
               onClick={() => handlePlayerSelect(currentUserProfile)}
             >
-              You
+              {currentUserProfile.display_name || currentUserProfile.full_name || 'You'}
             </Badge>
           )}
           {filteredRecent.slice(0, 4).map(player => (
