@@ -19,7 +19,7 @@ export interface ProfileData {
   emergency_contact_name?: string | null;
   emergency_contact_phone?: string | null;
   skill_level_self?: string | null;
-  home_court_id?: string | null;
+  
   handedness?: string | null;
   play_side?: string | null;
   paddle_brand?: string | null;
@@ -71,7 +71,7 @@ const BASICS_FIELDS = ['first_name', 'last_name', 'display_name', 'avatar_url', 
 const TOURNAMENT_FIELDS = ['date_of_birth', 'gender', 'phone_number', 'skill_level_self'];
 
 // Play style section fields
-const PLAY_STYLE_FIELDS = ['home_court_id', 'handedness', 'play_side'];
+const PLAY_STYLE_FIELDS = ['handedness', 'play_side'];
 
 function hasValue(value: string | null | undefined): boolean {
   return value !== null && value !== undefined && value.trim() !== '';
