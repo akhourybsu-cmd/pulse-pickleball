@@ -270,7 +270,7 @@ export default function RoundRobinDetail() {
 
       const { data: playersData, error: playersError } = await supabase
         .from("round_robin_players")
-        .select("*, profiles(*)")
+        .select("*, profiles:profiles_public!round_robin_players_player_id_fkey(*)")
         .eq("event_id", id);
 
       if (playersError) throw playersError;
