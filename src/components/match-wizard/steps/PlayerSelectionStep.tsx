@@ -224,6 +224,16 @@ export function PlayerSelectionStep({ formData, updateFormData }: PlayerSelectio
       {/* Quick Pick Chips */}
       {!searchQuery && (
         <div className="flex flex-wrap gap-2">
+          {currentUserProfile && !selectedIds.has(currentUserProfile.id) && (
+            <Badge
+              key="you"
+              variant="secondary"
+              className="cursor-pointer hover:bg-accent py-1.5 px-3 bg-primary/10 text-primary border-primary/20"
+              onClick={() => handlePlayerSelect(currentUserProfile)}
+            >
+              You
+            </Badge>
+          )}
           {filteredRecent.slice(0, 4).map(player => (
             <Badge
               key={player.id}
