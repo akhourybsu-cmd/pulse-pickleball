@@ -6,7 +6,8 @@ import { toast } from "sonner";
 import { ArrowLeft, User, MapPin, Hand, Target, Flame, Hash } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { CircularProgressRing } from "@/components/profile/CircularProgressRing";
-import { RecentMatches } from "@/components/profile/RecentMatches";
+import { PremiumMatchCard } from "@/components/matches/PremiumMatchCard";
+import { resolvePlayerName, didTeamWin } from "@/lib/matchDisplay";
 import { HighlightsStrip } from "@/components/profile/HighlightsStrip";
 import { AnimatedStatChip } from "@/components/profile/AnimatedStatChip";
 import { LastPlayedBadge } from "@/components/profile/LastPlayedBadge";
@@ -32,13 +33,28 @@ interface Profile {
 
 interface RecentMatch {
   id: string;
-  team1_players: string[];
-  team2_players: string[];
-  user_team: number;
-  result: 'W' | 'L';
-  score: string;
-  date: string;
+  match_date: string;
+  team1_score: number;
+  team2_score: number;
+  my_team: 1 | 2;
+  won: boolean;
+  partner_name: string;
+  partner_id: string;
+  partner_avatar_url: string | null;
+  opponent1_name: string;
+  opponent1_id: string;
+  opponent1_avatar_url: string | null;
+  opponent2_name: string;
+  opponent2_id: string;
+  opponent2_avatar_url: string | null;
+  rating_change: number | null;
+  court_name: string;
+  source: string | null;
+  verified_count: number;
+  total_players: number;
   status?: string;
+  result: 'W' | 'L';
+  date: string;
 }
 
 
@@ -84,80 +100,87 @@ const ViewProfile = () => {
         return;
       }
 
-      // Fetch recent 10 matches with all participants
+      // Fetch recent 10 matches with all participants — same shape as
+      // MatchHistory so PremiumMatchCard renders identically.
       const { data: matchParticipants } = await supabase
         .from("match_participants")
         .select(`
           match_id,
           team,
-          matches (
+          rating_change,
+          matches!inner (
             id,
+            match_date,
             team1_score,
             team2_score,
             created_at,
-            status
+            status,
+            source,
+            verified_by,
+            other_location,
+            courts (name)
           )
         `)
         .eq("player_id", userId)
-        .order("created_at", { ascending: false })
+        .eq("matches.status", "approved")
+        .order("created_at", { ascending: false, foreignTable: "matches" })
         .limit(10);
 
-      if (matchParticipants) {
-        const formattedMatches = await Promise.all(
-          matchParticipants.map(async (mp: any) => {
-            const match = mp.matches;
-            if (!match) return null;
+      if (matchParticipants && matchParticipants.length > 0) {
+        const matchIds = matchParticipants.map((mp: any) => mp.match_id);
+        const { data: allParts } = await supabase
+          .from("match_participants")
+          .select(`
+            match_id,
+            player_id,
+            team,
+            profiles (display_name, full_name, first_name, last_name, avatar_url)
+          `)
+          .in("match_id", matchIds);
 
-            const userTeam = mp.team;
-            const won = userTeam === 1 
-              ? match.team1_score > match.team2_score
-              : match.team2_score > match.team1_score;
+        const partsByMatch = (allParts || []).reduce((acc: Record<string, any[]>, p: any) => {
+          if (!acc[p.match_id]) acc[p.match_id] = [];
+          acc[p.match_id].push(p);
+          return acc;
+        }, {});
 
-            // Get all participants for this match
-            const { data: allParticipants } = await supabase
-              .from("match_participants")
-              .select(`
-                player_id,
-                team,
-                profiles (
-                  display_name,
-                  first_name,
-                  last_name
-                )
-              `)
-              .eq("match_id", match.id);
+        const formattedMatches: RecentMatch[] = matchParticipants.map((mp: any) => {
+          const match = mp.matches;
+          const myTeam = mp.team as 1 | 2;
+          const parts = partsByMatch[mp.match_id] || [];
+          const teammate = parts.find((p) => p.team === myTeam && p.player_id !== userId);
+          const opps = parts.filter((p) => p.team !== myTeam);
+          const won = didTeamWin(myTeam, match.team1_score, match.team2_score);
+          const verifiedBy: string[] = match.verified_by || [];
+          const courtName = match.other_location || match.courts?.name || "Unknown Location";
 
-            const team1Players = (allParticipants || [])
-              .filter(p => p.team === 1)
-              .map(p => {
-                const profile = p.profiles as any;
-                return profile?.display_name || 
-                  `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || 
-                  'Unknown';
-              });
-
-            const team2Players = (allParticipants || [])
-              .filter(p => p.team === 2)
-              .map(p => {
-                const profile = p.profiles as any;
-                return profile?.display_name || 
-                  `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim() || 
-                  'Unknown';
-              });
-
-            return {
-              id: match.id,
-              team1_players: team1Players,
-              team2_players: team2Players,
-              user_team: userTeam,
-              result: won ? 'W' as const : 'L' as const,
-              score: `${match.team1_score}-${match.team2_score}`,
-              date: match.created_at,
-              status: match.status
-            };
-          })
-        );
-        setRecentMatches(formattedMatches.filter(Boolean) as RecentMatch[]);
+          return {
+            id: match.id,
+            match_date: match.match_date,
+            team1_score: match.team1_score,
+            team2_score: match.team2_score,
+            my_team: myTeam,
+            won,
+            partner_name: resolvePlayerName(teammate?.profiles),
+            partner_id: teammate?.player_id || "",
+            partner_avatar_url: teammate?.profiles?.avatar_url || null,
+            opponent1_name: resolvePlayerName(opps[0]?.profiles),
+            opponent1_id: opps[0]?.player_id || "",
+            opponent1_avatar_url: opps[0]?.profiles?.avatar_url || null,
+            opponent2_name: opps[1] ? resolvePlayerName(opps[1].profiles) : "",
+            opponent2_id: opps[1]?.player_id || "",
+            opponent2_avatar_url: opps[1]?.profiles?.avatar_url || null,
+            rating_change: mp.rating_change ?? null,
+            court_name: courtName,
+            source: match.source ?? null,
+            verified_count: verifiedBy.length,
+            total_players: parts.length || 4,
+            status: match.status,
+            result: won ? 'W' : 'L',
+            date: match.match_date,
+          };
+        });
+        setRecentMatches(formattedMatches);
       }
 
       setProfile(profileData as Profile);
@@ -405,7 +428,53 @@ const ViewProfile = () => {
               </h2>
               <LastPlayedBadge days={getDaysSinceLastMatch()} />
             </div>
-            <RecentMatches matches={recentMatches} />
+            {/* W/L sparkline summary */}
+            <div className="flex gap-1.5 mb-3 overflow-x-auto scrollbar-hide">
+              {recentMatches.map((m) => (
+                <div
+                  key={`dot-${m.id}`}
+                  className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                    m.won
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-destructive/80 text-destructive-foreground'
+                  }`}
+                >
+                  {m.won ? 'W' : 'L'}
+                </div>
+              ))}
+            </div>
+            <div className="space-y-2">
+              {recentMatches.map((m) => (
+                <PremiumMatchCard
+                  key={m.id}
+                  perspective="other"
+                  matchId={m.id}
+                  matchDate={m.match_date}
+                  team1Score={m.team1_score}
+                  team2Score={m.team2_score}
+                  myTeam={m.my_team}
+                  won={m.won}
+                  playerName={displayName}
+                  playerAvatarUrl={profile.avatar_url}
+                  partnerName={m.partner_name}
+                  partnerId={m.partner_id}
+                  partnerAvatarUrl={m.partner_avatar_url}
+                  opponent1Name={m.opponent1_name}
+                  opponent1Id={m.opponent1_id}
+                  opponent1AvatarUrl={m.opponent1_avatar_url}
+                  opponent2Name={m.opponent2_name}
+                  opponent2Id={m.opponent2_id}
+                  opponent2AvatarUrl={m.opponent2_avatar_url}
+                  ratingChange={m.rating_change}
+                  courtName={m.court_name}
+                  source={m.source}
+                  verifiedCount={m.verified_count}
+                  totalPlayers={m.total_players}
+                  isCurrentUserVerified={false}
+                  showVerifyActions={false}
+                />
+              ))}
+            </div>
           </div>
         )}
 
