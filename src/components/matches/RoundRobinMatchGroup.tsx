@@ -43,6 +43,7 @@ export interface RoundRobinGroup {
 interface Props {
   group: RoundRobinGroup;
   playerName: string;
+  playerAvatarUrl?: string | null;
   showVerifyActions: boolean;
   perspective?: 'self' | 'other';
   getVerificationStatus: (match: any) => {
@@ -57,6 +58,7 @@ interface Props {
 export function RoundRobinMatchGroup({
   group,
   playerName,
+  playerAvatarUrl,
   showVerifyActions,
   perspective = 'self',
   getVerificationStatus,
