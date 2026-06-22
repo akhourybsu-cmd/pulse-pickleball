@@ -46,10 +46,17 @@ export function PlayerSelectionStep({ formData, updateFormData }: PlayerSelectio
     
     setCurrentUserId(user.id);
 
-    // Submitter is no longer auto-filled — they must add themselves like any
-    // other player so the wizard treats every participant uniformly.
+    // Fetch current user profile so they can quick-pick themselves
+    const { data: profile } = await supabase
+      .from('profiles')
+1256' )
+      .select('id, display_name, full_name, avatar_url, dupr_rating')
+      .eq('id', user.id)
+      .single();
 
-
+    if (profile) {
+      setCurrentUserProfile(profile as Player);
+    }
 
     // Load recent players from match history
     const { data: recentMatches } = await supabase
