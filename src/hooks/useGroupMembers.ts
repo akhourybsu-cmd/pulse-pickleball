@@ -46,7 +46,7 @@ async function fetchGroupMembers(groupId: string): Promise<{ members: GroupMembe
     .map(m => ({
       ...m,
       status: m.status as 'active' | 'pending' | 'banned',
-      profile: profilesMap.get(m.user_id)!,
+      profile: { ...profilesMap.get(m.user_id)!, phone_number: null },
     }));
 
   return {
