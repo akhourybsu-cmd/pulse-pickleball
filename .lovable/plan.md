@@ -1,84 +1,44 @@
-# Match Card Visual Consistency Audit
+# Match Card Consistency — Pass 2
+
+Working backwards from `PremiumMatchCard`, I traced every surface that renders live player match data. Most already use `PremiumMatchCard` (MatchHistory verified + pending, Dashboard PerformanceModule, ViewProfile, RoundRobinMatchGroup). Three real inconsistencies remain.
 
 ## Findings
 
-The app currently renders match results through **three different card components**, each with its own data fetch, name-resolution rules, and visual treatment. The same match looks different depending on where you see it, and several edge cases break when viewing another player's history.
+### 1. `PendingMatches` page is still a legacy card
+`/pending-matches` (`src/pages/PendingMatches.tsx`) renders a three-column "Team 1 / score / Team 2" `Card` with plain text names, an "X/4 Approved" badge, and Approve/Reject buttons. No avatars, no W/L styling, no rating delta, no source/RR badge — visually unrelated to the pending card in `MatchHistory` which already uses `PremiumMatchCard` with `pending` + `onConfirm`.
 
-### 1. Three competing card components
-| Surface | Component | Avatars | Layout |
-| --- | --- | --- | --- |
-| `/player/matches` (MatchHistory) | `PremiumMatchCard` | Yes | Hero score, accent stripe |
-| `/player/dashboard` (PerformanceModule) | `dashboard/MatchCard` | Yes | Compact stacked teams |
-| `/player/profile/:id` (ViewProfile) | `profile/RecentMatches` | **No** | Horizontal scroll chips |
+### 2. RR matches in MatchHistory render without the viewer's avatar
+`RoundRobinMatchGroup` forwards `playerName` to `PremiumMatchCard` but never `playerAvatarUrl`. Result: in a round-robin group, the "You" slot is initials-only while singles matches a row above show the avatar. Same player, two looks on the same page.
 
-Same match, three completely different visuals. Avatars are missing entirely on profile pages.
+### 3. Dead/redundant code in `PremiumMatchCard`
+`const initials = resolvePlayerInitials;` is a leftover rename. Harmless but invites drift. Remove.
 
-### 2. "You & Partner" label is hardcoded
-`PremiumMatchCard` always renders the label **"You & Partner"** even when `MatchHistory` is viewed with `?player=<otherId>`. Visiting another player's match history shows their matches with "You" — confusing and wrong.
-
-### 3. Win/Loss is computed differently in each surface
-- `MatchHistory`: `won = rating_change > 0` — breaks for matches with `rating_change = 0` or `null` (shows as loss even when score is higher).
-- `ViewProfile`: `won = my team's score > other team's score` — correct.
-- `PerformanceModule/MatchCard`: derives win inline from score — correct.
-
-Result: the same match can render as a loss on `/player/matches` and a win on `/player/profile`.
-
-### 4. Player-name fallback order is inconsistent
-- `MatchHistory`: `display_name || full_name || "Unknown"`
-- `ViewProfile`: `display_name || first_name+last_name || "Unknown"`
-- `PerformanceModule`: `display_name || full_name || first_name+last_name || "Unknown"`
-
-A player whose `display_name` is null but `full_name` is set will show as "Unknown" on `ViewProfile` but correctly on the other two.
-
-### 5. "Unknown" placeholders leak through
-When a profile join returns null (deleted user, RLS blocks), `MatchHistory` renders the literal string "Unknown" with a `?` avatar instead of a graceful "Guest" / removed-player treatment. Singles matches (only one opponent) render a second "Unknown" opponent with a placeholder avatar.
-
-### 6. Profile recent-matches card is visually weakest
-`RecentMatches` shows only names in tiny text with no avatars, and the W/L dot strip duplicates info already on the card. It is the only surface where you cannot see who played.
-
----
+(`DemoPerformanceModule` is intentionally left alone — it renders seeded onboarding-tour data, not live matches, and isn't reached from a real player surface.)
 
 ## Plan
 
-### A. Single shared name + win helper
-Create `src/lib/matchDisplay.ts` exporting:
-- `resolvePlayerName(profile)` — canonical order: `display_name → full_name → first_name+last_name → "Removed player"` (no more "Unknown").
-- `resolvePlayerInitials(name)` — shared 2-char initials.
-- `didTeamWin(team, team1Score, team2Score)` — score-based, never rating-based.
-- `formatRatingChange(delta)` — shared `+0.12 / −0.08` formatting with the `Math.abs > 0.0001` zero guard.
+### A. Replace the `PendingMatches` body with `PremiumMatchCard`
+- Extend the page's fetch to also pull each player's `avatar_url` and the match's `source` / `round_no` / `court_no` so the card has the same data shape as MatchHistory's pending section.
+- For each pending match: identify which team the viewer is on, resolve names through `resolvePlayerName`, then render `<PremiumMatchCard pending pendingConfirmedByMe={match.my_approval === true} onConfirm={...} showVerifyActions={false} ratingChange={null} won={didTeamWin(myTeam, t1, t2)} perspective="self" />`.
+- Keep the existing Approve action wired to `onConfirm`. Drop the Reject button from the card itself — match it to MatchHistory's pending UX (confirm-only; report/contest stays in the existing report flow). If the user wants reject preserved, surface it via the existing `onReport` slot or a secondary text link below the card.
+- Keep page header, empty state, and `fetchPendingMatches` polling intact.
 
-Refactor `MatchHistory`, `ViewProfile`, and `PerformanceModule` to use these helpers. Removes all three inconsistencies (#3, #4, #5).
+### B. Forward `playerAvatarUrl` through `RoundRobinMatchGroup`
+- Add `playerAvatarUrl?: string | null` to the group's props.
+- In `MatchHistory`, pass `playerAvatarUrl` into the `<RoundRobinMatchGroup>` call (already resolved as `playerAvatarUrl` in the page).
+- Forward it onto every `<PremiumMatchCard>` inside the group.
 
-### B. Make `PremiumMatchCard` perspective-aware
-Add a `perspective: 'self' | 'other'` prop (default `self`). When `other`, the left column label becomes `{playerName} & Partner` instead of "You & Partner". MatchHistory passes `perspective={playerId ? 'other' : 'self'}`. Fixes #2.
-
-### C. Replace `RecentMatches` and `dashboard/MatchCard` with `PremiumMatchCard`
-Use `PremiumMatchCard` (with `showVerifyActions={false}`, `perspective="other"` on ViewProfile, `perspective="self"` on Dashboard) as the single visual on all three surfaces.
-- `ViewProfile`: render a vertical stack of up to 10 `PremiumMatchCard`s; keep the existing W/L dot strip above as a sparkline summary.
-- `PerformanceModule`: same component, grouped by month header as today.
-- Delete `src/components/dashboard/MatchCard.tsx` and `src/components/profile/RecentMatches.tsx` (no other callers — verified via the audit grep).
-
-Fixes #1 and #6 in one stroke.
-
-### D. Handle singles + missing partners cleanly
-In `PremiumMatchCard`:
-- If `partnerName` is empty/"Removed player", render only the player's avatar and label the column "Solo" (already partly implemented — extend to opponent side).
-- If `opponent2Name` is empty, render one opponent avatar and `{opponent1Name}` only (no "· Unknown").
-
-### E. Data-fetch parity
-Update `ViewProfile`'s match query to also select `avatar_url`, `full_name` and `rating_change`, matching the shape PremiumMatchCard expects. Keep the existing 10-match limit.
+### C. Tidy `PremiumMatchCard`
+- Remove the `const initials = resolvePlayerInitials;` alias and call `resolvePlayerInitials(...)` directly at each usage. No behavior change.
 
 ### Out of scope
-- No DB schema changes.
-- No changes to RR group rendering (`RoundRobinMatchGroup` already uses `PremiumMatchCard`).
-- No changes to pending-match flow, verification logic, or routes.
-- No redesign of `PremiumMatchCard`'s visuals beyond the `perspective` label swap and singles cleanup.
+- No schema changes, no new fetches beyond the two new columns in (A).
+- No visual redesign of `PremiumMatchCard`.
+- No changes to kiosk/live round-robin boards (`RoundRobinKiosk`, `VenueRoundRobinKiosk`) — those are live-court signage, not historical match cards.
+- `DemoPerformanceModule` left as-is (onboarding tour content).
 
 ### Files touched
-- new: `src/lib/matchDisplay.ts`
-- edit: `src/components/matches/PremiumMatchCard.tsx`
-- edit: `src/pages/MatchHistory.tsx`
-- edit: `src/pages/ViewProfile.tsx`
-- edit: `src/components/dashboard/PerformanceModule.tsx`
-- delete: `src/components/dashboard/MatchCard.tsx`
-- delete: `src/components/profile/RecentMatches.tsx`
+- edit: `src/pages/PendingMatches.tsx`
+- edit: `src/components/matches/RoundRobinMatchGroup.tsx`
+- edit: `src/pages/MatchHistory.tsx` (one prop pass-through)
+- edit: `src/components/matches/PremiumMatchCard.tsx` (tidy)
