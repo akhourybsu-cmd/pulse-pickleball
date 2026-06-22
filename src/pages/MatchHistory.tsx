@@ -427,15 +427,15 @@ const MatchHistory = () => {
           team1_score: p.matches.team1_score,
           team2_score: p.matches.team2_score,
           my_team: myTeam,
-          partner_name: teammates?.[0]?.profiles?.display_name || teammates?.[0]?.profiles?.full_name || "Unknown",
+          partner_name: resolvePlayerName(teammates?.[0]?.profiles as any),
           partner_id: teammates?.[0]?.player_id || "",
-          partner_avatar_url: teammates?.[0]?.profiles?.avatar_url || null,
-          opponent1_name: opponents?.[0]?.profiles?.display_name || opponents?.[0]?.profiles?.full_name || "Unknown",
+          partner_avatar_url: (teammates?.[0]?.profiles as any)?.avatar_url || null,
+          opponent1_name: resolvePlayerName(opponents?.[0]?.profiles as any),
           opponent1_id: opponents?.[0]?.player_id || "",
-          opponent1_avatar_url: opponents?.[0]?.profiles?.avatar_url || null,
-          opponent2_name: opponents?.[1]?.profiles?.display_name || opponents?.[1]?.profiles?.full_name || "Unknown",
+          opponent1_avatar_url: (opponents?.[0]?.profiles as any)?.avatar_url || null,
+          opponent2_name: opponents?.[1] ? resolvePlayerName(opponents[1].profiles as any) : "",
           opponent2_id: opponents?.[1]?.player_id || "",
-          opponent2_avatar_url: opponents?.[1]?.profiles?.avatar_url || null,
+          opponent2_avatar_url: (opponents?.[1]?.profiles as any)?.avatar_url || null,
           rating_change: 0,
           rating_after: 0,
           court_name: courtName,
@@ -750,6 +750,7 @@ const MatchHistory = () => {
                 transition={{ duration: 0.3, delay: index * 0.05 }}
               >
                 <PremiumMatchCard
+                  perspective={playerId ? 'other' : 'self'}
                   pending
                   pendingConfirmedByMe={hasVerified}
                   onConfirm={() => handleVerifyPendingMatch(match.match_id)}
@@ -946,6 +947,7 @@ const MatchHistory = () => {
                       group={item.group}
                       playerName={playerName}
                       showVerifyActions={!playerId}
+                      perspective={playerId ? 'other' : 'self'}
                       getVerificationStatus={(m) => getVerificationStatus(m)}
                       onVerify={(matchId) => {
                         setMatchToVerify(matchId);
@@ -961,6 +963,7 @@ const MatchHistory = () => {
                     const { verifiedCount, totalPlayers, isCurrentUserVerified } = getVerificationStatus(match);
                     return (
                       <PremiumMatchCard
+                        perspective={playerId ? 'other' : 'self'}
                         matchId={match.match_id}
                         matchDate={match.match_date}
                         team1Score={match.team1_score}

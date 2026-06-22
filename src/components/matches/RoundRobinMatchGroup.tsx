@@ -44,6 +44,7 @@ interface Props {
   group: RoundRobinGroup;
   playerName: string;
   showVerifyActions: boolean;
+  perspective?: 'self' | 'other';
   getVerificationStatus: (match: any) => {
     verifiedCount: number;
     totalPlayers: number;
@@ -57,6 +58,7 @@ export function RoundRobinMatchGroup({
   group,
   playerName,
   showVerifyActions,
+  perspective = 'self',
   getVerificationStatus,
   onVerify,
   onReport,
@@ -125,6 +127,7 @@ export function RoundRobinMatchGroup({
                   getVerificationStatus(match);
                 return (
                   <PremiumMatchCard
+                    perspective={perspective}
                     key={match.match_id}
                     matchId={match.match_id}
                     matchDate={match.match_date}
