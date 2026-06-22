@@ -99,7 +99,7 @@ export function useFriends() {
       
       if (pendingUserIds.length > 0) {
         const { data: pendingProfiles } = await supabase
-          .from('profiles')
+          .from('profiles_public')
           .select('id, display_name, full_name, avatar_url, current_rating')
           .in('id', pendingUserIds);
         
