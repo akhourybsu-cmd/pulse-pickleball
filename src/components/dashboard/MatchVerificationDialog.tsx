@@ -94,7 +94,7 @@ export const MatchVerificationDialog = ({
             player_id,
             team,
             guest_player_id,
-            profile:profiles(full_name, display_name),
+            profile:profiles_public!match_participants_player_id_fkey(full_name, display_name),
             guest:guest_match_players(display_name)
           `)
           .eq("match_id", matchId);
