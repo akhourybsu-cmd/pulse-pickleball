@@ -117,13 +117,13 @@ export function getInitialFormData(): MatchWizardFormData {
   // Anchor "today" in America/New_York so a player past UTC midnight isn't
   // silently bumped to tomorrow by `toISOString()`.
   const today = todayInEasternTime();
-  const savedFormat = localStorage.getItem('pulse-last-match-format') as 'singles' | 'doubles' | null;
-  
+  // Singles is temporarily disabled — always default to doubles regardless of
+  // any previously persisted preference.
   return {
     matchDate: today,
     locationId: null,
     customLocation: null,
-    matchFormat: savedFormat || 'doubles',
+    matchFormat: 'doubles',
     team1: [
       { playerId: null, isGuest: false },
       { playerId: null, isGuest: false },

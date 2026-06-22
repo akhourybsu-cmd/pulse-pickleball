@@ -45,12 +45,10 @@ export function PlayerSelectionStep({ formData, updateFormData }: PlayerSelectio
     
     setCurrentUserId(user.id);
 
-    // Auto-fill current user in Team 1 Slot 1 if empty
-    if (!formData.team1[0]?.playerId && !formData.team1[0]?.isGuest) {
-      const newTeam1 = [...formData.team1];
-      newTeam1[0] = { playerId: user.id, isGuest: false };
-      updateFormData('team1', newTeam1);
-    }
+    // Submitter is no longer auto-filled — they must add themselves like any
+    // other player so the wizard treats every participant uniformly.
+
+
 
     // Load recent players from match history
     const { data: recentMatches } = await supabase
