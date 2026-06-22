@@ -29,6 +29,7 @@ export function PlayerSelectionStep({ formData, updateFormData }: PlayerSelectio
   const [searchResults, setSearchResults] = useState<Player[]>([]);
   const [recentPlayers, setRecentPlayers] = useState<Player[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentUserProfile, setCurrentUserProfile] = useState<Player | null>(null);
   const [loading, setLoading] = useState(false);
   const [showGuestModal, setShowGuestModal] = useState(false);
   const [guestData, setGuestData] = useState({ name: '', notes: '' });
