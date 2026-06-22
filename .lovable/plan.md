@@ -1,49 +1,84 @@
-## Edit Profile cleanup — mobile-first refactor
+# Match Card Visual Consistency Audit
 
-Strip the 5-tab strip and unnecessary fields, switch to a stacked, collapsible section layout, and remove duplicated areas.
+## Findings
 
-### Layout changes
+The app currently renders match results through **three different card components**, each with its own data fetch, name-resolution rules, and visual treatment. The same match looks different depending on where you see it, and several edge cases break when viewing another player's history.
 
-- Remove the 5-tab `TabsList`. Replace with a single vertical column of collapsible sections (shadcn `Accordion`, `type="multiple"`), each with an icon, title, and a small status chip ("Complete" / "Add details") on the right.
-- Sections (in order):
-  1. **Photo & Identity** — avatar upload + first/last/display name
-  2. **Location** — city + state
-  3. **Tournament info** — phone, date of birth, gender, self-rated skill
-  4. **Play style** — home court, handedness, play side
-- Keep `TournamentReadinessCard` (compact) inline at the top of the page below the header instead of in the header action slot, so it's tappable on mobile without crowding the title.
-- Honor `?focus=` param by auto-opening the matching accordion section and scrolling to it (replaces current tab/scroll logic).
+### 1. Three competing card components
+| Surface | Component | Avatars | Layout |
+| --- | --- | --- | --- |
+| `/player/matches` (MatchHistory) | `PremiumMatchCard` | Yes | Hero score, accent stripe |
+| `/player/dashboard` (PerformanceModule) | `dashboard/MatchCard` | Yes | Compact stacked teams |
+| `/player/profile/:id` (ViewProfile) | `profile/RecentMatches` | **No** | Horizontal scroll chips |
 
-### Fields removed from the page
+Same match, three completely different visuals. Avatars are missing entirely on profile pages.
 
-- `phonetic_name`
-- `paddle_brand`, `paddle_model`
-- `shirt_size`, `emergency_contact_name`, `emergency_contact_phone`
-  - These stay in the DB; just stop rendering/sending them from Edit Profile. Tournament registration form already collects shirt size / emergency contact per event.
+### 2. "You & Partner" label is hardcoded
+`PremiumMatchCard` always renders the label **"You & Partner"** even when `MatchHistory` is viewed with `?player=<otherId>`. Visiting another player's match history shows their matches with "You" — confusing and wrong.
 
-### Tabs removed entirely
+### 3. Win/Loss is computed differently in each surface
+- `MatchHistory`: `won = rating_change > 0` — breaks for matches with `rating_change = 0` or `null` (shows as loss even when score is higher).
+- `ViewProfile`: `won = my team's score > other team's score` — correct.
+- `PerformanceModule/MatchCard`: derives win inline from score — correct.
 
-- **Notifications tab** — replaced with a single row at the bottom: "Manage notification preferences →" linking to `/notifications/settings` (existing page).
-- **Security tab** — replaced with a single row at the bottom: "Reset password" button (keeps existing `handleResetPassword` logic, no separate tab).
+Result: the same match can render as a loss on `/player/matches` and a win on `/player/profile`.
 
-### Save behavior
+### 4. Player-name fallback order is inconsistent
+- `MatchHistory`: `display_name || full_name || "Unknown"`
+- `ViewProfile`: `display_name || first_name+last_name || "Unknown"`
+- `PerformanceModule`: `display_name || full_name || first_name+last_name || "Unknown"`
 
-Recommendation: **per-section save with a sticky footer fallback**.
-- Each accordion section gets its own small "Save section" button in its footer that only commits that section's fields. Gives instant feedback on mobile without one giant form.
-- Sticky bottom Save bar is **removed** (it overlaps the bottom nav on small phones and is redundant once sections save themselves).
-- Cancel becomes a back arrow in the header (already provided by `PlayerPageHeader`).
-- Name validation (first + last required) runs on the Identity section save.
+A player whose `display_name` is null but `full_name` is set will show as "Unknown" on `ViewProfile` but correctly on the other two.
 
-### Files touched
+### 5. "Unknown" placeholders leak through
+When a profile join returns null (deleted user, RLS blocks), `MatchHistory` renders the literal string "Unknown" with a `?` avatar instead of a graceful "Guest" / removed-player treatment. Singles matches (only one opponent) render a second "Unknown" opponent with a placeholder avatar.
 
-- `src/pages/EditProfile.tsx` — remove tabs, add accordion, drop sticky save bar, drop removed-field state, add per-section save handlers, add links out for notifications/password.
-- `src/components/profile/ProfileBasicsTab.tsx` — split into two leaner subsections (Identity, Location), remove phonetic name field, tighten mobile spacing (single column under `sm`, 8pt gaps).
-- `src/components/profile/TournamentInfoTab.tsx` — remove shirt size + emergency contact fields and their grid rows. Keep phone, DOB, gender, self-rated skill.
-- `src/components/profile/PlayStyleTab.tsx` — remove paddle brand/model fields. Keep home court, handedness, play side.
-- `src/lib/profileCompleteness.ts` — drop removed fields from completeness scoring so the readiness ring doesn't perpetually show "incomplete".
-- Delete imports of `NotificationsTab` and `SecurityTab` from EditProfile (files themselves left in place in case they're reused elsewhere — quick `rg` check during build to confirm).
+### 6. Profile recent-matches card is visually weakest
+`RecentMatches` shows only names in tiny text with no avatars, and the W/L dot strip duplicates info already on the card. It is the only surface where you cannot see who played.
+
+---
+
+## Plan
+
+### A. Single shared name + win helper
+Create `src/lib/matchDisplay.ts` exporting:
+- `resolvePlayerName(profile)` — canonical order: `display_name → full_name → first_name+last_name → "Removed player"` (no more "Unknown").
+- `resolvePlayerInitials(name)` — shared 2-char initials.
+- `didTeamWin(team, team1Score, team2Score)` — score-based, never rating-based.
+- `formatRatingChange(delta)` — shared `+0.12 / −0.08` formatting with the `Math.abs > 0.0001` zero guard.
+
+Refactor `MatchHistory`, `ViewProfile`, and `PerformanceModule` to use these helpers. Removes all three inconsistencies (#3, #4, #5).
+
+### B. Make `PremiumMatchCard` perspective-aware
+Add a `perspective: 'self' | 'other'` prop (default `self`). When `other`, the left column label becomes `{playerName} & Partner` instead of "You & Partner". MatchHistory passes `perspective={playerId ? 'other' : 'self'}`. Fixes #2.
+
+### C. Replace `RecentMatches` and `dashboard/MatchCard` with `PremiumMatchCard`
+Use `PremiumMatchCard` (with `showVerifyActions={false}`, `perspective="other"` on ViewProfile, `perspective="self"` on Dashboard) as the single visual on all three surfaces.
+- `ViewProfile`: render a vertical stack of up to 10 `PremiumMatchCard`s; keep the existing W/L dot strip above as a sparkline summary.
+- `PerformanceModule`: same component, grouped by month header as today.
+- Delete `src/components/dashboard/MatchCard.tsx` and `src/components/profile/RecentMatches.tsx` (no other callers — verified via the audit grep).
+
+Fixes #1 and #6 in one stroke.
+
+### D. Handle singles + missing partners cleanly
+In `PremiumMatchCard`:
+- If `partnerName` is empty/"Removed player", render only the player's avatar and label the column "Solo" (already partly implemented — extend to opponent side).
+- If `opponent2Name` is empty, render one opponent avatar and `{opponent1Name}` only (no "· Unknown").
+
+### E. Data-fetch parity
+Update `ViewProfile`'s match query to also select `avatar_url`, `full_name` and `rating_change`, matching the shape PremiumMatchCard expects. Keep the existing 10-match limit.
 
 ### Out of scope
+- No DB schema changes.
+- No changes to RR group rendering (`RoundRobinMatchGroup` already uses `PremiumMatchCard`).
+- No changes to pending-match flow, verification logic, or routes.
+- No redesign of `PremiumMatchCard`'s visuals beyond the `perspective` label swap and singles cleanup.
 
-- No DB migrations. Columns stay; we just stop writing to them from this page.
-- No changes to `/notifications/settings` or password-reset flow themselves.
-- No visual redesign beyond mobile layout tightening (8pt spacing, single column, larger tap targets). Existing tokens and `Card` styling preserved.
+### Files touched
+- new: `src/lib/matchDisplay.ts`
+- edit: `src/components/matches/PremiumMatchCard.tsx`
+- edit: `src/pages/MatchHistory.tsx`
+- edit: `src/pages/ViewProfile.tsx`
+- edit: `src/components/dashboard/PerformanceModule.tsx`
+- delete: `src/components/dashboard/MatchCard.tsx`
+- delete: `src/components/profile/RecentMatches.tsx`
