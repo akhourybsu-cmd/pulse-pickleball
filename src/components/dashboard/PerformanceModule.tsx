@@ -5,20 +5,29 @@ import { format } from "date-fns";
 import { Trophy, TrendingUp, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DashboardModuleSkeleton } from "@/components/layout/DashboardModuleSkeleton";
-import { MatchCard } from "./MatchCard";
+import { PremiumMatchCard } from "@/components/matches/PremiumMatchCard";
+import { resolvePlayerName, didTeamWin } from "@/lib/matchDisplay";
+
+interface Participant {
+  id: string;
+  name: string;
+  avatar_url: string | null;
+}
 
 interface Match {
   id: string;
   match_date: string;
   team1_score: number;
   team2_score: number;
-  userTeam: number;
-  team1Players: { id: string; name: string; initials: string; avatar_url?: string | null }[];
-  team2Players: { id: string; name: string; initials: string; avatar_url?: string | null }[];
-  courtName: string | null;
-  location: string | null;
-  eventName: string | null;
-  ratingChange?: number;
+  myTeam: 1 | 2;
+  partner: Participant | null;
+  opponent1: Participant | null;
+  opponent2: Participant | null;
+  courtName: string;
+  source: string | null;
+  ratingChange: number | null;
+  verifiedCount: number;
+  totalPlayers: number;
 }
 
 interface PerformanceModuleProps {
@@ -28,6 +37,7 @@ interface PerformanceModuleProps {
 export const PerformanceModule = ({ userId }: PerformanceModuleProps) => {
   const navigate = useNavigate();
   const [matches, setMatches] = useState<Match[]>([]);
+  const [me, setMe] = useState<{ name: string; avatarUrl: string | null }>({ name: "You", avatarUrl: null });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -35,6 +45,19 @@ export const PerformanceModule = ({ userId }: PerformanceModuleProps) => {
 
     const fetchMatchHistory = async () => {
       setLoading(true);
+
+      // Self profile so the my-team avatar is consistent with the rest of the app.
+      const { data: meProfile } = await supabase
+        .from("profiles")
+        .select("display_name, full_name, first_name, last_name, avatar_url")
+        .eq("id", userId)
+        .maybeSingle();
+      if (meProfile) {
+        setMe({
+          name: resolvePlayerName(meProfile as any),
+          avatarUrl: (meProfile as any).avatar_url || null,
+        });
+      }
 
       // Fetch approved matches only (finalized historical data)
       const { data: participations } = await supabase
@@ -48,8 +71,10 @@ export const PerformanceModule = ({ userId }: PerformanceModuleProps) => {
             team1_score,
             team2_score,
             status,
-            court:courts (name, city, state),
-            event:events (name)
+            source,
+            verified_by,
+            other_location,
+            court:courts (name)
           )
         `)
         .eq("player_id", userId)
@@ -57,67 +82,66 @@ export const PerformanceModule = ({ userId }: PerformanceModuleProps) => {
         .order("created_at", { ascending: false })
         .limit(10);
 
-      if (participations && participations.length > 0) {
-        // Collect all match IDs for batched query (N+1 optimization)
-        const matchIds = participations
-          .filter(p => p.match)
-          .map(p => (p.match as any).id);
-        
-        // Batch fetch all participants for all matches in single query
-        const { data: allParticipants } = await supabase
-          .from("match_participants")
-          .select("match_id, player_id, team, player:profiles!match_participants_player_id_fkey(id, display_name, full_name, first_name, last_name, avatar_url)")
-          .in("match_id", matchIds);
-        
-        // Group participants by match_id for O(1) lookup
-        const participantsByMatch = (allParticipants || []).reduce((acc, p) => {
-          if (!acc[p.match_id]) acc[p.match_id] = [];
-          acc[p.match_id].push(p);
-          return acc;
-        }, {} as Record<string, any[]>);
-        
-        const matchData: Match[] = participations
-          .filter(p => p.match)
-          .map(p => {
-            const match = p.match as any;
-            const matchParticipants = participantsByMatch[match.id] || [];
-            
-            const team1Players: { id: string; name: string; initials: string; avatar_url?: string | null }[] = [];
-            const team2Players: { id: string; name: string; initials: string; avatar_url?: string | null }[] = [];
-
-            matchParticipants.forEach((participant: any) => {
-              const player = participant.player;
-              const name = player?.display_name || player?.full_name || 
-                `${player?.first_name || ''} ${player?.last_name || ''}`.trim() || 'Unknown';
-              const initials = name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
-              
-              const playerData = { id: player?.id || '', name, initials, avatar_url: player?.avatar_url || null };
-              
-              if (participant.team === 1) {
-                team1Players.push(playerData);
-              } else {
-                team2Players.push(playerData);
-              }
-            });
-
-            return {
-              id: match.id,
-              match_date: match.match_date,
-              team1_score: match.team1_score,
-              team2_score: match.team2_score,
-              userTeam: p.team,
-              team1Players,
-              team2Players,
-              courtName: match.court?.name || null,
-              location: match.court ? `${match.court.city}, ${match.court.state}` : null,
-              eventName: match.event?.name || null,
-              ratingChange: p.rating_change,
-            };
-          });
-        
-        setMatches(matchData);
+      if (!participations || participations.length === 0) {
+        setMatches([]);
+        setLoading(false);
+        return;
       }
-      
+
+      const matchIds = participations
+        .filter((p: any) => p.match)
+        .map((p: any) => p.match.id);
+
+      const { data: allParticipants } = await supabase
+        .from("match_participants")
+        .select("match_id, player_id, team, player:profiles!match_participants_player_id_fkey(id, display_name, full_name, first_name, last_name, avatar_url)")
+        .in("match_id", matchIds);
+
+      const participantsByMatch = (allParticipants || []).reduce((acc: Record<string, any[]>, p: any) => {
+        if (!acc[p.match_id]) acc[p.match_id] = [];
+        acc[p.match_id].push(p);
+        return acc;
+      }, {});
+
+      const matchData: Match[] = participations
+        .filter((p: any) => p.match)
+        .map((p: any) => {
+          const m = p.match;
+          const parts = participantsByMatch[m.id] || [];
+          const myTeam = (p.team as 1 | 2);
+
+          const toParticipant = (row: any): Participant => ({
+            id: row.player?.id || row.player_id,
+            name: resolvePlayerName(row.player),
+            avatar_url: row.player?.avatar_url || null,
+          });
+
+          const teammate = parts.find((r) => r.team === myTeam && r.player_id !== userId);
+          const opps = parts.filter((r) => r.team !== myTeam);
+
+          const courtName = m.other_location || m.court?.name || "Unknown Location";
+
+          const verifiedBy: string[] = m.verified_by || [];
+          const totalPlayers = parts.length || 4;
+
+          return {
+            id: m.id,
+            match_date: m.match_date,
+            team1_score: m.team1_score,
+            team2_score: m.team2_score,
+            myTeam,
+            partner: teammate ? toParticipant(teammate) : null,
+            opponent1: opps[0] ? toParticipant(opps[0]) : null,
+            opponent2: opps[1] ? toParticipant(opps[1]) : null,
+            courtName,
+            source: m.source ?? null,
+            ratingChange: p.rating_change ?? null,
+            verifiedCount: verifiedBy.length,
+            totalPlayers,
+          };
+        });
+
+      setMatches(matchData);
       setLoading(false);
     };
 
@@ -127,9 +151,7 @@ export const PerformanceModule = ({ userId }: PerformanceModuleProps) => {
   // Group matches by month
   const groupedMatches = matches.reduce((acc, match) => {
     const monthKey = format(new Date(match.match_date), "MMMM yyyy");
-    if (!acc[monthKey]) {
-      acc[monthKey] = [];
-    }
+    if (!acc[monthKey]) acc[monthKey] = [];
     acc[monthKey].push(match);
     return acc;
   }, {} as Record<string, Match[]>);
@@ -168,14 +190,10 @@ export const PerformanceModule = ({ userId }: PerformanceModuleProps) => {
 
         {matches.length === 0 ? (
           <div className="text-center py-9 px-4 bg-muted/30 rounded-xl border border-border">
-            {/* Tinted icon tile + clear primary CTA so the empty state feels
-                like an onboarding moment instead of a dead end. */}
             <div className="mx-auto h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
               <Trophy className="w-6 h-6 text-primary" />
             </div>
-            <p className="text-sm font-medium text-foreground mb-1">
-              No matches yet
-            </p>
+            <p className="text-sm font-medium text-foreground mb-1">No matches yet</p>
             <p className="text-xs text-muted-foreground mb-4">
               Log your first match to start building your PULSE rating.
             </p>
@@ -197,20 +215,33 @@ export const PerformanceModule = ({ userId }: PerformanceModuleProps) => {
                 </h4>
                 <div className="space-y-2">
                   {monthMatches.map((match) => (
-                    <MatchCard
+                    <PremiumMatchCard
                       key={match.id}
-                      id={match.id}
+                      perspective="self"
+                      matchId={match.id}
                       matchDate={match.match_date}
-                      userTeam={match.userTeam}
                       team1Score={match.team1_score}
                       team2Score={match.team2_score}
-                      team1Players={match.team1Players}
-                      team2Players={match.team2Players}
-                      courtName={match.courtName}
-                      location={match.location}
-                      eventName={match.eventName}
+                      myTeam={match.myTeam}
+                      won={didTeamWin(match.myTeam, match.team1_score, match.team2_score)}
+                      playerName={me.name}
+                      playerAvatarUrl={me.avatarUrl}
+                      partnerName={match.partner?.name || ""}
+                      partnerId={match.partner?.id || ""}
+                      partnerAvatarUrl={match.partner?.avatar_url || null}
+                      opponent1Name={match.opponent1?.name || ""}
+                      opponent1Id={match.opponent1?.id || ""}
+                      opponent1AvatarUrl={match.opponent1?.avatar_url || null}
+                      opponent2Name={match.opponent2?.name || ""}
+                      opponent2Id={match.opponent2?.id || ""}
+                      opponent2AvatarUrl={match.opponent2?.avatar_url || null}
                       ratingChange={match.ratingChange}
-                      onClick={() => navigate("/match/history")}
+                      courtName={match.courtName}
+                      source={match.source}
+                      verifiedCount={match.verifiedCount}
+                      totalPlayers={match.totalPlayers}
+                      isCurrentUserVerified={false}
+                      showVerifyActions={false}
                     />
                   ))}
                 </div>
@@ -220,7 +251,7 @@ export const PerformanceModule = ({ userId }: PerformanceModuleProps) => {
         )}
       </div>
 
-      {/* Performance Trends Section - Placeholder for future analytics */}
+      {/* Performance Trends Section */}
       {matches.length >= 5 && (
         <div className="pt-4 border-t border-border">
           <div className="flex items-center gap-2 mb-3">
@@ -228,14 +259,11 @@ export const PerformanceModule = ({ userId }: PerformanceModuleProps) => {
             <h3 className="text-sm font-medium text-muted-foreground">Trends</h3>
           </div>
           <div className="grid grid-cols-3 gap-3">
-            {/* Recent form indicator */}
             <div className="bg-muted/30 rounded-lg p-3 text-center">
               <p className="text-xs text-muted-foreground mb-1">Last 5</p>
               <div className="flex justify-center gap-1">
                 {matches.slice(0, 5).map((m, i) => {
-                  const userScore = m.userTeam === 1 ? m.team1_score : m.team2_score;
-                  const oppScore = m.userTeam === 1 ? m.team2_score : m.team1_score;
-                  const isWin = userScore > oppScore;
+                  const isWin = didTeamWin(m.myTeam, m.team1_score, m.team2_score);
                   return (
                     <span
                       key={i}
@@ -249,25 +277,21 @@ export const PerformanceModule = ({ userId }: PerformanceModuleProps) => {
                 })}
               </div>
             </div>
-            
-            {/* Win rate in recent matches */}
+
             <div className="bg-muted/30 rounded-lg p-3 text-center">
               <p className="text-xs text-muted-foreground mb-1">Recent Rate</p>
               <p className="text-lg font-bold text-foreground">
-                {Math.round((matches.slice(0, 5).filter(m => {
-                  const userScore = m.userTeam === 1 ? m.team1_score : m.team2_score;
-                  const oppScore = m.userTeam === 1 ? m.team2_score : m.team1_score;
-                  return userScore > oppScore;
-                }).length / Math.min(matches.length, 5)) * 100)}%
+                {Math.round((matches.slice(0, 5).filter(m =>
+                  didTeamWin(m.myTeam, m.team1_score, m.team2_score)
+                ).length / Math.min(matches.length, 5)) * 100)}%
               </p>
             </div>
-            
-            {/* Avg rating change */}
+
             <div className="bg-muted/30 rounded-lg p-3 text-center">
               <p className="text-xs text-muted-foreground mb-1">Avg ±</p>
               {(() => {
                 const recentWithRating = matches.slice(0, 5).filter(m => m.ratingChange != null);
-                const avg = recentWithRating.length > 0 
+                const avg = recentWithRating.length > 0
                   ? recentWithRating.reduce((sum, m) => sum + (m.ratingChange || 0), 0) / recentWithRating.length
                   : 0;
                 return (
