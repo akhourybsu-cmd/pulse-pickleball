@@ -239,12 +239,20 @@ export const ChatMessage = memo(function ChatMessage({
                     ? 'bg-primary text-primary-foreground rounded-br-md'
                     : 'bg-muted/70 rounded-bl-md',
                   message.is_pinned && 'ring-1 ring-primary/40',
-                  'group-hover:ring-1 group-hover:ring-border/20'
+                  'group-hover:ring-1 group-hover:ring-border/20',
+                  message._status === 'sending' && 'opacity-70',
+                  message._status === 'failed' && 'ring-1 ring-destructive/60',
                 )}
               >
                 {message.content}
+                {message._status === 'failed' && (
+                  <span className="block text-[10px] mt-1 text-destructive-foreground/90">
+                    Failed to send
+                  </span>
+                )}
               </div>
             ) : null}
+
 
             {/* Hover affordances — reaction trigger and message menu. */}
             {!editing && (
