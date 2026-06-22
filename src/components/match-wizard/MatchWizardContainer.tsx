@@ -337,37 +337,42 @@ export function MatchWizardContainer() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b">
-        <div className="max-w-lg mx-auto px-4 py-3 flex items-center gap-3">
+      <div className="sticky top-0 z-40 bg-secondary border-b border-secondary-foreground/10 shadow-sm">
+        <div className="max-w-lg mx-auto px-4 flex items-center justify-between h-[72px]">
           <Button
             variant="ghost"
             size="icon"
-            // Predictable exit — always back to the player home rather than
-            // navigate(-1), which can leak outside the shell if the user
-            // deep-linked here.
             onClick={() => navigate('/player/dashboard')}
             className="h-9 w-9"
             aria-label="Cancel and return home"
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <div>
-            <h1 className="font-semibold leading-tight">Record Match</h1>
-            <p className="text-[11px] text-muted-foreground leading-tight">
-              Saved to your PULSE history
-            </p>
-          </div>
+          <img
+            src={logo}
+            alt="PULSE"
+            className="h-[60px] sm:h-[75px] w-auto"
+          />
+          <div className="h-9 w-9" aria-hidden="true" />
         </div>
       </div>
 
       {/* Content */}
       <div className="max-w-lg mx-auto px-4 py-6 pb-28">
+        <div className="mb-4">
+          <h1 className="text-xl font-semibold leading-tight">Record Match</h1>
+          <p className="text-xs text-muted-foreground leading-tight mt-0.5">
+            Saved to your PULSE history
+          </p>
+        </div>
+
         <MatchWizardProgress
           steps={steps}
           currentStepIndex={currentStepIndex}
           onBack={goBack}
           canGoBack={currentStepIndex > 0}
         />
+
 
         <AnimatePresence mode="wait">
           <MatchWizardCard
