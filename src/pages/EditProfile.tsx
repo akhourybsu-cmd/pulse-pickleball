@@ -11,7 +11,6 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { cn } from "@/lib/utils";
 import { PlayerPageHeader } from "@/components/layout/PlayerPageHeader";
 
 import {
