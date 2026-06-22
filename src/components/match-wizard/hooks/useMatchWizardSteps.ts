@@ -10,12 +10,14 @@ export interface PlayerSlot {
 export interface MatchWizardFormData {
   // Tile 0: Date & Location
   matchDate: string; // YYYY-MM-DD
-  locationId: string | null; // UUID from courts table
+  locationId: string | null; // legacy: UUID from courts table; no longer used by the wizard
   customLocation: {
     id?: string;
+    placeId?: string;
     name: string;
     city: string;
     state: string;
+    country?: string;
   } | null;
   
   // Tile 1: Match Type
@@ -68,7 +70,8 @@ export function useMatchWizardSteps(formData: MatchWizardFormData) {
   const isStepValid = (stepId: string): boolean => {
     switch (stepId) {
       case 'date-location':
-        return !!(formData.matchDate && formData.customLocation);
+        // Location is optional — only the date is required to advance.
+        return !!formData.matchDate;
       
       case 'match-type':
         return !!formData.matchFormat;
