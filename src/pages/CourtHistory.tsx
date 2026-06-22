@@ -49,7 +49,7 @@ export default function CourtHistory() {
       for (const court of courtsData) {
         const { data: checkIns } = await (supabase as any)
           .from("court_checkins")
-          .select("id, user_id, created_at, profiles(full_name, avatar_url)")
+          .select("id, user_id, created_at, profiles:profiles_public!court_checkins_user_id_fkey(full_name, avatar_url)")
           .eq("court_id", court.id)
           .gte("created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
           .order("created_at", { ascending: false })
