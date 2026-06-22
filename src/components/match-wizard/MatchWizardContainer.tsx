@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
@@ -348,11 +348,13 @@ export function MatchWizardContainer() {
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <img
-            src={logo}
-            alt="PULSE"
-            className="h-[60px] sm:h-[75px] w-auto"
-          />
+          <Link to="/player/dashboard">
+            <img
+              src={logo}
+              alt="PULSE"
+              className="h-[60px] sm:h-[75px] w-auto cursor-pointer hover:opacity-80 transition-opacity"
+            />
+          </Link>
           <div className="h-9 w-9" aria-hidden="true" />
         </div>
       </div>
