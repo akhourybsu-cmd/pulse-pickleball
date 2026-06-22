@@ -3,7 +3,7 @@ import { format, parseISO } from "date-fns";
 import { CheckCircle2, Clock, Flag, MapPin, Trophy } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
-import { resolvePlayerInitials, formatRatingChange } from "@/lib/matchDisplay";
+import { resolvePlayerInitials as initials, formatRatingChange } from "@/lib/matchDisplay";
 
 
 export interface PremiumMatchCardProps {
@@ -88,7 +88,6 @@ export function PremiumMatchCard(props: PremiumMatchCardProps) {
   const myScore = myTeam === 1 ? team1Score : team2Score;
   const theirScore = myTeam === 1 ? team2Score : team1Score;
 
-  const initials = resolvePlayerInitials;
 
   const smartDate = useMemo(() => {
     try {

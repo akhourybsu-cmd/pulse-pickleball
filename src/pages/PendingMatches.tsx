@@ -2,24 +2,38 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
-import { ArrowLeft, Check, X } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { toLocaleDateStringEST } from "@/lib/utils";
+import { ArrowLeft } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Footer } from "@/components/Footer";
+import { PremiumMatchCard } from "@/components/matches/PremiumMatchCard";
+import { resolvePlayerName, didTeamWin } from "@/lib/matchDisplay";
+
+interface Participant {
+  id: string;
+  name: string;
+  avatar_url: string | null;
+  team: number;
+}
 
 interface PendingMatch {
   match_id: string;
   match_date: string;
   team1_score: number;
   team2_score: number;
-  team1_players: string[];
-  team2_players: string[];
   court_name: string;
+  source: string | null;
+  round_no: number | null;
+  court_no: number | null;
+  my_team: 1 | 2;
+  partner: Participant | null;
+  opponent1: Participant | null;
+  opponent2: Participant | null;
   my_approval: boolean | null;
   total_approvals: number;
+  total_players: number;
+  me: { name: string; avatar_url: string | null };
 }
 
 const PendingMatches = () => {
@@ -40,16 +54,20 @@ const PendingMatches = () => {
     }
     setCurrentUserId(user.id);
 
-    // Get all matches where user is a participant and status is pending
     const { data: participantsData } = await supabase
       .from("match_participants")
       .select(`
         match_id,
+        team,
         matches!inner(
+          id,
           match_date,
           team1_score,
           team2_score,
           status,
+          source,
+          round_no,
+          court_no,
           court_id,
           other_location,
           courts(name)
@@ -63,7 +81,6 @@ const PendingMatches = () => {
       return;
     }
 
-    // For each match, get all participants and approval status
     const matchesWithDetails = await Promise.all(
       participantsData.map(async (p: any) => {
         const { data: allParticipants } = await supabase
@@ -71,7 +88,7 @@ const PendingMatches = () => {
           .select(`
             player_id,
             team,
-            profiles(full_name, display_name)
+            profiles(id, display_name, full_name, first_name, last_name, avatar_url)
           `)
           .eq("match_id", p.match_id);
 
@@ -80,22 +97,41 @@ const PendingMatches = () => {
           .select("player_id, approved")
           .eq("match_id", p.match_id);
 
-        const team1 = allParticipants?.filter(p => p.team === 1).map(p => p.profiles.display_name || p.profiles.full_name) || [];
-        const team2 = allParticipants?.filter(p => p.team === 2).map(p => p.profiles.display_name || p.profiles.full_name) || [];
-        const myApproval = approvals?.find(a => a.player_id === user.id)?.approved;
-        const totalApprovals = approvals?.filter(a => a.approved === true).length || 0;
+        const myTeam = p.team as 1 | 2;
+        const parts = allParticipants || [];
+
+        const toParticipant = (row: any): Participant => ({
+          id: row.profiles?.id || row.player_id,
+          name: resolvePlayerName(row.profiles),
+          avatar_url: row.profiles?.avatar_url || null,
+          team: row.team,
+        });
+
+        const meRow = parts.find((r: any) => r.player_id === user.id);
+        const teammate = parts.find((r: any) => r.team === myTeam && r.player_id !== user.id);
+        const opps = parts.filter((r: any) => r.team !== myTeam);
 
         return {
           match_id: p.match_id,
           match_date: p.matches.match_date,
           team1_score: p.matches.team1_score,
           team2_score: p.matches.team2_score,
-          team1_players: team1,
-          team2_players: team2,
           court_name: p.matches.other_location || p.matches.courts?.name || "Unknown Location",
-          my_approval: myApproval,
-          total_approvals: totalApprovals,
-        };
+          source: p.matches.source ?? null,
+          round_no: p.matches.round_no ?? null,
+          court_no: p.matches.court_no ?? null,
+          my_team: myTeam,
+          partner: teammate ? toParticipant(teammate) : null,
+          opponent1: opps[0] ? toParticipant(opps[0]) : null,
+          opponent2: opps[1] ? toParticipant(opps[1]) : null,
+          my_approval: approvals?.find(a => a.player_id === user.id)?.approved ?? null,
+          total_approvals: approvals?.filter(a => a.approved === true).length || 0,
+          total_players: parts.length || 4,
+          me: {
+            name: meRow ? resolvePlayerName(meRow.profiles) : "You",
+            avatar_url: meRow?.profiles?.avatar_url || null,
+          },
+        } as PendingMatch;
       })
     );
 
@@ -116,7 +152,6 @@ const PendingMatches = () => {
 
       if (error) throw error;
 
-      // Check if all players have approved
       const { data: allApprovals } = await supabase
         .from("match_approvals")
         .select("approved")
@@ -126,17 +161,15 @@ const PendingMatches = () => {
       const anyRejected = allApprovals?.some(a => a.approved === false);
 
       if (allApproved) {
-        // Update match status and apply rating changes
         await finalizeMatch(matchId);
       } else if (anyRejected) {
-        // Mark match as rejected
         await supabase
           .from("matches")
           .update({ status: "rejected" })
           .eq("id", matchId);
       }
 
-      toast.success(approved ? "Match approved!" : "Match rejected");
+      toast.success(approved ? "Match confirmed!" : "Match disputed");
       fetchPendingMatches();
     } catch (error: any) {
       toast.error(error.message || "Failed to update approval");
@@ -144,19 +177,16 @@ const PendingMatches = () => {
   };
 
   const finalizeMatch = async (matchId: string) => {
-    // Update match status
     await supabase
       .from("matches")
       .update({ status: "approved" })
       .eq("id", matchId);
 
-    // Get all participants with their rating changes
     const { data: participants } = await supabase
       .from("match_participants")
       .select("*")
       .eq("match_id", matchId);
 
-    // Get match details for analytics
     const { data: match } = await supabase
       .from("matches")
       .select("team1_score, team2_score")
@@ -165,7 +195,6 @@ const PendingMatches = () => {
 
     if (!participants || !match) return;
 
-    // Update each player's profile with final ratings and stats
     for (const participant of participants) {
       const { data: profile } = await supabase
         .from("profiles")
@@ -219,76 +248,53 @@ const PendingMatches = () => {
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {matches.map((match) => (
-              <Card key={match.match_id}>
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle>{match.court_name}</CardTitle>
-                      <CardDescription>
-                        {toLocaleDateStringEST(match.match_date)}
-                      </CardDescription>
-                    </div>
-                    <Badge variant={match.my_approval === true ? "default" : "secondary"}>
-                      {match.total_approvals}/4 Approved
-                    </Badge>
+              <div key={match.match_id} className="space-y-2">
+                <PremiumMatchCard
+                  matchId={match.match_id}
+                  matchDate={match.match_date}
+                  team1Score={match.team1_score}
+                  team2Score={match.team2_score}
+                  myTeam={match.my_team}
+                  won={didTeamWin(match.my_team, match.team1_score, match.team2_score)}
+                  playerName={match.me.name}
+                  playerAvatarUrl={match.me.avatar_url}
+                  partnerName={match.partner?.name || ""}
+                  partnerId={match.partner?.id || ""}
+                  partnerAvatarUrl={match.partner?.avatar_url || null}
+                  opponent1Name={match.opponent1?.name || ""}
+                  opponent1Id={match.opponent1?.id || ""}
+                  opponent1AvatarUrl={match.opponent1?.avatar_url || null}
+                  opponent2Name={match.opponent2?.name || ""}
+                  opponent2Id={match.opponent2?.id || ""}
+                  opponent2AvatarUrl={match.opponent2?.avatar_url || null}
+                  ratingChange={null}
+                  courtName={match.court_name}
+                  source={match.source}
+                  roundNo={match.round_no}
+                  courtNo={match.court_no}
+                  verifiedCount={match.total_approvals}
+                  totalPlayers={match.total_players}
+                  isCurrentUserVerified={match.my_approval === true}
+                  showVerifyActions={false}
+                  pending
+                  pendingConfirmedByMe={match.my_approval === true}
+                  onConfirm={() => handleApproval(match.match_id, true)}
+                  perspective="self"
+                />
+                {match.my_approval === null && (
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => handleApproval(match.match_id, false)}
+                      className="text-xs text-muted-foreground hover:text-destructive underline-offset-2 hover:underline transition-colors"
+                    >
+                      Dispute this result
+                    </button>
                   </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-3 gap-4 items-center">
-                    <div>
-                      <p className="font-semibold text-primary">Team 1</p>
-                      {match.team1_players.map((p, i) => (
-                        <p key={i} className="text-sm">{p}</p>
-                      ))}
-                    </div>
-                    <div className="text-center">
-                      <p className="text-3xl font-bold">
-                        {match.team1_score} - {match.team2_score}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-semibold text-secondary">Team 2</p>
-                      {match.team2_players.map((p, i) => (
-                        <p key={i} className="text-sm">{p}</p>
-                      ))}
-                    </div>
-                  </div>
-
-                  {match.my_approval === null && (
-                    <div className="flex gap-2 pt-4">
-                      <Button
-                        onClick={() => handleApproval(match.match_id, true)}
-                        className="flex-1"
-                      >
-                        <Check className="w-4 h-4 mr-2" />
-                        Approve
-                      </Button>
-                      <Button
-                        onClick={() => handleApproval(match.match_id, false)}
-                        variant="destructive"
-                        className="flex-1"
-                      >
-                        <X className="w-4 h-4 mr-2" />
-                        Reject
-                      </Button>
-                    </div>
-                  )}
-
-                  {match.my_approval === true && (
-                    <p className="text-center text-sm text-muted-foreground pt-4">
-                      ✓ You've approved this match
-                    </p>
-                  )}
-
-                  {match.my_approval === false && (
-                    <p className="text-center text-sm text-destructive pt-4">
-                      ✗ You've rejected this match
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
+                )}
+              </div>
             ))}
           </div>
         )}

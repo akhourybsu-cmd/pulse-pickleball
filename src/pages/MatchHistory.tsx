@@ -946,6 +946,7 @@ const MatchHistory = () => {
                     <RoundRobinMatchGroup
                       group={item.group}
                       playerName={playerName}
+                      playerAvatarUrl={playerAvatarUrl}
                       showVerifyActions={!playerId}
                       perspective={playerId ? 'other' : 'self'}
                       getVerificationStatus={(m) => getVerificationStatus(m)}
