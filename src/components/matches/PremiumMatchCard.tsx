@@ -3,7 +3,7 @@ import { format, parseISO } from "date-fns";
 import { CheckCircle2, Clock, Flag, MapPin, Trophy } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
-import { resolvePlayerInitials, formatRatingChange } from "@/lib/matchDisplay";
+import { resolvePlayerInitials as initials, formatRatingChange } from "@/lib/matchDisplay";
 
 
 export interface PremiumMatchCardProps {
