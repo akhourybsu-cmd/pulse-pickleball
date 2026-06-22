@@ -348,12 +348,11 @@ export function MatchWizardContainer() {
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <Link to="/player/dashboard">
-            <img
-              src={logo}
-              alt="PULSE"
-              className="h-[60px] sm:h-[75px] w-auto cursor-pointer hover:opacity-80 transition-opacity"
-            />
+          <Link
+            to="/player/dashboard"
+            className="text-secondary-foreground hover:opacity-90 transition-opacity"
+          >
+            <Logo className="h-[52px] sm:h-[65px] w-auto" />
           </Link>
           <div className="h-9 w-9" aria-hidden="true" />
         </div>
