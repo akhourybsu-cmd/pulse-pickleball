@@ -62,7 +62,7 @@ export function useFriends() {
       
       if (friendUserIds.length > 0) {
         const { data: profiles } = await supabase
-          .from('profiles')
+          .from('profiles_public')
           .select('id, display_name, full_name, avatar_url, current_rating')
           .in('id', friendUserIds);
         
