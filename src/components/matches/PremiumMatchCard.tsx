@@ -3,6 +3,8 @@ import { format, parseISO } from "date-fns";
 import { CheckCircle2, Clock, Flag, MapPin, Trophy } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import { resolvePlayerInitials, formatRatingChange } from "@/lib/matchDisplay";
+
 
 export interface PremiumMatchCardProps {
   /** Stable id (used by the keyed parent and the verify/report handlers). */
@@ -43,6 +45,12 @@ export interface PremiumMatchCardProps {
   pendingConfirmedByMe?: boolean;
   /** Pending mode only — fires when the current viewer taps Confirm Result. */
   onConfirm?: () => void;
+  /**
+   * Whose vantage point are we rendering?
+   * - 'self'  → label reads "You & Partner" (default; current player's match history)
+   * - 'other' → label reads "{playerName} & Partner" (viewing another user's history/profile)
+   */
+  perspective?: 'self' | 'other';
 }
 
 /**
@@ -74,13 +82,13 @@ export function PremiumMatchCard(props: PremiumMatchCardProps) {
     verifiedCount, totalPlayers, isCurrentUserVerified,
     showVerifyActions, onVerify, onReport,
     pending = false, pendingConfirmedByMe = false, onConfirm,
+    perspective = 'self',
   } = props;
 
   const myScore = myTeam === 1 ? team1Score : team2Score;
   const theirScore = myTeam === 1 ? team2Score : team1Score;
 
-  const initials = (name: string) =>
-    name.split(/\s+/).map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+  const initials = resolvePlayerInitials;
 
   const smartDate = useMemo(() => {
     try {
@@ -91,10 +99,19 @@ export function PremiumMatchCard(props: PremiumMatchCardProps) {
     }
   }, [matchDate]);
 
-  const showRatingDelta =
-    ratingChange !== null && ratingChange !== undefined && Math.abs(ratingChange) > 0.0001;
-
+  const ratingDeltaLabel = formatRatingChange(ratingChange);
   const isRRMatch = source === "round_robin";
+
+  // Singles / removed-player cleanup: treat empty / "Unknown" / "Removed player"
+  // as "no partner" rather than rendering a ghost avatar + the literal name.
+  const hasPartner =
+    !!partnerName && partnerName !== "Unknown" && partnerName !== "Removed player";
+  const hasOpponent2 =
+    !!opponent2Name && opponent2Name !== "Unknown" && opponent2Name !== "Removed player";
+
+  const myTeamLabel = perspective === 'self'
+    ? (hasPartner ? "You & Partner" : "You")
+    : (hasPartner ? `${playerName} & Partner` : playerName);
 
   return (
     <div
@@ -150,7 +167,7 @@ export function PremiumMatchCard(props: PremiumMatchCardProps) {
             >
               {verifiedCount}/{totalPlayers}
             </span>
-          ) : showRatingDelta ? (
+          ) : ratingDeltaLabel ? (
             <span
               className={cn(
                 "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold tabular-nums flex-shrink-0",
@@ -160,8 +177,7 @@ export function PremiumMatchCard(props: PremiumMatchCardProps) {
               )}
               title="Rating change"
             >
-              {ratingChange! > 0 ? "+" : ""}
-              {ratingChange!.toFixed(2)}
+              {ratingDeltaLabel}
             </span>
           ) : null}
         </div>
@@ -181,7 +197,7 @@ export function PremiumMatchCard(props: PremiumMatchCardProps) {
                   {initials(playerName)}
                 </AvatarFallback>
               </Avatar>
-              {partnerName && partnerName !== "Unknown" && (
+              {hasPartner && (
                 <Avatar className="h-7 w-7 ring-2 ring-card">
                   <AvatarImage
                     src={partnerAvatarUrl || undefined}
@@ -195,10 +211,10 @@ export function PremiumMatchCard(props: PremiumMatchCardProps) {
               )}
             </div>
             <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              You &amp; Partner
+              {myTeamLabel}
             </div>
             <div className="text-xs text-foreground/80 truncate font-medium mt-0.5">
-              {partnerName && partnerName !== "Unknown" ? partnerName : "Solo"}
+              {hasPartner ? partnerName : "Solo"}
             </div>
           </div>
 
@@ -238,22 +254,26 @@ export function PremiumMatchCard(props: PremiumMatchCardProps) {
                   {initials(opponent1Name)}
                 </AvatarFallback>
               </Avatar>
-              <Avatar className="h-7 w-7 ring-2 ring-card">
-                <AvatarImage
-                  src={opponent2AvatarUrl || undefined}
-                  alt={opponent2Name}
-                  className="h-full w-full object-cover"
-                />
-                <AvatarFallback className="text-[10px] font-bold bg-muted text-foreground/80">
-                  {initials(opponent2Name)}
-                </AvatarFallback>
-              </Avatar>
+              {hasOpponent2 && (
+                <Avatar className="h-7 w-7 ring-2 ring-card">
+                  <AvatarImage
+                    src={opponent2AvatarUrl || undefined}
+                    alt={opponent2Name}
+                    className="h-full w-full object-cover"
+                  />
+                  <AvatarFallback className="text-[10px] font-bold bg-muted text-foreground/80">
+                    {initials(opponent2Name)}
+                  </AvatarFallback>
+                </Avatar>
+              )}
             </div>
             <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              Opponents
+              {hasOpponent2 ? "Opponents" : "Opponent"}
             </div>
             <div className="text-xs text-foreground/80 truncate font-medium mt-0.5">
-              {opponent1Name} <span className="text-muted-foreground">·</span> {opponent2Name}
+              {hasOpponent2
+                ? <>{opponent1Name} <span className="text-muted-foreground">·</span> {opponent2Name}</>
+                : opponent1Name}
             </div>
           </div>
         </div>
