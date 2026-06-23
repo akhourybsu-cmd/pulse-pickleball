@@ -45,7 +45,7 @@ export function PostCommentsSheet({
     useGroupPostComments(postId);
   const [draft, setDraft] = useState('');
   const [replyTo, setReplyTo] = useState<PostComment | null>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const composerRef = useRef<MessageComposerHandle>(null);
 
   // Reset on close so the next open starts clean.
   useEffect(() => {
@@ -55,13 +55,9 @@ export function PostCommentsSheet({
     }
   }, [open]);
 
-  const focusComposer = () => {
-    requestAnimationFrame(() => inputRef.current?.focus());
-  };
-
   const handleReply = (c: PostComment) => {
     setReplyTo(c);
-    focusComposer();
+    composerRef.current?.focus();
   };
 
   const handleSubmit = async () => {
@@ -71,16 +67,6 @@ export function PostCommentsSheet({
     const parentId = replyTo?.parent_comment_id || replyTo?.id;
     setReplyTo(null);
     await createComment(content, parentId || undefined);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmit();
-    } else if (e.key === 'Escape' && replyTo) {
-      e.preventDefault();
-      setReplyTo(null);
-    }
   };
 
   const renderComment = (comment: PostComment, isReply = false) => {
