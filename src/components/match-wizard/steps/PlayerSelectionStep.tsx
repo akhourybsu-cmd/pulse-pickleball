@@ -333,12 +333,14 @@ export function PlayerSelectionStep({
         onOpenChange={setSheetOpen}
         excludeIds={selectedIds}
         currentUserId={currentUserId}
+        currentUserProfile={currentUserProfile}
         onPick={(p) => activeSlot && commitPlayerToSlot(p, activeSlot)}
         onPickGuest={() => {
           setSheetOpen(false);
           setShowGuestModal(true);
         }}
       />
+
 
       {/* Guest dialog */}
       <Dialog open={showGuestModal} onOpenChange={setShowGuestModal}>
