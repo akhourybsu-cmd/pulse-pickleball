@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Send, MoreVertical, BellOff, Bell, Shield, Flag, UserX } from 'lucide-react';
+import { ArrowLeft, MoreVertical, BellOff, Bell, Shield, Flag, UserX } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format, isToday, isYesterday, isSameDay } from 'date-fns';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { MessageComposer, type MessageComposerHandle } from '@/components/community/MessageComposer';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
