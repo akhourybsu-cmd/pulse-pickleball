@@ -283,11 +283,7 @@ export default function RoundRobinKiosk() {
 
       setEvent(eventData);
 
-      if (eventData.status === "completed") {
-        toast.info("This event has been completed");
-        setLoading(false);
-        return;
-      }
+      // Completed events still render — the kiosk shows the celebratory final leaderboard.
 
       const currentRound = eventData.current_round || 1;
 
