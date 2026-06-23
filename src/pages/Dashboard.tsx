@@ -23,6 +23,7 @@ import { PerformanceModule } from "@/components/dashboard/PerformanceModule";
 import { UpcomingEventsPreview } from "@/components/dashboard/UpcomingEventsPreview";
 import { MyRoundRobinsCard } from "@/components/dashboard/MyRoundRobinsCard";
 import { MyCommunitiesRail } from "@/components/dashboard/MyCommunitiesRail";
+import { MyFriendsRail } from "@/components/dashboard/MyFriendsRail";
 import { EnablePushBanner } from "@/components/dashboard/EnablePushBanner";
 // RoleSwitcherCard hidden during the player-only beta. Re-import + render
 // when the venue surface returns.
@@ -268,6 +269,25 @@ const Dashboard = () => {
               <MyCommunitiesRail />
             </div>
 
+            {/* My friends — quick-tap rail of accepted friends + pending requests */}
+            <div
+              className="opacity-0 animate-fade-up"
+              style={{ animationDelay: '190ms', animationFillMode: 'forwards' }}
+            >
+              <SectionHeader
+                label="My friends"
+                action={
+                  <Link
+                    to="/player/friends"
+                    className="text-muted-foreground hover:text-foreground transition-colors font-medium"
+                  >
+                    View all →
+                  </Link>
+                }
+              />
+              <MyFriendsRail />
+            </div>
+
             {/* Up next — upcoming registered play */}
             <div
               className="opacity-0 animate-fade-up"
@@ -378,6 +398,22 @@ const Dashboard = () => {
               }
             />
             <MyCommunitiesRail />
+          </div>
+
+          {/* My friends — see desktop comment above for rationale. */}
+          <div
+            className="opacity-0 animate-fade-up"
+            style={{ animationDelay: '190ms', animationFillMode: 'forwards' }}
+          >
+            <SectionHeader
+              label="My friends"
+              action={
+                <Link to="/player/friends" className="text-muted-foreground hover:text-foreground transition-colors font-medium">
+                  View all →
+                </Link>
+              }
+            />
+            <MyFriendsRail />
           </div>
 
           {/* Up next */}
