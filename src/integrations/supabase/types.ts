@@ -6481,6 +6481,10 @@ export type Database = {
         Args: { _group_id: string; _user_id: string }
         Returns: boolean
       }
+      is_valid_push_dispatch_secret: {
+        Args: { p_secret: string }
+        Returns: boolean
+      }
       join_group_by_code: { Args: { p_code: string }; Returns: Json }
       join_round_robin_by_code: {
         Args: { p_code: string }
