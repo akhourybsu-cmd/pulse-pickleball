@@ -26,7 +26,7 @@ import { PlayStyleChip } from "@/components/profile/PlayStyleChip";
 import { SectionHeader } from "@/components/layout/SectionHeader";
 import { useFriends } from "@/hooks/useFriends";
 import { cn } from "@/lib/utils";
-import logo from "@/assets/pulse-logo-premium.svg";
+import { Logo } from "@/components/Logo";
 
 interface Profile {
   id: string;
@@ -310,12 +310,8 @@ const ViewProfile = () => {
             <ArrowLeft className="h-4 w-4 mr-1" />
             Back
           </Button>
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <img
-              src={logo}
-              alt="PULSE Logo"
-              className="h-[44px] w-auto"
-            />
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none text-secondary-foreground">
+            <Logo className="h-[44px] w-auto" />
           </div>
           <div className="w-16" />
         </div>
