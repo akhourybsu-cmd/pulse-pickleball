@@ -187,8 +187,18 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
 
       setSchedule(mappedSchedule);
 
-      // Calculate standings only over active registered players
-      calculateStandings(mappedSchedule, activePlayersWithProfiles);
+      // Calculate standings over every player who is registered OR appears in the schedule,
+      // so the standings table is always complete (e.g. removed players who already played).
+      const standingsRoster: Player[] = allIds.map((pid) => {
+        const reg = (playersRaw || []).find((p) => p.player_id === pid);
+        return {
+          id: reg?.id ?? pid,
+          player_id: pid,
+          registration_status: reg?.registration_status ?? "",
+          profiles: profilesById.get(pid) ?? null,
+        };
+      });
+      calculateStandings(mappedSchedule, standingsRoster);
     } catch (error) {
       console.error("Error fetching event data:", error);
       toast.error("Failed to load event details");
