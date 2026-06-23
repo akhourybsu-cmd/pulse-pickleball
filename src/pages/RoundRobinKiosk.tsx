@@ -429,6 +429,21 @@ export default function RoundRobinKiosk() {
     );
   }
 
+  if (event.status === "completed") {
+    return (
+      <FinalLeaderboardScreen
+        event={event}
+        standings={standings}
+        themeColors={themeColors}
+        currentTime={currentTime}
+        onExit={handleExitKiosk}
+        onChangeTheme={setTheme}
+        pinModalOpen={pinModalOpen}
+        setPinModalOpen={setPinModalOpen}
+        handlePinSuccess={handlePinSuccess}
+      />
+    );
+
   const currentRound = event.current_round || 1;
   const allFinal = currentRoundMatches.every(m => m.team1_score !== null && m.team2_score !== null);
   const isLastRound = currentRound >= event.num_rounds;
