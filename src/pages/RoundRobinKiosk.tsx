@@ -953,3 +953,392 @@ export default function RoundRobinKiosk() {
     </>
   );
 }
+
+// ============================================================
+// Final Leaderboard Celebration Screen
+// ============================================================
+
+interface FinalLeaderboardScreenProps {
+  event: Event;
+  standings: StandingsRow[];
+  themeColors: typeof THEME_CONFIG[KioskTheme];
+  currentTime: Date;
+  onExit: () => void;
+  onChangeTheme: (t: KioskTheme) => void;
+  pinModalOpen: boolean;
+  setPinModalOpen: (v: boolean) => void;
+  handlePinSuccess: () => void;
+}
+
+const MEDAL_COLORS = {
+  gold: { bg: '#F5C542', glow: '245, 197, 66', label: 'CHAMPION' },
+  silver: { bg: '#C7CDD4', glow: '199, 205, 212', label: '2ND PLACE' },
+  bronze: { bg: '#C97A3A', glow: '201, 122, 58', label: '3RD PLACE' },
+};
+
+function FinalLeaderboardScreen({
+  event,
+  standings,
+  themeColors,
+  currentTime,
+  onExit,
+  onChangeTheme,
+  pinModalOpen,
+  setPinModalOpen,
+  handlePinSuccess,
+}: FinalLeaderboardScreenProps) {
+  const champion = standings[0];
+  const second = standings[1];
+  const third = standings[2];
+  const rest = standings.slice(3, 13);
+
+  const formattedTime = currentTime.toLocaleTimeString([], {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+
+  // Stable randomized confetti seeds
+  const confetti = Array.from({ length: 36 }, (_, i) => ({
+    left: (i * 37) % 100,
+    delay: ((i * 13) % 60) / 10,
+    duration: 6 + ((i * 7) % 40) / 10,
+    color: [themeColors.accent, MEDAL_COLORS.gold.bg, MEDAL_COLORS.silver.bg, MEDAL_COLORS.bronze.bg][i % 4],
+    size: 6 + (i % 4) * 2,
+    rotate: (i * 23) % 360,
+  }));
+
+  return (
+    <>
+      <style>{`
+        @keyframes kiosk-confetti-fall {
+          0% { transform: translateY(-10vh) rotate(0deg); opacity: 0; }
+          10% { opacity: 1; }
+          100% { transform: translateY(110vh) rotate(720deg); opacity: 0.9; }
+        }
+        @keyframes kiosk-champ-glow {
+          0%, 100% { box-shadow: 0 0 60px rgba(245,197,66,0.45), 0 0 120px rgba(245,197,66,0.25); }
+          50% { box-shadow: 0 0 90px rgba(245,197,66,0.7), 0 0 180px rgba(245,197,66,0.35); }
+        }
+        @keyframes kiosk-rise {
+          from { opacity: 0; transform: translateY(24px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+
+      <div
+        className="fixed inset-0 flex flex-col overflow-hidden font-sans"
+        style={{
+          backgroundColor: themeColors.bg,
+          backgroundImage: `radial-gradient(ellipse at 50% 60%, rgba(245,197,66,0.18), transparent 55%), radial-gradient(ellipse at 50% 110%, rgba(${themeColors.accentRgb},0.18), transparent 60%)`,
+          color: themeColors.text,
+        }}
+      >
+        {/* Confetti */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          {confetti.map((c, i) => (
+            <span
+              key={i}
+              className="absolute block rounded-sm"
+              style={{
+                left: `${c.left}%`,
+                top: 0,
+                width: c.size,
+                height: c.size * 1.6,
+                backgroundColor: c.color,
+                transform: `rotate(${c.rotate}deg)`,
+                animation: `kiosk-confetti-fall ${c.duration}s linear ${c.delay}s infinite`,
+                opacity: 0.85,
+              }}
+            />
+          ))}
+        </div>
+
+        {/* Hidden admin controls */}
+        <div className="group absolute top-0 right-0 z-50 w-48 h-16">
+          <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-end gap-2 p-3">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" style={{ borderColor: themeColors.accent, color: themeColors.accent, backgroundColor: themeColors.headerBg }}>
+                  <Palette className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                {(Object.keys(THEME_CONFIG) as KioskTheme[]).map((t) => (
+                  <DropdownMenuItem key={t} onClick={() => onChangeTheme(t)}>
+                    {THEME_CONFIG[t].name}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <FullscreenToggleButton />
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onExit}
+              className="gap-2"
+              style={{ borderColor: themeColors.accent, color: themeColors.accent, backgroundColor: themeColors.headerBg }}
+            >
+              <Lock className="h-4 w-4" />
+              Exit
+            </Button>
+          </div>
+        </div>
+
+        {/* Header */}
+        <header
+          className="flex items-center justify-between px-8 h-[8vh] min-h-[64px] border-b relative z-10"
+          style={{
+            backgroundColor: themeColors.headerBg,
+            borderColor: `rgba(${themeColors.accentRgb}, 0.25)`,
+          }}
+        >
+          <div className="flex items-center gap-5">
+            <div style={{ color: themeColors.mutedText }}>
+              <Logo className="h-[5vh] min-h-9 w-auto" />
+            </div>
+            <div className="h-[5vh] min-h-9 w-px" style={{ backgroundColor: `rgba(255,255,255,0.15)` }} />
+            <div className="flex flex-col leading-tight">
+              <h1 className="text-[1.8vw] font-bold tracking-tight" style={{ color: themeColors.text }}>
+                {event.name}
+              </h1>
+              <p className="text-[0.95vw] font-medium tracking-[0.18em] uppercase" style={{ color: MEDAL_COLORS.gold.bg }}>
+                Event Complete
+              </p>
+            </div>
+          </div>
+
+          <div className="text-[1.6vw] font-semibold tabular-nums" style={{ color: themeColors.text }}>
+            {formattedTime}
+          </div>
+        </header>
+
+        {/* Body */}
+        {standings.length === 0 ? (
+          <main className="flex-1 flex flex-col items-center justify-center px-8 relative z-10">
+            <Trophy className="w-[8vw] h-[8vw]" style={{ color: MEDAL_COLORS.gold.bg }} />
+            <h2 className="text-[5vw] font-black mt-4" style={{ color: themeColors.text }}>
+              Event Complete
+            </h2>
+            <p className="text-[1.5vw] mt-2" style={{ color: themeColors.mutedText }}>
+              Thanks for playing — no results were recorded.
+            </p>
+          </main>
+        ) : (
+          <main className="flex-1 flex flex-col items-center justify-between px-8 py-4 min-h-0 relative z-10">
+            {/* Title */}
+            <div
+              className="flex items-center gap-4"
+              style={{ animation: 'kiosk-rise 600ms ease-out both' }}
+            >
+              <Trophy className="w-[3.5vw] h-[3.5vw]" style={{ color: MEDAL_COLORS.gold.bg }} />
+              <h2
+                className="text-[4.5vw] font-black tracking-tight"
+                style={{
+                  color: themeColors.text,
+                  textShadow: `0 4px 30px rgba(245,197,66,0.45)`,
+                }}
+              >
+                CHAMPIONS
+              </h2>
+              <Trophy className="w-[3.5vw] h-[3.5vw]" style={{ color: MEDAL_COLORS.gold.bg }} />
+            </div>
+
+            {/* Podium */}
+            <div className="flex items-end justify-center gap-6 w-full max-w-[90vw]">
+              {/* 2nd */}
+              {second && (
+                <PodiumCard
+                  rank={2}
+                  row={second}
+                  medal={MEDAL_COLORS.silver}
+                  themeColors={themeColors}
+                  height="34vh"
+                  rankSize="6vw"
+                  nameSize="2.4vw"
+                  delay="500ms"
+                />
+              )}
+              {/* 1st */}
+              {champion && (
+                <PodiumCard
+                  rank={1}
+                  row={champion}
+                  medal={MEDAL_COLORS.gold}
+                  themeColors={themeColors}
+                  height="44vh"
+                  rankSize="9vw"
+                  nameSize="3.2vw"
+                  delay="200ms"
+                  isChampion
+                />
+              )}
+              {/* 3rd */}
+              {third && (
+                <PodiumCard
+                  rank={3}
+                  row={third}
+                  medal={MEDAL_COLORS.bronze}
+                  themeColors={themeColors}
+                  height="28vh"
+                  rankSize="5vw"
+                  nameSize="2.2vw"
+                  delay="700ms"
+                />
+              )}
+            </div>
+
+            {/* Runners up */}
+            {rest.length > 0 && (
+              <div
+                className="w-full max-w-[90vw] grid gap-3"
+                style={{
+                  gridTemplateColumns: `repeat(${Math.min(rest.length, 5)}, minmax(0, 1fr))`,
+                  animation: 'kiosk-rise 800ms ease-out 900ms both',
+                }}
+              >
+                {rest.map((row, i) => (
+                  <div
+                    key={row.player_id}
+                    className="flex items-center gap-3 px-4 py-2.5 rounded-xl"
+                    style={{
+                      backgroundColor: themeColors.cardBg,
+                      boxShadow: `inset 0 0 0 1px rgba(${themeColors.accentRgb},0.12)`,
+                    }}
+                  >
+                    <div
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-[1vw] font-extrabold flex-shrink-0"
+                      style={{ backgroundColor: `rgba(255,255,255,0.08)`, color: themeColors.text }}
+                    >
+                      {i + 4}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[1.05vw] font-bold truncate" style={{ color: themeColors.text }}>
+                        {row.player_name}
+                      </div>
+                      <div className="text-[0.8vw] tabular-nums" style={{ color: themeColors.mutedText }}>
+                        {row.wins}W · {row.point_diff > 0 ? '+' : ''}{row.point_diff}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </main>
+        )}
+
+        {/* Footer */}
+        <footer
+          className="h-[6vh] min-h-[48px] flex items-center justify-center px-8 border-t relative z-10"
+          style={{
+            backgroundColor: themeColors.headerBg,
+            borderColor: `rgba(${themeColors.accentRgb}, 0.25)`,
+          }}
+        >
+          <span className="text-[1vw] font-semibold tracking-[0.2em] uppercase" style={{ color: themeColors.mutedText }}>
+            Thanks for playing · Powered by <span style={{ color: themeColors.accent }}>PULSE</span>
+          </span>
+        </footer>
+
+        {/* Exit PIN Modal */}
+        {pinModalOpen && (
+          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+            <Card
+              className="p-6 max-w-sm mx-4"
+              style={{ backgroundColor: themeColors.cardBg, borderColor: `rgba(${themeColors.accentRgb}, 0.2)` }}
+            >
+              <h3 className="text-xl font-bold mb-2" style={{ color: themeColors.text }}>
+                Exit Kiosk Mode
+              </h3>
+              <p className="text-sm mb-4" style={{ color: themeColors.mutedText }}>
+                Enter organizer PIN to continue
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => setPinModalOpen(false)}
+                  variant="outline"
+                  className="flex-1 hover:opacity-80"
+                  style={{ borderColor: themeColors.mutedText, color: themeColors.text }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handlePinSuccess}
+                  className="flex-1"
+                  style={{ backgroundColor: themeColors.accent, color: themeColors.headerBg }}
+                >
+                  Confirm
+                </Button>
+              </div>
+            </Card>
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
+interface PodiumCardProps {
+  rank: number;
+  row: StandingsRow;
+  medal: { bg: string; glow: string; label: string };
+  themeColors: typeof THEME_CONFIG[KioskTheme];
+  height: string;
+  rankSize: string;
+  nameSize: string;
+  delay: string;
+  isChampion?: boolean;
+}
+
+function PodiumCard({ rank, row, medal, themeColors, height, rankSize, nameSize, delay, isChampion }: PodiumCardProps) {
+  return (
+    <div
+      className="flex-1 flex flex-col items-center justify-end max-w-[28vw]"
+      style={{ animation: `kiosk-rise 700ms ease-out ${delay} both` }}
+    >
+      <div
+        className="text-[1vw] font-extrabold tracking-[0.25em] mb-3"
+        style={{ color: medal.bg }}
+      >
+        {medal.label}
+      </div>
+      <div
+        className="w-full rounded-3xl flex flex-col items-center justify-center px-4 py-6 relative"
+        style={{
+          height,
+          backgroundColor: themeColors.cardBg,
+          boxShadow: isChampion
+            ? `0 0 60px rgba(${medal.glow},0.45), 0 0 120px rgba(${medal.glow},0.25), inset 0 0 0 2px ${medal.bg}`
+            : `0 10px 40px rgba(0,0,0,0.5), inset 0 0 0 2px rgba(${medal.glow},0.6)`,
+          animation: isChampion ? 'kiosk-champ-glow 2.8s ease-in-out infinite' : undefined,
+        }}
+      >
+        <div
+          className="font-black leading-none tabular-nums"
+          style={{
+            fontSize: rankSize,
+            color: medal.bg,
+            textShadow: `0 4px 30px rgba(${medal.glow},0.6)`,
+          }}
+        >
+          {rank}
+        </div>
+        <div
+          className="font-extrabold text-center mt-3 px-2"
+          style={{ fontSize: nameSize, color: themeColors.text, lineHeight: 1.05 }}
+        >
+          {row.player_name}
+        </div>
+        <div
+          className="text-[1.05vw] font-bold tabular-nums mt-2 px-3 py-1 rounded-full"
+          style={{
+            backgroundColor: `rgba(${medal.glow},0.15)`,
+            color: medal.bg,
+            border: `1px solid rgba(${medal.glow},0.4)`,
+          }}
+        >
+          {row.wins}W · {row.losses}L · {row.point_diff > 0 ? '+' : ''}{row.point_diff}
+        </div>
+      </div>
+    </div>
+  );
+}
