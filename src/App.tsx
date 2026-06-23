@@ -146,7 +146,7 @@ const PlayerDashboard = lazy(() => import("./pages/player/PlayerDashboard"));
 const PlayerProfile = lazy(() => import("./pages/player/PlayerProfile"));
 const MyRoundRobinsPage = lazy(() => import("./pages/player/MyRoundRobinsPage"));
 const PlayHub = lazy(() => import("./pages/play/PlayHub"));
-// PlayerCourts removed - Court Connector feature archived
+
 const PlayerEvents = lazy(() => import("./pages/player/PlayerEvents"));
 const PlayerCoaching = lazy(() => import("./pages/player/PlayerCoaching"));
 const PlayerBookings = lazy(() => import("./pages/player/PlayerBookings"));
