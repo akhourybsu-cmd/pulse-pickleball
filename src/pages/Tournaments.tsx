@@ -279,8 +279,8 @@ export default function Tournaments() {
                   className="bg-card p-6 rounded-lg shadow-sm"
                 >
                   <MessageCircle className="h-8 w-8 text-primary mb-3" />
-                  <div className="font-semibold mb-2 text-card-foreground">Court Connector</div>
-                  <div className="text-sm text-card-foreground/80">Connect with players in your area and find games near you</div>
+                  <div className="font-semibold mb-2 text-card-foreground">Community Hub</div>
+                  <div className="text-sm text-card-foreground/80">Join groups, chat with players, and organize open play sessions</div>
                 </motion.div>
                 <motion.div 
                   initial={{ opacity: 0, y: 20 }}
