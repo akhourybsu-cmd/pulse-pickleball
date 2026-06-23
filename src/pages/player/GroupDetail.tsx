@@ -538,6 +538,13 @@ export default function GroupDetail() {
         groupName={group.name}
       />
 
+      <GroupNotificationSettingsSheet
+        open={notifSettingsOpen}
+        onOpenChange={setNotifSettingsOpen}
+        groupId={group.id}
+        groupName={group.name}
+      />
+
       {/* Collapsed Composer Bar - Only show on Feed tab */}
       {activeTab === 'feed' && (
         <CollapsedComposerBar
