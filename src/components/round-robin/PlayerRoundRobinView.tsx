@@ -107,37 +107,13 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
       if (eventError) throw eventError;
       setEvent(eventData);
 
-      // Fetch players (without join — profiles table is owner-only RLS)
+      // Fetch players (no active filter — names must resolve even for removed players)
       const { data: playersRaw, error: playersError } = await supabase
         .from("round_robin_players")
-        .select("id, player_id, registration_status")
-        .eq("event_id", eventId)
-        .eq("active", true);
+        .select("id, player_id, registration_status, active")
+        .eq("event_id", eventId);
 
       if (playersError) throw playersError;
-
-      const playerIds = (playersRaw || []).map((p) => p.player_id).filter(Boolean);
-
-      // Batch fetch public profile data via the public view
-      let profilesById = new Map<string, Player["profiles"]>();
-      if (playerIds.length > 0) {
-        const { data: profilesData, error: profilesError } = await supabase
-          .from("profiles_public")
-          .select("id, display_name, full_name, avatar_url, current_rating")
-          .in("id", playerIds);
-
-        if (profilesError) throw profilesError;
-        profilesById = new Map(
-          (profilesData || []).map((p) => [p.id, p as Player["profiles"]])
-        );
-      }
-
-      const playersWithProfiles: Player[] = (playersRaw || []).map((p) => ({
-        ...p,
-        profiles: profilesById.get(p.player_id) ?? null,
-      }));
-
-      setPlayers(playersWithProfiles);
 
       // Fetch schedule
       const { data: scheduleData, error: scheduleError } = await supabase
@@ -148,21 +124,69 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
         .order("court_no", { ascending: true });
 
       if (scheduleError) throw scheduleError;
-      
+
+      // Collect ALL player IDs referenced (players list + schedule) so no name resolves to "Unknown"
+      const idSet = new Set<string>();
+      (playersRaw || []).forEach((p) => p.player_id && idSet.add(p.player_id));
+      (scheduleData || []).forEach((m) => {
+        [m.a1_player_id, m.a2_player_id, m.b1_player_id, m.b2_player_id].forEach((id) => {
+          if (id) idSet.add(id);
+        });
+      });
+      const allIds = Array.from(idSet);
+
+      // Batch fetch public profile data via the public view
+      let profilesById = new Map<string, Player["profiles"]>();
+      if (allIds.length > 0) {
+        const { data: profilesData, error: profilesError } = await supabase
+          .from("profiles_public")
+          .select("id, display_name, full_name, avatar_url, current_rating")
+          .in("id", allIds);
+
+        if (profilesError) throw profilesError;
+        profilesById = new Map(
+          (profilesData || []).map((p) => [p.id, p as Player["profiles"]])
+        );
+      }
+
+      // Active registrations only show on the Players tab, but keep all profiles in the lookup
+      const activePlayersWithProfiles: Player[] = (playersRaw || [])
+        .filter((p) => p.active !== false)
+        .map((p) => ({
+          id: p.id,
+          player_id: p.player_id,
+          registration_status: p.registration_status,
+          profiles: profilesById.get(p.player_id) ?? null,
+        }));
+
+      // Build a synthetic "all-known players" list used purely for name lookup in schedule
+      const lookupPlayers: Player[] = allIds.map((pid) => ({
+        id: pid,
+        player_id: pid,
+        registration_status: "",
+        profiles: profilesById.get(pid) ?? null,
+      }));
+
+      // Store the lookup list so getPlayerName resolves every schedule reference
+      setPlayers([
+        ...activePlayersWithProfiles,
+        ...lookupPlayers.filter(
+          (lp) => !activePlayersWithProfiles.some((ap) => ap.player_id === lp.player_id)
+        ),
+      ]);
+
       // Map the data to include all needed fields
-      const mappedSchedule = (scheduleData || []).map(match => ({
+      const mappedSchedule = (scheduleData || []).map((match) => ({
         ...match,
         team_a_score: match.team1_score,
         team_b_score: match.team2_score,
-        completed: !!match.team1_score && !!match.team2_score
+        completed: !!match.team1_score && !!match.team2_score,
       }));
-      
+
       setSchedule(mappedSchedule);
 
-      // Calculate standings
-      if (mappedSchedule) {
-        calculateStandings(mappedSchedule, playersWithProfiles);
-      }
+      // Calculate standings only over active registered players
+      calculateStandings(mappedSchedule, activePlayersWithProfiles);
     } catch (error) {
       console.error("Error fetching event data:", error);
       toast.error("Failed to load event details");
