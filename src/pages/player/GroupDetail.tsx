@@ -523,6 +523,8 @@ export default function GroupDetail() {
         <CollapsedComposerBar
           onExpand={() => openQuickPost('post')}
           onPhotoClick={() => openQuickPost('photo')}
+          avatarUrl={currentUserProfile?.avatar_url}
+          displayName={currentUserProfile?.display_name || currentUserProfile?.full_name}
         />
       )}
 
