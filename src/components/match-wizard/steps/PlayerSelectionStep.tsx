@@ -242,7 +242,7 @@ export function PlayerSelectionStep({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <div className="h-9 w-9 rounded-full bg-secondary/10 flex items-center justify-center">
-            <Users className="h-4.5 w-4.5 text-secondary" strokeWidth={1.75} />
+            <Users className="h-4 w-4 text-secondary" strokeWidth={1.75} />
           </div>
           <h2 className="text-base font-semibold tracking-tight">Who played?</h2>
         </div>
