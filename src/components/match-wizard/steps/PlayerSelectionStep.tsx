@@ -653,7 +653,7 @@ function AddPlayerSheet({
       );
     }
     return out.slice(0, 30);
-  }, [friends, recent, suggestions, friendIdSet, recentIdSet, filterOut]);
+  }, [friends, recent, suggestions, friendIdSet, recentIdSet, filterOut, currentUserProfile]);
 
   const friendsList: RowPlayer[] = useMemo(
     () =>
