@@ -42,6 +42,7 @@ export default function GroupDetail() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('feed');
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentUserProfile, setCurrentUserProfile] = useState<{ display_name: string | null; full_name: string | null; avatar_url: string | null } | null>(null);
   
   // Track which tabs have been visited for lazy mounting
   const [visitedTabs, setVisitedTabs] = useState<Set<string>>(new Set(['feed']));
