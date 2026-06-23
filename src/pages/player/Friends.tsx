@@ -137,7 +137,7 @@ export default function Friends() {
                     <AvatarFallback>{initials(f.profile.display_name || f.profile.full_name)}</AvatarFallback>
                   </Avatar>
                   <button
-                    onClick={() => navigate(`/player/profile?userId=${f.profile.id}`)}
+                    onClick={() => navigate(`/profile/${f.profile.id}`)}
                     className="flex-1 min-w-0 text-left"
                   >
                     <div className="text-sm font-medium truncate">
