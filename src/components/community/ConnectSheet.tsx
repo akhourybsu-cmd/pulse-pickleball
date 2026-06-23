@@ -180,13 +180,19 @@ function SuggestionsPanel({ actionButton }: { actionButton: (id: string) => JSX.
 }
 
 function SuggestionRow({ player, action }: { player: SuggestedFriend; action: JSX.Element }) {
+  const navigate = useNavigate();
   return (
     <div className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border/30">
-      <Avatar className="h-10 w-10">
-        <AvatarImage src={player.avatar_url || undefined} />
-        <AvatarFallback>{getInitials(displayName(player))}</AvatarFallback>
-      </Avatar>
-      <div className="flex-1 min-w-0">
+      <button onClick={() => navigate(`/profile/${player.id}`)} aria-label="View profile">
+        <Avatar className="h-10 w-10">
+          <AvatarImage src={player.avatar_url || undefined} />
+          <AvatarFallback>{getInitials(displayName(player))}</AvatarFallback>
+        </Avatar>
+      </button>
+      <button
+        onClick={() => navigate(`/profile/${player.id}`)}
+        className="flex-1 min-w-0 text-left"
+      >
         <p className="font-medium text-sm truncate font-display">{displayName(player)}</p>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <span className="truncate">{player.reason}</span>
@@ -197,7 +203,7 @@ function SuggestionRow({ player, action }: { player: SuggestedFriend; action: JS
             </>
           )}
         </div>
-      </div>
+      </button>
       {action}
     </div>
   );
