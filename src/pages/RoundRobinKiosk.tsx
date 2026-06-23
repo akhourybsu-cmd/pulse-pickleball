@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { FullscreenToggleButton } from "@/components/kiosk/FullscreenToggleButton";
 import { toast } from "sonner";
 import { Radio, Lock, Clock, Trophy, Palette } from "lucide-react";
-import pulseLogo from "@/assets/pulse-logo-premium.svg";
+import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import {
   DropdownMenu,
@@ -523,7 +523,7 @@ export default function RoundRobinKiosk() {
           }}
         >
           <div className="flex items-center gap-5">
-            <img src={pulseLogo} alt="PULSE" className="h-[5vh] min-h-9 w-auto" />
+            <Logo className="h-[5vh] min-h-9 w-auto" style={{ color: themeColors.mutedText }} />
             <div
               className="h-[5vh] min-h-9 w-px"
               style={{ backgroundColor: `rgba(255,255,255,0.15)` }}
