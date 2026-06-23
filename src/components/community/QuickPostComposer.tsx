@@ -379,7 +379,7 @@ export function QuickPostComposer({
           </Tabs>
         </div>
 
-        <DrawerFooter className="flex-row gap-2 pt-4">
+        <DrawerFooter className="flex-row gap-2 px-4 pt-3 pb-3 border-t shrink-0 [padding-bottom:max(0.75rem,env(safe-area-inset-bottom))]">
           <Button 
             variant="outline" 
             onClick={() => onOpenChange(false)} 
