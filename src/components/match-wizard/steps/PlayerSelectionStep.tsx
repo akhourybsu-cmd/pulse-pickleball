@@ -442,7 +442,7 @@ function SlotButton({
         type="button"
         onClick={onOpen}
         className={cn(
-          "w-full flex items-center gap-3 rounded-xl border bg-background/40 px-3 py-2.5 text-left transition-all",
+          "w-full flex items-center gap-3 rounded-xl border bg-background/40 px-3 py-3 text-left transition-all min-h-[52px]",
           isActive
             ? "border-primary ring-2 ring-primary/25 shadow-[0_0_0_4px_hsl(var(--primary)/0.06)]"
             : "border-border/70 hover:border-primary/40",
@@ -450,7 +450,7 @@ function SlotButton({
       >
         <span
           className={cn(
-            "h-8 w-8 rounded-full flex items-center justify-center shrink-0",
+            "h-9 w-9 rounded-full flex items-center justify-center shrink-0",
             isActive
               ? "bg-primary/10 text-primary ring-1 ring-primary/30"
               : "bg-muted text-muted-foreground",
@@ -464,7 +464,7 @@ function SlotButton({
             isActive ? "text-primary" : "text-foreground/80",
           )}
         >
-          + Add Player
+          Add player
         </span>
         <ChevronRight
           className={cn(
@@ -487,49 +487,57 @@ function SlotButton({
   return (
     <div
       className={cn(
-        "w-full flex items-center gap-2.5 rounded-xl border px-2.5 py-2",
+        "w-full flex items-center gap-2.5 rounded-xl border pl-2.5 pr-1 py-2 min-h-[52px]",
         slot?.isGuest
           ? "border-dashed border-primary/40 bg-primary/5"
           : "border-border/70 bg-muted/40",
       )}
     >
-      <Avatar className="h-8 w-8">
-        <AvatarImage src={cachedPlayer?.avatar_url || undefined} />
-        <AvatarFallback className="text-[10px]">
-          {slot?.isGuest
-            ? (slot.guestName?.[0] || "G").toUpperCase()
-            : cachedPlayer
-              ? initials(cachedPlayer)
-              : "?"}
-        </AvatarFallback>
-      </Avatar>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium truncate leading-tight">
-          {displayName}
-        </p>
-        {slot?.isGuest ? (
-          <p className="text-[10px] uppercase tracking-wide text-primary/80 font-semibold">
-            Guest
+      <button
+        type="button"
+        onClick={onOpen}
+        aria-label="Replace player"
+        className="flex-1 min-w-0 flex items-center gap-2.5 text-left rounded-lg -m-1 p-1 hover:bg-foreground/[0.02] active:bg-foreground/[0.04] transition-colors"
+      >
+        <Avatar className="h-9 w-9">
+          <AvatarImage src={cachedPlayer?.avatar_url || undefined} />
+          <AvatarFallback className="text-[10px]">
+            {slot?.isGuest
+              ? (slot.guestName?.[0] || "G").toUpperCase()
+              : cachedPlayer
+                ? initials(cachedPlayer)
+                : "?"}
+          </AvatarFallback>
+        </Avatar>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium truncate leading-tight">
+            {displayName}
           </p>
-        ) : cachedPlayer?.current_rating ? (
-          <p className="text-[10px] text-muted-foreground tabular-nums">
-            PULSE {cachedPlayer.current_rating.toFixed(1)}
-          </p>
-        ) : null}
-      </div>
+          {slot?.isGuest ? (
+            <p className="text-[10px] uppercase tracking-wide text-primary/80 font-semibold">
+              Guest
+            </p>
+          ) : cachedPlayer?.current_rating ? (
+            <p className="text-[10px] text-muted-foreground tabular-nums">
+              PULSE {cachedPlayer.current_rating.toFixed(1)}
+            </p>
+          ) : null}
+        </div>
+      </button>
       {!isCurrentUser && (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6 shrink-0 text-muted-foreground hover:text-destructive"
+        <button
+          type="button"
           onClick={onRemove}
+          aria-label="Remove player"
+          className="h-8 w-8 shrink-0 rounded-full flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
         >
-          <X className="h-3.5 w-3.5" />
-        </Button>
+          <X className="h-4 w-4" />
+        </button>
       )}
     </div>
   );
 }
+
 
 /* =========================== Add player sheet =========================== */
 
