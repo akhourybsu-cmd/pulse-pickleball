@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { PageSEO } from "@/components/seo/PageSEO";
 import { HomepageNav } from "@/components/homepage/HomepageNav";
 import { HomepageFooter } from "@/components/homepage/HomepageFooter";
 import {
