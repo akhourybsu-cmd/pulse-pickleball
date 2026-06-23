@@ -2336,6 +2336,42 @@ export default function RoundRobinDetail() {
         </>
       )}
       </div>
+
+      {/* Sticky "Review & Submit Event" action bar — only shown to the host
+          when every match across every round has a score and the event is
+          still live. Mirrors the mockup's final-action surface. */}
+      {isOrganizer && event.status === "live" && !event.voided && hasSchedule && (() => {
+        const playableMatches = schedule.filter((m) => !m.is_bye);
+        const allScored =
+          playableMatches.length > 0 &&
+          playableMatches.every(
+            (m) => m.team1_score !== null && m.team2_score !== null,
+          );
+        if (!allScored) return null;
+        return (
+          <div className="fixed bottom-0 inset-x-0 z-40 px-3 pb-3 pt-2 pointer-events-none">
+            <div className="container max-w-2xl mx-auto pointer-events-auto">
+              <button
+                type="button"
+                onClick={handleCompleteEvent}
+                className="w-full flex items-center gap-3 rounded-2xl bg-primary text-primary-foreground px-4 py-3.5 shadow-[0_10px_30px_-10px_hsl(var(--primary)/0.6)] hover:bg-primary/90 active:scale-[0.99] transition-all"
+                aria-label="Review and submit event"
+              >
+                <div className="h-11 w-11 rounded-xl bg-primary-foreground/95 text-primary flex items-center justify-center flex-shrink-0">
+                  <ShieldCheck className="h-5 w-5" />
+                </div>
+                <div className="flex-1 text-left min-w-0">
+                  <div className="text-base font-bold leading-tight">Review & Submit Event</div>
+                  <div className="text-xs opacity-90 mt-0.5 truncate">
+                    All rounds complete · Ready to submit
+                  </div>
+                </div>
+                <ChevronRight className="h-5 w-5 flex-shrink-0 opacity-90" />
+              </button>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
