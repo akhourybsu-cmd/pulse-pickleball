@@ -57,6 +57,7 @@ export const ChatMessage = memo(function ChatMessage({
   const [draft, setDraft] = useState(message.content);
   const [saving, setSaving] = useState(false);
   const editRef = useRef<HTMLTextAreaElement>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (editing) {
