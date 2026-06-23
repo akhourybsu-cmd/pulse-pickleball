@@ -5,7 +5,7 @@ import {
   X,
   User,
   ChevronRight,
-  Shield,
+
   Users,
   Star,
   MapPin,
@@ -66,7 +66,7 @@ interface RowPlayer extends Player {
 
 
 type SlotTarget = { team: "team1" | "team2"; index: number };
-type TabKey = "suggested" | "friends" | "nearby" | "guest";
+type TabKey = "suggested" | "friends" | "nearby";
 
 const TEAM_LABEL: Record<"team1" | "team2", string> = {
   team1: "Team 1",
@@ -175,9 +175,11 @@ export function PlayerSelectionStep({
     return ids;
   }, [formData.team1, formData.team2]);
 
-  // Hydrate profile cache for any selected real players
+  // Hydrate profile cache for any selected real players (skip current user — already cached)
   useEffect(() => {
-    const missing = [...selectedIds].filter((id) => !profileCache[id]);
+    const missing = [...selectedIds].filter(
+      (id) => !profileCache[id] && id !== currentUserId,
+    );
     if (missing.length === 0) return;
     supabase
       .from("profiles_public")
@@ -193,11 +195,16 @@ export function PlayerSelectionStep({
           return next;
         });
       });
-  }, [selectedIds, profileCache]);
+  }, [selectedIds, profileCache, currentUserId]);
 
   const openSheetForSlot = (target: SlotTarget) => {
     setActiveSlot(target);
     setSheetOpen(true);
+  };
+
+  const handleSheetOpenChange = (open: boolean) => {
+    setSheetOpen(open);
+    if (!open) setActiveSlot(null);
   };
 
   const commitPlayerToSlot = (player: Player, target: SlotTarget) => {
@@ -207,7 +214,9 @@ export function PlayerSelectionStep({
     team[target.index] = { playerId: player.id, isGuest: false };
     updateFormData(target.team, team);
     setSheetOpen(false);
+    setActiveSlot(null);
   };
+
 
   const commitGuestToSlot = (name: string, notes: string, target: SlotTarget) => {
     const team = [...formData[target.team]];
@@ -219,7 +228,9 @@ export function PlayerSelectionStep({
       guestNotes: notes || undefined,
     };
     updateFormData(target.team, team);
+    setActiveSlot(null);
   };
+
 
   const handleAddGuestFromHeader = () => {
     // Pick first empty slot, defaulting to team 1
@@ -271,7 +282,7 @@ export function PlayerSelectionStep({
         <Button
           variant="outline"
           size="sm"
-          className="rounded-full h-9 px-4 text-xs gap-1.5 border-border/70"
+          className="rounded-full h-10 px-4 text-xs gap-1.5 border-border/70"
           onClick={handleAddGuestFromHeader}
         >
           <UserPlus className="h-3.5 w-3.5" />
@@ -286,20 +297,21 @@ export function PlayerSelectionStep({
           return (
             <div
               key={teamKey}
-              className="rounded-2xl border border-border/70 bg-card p-3 shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
+              className="rounded-2xl border border-border/60 bg-card p-3.5"
             >
-              <div className="flex items-center justify-between mb-2.5">
+              <div className="flex items-center justify-between mb-3">
                 <span className="text-sm font-semibold">
                   {TEAM_LABEL[teamKey]}
                 </span>
-                <Shield
+                <span
                   className={cn(
-                    "h-4 w-4",
-                    active ? "text-primary fill-primary/15" : "text-muted-foreground/40",
+                    "h-2 w-2 rounded-full transition-colors",
+                    active ? "bg-primary" : "bg-muted-foreground/25",
                   )}
+                  aria-hidden
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 {Array.from({ length: slotsPerTeam }).map((_, idx) => (
                   <SlotButton
                     key={idx}
@@ -330,7 +342,7 @@ export function PlayerSelectionStep({
       {/* Add-player bottom sheet */}
       <AddPlayerSheet
         open={sheetOpen}
-        onOpenChange={setSheetOpen}
+        onOpenChange={handleSheetOpenChange}
         excludeIds={selectedIds}
         currentUserId={currentUserId}
         currentUserProfile={currentUserProfile}
@@ -340,6 +352,7 @@ export function PlayerSelectionStep({
           setShowGuestModal(true);
         }}
       />
+
 
 
       {/* Guest dialog */}
@@ -429,7 +442,7 @@ function SlotButton({
         type="button"
         onClick={onOpen}
         className={cn(
-          "w-full flex items-center gap-3 rounded-xl border bg-background/40 px-3 py-2.5 text-left transition-all",
+          "w-full flex items-center gap-3 rounded-xl border bg-background/40 px-3 py-3 text-left transition-all min-h-[52px]",
           isActive
             ? "border-primary ring-2 ring-primary/25 shadow-[0_0_0_4px_hsl(var(--primary)/0.06)]"
             : "border-border/70 hover:border-primary/40",
@@ -437,7 +450,7 @@ function SlotButton({
       >
         <span
           className={cn(
-            "h-8 w-8 rounded-full flex items-center justify-center shrink-0",
+            "h-9 w-9 rounded-full flex items-center justify-center shrink-0",
             isActive
               ? "bg-primary/10 text-primary ring-1 ring-primary/30"
               : "bg-muted text-muted-foreground",
@@ -451,7 +464,7 @@ function SlotButton({
             isActive ? "text-primary" : "text-foreground/80",
           )}
         >
-          + Add Player
+          Add player
         </span>
         <ChevronRight
           className={cn(
@@ -474,49 +487,57 @@ function SlotButton({
   return (
     <div
       className={cn(
-        "w-full flex items-center gap-2.5 rounded-xl border px-2.5 py-2",
+        "w-full flex items-center gap-2.5 rounded-xl border pl-2.5 pr-1 py-2 min-h-[52px]",
         slot?.isGuest
           ? "border-dashed border-primary/40 bg-primary/5"
           : "border-border/70 bg-muted/40",
       )}
     >
-      <Avatar className="h-8 w-8">
-        <AvatarImage src={cachedPlayer?.avatar_url || undefined} />
-        <AvatarFallback className="text-[10px]">
-          {slot?.isGuest
-            ? (slot.guestName?.[0] || "G").toUpperCase()
-            : cachedPlayer
-              ? initials(cachedPlayer)
-              : "?"}
-        </AvatarFallback>
-      </Avatar>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium truncate leading-tight">
-          {displayName}
-        </p>
-        {slot?.isGuest ? (
-          <p className="text-[10px] uppercase tracking-wide text-primary/80 font-semibold">
-            Guest
+      <button
+        type="button"
+        onClick={onOpen}
+        aria-label="Replace player"
+        className="flex-1 min-w-0 flex items-center gap-2.5 text-left rounded-lg -m-1 p-1 hover:bg-foreground/[0.02] active:bg-foreground/[0.04] transition-colors"
+      >
+        <Avatar className="h-9 w-9">
+          <AvatarImage src={cachedPlayer?.avatar_url || undefined} />
+          <AvatarFallback className="text-[10px]">
+            {slot?.isGuest
+              ? (slot.guestName?.[0] || "G").toUpperCase()
+              : cachedPlayer
+                ? initials(cachedPlayer)
+                : "?"}
+          </AvatarFallback>
+        </Avatar>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium truncate leading-tight">
+            {displayName}
           </p>
-        ) : cachedPlayer?.current_rating ? (
-          <p className="text-[10px] text-muted-foreground tabular-nums">
-            PULSE {cachedPlayer.current_rating.toFixed(1)}
-          </p>
-        ) : null}
-      </div>
+          {slot?.isGuest ? (
+            <p className="text-[10px] uppercase tracking-wide text-primary/80 font-semibold">
+              Guest
+            </p>
+          ) : cachedPlayer?.current_rating ? (
+            <p className="text-[10px] text-muted-foreground tabular-nums">
+              PULSE {cachedPlayer.current_rating.toFixed(1)}
+            </p>
+          ) : null}
+        </div>
+      </button>
       {!isCurrentUser && (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6 shrink-0 text-muted-foreground hover:text-destructive"
+        <button
+          type="button"
           onClick={onRemove}
+          aria-label="Remove player"
+          className="h-8 w-8 shrink-0 rounded-full flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
         >
-          <X className="h-3.5 w-3.5" />
-        </Button>
+          <X className="h-4 w-4" />
+        </button>
       )}
     </div>
   );
 }
+
 
 /* =========================== Add player sheet =========================== */
 
@@ -534,11 +555,12 @@ function AddPlayerSheet({
   open,
   onOpenChange,
   excludeIds,
-  currentUserId,
+  currentUserId: _currentUserId,
   currentUserProfile,
   onPick,
-  onPickGuest,
+  onPickGuest: _onPickGuest,
 }: AddPlayerSheetProps) {
+
   const [tab, setTab] = useState<TabKey>("suggested");
   const [search, setSearch] = useState("");
   const debounced = useDebounce(search, 250);
@@ -683,7 +705,7 @@ function AddPlayerSheet({
     [searchResults, filterOut, friendIdSet, recentIdSet],
   );
 
-  // Reset state when sheet opens
+  // Reset only when the sheet opens — avoids a flash on close.
   useEffect(() => {
     if (open) {
       setTab("suggested");
@@ -691,11 +713,23 @@ function AddPlayerSheet({
     }
   }, [open]);
 
+  const isSearching = search.trim().length >= 2;
+
+  // Pin the current user as a dedicated "You" row at the top of Suggested,
+  // and remove them from the rest of the list so they only appear once.
+  const selfRow: RowPlayer | null =
+    !isSearching && currentUserProfile && filterOut({ id: currentUserProfile.id })
+      ? { ...currentUserProfile, relationship: "self" }
+      : null;
+  const suggestedWithoutSelf = selfRow
+    ? suggestedList.filter((p) => p.id !== selfRow.id)
+    : suggestedList;
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
-        className="h-[88vh] p-0 flex flex-col gap-0 rounded-t-3xl border-t border-border/70"
+        className="max-h-[85vh] h-[85vh] p-0 flex flex-col gap-0 rounded-t-3xl border-t border-border/70"
       >
         <SheetHeader className="px-5 pt-5 pb-2 text-left">
           <SheetTitle className="text-xl tracking-tight">Add Player</SheetTitle>
@@ -708,58 +742,50 @@ function AddPlayerSheet({
             <Input
               placeholder="Search name..."
               value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                if (e.target.value && tab !== "suggested") setTab("suggested");
-              }}
+              onChange={(e) => setSearch(e.target.value)}
               className="pl-10 h-12 rounded-xl bg-muted/40 border-border/60 text-sm"
             />
           </div>
         </div>
 
-        {/* Pill tabs */}
-        <div className="px-5 pt-3 pb-1">
-          <div className="flex gap-2 overflow-x-auto scrollbar-none">
-            {(
-              [
-                { key: "suggested", label: "Suggested", icon: Star },
-                { key: "friends", label: "Friends", icon: Users },
-                { key: "nearby", label: "Nearby", icon: MapPin },
-                { key: "guest", label: "Guest", icon: User },
-              ] as { key: TabKey; label: string; icon: typeof Star }[]
-            ).map((p) => {
-              const Icon = p.icon;
-              const isActive = tab === p.key;
-              return (
-                <button
-                  key={p.key}
-                  type="button"
-                  onClick={() => {
-                    if (p.key === "guest") {
-                      onPickGuest();
-                      return;
-                    }
-                    setTab(p.key);
-                  }}
-                  className={cn(
-                    "shrink-0 inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium border transition-colors",
-                    isActive
-                      ? "bg-primary/15 text-primary border-primary/30"
-                      : "bg-background text-muted-foreground border-border/70 hover:text-foreground",
-                  )}
-                >
-                  <Icon className="h-3.5 w-3.5" />
-                  {p.label}
-                </button>
-              );
-            })}
+        {/* Pill tabs — hidden while searching so the active tab doesn't jump */}
+        {!isSearching && (
+          <div className="px-5 pt-3 pb-1">
+            <div className="flex gap-2 overflow-x-auto scrollbar-none">
+              {(
+                [
+                  { key: "suggested", label: "Suggested", icon: Star },
+                  { key: "friends", label: "Friends", icon: Users },
+                  { key: "nearby", label: "Nearby", icon: MapPin },
+                ] as { key: TabKey; label: string; icon: typeof Star }[]
+              ).map((p) => {
+                const Icon = p.icon;
+                const isActive = tab === p.key;
+                return (
+                  <button
+                    key={p.key}
+                    type="button"
+                    onClick={() => setTab(p.key)}
+                    className={cn(
+                      "shrink-0 inline-flex items-center justify-center gap-1.5 rounded-full px-4 py-2 min-h-[36px] min-w-[88px] text-sm font-medium border transition-colors",
+                      isActive
+                        ? "bg-primary/15 text-primary border-primary/30"
+                        : "bg-background text-muted-foreground border-border/70 hover:text-foreground",
+                    )}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    {p.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* List */}
         <ScrollArea className="flex-1 min-h-0">
-          <div className="px-4 py-3 space-y-2">
-            {search.trim().length >= 2 ? (
+          <div className="px-4 py-3 space-y-2 pb-[calc(env(safe-area-inset-bottom)+16px)]">
+            {isSearching ? (
               searchLoading ? (
                 <EmptyHint text="Searching…" />
               ) : searchList.length === 0 ? (
@@ -770,14 +796,26 @@ function AddPlayerSheet({
                 ))
               )
             ) : tab === "suggested" ? (
-              suggestionsLoading && suggestedList.length === 0 ? (
+              suggestionsLoading && suggestedWithoutSelf.length === 0 && !selfRow ? (
                 <EmptyHint text="Finding players you know…" />
-              ) : suggestedList.length === 0 ? (
+              ) : suggestedWithoutSelf.length === 0 && !selfRow ? (
                 <EmptyHint text="No suggestions yet — try Friends or Search." />
               ) : (
-                suggestedList.map((p) => (
-                  <ResultRow key={p.id} player={p} onAdd={() => onPick(p)} />
-                ))
+                <>
+                  {selfRow && (
+                    <>
+                      <ResultRow player={selfRow} onAdd={() => onPick(selfRow)} />
+                      {suggestedWithoutSelf.length > 0 && (
+                        <div className="px-2 py-1 text-[10px] uppercase tracking-wider text-muted-foreground/70 font-semibold">
+                          Suggested
+                        </div>
+                      )}
+                    </>
+                  )}
+                  {suggestedWithoutSelf.map((p) => (
+                    <ResultRow key={p.id} player={p} onAdd={() => onPick(p)} />
+                  ))}
+                </>
               )
             ) : tab === "friends" ? (
               friendsLoading ? (
@@ -799,6 +837,7 @@ function AddPlayerSheet({
   );
 }
 
+
 function EmptyHint({ text }: { text: string }) {
   return (
     <div className="py-10 text-center text-sm text-muted-foreground">
@@ -816,15 +855,23 @@ function ResultRow({
 }) {
   const rel = relationshipMeta(player.relationship);
   const RelIcon = rel?.icon;
+  const isSelf = player.relationship === "self";
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-border/60 bg-card px-3 py-2.5 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+    <div
+      className={cn(
+        "flex items-center gap-3 rounded-2xl border px-3 py-2.5 transition-colors",
+        isSelf
+          ? "border-primary/40 bg-primary/[0.06]"
+          : "border-border/60 bg-card",
+      )}
+    >
       <Avatar className="h-11 w-11">
         <AvatarImage src={player.avatar_url || undefined} />
         <AvatarFallback>{initials(player)}</AvatarFallback>
       </Avatar>
       <div className="flex-1 min-w-0">
         <p className="text-[15px] font-semibold leading-tight truncate">
-          {shortName(player)}
+          {isSelf ? "You" : shortName(player)}
         </p>
         {rel && RelIcon && (
           <span
@@ -853,11 +900,12 @@ function ResultRow({
           size="sm"
           variant="ghost"
           onClick={onAdd}
-          className="h-9 px-3 text-primary hover:bg-primary/10 font-semibold text-sm"
+          className="h-10 px-3 text-primary hover:bg-primary/10 font-semibold text-sm"
         >
-          + Add
+          {isSelf ? "Add me" : "+ Add"}
         </Button>
       </div>
     </div>
   );
 }
+
