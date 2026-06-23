@@ -280,8 +280,7 @@ const ViewProfile = () => {
 
   if (!profile) return null;
 
-  const locationStr = [profile.town, profile.state].filter(Boolean).join(", ");
-  const subtitle = locationStr || "PULSE Player";
+  const subtitle = "PULSE Player";
 
   const highlights = [
     {
