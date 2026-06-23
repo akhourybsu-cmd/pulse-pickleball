@@ -855,15 +855,23 @@ function ResultRow({
 }) {
   const rel = relationshipMeta(player.relationship);
   const RelIcon = rel?.icon;
+  const isSelf = player.relationship === "self";
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-border/60 bg-card px-3 py-2.5 shadow-[0_1px_2px_rgba(15,23,42,0.03)]">
+    <div
+      className={cn(
+        "flex items-center gap-3 rounded-2xl border px-3 py-2.5 transition-colors",
+        isSelf
+          ? "border-primary/40 bg-primary/[0.06]"
+          : "border-border/60 bg-card",
+      )}
+    >
       <Avatar className="h-11 w-11">
         <AvatarImage src={player.avatar_url || undefined} />
         <AvatarFallback>{initials(player)}</AvatarFallback>
       </Avatar>
       <div className="flex-1 min-w-0">
         <p className="text-[15px] font-semibold leading-tight truncate">
-          {shortName(player)}
+          {isSelf ? "You" : shortName(player)}
         </p>
         {rel && RelIcon && (
           <span
@@ -892,11 +900,12 @@ function ResultRow({
           size="sm"
           variant="ghost"
           onClick={onAdd}
-          className="h-9 px-3 text-primary hover:bg-primary/10 font-semibold text-sm"
+          className="h-10 px-3 text-primary hover:bg-primary/10 font-semibold text-sm"
         >
-          + Add
+          {isSelf ? "Add me" : "+ Add"}
         </Button>
       </div>
     </div>
   );
 }
+
