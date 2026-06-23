@@ -402,7 +402,7 @@ export default function PostDetail() {
                     <div className="flex-1">
                       <div className="bg-muted rounded-lg p-3">
                         <p className="font-semibold text-sm mb-1">
-                          {comment.author?.display_name || "Unknown User"}
+                          {comment.author?.display_name || comment.author?.full_name || "Someone"}
                         </p>
                         <p className="text-sm">{comment.content}</p>
                       </div>

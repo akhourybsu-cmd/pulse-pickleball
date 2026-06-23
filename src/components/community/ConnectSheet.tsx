@@ -38,7 +38,7 @@ const getInitials = (name: string | null) =>
   (name || 'U').split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
 
 const displayName = (p: { display_name: string | null; full_name: string | null }) =>
-  p.display_name || p.full_name || 'Unknown';
+  p.display_name || p.full_name || 'Community member';
 
 export function ConnectSheet({ open, onOpenChange }: ConnectSheetProps) {
   const { sendFriendRequest, getFriendshipStatus, currentUserId } = useFriends();

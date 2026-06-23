@@ -281,7 +281,7 @@ function RequestsSection({
 function FriendRequestCard({
   request, onAccept, onDecline,
 }: { request: FriendRequest; onAccept: () => void; onDecline: () => void }) {
-  const name = request.profile.display_name || request.profile.full_name || 'Unknown';
+  const name = request.profile.display_name || request.profile.full_name || 'Community member';
   const initials = name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
   return (
     <motion.div
@@ -314,7 +314,7 @@ function FriendRequestCard({
 }
 
 function SentRequestCard({ request, onCancel }: { request: FriendRequest; onCancel: () => void }) {
-  const name = request.profile.display_name || request.profile.full_name || 'Unknown';
+  const name = request.profile.display_name || request.profile.full_name || 'Community member';
   const initials = name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
   return (
     <div className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border/30">
@@ -346,7 +346,7 @@ function FriendCard({
   onView: () => void;
   getInitials: (name: string | null) => string;
 }) {
-  const name = friend.profile.display_name || friend.profile.full_name || 'Unknown';
+  const name = friend.profile.display_name || friend.profile.full_name || 'Community member';
   return (
     <motion.div
       layout

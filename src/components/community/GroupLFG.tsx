@@ -133,7 +133,7 @@ export function GroupLFG({ groupId, isAdmin, currentUserId }: GroupLFGProps) {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-semibold text-sm">
-                          {post.profile?.display_name || post.profile?.full_name || 'Unknown'}
+                          {post.profile?.display_name || post.profile?.full_name || 'Someone'}
                         </span>
                         {post.profile?.current_rating && (
                           <Badge variant="outline" className="text-xs h-5">

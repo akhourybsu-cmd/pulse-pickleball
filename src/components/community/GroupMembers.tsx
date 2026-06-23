@@ -122,7 +122,7 @@ const MemberCard = memo(function MemberCard({
         >
           <div className="flex items-center gap-2">
             <span className="font-medium truncate">
-              {member.profile?.display_name || member.profile?.full_name || 'Unknown'}
+              {member.profile?.display_name || member.profile?.full_name || 'Community member'}
             </span>
             {member.profile?.current_rating && (
               <Badge variant="outline" className="text-xs h-5">
@@ -303,7 +303,7 @@ export function GroupMembers({
   const handleOpenSheet = useCallback((member: GroupMemberWithProfile) => {
     setSheetTarget({
       userId: member.user_id,
-      displayName: member.profile?.display_name || member.profile?.full_name || 'Unknown',
+      displayName: member.profile?.display_name || member.profile?.full_name || 'Community member',
       avatarUrl: member.profile?.avatar_url ?? null,
       rating: member.profile?.current_rating ?? null,
       phoneNumber: member.profile?.phone_number ?? null,

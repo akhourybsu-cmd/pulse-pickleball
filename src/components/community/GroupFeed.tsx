@@ -366,7 +366,7 @@ const PostCard = memo(function PostCard({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
               <span className="font-medium text-sm truncate max-w-[120px] sm:max-w-none">
-                {post.profile?.display_name || post.profile?.full_name || 'Unknown'}
+                {post.profile?.display_name || post.profile?.full_name || 'Someone'}
               </span>
               <span className="text-xs text-muted-foreground/70">
                 {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}

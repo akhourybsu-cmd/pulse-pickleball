@@ -204,8 +204,8 @@ export function CourtChannel({ courtId, userId }: CourtChannelProps) {
   };
 
   const getDisplayName = (msg: Message) => {
-    if (!msg.profiles) return "Unknown";
-    return msg.profiles.display_name || msg.profiles.full_name;
+    if (!msg.profiles) return "Someone";
+    return msg.profiles.display_name || msg.profiles.full_name || "Someone";
   };
 
   const getInitials = (msg: Message) => {
