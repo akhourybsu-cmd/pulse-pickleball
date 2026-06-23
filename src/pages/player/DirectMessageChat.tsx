@@ -186,7 +186,7 @@ export default function DirectMessageChat() {
   if (loading) {
     return (
       <div className="flex flex-col min-h-[calc(100vh-120px)]">
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-border/30">
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-border/30 bg-gradient-to-b from-primary/[0.06] via-background to-background">
           <Skeleton className="h-8 w-8 rounded-full" />
           <Skeleton className="h-5 w-32" />
         </div>
@@ -205,7 +205,7 @@ export default function DirectMessageChat() {
 
   return (
     <div className="flex flex-col h-[100dvh]">
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-border/30 shrink-0">
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-border/30 shrink-0 bg-gradient-to-b from-primary/[0.06] via-background to-background">
         <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="h-8 w-8">
           <ArrowLeft className="h-4 w-4" />
         </Button>
