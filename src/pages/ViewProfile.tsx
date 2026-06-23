@@ -26,7 +26,7 @@ import { PlayStyleChip } from "@/components/profile/PlayStyleChip";
 import { SectionHeader } from "@/components/layout/SectionHeader";
 import { useFriends } from "@/hooks/useFriends";
 import { cn } from "@/lib/utils";
-import logo from "@/assets/pulse-logo-premium.svg";
+import { Logo } from "@/components/Logo";
 
 interface Profile {
   id: string;
