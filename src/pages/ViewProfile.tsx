@@ -31,6 +31,7 @@ import { Logo } from "@/components/Logo";
 interface Profile {
   id: string;
   display_name: string | null;
+  full_name: string | null;
   first_name: string | null;
   last_name: string | null;
   avatar_url: string | null;
@@ -104,7 +105,7 @@ const ViewProfile = () => {
       const { data: profileData, error } = await supabase
         .from("profiles_public")
         .select(`
-          id, display_name, first_name, last_name, avatar_url,
+          id, display_name, full_name, first_name, last_name, avatar_url,
           current_rating, total_matches, wins, losses,
           handedness, play_side, paddle_brand, paddle_model
         `)
@@ -350,6 +351,11 @@ const ViewProfile = () => {
                 <h2 className="text-2xl font-display font-semibold tracking-tight truncate leading-tight">
                   {displayName}
                 </h2>
+                {(profile.full_name || (profile.first_name && profile.last_name)) && (
+                  <p className="text-sm text-muted-foreground truncate mt-0.5">
+                    {profile.full_name || `${profile.first_name} ${profile.last_name}`}
+                  </p>
+                )}
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mt-2">
                   <Trophy className="w-3.5 h-3.5" />
                   <span style={{ fontVariantNumeric: "tabular-nums" }}>
