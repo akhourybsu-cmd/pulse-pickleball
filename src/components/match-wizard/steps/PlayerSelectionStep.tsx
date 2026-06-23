@@ -66,7 +66,7 @@ interface RowPlayer extends Player {
 
 
 type SlotTarget = { team: "team1" | "team2"; index: number };
-type TabKey = "suggested" | "friends" | "nearby" | "guest";
+type TabKey = "suggested" | "friends" | "nearby";
 
 const TEAM_LABEL: Record<"team1" | "team2", string> = {
   team1: "Team 1",
