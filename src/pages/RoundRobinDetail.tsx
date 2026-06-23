@@ -24,7 +24,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Play, Trophy, AlertCircle, Settings, Trash2, Ban, CheckCircle, Edit, Edit3, Bell, Monitor, ExternalLink, Share2, Users, Calendar, MapPin, Zap, RefreshCw, Medal, Clock } from "lucide-react";
+import { Play, Trophy, AlertCircle, Settings, Trash2, Ban, CheckCircle, Edit, Edit3, Bell, Monitor, ExternalLink, Share2, Users, Calendar, MapPin, Zap, RefreshCw, Medal, Clock, ShieldCheck, ChevronRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { ScheduleRoundCarousel } from "@/components/round-robin/ScheduleRoundCarousel";
 import { toast } from "sonner";
