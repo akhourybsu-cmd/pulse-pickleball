@@ -29,6 +29,7 @@ interface GroupLFGProps {
 }
 
 export function GroupLFG({ groupId, isAdmin, currentUserId }: GroupLFGProps) {
+  const navigate = useNavigate();
   const { posts, loading, createPost, deletePost, joinLfgPost, leaveLfgPost } = useGroupPosts(groupId);
   const [joiningPostId, setJoiningPostId] = useState<string | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
