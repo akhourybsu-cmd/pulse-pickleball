@@ -5,7 +5,7 @@ import {
   X,
   User,
   ChevronRight,
-  Shield,
+
   Users,
   Star,
   MapPin,
