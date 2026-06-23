@@ -400,17 +400,25 @@ export default function PostDetail() {
               ) : (
                 comments.map((comment) => (
                   <div key={comment.id} className="flex gap-3">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={comment.author?.avatar_url || undefined} />
-                      <AvatarFallback>
-                        {comment.author?.display_name?.charAt(0) || "U"}
-                      </AvatarFallback>
-                    </Avatar>
+                    <button
+                      onClick={() => comment.author?.id && navigate(`/profile/${comment.author.id}`)}
+                      aria-label="View profile"
+                    >
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={comment.author?.avatar_url || undefined} />
+                        <AvatarFallback>
+                          {comment.author?.display_name?.charAt(0) || "U"}
+                        </AvatarFallback>
+                      </Avatar>
+                    </button>
                     <div className="flex-1">
                       <div className="bg-muted rounded-lg p-3">
-                        <p className="font-semibold text-sm mb-1">
+                        <button
+                          onClick={() => comment.author?.id && navigate(`/profile/${comment.author.id}`)}
+                          className="font-semibold text-sm mb-1 hover:underline block text-left"
+                        >
                           {comment.author?.display_name || comment.author?.full_name || "Someone"}
-                        </p>
+                        </button>
                         <p className="text-sm">{comment.content}</p>
                       </div>
                       <p className="text-xs text-muted-foreground mt-1 ml-3">
