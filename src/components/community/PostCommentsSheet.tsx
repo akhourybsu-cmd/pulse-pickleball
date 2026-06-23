@@ -171,49 +171,18 @@ export function PostCommentsSheet({
           </div>
         </ScrollArea>
 
-        {/* Single, always-mounted composer anchored at the bottom */}
-        <div className="border-t bg-background shrink-0 px-3 pt-2 pb-3 sm:pb-3 [padding-bottom:max(0.75rem,env(safe-area-inset-bottom))]">
-          {replyTo && (
-            <div className="flex items-center justify-between gap-2 mb-2 px-2 py-1.5 rounded-md bg-primary/10 text-xs">
-              <span className="truncate text-foreground/80">
-                Replying to <span className="font-medium">{nameOf(replyTo)}</span>
-              </span>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 shrink-0"
-                onClick={() => setReplyTo(null)}
-                aria-label="Cancel reply"
-              >
-                <X className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-          )}
-          <div className="flex items-end gap-2">
-            <Textarea
-              ref={inputRef}
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={replyTo ? `Reply to ${nameOf(replyTo)}…` : 'Write a comment…'}
-              rows={1}
-              className="min-h-[40px] max-h-32 resize-none py-2"
-            />
-            <Button
-              size="icon"
-              className="h-10 w-10 shrink-0"
-              onClick={handleSubmit}
-              disabled={!draft.trim() || creating}
-              aria-label="Send comment"
-            >
-              {creating ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
-            </Button>
-          </div>
-        </div>
+        {/* Shared composer: anchored, safe-area aware, reply pill, Enter sends */}
+        <MessageComposer
+          ref={composerRef}
+          value={draft}
+          onChange={setDraft}
+          onSubmit={handleSubmit}
+          sending={creating}
+          placeholder={replyTo ? `Reply to ${nameOf(replyTo)}…` : 'Write a comment…'}
+          replyToLabel={replyTo ? nameOf(replyTo) : null}
+          onCancelReply={() => setReplyTo(null)}
+          sendLabel="Send comment"
+        />
       </SheetContent>
     </Sheet>
   );
