@@ -1,60 +1,62 @@
-## Goal
+# Final Leaderboard Celebration — Kiosk
 
-In the Record Match wizard's "Where did you play?" step, replace the free-text city/state/zip entry with an autocomplete that only accepts a real, verified city (or town) + state/region. Location stays optional.
+When the Round Robin event reaches `status === "completed"`, the kiosk should switch from the live broadcast layout to a dedicated full-screen "Champions" view that feels celebratory and reads from across the room.
 
-## UX
+## Scope
+Single file: `src/pages/RoundRobinKiosk.tsx`. Pure presentation — no schema or data-flow changes. Existing leaderboard calculation (wins / point differential) is reused.
 
-- Section header stays "Where did you play? (optional)".
-- Single search input: "Search city or town…" with a debounced dropdown of suggestions as the user types (e.g. "Brook" → "Brooklyn, NY, USA", "Brookline, MA, USA"…).
-- User must pick a suggestion. Free-typed text that isn't selected from the list cannot be submitted — the input clears or shows "Pick a city from the list".
-- Selected location renders as a confirmed card with a green check and an X to clear, e.g. `Brooklyn, NY ✓`.
-- Recent locations (from `user_recent_locations`) still show above the search as one-tap chips — those are already verified picks from prior matches.
-- "Skip — no location" is implicit: the user just leaves it empty and proceeds.
+## Trigger
+- Currently when `eventData.status === "completed"` the kiosk just fires a toast and keeps rendering the live layout.
+- Replace that behavior: keep the data loaded, remove the toast redirect, and render a new `<FinalLeaderboardScreen />` instead of the live broadcast grid when `event.status === "completed"`.
+- Header (PULSE logo / clock) and hover admin controls (theme, fullscreen, exit) remain so the host can still exit/fullscreen.
+- Bottom ticker is hidden on the final screen (replaced by a celebratory footer line).
 
-## Verification source
+## Final Leaderboard layout (16:9, no scroll)
+```text
+┌──────────────────────────────────────────────────────────┐
+│   PULSE logo            EVENT COMPLETE · [Event Name]    │   clock
+│                                                          │
+│                    🏆  CHAMPIONS  🏆                     │   display font, gold
+│                                                          │
+│        ┌────────┐                                        │
+│        │   1    │   Player Name        12 W · +34        │   center, huge
+│        │  GOLD  │                                        │
+│        └────────┘                                        │
+│  ┌────────┐                       ┌────────┐             │
+│  │   2    │ Player Name  10·+18   │   3    │ Name 9·+12  │
+│  │ SILVER │                       │ BRONZE │             │
+│  └────────┘                       └────────┘             │
+│                                                          │
+│   4. Name   8W  +6     5. Name 7W +4    6. Name 6W +2    │   compact rows
+│   7. ...                                                 │
+│                                                          │
+│        Thanks for playing · Powered by PULSE             │
+└──────────────────────────────────────────────────────────┘
+```
 
-Use the **Google Maps Platform** connector (Places API New — Autocomplete + Place Details), restricted to city-level results:
-- `includedPrimaryTypes: ["locality", "administrative_area_level_3", "postal_town"]`
-- Returns canonical city, admin region (state/province), and country, so spelling and casing are always consistent.
+### Visual treatment
+- Background: existing theme `bg` with a soft radial gold/primary glow behind the podium (CSS radial-gradient, no new assets).
+- Podium tiles: 1st centered and tallest, 2nd left, 3rd right. Medal colors via inline style:
+  - Gold `#F5C542`, Silver `#C7CDD4`, Bronze `#C97A3A` (kiosk page already uses inline theme colors, so this matches the existing pattern — no global token changes needed).
+- Typography: rank number in display font at ~12vw for #1, ~8vw for #2/#3, player names ~4vw, stats ~2vw. All sized in `vw` to stay no-scroll like the rest of the kiosk.
+- Remaining players (4 → up to 10) shown as a single horizontal row of compact pill cards beneath the podium; collapse to 2-row grid if more than 6 remain.
+- Subtle entrance animation using existing Tailwind utilities (`animate-in fade-in zoom-in-50`, staggered via `style={{ animationDelay }}`). Champion card gets a slow pulse ring (`animate-pulse` on an absolutely-positioned ring div). No new dependencies.
+- Confetti: lightweight CSS-only — ~30 absolutely positioned `<span>`s with randomized `left`, `animationDelay`, `backgroundColor` from the theme palette, falling via a keyframe defined inline with a `<style>` tag scoped in the component (matches existing inline-style approach in this file). No npm install.
 
-Google Maps is not yet linked to this workspace. Before building, I'll prompt you to link it via the connector picker (one click — no API key handling on your end). If you'd rather not use Google, the fallback is OpenStreetMap Nominatim (free, no key, lower quality + rate-limited) — say the word and I'll swap.
+### Tie / edge cases
+- If fewer than 3 players have results, render only the available podium slots and skip the runners-up row.
+- If leaderboard is empty (event completed with no scored matches), show a calm "Event Complete" card with the event name and no podium.
+- "Champion" label uses the top entry's display name from the existing leaderboard array — no extra fetches.
 
-## What gets stored
-
-`formData.customLocation` keeps the same shape so nothing downstream changes:
-- `name`: `"Brooklyn, NY"` (canonical, formatted from the Place result)
-- `city`: `"Brooklyn"`
-- `state`: `"NY"` (or region code/name for non-US)
-- plus a new `placeId` field so repeat picks of the same city dedupe cleanly in `user_recent_locations`.
-
-`locationId` stays `null` (no court linkage).
-
-## Technical changes
-
-1. **`src/components/match-wizard/steps/DateLocationStep.tsx`**
-   - Remove the "Add new location" dialog with city/state/zip inputs.
-   - Add a `<CityAutocomplete>` component (debounced 250ms, session token per search session).
-   - Keep the Recent list and Today/Date controls unchanged.
-   - Block "Next" unless either: nothing selected (skip) OR a verified pick exists.
-
-2. **New `src/components/match-wizard/CityAutocomplete.tsx`**
-   - Calls a new edge function `geocode-city-search` with `{ query, sessionToken }` → returns `[{ placeId, label, city, region, country }]`.
-   - On select, calls `geocode-city-details` with `{ placeId, sessionToken }` → returns canonical fields, then updates `customLocation`.
-
-3. **New edge functions** (`supabase/functions/geocode-city-search`, `geocode-city-details`)
-   - Proxy to Google Maps Platform gateway (`places/v1/places:autocomplete`, `places/v1/places/{id}`).
-   - Validate input with zod, enforce `includedPrimaryTypes` city filter, return only the minimal fields above.
-   - Require an authenticated user (JWT check) so the connector key isn't burned by anonymous traffic.
-
-4. **`user_recent_locations`**
-   - No schema change required; `name` + `city` + `state` already exist. The new `place_id` is optional — I'll add a nullable `place_id text` column + unique `(user_id, place_id)` index so a city picked twice doesn't duplicate. (Migration runs before code that reads it.)
+## Implementation notes (technical)
+- Remove the `toast.info("This event has been completed")` + early return in the realtime/event-load handler around line 286 so completed events still render.
+- Add `const isComplete = event.status === "completed";` near the existing render branches (around line 424 where `draft` is handled).
+- Early-return a new `<FinalLeaderboardScreen leaderboard={leaderboard} event={event} themeColors={themeColors} onExit={...} onToggleFullscreen={...} />` before the live broadcast JSX when `isComplete`.
+- Define `FinalLeaderboardScreen` as a local component at the bottom of the same file to keep the change contained.
+- Reuse the existing `leaderboard` array already computed for the live sidebar (sorted by wins then point diff). No new calculation.
+- Keep auto-refresh subscriptions active so the screen appears the instant status flips to completed without a reload.
 
 ## Out of scope
-
-- Court / venue picking (already removed from this step).
-- International address parsing beyond city + region + country.
-- Map preview UI.
-
-## Open question
-
-Confirm you're OK linking the Google Maps Platform connector for this. If yes, after you approve the plan I'll prompt the connector picker as the first build step, then ship the changes above.
+- No changes to how an event gets marked complete.
+- No new routes, no DB changes, no edits to `VenueRoundRobinKiosk.tsx` (that page wraps this one).
+- No sound effects.
