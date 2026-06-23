@@ -53,22 +53,25 @@ export function EnablePushBanner({ dismissKey, contextLabel }: EnablePushBannerP
 
   const handleEnable = async () => {
     await enable();
-    // Best-effort: fire a confirming test push
+    // Best-effort: fire a confirming test push through the authenticated
+    // self-test function. The internal push dispatcher requires a backend-only
+    // secret, so it cannot be called directly from the browser.
     try {
-      const { data: u } = await supabase.auth.getUser();
-      if (u.user) {
-        await supabase.functions.invoke("push-send", {
-          body: {
-            user_id: u.user.id,
-            title: "Notifications enabled 🎉",
-            body: "You'll now get pings for posts, friends, and messages.",
-            url: "/",
-          },
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      if (sub) {
+        const { data, error } = await supabase.functions.invoke("send-test-push", {
+          body: { endpoint: sub.endpoint },
         });
+        if (error || (data?.sent ?? 0) === 0) {
+          toast.success("Notifications enabled.");
+          return;
+        }
         toast.success("Notifications enabled — check for a test push!");
       }
     } catch (e) {
       console.error("test push failed", e);
+      toast.success("Notifications enabled.");
     }
   };
 
