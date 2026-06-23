@@ -294,16 +294,23 @@ export default function PostDetail() {
           <CardContent className="pt-6">
             {/* Header */}
             <div className="flex items-start gap-3 mb-4">
-              <Avatar className="h-12 w-12">
-                <AvatarImage src={post.user.avatar_url || undefined} />
-                <AvatarFallback>
-                  {post.user.display_name?.charAt(0) || "U"}
-                </AvatarFallback>
-              </Avatar>
-              
+              <button onClick={() => post.user?.id && navigate(`/profile/${post.user.id}`)} aria-label="View profile">
+                <Avatar className="h-12 w-12">
+                  <AvatarImage src={post.user.avatar_url || undefined} />
+                  <AvatarFallback>
+                    {post.user.display_name?.charAt(0) || "U"}
+                  </AvatarFallback>
+                </Avatar>
+              </button>
+
               <div className="flex-1">
                 <div className="flex items-center gap-2 flex-wrap mb-1">
-                  <span className="font-semibold">{post.user.display_name}</span>
+                  <button
+                    onClick={() => post.user?.id && navigate(`/profile/${post.user.id}`)}
+                    className="font-semibold hover:underline"
+                  >
+                    {post.user.display_name}
+                  </button>
                   <Badge variant={typeInfo.variant} className="text-xs">
                     {typeInfo.label}
                   </Badge>
