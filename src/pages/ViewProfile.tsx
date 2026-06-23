@@ -351,6 +351,11 @@ const ViewProfile = () => {
                 <h2 className="text-2xl font-display font-semibold tracking-tight truncate leading-tight">
                   {displayName}
                 </h2>
+                {(profile.full_name || (profile.first_name && profile.last_name)) && (
+                  <p className="text-sm text-muted-foreground truncate mt-0.5">
+                    {profile.full_name || `${profile.first_name} ${profile.last_name}`}
+                  </p>
+                )}
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mt-2">
                   <Trophy className="w-3.5 h-3.5" />
                   <span style={{ fontVariantNumeric: "tabular-nums" }}>
