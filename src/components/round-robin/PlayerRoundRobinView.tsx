@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,10 +7,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
-import { Calendar, MapPin, Clock, Trophy, Users, Search, Medal, Target, TrendingUp, Star } from "lucide-react";
+import { Calendar, MapPin, Clock, Trophy, Users, Search, Medal, Target, TrendingUp, Star, ArrowLeft } from "lucide-react";
 import { ScheduleRoundCarousel } from "@/components/round-robin/ScheduleRoundCarousel";
 import { toast } from "sonner";
-import { PageHeader } from "@/components/PageHeader";
+import { Logo } from "@/components/Logo";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { NotificationBell } from "@/components/NotificationBell";
 import { motion } from "framer-motion";
 import { formatDateEST, formatTime12Hour } from "@/lib/utils";
 import {
@@ -185,8 +187,18 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
 
       setSchedule(mappedSchedule);
 
-      // Calculate standings only over active registered players
-      calculateStandings(mappedSchedule, activePlayersWithProfiles);
+      // Calculate standings over every player who is registered OR appears in the schedule,
+      // so the standings table is always complete (e.g. removed players who already played).
+      const standingsRoster: Player[] = allIds.map((pid) => {
+        const reg = (playersRaw || []).find((p) => p.player_id === pid);
+        return {
+          id: reg?.id ?? pid,
+          player_id: pid,
+          registration_status: reg?.registration_status ?? "",
+          profiles: profilesById.get(pid) ?? null,
+        };
+      });
+      calculateStandings(mappedSchedule, standingsRoster);
     } catch (error) {
       console.error("Error fetching event data:", error);
       toast.error("Failed to load event details");
@@ -344,8 +356,34 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Standard PULSE Header */}
-      <PageHeader userId={userId} />
+      {/* PULSE Player Header — matches the sticky top bar used across player pages */}
+      <header className="sticky top-0 z-50 border-b border-secondary-foreground/10 bg-secondary shadow-sm">
+        <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-3 flex items-center justify-between h-[64px] sm:h-[72px]">
+          <div className="flex items-center gap-2 min-w-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate(-1)}
+              className="text-secondary-foreground hover:bg-secondary-foreground/10 -ml-2"
+              aria-label="Go back"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <NavLink
+              to="/player/dashboard"
+              className="text-secondary-foreground hover:opacity-90 transition-opacity"
+              aria-label="Go to dashboard"
+            >
+              <Logo className="h-[52px] sm:h-[65px] w-auto" />
+            </NavLink>
+          </div>
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <ThemeToggle />
+            {userId && <NotificationBell unreadCount={0} onOpen={() => navigate('/player/dashboard')} />}
+          </div>
+        </div>
+      </header>
+
 
       {/* Premium Hero Banner */}
       <motion.div 
