@@ -175,9 +175,11 @@ export function PlayerSelectionStep({
     return ids;
   }, [formData.team1, formData.team2]);
 
-  // Hydrate profile cache for any selected real players
+  // Hydrate profile cache for any selected real players (skip current user — already cached)
   useEffect(() => {
-    const missing = [...selectedIds].filter((id) => !profileCache[id]);
+    const missing = [...selectedIds].filter(
+      (id) => !profileCache[id] && id !== currentUserId,
+    );
     if (missing.length === 0) return;
     supabase
       .from("profiles_public")
@@ -193,11 +195,16 @@ export function PlayerSelectionStep({
           return next;
         });
       });
-  }, [selectedIds, profileCache]);
+  }, [selectedIds, profileCache, currentUserId]);
 
   const openSheetForSlot = (target: SlotTarget) => {
     setActiveSlot(target);
     setSheetOpen(true);
+  };
+
+  const handleSheetOpenChange = (open: boolean) => {
+    setSheetOpen(open);
+    if (!open) setActiveSlot(null);
   };
 
   const commitPlayerToSlot = (player: Player, target: SlotTarget) => {
@@ -207,7 +214,9 @@ export function PlayerSelectionStep({
     team[target.index] = { playerId: player.id, isGuest: false };
     updateFormData(target.team, team);
     setSheetOpen(false);
+    setActiveSlot(null);
   };
+
 
   const commitGuestToSlot = (name: string, notes: string, target: SlotTarget) => {
     const team = [...formData[target.team]];
