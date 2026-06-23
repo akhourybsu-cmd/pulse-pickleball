@@ -555,11 +555,12 @@ function AddPlayerSheet({
   open,
   onOpenChange,
   excludeIds,
-  currentUserId,
+  currentUserId: _currentUserId,
   currentUserProfile,
   onPick,
-  onPickGuest,
+  onPickGuest: _onPickGuest,
 }: AddPlayerSheetProps) {
+
   const [tab, setTab] = useState<TabKey>("suggested");
   const [search, setSearch] = useState("");
   const debounced = useDebounce(search, 250);
