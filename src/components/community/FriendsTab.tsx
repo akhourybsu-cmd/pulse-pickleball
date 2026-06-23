@@ -142,7 +142,7 @@ export function FriendsTab() {
                     onMessage={() => handleMessage(friend.profile.id)}
                     onRemove={() => removeFriend(friend.id)}
                     onBlock={() => blockUser(friend.profile.id)}
-                    onView={() => navigate('/player/profile')}
+                    onView={() => navigate(`/profile/${friend.profile.id}`)}
                     getInitials={getInitials}
                   />
                 ))
