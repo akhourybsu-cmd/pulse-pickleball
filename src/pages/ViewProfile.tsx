@@ -310,12 +310,8 @@ const ViewProfile = () => {
             <ArrowLeft className="h-4 w-4 mr-1" />
             Back
           </Button>
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <img
-              src={logo}
-              alt="PULSE Logo"
-              className="h-[44px] w-auto"
-            />
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none text-secondary-foreground">
+            <Logo className="h-[44px] w-auto" />
           </div>
           <div className="w-16" />
         </div>
