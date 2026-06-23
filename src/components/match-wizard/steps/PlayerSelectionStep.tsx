@@ -58,11 +58,12 @@ interface Player {
   state?: string | null;
 }
 
-type Relationship = "friend" | "recent" | "community" | "suggested" | null;
+type Relationship = "friend" | "recent" | "community" | "suggested" | "self" | null;
 
 interface RowPlayer extends Player {
   relationship: Relationship;
 }
+
 
 type SlotTarget = { team: "team1" | "team2"; index: number };
 type TabKey = "suggested" | "friends" | "nearby" | "guest";
@@ -121,10 +122,18 @@ function relationshipMeta(rel: Relationship) {
         className:
           "bg-amber-500/10 text-amber-700 dark:text-amber-300 ring-1 ring-amber-500/20",
       };
+    case "self":
+      return {
+        label: "You",
+        icon: UserCheck,
+        className:
+          "bg-primary/15 text-primary ring-1 ring-primary/30",
+      };
     default:
       return null;
   }
 }
+
 
 export function PlayerSelectionStep({
   formData,
@@ -138,12 +147,25 @@ export function PlayerSelectionStep({
   const [showGuestModal, setShowGuestModal] = useState(false);
   const [guestData, setGuestData] = useState({ name: "", notes: "" });
   const [profileCache, setProfileCache] = useState<Record<string, Player>>({});
+  const [currentUserProfile, setCurrentUserProfile] = useState<Player | null>(null);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) setCurrentUserId(user.id);
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) return;
+      setCurrentUserId(user.id);
+      const { data } = await supabase
+        .from("profiles_public")
+        .select("id, display_name, full_name, avatar_url, current_rating")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (data) {
+        const me = data as Player;
+        setCurrentUserProfile(me);
+        setProfileCache((prev) => ({ ...prev, [me.id]: me }));
+      }
     });
   }, []);
+
 
   const selectedIds = useMemo(() => {
     const ids = new Set<string>();
@@ -311,12 +333,14 @@ export function PlayerSelectionStep({
         onOpenChange={setSheetOpen}
         excludeIds={selectedIds}
         currentUserId={currentUserId}
+        currentUserProfile={currentUserProfile}
         onPick={(p) => activeSlot && commitPlayerToSlot(p, activeSlot)}
         onPickGuest={() => {
           setSheetOpen(false);
           setShowGuestModal(true);
         }}
       />
+
 
       {/* Guest dialog */}
       <Dialog open={showGuestModal} onOpenChange={setShowGuestModal}>
@@ -501,6 +525,7 @@ interface AddPlayerSheetProps {
   onOpenChange: (v: boolean) => void;
   excludeIds: Set<string>;
   currentUserId: string | null;
+  currentUserProfile: Player | null;
   onPick: (player: Player) => void;
   onPickGuest: () => void;
 }
@@ -510,6 +535,7 @@ function AddPlayerSheet({
   onOpenChange,
   excludeIds,
   currentUserId,
+  currentUserProfile,
   onPick,
   onPickGuest,
 }: AddPlayerSheetProps) {
@@ -553,11 +579,12 @@ function AddPlayerSheet({
     else setSearchResults([]);
   }, [debounced, runSearch]);
 
+  // Allow the signed-in user to pick themselves — only exclude already-selected slots.
   const filterOut = useCallback(
-    (p: { id: string }) =>
-      !excludeIds.has(p.id) && p.id !== currentUserId,
-    [excludeIds, currentUserId],
+    (p: { id: string }) => !excludeIds.has(p.id),
+    [excludeIds],
   );
+
 
   // Build relationship-tagged lists
   const friendIdSet = useMemo(
@@ -567,7 +594,7 @@ function AddPlayerSheet({
   const recentIdSet = useMemo(() => new Set(recent.map((r) => r.id)), [recent]);
 
   const suggestedList: RowPlayer[] = useMemo(() => {
-    // Hierarchy: friends → recent → community → suggested
+    // Hierarchy: self → friends → recent → community → suggested
     const seen = new Set<string>();
     const out: RowPlayer[] = [];
 
@@ -577,6 +604,10 @@ function AddPlayerSheet({
       seen.add(p.id);
       out.push({ ...p, relationship: rel });
     };
+
+    if (currentUserProfile) push(currentUserProfile, "self");
+
+
 
     for (const f of friends) {
       push(
@@ -622,7 +653,7 @@ function AddPlayerSheet({
       );
     }
     return out.slice(0, 30);
-  }, [friends, recent, suggestions, friendIdSet, recentIdSet, filterOut]);
+  }, [friends, recent, suggestions, friendIdSet, recentIdSet, filterOut, currentUserProfile]);
 
   const friendsList: RowPlayer[] = useMemo(
     () =>
