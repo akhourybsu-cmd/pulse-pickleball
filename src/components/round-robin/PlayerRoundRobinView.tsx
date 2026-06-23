@@ -107,24 +107,37 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
       if (eventError) throw eventError;
       setEvent(eventData);
 
-      // Fetch players
-      const { data: playersData, error: playersError } = await supabase
+      // Fetch players (without join — profiles table is owner-only RLS)
+      const { data: playersRaw, error: playersError } = await supabase
         .from("round_robin_players")
-        .select(`
-          id,
-          player_id,
-          registration_status,
-          profiles:player_id (
-            id,
-            full_name,
-            display_name
-          )
-        `)
+        .select("id, player_id, registration_status")
         .eq("event_id", eventId)
         .eq("active", true);
 
       if (playersError) throw playersError;
-      setPlayers(playersData || []);
+
+      const playerIds = (playersRaw || []).map((p) => p.player_id).filter(Boolean);
+
+      // Batch fetch public profile data via the public view
+      let profilesById = new Map<string, Player["profiles"]>();
+      if (playerIds.length > 0) {
+        const { data: profilesData, error: profilesError } = await supabase
+          .from("profiles_public")
+          .select("id, display_name, full_name, avatar_url, current_rating")
+          .in("id", playerIds);
+
+        if (profilesError) throw profilesError;
+        profilesById = new Map(
+          (profilesData || []).map((p) => [p.id, p as Player["profiles"]])
+        );
+      }
+
+      const playersWithProfiles: Player[] = (playersRaw || []).map((p) => ({
+        ...p,
+        profiles: profilesById.get(p.player_id) ?? null,
+      }));
+
+      setPlayers(playersWithProfiles);
 
       // Fetch schedule
       const { data: scheduleData, error: scheduleError } = await supabase
@@ -148,7 +161,7 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
 
       // Calculate standings
       if (mappedSchedule) {
-        calculateStandings(mappedSchedule, playersData || []);
+        calculateStandings(mappedSchedule, playersWithProfiles);
       }
     } catch (error) {
       console.error("Error fetching event data:", error);
