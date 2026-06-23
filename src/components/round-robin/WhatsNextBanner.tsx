@@ -151,7 +151,7 @@ export function WhatsNextBanner({
                     isActive &&
                       "bg-primary text-primary-foreground border-primary shadow-[0_2px_8px_-2px_hsl(var(--primary)/0.4)]",
                     isPast &&
-                      "bg-success/10 text-success border-success/30",
+                      "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30",
                     !isActive &&
                       !isPast &&
                       "bg-muted/60 text-muted-foreground border-border",
