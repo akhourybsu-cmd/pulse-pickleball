@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Send, MoreVertical, BellOff, Bell, Shield, Flag, UserX } from 'lucide-react';
+import { ArrowLeft, MoreVertical, BellOff, Bell, Shield, Flag, UserX } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format, isToday, isYesterday, isSameDay } from 'date-fns';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { MessageComposer, type MessageComposerHandle } from '@/components/community/MessageComposer';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -40,7 +40,7 @@ export default function DirectMessageChat() {
   const [reportOpen, setReportOpen] = useState(false);
   const [reportReason, setReportReason] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<MessageComposerHandle>(null);
 
   const { typingUsers, startTyping } = useTypingIndicator(conversationId ? `dm-${conversationId}` : undefined);
 
@@ -111,8 +111,8 @@ export default function DirectMessageChat() {
     setIsSending(false);
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setNewMessage(e.target.value);
+  const handleInputChange = (value: string) => {
+    setNewMessage(value);
     startTyping('You');
   };
 
@@ -342,27 +342,17 @@ export default function DirectMessageChat() {
         </div>
       )}
 
-      <div className="p-4 border-t border-border/30 shrink-0">
-        <div className="flex items-center gap-2">
-          <Input
-            ref={inputRef}
-            placeholder={sendDisabled ? 'Messaging unavailable' : 'Type a message...'}
-            value={newMessage}
-            onChange={handleInputChange}
-            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
-            disabled={sendDisabled}
-            className="flex-1"
-          />
-          <Button
-            size="icon"
-            onClick={handleSend}
-            disabled={!newMessage.trim() || isSending || sendDisabled}
-            className="h-10 w-10 shrink-0"
-          >
-            <Send className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
+      <MessageComposer
+        ref={inputRef}
+        value={newMessage}
+        onChange={handleInputChange}
+        onSubmit={handleSend}
+        sending={isSending}
+        disabled={!!sendDisabled}
+        placeholder={sendDisabled ? 'Messaging unavailable' : 'Type a message…'}
+        sendLabel="Send message"
+      />
+
 
       <Dialog open={reportOpen} onOpenChange={setReportOpen}>
         <DialogContent>
