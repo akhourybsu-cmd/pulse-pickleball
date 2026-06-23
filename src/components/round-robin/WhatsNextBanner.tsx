@@ -1,7 +1,8 @@
-import { ArrowRight, Users, Sparkles, Play, ClipboardCheck, Flag, CheckCircle2 } from "lucide-react";
+import { ArrowRight, Users, Sparkles, Play, ClipboardCheck, Flag, CheckCircle2, ClipboardList, Pencil, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
+
 
 interface WhatsNextBannerProps {
   /** Event state — drives which prompt is shown. */
@@ -33,6 +34,8 @@ interface WhatsNextBannerProps {
   onStartEvent?: () => void;
   onCloseRound?: () => void;
   onCompleteEvent?: () => void;
+  /** Opens score management for the active round. */
+  onManageRound?: () => void;
 }
 
 type Prompt = {
@@ -79,14 +82,116 @@ export function WhatsNextBanner({
   onStartEvent,
   onCloseRound,
   onCompleteEvent,
+  onManageRound,
 }: WhatsNextBannerProps) {
   // Players don't see a host-coaching banner.
   if (!isOrganizer) return null;
+
+  // Live in-event view — premium "Active Round" host control card with a
+  // round-pills tracker. Replaces the generic prompt while play is live.
+  if (
+    status === "live" &&
+    !voided &&
+    currentRound != null &&
+    totalRounds > 0
+  ) {
+    const allScored =
+      currentRoundTotalCount > 0 &&
+      currentRoundScoredCount >= currentRoundTotalCount;
+    const isFinalRound = currentRound >= totalRounds;
+    const canAdvance = allScored && !isFinalRound;
+    const canComplete = allScored && isFinalRound;
+
+    return (
+      <div
+        className={cn(
+          "rounded-2xl border border-primary/20 overflow-hidden",
+          "bg-gradient-to-br from-primary/[0.07] via-card to-primary/[0.03]",
+          "shadow-[0_2px_12px_-4px_hsl(var(--primary)/0.18)]",
+        )}
+      >
+        <div className="p-4 sm:p-5">
+          <div className="flex items-start gap-3 sm:gap-4">
+            <div className="h-11 w-11 rounded-xl flex items-center justify-center flex-shrink-0 bg-primary/15 text-primary">
+              <ClipboardList className="h-5 w-5" strokeWidth={2.2} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-lg sm:text-xl font-bold leading-tight text-foreground">
+                Active Round: Round {currentRound}
+              </h3>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+                {currentRoundTotalCount > 0
+                  ? `${currentRoundScoredCount} of ${currentRoundTotalCount} matches scored`
+                  : "Round assigning…"}
+              </p>
+            </div>
+            {onManageRound && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onManageRound}
+                className="h-9 gap-1.5 flex-shrink-0 bg-card"
+              >
+                <span>Manage Round</span>
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+            )}
+          </div>
+
+          {/* Round pills tracker */}
+          <div className="mt-3 flex items-center gap-1.5 overflow-x-auto pb-0.5 -mx-0.5 px-0.5">
+            {Array.from({ length: totalRounds }, (_, i) => i + 1).map((r) => {
+              const isPast = r < currentRound;
+              const isActive = r === currentRound;
+              return (
+                <div
+                  key={r}
+                  className={cn(
+                    "inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-semibold whitespace-nowrap flex-shrink-0 border transition-colors",
+                    isActive &&
+                      "bg-primary text-primary-foreground border-primary shadow-[0_2px_8px_-2px_hsl(var(--primary)/0.4)]",
+                    isPast &&
+                      "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30",
+                    !isActive &&
+                      !isPast &&
+                      "bg-muted/60 text-muted-foreground border-border",
+                  )}
+                >
+                  <span>R{r}</span>
+                  {isPast && <Check className="h-3 w-3" strokeWidth={3} />}
+                  {isActive && <span className="opacity-90">Active</span>}
+                  {!isActive && !isPast && (
+                    <span className="opacity-70">Upcoming</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {(canAdvance || canComplete) && (
+            <div className="mt-3">
+              <Button
+                onClick={canComplete ? onCompleteEvent : onCloseRound}
+                className="gap-1.5 shadow-[0_2px_8px_-2px_hsl(var(--primary)/0.4)]"
+                size="sm"
+              >
+                {canComplete
+                  ? "Complete event"
+                  : `Close Round ${currentRound}`}
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   const prompt = pickPrompt();
   if (!prompt) return null;
 
   const Icon = prompt.icon;
+
 
   return (
     <div
