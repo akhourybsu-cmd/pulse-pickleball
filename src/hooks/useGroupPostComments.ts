@@ -158,8 +158,12 @@ export function useGroupPostComments(postId: string | undefined) {
     },
     onSuccess: ({ row, clientId }) => {
       queryClient.setQueryData<PostComment[]>(queryKey, (prev = []) => {
+        // Merge the DB row onto the optimistic entry without clobbering the
+        // hydrated `profile` / `replies` we set in onMutate.
         const swap = (c: PostComment): PostComment =>
-          c.id === `temp-${clientId}` ? { ...c, ...row } : c;
+          c.id === `temp-${clientId}`
+            ? { ...c, ...row, profile: c.profile, replies: c.replies }
+            : c;
         return prev.map((c) => ({
           ...swap(c),
           replies: (c.replies || []).map(swap),
