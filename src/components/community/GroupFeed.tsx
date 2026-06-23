@@ -335,6 +335,7 @@ const PostCard = memo(function PostCard({
   onImageClick,
   onPollVote,
 }: PostCardProps) {
+  const navigate = useNavigate();
   const typeInfo = POST_TYPE_BADGES[post.type] || POST_TYPE_BADGES.feed;
   const typeAccent = POST_TYPE_ACCENT[post.type] || POST_TYPE_ACCENT.feed;
   const isAuthor = currentUserId === post.user_id;
@@ -345,6 +346,10 @@ const PostCard = memo(function PostCard({
     .join('')
     .toUpperCase()
     .slice(0, 2);
+  const goToProfile = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (post.user_id) navigate(`/profile/${post.user_id}`);
+  };
 
   return (
     <motion.div
