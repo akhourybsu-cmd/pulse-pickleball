@@ -23,10 +23,10 @@ import { HighlightsStrip } from "@/components/profile/HighlightsStrip";
 import { AnimatedStatChip } from "@/components/profile/AnimatedStatChip";
 import { LastPlayedBadge } from "@/components/profile/LastPlayedBadge";
 import { PlayStyleChip } from "@/components/profile/PlayStyleChip";
-import { PlayerPageHeader } from "@/components/layout/PlayerPageHeader";
 import { SectionHeader } from "@/components/layout/SectionHeader";
 import { useFriends } from "@/hooks/useFriends";
 import { cn } from "@/lib/utils";
+import logo from "@/assets/pulse-logo-premium.svg";
 
 interface Profile {
   id: string;
