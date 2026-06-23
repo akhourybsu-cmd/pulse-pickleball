@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Gamepad2, Calendar, Clock, Users, Plus, Trash2, UserPlus, Search } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
