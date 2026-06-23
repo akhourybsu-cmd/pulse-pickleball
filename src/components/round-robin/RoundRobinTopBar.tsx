@@ -65,6 +65,8 @@ export function RoundRobinTopBar({
           <ChevronLeft className="h-5 w-5" />
         </Button>
 
+        <Logo className="h-5 w-auto text-secondary-foreground flex-shrink-0" />
+
         <span className="text-sm font-semibold tracking-wide truncate">{label}</span>
 
         <div className="flex-1" />
