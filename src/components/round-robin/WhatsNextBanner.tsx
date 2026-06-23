@@ -1,7 +1,8 @@
-import { ArrowRight, Users, Sparkles, Play, ClipboardCheck, Flag, CheckCircle2 } from "lucide-react";
+import { ArrowRight, Users, Sparkles, Play, ClipboardCheck, Flag, CheckCircle2, ClipboardList, Pencil, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
+
 
 interface WhatsNextBannerProps {
   /** Event state — drives which prompt is shown. */
@@ -33,6 +34,8 @@ interface WhatsNextBannerProps {
   onStartEvent?: () => void;
   onCloseRound?: () => void;
   onCompleteEvent?: () => void;
+  /** Opens score management for the active round. */
+  onManageRound?: () => void;
 }
 
 type Prompt = {
