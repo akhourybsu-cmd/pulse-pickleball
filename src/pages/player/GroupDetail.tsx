@@ -88,6 +88,16 @@ export default function GroupDetail() {
       }
       setCurrentUserId(user.id);
 
+      // Fetch current user profile for composer avatar
+      supabase
+        .from('profiles')
+        .select('display_name, full_name, avatar_url')
+        .eq('id', user.id)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) setCurrentUserProfile(data);
+        });
+
       // Fetch group with venue relationship for venue_official groups
       const { data: groupData, error: groupError } = await supabase
         .from('groups')
