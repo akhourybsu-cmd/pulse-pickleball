@@ -1672,6 +1672,7 @@ export default function RoundRobinDetail() {
               onStartEvent={handleStartEvent}
               onCloseRound={() => event.current_round && handleCloseRound(event.current_round)}
               onCompleteEvent={handleCompleteEvent}
+              onManageRound={() => setScoreManagementOpen(true)}
             />
           </div>
         )}
