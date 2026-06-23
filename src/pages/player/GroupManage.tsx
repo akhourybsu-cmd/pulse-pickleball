@@ -274,7 +274,7 @@ export default function GroupManage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-30 bg-background/85 backdrop-blur-xl border-b border-border/60">
+      <header className="sticky top-0 z-30 bg-gradient-to-b from-primary/[0.06] via-background to-background backdrop-blur-xl border-b border-border/60">
         <div className="container max-w-3xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
