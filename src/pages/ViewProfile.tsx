@@ -259,7 +259,9 @@ const ViewProfile = () => {
   const handleMessage = async () => {
     if (!userId) return;
     try {
-      const { data, error } = await supabase.rpc("get_or_create_dm", { other_user: userId } as any);
+      const { data, error } = await supabase.rpc("get_or_create_dm_conversation", {
+        other_user_id: userId,
+      });
       if (error) throw error;
       navigate(`/player/messages/${data}`);
     } catch {
