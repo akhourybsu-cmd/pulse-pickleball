@@ -214,9 +214,12 @@ export default function GroupDetail() {
       } as React.CSSProperties : undefined}
     >
       {/* Refined Community Header */}
-      <div 
-        className="px-3 sm:px-4 pt-3 pb-2 border-b border-border/30 bg-background shrink-0"
-        style={isVenueGroup ? { 
+      <div
+        className={cn(
+          "px-3 sm:px-4 pt-3 pb-2 border-b border-border/30 shrink-0",
+          !isVenueGroup && "bg-gradient-to-b from-primary/[0.06] via-background to-background"
+        )}
+        style={isVenueGroup ? {
           borderColor: `${venueColor}30`,
           background: `linear-gradient(to bottom, ${venueColor}06, transparent)`
         } : undefined}
