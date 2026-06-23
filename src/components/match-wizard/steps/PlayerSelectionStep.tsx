@@ -58,11 +58,12 @@ interface Player {
   state?: string | null;
 }
 
-type Relationship = "friend" | "recent" | "community" | "suggested" | null;
+type Relationship = "friend" | "recent" | "community" | "suggested" | "self" | null;
 
 interface RowPlayer extends Player {
   relationship: Relationship;
 }
+
 
 type SlotTarget = { team: "team1" | "team2"; index: number };
 type TabKey = "suggested" | "friends" | "nearby" | "guest";
