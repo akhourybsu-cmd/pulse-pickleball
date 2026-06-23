@@ -42,6 +42,7 @@ export default function GroupDetail() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('feed');
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentUserProfile, setCurrentUserProfile] = useState<{ display_name: string | null; full_name: string | null; avatar_url: string | null } | null>(null);
   
   // Track which tabs have been visited for lazy mounting
   const [visitedTabs, setVisitedTabs] = useState<Set<string>>(new Set(['feed']));
@@ -86,6 +87,16 @@ export default function GroupDetail() {
         return;
       }
       setCurrentUserId(user.id);
+
+      // Fetch current user profile for composer avatar
+      supabase
+        .from('profiles')
+        .select('display_name, full_name, avatar_url')
+        .eq('id', user.id)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) setCurrentUserProfile(data);
+        });
 
       // Fetch group with venue relationship for venue_official groups
       const { data: groupData, error: groupError } = await supabase
@@ -213,20 +224,20 @@ export default function GroupDetail() {
         '--venue-primary': venueColor,
       } as React.CSSProperties : undefined}
     >
-      {/* Refined Community Header */}
+      {/* Refined Community Header — matches PlayerPageHeader (Match page) treatment */}
       <div
         className={cn(
-          "px-3 sm:px-4 pt-3 pb-2 border-b border-border/30 shrink-0",
-          !isVenueGroup && "bg-gradient-to-b from-primary/[0.06] via-background to-background"
+          "px-3 sm:px-4 pt-3 pb-3 border-b border-border/40 shrink-0",
+          !isVenueGroup && "bg-gradient-to-b from-primary/[0.10] via-primary/[0.03] to-background"
         )}
         style={isVenueGroup ? {
           borderColor: `${venueColor}30`,
-          background: `linear-gradient(to bottom, ${venueColor}06, transparent)`
+          background: `linear-gradient(to bottom, ${venueColor}14, ${venueColor}06, transparent)`
         } : undefined}
       >
         <div className="flex items-start gap-2">
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             size="icon"
             className="h-9 w-9 -ml-1 shrink-0"
             onClick={() => navigate('/player/community')}
@@ -235,10 +246,14 @@ export default function GroupDetail() {
           </Button>
 
           <div className="flex-1 min-w-0 pt-0.5">
-            <h1 className="text-lg sm:text-xl font-semibold truncate leading-tight">
+            <h1 className="text-lg sm:text-xl font-semibold truncate leading-tight text-foreground">
               {group.name}
             </h1>
-            <p className="text-xs text-muted-foreground mt-0.5 truncate">
+            <div
+              className="h-[3px] w-10 mt-1.5 rounded-full bg-primary"
+              style={isVenueGroup ? { background: venueColor || undefined } : undefined}
+            />
+            <p className="text-xs text-muted-foreground mt-1.5 truncate">
               {subtitle}
             </p>
             {/* Active indicator — readable, not a mystery dot */}
@@ -512,6 +527,8 @@ export default function GroupDetail() {
         <CollapsedComposerBar
           onExpand={() => openQuickPost('post')}
           onPhotoClick={() => openQuickPost('photo')}
+          avatarUrl={currentUserProfile?.avatar_url}
+          displayName={currentUserProfile?.display_name || currentUserProfile?.full_name}
         />
       )}
 
