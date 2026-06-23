@@ -72,16 +72,6 @@ export const OnboardingTutorial = ({ userId, onComplete }: OnboardingTutorialPro
       placement: 'bottom',
     },
     {
-      target: '[data-tour="court-connector"]',
-      content: (
-        <div>
-          <h3 className="font-bold mb-2">Court Connector</h3>
-          <p>Find players near you who are looking for a game. Post when you need partners and connect with your local pickleball community.</p>
-        </div>
-      ),
-      placement: 'bottom',
-    },
-    {
       target: '[data-tour="court-stats"]',
       content: (
         <div>
