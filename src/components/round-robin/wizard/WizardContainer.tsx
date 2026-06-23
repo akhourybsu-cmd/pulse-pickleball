@@ -49,8 +49,11 @@ export function WizardContainer() {
     eventName: "",
     locationId: "",
     locationLabel: "",
+    cityLabel: "",
+    cityPlaceId: "",
     format: "open",
     selectedPlayers: [],
+
     playerCount: 8,
     playerInputMethod: null,
     courtCount: 2,
@@ -182,14 +185,16 @@ export function WizardContainer() {
         .from("round_robin_events")
         .insert({
           name: name,
-          // Prefer the free-text town/city label so the match card shows
-          // a human-readable place. Fall back to the selected court's name,
-          // then null. (Schema accepts any string.)
+          // Compose the human-readable location label shown on match cards:
+          // "<Location Name> · <City, ST>" when both exist, otherwise
+          // whichever the host filled in. The court UUID dropdown was
+          // removed from this wizard, so we no longer look anything up
+          // from the courts table here.
           location:
-            formData.locationLabel.trim() ||
-            (formData.locationId && formData.locationId !== "none"
-              ? courts.find((c) => c.id === formData.locationId)?.name ?? null
-              : null),
+            [formData.locationLabel.trim(), formData.cityLabel.trim()]
+              .filter(Boolean)
+              .join(" · ") || null,
+
           notes: formData.notes.trim() || null,
           organizer_id: user.id,
           // Link to a venue when the wizard was launched from the venue console
@@ -357,15 +362,18 @@ export function WizardContainer() {
           />
         );
       case "details":
-        // Combined Name + Location + Notes + "Who can join?" picker.
         return (
           <DetailsStep
             eventName={formData.eventName}
             onEventNameChange={(v) => updateFormData("eventName", v)}
-            locationId={formData.locationId}
-            onLocationIdChange={(v) => updateFormData("locationId", v)}
             locationLabel={formData.locationLabel}
             onLocationLabelChange={(v) => updateFormData("locationLabel", v)}
+            cityLabel={formData.cityLabel}
+            cityPlaceId={formData.cityPlaceId}
+            onCityChange={(label, placeId) => {
+              updateFormData("cityLabel", label);
+              updateFormData("cityPlaceId", placeId);
+            }}
             notes={formData.notes}
             onNotesChange={(v) => updateFormData("notes", v)}
             eventMode={formData.eventMode}
@@ -373,6 +381,7 @@ export function WizardContainer() {
             onIsInviteOnlyChange={(v) => updateFormData("isInviteOnly", v)}
           />
         );
+
       case "players":
         return (
           <PlayersStep

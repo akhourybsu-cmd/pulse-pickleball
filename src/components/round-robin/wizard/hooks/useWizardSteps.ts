@@ -3,11 +3,19 @@ import { useMemo } from "react";
 export interface WizardFormData {
   eventMode: "immediate" | "open_registration";
   eventName: string;
+  /** Legacy court UUID — no longer used by the wizard UI (courts dropdown
+   *  removed). Kept on the type only to avoid breaking older persisted
+   *  drafts; always "" for new events. */
   locationId: string;
-  /** Free-text town/city label shown on the match card. Persisted to
-   *  round_robin_events.location (preferred over the court UUID so the
-   *  detail screen can render a human-readable place). */
+  /** Free-text location name (e.g., "Memorial Park Court 2"). Shown on
+   *  the match card. */
   locationLabel: string;
+  /** Verified town/city picked from Google autocomplete (e.g., "Brooklyn,
+   *  NY"). Stored alongside the location name and rendered on the match
+   *  card so spelling stays consistent across players. */
+  cityLabel: string;
+  cityPlaceId: string;
+
   format: "open" | "mixed" | "male" | "female";
   selectedPlayers: { id: string; full_name: string; display_name: string | null; gender?: string | null; isGuest?: boolean; avatar_url?: string | null }[];
   playerCount: number;
