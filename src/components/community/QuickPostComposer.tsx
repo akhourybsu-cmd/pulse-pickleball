@@ -185,12 +185,12 @@ export function QuickPostComposer({
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="max-h-[85vh]">
-        <DrawerHeader className="pb-2">
+      <DrawerContent className="h-[85svh] max-h-[85svh] flex flex-col p-0 gap-0">
+        <DrawerHeader className="px-4 pt-4 pb-2 shrink-0">
           <DrawerTitle>Create Post</DrawerTitle>
         </DrawerHeader>
 
-        <div className="flex-1 overflow-y-auto px-4">
+        <div className="flex-1 min-h-0 overflow-y-auto px-4">
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as PostType)} className="w-full">
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="post" className="gap-1 text-xs">
