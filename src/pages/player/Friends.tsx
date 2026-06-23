@@ -132,10 +132,12 @@ export default function Friends() {
             ) : (
               friends.map(f => (
                 <div key={f.id} className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border/40">
-                  <Avatar className="h-11 w-11">
-                    <AvatarImage src={f.profile.avatar_url || undefined} />
-                    <AvatarFallback>{initials(f.profile.display_name || f.profile.full_name)}</AvatarFallback>
-                  </Avatar>
+                  <button onClick={() => navigate(`/profile/${f.profile.id}`)} aria-label="View profile">
+                    <Avatar className="h-11 w-11">
+                      <AvatarImage src={f.profile.avatar_url || undefined} />
+                      <AvatarFallback>{initials(f.profile.display_name || f.profile.full_name)}</AvatarFallback>
+                    </Avatar>
+                  </button>
                   <button
                     onClick={() => navigate(`/profile/${f.profile.id}`)}
                     className="flex-1 min-w-0 text-left"
