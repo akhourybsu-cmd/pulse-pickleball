@@ -1,78 +1,72 @@
-# FAQ Hard Pass
 
-The current `/faq` page is stale: it links to routes that no longer exist (`/new-match`, `/match-history`, `/round-robin`, `/court/connector`), still talks about "Court Connector" (replaced by Community / Groups), and never mentions tournaments, venues, friends/DMs, or the player/venue mode split. The hero also uses a hardcoded green (`#A9DC3D`) and a separate logo image instead of the sticky PULSE top bar used on every player page.
+# Community Push Notifications — Infrastructure Pass
 
-## Goals
-- Every answer reflects the app as it exists today.
-- Every "where do I find this?" instruction is correct, step by step, and uses the real navigation labels.
-- Same sticky PULSE header (cream `Logo` on `bg-secondary`, back button) as the rest of the player surface.
-- Wording dropped one reading level: short sentences, plain verbs, no jargon unless we define it.
+Scope: web push / PWA only (no native Capacitor push). Goal: make sure every meaningful Community event reliably triggers a push to opted-in members, with a clear opt-in moment when they first open a group.
 
-## Header + visual pass
-- Replace the custom `<nav>` + hero block with the standard player sticky header (back button + `Logo` + theme toggle), then a compact in-page `PlayerPageHeader` row (HelpCircle icon, "Help Center", one-line subtitle, accent underline).
-- Remove the hardcoded `#A9DC3D` and inline gradients; use semantic tokens (`text-primary`, `bg-primary/10`, `border-primary`).
-- Keep the accordion pattern but tighten cards: white card surface, lime left accent, 8pt spacing (`p-4`, `gap-3`, `space-y-4`), no double borders.
-- Add a sticky in-page anchor strip under the header so people can jump to a section (Getting Started / Ratings / Matches / Play / Community / Venues / Account).
+## What's already in place (verified)
 
-## Content rewrite — new section list
-Sections are reordered around how a real player uses the app, not around internal subsystems.
+- VAPID keys configured (`VITE_VAPID_PUBLIC_KEY` set; server-side `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` used by `push-send`).
+- Service worker `public/sw.js` handles `push` events and renders the notification.
+- `usePushSubscription` hook subscribes the browser and stores rows in `push_subscriptions`.
+- DB triggers already exist on `group_posts` → `notify_group_post_created` and on `group_post_comments` → `notify_post_comment`. Both write to `user_notifications`.
+- An `AFTER INSERT` trigger on `user_notifications` calls `dispatch_push_for_notification`, which `pg_net` posts to the `push-send` edge function — so any new row in `user_notifications` already fans out as a web push.
+- Per-group prefs table `group_notification_prefs` + `is_group_channel_enabled()` already gate post/announcement pushes.
 
-### 1. Getting Started
-- What is PULSE? (one-paragraph: discover venues, log matches, build a rating, join events, message friends)
-- Player mode vs. Venue mode — what each is for, how to switch (Mode Switcher in the top bar, only visible if you manage a venue)
-- The five player tabs at the bottom: Home, Matches, Community, Profile, plus the floating "Record Match" button
-- How to set up your profile (Profile tab → Edit Profile → first name, last name, rating-eligible info)
+So the pipeline works end-to-end today for **new group posts**. The pass below closes the remaining gaps the user asked about.
 
-### 2. Your Pulse Score (rating)
-Keep the existing rating explanations — they're accurate — but trim:
-- "What's a Pulse Score?" (1 short paragraph)
-- "How is it calculated? (Simple)" — the ✅/❌ block, unchanged in substance
-- "When are ratings calculated?" — weekly freeze, Monday recalculation
-- "Provisional players" — under 8 matches, faster movement
-- Collapse the 6-step formula and worked example into one "Show me the math" accordion (kept for power users, hidden by default)
+## Gaps to fix
 
-### 3. Recording & Managing Matches
-- How to record a match — Home / Matches / Play → tap the green **Record Match** button → pick 4 players → enter score → choose match type → submit
-- Where to see match history — Matches tab (route: `/player/matches`)
-- How to verify or contest a match — Matches tab → tap a match → "Verify" or "Contest"
-- Guest players — how to add someone who isn't on PULSE yet
+1. New comments on a post I authored → in-app notification exists, but title/body are generic ("New Comment"). Tighten copy and deep-link so the push opens directly to the post + comment.
+2. Replies on a comment thread I'm part of → not currently notified at all.
+3. @mentions in posts/comments → not currently notified at all.
+4. Announcements / pinned posts → trigger exists and uses `priority='high'`, but the push payload doesn't surface that as a high-urgency notification (it's normal urgency in `push-send`). Confirm `high` is honored and the SW renders with `requireInteraction: true`.
+5. First-visit opt-in inside a group → today the `EnablePushBanner` only lives on the Dashboard. Add it to `GroupDetail` (dismissible, 7-day TTL, hidden once `state === "enabled"`).
+6. Stale subscriptions / multiple devices: `push-send` already prunes 404/410. Confirm we upsert on `endpoint` (we do) so re-subscribing on the same device doesn't duplicate.
+7. iOS PWA caveat: surface a one-line hint in the banner when iOS Safari is detected and the app isn't installed to home screen (logic already exists in `EnablePushBanner` — reuse).
 
-### 4. Play: Round Robins, Tournaments, Open Play
-- What's the Play hub for? (one place for round robins, tournaments, drop-in)
-- Joining a round robin — Play tab → Find Events → tap event → Register
-- Hosting your own round robin — Play tab → Create Round Robin → wizard
-- Kiosk mode — open the event → "Open Kiosk" (full-screen, tablet/TV view)
-- Tournaments — discover at `/player/find`, register on the single-page registration screen, view bracket on the tournament page
+## Implementation
 
-### 5. Community: Groups, Friends, Messages
-- What replaced Court Connector? — Community Hub (Groups, Feed, LFG, Highlights, Announcements)
-- Joining or creating a group — Community tab → Groups → Browse or Create
-- LFG (Looking for Game) — Community → LFG → New Post
-- Adding friends — Profile or player card → "Add Friend"
-- Direct messages — Community → Messages, or tap a friend → Message
+### A. Database migration (one migration)
 
-### 6. Venues & Booking
-- Finding venues near you — Home → "Find Venues" or `/player/venues`
-- Following a venue — venue page → Follow (you get their announcements + events)
-- Booking a court — venue page → Book a Court → pick court/time → confirm
-- Registering for venue events / coaching / lessons — venue page → Events tab
+- `notify_post_comment` (existing): rewrite copy to `"<name> replied on your post in <group>"`, set category `community`, include `group_id` in metadata, and gate via `is_group_channel_enabled(..., 'posts')` so a fully-muted group also mutes comment pings.
+- New trigger `notify_comment_reply` on `group_post_comments`: when `parent_comment_id IS NOT NULL`, notify the parent comment's author (skip if it's the same user as the post author already notified, skip self-replies).
+- New trigger `notify_mentions` on `group_posts` and `group_post_comments`: parse `@handle` tokens from `content`, resolve to `profiles.id` via `display_name` / `username`, fan out one notification per mentioned user (deduped against post author / commenter to avoid double pings). Channel = `posts`, priority = `normal`.
+- Confirm `notify_group_post_created` already covers announcements; no schema change needed there.
 
-### 7. Account, Notifications, Privacy
-- Notifications — bell icon, top right; tune them in Profile → Notification Preferences
-- Privacy — what other players can see (profiles_public surface); how to block someone
-- Biometric sign-in setup (Profile → Security)
-- Switching to dark mode — sun/moon icon in the header
-- Sign out — Profile tab → Sign Out
+### B. Edge function (`supabase/functions/push-send/index.ts`)
 
-## Stale things to delete
-- All `/match-history`, `/new-match`, `/round-robin`, `/court/connector` links → replace with `/player/matches`, `/player/matches/new`, `/player/play`, `/player/community`.
-- "Court Connector" terminology everywhere (rename to Community / Groups / LFG depending on what's actually being described).
-- The hardcoded `#A9DC3D` and the bespoke gradient hero in favor of design tokens.
+- Already accepts `priority`. Map `priority === "high"` to `urgency: "high"` (already done) AND include `requireInteraction: true` in the JSON payload so the SW can render it stickier.
+- No new function — reuse `push-send`.
 
-## Out of scope
-- No new backend, no schema, no data fetching — this is a pure content + styling pass on `src/pages/FAQ.tsx`.
-- Not adding search-in-FAQ this round (can be a follow-up if you want it).
+### C. Service worker (`public/sw.js`)
 
-## Open questions before I build
-1. Do you want me to keep the deep "Show me the math" / worked-example accordion at all, or drop it entirely since most players don't care?
-2. Should the FAQ stay at `/faq` (public, signed-out OK), or move under `/player/help` so it inherits the bottom nav?
+- Read `requireInteraction` from payload; pass through to `showNotification` options.
+- Set `tag` per notification type so successive posts in the same group collapse rather than stack endlessly.
+- Add `notificationclick` focus-or-open behavior for the `url` field (verify it exists; patch if missing).
+
+### D. Frontend
+
+- `src/pages/player/GroupDetail.tsx`: render `<EnablePushBanner />` at the top of the feed, only when the user is a member, push state ∈ {`disabled`, `denied`}, and not dismissed (reuse the existing 7-day localStorage TTL — namespace the key per group so dismissing one group doesn't hide it forever everywhere).
+- Group settings sheet: confirm the per-group "Posts / Announcements / Chat / Mute all" toggles are wired to `set_group_notification_pref` (they are via `useGroupSettings` / `group_notification_prefs`). Add a small "Send me a test push" button in `/settings/notifications` that calls `push-send` for the current user — useful for QA on a phone.
+
+### E. QA
+
+- Trigger a post from user A in a group, verify user B (subscribed, not muted) gets push.
+- Mute group for user B, repeat — no push.
+- Comment on user A's post as user B → user A pushed.
+- Reply to user B's comment as user C → user B pushed, user A not double-pushed.
+- Pin/announcement post → high-priority push delivered even when "posts" channel is off, as long as `announcements` is on.
+
+## Technical notes
+
+- All DB changes ship in one migration with `CREATE OR REPLACE FUNCTION` + `DROP TRIGGER IF EXISTS` / `CREATE TRIGGER` (idempotent).
+- No new tables, so no GRANT block needed.
+- No new secrets; `VAPID_*` and `push_dispatch_secret` already configured.
+- Mention parser uses regex `@([a-zA-Z0-9_\.]{2,30})` against `profiles.display_name` (case-insensitive). False positives are harmless — the lookup just returns no row.
+- `push-send` stays internal (dispatch secret); never call it directly from the client except via the "Send test push" button which goes through the existing `send-test-push` function.
+
+## Out of scope (per your answers)
+
+- Native Capacitor push (FCM/APNs).
+- Reaction notifications.
+- Email digests for community activity.
