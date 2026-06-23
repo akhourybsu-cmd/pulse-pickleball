@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,10 +7,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
-import { Calendar, MapPin, Clock, Trophy, Users, Search, Medal, Target, TrendingUp, Star } from "lucide-react";
+import { Calendar, MapPin, Clock, Trophy, Users, Search, Medal, Target, TrendingUp, Star, ArrowLeft } from "lucide-react";
 import { ScheduleRoundCarousel } from "@/components/round-robin/ScheduleRoundCarousel";
 import { toast } from "sonner";
-import { PageHeader } from "@/components/PageHeader";
+import { Logo } from "@/components/Logo";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { NotificationBell } from "@/components/NotificationBell";
 import { motion } from "framer-motion";
 import { formatDateEST, formatTime12Hour } from "@/lib/utils";
 import {
