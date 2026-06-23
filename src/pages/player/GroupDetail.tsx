@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, Settings, Users, MessageSquare, MessageCircle, Calendar, 
-  FolderOpen, Plus, Share2, MoreVertical, MoreHorizontal, Building2, UserPlus
+  FolderOpen, Plus, Share2, MoreVertical, MoreHorizontal, Building2, UserPlus, Bell
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -29,6 +29,7 @@ import { useGroupPosts } from '@/hooks/useGroupPosts';
 import { useGroupPresence } from '@/hooks/useGroupPresence';
 import { useGroupRealtime } from '@/hooks/useGroupRealtime';
 import { EnablePushBanner } from '@/components/dashboard/EnablePushBanner';
+import { GroupNotificationSettingsSheet } from '@/components/community/GroupNotificationSettingsSheet';
 
 
 import { DEFAULT_VENUE_COLORS } from '@/lib/venueBranding';
@@ -47,6 +48,8 @@ export default function GroupDetail() {
   
   // Track which tabs have been visited for lazy mounting
   const [visitedTabs, setVisitedTabs] = useState<Set<string>>(new Set(['feed']));
+  const [notifSettingsOpen, setNotifSettingsOpen] = useState(false);
+  
   
   // Modal states
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
@@ -323,6 +326,10 @@ export default function GroupDetail() {
                     Share invite
                   </DropdownMenuItem>
                 )}
+                <DropdownMenuItem onClick={() => setNotifSettingsOpen(true)}>
+                  <Bell className="h-4 w-4 mr-2" />
+                  Notifications
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleTabChange('more')}>
                   <FolderOpen className="h-4 w-4 mr-2" />
                   Files
