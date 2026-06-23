@@ -105,7 +105,7 @@ const ViewProfile = () => {
       const { data: profileData, error } = await supabase
         .from("profiles_public")
         .select(`
-          id, display_name, first_name, last_name, avatar_url,
+          id, display_name, full_name, first_name, last_name, avatar_url,
           current_rating, total_matches, wins, losses,
           handedness, play_side, paddle_brand, paddle_model
         `)
