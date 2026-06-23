@@ -346,8 +346,34 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Standard PULSE Header */}
-      <PageHeader userId={userId} />
+      {/* PULSE Player Header — matches the sticky top bar used across player pages */}
+      <header className="sticky top-0 z-50 border-b border-secondary-foreground/10 bg-secondary shadow-sm">
+        <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-3 flex items-center justify-between h-[64px] sm:h-[72px]">
+          <div className="flex items-center gap-2 min-w-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate(-1)}
+              className="text-secondary-foreground hover:bg-secondary-foreground/10 -ml-2"
+              aria-label="Go back"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <NavLink
+              to="/player/dashboard"
+              className="text-secondary-foreground hover:opacity-90 transition-opacity"
+              aria-label="Go to dashboard"
+            >
+              <Logo className="h-[52px] sm:h-[65px] w-auto" />
+            </NavLink>
+          </div>
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <ThemeToggle />
+            {userId && <NotificationBell unreadCount={0} onOpen={() => navigate('/player/dashboard')} />}
+          </div>
+        </div>
+      </header>
+
 
       {/* Premium Hero Banner */}
       <motion.div 
