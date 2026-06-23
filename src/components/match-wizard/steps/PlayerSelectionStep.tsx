@@ -228,7 +228,9 @@ export function PlayerSelectionStep({
       guestNotes: notes || undefined,
     };
     updateFormData(target.team, team);
+    setActiveSlot(null);
   };
+
 
   const handleAddGuestFromHeader = () => {
     // Pick first empty slot, defaulting to team 1
