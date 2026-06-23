@@ -4,6 +4,7 @@ import { Eye } from "lucide-react";
 import logo from "@/assets/pulse-logo-premium.svg";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Footer } from "@/components/Footer";
+import { PageSEO } from "@/components/seo/PageSEO";
 
 // Demo components
 import { DemoProfileHero } from "@/components/demo/DemoProfileHero";
@@ -17,6 +18,11 @@ import { DemoSignUpCTA } from "@/components/demo/DemoSignUpCTA";
 const DemoTour = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      <PageSEO
+        title="Live Demo — Tour the PULSE player dashboard"
+        description="Take a guided tour of PULSE — see the player dashboard, match recording, stats, and community features in action before you sign up."
+        path="/demo"
+      />
       {/* Navigation */}
       <nav className="sticky top-0 z-50 bg-secondary/95 backdrop-blur-sm border-b border-secondary-foreground/10 shadow-sm">
         <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-4 flex items-center justify-between">

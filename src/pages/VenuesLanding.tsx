@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { PageSEO } from "@/components/seo/PageSEO";
 import { HomepageNav } from "@/components/homepage/HomepageNav";
 import { HomepageFooter } from "@/components/homepage/HomepageFooter";
 import {
@@ -40,6 +41,11 @@ const VenuesLanding = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <PageSEO
+        title="PULSE for Venues — Run courts, events, and your community"
+        description="Manage courts and bookings, host tournaments and round robins, and grow your pickleball community with PULSE — the all-in-one venue platform."
+        path="/venues"
+      />
       <HomepageNav isLoggedIn={isLoggedIn} userMode={userMode} />
       <main>
         <VenueHero />

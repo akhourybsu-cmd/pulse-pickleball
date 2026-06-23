@@ -1,0 +1,18 @@
+# PULSE
+
+> PULSE is the home for pickleball players and venues — track matches, earn a rating, find events, run round robins and tournaments, and connect with your local community.
+
+PULSE pairs a player-facing identity (matches, ratings, friends, events) with venue operations (courts, bookings, tournaments, communities). The platform is web + Capacitor mobile, with public marketing pages and authenticated player and venue workspaces.
+
+## Pages
+
+- [Home](/): Overview of PULSE for players and venues.
+- [For Players](/players): Rating system, match tracking, events, and community features.
+- [For Venues](/venues): Venue operations — courts, bookings, tournaments, round robins, communities.
+- [FAQ](/faq): How PULSE works — ratings, matches, round robins, communities, venues.
+- [Live Demo](/demo): Interactive walkthrough of the player dashboard.
+- [List Your Venue](/venue/interest): Lead form for venues interested in joining PULSE.
+
+## Optional
+
+- [Public Venue Pages](/v/example): Each venue has a public landing page with schedule, events, coaching, and booking.

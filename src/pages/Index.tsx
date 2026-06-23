@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { PageSEO } from "@/components/seo/PageSEO";
 import { Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -66,6 +67,11 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <PageSEO
+        title="PULSE — Play. Connect. Compete."
+        description="The home for pickleball players and venues. Track matches, earn your rating, find events, and connect with your local community."
+        path="/"
+      />
       <HomepageNav isLoggedIn={false} userMode="player" />
       <main>
         {/* Player-only public composition. Venue / tournament surfaces are

@@ -24,6 +24,28 @@ import {
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Logo } from "@/components/Logo";
+import { PageSEO } from "@/components/seo/PageSEO";
+
+// Top FAQ entries used to power FAQPage JSON-LD for rich Q&A results.
+// Short answers; full content lives in the page below.
+const FAQ_SCHEMA_ITEMS: { q: string; a: string }[] = [
+  { q: "What is PULSE?", a: "PULSE is the home for pickleball players and venues. Players track matches, earn a Pulse rating, and find events; venues run courts, tournaments, round robins, and communities." },
+  { q: "What's a Pulse Score?", a: "Your Pulse Score is a single rating that summarizes your pickleball skill based on the matches you record, who you played, and how the results went." },
+  { q: "How does my rating change?", a: "Ratings update after each verified match. Beating higher-rated opponents moves you up faster; expected wins move you up a little." },
+  { q: "How do I record a match?", a: "Tap Record Match, pick the players for each team, enter the score, and submit. Opponents verify and the rating updates automatically." },
+  { q: "What if someone isn't on PULSE yet?", a: "You can add them as a guest during match entry. Their results count toward your rating and they can claim the profile later." },
+  { q: "How do I join a round robin?", a: "Open the Play tab, browse live round robins near you or at your venue, and tap Join. The host approves and you'll get court assignments in the app." },
+];
+
+const FAQ_JSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: FAQ_SCHEMA_ITEMS.map((item) => ({
+    "@type": "Question",
+    name: item.q,
+    acceptedAnswer: { "@type": "Answer", text: item.a },
+  })),
+};
 
 // ---------- Reusable bits ----------
 
@@ -109,6 +131,12 @@ const FAQ = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <PageSEO
+        title="FAQ — How PULSE works"
+        description="Answers about Pulse ratings, recording matches, joining round robins, hosting events, and connecting with your pickleball community on PULSE."
+        path="/faq"
+        jsonLd={FAQ_JSON_LD}
+      />
       {/* Sticky PULSE header — matches /player/* surfaces */}
       <header className="sticky top-0 z-50 border-b border-secondary-foreground/10 bg-secondary shadow-sm">
         <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-3 flex items-center justify-between h-[64px] sm:h-[72px]">

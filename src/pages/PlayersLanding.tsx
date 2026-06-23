@@ -1,4 +1,5 @@
 import { HomepageNav, HomepageFooter } from "@/components/homepage";
+import { PageSEO } from "@/components/seo/PageSEO";
 import {
   PlayerHero,
   WhyPulseSection,
@@ -35,6 +36,11 @@ const PlayersLanding = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <PageSEO
+        title="PULSE for Players — Track matches, earn your rating, find events"
+        description="Record matches, build your Pulse rating, join round robins, find tournaments near you, and stay connected with your pickleball community."
+        path="/players"
+      />
       <HomepageNav isLoggedIn={isLoggedIn} userMode={userMode} />
       <main>
         <PlayerHero />
