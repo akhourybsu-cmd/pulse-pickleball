@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo, memo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { MessageSquare, Pin, Trash2, MoreVertical, Image as ImageIcon } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { PostCommentsSheet } from './PostCommentsSheet';
@@ -334,6 +335,7 @@ const PostCard = memo(function PostCard({
   onImageClick,
   onPollVote,
 }: PostCardProps) {
+  const navigate = useNavigate();
   const typeInfo = POST_TYPE_BADGES[post.type] || POST_TYPE_BADGES.feed;
   const typeAccent = POST_TYPE_ACCENT[post.type] || POST_TYPE_ACCENT.feed;
   const isAuthor = currentUserId === post.user_id;
@@ -344,6 +346,10 @@ const PostCard = memo(function PostCard({
     .join('')
     .toUpperCase()
     .slice(0, 2);
+  const goToProfile = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (post.user_id) navigate(`/profile/${post.user_id}`);
+  };
 
   return (
     <motion.div
@@ -359,15 +365,17 @@ const PostCard = memo(function PostCard({
       {/* Header - Mobile Optimized */}
       <div className="flex items-start justify-between gap-2 sm:gap-3 mb-2 sm:mb-3">
         <div className="flex items-start gap-2 sm:gap-2.5 flex-1 min-w-0">
-          <Avatar className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0">
-            <AvatarImage src={post.profile?.avatar_url || undefined} />
-            <AvatarFallback className="text-xs sm:text-sm">{initials}</AvatarFallback>
-          </Avatar>
+          <button onClick={goToProfile} className="flex-shrink-0" aria-label="View profile">
+            <Avatar className="h-8 w-8 sm:h-9 sm:w-9">
+              <AvatarImage src={post.profile?.avatar_url || undefined} />
+              <AvatarFallback className="text-xs sm:text-sm">{initials}</AvatarFallback>
+            </Avatar>
+          </button>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-              <span className="font-medium text-sm truncate max-w-[120px] sm:max-w-none">
+              <button onClick={goToProfile} className="font-medium text-sm truncate max-w-[120px] sm:max-w-none hover:underline text-left">
                 {post.profile?.display_name || post.profile?.full_name || 'Someone'}
-              </span>
+              </button>
               <span className="text-xs text-muted-foreground/70">
                 {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
               </span>

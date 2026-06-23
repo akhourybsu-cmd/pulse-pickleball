@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Gamepad2, Calendar, Clock, Users, Plus, Trash2, UserPlus, Search } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,6 +29,7 @@ interface GroupLFGProps {
 }
 
 export function GroupLFG({ groupId, isAdmin, currentUserId }: GroupLFGProps) {
+  const navigate = useNavigate();
   const { posts, loading, createPost, deletePost, joinLfgPost, leaveLfgPost } = useGroupPosts(groupId);
   const [joiningPostId, setJoiningPostId] = useState<string | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -126,15 +128,17 @@ export function GroupLFG({ groupId, isAdmin, currentUserId }: GroupLFGProps) {
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-start gap-3 flex-1 min-w-0">
-                    <Avatar className="h-10 w-10 flex-shrink-0">
-                      <AvatarImage src={post.profile?.avatar_url || undefined} />
-                      <AvatarFallback>{initials}</AvatarFallback>
-                    </Avatar>
+                    <button onClick={() => post.user_id && navigate(`/profile/${post.user_id}`)} className="flex-shrink-0" aria-label="View profile">
+                      <Avatar className="h-10 w-10">
+                        <AvatarImage src={post.profile?.avatar_url || undefined} />
+                        <AvatarFallback>{initials}</AvatarFallback>
+                      </Avatar>
+                    </button>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold text-sm">
+                        <button onClick={() => post.user_id && navigate(`/profile/${post.user_id}`)} className="font-semibold text-sm hover:underline text-left">
                           {post.profile?.display_name || post.profile?.full_name || 'Someone'}
-                        </span>
+                        </button>
                         {post.profile?.current_rating && (
                           <Badge variant="outline" className="text-xs h-5">
                             {post.profile.current_rating.toFixed(2)}

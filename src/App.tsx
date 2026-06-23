@@ -462,7 +462,8 @@ const AppContent = () => {
 
           {/* Existing routes */}
           <Route path="/profile/edit" element={<RedirectWithParams to="/player/profile/edit" />} />
-          <Route path="/profile/:userId" element={<Navigate to="/player/profile" replace />} />
+          <Route path="/profile/:userId" element={<ViewProfile />} />
+          <Route path="/player/profile/:userId" element={<ViewProfile />} />
           {/* Match routes: legacy /match/* paths now redirect into the player shell */}
           <Route path="/match/new" element={<Navigate to="/player/matches/new" replace />} />
           <Route path="/match/pending" element={<Navigate to="/player/matches?tab=pending" replace />} />

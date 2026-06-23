@@ -97,10 +97,11 @@ export function MemberActionSheet({ target, onClose, onMessage }: MemberActionSh
     {
       key: 'profile',
       label: 'View profile',
-      sub: 'Your stats, rating, and settings',
+      sub: 'Stats, rating, and recent matches',
       icon: User,
       onClick: () => {
-        navigate('/player/profile');
+        if (!target) return;
+        navigate(`/profile/${target.userId}`);
         onClose();
       },
     },

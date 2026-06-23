@@ -1,10 +1,21 @@
-import { useState, useEffect } from "react";
-import { useNavigate, useParams, Link } from "react-router-dom";
+import { useState, useEffect, useMemo } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { ArrowLeft, User, MapPin, Hand, Target, Flame, Hash } from "lucide-react";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import {
+  User as UserIcon,
+  Hand,
+  Target,
+  Flame,
+  Hash,
+  Share2,
+  MessageCircle,
+  UserPlus,
+  Check,
+  ArrowLeft,
+  Trophy,
+} from "lucide-react";
 import { CircularProgressRing } from "@/components/profile/CircularProgressRing";
 import { PremiumMatchCard } from "@/components/matches/PremiumMatchCard";
 import { resolvePlayerName, didTeamWin } from "@/lib/matchDisplay";
@@ -12,8 +23,10 @@ import { HighlightsStrip } from "@/components/profile/HighlightsStrip";
 import { AnimatedStatChip } from "@/components/profile/AnimatedStatChip";
 import { LastPlayedBadge } from "@/components/profile/LastPlayedBadge";
 import { PlayStyleChip } from "@/components/profile/PlayStyleChip";
+import { PlayerPageHeader } from "@/components/layout/PlayerPageHeader";
+import { SectionHeader } from "@/components/layout/SectionHeader";
+import { useFriends } from "@/hooks/useFriends";
 import { cn } from "@/lib/utils";
-import logo from "@/assets/pulse-logo-premium.svg";
 
 interface Profile {
   id: string;
@@ -53,72 +66,65 @@ interface RecentMatch {
   verified_count: number;
   total_players: number;
   status?: string;
-  result: 'W' | 'L';
+  result: "W" | "L";
   date: string;
 }
-
 
 const ViewProfile = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [recentMatches, setRecentMatches] = useState<RecentMatch[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const navigate = useNavigate();
   const { userId } = useParams<{ userId: string }>();
+  const { getFriendshipStatus, sendFriendRequest } = useFriends();
+
+  // Self-redirect: own profile lives at /player/profile (command center).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (cancelled) return;
+      setCurrentUserId(user?.id ?? null);
+      if (user?.id && userId && user.id === userId) {
+        navigate("/player/profile", { replace: true });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [userId, navigate]);
 
   useEffect(() => {
     const fetchProfile = async () => {
       if (!userId) {
         toast.error("Invalid user ID");
-        navigate("/player/dashboard");
+        navigate(-1);
         return;
       }
 
-      // Use profiles_public view for viewing other users' profiles to protect PII
       const { data: profileData, error } = await supabase
         .from("profiles_public")
         .select(`
-          id,
-          display_name,
-          first_name,
-          last_name,
-          avatar_url,
-          current_rating,
-          total_matches,
-          wins,
-          losses,
-          handedness,
-          play_side,
-          paddle_brand,
-          paddle_model
+          id, display_name, first_name, last_name, avatar_url,
+          current_rating, total_matches, wins, losses,
+          handedness, play_side, paddle_brand, paddle_model
         `)
         .eq("id", userId)
         .single();
 
       if (error) {
         toast.error("Failed to load profile");
-        navigate("/player/dashboard");
+        navigate(-1);
         return;
       }
 
-      // Fetch recent 10 matches with all participants — same shape as
-      // MatchHistory so PremiumMatchCard renders identically.
       const { data: matchParticipants } = await supabase
         .from("match_participants")
         .select(`
-          match_id,
-          team,
-          rating_change,
+          match_id, team, rating_change,
           matches!inner (
-            id,
-            match_date,
-            team1_score,
-            team2_score,
-            created_at,
-            status,
-            source,
-            verified_by,
-            other_location,
-            courts (name)
+            id, match_date, team1_score, team2_score,
+            created_at, status, source, verified_by,
+            other_location, courts (name)
           )
         `)
         .eq("player_id", userId)
@@ -131,9 +137,7 @@ const ViewProfile = () => {
         const { data: allParts } = await supabase
           .from("match_participants")
           .select(`
-            match_id,
-            player_id,
-            team,
+            match_id, player_id, team,
             profiles (display_name, full_name, first_name, last_name, avatar_url)
           `)
           .in("match_id", matchIds);
@@ -176,7 +180,7 @@ const ViewProfile = () => {
             verified_count: verifiedBy.length,
             total_players: parts.length || 4,
             status: match.status,
-            result: won ? 'W' : 'L',
+            result: won ? "W" : "L",
             date: match.match_date,
           };
         });
@@ -190,35 +194,77 @@ const ViewProfile = () => {
     fetchProfile();
   }, [userId, navigate]);
 
-  // Calculate win streak
-  const calculateWinStreak = (matches: RecentMatch[]) => {
+  const displayName = useMemo(() => {
+    if (!profile) return "Player";
+    return (
+      profile.display_name ||
+      (profile.first_name && profile.last_name
+        ? `${profile.first_name} ${profile.last_name}`
+        : "Player")
+    );
+  }, [profile]);
+
+  const winRate = profile && profile.total_matches > 0
+    ? parseFloat(((profile.wins / profile.total_matches) * 100).toFixed(1))
+    : 0;
+
+  const winStreak = useMemo(() => {
     let streak = 0;
     let maxStreak = 0;
-    
-    const sorted = [...matches].sort((a, b) => 
-      new Date(b.date).getTime() - new Date(a.date).getTime()
+    const sorted = [...recentMatches].sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
     );
-    
-    for (const match of sorted) {
-      if (match.result === 'W') {
+    for (const m of sorted) {
+      if (m.result === "W") {
         streak++;
         maxStreak = Math.max(maxStreak, streak);
       } else {
         streak = 0;
       }
     }
-    
-    return maxStreak > 0 ? `${maxStreak} wins` : 'No streak';
+    return maxStreak > 0 ? `${maxStreak} wins` : "No streak";
+  }, [recentMatches]);
+
+  const daysSinceLast = useMemo(() => {
+    if (recentMatches.length === 0) return null;
+    const last = new Date(recentMatches[0].date);
+    return Math.ceil(Math.abs(Date.now() - last.getTime()) / (1000 * 60 * 60 * 24));
+  }, [recentMatches]);
+
+  const friendshipStatus = userId ? getFriendshipStatus(userId) : "none";
+  const isFriend = friendshipStatus === "accepted";
+  const isSelf = currentUserId && userId && currentUserId === userId;
+
+  const handleShare = async () => {
+    if (!profile) return;
+    const url = `${window.location.origin}/profile/${profile.id}`;
+    const shareText = `Check out ${displayName} on PULSE Pickleball`;
+    try {
+      const nav = navigator as Navigator & { share?: (d: ShareData) => Promise<void> };
+      if (nav.share) {
+        await nav.share({ title: shareText, url });
+        return;
+      }
+    } catch { /* fallthrough */ }
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Profile link copied");
+    } catch {
+      toast.error("Could not copy link");
+    }
   };
 
-  // Calculate days since last match
-  const getDaysSinceLastMatch = () => {
-    if (recentMatches.length === 0) return null;
-    const lastMatch = new Date(recentMatches[0].date);
-    const now = new Date();
-    const diffTime = Math.abs(now.getTime() - lastMatch.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
+  const handleMessage = async () => {
+    if (!userId) return;
+    try {
+      const { data, error } = await supabase.rpc("get_or_create_dm_conversation", {
+        other_user_id: userId,
+      });
+      if (error) throw error;
+      navigate(`/player/messages/${data}`);
+    } catch {
+      navigate(`/player/messages`);
+    }
   };
 
   if (loading) {
@@ -232,72 +278,60 @@ const ViewProfile = () => {
     );
   }
 
-  if (!profile) {
-    return null;
-  }
+  if (!profile) return null;
 
-  const displayName = profile.display_name || 
-    (profile.first_name && profile.last_name 
-      ? `${profile.first_name} ${profile.last_name}`
-      : "Player");
-
-  const winRate = profile.total_matches > 0
-    ? parseFloat(((profile.wins / profile.total_matches) * 100).toFixed(1))
-    : 0;
+  const subtitle = "PULSE Player";
 
   const highlights = [
     {
       icon: <Flame className="w-5 h-5 text-primary" />,
       label: "Win Streak",
-      value: calculateWinStreak(recentMatches),
-      subValue: "longest recorded"
+      value: winStreak,
+      subValue: "longest recorded",
     },
     {
       icon: <Hash className="w-5 h-5 text-primary" />,
       label: "Total Matches",
       value: String(profile.total_matches),
-      subValue: "across all courts"
-    }
+      subValue: "across all courts",
+    },
   ];
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* PULSE Header */}
-      <nav className="bg-secondary border-b border-secondary-foreground/10 shadow-sm">
-        <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-5 flex items-center justify-between h-[72px]">
-          <Link to="/player/dashboard">
-            <img src={logo} alt="PULSE Logo" className="h-[60px] sm:h-[75px] w-auto cursor-pointer hover:opacity-80 transition-opacity" />
-          </Link>
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-            <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="text-white hover:text-white/90 hover:bg-white/10 font-sans font-medium h-[38px]">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back
-            </Button>
-          </div>
-        </div>
-      </nav>
+    <div className="min-h-screen bg-background pb-12">
+      <PlayerPageHeader
+        icon={UserIcon}
+        title={displayName}
+        subtitle={subtitle}
+        background="gradient"
+        action={
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate(-1)}
+            className="h-9 -mr-2 text-muted-foreground"
+          >
+            <ArrowLeft className="h-4 w-4 mr-1" />
+            Back
+          </Button>
+        }
+      />
 
-      <div className="px-4 py-6 max-w-lg mx-auto space-y-6">
-        {/* Premium Hero Card */}
-        <div 
+      <div className="container mx-auto px-4 py-5 max-w-3xl space-y-7">
+        {/* Hero card — matches PlayerIdentityCard / Profile card system */}
+        <div
           className={cn(
-            "rounded-2xl border border-border/50 overflow-hidden",
-            "bg-gradient-to-br from-card via-card to-muted/10",
-            "dark:from-card dark:via-card dark:to-primary/5",
-            "shadow-xl dark:shadow-[0_0_40px_hsl(var(--primary)/0.08)]",
-            "opacity-0 animate-fade-up"
+            "rounded-2xl border border-border/60 bg-card overflow-hidden",
+            "bg-gradient-to-br from-card via-card to-primary/[0.04]",
+            "shadow-[0_4px_24px_-12px_hsl(var(--primary)/0.25)]",
+            "opacity-0 animate-fade-up",
           )}
-          style={{ animationDelay: '0ms', animationFillMode: 'forwards' }}
+          style={{ animationDelay: "0ms", animationFillMode: "forwards" }}
         >
-          {/* Top section with avatar, name, and ring */}
-          <div className="p-5 pb-4">
+          <div className="p-6">
             <div className="flex items-start gap-4">
               {/* Avatar */}
-              <div 
-                className="flex-shrink-0 opacity-0 animate-scale-fade-in"
-                style={{ animationDelay: '100ms', animationFillMode: 'forwards' }}
-              >
+              <div className="flex-shrink-0">
                 {profile.avatar_url ? (
                   <img
                     src={profile.avatar_url}
@@ -306,94 +340,98 @@ const ViewProfile = () => {
                   />
                 ) : (
                   <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center ring-2 ring-offset-2 ring-offset-background ring-primary/60">
-                    <User className="w-10 h-10 text-primary" />
+                    <UserIcon className="w-10 h-10 text-primary" />
                   </div>
                 )}
               </div>
 
-              {/* Name and meta */}
-              <div 
-                className="flex-1 min-w-0 opacity-0 animate-fade-up"
-                style={{ animationDelay: '150ms', animationFillMode: 'forwards' }}
-              >
-                <h1 className="text-2xl font-display font-bold tracking-tight truncate mb-1">
+              {/* Name + rating pill */}
+              <div className="flex-1 min-w-0">
+                <h2 className="text-2xl font-display font-semibold tracking-tight truncate leading-tight">
                   {displayName}
-                </h1>
-                
-                {/* Single rating pill */}
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mb-2">
-                  <span>⭐</span>
-                  <span style={{ fontVariantNumeric: 'tabular-nums' }}>
+                </h2>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mt-2">
+                  <Trophy className="w-3.5 h-3.5" />
+                  <span style={{ fontVariantNumeric: "tabular-nums" }}>
                     {profile.current_rating.toFixed(2)}
                   </span>
                   <span className="text-primary/70 text-xs">Rating</span>
                 </div>
-
+                {daysSinceLast != null && (
+                  <div className="mt-2">
+                    <LastPlayedBadge days={daysSinceLast} />
+                  </div>
+                )}
               </div>
 
-              {/* Win Rate Ring */}
-              <div 
-                className="flex-shrink-0 opacity-0 animate-scale-fade-in"
-                style={{ animationDelay: '200ms', animationFillMode: 'forwards' }}
-              >
-                <CircularProgressRing percentage={winRate} size={90} strokeWidth={8} />
+              {/* Win-rate ring */}
+              <div className="flex-shrink-0">
+                <CircularProgressRing percentage={winRate} size={84} strokeWidth={8} />
               </div>
             </div>
-          </div>
 
-          {/* Stats Grid */}
-          <div className="px-5 pb-5">
-            <div className="grid grid-cols-4 gap-2">
-              <AnimatedStatChip 
-                label="Rating" 
-                value={profile.current_rating} 
-                decimals={2}
-                isPrimary 
-                delay={250}
-              />
-              <AnimatedStatChip 
-                label="Matches" 
-                value={profile.total_matches} 
-                delay={300}
-              />
-              <AnimatedStatChip 
-                label="Win %" 
-                value={winRate} 
-                suffix="%" 
-                decimals={0}
-                delay={350}
-              />
-              <AnimatedStatChip 
-                label="Record" 
-                value={`${profile.wins}-${profile.losses}`} 
-                delay={400}
-              />
+            {/* Stats grid */}
+            <div className="grid grid-cols-4 gap-2 mt-6">
+              <AnimatedStatChip label="Rating" value={profile.current_rating} decimals={2} isPrimary delay={150} />
+              <AnimatedStatChip label="Matches" value={profile.total_matches} delay={200} />
+              <AnimatedStatChip label="Win %" value={winRate} suffix="%" decimals={0} delay={250} />
+              <AnimatedStatChip label="Record" value={`${profile.wins}-${profile.losses}`} delay={300} />
             </div>
           </div>
         </div>
 
-        {/* Play Style Chips */}
-        {(profile.handedness || profile.play_side) && (
-          <div 
-            className="opacity-0 animate-fade-up"
-            style={{ animationDelay: '300ms', animationFillMode: 'forwards' }}
+        {/* Action row */}
+        {!isSelf && (
+          <div
+            className="grid grid-cols-2 gap-3 opacity-0 animate-fade-up"
+            style={{ animationDelay: "120ms", animationFillMode: "forwards" }}
           >
-            <h2 className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-3">
-              Play Style
-            </h2>
+            {isFriend ? (
+              <Button onClick={handleMessage} className="h-11 gap-2 font-medium">
+                <MessageCircle className="h-4 w-4" />
+                Message
+              </Button>
+            ) : friendshipStatus === "pending_sent" ? (
+              <Button disabled variant="secondary" className="h-11 gap-2">
+                <Check className="h-4 w-4" />
+                Request sent
+              </Button>
+            ) : (
+              <Button
+                onClick={() => userId && sendFriendRequest(userId)}
+                className="h-11 gap-2 font-medium"
+              >
+                <UserPlus className="h-4 w-4" />
+                Add friend
+              </Button>
+            )}
+            <Button onClick={handleShare} variant="outline" className="h-11 gap-2">
+              <Share2 className="h-4 w-4" />
+              Share
+            </Button>
+          </div>
+        )}
+
+        {/* Play style */}
+        {(profile.handedness || profile.play_side) && (
+          <div
+            className="opacity-0 animate-fade-up"
+            style={{ animationDelay: "180ms", animationFillMode: "forwards" }}
+          >
+            <SectionHeader label="Play Style" />
             <div className="flex flex-wrap gap-2">
               {profile.handedness && (
-                <PlayStyleChip 
+                <PlayStyleChip
                   icon={<Hand className="w-4 h-4" />}
                   label={profile.handedness}
-                  description={`This player uses their ${profile.handedness.toLowerCase()} hand as their dominant hand for shots and serves.`}
+                  description={`This player uses their ${profile.handedness.toLowerCase()} hand as their dominant hand.`}
                 />
               )}
               {profile.play_side && (
-                <PlayStyleChip 
+                <PlayStyleChip
                   icon={<Target className="w-4 h-4" />}
                   label={`${profile.play_side}-dominant`}
-                  description={`This player typically plays on the ${profile.play_side.toLowerCase()} side of the court in doubles matches.`}
+                  description={`This player typically plays on the ${profile.play_side.toLowerCase()} side of the court.`}
                 />
               )}
             </div>
@@ -405,81 +443,81 @@ const ViewProfile = () => {
           </div>
         )}
 
-        {/* Highlights Strip */}
-        <div 
+        {/* Highlights */}
+        <div
           className="opacity-0 animate-fade-up"
-          style={{ animationDelay: '350ms', animationFillMode: 'forwards' }}
+          style={{ animationDelay: "240ms", animationFillMode: "forwards" }}
         >
-          <h2 className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-3">
-            Key Highlights
-          </h2>
+          <SectionHeader label="Highlights" />
           <HighlightsStrip highlights={highlights} />
         </div>
 
-        {/* Recent Activity */}
-        {recentMatches.length > 0 && (
-          <div 
-            className="opacity-0 animate-fade-up"
-            style={{ animationDelay: '450ms', animationFillMode: 'forwards' }}
-          >
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
-                Recent Activity
-              </h2>
-              <LastPlayedBadge days={getDaysSinceLastMatch()} />
+        {/* Recent matches */}
+        <div
+          className="opacity-0 animate-fade-up"
+          style={{ animationDelay: "300ms", animationFillMode: "forwards" }}
+        >
+          <SectionHeader label="Recent matches" count={recentMatches.length} />
+          {recentMatches.length === 0 ? (
+            <div className="rounded-2xl border border-border/60 bg-card p-8 text-center">
+              <div className="mx-auto h-10 w-10 rounded-full bg-muted flex items-center justify-center mb-3">
+                <Hash className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <p className="text-sm text-muted-foreground">No matches yet.</p>
             </div>
-            {/* W/L sparkline summary */}
-            <div className="flex gap-1.5 mb-3 overflow-x-auto scrollbar-hide">
-              {recentMatches.map((m) => (
-                <div
-                  key={`dot-${m.id}`}
-                  className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                    m.won
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-destructive/80 text-destructive-foreground'
-                  }`}
-                >
-                  {m.won ? 'W' : 'L'}
-                </div>
-              ))}
-            </div>
-            <div className="space-y-2">
-              {recentMatches.map((m) => (
-                <PremiumMatchCard
-                  key={m.id}
-                  perspective="other"
-                  matchId={m.id}
-                  matchDate={m.match_date}
-                  team1Score={m.team1_score}
-                  team2Score={m.team2_score}
-                  myTeam={m.my_team}
-                  won={m.won}
-                  playerName={displayName}
-                  playerAvatarUrl={profile.avatar_url}
-                  partnerName={m.partner_name}
-                  partnerId={m.partner_id}
-                  partnerAvatarUrl={m.partner_avatar_url}
-                  opponent1Name={m.opponent1_name}
-                  opponent1Id={m.opponent1_id}
-                  opponent1AvatarUrl={m.opponent1_avatar_url}
-                  opponent2Name={m.opponent2_name}
-                  opponent2Id={m.opponent2_id}
-                  opponent2AvatarUrl={m.opponent2_avatar_url}
-                  ratingChange={m.rating_change}
-                  courtName={m.court_name}
-                  source={m.source}
-                  verifiedCount={m.verified_count}
-                  totalPlayers={m.total_players}
-                  isCurrentUserVerified={false}
-                  showVerifyActions={false}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Bottom padding */}
-        <div className="h-4" />
+          ) : (
+            <>
+              {/* W/L streak dots */}
+              <div className="flex gap-1.5 mb-3 overflow-x-auto scrollbar-hide">
+                {recentMatches.map((m) => (
+                  <div
+                    key={`dot-${m.id}`}
+                    className={cn(
+                      "flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold",
+                      m.won
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-destructive/80 text-destructive-foreground",
+                    )}
+                  >
+                    {m.won ? "W" : "L"}
+                  </div>
+                ))}
+              </div>
+              <div className="space-y-3">
+                {recentMatches.map((m) => (
+                  <PremiumMatchCard
+                    key={m.id}
+                    perspective="other"
+                    matchId={m.id}
+                    matchDate={m.match_date}
+                    team1Score={m.team1_score}
+                    team2Score={m.team2_score}
+                    myTeam={m.my_team}
+                    won={m.won}
+                    playerName={displayName}
+                    playerAvatarUrl={profile.avatar_url}
+                    partnerName={m.partner_name}
+                    partnerId={m.partner_id}
+                    partnerAvatarUrl={m.partner_avatar_url}
+                    opponent1Name={m.opponent1_name}
+                    opponent1Id={m.opponent1_id}
+                    opponent1AvatarUrl={m.opponent1_avatar_url}
+                    opponent2Name={m.opponent2_name}
+                    opponent2Id={m.opponent2_id}
+                    opponent2AvatarUrl={m.opponent2_avatar_url}
+                    ratingChange={m.rating_change}
+                    courtName={m.court_name}
+                    source={m.source}
+                    verifiedCount={m.verified_count}
+                    totalPlayers={m.total_players}
+                    isCurrentUserVerified={false}
+                    showVerifyActions={false}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -1,4 +1,5 @@
 import { memo, useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow, format, isToday, isYesterday, isSameDay } from 'date-fns';
 import { motion } from 'framer-motion';
 import { MoreVertical, Pin, Pencil, Trash2, Check, X } from 'lucide-react';
@@ -56,6 +57,7 @@ export const ChatMessage = memo(function ChatMessage({
   const [draft, setDraft] = useState(message.content);
   const [saving, setSaving] = useState(false);
   const editRef = useRef<HTMLTextAreaElement>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (editing) {
@@ -138,10 +140,17 @@ export const ChatMessage = memo(function ChatMessage({
         onDoubleClick={() => !editing && setShowReactions(true)}
       >
         {showAvatar ? (
-          <Avatar className="h-7 w-7 flex-shrink-0">
-            <AvatarImage src={message.profile?.avatar_url || undefined} />
-            <AvatarFallback className="text-[10px] bg-muted">{initials}</AvatarFallback>
-          </Avatar>
+          <button
+            type="button"
+            onClick={() => !isOwn && navigate(`/profile/${message.user_id}`)}
+            className="flex-shrink-0"
+            aria-label="View profile"
+          >
+            <Avatar className="h-7 w-7">
+              <AvatarImage src={message.profile?.avatar_url || undefined} />
+              <AvatarFallback className="text-[10px] bg-muted">{initials}</AvatarFallback>
+            </Avatar>
+          </button>
         ) : (
           <div className="w-7" />
         )}
