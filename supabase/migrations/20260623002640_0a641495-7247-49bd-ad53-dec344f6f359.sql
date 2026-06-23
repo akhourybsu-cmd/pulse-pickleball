@@ -1,0 +1,1 @@
+DELETE FROM public.user_recent_locations WHERE id = 'dfaddb0c-8ed1-4a28-8dd2-208bf353c021';
