@@ -131,6 +131,12 @@ const FAQ = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <PageSEO
+        title="FAQ — How PULSE works"
+        description="Answers about Pulse ratings, recording matches, joining round robins, hosting events, and connecting with your pickleball community on PULSE."
+        path="/faq"
+        jsonLd={FAQ_JSON_LD}
+      />
       {/* Sticky PULSE header — matches /player/* surfaces */}
       <header className="sticky top-0 z-50 border-b border-secondary-foreground/10 bg-secondary shadow-sm">
         <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-3 flex items-center justify-between h-[64px] sm:h-[72px]">
