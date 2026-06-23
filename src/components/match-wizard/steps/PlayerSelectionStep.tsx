@@ -122,10 +122,18 @@ function relationshipMeta(rel: Relationship) {
         className:
           "bg-amber-500/10 text-amber-700 dark:text-amber-300 ring-1 ring-amber-500/20",
       };
+    case "self":
+      return {
+        label: "You",
+        icon: UserCheck,
+        className:
+          "bg-primary/15 text-primary ring-1 ring-primary/30",
+      };
     default:
       return null;
   }
 }
+
 
 export function PlayerSelectionStep({
   formData,
