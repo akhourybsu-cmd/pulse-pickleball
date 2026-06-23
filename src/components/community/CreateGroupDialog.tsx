@@ -224,7 +224,7 @@ export function CreateGroupDialog({ open, onOpenChange, onSubmit }: CreateGroupD
               <Label>Join Method</Label>
               <RadioGroup
                 value={formData.join_method}
-                onValueChange={(value) => setFormData({ ...formData, join_method: value as Group['join_method'])}
+                onValueChange={(value) => setFormData({ ...formData, join_method: value as Group['join_method']})}
                 className="grid gap-2"
               >
                 {joinOptions.map((option) => (
