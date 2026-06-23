@@ -389,14 +389,22 @@ export default function GroupDetail() {
             forceMount={visitedTabs.has('feed') ? true : undefined}
           >
             {visitedTabs.has('feed') && (
-              <GroupFeed 
-                groupId={groupId!} 
-                groupName={group.name}
-                isAdmin={isAdmin} 
-                currentUserId={currentUserId}
-                onOpenQuickPost={(type) => openQuickPost(type as PostType)}
-                onSwitchToEvents={() => handleTabChange('schedule')}
-              />
+              <div className="space-y-4">
+                {membership && (
+                  <EnablePushBanner
+                    dismissKey={`pulse.enablePushBanner.group.${groupId}`}
+                    contextLabel={group.name}
+                  />
+                )}
+                <GroupFeed 
+                  groupId={groupId!} 
+                  groupName={group.name}
+                  isAdmin={isAdmin} 
+                  currentUserId={currentUserId}
+                  onOpenQuickPost={(type) => openQuickPost(type as PostType)}
+                  onSwitchToEvents={() => handleTabChange('schedule')}
+                />
+              </div>
             )}
           </TabsContent>
 
