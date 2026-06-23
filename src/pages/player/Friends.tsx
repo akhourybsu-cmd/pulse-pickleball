@@ -11,6 +11,7 @@ import { useFriendSuggestions } from '@/hooks/useFriendSuggestions';
 import { ConnectSheet } from '@/components/community/ConnectSheet';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { interpretDmError } from '@/lib/dmErrors';
 
 const initials = (name: string | null) =>
   (name || 'U').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
@@ -41,11 +42,7 @@ export default function Friends() {
       navigate(`/player/messages/${data}`);
     } catch (e: any) {
       console.error(e);
-      const msg = e?.message || '';
-      if (/friends/i.test(msg)) toast.error('You can only message friends');
-      else if (/not accepting/i.test(msg)) toast.error('This user is not accepting messages');
-      else if (/can.?t message/i.test(msg)) toast.error("You can't message this user");
-      else toast.error('Could not open conversation');
+      toast.error(interpretDmError(e));
     }
   };
 
