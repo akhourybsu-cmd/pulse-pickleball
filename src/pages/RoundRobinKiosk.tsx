@@ -443,6 +443,8 @@ export default function RoundRobinKiosk() {
         handlePinSuccess={handlePinSuccess}
       />
     );
+  }
+
 
   const currentRound = event.current_round || 1;
   const allFinal = currentRoundMatches.every(m => m.team1_score !== null && m.team2_score !== null);
