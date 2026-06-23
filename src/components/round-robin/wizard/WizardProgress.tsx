@@ -1,25 +1,19 @@
-import { ChevronLeft, X } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useNavigate } from "react-router-dom";
 
 interface WizardProgressProps {
   currentStep: number;
   totalSteps: number;
   onBack: () => void;
   canGoBack: boolean;
-  /** Friendly label of the current step (e.g., "Players"). Shown center-screen
-   *  so the player always knows what they're doing without the chrome shouting. */
+  /** Friendly label of the current step (e.g., "Players"). */
   stepLabel?: string;
-  closeDestination?: string;
 }
 
 /**
- * Wizard top chrome — single sticky header strip.
- *
- * Replaces the previous double-row layout (logo row + centered "Step N of N"
- * sub-row + progress bar). Now: one row with back/title-progress/close, plus
- * a thin progress bar at the bottom edge. Cleaner, premium, and works
- * identically across all 8 steps.
+ * In-body wizard progress — mirrors the Record Match wizard:
+ * a small "Step N of N" row with a back chevron on the left and progress
+ * dots on the right. Sits inside the page body, below the PULSE header.
  */
 export function WizardProgress({
   currentStep,
@@ -27,54 +21,41 @@ export function WizardProgress({
   onBack,
   canGoBack,
   stepLabel,
-  closeDestination = "/player/dashboard",
 }: WizardProgressProps) {
-  const navigate = useNavigate();
-  const progressPercent = ((currentStep + 1) / totalSteps) * 100;
-
   return (
-    <div className="sticky top-0 z-20 bg-secondary border-b border-secondary-foreground/10 shadow-sm">
-      <div className="max-w-md mx-auto px-3 sm:px-4 py-3 flex items-center gap-2">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onBack}
-          disabled={!canGoBack}
-          className="h-9 w-9 text-white hover:text-white hover:bg-white/10 disabled:opacity-30 flex-shrink-0"
-          aria-label="Previous step"
-        >
-          <ChevronLeft className="h-5 w-5" />
-        </Button>
-
-        {/* Centered title block — step number + step name */}
-        <div className="flex-1 min-w-0 flex flex-col items-center text-center">
-          <span className="text-[11px] font-medium text-white/60 leading-tight tracking-wide uppercase">
-            Step {currentStep + 1} of {totalSteps}
-          </span>
-          {stepLabel && (
-            <span className="text-sm font-semibold text-white leading-tight truncate max-w-full">
-              {stepLabel}
-            </span>
-          )}
+    <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center gap-2 min-w-0">
+        {canGoBack && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onBack}
+            className="h-8 w-8 flex-shrink-0"
+            aria-label="Previous step"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
+        )}
+        <div className="text-sm text-muted-foreground truncate">
+          Step {currentStep + 1} of {totalSteps}
+          {stepLabel ? ` · ${stepLabel}` : ""}
         </div>
-
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => navigate(closeDestination)}
-          className="h-9 w-9 text-white hover:text-white hover:bg-white/10 flex-shrink-0"
-          aria-label="Close wizard"
-        >
-          <X className="h-5 w-5" />
-        </Button>
       </div>
 
-      {/* Thin progress bar — flush with the header bottom, no padding around it */}
-      <div className="h-1 bg-white/10">
-        <div
-          className="h-full bg-primary transition-all duration-300 ease-out"
-          style={{ width: `${progressPercent}%` }}
-        />
+      {/* Progress dots */}
+      <div className="flex items-center gap-1.5 flex-shrink-0">
+        {Array.from({ length: totalSteps }).map((_, index) => (
+          <div
+            key={index}
+            className={`h-2 w-2 rounded-full transition-all duration-300 ${
+              index < currentStep
+                ? "bg-primary"
+                : index === currentStep
+                ? "bg-primary w-4"
+                : "bg-muted"
+            }`}
+          />
+        ))}
       </div>
     </div>
   );

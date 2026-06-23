@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
+import { ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Logo } from "@/components/Logo";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { WizardProgress } from "./WizardProgress";
@@ -442,24 +445,53 @@ export function WizardContainer() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <WizardProgress
-        currentStep={currentStepIndex}
-        totalSteps={totalSteps}
-        onBack={goBack}
-        canGoBack={currentStepIndex > 0}
-        stepLabel={currentStep.label}
-      />
-
-      <main className="flex-1 px-4 py-6 pb-24 overflow-hidden">
-        <div className="max-w-md mx-auto h-full">
-          <AnimatePresence mode="wait" custom={direction}>
-            <WizardCard key={currentStep.id} direction={direction}>
-              {renderStep()}
-            </WizardCard>
-          </AnimatePresence>
+    <div className="min-h-screen bg-background">
+      {/* PULSE-branded header — matches the Record Match wizard so both
+          flows feel like one product. Step chrome lives in the body. */}
+      <div className="sticky top-0 z-40 bg-secondary border-b border-secondary-foreground/10 shadow-sm">
+        <div className="max-w-lg mx-auto px-4 flex items-center justify-between h-[72px]">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate('/player/dashboard')}
+            className="h-9 w-9 text-white hover:text-white hover:bg-white/10"
+            aria-label="Cancel and return home"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <Link
+            to="/player/dashboard"
+            className="text-secondary-foreground hover:opacity-90 transition-opacity"
+          >
+            <Logo className="h-[52px] sm:h-[65px] w-auto" />
+          </Link>
+          <div className="h-9 w-9" aria-hidden="true" />
         </div>
-      </main>
+      </div>
+
+      {/* Content */}
+      <div className="max-w-lg mx-auto px-4 py-6 pb-28">
+        <div className="mb-4">
+          <h1 className="text-xl font-semibold leading-tight">Create Round Robin</h1>
+          <p className="text-xs text-muted-foreground leading-tight mt-0.5">
+            Set up your event in a few quick steps
+          </p>
+        </div>
+
+        <WizardProgress
+          currentStep={currentStepIndex}
+          totalSteps={totalSteps}
+          onBack={goBack}
+          canGoBack={currentStepIndex > 0}
+          stepLabel={currentStep.label}
+        />
+
+        <AnimatePresence mode="wait" custom={direction}>
+          <WizardCard key={currentStep.id} direction={direction}>
+            {renderStep()}
+          </WizardCard>
+        </AnimatePresence>
+      </div>
 
       {/* Hide nav on auto-advance steps */}
       {currentStep.id !== 'mode' && currentStep.id !== 'format' && (
