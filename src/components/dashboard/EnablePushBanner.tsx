@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-const DEFAULT_DISMISS_KEY = "pulse.enablePushBanner.dismissedAt";
+const DEFAULT_storageKey = "pulse.enablePushBanner.dismissedAt";
 const DISMISS_TTL_MS = 1000 * 60 * 60 * 24 * 7; // 7 days
 
 function isIOS() {
@@ -30,10 +30,10 @@ export function EnablePushBanner({ dismissKey, contextLabel }: EnablePushBannerP
   const navigate = useNavigate();
   const { state, busy, supported, enable } = usePushSubscription();
   const [dismissed, setDismissed] = useState(true);
-  const storageKey = dismissKey || DEFAULT_DISMISS_KEY;
+  const storageKey = dismissKey || DEFAULT_storageKey;
 
   useEffect(() => {
-    const raw = localStorage.getItem(DISMISS_KEY);
+    const raw = localStorage.getItem(storageKey);
     if (!raw) return setDismissed(false);
     const ts = Number(raw);
     if (!Number.isFinite(ts) || Date.now() - ts > DISMISS_TTL_MS) {
@@ -47,7 +47,7 @@ export function EnablePushBanner({ dismissKey, contextLabel }: EnablePushBannerP
   const iosNeedsInstall = isIOS() && !isStandalone();
 
   const dismiss = () => {
-    localStorage.setItem(DISMISS_KEY, String(Date.now()));
+    localStorage.setItem(storageKey, String(Date.now()));
     setDismissed(true);
   };
 
