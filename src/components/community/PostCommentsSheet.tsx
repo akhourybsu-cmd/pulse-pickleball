@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Send, Loader2, Trash2, MessageCircle, X } from 'lucide-react';
+import { Trash2, MessageCircle } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import {
   Sheet,
@@ -8,12 +8,12 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useGroupPostComments, type PostComment } from '@/hooks/useGroupPostComments';
 import { cn } from '@/lib/utils';
+import { MessageComposer, type MessageComposerHandle } from './MessageComposer';
 
 interface PostCommentsSheetProps {
   open: boolean;
