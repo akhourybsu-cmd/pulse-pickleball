@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-const DISMISS_KEY = "pulse.enablePushBanner.dismissedAt";
+const DEFAULT_DISMISS_KEY = "pulse.enablePushBanner.dismissedAt";
 const DISMISS_TTL_MS = 1000 * 60 * 60 * 24 * 7; // 7 days
 
 function isIOS() {
@@ -21,13 +21,19 @@ function isStandalone() {
   );
 }
 
-export function EnablePushBanner() {
+interface EnablePushBannerProps {
+  dismissKey?: string;
+  contextLabel?: string;
+}
+
+export function EnablePushBanner({ dismissKey, contextLabel }: EnablePushBannerProps = {}) {
   const navigate = useNavigate();
   const { state, busy, supported, enable } = usePushSubscription();
   const [dismissed, setDismissed] = useState(true);
+  const storageKey = dismissKey || DEFAULT_DISMISS_KEY;
 
   useEffect(() => {
-    const raw = localStorage.getItem(DISMISS_KEY);
+    const raw = localStorage.getItem(storageKey);
     if (!raw) return setDismissed(false);
     const ts = Number(raw);
     if (!Number.isFinite(ts) || Date.now() - ts > DISMISS_TTL_MS) {
@@ -41,7 +47,7 @@ export function EnablePushBanner() {
   const iosNeedsInstall = isIOS() && !isStandalone();
 
   const dismiss = () => {
-    localStorage.setItem(DISMISS_KEY, String(Date.now()));
+    localStorage.setItem(storageKey, String(Date.now()));
     setDismissed(true);
   };
 
@@ -67,7 +73,9 @@ export function EnablePushBanner() {
   };
 
   let title = "Turn on notifications";
-  let body = "Get pinged for new posts, friend requests, and messages.";
+  let body = contextLabel
+    ? `Get pinged when there's new activity in ${contextLabel}.`
+    : "Get pinged for new posts, friend requests, and messages.";
   let action: React.ReactNode = (
     <Button size="sm" onClick={handleEnable} disabled={busy || !supported}>
       Enable

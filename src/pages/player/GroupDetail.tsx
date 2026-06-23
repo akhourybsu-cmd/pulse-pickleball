@@ -28,6 +28,7 @@ import { CollapsedComposerBar } from '@/components/community/CollapsedComposerBa
 import { useGroupPosts } from '@/hooks/useGroupPosts';
 import { useGroupPresence } from '@/hooks/useGroupPresence';
 import { useGroupRealtime } from '@/hooks/useGroupRealtime';
+import { EnablePushBanner } from '@/components/dashboard/EnablePushBanner';
 
 
 import { DEFAULT_VENUE_COLORS } from '@/lib/venueBranding';
@@ -388,14 +389,22 @@ export default function GroupDetail() {
             forceMount={visitedTabs.has('feed') ? true : undefined}
           >
             {visitedTabs.has('feed') && (
-              <GroupFeed 
-                groupId={groupId!} 
-                groupName={group.name}
-                isAdmin={isAdmin} 
-                currentUserId={currentUserId}
-                onOpenQuickPost={(type) => openQuickPost(type as PostType)}
-                onSwitchToEvents={() => handleTabChange('schedule')}
-              />
+              <div className="space-y-4">
+                {membership && (
+                  <EnablePushBanner
+                    dismissKey={`pulse.enablePushBanner.group.${groupId}`}
+                    contextLabel={group.name}
+                  />
+                )}
+                <GroupFeed 
+                  groupId={groupId!} 
+                  groupName={group.name}
+                  isAdmin={isAdmin} 
+                  currentUserId={currentUserId}
+                  onOpenQuickPost={(type) => openQuickPost(type as PostType)}
+                  onSwitchToEvents={() => handleTabChange('schedule')}
+                />
+              </div>
             )}
           </TabsContent>
 
