@@ -99,9 +99,34 @@ export function useGroupPostComments(postId: string | undefined) {
     onMutate: async ({ content, parentCommentId, clientId }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const cachedAuthor = (queryClient.getQueryData<PostComment[]>(queryKey) || [])
+
+      // Resolve the author profile so optimistic comments never render as
+      // "Unknown". Try the cache first (previous comments by this user in
+      // this thread), then fall back to a one-shot lookup against
+      // profiles_public so first-time commenters still get a name + avatar.
+      let cachedAuthor = (queryClient.getQueryData<PostComment[]>(queryKey) || [])
         .flatMap((c) => [c, ...(c.replies || [])])
         .find((c) => c.user_id === user.id)?.profile;
+
+      if (!cachedAuthor) {
+        cachedAuthor = queryClient.getQueryData<PostComment['profile']>([
+          'comment-author-profile',
+          user.id,
+        ]);
+      }
+
+      if (!cachedAuthor) {
+        const { data: profile } = await supabase
+          .from('profiles_public')
+          .select('id, display_name, full_name, avatar_url')
+          .eq('id', user.id)
+          .maybeSingle();
+        if (profile) {
+          cachedAuthor = profile as PostComment['profile'];
+          queryClient.setQueryData(['comment-author-profile', user.id], cachedAuthor);
+        }
+      }
+
       const now = new Date().toISOString();
       const optimistic: PostComment = {
         id: `temp-${clientId}`,
