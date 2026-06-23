@@ -23,7 +23,7 @@ export const OnboardingComplete = ({ onComplete }: OnboardingCompleteProps) => {
       icon: Users,
       title: "Join a Group",
       description: "Connect with local players",
-      action: () => navigate('/courts'),
+      action: () => navigate('/player/community'),
       actionLabel: "Browse",
     },
     {
