@@ -523,7 +523,9 @@ export default function RoundRobinKiosk() {
           }}
         >
           <div className="flex items-center gap-5">
-            <Logo className="h-[5vh] min-h-9 w-auto" style={{ color: themeColors.mutedText }} />
+            <div style={{ color: themeColors.mutedText }}>
+              <Logo className="h-[5vh] min-h-9 w-auto" />
+            </div>
             <div
               className="h-[5vh] min-h-9 w-px"
               style={{ backgroundColor: `rgba(255,255,255,0.15)` }}
