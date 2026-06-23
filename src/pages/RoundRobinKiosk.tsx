@@ -437,27 +437,59 @@ export default function RoundRobinKiosk() {
   const allFinal = currentRoundMatches.every(m => m.team1_score !== null && m.team2_score !== null);
   const isLastRound = currentRound >= event.num_rounds;
 
+  const courtCount = currentRoundMatches.length;
+  // Choose grid layout based on number of courts
+  const courtsGridClass =
+    courtCount <= 2
+      ? "grid-cols-1"
+      : courtCount <= 4
+      ? "grid-cols-2"
+      : courtCount <= 6
+      ? "grid-cols-2"
+      : "grid-cols-3";
+  // Scale typography down as density grows
+  const scoreTextClass =
+    courtCount <= 2
+      ? "text-[7vw] leading-none"
+      : courtCount <= 4
+      ? "text-[5vw] leading-none"
+      : "text-[3.5vw] leading-none";
+  const nameTextClass =
+    courtCount <= 2
+      ? "text-[2.2vw]"
+      : courtCount <= 4
+      ? "text-[1.5vw]"
+      : "text-[1.1vw]";
+
+  const formattedTime = currentTime.toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+
+  const ticker = allFinal
+    ? `All scores received · ${isLastRound ? "Event complete" : `Round ${currentRound + 1} coming up next`}`
+    : `Waiting on scores · Round ${currentRound} in progress`;
+
+  const courtsLabel =
+    event.num_courts === 1 ? "Court 1" : `Courts 1–${event.num_courts}`;
+
   return (
     <>
-      <div className="min-h-screen flex flex-col" style={{ backgroundColor: themeColors.bg }}>
-        
-        {/* Sticky Header Bar */}
-        <div className="sticky top-0 z-50 border-b shadow-xl px-6 py-3 flex items-center justify-between" style={{ backgroundColor: themeColors.headerBg, borderColor: `rgba(${themeColors.accentRgb}, 0.2)` }}>
-          <div className="flex items-center gap-4">
-            <img src={pulseLogo} alt="Pulse" className="h-10 w-auto" />
-            <div>
-              <h1 className="text-lg font-bold" style={{ color: themeColors.text }}>{event?.name || "Round Robin"}</h1>
-              <p className="text-sm" style={{ color: themeColors.mutedText }}>
-                Round {event?.current_round || 1} of {event?.num_rounds || 1}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
+      <div
+        className="fixed inset-0 flex flex-col overflow-hidden font-sans"
+        style={{
+          backgroundColor: themeColors.bg,
+          backgroundImage: `radial-gradient(ellipse at 50% 120%, rgba(${themeColors.accentRgb},0.10), transparent 60%), radial-gradient(ellipse at 0% 0%, rgba(255,255,255,0.03), transparent 50%)`,
+          color: themeColors.text,
+        }}
+      >
+        {/* Hidden admin controls (appear on hover top-right) */}
+        <div className="group absolute top-0 right-0 z-50 w-48 h-16">
+          <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-end gap-2 p-3">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" style={{ borderColor: themeColors.accent, color: themeColors.accent }}>
-                  <Palette className="w-4 h-4 mr-2" />
-                  {themeColors.name}
+                <Button variant="outline" size="sm" style={{ borderColor: themeColors.accent, color: themeColors.accent, backgroundColor: themeColors.headerBg }}>
+                  <Palette className="w-4 h-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
@@ -468,230 +500,440 @@ export default function RoundRobinKiosk() {
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-            <ThemeToggle />
             <FullscreenToggleButton />
-            <Button 
-              size="sm" 
-              variant="outline" 
+            <Button
+              size="sm"
+              variant="outline"
               onClick={handleExitKiosk}
-              className="gap-2 hover:opacity-80"
-              style={{ borderColor: themeColors.accent, color: themeColors.accent }}
+              className="gap-2"
+              style={{ borderColor: themeColors.accent, color: themeColors.accent, backgroundColor: themeColors.headerBg }}
             >
               <Lock className="h-4 w-4" />
-              Exit Kiosk
+              Exit
             </Button>
           </div>
         </div>
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        <div className="grid lg:grid-cols-3 gap-6">
-          {/* Left Panel: Current Round Courts */}
-          <div className="lg:col-span-2 space-y-4">
-            <div className="flex items-center gap-3">
-              <h2 className="text-3xl font-bold" style={{ color: themeColors.text }}>Current Round</h2>
-              <Badge variant="secondary" className="text-base px-3 py-1 border-0" style={{ backgroundColor: themeColors.accent, color: themeColors.headerBg }}>
-                Round {currentRound} of {event.num_rounds}
-              </Badge>
+        {/* Broadcast Header */}
+        <header
+          className="flex items-center justify-between px-8 h-[8vh] min-h-[64px] border-b relative"
+          style={{
+            backgroundColor: themeColors.headerBg,
+            borderColor: `rgba(${themeColors.accentRgb}, 0.25)`,
+          }}
+        >
+          <div className="flex items-center gap-5">
+            <img src={pulseLogo} alt="PULSE" className="h-[5vh] min-h-9 w-auto" />
+            <div
+              className="h-[5vh] min-h-9 w-px"
+              style={{ backgroundColor: `rgba(255,255,255,0.15)` }}
+            />
+            <div className="flex flex-col leading-tight">
+              <h1 className="text-[1.8vw] font-bold tracking-tight" style={{ color: themeColors.text }}>
+                {event.name}
+              </h1>
+              <p className="text-[0.95vw] font-medium" style={{ color: themeColors.mutedText }}>
+                Round Robin · Round {currentRound} of {event.num_rounds}
+              </p>
             </div>
-            
-            <div className="grid gap-4">
-              {currentRoundMatches.map((match) => (
-                <Card key={`${match.id}-${match.court_no}`} className="backdrop-blur shadow-xl" style={{ backgroundColor: themeColors.cardBg, borderColor: `rgba(${themeColors.accentRgb}, 0.2)` }}>
-                  <div className="p-6">
-                    <h3 className="text-2xl font-bold mb-4 flex items-center gap-2" style={{ color: themeColors.accent }}>
-                      <div className="w-1 h-6 rounded-full" style={{ backgroundColor: themeColors.accent }}></div>
-                      Court {match.court_no}
-                    </h3>
-                    
-                    <div className="flex items-center justify-between gap-4">
-                      {/* Team A */}
-                      <div className="flex-1">
-                        <div className="text-lg font-semibold" style={{ color: themeColors.text }}>
-                          {getPlayerName(match.a1_profile)}
-                        </div>
-                        <div className="text-lg font-semibold" style={{ color: themeColors.text }}>
-                          {getPlayerName(match.a2_profile)}
-                        </div>
-                      </div>
+          </div>
 
-                      {/* VS / Score */}
-                      <div className="text-center min-w-[120px]">
-                        {match.team1_score !== null && match.team2_score !== null ? (
-                          <div>
-                            <div className="text-sm font-medium mb-1" style={{ color: themeColors.mutedText }}>Final</div>
-                            <div className="text-3xl font-bold" style={{ color: themeColors.text }}>
-                              {match.team1_score} – {match.team2_score}
-                            </div>
+          {/* Center LIVE pill */}
+          <div className="absolute left-1/2 -translate-x-1/2">
+            <div
+              className="flex items-center gap-3 px-6 py-2 rounded-full border-2"
+              style={{
+                borderColor: themeColors.accent,
+                backgroundColor: `rgba(${themeColors.accentRgb}, 0.08)`,
+                boxShadow: `0 0 24px rgba(${themeColors.accentRgb}, 0.25)`,
+              }}
+            >
+              <span
+                className="w-2.5 h-2.5 rounded-full animate-pulse"
+                style={{ backgroundColor: themeColors.accent, boxShadow: `0 0 10px ${themeColors.accent}` }}
+              />
+              <span
+                className="text-[1.1vw] font-extrabold tracking-[0.2em]"
+                style={{ color: themeColors.accent }}
+              >
+                LIVE · ROUND {currentRound}
+              </span>
+            </div>
+          </div>
+
+          <div className="text-[1.6vw] font-semibold tabular-nums" style={{ color: themeColors.text }}>
+            {formattedTime}
+          </div>
+        </header>
+
+        {/* Main broadcast canvas */}
+        <main className="flex-1 grid grid-cols-12 gap-6 px-8 py-6 min-h-0">
+          {/* Left: Current Round courts */}
+          <section className="col-span-8 flex flex-col min-h-0">
+            <div className="flex items-baseline gap-4 mb-4">
+              <h2 className="text-[2.4vw] font-extrabold tracking-tight" style={{ color: themeColors.text }}>
+                Current Round
+              </h2>
+              <div
+                className="px-3 py-1 rounded-full text-[0.95vw] font-bold"
+                style={{
+                  backgroundColor: `rgba(${themeColors.accentRgb}, 0.15)`,
+                  color: themeColors.accent,
+                  border: `1px solid rgba(${themeColors.accentRgb},0.5)`,
+                }}
+              >
+                Round {currentRound} of {event.num_rounds}
+              </div>
+            </div>
+
+            <div className={`grid ${courtsGridClass} gap-4 flex-1 min-h-0`}>
+              {currentRoundMatches.length === 0 && (
+                <div
+                  className="flex items-center justify-center rounded-2xl"
+                  style={{
+                    backgroundColor: themeColors.cardBg,
+                    color: themeColors.mutedText,
+                  }}
+                >
+                  <span className="text-[1.4vw]">Waiting for matchup...</span>
+                </div>
+              )}
+              {currentRoundMatches.map((match) => {
+                const hasScore = match.team1_score !== null && match.team2_score !== null;
+                const t1 = match.team1_score ?? 0;
+                const t2 = match.team2_score ?? 0;
+                const team1Won = hasScore && t1 > t2;
+                const team2Won = hasScore && t2 > t1;
+                const a1 = getPlayerName(match.a1_profile);
+                const a2 = getPlayerName(match.a2_profile);
+                const b1 = getPlayerName(match.b1_profile);
+                const b2 = getPlayerName(match.b2_profile);
+                const teamAPending = a1 === "TBD" && a2 === "TBD";
+                const teamBPending = b1 === "TBD" && b2 === "TBD";
+                const statusLabel = hasScore
+                  ? "FINAL"
+                  : teamAPending || teamBPending
+                  ? "ASSIGNING"
+                  : "LIVE";
+
+                return (
+                  <div
+                    key={`${match.id}-${match.court_no}`}
+                    className="relative rounded-2xl overflow-hidden flex flex-col min-h-0"
+                    style={{
+                      backgroundColor: themeColors.cardBg,
+                      boxShadow: `0 8px 30px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(${themeColors.accentRgb},0.12)`,
+                    }}
+                  >
+                    {/* Court label */}
+                    <div className="flex items-center justify-between px-5 pt-4">
+                      <span
+                        className="text-[1.1vw] font-extrabold tracking-[0.18em]"
+                        style={{ color: themeColors.accent }}
+                      >
+                        COURT {match.court_no}
+                      </span>
+                      <span
+                        className="text-[0.85vw] font-bold tracking-widest"
+                        style={{
+                          color:
+                            statusLabel === "LIVE"
+                              ? themeColors.accent
+                              : statusLabel === "FINAL"
+                              ? themeColors.mutedText
+                              : themeColors.mutedText,
+                        }}
+                      >
+                        {statusLabel}
+                      </span>
+                    </div>
+
+                    {/* Match row */}
+                    <div className="flex-1 grid grid-cols-[1fr_auto_1fr] items-center gap-4 px-5 pb-5 pt-2 min-h-0">
+                      {/* Team A */}
+                      <div
+                        className={`flex flex-col justify-center min-w-0 transition-opacity ${
+                          hasScore && !team1Won ? "opacity-50" : "opacity-100"
+                        }`}
+                        style={{
+                          borderLeft: team1Won
+                            ? `4px solid ${themeColors.accent}`
+                            : "4px solid transparent",
+                          paddingLeft: 12,
+                        }}
+                      >
+                        {teamAPending ? (
+                          <div className={`${nameTextClass} font-medium italic`} style={{ color: themeColors.mutedText }}>
+                            Players assigning…
                           </div>
                         ) : (
-                          <div>
-                            <div className="text-2xl font-bold" style={{ color: themeColors.accent }}>VS</div>
-                            <div className="text-sm font-medium mt-1" style={{ color: themeColors.accent }}>In Progress</div>
+                          <>
+                            <div className={`${nameTextClass} font-bold truncate`} style={{ color: themeColors.text }}>
+                              {a1}
+                            </div>
+                            <div className={`${nameTextClass} font-bold truncate`} style={{ color: themeColors.text }}>
+                              {a2}
+                            </div>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Score / Status */}
+                      <div className="flex flex-col items-center justify-center px-2">
+                        {hasScore ? (
+                          <div
+                            className={`${scoreTextClass} font-black tabular-nums tracking-tighter`}
+                            style={{ color: themeColors.text }}
+                          >
+                            <span style={{ opacity: team1Won ? 1 : 0.55 }}>{t1}</span>
+                            <span className="px-2" style={{ color: themeColors.mutedText }}>–</span>
+                            <span style={{ opacity: team2Won ? 1 : 0.55 }}>{t2}</span>
+                          </div>
+                        ) : (
+                          <div
+                            className={`${scoreTextClass} font-black tracking-tighter`}
+                            style={{ color: themeColors.accent }}
+                          >
+                            VS
                           </div>
                         )}
                       </div>
 
                       {/* Team B */}
-                      <div className="flex-1 text-right">
-                        <div className="text-lg font-semibold" style={{ color: themeColors.text }}>
-                          {getPlayerName(match.b1_profile)}
-                        </div>
-                        <div className="text-lg font-semibold" style={{ color: themeColors.text }}>
-                          {getPlayerName(match.b2_profile)}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          </div>
-
-          {/* Right Panel: Top 3 Leaderboard + Next Round + Status */}
-          <div className="space-y-4">
-            {/* Top 3 Leaderboard */}
-            {standings.length >= 3 && (
-              <Card className="backdrop-blur shadow-xl overflow-hidden" style={{ backgroundColor: themeColors.cardBg, borderColor: `rgba(${themeColors.accentRgb}, 0.2)` }}>
-                <div className="p-4" style={{ background: `linear-gradient(135deg, ${themeColors.accent}, ${themeColors.accent}dd)` }}>
-                  <div className="flex items-center gap-2" style={{ color: themeColors.headerBg }}>
-                    <Trophy className="w-5 h-5" />
-                    <h3 className="text-lg font-bold">Top 3 Leaders</h3>
-                  </div>
-                </div>
-                <div className="p-4">
-                  <div className="space-y-3">
-                    {standings.slice(0, 3).map((row, idx) => (
-                      <div 
-                        key={row.player_id} 
-                        className="p-3 rounded-lg border-2"
+                      <div
+                        className={`flex flex-col justify-center min-w-0 text-right transition-opacity ${
+                          hasScore && !team2Won ? "opacity-50" : "opacity-100"
+                        }`}
                         style={{
-                          backgroundColor: `${themeColors.accent}${idx === 0 ? '20' : '10'}`,
-                          borderColor: idx === 0 ? themeColors.accent : idx === 1 ? '#9ca3af' : '#fb923c'
+                          borderRight: team2Won
+                            ? `4px solid ${themeColors.accent}`
+                            : "4px solid transparent",
+                          paddingRight: 12,
                         }}
                       >
-                        <div className="flex items-center gap-3">
-                          <div className="text-2xl" style={{ color: idx === 0 ? themeColors.accent : idx === 1 ? '#9ca3af' : '#fb923c' }}>
-                            {idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉'}
+                        {teamBPending ? (
+                          <div className={`${nameTextClass} font-medium italic`} style={{ color: themeColors.mutedText }}>
+                            Players assigning…
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="font-semibold text-sm truncate" style={{ color: themeColors.text }}>
-                              {row.player_name}
+                        ) : (
+                          <>
+                            <div className={`${nameTextClass} font-bold truncate`} style={{ color: themeColors.text }}>
+                              {b1}
                             </div>
-                            <div className="flex gap-3 text-xs mt-1">
-                              <span className="font-bold" style={{ color: themeColors.accent }}>{row.wins}W</span>
-                              <span style={{ color: themeColors.mutedText }}>{row.losses}L</span>
-                              <span className="font-bold" style={{ color: row.point_diff > 0 ? themeColors.accent : row.point_diff < 0 ? '#f87171' : themeColors.mutedText }}>
-                                {row.point_diff > 0 ? '+' : ''}{row.point_diff}
-                              </span>
+                            <div className={`${nameTextClass} font-bold truncate`} style={{ color: themeColors.text }}>
+                              {b2}
                             </div>
-                          </div>
-                        </div>
+                          </>
+                        )}
                       </div>
-                    ))}
-                  </div>
-                </div>
-              </Card>
-            )}
-
-            {/* Next Round Preview */}
-            {!isLastRound && nextRoundMatches.length > 0 && (
-              <Card className="backdrop-blur shadow-xl" style={{ backgroundColor: themeColors.cardBg, borderColor: `rgba(${themeColors.accentRgb}, 0.2)` }}>
-                <div className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-xl font-bold" style={{ color: themeColors.text }}>Round {currentRound + 1} Preview</h3>
-                    <div className="flex items-center gap-2" style={{ color: themeColors.mutedText }}>
-                      <Clock className="w-4 h-4" />
-                      <span className="text-sm font-medium">{currentTime.toLocaleTimeString()}</span>
                     </div>
                   </div>
-                  
-                  <div className="space-y-3">
-                    {nextRoundMatches.map((match) => (
-                      <div key={`next-${match.id}`} className="p-3 rounded-lg" style={{ backgroundColor: `${themeColors.accent}10`, borderColor: `${themeColors.accent}40`, borderWidth: '1px', borderStyle: 'solid' }}>
-                        <div className="text-xs font-bold mb-1" style={{ color: themeColors.accent }}>C{match.court_no}</div>
-                        <div className="text-sm" style={{ color: themeColors.text }}>
-                          {getPlayerName(match.a1_profile)} / {getPlayerName(match.a2_profile)}
-                          <span className="mx-2" style={{ color: themeColors.mutedText }}>vs</span>
-                          {getPlayerName(match.b1_profile)} / {getPlayerName(match.b2_profile)}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </Card>
-            )}
+                );
+              })}
+            </div>
+          </section>
 
-            {/* Round Status */}
-            <Card className="backdrop-blur shadow-xl" style={{ backgroundColor: themeColors.cardBg, borderColor: `rgba(${themeColors.accentRgb}, 0.2)` }}>
-              <div className="p-6">
-                <h3 className="text-xl font-bold mb-4" style={{ color: themeColors.text }}>Round Status</h3>
-                {allFinal ? (
-                  <div className="text-center py-4">
-                    <div className="text-lg font-semibold mb-2" style={{ color: themeColors.accent }}>✓ All scores received</div>
-                    {!isLastRound && (
-                      <div className="text-sm" style={{ color: themeColors.mutedText }}>
-                        Organizer will advance to Round {currentRound + 1}
-                      </div>
-                    )}
-                    {isLastRound && (
-                      <div className="text-sm" style={{ color: themeColors.mutedText }}>
-                        Event Complete!
-                      </div>
-                    )}
+          {/* Right: Sidebar */}
+          <aside className="col-span-4 flex flex-col gap-4 min-h-0">
+            {/* Leaderboard */}
+            <div
+              className="rounded-2xl flex flex-col min-h-0"
+              style={{
+                backgroundColor: themeColors.cardBg,
+                boxShadow: `0 8px 30px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(${themeColors.accentRgb},0.12)`,
+              }}
+            >
+              <div
+                className="flex items-center gap-2 px-5 py-3 border-b"
+                style={{ borderColor: `rgba(${themeColors.accentRgb},0.15)` }}
+              >
+                <Trophy className="w-5 h-5" style={{ color: themeColors.accent }} />
+                <h3 className="text-[1.2vw] font-bold tracking-tight" style={{ color: themeColors.text }}>
+                  Leaderboard
+                </h3>
+              </div>
+              <div className="flex-1 overflow-hidden px-3 py-2">
+                {standings.length === 0 ? (
+                  <div className="p-3 text-[1vw]" style={{ color: themeColors.mutedText }}>
+                    Standings will appear after the first scored match.
                   </div>
                 ) : (
-                  <div className="text-center py-4">
-                    <div className="flex justify-center mb-3">
-                      <div className="w-8 h-8 border-4 rounded-full animate-spin" style={{ borderColor: `${themeColors.accent}20`, borderTopColor: themeColors.accent }} />
-                    </div>
-                    <div className="text-sm" style={{ color: themeColors.mutedText }}>
-                      Waiting for all scores from Round {currentRound}...
-                    </div>
+                  <div className="flex flex-col">
+                    {standings.slice(0, 5).map((row, idx) => (
+                      <div
+                        key={row.player_id}
+                        className="flex items-center gap-3 px-2 py-2 rounded-lg"
+                      >
+                        <div
+                          className="w-7 h-7 rounded-full flex items-center justify-center text-[0.9vw] font-bold flex-shrink-0"
+                          style={{
+                            backgroundColor:
+                              idx === 0 ? themeColors.accent : `rgba(255,255,255,0.08)`,
+                            color: idx === 0 ? themeColors.headerBg : themeColors.text,
+                          }}
+                        >
+                          {idx + 1}
+                        </div>
+                        <div className="flex-1 min-w-0 text-[1.05vw] font-semibold truncate" style={{ color: themeColors.text }}>
+                          {row.player_name}
+                        </div>
+                        <div className="flex items-center gap-3 text-[0.95vw] font-semibold tabular-nums">
+                          <span style={{ color: themeColors.mutedText }}>
+                            {row.wins}W {row.losses}L
+                          </span>
+                          <span
+                            className="font-bold w-10 text-right"
+                            style={{
+                              color:
+                                row.point_diff > 0
+                                  ? themeColors.accent
+                                  : row.point_diff < 0
+                                  ? "#f87171"
+                                  : themeColors.mutedText,
+                            }}
+                          >
+                            {row.point_diff > 0 ? "+" : ""}
+                            {row.point_diff}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
-            </Card>
-          </div>
-        </div>
-      </div>
-
-      {/* Bottom Status Ribbon */}
-      <div className="fixed bottom-0 left-0 right-0 backdrop-blur" style={{ backgroundColor: `${themeColors.headerBg}f0`, borderTopColor: themeColors.accent, borderTopWidth: '1px', borderTopStyle: 'solid' }}>
-        <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 px-3 py-1 rounded-full" style={{ backgroundColor: `${themeColors.accent}30`, borderColor: themeColors.accent, borderWidth: '1px', borderStyle: 'solid' }}>
-              <div className="w-2 h-2 rounded-full animate-pulse-glow" style={{ backgroundColor: themeColors.accent }} />
-              <span className="text-sm font-bold" style={{ color: themeColors.accent }}>LIVE</span>
             </div>
-            <span className="text-sm" style={{ color: themeColors.text }}>
-              Round {currentRound} currently live on {event.num_courts === 1 ? 'Court 1' : `Courts 1–${event.num_courts}`}
+
+            {/* Up Next */}
+            <div
+              className="rounded-2xl flex flex-col min-h-0"
+              style={{
+                backgroundColor: themeColors.cardBg,
+                boxShadow: `0 8px 30px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(${themeColors.accentRgb},0.12)`,
+              }}
+            >
+              <div
+                className="flex items-center gap-2 px-5 py-3 border-b"
+                style={{ borderColor: `rgba(${themeColors.accentRgb},0.15)` }}
+              >
+                <Clock className="w-5 h-5" style={{ color: themeColors.accent }} />
+                <h3 className="text-[1.2vw] font-bold tracking-tight" style={{ color: themeColors.text }}>
+                  Up Next · Round {isLastRound ? currentRound : currentRound + 1}
+                </h3>
+              </div>
+              <div className="flex-1 overflow-hidden p-3 space-y-2">
+                {isLastRound ? (
+                  <div className="px-2 py-3 text-[1vw]" style={{ color: themeColors.mutedText }}>
+                    Final round in progress — event wraps after this round.
+                  </div>
+                ) : nextRoundMatches.length === 0 ? (
+                  <div className="px-2 py-3 text-[1vw]" style={{ color: themeColors.mutedText }}>
+                    Waiting for matchup…
+                  </div>
+                ) : (
+                  nextRoundMatches.slice(0, 4).map((match) => (
+                    <div
+                      key={`next-${match.id}`}
+                      className="flex items-center gap-3 px-3 py-2 rounded-lg"
+                      style={{ backgroundColor: `rgba(255,255,255,0.04)` }}
+                    >
+                      <div
+                        className="px-2 py-1 rounded text-[0.8vw] font-bold tracking-wider flex-shrink-0"
+                        style={{ backgroundColor: `rgba(${themeColors.accentRgb},0.15)`, color: themeColors.accent }}
+                      >
+                        C{match.court_no}
+                      </div>
+                      <div className="flex-1 min-w-0 text-[0.95vw] leading-snug" style={{ color: themeColors.text }}>
+                        <div className="truncate">
+                          {getPlayerName(match.a1_profile)} / {getPlayerName(match.a2_profile)}
+                        </div>
+                        <div className="truncate" style={{ color: themeColors.mutedText }}>
+                          vs {getPlayerName(match.b1_profile)} / {getPlayerName(match.b2_profile)}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </aside>
+        </main>
+
+        {/* Broadcast ticker */}
+        <footer
+          className="h-[6vh] min-h-[48px] flex items-center justify-between px-8 border-t"
+          style={{
+            backgroundColor: themeColors.headerBg,
+            borderColor: `rgba(${themeColors.accentRgb}, 0.25)`,
+          }}
+        >
+          <div className="flex items-center gap-4 min-w-0">
+            <div
+              className="flex items-center gap-2 px-3 py-1 rounded-full"
+              style={{
+                backgroundColor: `rgba(${themeColors.accentRgb}, 0.15)`,
+                border: `1px solid ${themeColors.accent}`,
+              }}
+            >
+              <span
+                className="w-2 h-2 rounded-full animate-pulse"
+                style={{ backgroundColor: themeColors.accent }}
+              />
+              <span className="text-[0.95vw] font-extrabold tracking-widest" style={{ color: themeColors.accent }}>
+                LIVE
+              </span>
+            </div>
+            <span className="text-[1vw] truncate" style={{ color: themeColors.text }}>
+              Round {currentRound} currently active on {courtsLabel}
+            </span>
+            <span className="text-[1vw] hidden md:inline" style={{ color: themeColors.mutedText }}>
+              · {ticker}
             </span>
           </div>
-          
-          <Badge variant="secondary" className="border" style={{ backgroundColor: `${themeColors.accent}10`, color: themeColors.accent, borderColor: `${themeColors.accent}50` }}>
-            Round {currentRound} of {event.num_rounds}
-          </Badge>
-        </div>
-      </div>
 
-      {/* Exit PIN Modal */}
-      {pinModalOpen && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-          <Card className="p-6 max-w-sm mx-4" style={{ backgroundColor: themeColors.cardBg, borderColor: `rgba(${themeColors.accentRgb}, 0.2)` }}>
-            <h3 className="text-xl font-bold mb-2" style={{ color: themeColors.text }}>Exit Kiosk Mode</h3>
-            <p className="text-sm mb-4" style={{ color: themeColors.mutedText }}>Enter organizer PIN to continue</p>
-            <div className="flex gap-2">
-              <Button onClick={() => setPinModalOpen(false)} variant="outline" className="flex-1 hover:opacity-80" style={{ borderColor: themeColors.mutedText, color: themeColors.text }}>
-                Cancel
-              </Button>
-              <Button onClick={handlePinSuccess} className="flex-1" style={{ backgroundColor: themeColors.accent, color: themeColors.headerBg }}>
-                Confirm
-              </Button>
-            </div>
-          </Card>
-        </div>
-      )}
+          <div
+            className="px-4 py-1 rounded-full text-[0.95vw] font-bold tracking-wider flex-shrink-0"
+            style={{
+              border: `1px solid ${themeColors.accent}`,
+              color: themeColors.accent,
+            }}
+          >
+            Round {currentRound} of {event.num_rounds}
+          </div>
+        </footer>
+
+        {/* Exit PIN Modal */}
+        {pinModalOpen && (
+          <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+            <Card
+              className="p-6 max-w-sm mx-4"
+              style={{ backgroundColor: themeColors.cardBg, borderColor: `rgba(${themeColors.accentRgb}, 0.2)` }}
+            >
+              <h3 className="text-xl font-bold mb-2" style={{ color: themeColors.text }}>
+                Exit Kiosk Mode
+              </h3>
+              <p className="text-sm mb-4" style={{ color: themeColors.mutedText }}>
+                Enter organizer PIN to continue
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => setPinModalOpen(false)}
+                  variant="outline"
+                  className="flex-1 hover:opacity-80"
+                  style={{ borderColor: themeColors.mutedText, color: themeColors.text }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handlePinSuccess}
+                  className="flex-1"
+                  style={{ backgroundColor: themeColors.accent, color: themeColors.headerBg }}
+                >
+                  Confirm
+                </Button>
+              </div>
+            </Card>
+          </div>
+        )}
       </div>
     </>
   );
