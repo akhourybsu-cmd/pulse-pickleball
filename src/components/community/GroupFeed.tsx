@@ -365,15 +365,17 @@ const PostCard = memo(function PostCard({
       {/* Header - Mobile Optimized */}
       <div className="flex items-start justify-between gap-2 sm:gap-3 mb-2 sm:mb-3">
         <div className="flex items-start gap-2 sm:gap-2.5 flex-1 min-w-0">
-          <Avatar className="h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0">
-            <AvatarImage src={post.profile?.avatar_url || undefined} />
-            <AvatarFallback className="text-xs sm:text-sm">{initials}</AvatarFallback>
-          </Avatar>
+          <button onClick={goToProfile} className="flex-shrink-0" aria-label="View profile">
+            <Avatar className="h-8 w-8 sm:h-9 sm:w-9">
+              <AvatarImage src={post.profile?.avatar_url || undefined} />
+              <AvatarFallback className="text-xs sm:text-sm">{initials}</AvatarFallback>
+            </Avatar>
+          </button>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-              <span className="font-medium text-sm truncate max-w-[120px] sm:max-w-none">
+              <button onClick={goToProfile} className="font-medium text-sm truncate max-w-[120px] sm:max-w-none hover:underline text-left">
                 {post.profile?.display_name || post.profile?.full_name || 'Someone'}
-              </span>
+              </button>
               <span className="text-xs text-muted-foreground/70">
                 {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
               </span>
