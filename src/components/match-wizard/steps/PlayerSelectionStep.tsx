@@ -147,12 +147,25 @@ export function PlayerSelectionStep({
   const [showGuestModal, setShowGuestModal] = useState(false);
   const [guestData, setGuestData] = useState({ name: "", notes: "" });
   const [profileCache, setProfileCache] = useState<Record<string, Player>>({});
+  const [currentUserProfile, setCurrentUserProfile] = useState<Player | null>(null);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) setCurrentUserId(user.id);
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) return;
+      setCurrentUserId(user.id);
+      const { data } = await supabase
+        .from("profiles_public")
+        .select("id, display_name, full_name, avatar_url, current_rating")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (data) {
+        const me = data as Player;
+        setCurrentUserProfile(me);
+        setProfileCache((prev) => ({ ...prev, [me.id]: me }));
+      }
     });
   }, []);
+
 
   const selectedIds = useMemo(() => {
     const ids = new Set<string>();
