@@ -594,7 +594,7 @@ function AddPlayerSheet({
   const recentIdSet = useMemo(() => new Set(recent.map((r) => r.id)), [recent]);
 
   const suggestedList: RowPlayer[] = useMemo(() => {
-    // Hierarchy: friends → recent → community → suggested
+    // Hierarchy: self → friends → recent → community → suggested
     const seen = new Set<string>();
     const out: RowPlayer[] = [];
 
@@ -604,6 +604,10 @@ function AddPlayerSheet({
       seen.add(p.id);
       out.push({ ...p, relationship: rel });
     };
+
+    if (currentUserProfile) push(currentUserProfile, "self");
+
+
 
     for (const f of friends) {
       push(
