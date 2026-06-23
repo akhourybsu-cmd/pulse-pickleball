@@ -49,9 +49,11 @@ interface Player {
   registration_status: string;
   profiles: {
     id: string;
-    full_name: string;
+    full_name: string | null;
     display_name: string | null;
-  };
+    avatar_url: string | null;
+    current_rating: number | null;
+  } | null;
 }
 
 interface ScheduleMatch {
