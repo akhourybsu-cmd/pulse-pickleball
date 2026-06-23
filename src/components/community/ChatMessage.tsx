@@ -75,7 +75,7 @@ export const ChatMessage = memo(function ChatMessage({
     .toUpperCase()
     .slice(0, 2);
 
-  const displayName = message.profile?.display_name || message.profile?.full_name || 'Unknown';
+  const displayName = message.profile?.display_name || message.profile?.full_name || 'Someone';
   const wasEdited = !!message.edited_at;
 
   const handleSaveEdit = async () => {

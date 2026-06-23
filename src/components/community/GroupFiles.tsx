@@ -202,7 +202,7 @@ export function GroupFiles({ groupId, isAdmin, currentUserId }: GroupFilesProps)
                           <AvatarFallback className="text-[8px]">{initials}</AvatarFallback>
                         </Avatar>
                         <span className="truncate max-w-[80px]">
-                          {file.uploader_profile?.display_name || file.uploader_profile?.full_name || 'Unknown'}
+                          {file.uploader_profile?.display_name || file.uploader_profile?.full_name || 'Someone'}
                         </span>
                       </div>
                       <span className="hidden sm:inline">•</span>
