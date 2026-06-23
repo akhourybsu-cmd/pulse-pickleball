@@ -299,23 +299,27 @@ const ViewProfile = () => {
 
   return (
     <div className="min-h-screen bg-background pb-12">
-      <PlayerPageHeader
-        icon={UserIcon}
-        title={displayName}
-        subtitle={subtitle}
-        background="gradient"
-        action={
+      <nav className="bg-secondary border-b border-secondary-foreground/10 shadow-sm">
+        <div className="container mx-auto px-4 py-3 max-w-3xl flex items-center justify-between relative">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => navigate(-1)}
-            className="h-9 -mr-2 text-muted-foreground"
+            className="h-9 text-muted-foreground -ml-2 z-10"
           >
             <ArrowLeft className="h-4 w-4 mr-1" />
             Back
           </Button>
-        }
-      />
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <img
+              src={logo}
+              alt="PULSE Logo"
+              className="h-[44px] w-auto"
+            />
+          </div>
+          <div className="w-16" />
+        </div>
+      </nav>
 
       <div className="container mx-auto px-4 py-5 max-w-3xl space-y-7">
         {/* Hero card — matches PlayerIdentityCard / Profile card system */}
