@@ -108,8 +108,7 @@ const ViewProfile = () => {
         .select(`
           id, display_name, first_name, last_name, avatar_url,
           current_rating, total_matches, wins, losses,
-          handedness, play_side, paddle_brand, paddle_model,
-          town, state
+          handedness, play_side, paddle_brand, paddle_model
         `)
         .eq("id", userId)
         .single();
