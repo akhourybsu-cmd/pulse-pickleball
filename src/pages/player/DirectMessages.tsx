@@ -85,19 +85,40 @@ export default function DirectMessages() {
   return (
     <div className="flex flex-col min-h-[calc(100vh-120px)]">
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-border/30">
-        <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="h-8 w-8" aria-label="Back">
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <h1 className="text-lg font-semibold font-display flex-1">Messages</h1>
-        <Button
-          size="sm"
-          onClick={() => setPickerOpen(true)}
-          className="h-9 rounded-full btn-premium"
-        >
-          <Pencil className="h-4 w-4 mr-1.5" />
-          New
-        </Button>
+      <div className={cn(
+        "border-b border-border/40 bg-gradient-to-b from-primary/[0.06] via-background to-background"
+      )}>
+        <div className="container mx-auto px-4 py-4 md:py-5 max-w-3xl">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-3 min-w-0 flex-1">
+              <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="h-9 w-9 -ml-1 shrink-0 mt-0.5" aria-label="Back">
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <div className="flex items-start gap-3 min-w-0 flex-1">
+                <div className="h-9 w-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <MessageCircle className="h-[18px] w-[18px]" strokeWidth={2} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h1 className="text-2xl md:text-[28px] font-bold tracking-tight text-foreground leading-tight">
+                    Messages
+                  </h1>
+                  <div className="h-[3px] w-10 mt-1.5 bg-primary rounded-full" />
+                  <p className="text-sm text-muted-foreground mt-2 leading-snug">
+                    Private conversations with your connections
+                  </p>
+                </div>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              onClick={() => setPickerOpen(true)}
+              className="h-9 rounded-full btn-premium shrink-0 mt-1"
+            >
+              <Pencil className="h-4 w-4 mr-1.5" />
+              New
+            </Button>
+          </div>
+        </div>
       </div>
 
       {/* Search + Sort */}
