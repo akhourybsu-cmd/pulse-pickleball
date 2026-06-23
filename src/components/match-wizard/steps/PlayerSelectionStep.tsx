@@ -525,6 +525,7 @@ interface AddPlayerSheetProps {
   onOpenChange: (v: boolean) => void;
   excludeIds: Set<string>;
   currentUserId: string | null;
+  currentUserProfile: Player | null;
   onPick: (player: Player) => void;
   onPickGuest: () => void;
 }
@@ -534,6 +535,7 @@ function AddPlayerSheet({
   onOpenChange,
   excludeIds,
   currentUserId,
+  currentUserProfile,
   onPick,
   onPickGuest,
 }: AddPlayerSheetProps) {
@@ -577,11 +579,12 @@ function AddPlayerSheet({
     else setSearchResults([]);
   }, [debounced, runSearch]);
 
+  // Allow the signed-in user to pick themselves — only exclude already-selected slots.
   const filterOut = useCallback(
-    (p: { id: string }) =>
-      !excludeIds.has(p.id) && p.id !== currentUserId,
-    [excludeIds, currentUserId],
+    (p: { id: string }) => !excludeIds.has(p.id),
+    [excludeIds],
   );
+
 
   // Build relationship-tagged lists
   const friendIdSet = useMemo(
