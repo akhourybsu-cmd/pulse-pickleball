@@ -6461,6 +6461,10 @@ export type Database = {
         Returns: string
       }
       is_blocked_between: { Args: { _a: string; _b: string }; Returns: boolean }
+      is_conversation_participant: {
+        Args: { _conversation_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_event_participant: {
         Args: { _event_id: string; _user_id: string }
         Returns: boolean
