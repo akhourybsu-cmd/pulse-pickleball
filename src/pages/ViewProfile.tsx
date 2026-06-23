@@ -42,8 +42,6 @@ interface Profile {
   play_side: string | null;
   paddle_brand: string | null;
   paddle_model: string | null;
-  town?: string | null;
-  state?: string | null;
 }
 
 interface RecentMatch {
