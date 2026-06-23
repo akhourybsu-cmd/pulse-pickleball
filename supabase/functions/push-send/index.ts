@@ -32,10 +32,11 @@ Deno.serve(async (req) => {
 
     // Validate dispatch secret
     const provided = req.headers.get("x-dispatch-secret") ?? "";
-    const { data: cfg, error: cfgErr } = await admin
-      .schema("private" as any).from("app_config")
-      .select("value").eq("key", "push_dispatch_secret").maybeSingle();
-    if (cfgErr || !cfg?.value || provided !== cfg.value) {
+    const { data: isValidSecret, error: secretErr } = await admin.rpc(
+      "is_valid_push_dispatch_secret" as any,
+      { p_secret: provided },
+    );
+    if (secretErr || isValidSecret !== true) {
       return new Response(JSON.stringify({ error: "unauthorized" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
