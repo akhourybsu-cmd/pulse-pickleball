@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo, memo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { MessageSquare, Pin, Trash2, MoreVertical, Image as ImageIcon } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { PostCommentsSheet } from './PostCommentsSheet';
