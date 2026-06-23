@@ -704,7 +704,7 @@ function AddPlayerSheet({
     [searchResults, filterOut, friendIdSet, recentIdSet],
   );
 
-  // Reset state when sheet opens
+  // Reset only when the sheet opens — avoids a flash on close.
   useEffect(() => {
     if (open) {
       setTab("suggested");
@@ -712,11 +712,23 @@ function AddPlayerSheet({
     }
   }, [open]);
 
+  const isSearching = search.trim().length >= 2;
+
+  // Pin the current user as a dedicated "You" row at the top of Suggested,
+  // and remove them from the rest of the list so they only appear once.
+  const selfRow: RowPlayer | null =
+    !isSearching && currentUserProfile && filterOut({ id: currentUserProfile.id })
+      ? { ...currentUserProfile, relationship: "self" }
+      : null;
+  const suggestedWithoutSelf = selfRow
+    ? suggestedList.filter((p) => p.id !== selfRow.id)
+    : suggestedList;
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
-        className="h-[88vh] p-0 flex flex-col gap-0 rounded-t-3xl border-t border-border/70"
+        className="max-h-[85vh] h-[85vh] p-0 flex flex-col gap-0 rounded-t-3xl border-t border-border/70"
       >
         <SheetHeader className="px-5 pt-5 pb-2 text-left">
           <SheetTitle className="text-xl tracking-tight">Add Player</SheetTitle>
@@ -729,58 +741,50 @@ function AddPlayerSheet({
             <Input
               placeholder="Search name..."
               value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                if (e.target.value && tab !== "suggested") setTab("suggested");
-              }}
+              onChange={(e) => setSearch(e.target.value)}
               className="pl-10 h-12 rounded-xl bg-muted/40 border-border/60 text-sm"
             />
           </div>
         </div>
 
-        {/* Pill tabs */}
-        <div className="px-5 pt-3 pb-1">
-          <div className="flex gap-2 overflow-x-auto scrollbar-none">
-            {(
-              [
-                { key: "suggested", label: "Suggested", icon: Star },
-                { key: "friends", label: "Friends", icon: Users },
-                { key: "nearby", label: "Nearby", icon: MapPin },
-                { key: "guest", label: "Guest", icon: User },
-              ] as { key: TabKey; label: string; icon: typeof Star }[]
-            ).map((p) => {
-              const Icon = p.icon;
-              const isActive = tab === p.key;
-              return (
-                <button
-                  key={p.key}
-                  type="button"
-                  onClick={() => {
-                    if (p.key === "guest") {
-                      onPickGuest();
-                      return;
-                    }
-                    setTab(p.key);
-                  }}
-                  className={cn(
-                    "shrink-0 inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-medium border transition-colors",
-                    isActive
-                      ? "bg-primary/15 text-primary border-primary/30"
-                      : "bg-background text-muted-foreground border-border/70 hover:text-foreground",
-                  )}
-                >
-                  <Icon className="h-3.5 w-3.5" />
-                  {p.label}
-                </button>
-              );
-            })}
+        {/* Pill tabs — hidden while searching so the active tab doesn't jump */}
+        {!isSearching && (
+          <div className="px-5 pt-3 pb-1">
+            <div className="flex gap-2 overflow-x-auto scrollbar-none">
+              {(
+                [
+                  { key: "suggested", label: "Suggested", icon: Star },
+                  { key: "friends", label: "Friends", icon: Users },
+                  { key: "nearby", label: "Nearby", icon: MapPin },
+                ] as { key: TabKey; label: string; icon: typeof Star }[]
+              ).map((p) => {
+                const Icon = p.icon;
+                const isActive = tab === p.key;
+                return (
+                  <button
+                    key={p.key}
+                    type="button"
+                    onClick={() => setTab(p.key)}
+                    className={cn(
+                      "shrink-0 inline-flex items-center justify-center gap-1.5 rounded-full px-4 py-2 min-h-[36px] min-w-[88px] text-sm font-medium border transition-colors",
+                      isActive
+                        ? "bg-primary/15 text-primary border-primary/30"
+                        : "bg-background text-muted-foreground border-border/70 hover:text-foreground",
+                    )}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    {p.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* List */}
         <ScrollArea className="flex-1 min-h-0">
-          <div className="px-4 py-3 space-y-2">
-            {search.trim().length >= 2 ? (
+          <div className="px-4 py-3 space-y-2 pb-[calc(env(safe-area-inset-bottom)+16px)]">
+            {isSearching ? (
               searchLoading ? (
                 <EmptyHint text="Searching…" />
               ) : searchList.length === 0 ? (
@@ -791,14 +795,26 @@ function AddPlayerSheet({
                 ))
               )
             ) : tab === "suggested" ? (
-              suggestionsLoading && suggestedList.length === 0 ? (
+              suggestionsLoading && suggestedWithoutSelf.length === 0 && !selfRow ? (
                 <EmptyHint text="Finding players you know…" />
-              ) : suggestedList.length === 0 ? (
+              ) : suggestedWithoutSelf.length === 0 && !selfRow ? (
                 <EmptyHint text="No suggestions yet — try Friends or Search." />
               ) : (
-                suggestedList.map((p) => (
-                  <ResultRow key={p.id} player={p} onAdd={() => onPick(p)} />
-                ))
+                <>
+                  {selfRow && (
+                    <>
+                      <ResultRow player={selfRow} onAdd={() => onPick(selfRow)} />
+                      {suggestedWithoutSelf.length > 0 && (
+                        <div className="px-2 py-1 text-[10px] uppercase tracking-wider text-muted-foreground/70 font-semibold">
+                          Suggested
+                        </div>
+                      )}
+                    </>
+                  )}
+                  {suggestedWithoutSelf.map((p) => (
+                    <ResultRow key={p.id} player={p} onAdd={() => onPick(p)} />
+                  ))}
+                </>
               )
             ) : tab === "friends" ? (
               friendsLoading ? (
@@ -819,6 +835,7 @@ function AddPlayerSheet({
     </Sheet>
   );
 }
+
 
 function EmptyHint({ text }: { text: string }) {
   return (
