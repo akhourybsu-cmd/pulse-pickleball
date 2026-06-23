@@ -1539,7 +1539,6 @@ export default function RoundRobinDetail() {
           and prime mobile real estate isn't eaten by app-wide chrome. */}
       <RoundRobinTopBar
         backHref={backHref}
-        label="Round Robin"
         onShare={isOrganizer || isParticipant ? handleShareEvent : undefined}
         overflow={
           isOrganizer && !event.voided ? (
