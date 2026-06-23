@@ -5,7 +5,6 @@ import {
   TrendingUp,
   CalendarDays,
   Users,
-  MapPin,
   ArrowRight,
   ArrowLeft,
   Compass,
@@ -13,6 +12,7 @@ import {
   Settings,
   Trophy,
   Sparkles,
+  MapPin,
 } from "lucide-react";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import {
@@ -99,9 +99,8 @@ const SECTIONS = [
   { id: "start", label: "Getting Started" },
   { id: "rating", label: "Pulse Score" },
   { id: "matches", label: "Matches" },
-  { id: "play", label: "Play" },
+  { id: "play", label: "Round Robins" },
   { id: "community", label: "Community" },
-  { id: "venues", label: "Venues" },
   { id: "account", label: "Account" },
 ];
 
@@ -183,56 +182,48 @@ const FAQ = () => {
           <Accordion type="single" collapsible className="space-y-3">
             <FAQItem value="what-is" icon={Sparkles} question="What is PULSE?">
               <p>
-                PULSE is your pickleball home base. Find venues and courts near you,
-                log your matches, build a community rating (your Pulse Score),
-                register for round robins and tournaments, and stay connected with
-                the players and venues you care about.
-              </p>
-            </FAQItem>
-
-            <FAQItem
-              value="player-vs-venue"
-              icon={Settings}
-              question="Player Mode vs. Venue Mode — what's the difference?"
-            >
-              <p>
-                <strong>Player Mode</strong> is your personal account: matches,
-                rating, friends, bookings. <strong>Venue Mode</strong> is the
-                operator console for facilities — courts, schedules, tournaments,
-                staff.
-              </p>
-              <p>
-                If you manage a venue, a mode switcher appears in the top bar. Tap
-                your avatar / venue badge to jump between Player and Venue. If you
-                don't manage a venue, you only see Player Mode — that's normal.
+                PULSE is your pickleball home base. Log your matches, build a
+                community rating (your Pulse Score), host and join round robins,
+                and stay connected with the players you care about — all in one
+                place built specifically for pickleball.
               </p>
             </FAQItem>
 
             <FAQItem value="navigation" icon={Compass} question="How do I get around the app?">
               <p>The bottom navigation has everything you need:</p>
               <ul className="list-disc list-inside ml-2 space-y-1">
-                <li><strong>Home</strong> — your dashboard, upcoming events, quick actions</li>
+                <li><strong>Home</strong> — your dashboard, upcoming activity, and quick actions</li>
                 <li><strong>Matches</strong> — your match history and pending verifications</li>
-                <li><strong>Play</strong> — round robins, tournaments, and events to join</li>
+                <li><strong>Play</strong> — round robins and events to join or host</li>
                 <li><strong>Community</strong> — groups, LFG posts, friends, and messages</li>
-                <li><strong>Profile</strong> — your stats, settings, and venues you follow</li>
+                <li><strong>Profile</strong> — your stats, settings, and preferences</li>
               </ul>
               <p className="text-muted-foreground">
-                The green <strong>Record Match</strong> button is always one tap away from Home and Matches.
+                The lime <strong>Record Match</strong> button — PULSE's signature
+                accent color — is always one tap away from Home and Matches.
               </p>
             </FAQItem>
 
             <FAQItem value="setup-profile" icon={Settings} question="How do I set up my profile?">
               <p>
                 Tap <Path>Profile</Path> → <Path>Edit Profile</Path>. First and last
-                name are required so other players can find and tag you. Add a photo,
-                your home venue, and skill level to make matchmaking and event
-                invites work better.
+                name are required so other players can find and tag you. Add a
+                photo and your skill level to make matchmaking and event invites
+                work better.
               </p>
               <p>
                 <Link to="/player/profile/edit" className="text-primary hover:underline inline-flex items-center gap-1">
                   Edit your profile now <ArrowRight className="h-3 w-3" />
                 </Link>
+              </p>
+            </FAQItem>
+
+            <FAQItem value="theme" icon={Settings} question="Light or dark theme?">
+              <p>
+                PULSE ships with a premium dark theme by default — deep navy
+                surfaces with a lime accent designed for high contrast on the
+                court. Prefer light? Tap the sun/moon icon in the top bar to
+                switch any time. Your choice is remembered on this device.
               </p>
             </FAQItem>
           </Accordion>
@@ -323,7 +314,7 @@ const FAQ = () => {
           <Accordion type="single" collapsible className="space-y-3">
             <FAQItem value="record" icon={CalendarDays} question="How do I record a match?">
               <ol className="list-decimal list-inside ml-2 space-y-1">
-                <li>Tap the green <strong>Record Match</strong> button (Home or Matches tab)</li>
+                <li>Tap the lime <strong>Record Match</strong> button (Home or Matches tab)</li>
                 <li>Pick all four players — yourself, your partner, and both opponents</li>
                 <li>Enter the final score</li>
                 <li>Choose the match type: Casual, Ladder, League, or Playoffs</li>
@@ -377,21 +368,20 @@ const FAQ = () => {
           </Accordion>
         </section>
 
-        {/* 4. Play */}
+        {/* 4. Play / Round Robins */}
         <section className="space-y-4">
           <SectionHeader
             anchor="play"
             icon={Trophy}
-            title="Play: Round Robins, Tournaments & Events"
-            subtitle="The Play hub is your one stop for everything organized."
+            title="Round Robins"
+            subtitle="Host your own session or join one organized by a friend."
             delay={0.15}
           />
           <Accordion type="single" collapsible className="space-y-3">
             <FAQItem value="play-hub" icon={Trophy} question="What's the Play tab for?">
               <p>
-                <Path>Play</Path> is where you discover and join everything happening
-                near you: round robins, tournaments, drop-in sessions, and venue
-                events. You can also create your own round robin from here.
+                <Path>Play</Path> is where you discover and join round robins
+                happening near you, or spin up your own in a couple of minutes.
               </p>
               <p>
                 <Link to="/player/play" className="text-primary hover:underline inline-flex items-center gap-1">
@@ -403,7 +393,7 @@ const FAQ = () => {
             <FAQItem value="rr-join" icon={Users} question="How do I join a round robin?">
               <ol className="list-decimal list-inside ml-2 space-y-1">
                 <li>Open <Path>Play</Path></li>
-                <li>Browse upcoming events or open a direct link from a venue or friend</li>
+                <li>Browse upcoming round robins or open a direct link from a friend</li>
                 <li>Tap the event, then <strong>Register</strong></li>
                 <li>You'll see the roster, schedule, and standings once the organizer publishes the rounds</li>
               </ol>
@@ -425,26 +415,14 @@ const FAQ = () => {
 
             <FAQItem value="kiosk" icon={TrendingUp} question="What is Kiosk Mode?">
               <p>
-                Kiosk Mode is a full-screen display for a tablet or TV at the event.
-                Open any round robin you organize and tap <strong>Open Kiosk</strong>.
+                Kiosk Mode is a full-screen display for a tablet or TV at your
+                round robin. Open any event you organize and tap <strong>Open Kiosk</strong>.
               </p>
               <ul className="list-disc list-inside ml-2 space-y-1">
                 <li>Live schedule with current and upcoming matches</li>
                 <li>Court assignments updating as rounds finish</li>
                 <li>Score entry protected by an organizer PIN</li>
                 <li>Standings board for players to follow along</li>
-              </ul>
-            </FAQItem>
-
-            <FAQItem value="tournaments" icon={Trophy} question="How do tournaments work?">
-              <p>
-                Tournaments live in <Path>Play</Path>. Tap one to see the full
-                landing page — format, prize, schedule, bracket, and player list.
-              </p>
-              <ul className="list-disc list-inside ml-2 space-y-1">
-                <li>Register on the single-page sign-up screen (partner, division, payment)</li>
-                <li>Track the bracket and your next match from the tournament page</li>
-                <li>Get notifications when your match is up next</li>
               </ul>
             </FAQItem>
           </Accordion>
@@ -456,16 +434,15 @@ const FAQ = () => {
             anchor="community"
             icon={MessageCircle}
             title="Community: Groups, Friends & Messages"
-            subtitle="The social side — replaces the old Court Connector with a richer hub."
+            subtitle="The social side of PULSE — find your people and stay in touch."
             delay={0.2}
           />
           <Accordion type="single" collapsible className="space-y-3">
             <FAQItem value="hub" icon={Users} question="What's in the Community tab?">
               <ul className="list-disc list-inside ml-2 space-y-1">
-                <li><strong>Groups</strong> — TeamReach-style spaces for clubs, leagues, and friend circles</li>
+                <li><strong>Groups</strong> — TeamReach-style spaces for crews, leagues, and open-play circles</li>
                 <li><strong>Feed</strong> — posts and highlights from your groups</li>
                 <li><strong>LFG</strong> — Looking for Game posts to find players right now</li>
-                <li><strong>Announcements</strong> — updates from venues you follow</li>
                 <li><strong>Messages</strong> — direct messages with friends</li>
               </ul>
               <p>
@@ -478,11 +455,23 @@ const FAQ = () => {
             <FAQItem value="groups" icon={Users} question="How do I join or create a group?">
               <p>
                 In <Path>Community</Path> → <Path>Groups</Path>, browse public groups
-                or tap <strong>Create Group</strong> to start your own. Groups can
-                have a feed, scheduled events, and shared photos.
+                or tap <strong>Create Group</strong> to start your own. Pick a type
+                — <strong>Crew</strong> for friends and recurring play,{" "}
+                <strong>League</strong> for competitive groups, or{" "}
+                <strong>Open Play</strong> for casual sessions. Each group has a
+                feed, events, and shared photos.
               </p>
               <p className="text-muted-foreground">
                 Have an invite code? Tap <strong>Join by code</strong> and paste it in.
+              </p>
+            </FAQItem>
+
+            <FAQItem value="group-notifs" icon={Sparkles} question="Can I customize notifications per group?">
+              <p>
+                Yes. Open any group, tap the menu (⋯) → <strong>Notification
+                Settings</strong>. You can mute the whole group or fine-tune posts,
+                events, and chat independently. Announcements always come through
+                so you don't miss anything critical.
               </p>
             </FAQItem>
 
@@ -490,7 +479,7 @@ const FAQ = () => {
               <ol className="list-decimal list-inside ml-2 space-y-1">
                 <li>Open <Path>Community</Path> → <Path>LFG</Path></li>
                 <li>Tap <strong>New Post</strong></li>
-                <li>Set the court, the time, and how many players you need</li>
+                <li>Set the location, the time, and how many players you need</li>
                 <li>You'll get notified when someone responds</li>
               </ol>
               <p className="text-muted-foreground">
@@ -503,7 +492,7 @@ const FAQ = () => {
                 Open any player's profile — from a match, a roster, or a search —
                 and tap <strong>Add Friend</strong>. Once they accept, you can
                 message them and they show up faster when you're picking players for
-                matches and events.
+                matches and round robins.
               </p>
               <p>
                 <Link to="/player/friends" className="text-primary hover:underline inline-flex items-center gap-1">
@@ -521,63 +510,14 @@ const FAQ = () => {
           </Accordion>
         </section>
 
-        {/* 6. Venues */}
-        <section className="space-y-4">
-          <SectionHeader
-            anchor="venues"
-            icon={MapPin}
-            title="Venues & Booking"
-            subtitle="Find courts, follow venues, and book your next session."
-            delay={0.25}
-          />
-          <Accordion type="single" collapsible className="space-y-3">
-            <FAQItem value="find-venues" icon={MapPin} question="How do I find venues near me?">
-              <p>
-                From <Path>Home</Path>, tap <strong>Find Venues</strong> — or open <Path>Play</Path>
-                and switch to the Venues view. You'll see a map and list of nearby
-                facilities with hours, court counts, and upcoming events.
-              </p>
-            </FAQItem>
-
-            <FAQItem value="follow-venue" icon={Sparkles} question="What does following a venue do?">
-              <p>
-                On any venue page, tap <strong>Follow</strong>. You'll see their
-                announcements and new events in your <Path>Community</Path> feed,
-                and they'll show up first when you're booking or browsing.
-              </p>
-            </FAQItem>
-
-            <FAQItem value="book" icon={CalendarDays} question="How do I book a court?">
-              <ol className="list-decimal list-inside ml-2 space-y-1">
-                <li>Open the venue page</li>
-                <li>Tap <strong>Book a Court</strong></li>
-                <li>Pick a court, date, and time slot</li>
-                <li>Confirm — payment (if any) is handled in-app</li>
-              </ol>
-              <p>
-                Bookings live under <Path>Profile</Path> → <Path>My Bookings</Path>.
-              </p>
-            </FAQItem>
-
-            <FAQItem value="venue-events" icon={Trophy} question="How do I register for venue events, clinics, or coaching?">
-              <p>
-                Open the venue page and switch to the <strong>Events</strong>,{" "}
-                <strong>Coaching</strong>, or <strong>Tournaments</strong> tab. Tap
-                anything to see details and register. Your sign-ups appear under{" "}
-                <Path>Profile</Path> → <Path>My Events</Path>.
-              </p>
-            </FAQItem>
-          </Accordion>
-        </section>
-
-        {/* 7. Account */}
+        {/* 6. Account */}
         <section className="space-y-4">
           <SectionHeader
             anchor="account"
             icon={Settings}
             title="Account, Notifications & Privacy"
             subtitle="Make PULSE work the way you want."
-            delay={0.3}
+            delay={0.25}
           />
           <Accordion type="single" collapsible className="space-y-3">
             <FAQItem value="notifications" icon={Sparkles} question="How do I manage notifications?">
@@ -587,16 +527,18 @@ const FAQ = () => {
               </p>
               <p>
                 To tune what you get, open <Path>Profile</Path> → <Path>Notification Preferences</Path>.
-                You can toggle alerts for matches, events, friends, messages, and
-                venue announcements independently.
+                You can toggle alerts for matches, round robins, friends, and
+                messages independently — and on Android, make sure push
+                notifications are allowed at the system level so they hit your
+                lock screen.
               </p>
             </FAQItem>
 
             <FAQItem value="privacy" icon={Settings} question="Who can see my profile and matches?">
               <p>
-                Other players can see your display name, avatar, current rating, and
-                match history. Personal info (email, phone) is private and only used
-                for your account.
+                Other players can see your display name, avatar, current Pulse
+                Score, and match history. Personal info (email, phone) is private
+                and only used for your account.
               </p>
               <p>
                 To block someone, open their profile → menu (⋯) → <strong>Block</strong>.
@@ -609,13 +551,6 @@ const FAQ = () => {
                 Yes. On a supported device, open <Path>Profile</Path> → <Path>Security</Path>{" "}
                 and turn on <strong>Biometric Sign-In</strong>. Next time you launch
                 the app, just look at it or tap the sensor.
-              </p>
-            </FAQItem>
-
-            <FAQItem value="theme" icon={Settings} question="How do I switch to dark mode?">
-              <p>
-                Tap the sun/moon icon in the top bar (it's the one right next to the
-                back button on most pages). Your choice is remembered on this device.
               </p>
             </FAQItem>
 
