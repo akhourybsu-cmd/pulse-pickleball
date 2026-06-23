@@ -8,8 +8,6 @@ import { cn } from "@/lib/utils";
 interface RoundRobinTopBarProps {
   /** Where to go when the back button is pressed. Defaults to in-app history. */
   backHref?: string;
-  /** Center label — usually "Round Robin". */
-  label?: string;
   /** Share callback. When omitted, the share button is hidden. */
   onShare?: () => void;
   /** Overflow menu slot — typically a <DropdownMenu> with host controls.
@@ -19,7 +17,7 @@ interface RoundRobinTopBarProps {
 }
 
 /**
- * Slim top bar for the Round Robin detail page.
+ * Branded top bar for the Round Robin detail page.
  *
  * Replaces the standard PageHeader on this route because the host page
  * has its own action surfaces (the WhatsNextBanner + overflow menu) —
@@ -27,13 +25,13 @@ interface RoundRobinTopBarProps {
  * mobile real estate that the host doesn't need while running an event.
  *
  * Anatomy (mobile-first):
- *   [back] [label] ........... [share] [overflow]
+ *   [back]  [  Round Robin by:   ]  [share] [overflow]
+ *                  [  LOGO  ]
  *
  * Sticky to top so the back/share are always reachable during play.
  */
 export function RoundRobinTopBar({
   backHref,
-  label = "Round Robin",
   onShare,
   overflow,
   className,
@@ -54,7 +52,8 @@ export function RoundRobinTopBar({
         className,
       )}
     >
-      <div className="container max-w-[1280px] mx-auto px-2 sm:px-4 h-14 flex items-center gap-1.5">
+      <div className="container max-w-[1280px] mx-auto px-2 sm:px-4 h-20 flex items-center gap-1.5 relative">
+        {/* Back button — left */}
         <Button
           variant="ghost"
           size="icon"
@@ -65,12 +64,18 @@ export function RoundRobinTopBar({
           <ChevronLeft className="h-5 w-5" />
         </Button>
 
-        <Logo className="h-5 w-auto text-secondary-foreground flex-shrink-0" />
+        {/* Center branding */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+          <span className="text-[10px] font-medium tracking-widest uppercase text-secondary-foreground/70 -mb-0.5">
+            Round Robin by:
+          </span>
+          <Logo className="h-8 w-auto text-secondary-foreground" />
+        </div>
 
-        <span className="text-sm font-semibold tracking-wide truncate">{label}</span>
-
+        {/* Spacer to balance the left button */}
         <div className="flex-1" />
 
+        {/* Right actions */}
         {onShare && (
           <Button
             variant="ghost"
