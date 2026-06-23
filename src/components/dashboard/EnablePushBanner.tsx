@@ -73,7 +73,9 @@ export function EnablePushBanner({ dismissKey, contextLabel }: EnablePushBannerP
   };
 
   let title = "Turn on notifications";
-  let body = "Get pinged for new posts, friend requests, and messages.";
+  let body = contextLabel
+    ? `Get pinged when there's new activity in ${contextLabel}.`
+    : "Get pinged for new posts, friend requests, and messages.";
   let action: React.ReactNode = (
     <Button size="sm" onClick={handleEnable} disabled={busy || !supported}>
       Enable
