@@ -5,9 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
-import { Calendar, MapPin, Clock, Trophy, Users, Search, Medal, Target, TrendingUp } from "lucide-react";
+import { Calendar, MapPin, Clock, Trophy, Users, Search, Medal, Target, TrendingUp, Star } from "lucide-react";
 import { ScheduleRoundCarousel } from "@/components/round-robin/ScheduleRoundCarousel";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
@@ -49,9 +49,11 @@ interface Player {
   registration_status: string;
   profiles: {
     id: string;
-    full_name: string;
+    full_name: string | null;
     display_name: string | null;
-  };
+    avatar_url: string | null;
+    current_rating: number | null;
+  } | null;
 }
 
 interface ScheduleMatch {
@@ -105,24 +107,37 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
       if (eventError) throw eventError;
       setEvent(eventData);
 
-      // Fetch players
-      const { data: playersData, error: playersError } = await supabase
+      // Fetch players (without join — profiles table is owner-only RLS)
+      const { data: playersRaw, error: playersError } = await supabase
         .from("round_robin_players")
-        .select(`
-          id,
-          player_id,
-          registration_status,
-          profiles:player_id (
-            id,
-            full_name,
-            display_name
-          )
-        `)
+        .select("id, player_id, registration_status")
         .eq("event_id", eventId)
         .eq("active", true);
 
       if (playersError) throw playersError;
-      setPlayers(playersData || []);
+
+      const playerIds = (playersRaw || []).map((p) => p.player_id).filter(Boolean);
+
+      // Batch fetch public profile data via the public view
+      let profilesById = new Map<string, Player["profiles"]>();
+      if (playerIds.length > 0) {
+        const { data: profilesData, error: profilesError } = await supabase
+          .from("profiles_public")
+          .select("id, display_name, full_name, avatar_url, current_rating")
+          .in("id", playerIds);
+
+        if (profilesError) throw profilesError;
+        profilesById = new Map(
+          (profilesData || []).map((p) => [p.id, p as Player["profiles"]])
+        );
+      }
+
+      const playersWithProfiles: Player[] = (playersRaw || []).map((p) => ({
+        ...p,
+        profiles: profilesById.get(p.player_id) ?? null,
+      }));
+
+      setPlayers(playersWithProfiles);
 
       // Fetch schedule
       const { data: scheduleData, error: scheduleError } = await supabase
@@ -146,7 +161,7 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
 
       // Calculate standings
       if (mappedSchedule) {
-        calculateStandings(mappedSchedule, playersData || []);
+        calculateStandings(mappedSchedule, playersWithProfiles);
       }
     } catch (error) {
       console.error("Error fetching event data:", error);
@@ -555,29 +570,41 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: idx * 0.03 }}
                     >
-                      <Card className="group hover:shadow-md hover:border-primary/30 transition-all duration-300">
+                      <Card className="group hover:shadow-md hover:border-primary/40 transition-all duration-300">
                         <CardContent className="p-4">
                           <div className="flex items-center gap-3">
                             <Avatar className="h-12 w-12 ring-2 ring-primary/10 group-hover:ring-primary/30 transition-all">
+                              {player.profiles?.avatar_url && (
+                                <AvatarImage src={player.profiles.avatar_url} alt={player.profiles?.display_name || player.profiles?.full_name || "Player"} />
+                              )}
                               <AvatarFallback className="bg-gradient-to-br from-primary/20 to-secondary/20 text-foreground font-semibold">
                                 {getInitials(player.profiles?.display_name || player.profiles?.full_name || "?")}
                               </AvatarFallback>
                             </Avatar>
                             <div className="flex-1 min-w-0">
-                              <div className="font-medium truncate">
-                                {player.profiles?.display_name || player.profiles?.full_name}
+                              <div className="font-medium truncate flex items-center gap-2">
+                                <span className="truncate">
+                                  {player.profiles?.display_name || player.profiles?.full_name || "Player"}
+                                </span>
+                                {player.player_id === userId && (
+                                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-primary/40 text-primary">You</Badge>
+                                )}
                               </div>
-                              <div className="text-sm text-muted-foreground">
-                                {playerStats ? (
-                                  <span className="flex items-center gap-2">
-                                    <span>{playerStats.gamesPlayed} games</span>
-                                    <span>•</span>
-                                    <span className="text-primary">{playerStats.wins}W</span>
-                                    <span>-</span>
-                                    <span className="text-destructive">{playerStats.losses}L</span>
+                              <div className="text-sm text-muted-foreground flex items-center gap-2 flex-wrap">
+                                {player.profiles?.current_rating != null && (
+                                  <span className="inline-flex items-center gap-1 text-foreground/80">
+                                    <Star className="h-3 w-3 text-primary fill-primary" />
+                                    {Number(player.profiles.current_rating).toFixed(2)}
+                                  </span>
+                                )}
+                                {playerStats && playerStats.gamesPlayed > 0 ? (
+                                  <span className="flex items-center gap-1.5">
+                                    <span className="text-primary font-medium">{playerStats.wins}W</span>
+                                    <span className="text-muted-foreground/60">·</span>
+                                    <span className="text-destructive font-medium">{playerStats.losses}L</span>
                                   </span>
                                 ) : (
-                                  "No games yet"
+                                  <span className="text-xs">No games yet</span>
                                 )}
                               </div>
                             </div>
@@ -591,6 +618,13 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
                   );
                 })}
               </div>
+              {filteredPlayers.length === 0 && (
+                <Card className="border-dashed">
+                  <CardContent className="p-8 text-center text-muted-foreground">
+                    {searchTerm ? "No players match your search." : "No players registered yet."}
+                  </CardContent>
+                </Card>
+              )}
             </TabsContent>
 
             {/* Standings Tab */}
