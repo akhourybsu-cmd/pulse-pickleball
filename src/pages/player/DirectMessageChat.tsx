@@ -111,8 +111,8 @@ export default function DirectMessageChat() {
     setIsSending(false);
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setNewMessage(e.target.value);
+  const handleInputChange = (value: string) => {
+    setNewMessage(value);
     startTyping('You');
   };
 
