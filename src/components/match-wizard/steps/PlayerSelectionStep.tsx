@@ -282,7 +282,7 @@ export function PlayerSelectionStep({
         <Button
           variant="outline"
           size="sm"
-          className="rounded-full h-9 px-4 text-xs gap-1.5 border-border/70"
+          className="rounded-full h-10 px-4 text-xs gap-1.5 border-border/70"
           onClick={handleAddGuestFromHeader}
         >
           <UserPlus className="h-3.5 w-3.5" />
@@ -297,20 +297,21 @@ export function PlayerSelectionStep({
           return (
             <div
               key={teamKey}
-              className="rounded-2xl border border-border/70 bg-card p-3 shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
+              className="rounded-2xl border border-border/60 bg-card p-3.5"
             >
-              <div className="flex items-center justify-between mb-2.5">
+              <div className="flex items-center justify-between mb-3">
                 <span className="text-sm font-semibold">
                   {TEAM_LABEL[teamKey]}
                 </span>
-                <Shield
+                <span
                   className={cn(
-                    "h-4 w-4",
-                    active ? "text-primary fill-primary/15" : "text-muted-foreground/40",
+                    "h-2 w-2 rounded-full transition-colors",
+                    active ? "bg-primary" : "bg-muted-foreground/25",
                   )}
+                  aria-hidden
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 {Array.from({ length: slotsPerTeam }).map((_, idx) => (
                   <SlotButton
                     key={idx}
@@ -341,7 +342,7 @@ export function PlayerSelectionStep({
       {/* Add-player bottom sheet */}
       <AddPlayerSheet
         open={sheetOpen}
-        onOpenChange={setSheetOpen}
+        onOpenChange={handleSheetOpenChange}
         excludeIds={selectedIds}
         currentUserId={currentUserId}
         currentUserProfile={currentUserProfile}
@@ -351,6 +352,7 @@ export function PlayerSelectionStep({
           setShowGuestModal(true);
         }}
       />
+
 
 
       {/* Guest dialog */}
