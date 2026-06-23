@@ -1,4 +1,5 @@
 import { HomepageNav, HomepageFooter } from "@/components/homepage";
+import { PageSEO } from "@/components/seo/PageSEO";
 import {
   PlayerHero,
   WhyPulseSection,
