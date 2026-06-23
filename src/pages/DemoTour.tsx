@@ -4,6 +4,7 @@ import { Eye } from "lucide-react";
 import logo from "@/assets/pulse-logo-premium.svg";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Footer } from "@/components/Footer";
+import { PageSEO } from "@/components/seo/PageSEO";
 
 // Demo components
 import { DemoProfileHero } from "@/components/demo/DemoProfileHero";
