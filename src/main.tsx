@@ -76,6 +76,8 @@ if ('serviceWorker' in navigator && shouldRegisterServiceWorker) {
 
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <App />
+    <HelmetProvider>
+      <App />
+    </HelmetProvider>
   </React.StrictMode>
 );
