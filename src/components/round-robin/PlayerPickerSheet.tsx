@@ -366,9 +366,11 @@ interface RowProps {
   selected: boolean;
   onToggle: () => void;
   hint?: string;
+  /** Optional trailing element rendered to the left of the check indicator. */
+  trailing?: React.ReactNode;
 }
 
-function PlayerRow({ p, selected, onToggle, hint }: RowProps) {
+function PlayerRow({ p, selected, onToggle, hint, trailing }: RowProps) {
   return (
     <button
       type="button"
@@ -392,6 +394,7 @@ function PlayerRow({ p, selected, onToggle, hint }: RowProps) {
           </p>
         )}
       </div>
+      {trailing && <div className="shrink-0">{trailing}</div>}
       <div
         className={cn(
           "h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0",
@@ -405,6 +408,7 @@ function PlayerRow({ p, selected, onToggle, hint }: RowProps) {
     </button>
   );
 }
+
 
 function EmptyState({ message }: { message: string }) {
   return (
