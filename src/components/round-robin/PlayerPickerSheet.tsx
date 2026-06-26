@@ -626,7 +626,7 @@ function GuestRosterList({
       if (!user) return [];
       let q = supabase
         .from("guest_players")
-        .select("id, display_name, linked_user_id")
+        .select("id, display_name, linked_user_id, created_at")
         .order("display_name", { ascending: true })
         .limit(100);
       if (groupId) {
@@ -640,15 +640,40 @@ function GuestRosterList({
     staleTime: 30_000,
   });
 
+  // Detect duplicate display_names so we can surface a date hint on each
+  // sibling — helps a host tell "Alex K (Jun 2)" from "Alex K (Jun 14)".
+  const nameCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const g of data) {
+      const k = g.display_name.toLowerCase();
+      counts.set(k, (counts.get(k) ?? 0) + 1);
+    }
+    return counts;
+  }, [data]);
+
   const items = data
     .filter((g) => !excludeSet?.has(g.id))
-    .map((g) => ({
-      id: g.id,
-      full_name: g.display_name,
-      display_name: g.display_name,
-      isGuest: true,
-      linked: !!g.linked_user_id,
-    }));
+    .map((g) => {
+      const isDup = (nameCounts.get(g.display_name.toLowerCase()) ?? 0) > 1;
+      const created = g.created_at
+        ? new Date(g.created_at).toLocaleDateString(undefined, {
+            month: "short",
+            day: "numeric",
+          })
+        : null;
+      return {
+        id: g.id,
+        full_name: g.display_name,
+        display_name: g.display_name,
+        isGuest: true,
+        linked: !!g.linked_user_id,
+        hint: g.linked_user_id
+          ? "Linked to a registered player"
+          : isDup && created
+            ? `Guest · added ${created}`
+            : "Guest",
+      };
+    });
 
   if (isLoading) return <EmptyState message="Loading guest roster…" />;
   if (items.length === 0)
@@ -665,12 +690,25 @@ function GuestRosterList({
             p={p}
             selected={selectedIds.has(p.id)}
             onToggle={() => onToggle(p)}
-            hint={p.linked ? "Linked to a registered player" : "Guest"}
+            hint={p.hint}
+            trailing={
+              p.linked ? (
+                <Badge variant="secondary" className="text-[10px] gap-1 px-1.5 py-0">
+                  <Link2 className="h-3 w-3" />
+                  Linked
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                  Guest
+                </Badge>
+              )
+            }
           />
         ))}
       </div>
     </ScrollArea>
   );
 }
+
 
 
