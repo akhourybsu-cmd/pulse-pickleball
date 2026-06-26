@@ -205,6 +205,20 @@ export default function VenueRoundRobinDetail() {
       return;
     }
 
+    // Guest scheduling is not wired into the generator yet — bail with a
+    // clear message rather than silently writing nulls into the schedule FK.
+    const guestParticipants = activePlayers.filter(
+      (p) => !(p as { player_id?: string }).player_id ||
+        (p as { guest_player_id?: string }).guest_player_id,
+    );
+    if (guestParticipants.length > 0) {
+      toast.error(
+        "Guest players can't be scheduled yet. Remove guests or convert them to registered players first.",
+      );
+      return;
+    }
+
+
     try {
       const { error } = await supabase.functions.invoke("generate-round-robin-schedule", {
         body: {
