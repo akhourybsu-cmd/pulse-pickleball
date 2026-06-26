@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { UserPlus, Hash, Plus, Minus, Users, Pencil } from "lucide-react";
+import { UserPlus, Hash, Plus, Minus, Users, Pencil, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 
 import { PlayerPickerSheet } from "@/components/round-robin/PlayerPickerSheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -27,6 +28,8 @@ interface PlayersStepProps {
   onMaxPlayersChange: (count: number) => void;
   groupId?: string | null;
   allowGuests?: boolean;
+  onAllowGuestsChange?: (value: boolean) => void;
+  onRatingEligibleChange?: (value: boolean) => void;
 }
 
 export function PlayersStep({
@@ -42,6 +45,8 @@ export function PlayersStep({
   onMaxPlayersChange,
   groupId,
   allowGuests,
+  onAllowGuestsChange,
+  onRatingEligibleChange,
 }: PlayersStepProps) {
   // For future events, just show max players input
   if (eventMode === "open_registration") {
@@ -204,6 +209,36 @@ export function PlayersStep({
       </p>
 
       <div className="flex-1 space-y-4">
+        {onAllowGuestsChange && (
+          <div className="rounded-xl border bg-card p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="font-semibold text-sm">Allow guest players</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Add unregistered players by name. Turning this on opens a
+                  Guest tab in the picker.
+                </p>
+              </div>
+              <Switch
+                checked={!!allowGuests}
+                onCheckedChange={(v) => {
+                  onAllowGuestsChange(v);
+                  if (v) onRatingEligibleChange?.(false);
+                }}
+              />
+            </div>
+            {allowGuests && (
+              <div className="mt-3 flex items-start gap-2 rounded-lg bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
+                <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                <span>
+                  Guest events don't count toward PULSE Ratings. You'll need
+                  to swap guests for registered players before generating a
+                  schedule.
+                </span>
+              </div>
+            )}
+          </div>
+        )}
         <PlayerPickerSheet
           selectedPlayers={selectedPlayers}
           onPlayersChange={onPlayersChange}

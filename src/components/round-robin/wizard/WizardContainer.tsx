@@ -403,6 +403,8 @@ export function WizardContainer() {
             onMaxPlayersChange={(v) => updateFormData("maxPlayers", v)}
             groupId={formData.groupVisibility !== "personal" ? formData.groupId : null}
             allowGuests={formData.allowGuests}
+            onAllowGuestsChange={(v) => updateFormData("allowGuests", v)}
+            onRatingEligibleChange={(v) => updateFormData("ratingEligible", v)}
           />
         );
       case "schedule":
