@@ -133,19 +133,26 @@ export default function ClaimGuest() {
             </div>
           ) : invite ? (
             <>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">
                   Claim guest profile
                 </p>
                 <h1 className="text-xl font-semibold">
                   {invite.guest_display_name}
                 </h1>
+                <p className="text-sm text-muted-foreground">
+                  You've been invited to claim the guest profile{" "}
+                  <strong>"{invite.guest_display_name}"</strong>. Once linked,
+                  this profile will connect to your PULSE account and keep
+                  your playing history together.
+                </p>
                 {invite.invited_email && (
-                  <p className="text-sm text-muted-foreground">
-                    Invited: {invite.invited_email}
+                  <p className="text-xs text-muted-foreground">
+                    Sent to: {invite.invited_email}
                   </p>
                 )}
               </div>
+
 
               {invite.is_linked ? (
                 <p className="text-sm text-muted-foreground">
