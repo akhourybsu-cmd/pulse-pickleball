@@ -28,6 +28,10 @@ interface RoundRobinHostHeroProps {
   status: "draft" | "live" | "completed" | "voided";
   voided?: boolean;
   ratingEligible: boolean;
+  /** When true, surface a "Guests enabled" chip explaining why this event
+   *  isn't PULSE Rating eligible. */
+  allowGuests?: boolean;
+
   format?: string;        // 'open' | 'mixed' | 'male' | 'female'
   numRounds: number;
   numCourts: number;
