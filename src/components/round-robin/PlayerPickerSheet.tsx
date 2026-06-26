@@ -301,14 +301,18 @@ export function PlayerPickerSheet({
 
             {showGuest && (
               <TabsContent value="guest" className="h-full m-0 flex flex-col">
-                <div className="px-4 pt-3 pb-2 border-b">
-                  <p className="text-xs text-muted-foreground mb-2">
-                    Add a guest by name. Guests are saved to your roster and
-                    can be reused across future round robins.
-                  </p>
+                <div className="px-4 pt-4 pb-3 border-b space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Add new guest
+                    </p>
+                    <span className="text-[10px] uppercase tracking-wide text-muted-foreground/70">
+                      Name only — reusable later
+                    </span>
+                  </div>
                   <div className="flex gap-2">
                     <Input
-                      placeholder="Guest name"
+                      placeholder="e.g. Alex K"
                       value={guestName}
                       onChange={(e) => setGuestName(e.target.value)}
                       onKeyDown={(e) => {
@@ -320,9 +324,13 @@ export function PlayerPickerSheet({
                       className="h-11 text-base"
                     />
                     <Button onClick={addGuest} disabled={!guestName.trim()}>
+                      <UserPlus className="h-4 w-4 mr-1" />
                       Add
                     </Button>
                   </div>
+                </div>
+                <div className="px-4 pt-3 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Saved guests
                 </div>
                 <GuestRosterList
                   groupId={groupId}
@@ -332,6 +340,7 @@ export function PlayerPickerSheet({
                 />
               </TabsContent>
             )}
+
           </div>
         </Tabs>
 
