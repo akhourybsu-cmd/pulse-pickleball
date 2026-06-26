@@ -1632,6 +1632,8 @@ export default function RoundRobinDetail() {
           status={event.status}
           voided={event.voided}
           ratingEligible={event.rating_eligible}
+          allowGuests={event.allow_guests}
+
           format={event.format}
           numRounds={event.num_rounds}
           numCourts={event.num_courts}
