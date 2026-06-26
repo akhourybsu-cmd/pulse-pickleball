@@ -78,6 +78,7 @@ const ClaimGuest = lazy(() => import("./pages/ClaimGuest"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const EditProfile = lazy(() => import("./pages/EditProfile"));
 const ViewProfile = lazy(() => import("./pages/ViewProfile"));
+const MyGuests = lazy(() => import("./pages/player/MyGuests"));
 const NewMatch = lazy(() => import("./pages/NewMatch"));
 const PendingMatches = lazy(() => import("./pages/PendingMatches"));
 const MatchHistory = lazy(() => import("./pages/MatchHistory"));
