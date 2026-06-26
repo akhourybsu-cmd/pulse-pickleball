@@ -18,6 +18,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   Loader2,
   UserPlus,
   Search,
@@ -26,6 +32,7 @@ import {
   Trash2,
   GitMerge,
   X,
+  Info,
 } from "lucide-react";
 import { GuestInviteDialog } from "@/components/round-robin/GuestInviteDialog";
 import { PageSEO } from "@/components/seo/PageSEO";
