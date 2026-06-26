@@ -85,7 +85,7 @@ export default function MyGuests() {
 
   return (
     <div className="min-h-screen bg-background">
-      <PageSEO title="Guest Roster | PULSE" description="Manage your reusable guest players for round robins." />
+      <PageSEO title="Guest Roster | PULSE" description="Manage your reusable guest players for round robins." path="/player/guests" />
       <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
         <header className="space-y-1">
           <h1 className="text-2xl font-bold">Guest Roster</h1>
