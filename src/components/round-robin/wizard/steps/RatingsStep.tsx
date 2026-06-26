@@ -44,7 +44,12 @@ export function RatingsStep({
                 <UserPlus className="h-5 w-5" />
               </div>
               <div>
-                <p className="font-semibold">Allow guest players</p>
+                <p className="font-semibold">
+                  Allow guest players{" "}
+                  <span className="ml-1 inline-block rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
+                    Beta
+                  </span>
+                </p>
                 <p className="text-sm text-muted-foreground">
                   Useful for casual or open play
                 </p>
@@ -59,14 +64,26 @@ export function RatingsStep({
             />
           </div>
           {allowGuests && (
-            <div className="mt-3 flex items-start gap-2 rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
-              <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-              <span>
-                This event won't count toward PULSE Ratings while guests are
-                allowed.
-              </span>
+            <div className="mt-3 space-y-2">
+              <div className="flex items-start gap-2 rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+                <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                <span>
+                  This event won't count toward PULSE Ratings while guests are
+                  allowed.
+                </span>
+              </div>
+              <div className="flex items-start gap-2 rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
+                <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                <span>
+                  Heads up: guests can be added to your roster, but automatic
+                  schedule generation and live scoring don't fully support
+                  guest slots yet. You'll be prompted to remove guests before
+                  generating a schedule.
+                </span>
+              </div>
             </div>
           )}
+
         </div>
 
         {/* Rating eligible */}

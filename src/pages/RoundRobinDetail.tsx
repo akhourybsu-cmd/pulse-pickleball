@@ -96,15 +96,23 @@ interface Event {
 interface Player {
   id: string;
   event_id: string;
-  player_id: string;
+  player_id: string | null;
+  guest_player_id: string | null;
+  guest_name: string | null;
   joined_at: string;
   active: boolean;
   profiles: {
     id: string;
     full_name: string;
     display_name: string | null;
-  };
+  } | null;
+  guest_players?: {
+    id: string;
+    display_name: string;
+    linked_user_id: string | null;
+  } | null;
 }
+
 
 interface ScheduleMatch {
   id: string;
@@ -270,8 +278,9 @@ export default function RoundRobinDetail() {
 
       const { data: playersData, error: playersError } = await supabase
         .from("round_robin_players")
-        .select("*, profiles:profiles_public!round_robin_players_player_id_fkey(*)")
+        .select("*, profiles:profiles_public!round_robin_players_player_id_fkey(*), guest_players:guest_players!round_robin_players_guest_player_id_fkey(id, display_name, linked_user_id)")
         .eq("event_id", id);
+
 
       if (playersError) throw playersError;
       setPlayers(playersData || []);
@@ -344,12 +353,28 @@ export default function RoundRobinDetail() {
 
   const handleGenerateSchedule = async () => {
     if (!event) return;
-    
+
     const activePlayers = players;
     if (activePlayers.length < 4) {
       toast.error("At least 4 players are required");
       return;
     }
+
+    // Safety gate: the schedule generator and submit_rr_match_score RPC both
+    // assume every participant has a profiles(id) — they cannot yet store
+    // guest_players uuids in round_robin_schedule.*_player_id. Block here so
+    // organizers don't hit a silent FK violation. (See "Guest support
+    // schedule integration" follow-up.)
+    const guestParticipants = activePlayers.filter(
+      (p) => !p.player_id || (p as { guest_player_id?: string }).guest_player_id,
+    );
+    if (guestParticipants.length > 0) {
+      toast.error(
+        "Guest players can't be included in generated schedules yet. Remove guest participants or wait for the upcoming guest scheduling release.",
+      );
+      return;
+    }
+
 
     // Show confirmation dialog
     const hasExistingSchedule = schedule.length > 0;
@@ -447,9 +472,18 @@ export default function RoundRobinDetail() {
       }
     }
     
-    // Fallback to players array
+    // Fallback to players array (covers both registered and guest participants)
     const player = players.find((p) => p.player_id === playerId);
-    return player?.profiles?.display_name || player?.profiles?.full_name || "Unknown Player";
+    if (player?.profiles?.display_name || player?.profiles?.full_name) {
+      return player.profiles.display_name || player.profiles.full_name;
+    }
+    if (player?.guest_players?.display_name) {
+      return `${player.guest_players.display_name} (Guest)`;
+    }
+    if (player?.guest_name) {
+      return `${player.guest_name} (Guest)`;
+    }
+    return "Unknown Player";
   };
 
   const getRoundMatches = (roundNo: number) => {
@@ -766,6 +800,19 @@ export default function RoundRobinDetail() {
       toast.error("At least 4 active players are required");
       return;
     }
+
+    // Same safety gate as handleGenerateSchedule — the generator + scoring
+    // RPC cannot store guest_players uuids in round_robin_schedule yet.
+    const guestParticipants = activePlayers.filter(
+      (p) => !p.player_id || (p as { guest_player_id?: string }).guest_player_id,
+    );
+    if (guestParticipants.length > 0) {
+      toast.error(
+        "Guest players can't be included in regenerated schedules yet. Remove guest participants first.",
+      );
+      return;
+    }
+
 
     try {
       // Only delete unscored matches from the specified round onward
