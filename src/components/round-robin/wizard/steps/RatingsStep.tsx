@@ -32,26 +32,23 @@ export function RatingsStep({
     <div className="flex flex-col h-full">
       <h2 className="text-xl font-semibold mb-2">Ratings & guests</h2>
       <p className="text-muted-foreground text-sm mb-6">
-        Configure how this round robin counts toward PULSE Ratings.
+        Decide whether this round robin counts toward PULSE Ratings.
       </p>
 
       <div className="flex-1 space-y-6">
         {/* Guest toggle */}
         <div className="p-5 rounded-xl border bg-card">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="p-3 rounded-lg bg-muted">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-4">
+              <div className="p-3 rounded-lg bg-muted shrink-0">
                 <UserPlus className="h-5 w-5" />
               </div>
-              <div>
-                <p className="font-semibold">
-                  Allow guest players{" "}
-                  <span className="ml-1 inline-block rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
-                    Beta
-                  </span>
-                </p>
+              <div className="space-y-1">
+                <p className="font-semibold leading-tight">Allow guest players</p>
                 <p className="text-sm text-muted-foreground">
-                  Useful for casual or open play
+                  Guest players are great for open play and casual groups.
+                  Because guests are unverified, this round robin won't count
+                  toward PULSE Ratings.
                 </p>
               </div>
             </div>
@@ -64,30 +61,24 @@ export function RatingsStep({
             />
           </div>
           {allowGuests && (
-            <div className="mt-3 space-y-2">
-              <div className="flex items-start gap-2 rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
-                <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-                <span>
-                  This event won't count toward PULSE Ratings while guests are
-                  allowed.
-                </span>
-              </div>
-              <div className="flex items-start gap-2 rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
-                <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-                <span>
-                  Heads up: guests can be added to your roster, but automatic
-                  schedule generation and live scoring don't fully support
-                  guest slots yet. You'll be prompted to remove guests before
-                  generating a schedule.
-                </span>
-              </div>
+            <div className="mt-4 flex items-start gap-2 rounded-lg bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
+              <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+              <span>
+                Heads up: scheduled generation and live scoring don't yet
+                support guest slots. You'll be prompted to swap guests for
+                registered players before generating a schedule.
+              </span>
             </div>
           )}
-
         </div>
 
         {/* Rating eligible */}
-        <div className="flex items-center justify-between p-5 rounded-xl border bg-card opacity-100">
+        <div
+          className={cn(
+            "flex items-center justify-between p-5 rounded-xl border bg-card transition-opacity",
+            allowGuests && "opacity-70",
+          )}
+        >
           <div className="flex items-center gap-4">
             <div className="p-3 rounded-lg bg-muted">
               <TrendingUp className="h-5 w-5" />
@@ -96,8 +87,8 @@ export function RatingsStep({
               <p className="font-semibold">Rating Eligible</p>
               <p className="text-sm text-muted-foreground">
                 {allowGuests
-                  ? "Disabled — guests are enabled"
-                  : "Count towards PULSE ratings"}
+                  ? "Off while guests are allowed"
+                  : "Count results toward PULSE Ratings"}
               </p>
             </div>
           </div>
@@ -128,3 +119,4 @@ export function RatingsStep({
     </div>
   );
 }
+
