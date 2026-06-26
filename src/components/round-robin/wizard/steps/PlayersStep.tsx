@@ -166,9 +166,12 @@ export function PlayersStep({
             </div>
           </button>
         </div>
+
+        {guestToggle && <div className="mt-6">{guestToggle}</div>}
       </div>
     );
   }
+
 
   if (inputMethod === "count") {
     return (
