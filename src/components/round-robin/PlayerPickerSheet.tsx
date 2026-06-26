@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Search, Users, UsersRound, Clock, UserPlus, X, Check } from "lucide-react";
+import { Search, Users, UsersRound, Clock, UserPlus, X, Check, Link2 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -12,8 +12,10 @@ import { useGroupMembers } from "@/hooks/useGroupMembers";
 import { useRecentCoPlayers } from "@/hooks/useRecentCoPlayers";
 import { useDebounce } from "@/hooks/useDebounce";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+
 
 export interface PickerPlayer {
   id: string;
