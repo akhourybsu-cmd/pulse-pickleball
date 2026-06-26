@@ -389,6 +389,7 @@ const AppContent = () => {
                 hub link that used to live on the dashboard. Past + active
                 events in one place. */}
             <Route path="round-robins" element={<MyRoundRobinsPage />} />
+            <Route path="guests" element={<MyGuests />} />
             {/* Legacy aliases - kept functional, redirected from old paths */}
             <Route path="find" element={<RedirectWithParams to="/player/play" />} />
             <Route path="events" element={<PlayerEvents />} />
