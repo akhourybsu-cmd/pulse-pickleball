@@ -103,18 +103,31 @@ export function GuestInviteDialog({
     }
   };
 
+  const inviteMessage = shareLink
+    ? `You've been added as a guest player in PULSE for a round robin. Claim your profile to connect your account and keep your playing history linked:\n\n${shareLink}`
+    : "";
+
   const copyLink = async () => {
     if (!shareLink) return;
     await navigator.clipboard.writeText(shareLink);
     setCopied(true);
+    toast.success("Claim link copied");
     setTimeout(() => setCopied(false), 1500);
+  };
+
+  const copyMessage = async () => {
+    if (!inviteMessage) return;
+    await navigator.clipboard.writeText(inviteMessage);
+    toast.success("Invite message copied — paste into a text or DM");
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Invite to claim profile</DialogTitle>
+          <DialogTitle>
+            {shareLink ? "Invite ready" : "Invite to claim profile"}
+          </DialogTitle>
           <DialogDescription>
             Let <strong>{guestDisplayName}</strong> link their guest history
             to a registered PULSE account.
@@ -169,6 +182,14 @@ export function GuestInviteDialog({
                 {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
               </Button>
             </div>
+            <Button
+              variant="secondary"
+              className="w-full"
+              onClick={copyMessage}
+            >
+              <Copy className="h-4 w-4 mr-2" />
+              Copy invite message
+            </Button>
             <p className="text-xs text-muted-foreground">
               The link expires in 30 days. You can revoke it from the guest
               roster.
@@ -178,6 +199,7 @@ export function GuestInviteDialog({
             </DialogFooter>
           </div>
         )}
+
       </DialogContent>
     </Dialog>
   );

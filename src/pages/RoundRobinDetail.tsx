@@ -91,6 +91,10 @@ interface Event {
    *  Surfaced to the host so they can share it with players. */
   invite_code?: string | null;
   group_id?: string | null;
+  /** When true, this event accepts guest_players and is excluded from PULSE
+   *  Ratings. Surfaced in the hero so the host always sees why. */
+  allow_guests?: boolean;
+
 }
 
 interface Player {
@@ -1628,6 +1632,8 @@ export default function RoundRobinDetail() {
           status={event.status}
           voided={event.voided}
           ratingEligible={event.rating_eligible}
+          allowGuests={event.allow_guests}
+
           format={event.format}
           numRounds={event.num_rounds}
           numCourts={event.num_courts}

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Search, Users, UsersRound, Clock, UserPlus, X, Check } from "lucide-react";
+import { Search, Users, UsersRound, Clock, UserPlus, X, Check, Link2 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -12,8 +12,10 @@ import { useGroupMembers } from "@/hooks/useGroupMembers";
 import { useRecentCoPlayers } from "@/hooks/useRecentCoPlayers";
 import { useDebounce } from "@/hooks/useDebounce";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+
 
 export interface PickerPlayer {
   id: string;
@@ -105,6 +107,8 @@ export function PlayerPickerSheet({
     setLocal((prev) => prev.filter((p) => p.id !== id));
   };
 
+  const qc = useQueryClient();
+
   const addGuest = async () => {
     const name = guestName.trim();
     if (!name) return;
@@ -127,6 +131,9 @@ export function PlayerPickerSheet({
         display_name: name,
         isGuest: true,
       };
+      // Refresh the saved-guest roster query so the new entry shows up below
+      qc.invalidateQueries({ queryKey: ["guest-players-roster"] });
+      toast.success(`${name} added as a guest`);
       if (mode === "single") {
         onPlayersChange([guest]);
         setGuestName("");
@@ -137,8 +144,10 @@ export function PlayerPickerSheet({
       setGuestName("");
     } catch (e) {
       console.error("Failed to save guest:", e);
+      toast.error("Couldn't add that guest. Try again.");
     }
   };
+
 
   const commit = () => {
     onPlayersChange(local);
@@ -292,14 +301,18 @@ export function PlayerPickerSheet({
 
             {showGuest && (
               <TabsContent value="guest" className="h-full m-0 flex flex-col">
-                <div className="px-4 pt-3 pb-2 border-b">
-                  <p className="text-xs text-muted-foreground mb-2">
-                    Add a guest by name. Guests are saved to your roster and
-                    can be reused across future round robins.
-                  </p>
+                <div className="px-4 pt-4 pb-3 border-b space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Add new guest
+                    </p>
+                    <span className="text-[10px] uppercase tracking-wide text-muted-foreground/70">
+                      Name only — reusable later
+                    </span>
+                  </div>
                   <div className="flex gap-2">
                     <Input
-                      placeholder="Guest name"
+                      placeholder="e.g. Alex K"
                       value={guestName}
                       onChange={(e) => setGuestName(e.target.value)}
                       onKeyDown={(e) => {
@@ -311,9 +324,13 @@ export function PlayerPickerSheet({
                       className="h-11 text-base"
                     />
                     <Button onClick={addGuest} disabled={!guestName.trim()}>
+                      <UserPlus className="h-4 w-4 mr-1" />
                       Add
                     </Button>
                   </div>
+                </div>
+                <div className="px-4 pt-3 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Saved guests
                 </div>
                 <GuestRosterList
                   groupId={groupId}
@@ -323,6 +340,7 @@ export function PlayerPickerSheet({
                 />
               </TabsContent>
             )}
+
           </div>
         </Tabs>
 
@@ -348,9 +366,11 @@ interface RowProps {
   selected: boolean;
   onToggle: () => void;
   hint?: string;
+  /** Optional trailing element rendered to the left of the check indicator. */
+  trailing?: React.ReactNode;
 }
 
-function PlayerRow({ p, selected, onToggle, hint }: RowProps) {
+function PlayerRow({ p, selected, onToggle, hint, trailing }: RowProps) {
   return (
     <button
       type="button"
@@ -374,6 +394,7 @@ function PlayerRow({ p, selected, onToggle, hint }: RowProps) {
           </p>
         )}
       </div>
+      {trailing && <div className="shrink-0">{trailing}</div>}
       <div
         className={cn(
           "h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0",
@@ -387,6 +408,7 @@ function PlayerRow({ p, selected, onToggle, hint }: RowProps) {
     </button>
   );
 }
+
 
 function EmptyState({ message }: { message: string }) {
   return (
@@ -608,7 +630,7 @@ function GuestRosterList({
       if (!user) return [];
       let q = supabase
         .from("guest_players")
-        .select("id, display_name, linked_user_id")
+        .select("id, display_name, linked_user_id, created_at")
         .order("display_name", { ascending: true })
         .limit(100);
       if (groupId) {
@@ -622,15 +644,40 @@ function GuestRosterList({
     staleTime: 30_000,
   });
 
+  // Detect duplicate display_names so we can surface a date hint on each
+  // sibling — helps a host tell "Alex K (Jun 2)" from "Alex K (Jun 14)".
+  const nameCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const g of data) {
+      const k = g.display_name.toLowerCase();
+      counts.set(k, (counts.get(k) ?? 0) + 1);
+    }
+    return counts;
+  }, [data]);
+
   const items = data
     .filter((g) => !excludeSet?.has(g.id))
-    .map((g) => ({
-      id: g.id,
-      full_name: g.display_name,
-      display_name: g.display_name,
-      isGuest: true,
-      linked: !!g.linked_user_id,
-    }));
+    .map((g) => {
+      const isDup = (nameCounts.get(g.display_name.toLowerCase()) ?? 0) > 1;
+      const created = g.created_at
+        ? new Date(g.created_at).toLocaleDateString(undefined, {
+            month: "short",
+            day: "numeric",
+          })
+        : null;
+      return {
+        id: g.id,
+        full_name: g.display_name,
+        display_name: g.display_name,
+        isGuest: true,
+        linked: !!g.linked_user_id,
+        hint: g.linked_user_id
+          ? "Linked to a registered player"
+          : isDup && created
+            ? `Guest · added ${created}`
+            : "Guest",
+      };
+    });
 
   if (isLoading) return <EmptyState message="Loading guest roster…" />;
   if (items.length === 0)
@@ -647,12 +694,25 @@ function GuestRosterList({
             p={p}
             selected={selectedIds.has(p.id)}
             onToggle={() => onToggle(p)}
-            hint={p.linked ? "Linked to a registered player" : "Guest"}
+            hint={p.hint}
+            trailing={
+              p.linked ? (
+                <Badge variant="secondary" className="text-[10px] gap-1 px-1.5 py-0">
+                  <Link2 className="h-3 w-3" />
+                  Linked
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                  Guest
+                </Badge>
+              )
+            }
           />
         ))}
       </div>
     </ScrollArea>
   );
 }
+
 
 

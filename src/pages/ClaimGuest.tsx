@@ -17,6 +17,21 @@ type InviteInfo = {
   is_linked: boolean;
 };
 
+/** Translate raw RPC/DB errors into player-friendly messages. */
+function friendlyError(raw: string): string {
+  const m = raw.toLowerCase();
+  if (m.includes("expired")) return "This invite has expired. Ask the organizer to send a new one.";
+  if (m.includes("already") && m.includes("link"))
+    return "This guest profile has already been linked to another account.";
+  if (m.includes("already_claimed") || m.includes("already claimed"))
+    return "This invite has already been used.";
+  if (m.includes("invalid") || m.includes("not_found") || m.includes("not found"))
+    return "This invite link isn't valid anymore.";
+  if (m.includes("approval")) return "The organizer needs to approve this claim first.";
+  if (m.includes("auth")) return "Please sign in to continue.";
+  return "Something went wrong with this invite. Please try again or contact the organizer.";
+}
+
 export default function ClaimGuest() {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
@@ -40,9 +55,9 @@ export default function ClaimGuest() {
       const { data, error } = await supabase.rpc("get_claim_invite", {
         _token: token,
       });
-      if (error) setError(error.message);
+      if (error) setError(friendlyError(error.message));
       else if (!data || (Array.isArray(data) && data.length === 0))
-        setError("This invite link is invalid or has been removed.");
+        setError("We couldn't find this invite. The link may be invalid or it was revoked.");
       else setInvite(Array.isArray(data) ? (data[0] as InviteInfo) : (data as InviteInfo));
       setLoading(false);
     })();
@@ -56,16 +71,17 @@ export default function ClaimGuest() {
     });
     setClaiming(false);
     if (error) {
-      setError(error.message);
+      setError(friendlyError(error.message));
       return;
     }
     const res = data as { ok: boolean; status?: string; error?: string };
     if (!res.ok) {
-      setError(res.error ?? "Could not claim this profile.");
+      setError(friendlyError(res.error ?? "Could not claim this profile."));
       return;
     }
     setResult(res.status === "linked" ? "linked" : "awaiting_approval");
   };
+
 
   const goSignIn = () => {
     const redirect = `/claim-guest/${token}`;
@@ -117,19 +133,26 @@ export default function ClaimGuest() {
             </div>
           ) : invite ? (
             <>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <p className="text-xs uppercase tracking-wide text-muted-foreground">
                   Claim guest profile
                 </p>
                 <h1 className="text-xl font-semibold">
                   {invite.guest_display_name}
                 </h1>
+                <p className="text-sm text-muted-foreground">
+                  You've been invited to claim the guest profile{" "}
+                  <strong>"{invite.guest_display_name}"</strong>. Once linked,
+                  this profile will connect to your PULSE account and keep
+                  your playing history together.
+                </p>
                 {invite.invited_email && (
-                  <p className="text-sm text-muted-foreground">
-                    Invited: {invite.invited_email}
+                  <p className="text-xs text-muted-foreground">
+                    Sent to: {invite.invited_email}
                   </p>
                 )}
               </div>
+
 
               {invite.is_linked ? (
                 <p className="text-sm text-muted-foreground">
