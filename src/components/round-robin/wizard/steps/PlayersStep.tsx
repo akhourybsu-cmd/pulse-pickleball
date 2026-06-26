@@ -48,6 +48,36 @@ export function PlayersStep({
   onAllowGuestsChange,
   onRatingEligibleChange,
 }: PlayersStepProps) {
+  const guestToggle = onAllowGuestsChange ? (
+    <div className="rounded-xl border bg-card p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="font-semibold text-sm">Allow guest players</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Add unregistered players by name. Turning this on opens a Guest
+            tab in the picker and disables PULSE Ratings for this event.
+          </p>
+        </div>
+        <Switch
+          checked={!!allowGuests}
+          onCheckedChange={(v) => {
+            onAllowGuestsChange(v);
+            if (v) onRatingEligibleChange?.(false);
+          }}
+        />
+      </div>
+      {allowGuests && (
+        <div className="mt-3 flex items-start gap-2 rounded-lg bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
+          <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+          <span>
+            Guest events don't count toward PULSE Ratings. You'll need to
+            swap guests for registered players before generating a schedule.
+          </span>
+        </div>
+      )}
+    </div>
+  ) : null;
+
   // For future events, just show max players input
   if (eventMode === "open_registration") {
     return (
