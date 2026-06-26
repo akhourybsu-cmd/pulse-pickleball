@@ -220,7 +220,10 @@ export function PlayersStep({
         >
           Or add players from roster instead
         </button>
+
+        {guestToggle && <div className="mt-6">{guestToggle}</div>}
       </div>
+
     );
   }
 
