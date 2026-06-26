@@ -96,15 +96,23 @@ interface Event {
 interface Player {
   id: string;
   event_id: string;
-  player_id: string;
+  player_id: string | null;
+  guest_player_id: string | null;
+  guest_name: string | null;
   joined_at: string;
   active: boolean;
   profiles: {
     id: string;
     full_name: string;
     display_name: string | null;
-  };
+  } | null;
+  guest_players?: {
+    id: string;
+    display_name: string;
+    linked_user_id: string | null;
+  } | null;
 }
+
 
 interface ScheduleMatch {
   id: string;
