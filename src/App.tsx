@@ -74,9 +74,11 @@ const Index = lazy(() => import("./pages/Index"));
 const Auth = lazy(() => import("./pages/Auth"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
+const ClaimGuest = lazy(() => import("./pages/ClaimGuest"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const EditProfile = lazy(() => import("./pages/EditProfile"));
 const ViewProfile = lazy(() => import("./pages/ViewProfile"));
+const MyGuests = lazy(() => import("./pages/player/MyGuests"));
 const NewMatch = lazy(() => import("./pages/NewMatch"));
 const PendingMatches = lazy(() => import("./pages/PendingMatches"));
 const MatchHistory = lazy(() => import("./pages/MatchHistory"));
@@ -329,8 +331,9 @@ const AppContent = () => {
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/unsubscribe" element={<Unsubscribe />} />
-          <Route path="/demo" element={<DemoTour />} />
+         <Route path="/unsubscribe" element={<Unsubscribe />} />
+         <Route path="/claim-guest/:token" element={<ClaimGuest />} />
+         <Route path="/demo" element={<DemoTour />} />
           <Route path="/players" element={<PlayersLanding />} />
           <Route path="/venues" element={<VenuesLanding />} />
           {/* Unified discovery hub (events + venues). Auth-required because
@@ -386,6 +389,7 @@ const AppContent = () => {
                 hub link that used to live on the dashboard. Past + active
                 events in one place. */}
             <Route path="round-robins" element={<MyRoundRobinsPage />} />
+            <Route path="guests" element={<MyGuests />} />
             {/* Legacy aliases - kept functional, redirected from old paths */}
             <Route path="find" element={<RedirectWithParams to="/player/play" />} />
             <Route path="events" element={<PlayerEvents />} />

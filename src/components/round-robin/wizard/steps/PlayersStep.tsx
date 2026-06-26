@@ -26,6 +26,7 @@ interface PlayersStepProps {
   maxPlayers: number;
   onMaxPlayersChange: (count: number) => void;
   groupId?: string | null;
+  allowGuests?: boolean;
 }
 
 export function PlayersStep({
@@ -40,6 +41,7 @@ export function PlayersStep({
   maxPlayers,
   onMaxPlayersChange,
   groupId,
+  allowGuests,
 }: PlayersStepProps) {
   // For future events, just show max players input
   if (eventMode === "open_registration") {
@@ -207,6 +209,7 @@ export function PlayersStep({
           onPlayersChange={onPlayersChange}
           genderFilter={format === "male" ? "male" : format === "female" ? "female" : undefined}
           groupId={groupId}
+          allowGuest={allowGuests}
           trigger={
             <button
               type="button"

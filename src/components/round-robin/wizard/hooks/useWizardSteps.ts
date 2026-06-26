@@ -38,6 +38,9 @@ export interface WizardFormData {
   /** Group sharing — links the RR to a community group. */
   groupVisibility: "personal" | "private_group" | "shared_group";
   groupId: string | null;
+  /** Allow unregistered guest players. When true, the event is forced
+   *  out of PULSE Ratings (enforced both client-side and via DB trigger). */
+  allowGuests: boolean;
 }
 
 export interface WizardStep {

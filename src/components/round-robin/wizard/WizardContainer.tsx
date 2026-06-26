@@ -69,6 +69,7 @@ export function WizardContainer() {
     isInviteOnly: false,
     groupVisibility: presetGroupId ? "shared_group" : "personal",
     groupId: presetGroupId,
+    allowGuests: false,
   });
 
   const { steps, totalSteps, isStepValid } = useWizardSteps(formData);
@@ -203,8 +204,9 @@ export function WizardContainer() {
           venue_id: venueId || null,
           num_courts: formData.courtCount,
           games_per_player: formData.gamesPerPlayer,
-          rating_eligible: formData.ratingEligible,
+          rating_eligible: formData.allowGuests ? false : formData.ratingEligible,
           rating_type: formData.ratingType,
+          allow_guests: formData.allowGuests,
           format: formData.format,
           // Discriminator: 'immediate' / 'open_registration' / 'invite_only'.
           // When isInviteOnly is checked alongside open_registration mode,
@@ -239,11 +241,15 @@ export function WizardContainer() {
 
       if (eventError) throw eventError;
 
-      // Add players for immediate mode with selected players (real + guests)
+      // Add players for immediate mode with selected players (real + guests).
+      // Guests come from PlayerPickerSheet as { id: <guest_player_id>, isGuest: true }
+      // (the picker persists new guest names to the guest_players table before
+      // returning them, so the id is always a real DB uuid we can FK to).
       if (formData.eventMode === "immediate" && formData.selectedPlayers.length > 0) {
         const playerInserts = formData.selectedPlayers.map((p) => ({
           event_id: event.id,
           player_id: p.isGuest ? null : p.id,
+          guest_player_id: p.isGuest ? p.id : null,
           guest_name: p.isGuest ? (p.display_name || p.full_name) : null,
           registration_status: "confirmed",
         }));
@@ -396,6 +402,7 @@ export function WizardContainer() {
             maxPlayers={formData.maxPlayers}
             onMaxPlayersChange={(v) => updateFormData("maxPlayers", v)}
             groupId={formData.groupVisibility !== "personal" ? formData.groupId : null}
+            allowGuests={formData.allowGuests}
           />
         );
       case "schedule":
@@ -427,6 +434,8 @@ export function WizardContainer() {
             onRatingEligibleChange={(v) => updateFormData("ratingEligible", v)}
             ratingType={formData.ratingType}
             onRatingTypeChange={(v) => updateFormData("ratingType", v)}
+            allowGuests={formData.allowGuests}
+            onAllowGuestsChange={(v) => updateFormData("allowGuests", v)}
           />
         );
       case "sharing":

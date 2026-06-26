@@ -2134,6 +2134,59 @@ export type Database = {
           },
         ]
       }
+      guest_claim_invites: {
+        Row: {
+          accepted_at: string | null
+          accepted_by_user_id: string | null
+          created_at: string
+          created_by: string
+          expires_at: string
+          guest_player_id: string
+          id: string
+          invited_email: string | null
+          requires_approval: boolean
+          status: string
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by_user_id?: string | null
+          created_at?: string
+          created_by: string
+          expires_at?: string
+          guest_player_id: string
+          id?: string
+          invited_email?: string | null
+          requires_approval?: boolean
+          status?: string
+          token: string
+          updated_at?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by_user_id?: string | null
+          created_at?: string
+          created_by?: string
+          expires_at?: string
+          guest_player_id?: string
+          id?: string
+          invited_email?: string | null
+          requires_approval?: boolean
+          status?: string
+          token?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guest_claim_invites_guest_player_id_fkey"
+            columns: ["guest_player_id"]
+            isOneToOne: false
+            referencedRelation: "guest_players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       guest_match_players: {
         Row: {
           created_at: string | null
@@ -2165,6 +2218,70 @@ export type Database = {
             columns: ["match_id"]
             isOneToOne: false
             referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      guest_players: {
+        Row: {
+          created_at: string
+          created_by: string
+          display_name: string
+          email: string | null
+          group_id: string | null
+          id: string
+          linked_at: string | null
+          linked_user_id: string | null
+          phone: string | null
+          skill_estimate: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          display_name: string
+          email?: string | null
+          group_id?: string | null
+          id?: string
+          linked_at?: string | null
+          linked_user_id?: string | null
+          phone?: string | null
+          skill_estimate?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          display_name?: string
+          email?: string | null
+          group_id?: string | null
+          id?: string
+          linked_at?: string | null
+          linked_user_id?: string | null
+          phone?: string | null
+          skill_estimate?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guest_players_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guest_players_linked_user_id_fkey"
+            columns: ["linked_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "guest_players_linked_user_id_fkey"
+            columns: ["linked_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
             referencedColumns: ["id"]
           },
         ]
@@ -3324,6 +3441,7 @@ export type Database = {
       }
       round_robin_events: {
         Row: {
+          allow_guests: boolean
           completed_at: string | null
           created_at: string
           current_round: number | null
@@ -3343,6 +3461,7 @@ export type Database = {
           num_rounds: number
           organizer_id: string
           rating_eligible: boolean
+          rating_exclusion_reason: string | null
           rating_type: Database["public"]["Enums"]["rating_type"]
           registration_deadline: string | null
           registration_mode: string | null
@@ -3356,6 +3475,7 @@ export type Database = {
           voided_by: string | null
         }
         Insert: {
+          allow_guests?: boolean
           completed_at?: string | null
           created_at?: string
           current_round?: number | null
@@ -3375,6 +3495,7 @@ export type Database = {
           num_rounds: number
           organizer_id: string
           rating_eligible?: boolean
+          rating_exclusion_reason?: string | null
           rating_type?: Database["public"]["Enums"]["rating_type"]
           registration_deadline?: string | null
           registration_mode?: string | null
@@ -3388,6 +3509,7 @@ export type Database = {
           voided_by?: string | null
         }
         Update: {
+          allow_guests?: boolean
           completed_at?: string | null
           created_at?: string
           current_round?: number | null
@@ -3407,6 +3529,7 @@ export type Database = {
           num_rounds?: number
           organizer_id?: string
           rating_eligible?: boolean
+          rating_exclusion_reason?: string | null
           rating_type?: Database["public"]["Enums"]["rating_type"]
           registration_deadline?: string | null
           registration_mode?: string | null
@@ -3442,6 +3565,7 @@ export type Database = {
           bye_count: number
           event_id: string
           guest_name: string | null
+          guest_player_id: string | null
           id: string
           joined_at: string
           player_id: string | null
@@ -3452,6 +3576,7 @@ export type Database = {
           bye_count?: number
           event_id: string
           guest_name?: string | null
+          guest_player_id?: string | null
           id?: string
           joined_at?: string
           player_id?: string | null
@@ -3462,6 +3587,7 @@ export type Database = {
           bye_count?: number
           event_id?: string
           guest_name?: string | null
+          guest_player_id?: string | null
           id?: string
           joined_at?: string
           player_id?: string | null
@@ -3473,6 +3599,13 @@ export type Database = {
             columns: ["event_id"]
             isOneToOne: false
             referencedRelation: "round_robin_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "round_robin_players_guest_player_id_fkey"
+            columns: ["guest_player_id"]
+            isOneToOne: false
+            referencedRelation: "guest_players"
             referencedColumns: ["id"]
           },
           {
@@ -6260,6 +6393,7 @@ export type Database = {
       }
     }
     Functions: {
+      approve_guest_claim: { Args: { _invite_id: string }; Returns: Json }
       are_friends: { Args: { _a: string; _b: string }; Returns: boolean }
       assign_players_to_courts: {
         Args: { p_session_id: string }
@@ -6306,6 +6440,7 @@ export type Database = {
         Args: { player_id_param: string }
         Returns: undefined
       }
+      claim_guest_profile: { Args: { _token: string }; Returns: Json }
       cleanup_completed_match: {
         Args: { match_ticket_id: string }
         Returns: undefined
@@ -6383,6 +6518,19 @@ export type Database = {
       generate_group_invite_code: { Args: never; Returns: string }
       generate_rr_invite_code: { Args: never; Returns: string }
       generate_unique_handle: { Args: { base_name: string }; Returns: string }
+      get_claim_invite: {
+        Args: { _token: string }
+        Returns: {
+          expires_at: string
+          guest_display_name: string
+          guest_player_id: string
+          invite_id: string
+          invited_email: string
+          is_linked: boolean
+          requires_approval: boolean
+          status: string
+        }[]
+      }
       get_emergency_contact: {
         Args: { profile_id: string }
         Returns: {
@@ -6513,6 +6661,10 @@ export type Database = {
           handle: string
           id: string
         }[]
+      }
+      merge_guest_players: {
+        Args: { _keep_id: string; _remove_id: string }
+        Returns: Json
       }
       move_to_dlq: {
         Args: {
