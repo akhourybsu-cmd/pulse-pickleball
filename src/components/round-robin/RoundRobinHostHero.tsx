@@ -201,11 +201,19 @@ export function RoundRobinHostHero({
               Voided
             </span>
           )}
-          {ratingEligible && (
+          {ratingEligible ? (
             <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-primary/15 text-primary text-[10px] font-bold tracking-wider uppercase">
               Rating eligible
             </span>
-          )}
+          ) : allowGuests ? (
+            <span
+              title="Guest players are allowed, so results don't count toward PULSE Ratings."
+              className="inline-flex items-center px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-[10px] font-bold tracking-wider uppercase"
+            >
+              Not rating eligible · Guests enabled
+            </span>
+          ) : null}
+
         </div>
 
         {/* Title — compact, premium */}
