@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { UserPlus, Hash, Plus, Minus, Users, Pencil } from "lucide-react";
+import { UserPlus, Hash, Plus, Minus, Users, Pencil, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 
 import { PlayerPickerSheet } from "@/components/round-robin/PlayerPickerSheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
