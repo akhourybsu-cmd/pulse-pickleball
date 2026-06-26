@@ -17,6 +17,21 @@ type InviteInfo = {
   is_linked: boolean;
 };
 
+/** Translate raw RPC/DB errors into player-friendly messages. */
+function friendlyError(raw: string): string {
+  const m = raw.toLowerCase();
+  if (m.includes("expired")) return "This invite has expired. Ask the organizer to send a new one.";
+  if (m.includes("already") && m.includes("link"))
+    return "This guest profile has already been linked to another account.";
+  if (m.includes("already_claimed") || m.includes("already claimed"))
+    return "This invite has already been used.";
+  if (m.includes("invalid") || m.includes("not_found") || m.includes("not found"))
+    return "This invite link isn't valid anymore.";
+  if (m.includes("approval")) return "The organizer needs to approve this claim first.";
+  if (m.includes("auth")) return "Please sign in to continue.";
+  return "Something went wrong with this invite. Please try again or contact the organizer.";
+}
+
 export default function ClaimGuest() {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
