@@ -107,6 +107,8 @@ export function PlayerPickerSheet({
     setLocal((prev) => prev.filter((p) => p.id !== id));
   };
 
+  const qc = useQueryClient();
+
   const addGuest = async () => {
     const name = guestName.trim();
     if (!name) return;
@@ -129,6 +131,9 @@ export function PlayerPickerSheet({
         display_name: name,
         isGuest: true,
       };
+      // Refresh the saved-guest roster query so the new entry shows up below
+      qc.invalidateQueries({ queryKey: ["guest-players-roster"] });
+      toast.success(`${name} added as a guest`);
       if (mode === "single") {
         onPlayersChange([guest]);
         setGuestName("");
@@ -139,8 +144,10 @@ export function PlayerPickerSheet({
       setGuestName("");
     } catch (e) {
       console.error("Failed to save guest:", e);
+      toast.error("Couldn't add that guest. Try again.");
     }
   };
+
 
   const commit = () => {
     onPlayersChange(local);
