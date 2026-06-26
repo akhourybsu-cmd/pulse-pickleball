@@ -792,6 +792,19 @@ export default function RoundRobinDetail() {
       return;
     }
 
+    // Same safety gate as handleGenerateSchedule — the generator + scoring
+    // RPC cannot store guest_players uuids in round_robin_schedule yet.
+    const guestParticipants = activePlayers.filter(
+      (p) => !p.player_id || (p as { guest_player_id?: string }).guest_player_id,
+    );
+    if (guestParticipants.length > 0) {
+      toast.error(
+        "Guest players can't be included in regenerated schedules yet. Remove guest participants first.",
+      );
+      return;
+    }
+
+
     try {
       // Only delete unscored matches from the specified round onward
       const { error: deleteError } = await supabase
