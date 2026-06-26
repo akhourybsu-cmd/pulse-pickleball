@@ -18,6 +18,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   Loader2,
   UserPlus,
   Search,
@@ -26,6 +32,7 @@ import {
   Trash2,
   GitMerge,
   X,
+  Info,
 } from "lucide-react";
 import { GuestInviteDialog } from "@/components/round-robin/GuestInviteDialog";
 import { PageSEO } from "@/components/seo/PageSEO";
@@ -248,13 +255,36 @@ export default function MyGuests() {
                     ? `${duplicateNames.size} possible duplicate${duplicateNames.size === 1 ? "" : "s"} detected`
                     : "Tip: use Merge to combine duplicate guests"}
                 </p>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setMergeMode(true)}
-                >
-                  <GitMerge className="h-3.5 w-3.5 mr-1" /> Merge duplicates
-                </Button>
+                <div className="flex items-center gap-2">
+                  <TooltipProvider delayDuration={100}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button className="text-muted-foreground hover:text-foreground transition-colors">
+                          <Info className="h-4 w-4" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-xs">
+                        <p className="text-xs">
+                          <strong>What gets merged:</strong> All round-robin
+                          appearances, stats, and claim invites from the removed
+                          guest move to the kept guest.
+                        </p>
+                        <p className="text-xs mt-1 text-muted-foreground">
+                          <strong>Why merge:</strong> Clean up accidental
+                          duplicates so player history stays accurate and your
+                          roster stays tidy.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setMergeMode(true)}
+                  >
+                    <GitMerge className="h-3.5 w-3.5 mr-1" /> Merge duplicates
+                  </Button>
+                </div>
               </>
             )}
           </div>
