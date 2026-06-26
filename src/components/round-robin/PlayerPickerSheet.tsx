@@ -105,23 +105,39 @@ export function PlayerPickerSheet({
     setLocal((prev) => prev.filter((p) => p.id !== id));
   };
 
-  const addGuest = () => {
+  const addGuest = async () => {
     const name = guestName.trim();
     if (!name) return;
-    const guest: PickerPlayer = {
-      id: `guest-${crypto.randomUUID()}`,
-      full_name: name,
-      display_name: name,
-      isGuest: true,
-    };
-    if (mode === "single") {
-      onPlayersChange([guest]);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data, error } = await supabase
+        .from("guest_players")
+        .insert({
+          display_name: name,
+          created_by: user.id,
+          group_id: groupId ?? null,
+        } as never)
+        .select("id, display_name")
+        .single();
+      if (error) throw error;
+      const guest: PickerPlayer = {
+        id: (data as { id: string }).id,
+        full_name: name,
+        display_name: name,
+        isGuest: true,
+      };
+      if (mode === "single") {
+        onPlayersChange([guest]);
+        setGuestName("");
+        setOpen(false);
+        return;
+      }
+      setLocal((prev) => [...prev, guest]);
       setGuestName("");
-      setOpen(false);
-      return;
+    } catch (e) {
+      console.error("Failed to save guest:", e);
     }
-    setLocal((prev) => [...prev, guest]);
-    setGuestName("");
   };
 
   const commit = () => {
@@ -275,28 +291,36 @@ export function PlayerPickerSheet({
             </TabsContent>
 
             {showGuest && (
-              <TabsContent value="guest" className="h-full m-0 p-4">
-                <p className="text-sm text-muted-foreground mb-3">
-                  Add someone who isn't on the app. They'll appear in the
-                  lineup by name only — no profile or rating.
-                </p>
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Guest name"
-                    value={guestName}
-                    onChange={(e) => setGuestName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        addGuest();
-                      }
-                    }}
-                    className="h-11 text-base"
-                  />
-                  <Button onClick={addGuest} disabled={!guestName.trim()}>
-                    Add
-                  </Button>
+              <TabsContent value="guest" className="h-full m-0 flex flex-col">
+                <div className="px-4 pt-3 pb-2 border-b">
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Add a guest by name. Guests are saved to your roster and
+                    can be reused across future round robins.
+                  </p>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Guest name"
+                      value={guestName}
+                      onChange={(e) => setGuestName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          addGuest();
+                        }
+                      }}
+                      className="h-11 text-base"
+                    />
+                    <Button onClick={addGuest} disabled={!guestName.trim()}>
+                      Add
+                    </Button>
+                  </div>
                 </div>
+                <GuestRosterList
+                  groupId={groupId}
+                  selectedIds={selectedIds}
+                  onToggle={toggle}
+                  excludeSet={excludeSet}
+                />
               </TabsContent>
             )}
           </div>
@@ -565,4 +589,70 @@ function SearchList({
     </ScrollArea>
   );
 }
+
+function GuestRosterList({
+  groupId,
+  selectedIds,
+  onToggle,
+  excludeSet,
+}: {
+  groupId?: string | null;
+  selectedIds: Set<string>;
+  onToggle: (p: PickerPlayer) => void;
+  excludeSet?: Set<string>;
+}) {
+  const { data = [], isLoading } = useQuery({
+    queryKey: ["guest-players-roster", groupId ?? "personal"],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return [];
+      let q = supabase
+        .from("guest_players")
+        .select("id, display_name, linked_user_id")
+        .order("display_name", { ascending: true })
+        .limit(100);
+      if (groupId) {
+        q = q.or(`created_by.eq.${user.id},group_id.eq.${groupId}`);
+      } else {
+        q = q.eq("created_by", user.id);
+      }
+      const { data } = await q;
+      return data ?? [];
+    },
+    staleTime: 30_000,
+  });
+
+  const items = data
+    .filter((g) => !excludeSet?.has(g.id))
+    .map((g) => ({
+      id: g.id,
+      full_name: g.display_name,
+      display_name: g.display_name,
+      isGuest: true,
+      linked: !!g.linked_user_id,
+    }));
+
+  if (isLoading) return <EmptyState message="Loading guest roster…" />;
+  if (items.length === 0)
+    return (
+      <EmptyState message="No saved guests yet. Add one above — they'll be reusable next time." />
+    );
+
+  return (
+    <ScrollArea className="flex-1">
+      <div className="py-2">
+        {items.map((p) => (
+          <PlayerRow
+            key={p.id}
+            p={p}
+            selected={selectedIds.has(p.id)}
+            onToggle={() => onToggle(p)}
+            hint={p.linked ? "Linked to a registered player" : "Guest"}
+          />
+        ))}
+      </div>
+    </ScrollArea>
+  );
+}
+
 
