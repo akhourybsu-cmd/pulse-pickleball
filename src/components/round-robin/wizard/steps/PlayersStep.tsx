@@ -28,6 +28,8 @@ interface PlayersStepProps {
   onMaxPlayersChange: (count: number) => void;
   groupId?: string | null;
   allowGuests?: boolean;
+  onAllowGuestsChange?: (value: boolean) => void;
+  onRatingEligibleChange?: (value: boolean) => void;
 }
 
 export function PlayersStep({
@@ -43,6 +45,8 @@ export function PlayersStep({
   onMaxPlayersChange,
   groupId,
   allowGuests,
+  onAllowGuestsChange,
+  onRatingEligibleChange,
 }: PlayersStepProps) {
   // For future events, just show max players input
   if (eventMode === "open_registration") {
