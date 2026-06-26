@@ -40,9 +40,9 @@ export default function ClaimGuest() {
       const { data, error } = await supabase.rpc("get_claim_invite", {
         _token: token,
       });
-      if (error) setError(error.message);
+      if (error) setError(friendlyError(error.message));
       else if (!data || (Array.isArray(data) && data.length === 0))
-        setError("This invite link is invalid or has been removed.");
+        setError("We couldn't find this invite. The link may be invalid or it was revoked.");
       else setInvite(Array.isArray(data) ? (data[0] as InviteInfo) : (data as InviteInfo));
       setLoading(false);
     })();
@@ -56,16 +56,17 @@ export default function ClaimGuest() {
     });
     setClaiming(false);
     if (error) {
-      setError(error.message);
+      setError(friendlyError(error.message));
       return;
     }
     const res = data as { ok: boolean; status?: string; error?: string };
     if (!res.ok) {
-      setError(res.error ?? "Could not claim this profile.");
+      setError(friendlyError(res.error ?? "Could not claim this profile."));
       return;
     }
     setResult(res.status === "linked" ? "linked" : "awaiting_approval");
   };
+
 
   const goSignIn = () => {
     const redirect = `/claim-guest/${token}`;
