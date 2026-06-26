@@ -118,9 +118,11 @@ export function PlayersStep({
             </p>
           )}
         </div>
+        {guestToggle && <div className="mt-6">{guestToggle}</div>}
       </div>
     );
   }
+
 
   // Immediate mode - allow adding players or entering count
   if (!inputMethod) {
