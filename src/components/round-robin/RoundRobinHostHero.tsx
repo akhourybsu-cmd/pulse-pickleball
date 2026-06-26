@@ -77,6 +77,8 @@ export function RoundRobinHostHero({
   status,
   voided,
   ratingEligible,
+  allowGuests,
+
   format: eventFormat,
   numRounds,
   numCourts,
