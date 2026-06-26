@@ -472,9 +472,18 @@ export default function RoundRobinDetail() {
       }
     }
     
-    // Fallback to players array
+    // Fallback to players array (covers both registered and guest participants)
     const player = players.find((p) => p.player_id === playerId);
-    return player?.profiles?.display_name || player?.profiles?.full_name || "Unknown Player";
+    if (player?.profiles?.display_name || player?.profiles?.full_name) {
+      return player.profiles.display_name || player.profiles.full_name;
+    }
+    if (player?.guest_players?.display_name) {
+      return `${player.guest_players.display_name} (Guest)`;
+    }
+    if (player?.guest_name) {
+      return `${player.guest_name} (Guest)`;
+    }
+    return "Unknown Player";
   };
 
   const getRoundMatches = (roundNo: number) => {
