@@ -344,12 +344,28 @@ export default function RoundRobinDetail() {
 
   const handleGenerateSchedule = async () => {
     if (!event) return;
-    
+
     const activePlayers = players;
     if (activePlayers.length < 4) {
       toast.error("At least 4 players are required");
       return;
     }
+
+    // Safety gate: the schedule generator and submit_rr_match_score RPC both
+    // assume every participant has a profiles(id) — they cannot yet store
+    // guest_players uuids in round_robin_schedule.*_player_id. Block here so
+    // organizers don't hit a silent FK violation. (See "Guest support
+    // schedule integration" follow-up.)
+    const guestParticipants = activePlayers.filter(
+      (p) => !p.player_id || (p as { guest_player_id?: string }).guest_player_id,
+    );
+    if (guestParticipants.length > 0) {
+      toast.error(
+        "Guest players can't be included in generated schedules yet. Remove guest participants or wait for the upcoming guest scheduling release.",
+      );
+      return;
+    }
+
 
     // Show confirmation dialog
     const hasExistingSchedule = schedule.length > 0;
