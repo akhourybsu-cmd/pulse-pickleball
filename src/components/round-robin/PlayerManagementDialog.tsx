@@ -297,7 +297,10 @@ export function PlayerManagementDialog({
                 onPlayersChange={setAddPicks}
                 genderFilter={genderFilter}
                 groupId={groupId}
-                excludePlayerIds={players.map(p => p.player_id).filter(Boolean)}
+                excludePlayerIds={[
+                  ...players.map(p => p.player_id).filter(Boolean) as string[],
+                  ...players.map(p => p.guest_player_id).filter(Boolean) as string[],
+                ]}
                 trigger={
                   <button
                     type="button"
