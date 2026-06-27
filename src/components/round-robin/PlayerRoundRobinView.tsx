@@ -597,10 +597,9 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
                         <CardContent>
                           <div className="space-y-3">
                             {matches.map((match, idx) => {
-                              const isBye =
-                                !match.a1_player_id ||
-                                !match.b1_player_id ||
-                                match.a1_player_id === match.b1_player_id;
+                              const a1Id = match.a1_player_id ?? match.a1_guest_id;
+                              const b1Id = match.b1_player_id ?? match.b1_guest_id;
+                              const isBye = !a1Id || !b1Id || a1Id === b1Id;
                               const teamAScore = match.team_a_score ?? match.team1_score ?? null;
                               const teamBScore = match.team_b_score ?? match.team2_score ?? null;
                               const teamAWon = match.completed && teamAScore !== null && teamBScore !== null && teamAScore > teamBScore;
