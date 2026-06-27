@@ -121,10 +121,15 @@ export function WizardContainer() {
   };
 
   const handleCreate = async () => {
-    const name = formData.eventName.trim() || generateDefaultEventName();
-    
+    const name = formData.eventName.trim();
+    const locationLabel = formData.locationLabel.trim();
+
     if (!name) {
       toast.error("Event name is required");
+      return;
+    }
+    if (!locationLabel) {
+      toast.error("Location name is required");
       return;
     }
 
