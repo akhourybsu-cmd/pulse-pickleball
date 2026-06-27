@@ -49,6 +49,8 @@ interface Player {
   id: string;
   player_id: string;
   registration_status: string;
+  is_guest?: boolean;
+  guest_display_name?: string | null;
   profiles: {
     id: string;
     full_name: string | null;
