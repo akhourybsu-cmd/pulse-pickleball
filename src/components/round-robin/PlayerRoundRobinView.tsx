@@ -303,7 +303,11 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
   const getPlayerName = (playerId: string | null) => {
     if (!playerId) return "BYE";
     const player = players.find((p) => p.player_id === playerId);
-    return player?.profiles?.display_name || player?.profiles?.full_name || "Unknown";
+    if (!player) return "Someone";
+    if (player.profiles) {
+      return player.profiles.display_name || player.profiles.full_name || "Someone";
+    }
+    return `${player.guest_display_name || "Guest"} (Guest)`;
   };
 
   const getInitials = (name: string) => {
