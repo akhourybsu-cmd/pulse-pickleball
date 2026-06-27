@@ -347,7 +347,7 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
   };
 
   const filteredPlayers = players.filter((p) =>
-    (p.profiles?.display_name || p.profiles?.full_name || "")
+    (p.profiles?.display_name || p.profiles?.full_name || p.guest_display_name || "")
       .toLowerCase()
       .includes(searchTerm.toLowerCase())
   );
