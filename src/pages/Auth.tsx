@@ -81,11 +81,11 @@ const Auth = () => {
   const [sessionChecked, setSessionChecked] = useState(false);
   const [alreadyAuthed, setAlreadyAuthed] = useState(false);
 
-  const [isLogin, setIsLogin] = useState(true);
+  const [isLogin, setIsLogin] = useState(() => searchParams.get('mode') !== 'signup');
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [email, setEmail] = useState("");
-  const [confirmEmail, setConfirmEmail] = useState("");
+  const [email, setEmail] = useState(() => searchParams.get('email') ?? "");
+  const [confirmEmail, setConfirmEmail] = useState(() => searchParams.get('email') ?? "");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [firstName, setFirstName] = useState("");
