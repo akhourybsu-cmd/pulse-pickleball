@@ -745,10 +745,11 @@ export default function VenueRoundRobinDetail() {
         totalRounds={event.num_rounds}
         groupId={event.group_id}
         genderFilter={event.format === "male" ? "male" : event.format === "female" ? "female" : undefined}
-        onAddPlayer={async ({ playerId, guestName }) => {
+        onAddPlayer={async ({ playerId, guestPlayerId, guestName }) => {
           await supabase.from("round_robin_players").insert({
             event_id: event.id,
             player_id: playerId,
+            guest_player_id: guestPlayerId ?? null,
             guest_name: guestName ?? null,
           } as never);
           fetchEventDetails();
