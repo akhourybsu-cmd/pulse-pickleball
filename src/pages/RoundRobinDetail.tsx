@@ -1034,18 +1034,22 @@ export default function RoundRobinDetail() {
         reason: "Player removed from roster (past scores preserved)",
       });
 
+      // Refresh roster immediately so the removed player disappears even if regen short-circuits.
+      await fetchEventDetails();
+
       // Regenerate from current round
       const fromRound = event.current_round || 1;
-      const regenResult = await regenerateScheduleFromRound(fromRound);
+      const regenResult = await regenerateScheduleFromRound(fromRound).catch(() => null);
 
       const roundsSuffix = regenResult?.roundsChanged
         ? ` · Schedule now ${regenResult.targetRounds} rounds to keep ${event.games_per_player || 3} games/player.`
         : "";
 
-      toast.success("Player removed and schedule regenerated - they can rejoin later" + roundsSuffix);
+      toast.success("Player removed - they can rejoin later" + roundsSuffix);
     } catch (error: any) {
       toast.error("Failed to remove player");
       console.error(error);
+      await fetchEventDetails();
       throw error;
     }
   };
