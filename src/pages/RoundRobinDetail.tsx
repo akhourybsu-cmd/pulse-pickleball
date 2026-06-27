@@ -1370,8 +1370,8 @@ export default function RoundRobinDetail() {
           })
           .eq("id", match.match_id);
 
-        // Recalculate ratings if event is rating eligible
-        if (event.rating_eligible) {
+        // Recalculate ratings if event is rating eligible (and not a guest event)
+        if (event.rating_eligible && !event.allow_guests) {
           await supabase.rpc("recalculate_all_ratings");
         }
       }
