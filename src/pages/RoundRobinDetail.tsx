@@ -2098,7 +2098,8 @@ export default function RoundRobinDetail() {
                             )}
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
                     </>
                   )}
                 </div>
