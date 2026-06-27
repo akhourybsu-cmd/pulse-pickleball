@@ -632,7 +632,7 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
                                     ) : (
                                       <div className="flex-1 grid grid-cols-[1fr_auto_1fr] gap-4 items-center">
                                         <div className={`text-sm ${teamAWon ? "font-semibold text-primary" : ""}`}>
-                                          {getPlayerName(match.a1_player_id)} / {getPlayerName(match.a2_player_id)}
+                                          {seatName(match, 'a1')} / {seatName(match, 'a2')}
                                         </div>
                                         <div className="text-center">
                                           {match.completed ? (
