@@ -136,12 +136,12 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
         if (p.player_id) userIdSet.add(p.player_id);
         if (p.guest_player_id) guestIdSet.add(p.guest_player_id);
       });
-      (scheduleData || []).forEach((m) => {
+      (scheduleData || []).forEach((m: any) => {
         [m.a1_player_id, m.a2_player_id, m.b1_player_id, m.b2_player_id].forEach((id) => {
-          if (!id) return;
-          // We don't know whether this id is a user or guest; query both.
-          userIdSet.add(id);
-          guestIdSet.add(id);
+          if (id) userIdSet.add(id);
+        });
+        [m.a1_guest_id, m.a2_guest_id, m.b1_guest_id, m.b2_guest_id].forEach((id) => {
+          if (id) guestIdSet.add(id);
         });
       });
 
