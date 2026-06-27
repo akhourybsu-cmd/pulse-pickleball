@@ -2477,6 +2477,17 @@ export default function RoundRobinDetail() {
             auditEntries={auditEntries}
           />
 
+          {inviteGuest && (
+            <GuestInviteDialog
+              open={!!inviteGuest}
+              onOpenChange={(o) => !o && setInviteGuest(null)}
+              guestPlayerId={inviteGuest.id}
+              guestDisplayName={inviteGuest.name}
+              defaultEmail={inviteGuest.email}
+            />
+          )}
+
+
 
           <EditNotifications
             eventId={id || ""}
