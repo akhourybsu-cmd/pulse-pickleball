@@ -2053,10 +2053,20 @@ export default function RoundRobinDetail() {
                       <p className="text-sm font-medium text-muted-foreground mb-2">
                         Players ({players.length})
                       </p>
-                      {players.map((player) => (
+                      {players.map((player) => {
+                        const displayName =
+                          player.profiles?.display_name ||
+                          player.profiles?.full_name ||
+                          ((player as any).guest_players?.display_name
+                            ? `${(player as any).guest_players.display_name} (Guest)`
+                            : null) ||
+                          ((player as any).guest_name
+                            ? `${(player as any).guest_name} (Guest)`
+                            : "Guest");
+                        return (
                         <div key={player.id} className="flex items-center justify-between p-3 border rounded-lg">
                           <div className="font-medium">
-                            {player.profiles.display_name || player.profiles.full_name}
+                            {displayName}
                           </div>
                           <div className="flex items-center gap-2">
                             <Badge variant="default">Active</Badge>
@@ -2065,8 +2075,7 @@ export default function RoundRobinDetail() {
                                 size="sm"
                                 variant="ghost"
                                 onClick={async () => {
-                                  const playerName = player.profiles.display_name || player.profiles.full_name;
-                                  if (!confirm(`Remove ${playerName} from this event?`)) return;
+                                  if (!confirm(`Remove ${displayName} from this event?`)) return;
                                   
                                   try {
                                     const { error } = await supabase
