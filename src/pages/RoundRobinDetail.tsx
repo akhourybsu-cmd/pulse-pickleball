@@ -368,21 +368,14 @@ export default function RoundRobinDetail() {
       return;
     }
 
-    // Safety gate: the schedule generator and submit_rr_match_score RPC both
-    // assume every participant has a profiles(id) — they cannot yet store
-    // guest_players uuids in round_robin_schedule.*_player_id. Block here so
-    // organizers don't hit a silent FK violation. (See "Guest support
-    // schedule integration" follow-up.)
-    const guestParticipants = activePlayers.filter(
-      (p) => !p.player_id || (p as { guest_player_id?: string }).guest_player_id,
+    // Guests are now supported: just verify every seat has either a player or a guest.
+    const unfilled = activePlayers.filter(
+      (p) => !p.player_id && !(p as { guest_player_id?: string }).guest_player_id,
     );
-    if (guestParticipants.length > 0) {
-      toast.error(
-        "Guest players can't be included in generated schedules yet. Remove guest participants or wait for the upcoming guest scheduling release.",
-      );
+    if (unfilled.length > 0) {
+      toast.error("Every roster slot must be either a registered player or a guest.");
       return;
     }
-
 
     // Show confirmation dialog
     const hasExistingSchedule = schedule.length > 0;
@@ -403,7 +396,10 @@ export default function RoundRobinDetail() {
       const { data, error } = await supabase.functions.invoke("generate-round-robin-schedule", {
         body: {
           event_id: event.id,
-          player_ids: activePlayers.map((p) => p.player_id),
+          participants: activePlayers.map((p) => ({
+            player_id: p.player_id,
+            guest_id: (p as { guest_player_id?: string }).guest_player_id,
+          })),
           num_courts: event.num_courts,
           num_rounds: event.num_rounds,
           games_per_player: event.games_per_player || 3,
