@@ -96,6 +96,7 @@ const QRCheckIn = lazy(() => import("./pages/QRCheckIn"));
 const Kiosk = lazy(() => import("./pages/Kiosk"));
 const AdminManage = lazy(() => import("./pages/AdminManage"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+const AdminArchive = lazy(() => import("./pages/admin/AdminArchive"));
 const AdminPlayers = lazy(() => import("./pages/AdminPlayers"));
 const AdminBadges = lazy(() => import("./pages/AdminBadges"));
 const AdminMatches = lazy(() => import("./pages/AdminMatches"));
