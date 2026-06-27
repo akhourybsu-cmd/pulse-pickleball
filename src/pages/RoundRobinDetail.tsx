@@ -817,17 +817,14 @@ export default function RoundRobinDetail() {
       return;
     }
 
-    // Same safety gate as handleGenerateSchedule — the generator + scoring
-    // RPC cannot store guest_players uuids in round_robin_schedule yet.
-    const guestParticipants = activePlayers.filter(
-      (p) => !p.player_id || (p as { guest_player_id?: string }).guest_player_id,
+    const unfilled = activePlayers.filter(
+      (p) => !p.player_id && !(p as { guest_player_id?: string }).guest_player_id,
     );
-    if (guestParticipants.length > 0) {
-      toast.error(
-        "Guest players can't be included in regenerated schedules yet. Remove guest participants first.",
-      );
+    if (unfilled.length > 0) {
+      toast.error("Every active roster slot must be either a registered player or a guest.");
       return;
     }
+
 
 
     try {
