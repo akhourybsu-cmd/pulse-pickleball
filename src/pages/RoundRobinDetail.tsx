@@ -847,14 +847,22 @@ export default function RoundRobinDetail() {
   ): Promise<{ previousRounds: number; targetRounds: number; roundsChanged: boolean } | undefined> => {
     if (!event) return;
 
-    const activePlayers = players.filter(p => p.active);
+    // Always read the live roster from the DB — React state may be stale
+    // immediately after an add/remove call.
+    const { data: liveRoster, error: rosterError } = await supabase
+      .from("round_robin_players")
+      .select("id, player_id, guest_player_id, active")
+      .eq("event_id", event.id);
+    if (rosterError) throw rosterError;
+
+    const activePlayers = (liveRoster || []).filter((p: any) => p.active !== false);
     if (activePlayers.length < 4) {
       toast.error("At least 4 active players are required");
       return;
     }
 
     const unfilled = activePlayers.filter(
-      (p) => !p.player_id && !(p as { guest_player_id?: string }).guest_player_id,
+      (p: any) => !p.player_id && !p.guest_player_id,
     );
     if (unfilled.length > 0) {
       toast.error("Every active roster slot must be either a registered player or a guest.");
