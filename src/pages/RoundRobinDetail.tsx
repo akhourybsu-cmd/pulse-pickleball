@@ -1572,7 +1572,12 @@ export default function RoundRobinDetail() {
 
   // Get player initials
   const getPlayerInitials = (player: Player) => {
-    const name = player.profiles.display_name || player.profiles.full_name;
+    const name =
+      player.profiles?.display_name ||
+      player.profiles?.full_name ||
+      (player as any).guest_players?.display_name ||
+      (player as any).guest_name ||
+      "Guest";
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
 
