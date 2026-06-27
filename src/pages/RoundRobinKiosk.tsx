@@ -381,27 +381,26 @@ export default function RoundRobinKiosk() {
         }
       });
 
-      // Attach profiles to full schedule for standings
-      const fullScheduleWithProfiles = fullSchedule?.map(match => ({
+      // Attach profile + guest joins to each schedule row so downstream code
+      // can resolve every seat's display name regardless of whether it's a
+      // registered player or a guest.
+      const attach = (match: any) => ({
         ...match,
         a1_profile: match.a1_player_id ? profileMap.get(match.a1_player_id) : null,
         a2_profile: match.a2_player_id ? profileMap.get(match.a2_player_id) : null,
         b1_profile: match.b1_player_id ? profileMap.get(match.b1_player_id) : null,
         b2_profile: match.b2_player_id ? profileMap.get(match.b2_player_id) : null,
-      })) || [];
+        a1_guest: match.a1_guest_id ? guestMap.get(match.a1_guest_id) : null,
+        a2_guest: match.a2_guest_id ? guestMap.get(match.a2_guest_id) : null,
+        b1_guest: match.b1_guest_id ? guestMap.get(match.b1_guest_id) : null,
+        b2_guest: match.b2_guest_id ? guestMap.get(match.b2_guest_id) : null,
+      });
 
+      const fullScheduleWithProfiles = (fullSchedule || []).map(attach);
       setAllSchedule(fullScheduleWithProfiles);
       setStandings(calculateStandings(fullScheduleWithProfiles));
 
-      // Attach profiles to current round matches
-      const currentWithProfiles = currentSchedule?.map(match => ({
-        ...match,
-        a1_profile: match.a1_player_id ? profileMap.get(match.a1_player_id) : null,
-        a2_profile: match.a2_player_id ? profileMap.get(match.a2_player_id) : null,
-        b1_profile: match.b1_player_id ? profileMap.get(match.b1_player_id) : null,
-        b2_profile: match.b2_player_id ? profileMap.get(match.b2_player_id) : null,
-      })) || [];
-
+      const currentWithProfiles = (currentSchedule || []).map(attach);
       setCurrentRoundMatches(currentWithProfiles);
 
       // Fetch next round if not last round
@@ -417,14 +416,7 @@ export default function RoundRobinKiosk() {
         if (nextError) {
           console.error("Error loading next round:", nextError);
         } else {
-          const nextWithProfiles = nextSchedule?.map(match => ({
-            ...match,
-            a1_profile: match.a1_player_id ? profileMap.get(match.a1_player_id) : null,
-            a2_profile: match.a2_player_id ? profileMap.get(match.a2_player_id) : null,
-            b1_profile: match.b1_player_id ? profileMap.get(match.b1_player_id) : null,
-            b2_profile: match.b2_player_id ? profileMap.get(match.b2_player_id) : null,
-          })) || [];
-
+          const nextWithProfiles = (nextSchedule || []).map(attach);
           setNextRoundMatches(nextWithProfiles);
         }
       } else {
