@@ -425,7 +425,8 @@ export function PlayerManagementDialog({
                 groupId={groupId}
                 excludePlayerIds={[
                   ...(substituteOriginal ? [substituteOriginal] : []),
-                  ...players.map(p => p.player_id).filter(Boolean),
+                  ...players.map(p => p.player_id).filter(Boolean) as string[],
+                  ...players.map(p => p.guest_player_id).filter(Boolean) as string[],
                 ]}
                 trigger={
                   <button
