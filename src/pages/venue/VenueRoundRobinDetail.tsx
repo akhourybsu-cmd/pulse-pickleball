@@ -143,7 +143,7 @@ export default function VenueRoundRobinDetail() {
 
       const { data: playersData } = await supabase
         .from("round_robin_players")
-        .select("*, profiles:profiles_public!round_robin_players_player_id_fkey(*)")
+        .select("*, profiles:profiles_public!round_robin_players_player_id_fkey(*), guest_players:guest_players!round_robin_players_guest_player_id_fkey(id, display_name, linked_user_id)")
         .eq("event_id", id);
 
       setPlayers(playersData || []);
