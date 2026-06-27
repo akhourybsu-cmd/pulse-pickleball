@@ -933,9 +933,9 @@ export default function RoundRobinDetail() {
       const { error: generateError } = await supabase.functions.invoke("generate-round-robin-schedule", {
         body: {
           event_id: event.id,
-          participants: activePlayers.map((p) => ({
+          participants: activePlayers.map((p: any) => ({
             player_id: p.player_id,
-            guest_id: (p as { guest_player_id?: string }).guest_player_id,
+            guest_id: p.guest_player_id,
           })),
           num_courts: event.num_courts,
           num_rounds: targetRounds,
