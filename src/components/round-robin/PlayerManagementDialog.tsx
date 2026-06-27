@@ -392,16 +392,19 @@ export function PlayerManagementDialog({
                   <SelectValue placeholder="Choose player to replace..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {activePlayers.map(p => (
-                    <SelectItem key={p.id} value={p.player_id}>
-                      {p.profiles.display_name || p.profiles.full_name}
-                    </SelectItem>
-                  ))}
+                  {activePlayers.filter(p => !!p.player_id).map(p => {
+                    const resolved = resolveRRParticipant(p as any);
+                    return (
+                      <SelectItem key={p.id} value={p.player_id as string}>
+                        {resolved.name}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
               {substituteOriginal && (
                 <div className="text-sm text-muted-foreground mt-1">
-                  Selected: <strong>{activePlayers.find(p => p.player_id === substituteOriginal)?.profiles.display_name || activePlayers.find(p => p.player_id === substituteOriginal)?.profiles.full_name}</strong>
+                  Selected: <strong>{resolveRRParticipant((activePlayers.find(p => p.player_id === substituteOriginal) ?? {}) as any).name}</strong>
                 </div>
               )}
             </div>
