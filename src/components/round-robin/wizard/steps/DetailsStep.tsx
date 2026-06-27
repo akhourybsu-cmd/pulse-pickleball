@@ -57,13 +57,15 @@ export function DetailsStep({
     <div className="flex flex-col h-full">
       <h2 className="text-xl font-semibold mb-2">Event details</h2>
       <p className="text-muted-foreground text-sm mb-6">
-        A few details so players know what they're joining. All optional.
+        A few details so players know what they're joining.
       </p>
 
       <div className="flex-1 space-y-5">
         {/* Event name */}
         <div className="space-y-2">
-          <label className="text-sm font-medium">Event name</label>
+          <label className="text-sm font-medium flex items-center gap-1">
+            Event name <Asterisk className="h-3 w-3 text-destructive" />
+          </label>
           <Input
             value={eventName}
             onChange={(e) => onEventNameChange(e.target.value)}
@@ -72,7 +74,7 @@ export function DetailsStep({
             maxLength={100}
           />
           <p className="text-xs text-muted-foreground">
-            Leave blank to use: <span className="font-medium">{defaultName}</span>
+            Players will see this name in the app.
           </p>
         </div>
 
