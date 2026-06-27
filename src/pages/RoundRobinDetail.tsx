@@ -462,22 +462,29 @@ export default function RoundRobinDetail() {
 
   const getPlayerName = (playerId: string | null, matchData?: any) => {
     if (!playerId) return "—";
-    
-    // First try to get from the match data if provided (has joined profile data)
+
+    // Prefer joined data on the match row (handles both profiles and guests).
     if (matchData) {
-      const profileKey = 
-        playerId === matchData.a1_player_id ? 'a1_profile' :
-        playerId === matchData.a2_player_id ? 'a2_profile' :
-        playerId === matchData.b1_player_id ? 'b1_profile' :
-        playerId === matchData.b2_player_id ? 'b2_profile' : null;
-      
-      if (profileKey && matchData[profileKey]) {
-        return matchData[profileKey].display_name || matchData[profileKey].full_name;
+      const seat =
+        playerId === matchData.a1_player_id || playerId === matchData.a1_guest_id ? 'a1' :
+        playerId === matchData.a2_player_id || playerId === matchData.a2_guest_id ? 'a2' :
+        playerId === matchData.b1_player_id || playerId === matchData.b1_guest_id ? 'b1' :
+        playerId === matchData.b2_player_id || playerId === matchData.b2_guest_id ? 'b2' : null;
+
+      if (seat) {
+        const profile = matchData[`${seat}_profile`];
+        const guest = matchData[`${seat}_guest`];
+        if (profile?.display_name || profile?.full_name) {
+          return profile.display_name || profile.full_name;
+        }
+        if (guest?.display_name) return `${guest.display_name} (Guest)`;
       }
     }
-    
-    // Fallback to players array (covers both registered and guest participants)
-    const player = players.find((p) => p.player_id === playerId);
+
+    // Fallback to players array — id may be either a registered player_id or a guest_player_id.
+    const player = players.find(
+      (p) => p.player_id === playerId || (p as any).guest_player_id === playerId,
+    );
     if (player?.profiles?.display_name || player?.profiles?.full_name) {
       return player.profiles.display_name || player.profiles.full_name;
     }
@@ -488,6 +495,14 @@ export default function RoundRobinDetail() {
       return `${player.guest_name} (Guest)`;
     }
     return "Unknown Player";
+  };
+
+  // Resolve a seat's display name regardless of whether it's filled by a
+  // registered player or a guest. Use this in render paths where we'd
+  // previously have hard-coded `match.<seat>_player_id`.
+  const getSeatName = (match: any, seat: 'a1' | 'a2' | 'b1' | 'b2') => {
+    const id = match?.[`${seat}_player_id`] ?? match?.[`${seat}_guest_id`] ?? null;
+    return getPlayerName(id, match);
   };
 
   const getRoundMatches = (roundNo: number) => {
