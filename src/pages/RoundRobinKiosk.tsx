@@ -194,8 +194,14 @@ export default function RoundRobinKiosk() {
     schedule
       .filter(m => !m.is_bye && m.team1_score !== null && m.team2_score !== null)
       .forEach((match) => {
-        const team1 = [match.a1_player_id, match.a2_player_id].filter((id): id is string => id !== null);
-        const team2 = [match.b1_player_id, match.b2_player_id].filter((id): id is string => id !== null);
+        const team1 = [
+          match.a1_player_id ?? match.a1_guest_id,
+          match.a2_player_id ?? match.a2_guest_id,
+        ].filter((id): id is string => id !== null);
+        const team2 = [
+          match.b1_player_id ?? match.b1_guest_id,
+          match.b2_player_id ?? match.b2_guest_id,
+        ].filter((id): id is string => id !== null);
 
         const t1score = match.team1_score!;
         const t2score = match.team2_score!;
