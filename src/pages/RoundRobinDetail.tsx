@@ -2111,15 +2111,14 @@ export default function RoundRobinDetail() {
                         Players ({players.length})
                       </p>
                       {players.map((player) => {
+                        const guest = (player as any).guest_players as { id?: string; display_name?: string; linked_user_id?: string | null; email?: string | null } | undefined;
+                        const guestId = (player as any).guest_player_id as string | null | undefined;
+                        const guestName = guest?.display_name || (player as any).guest_name;
+                        const isUnlinkedGuest = !!guestId && !guest?.linked_user_id;
                         const displayName =
                           player.profiles?.display_name ||
                           player.profiles?.full_name ||
-                          ((player as any).guest_players?.display_name
-                            ? `${(player as any).guest_players.display_name} (Guest)`
-                            : null) ||
-                          ((player as any).guest_name
-                            ? `${(player as any).guest_name} (Guest)`
-                            : "Guest");
+                          (guestName ? `${guestName} (Guest)` : "Guest");
                         return (
                         <div key={player.id} className="flex items-center justify-between p-3 border rounded-lg">
                           <div className="font-medium">
@@ -2127,6 +2126,20 @@ export default function RoundRobinDetail() {
                           </div>
                           <div className="flex items-center gap-2">
                             <Badge variant="default">Active</Badge>
+                            {isOrganizer && isUnlinkedGuest && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setInviteGuest({
+                                  id: guestId!,
+                                  name: guestName || "Guest",
+                                  email: guest?.email ?? null,
+                                })}
+                              >
+                                <Send className="h-3 w-3 mr-1" />
+                                Invite
+                              </Button>
+                            )}
                             {isOrganizer && !event.voided && event.status !== 'completed' && (
                               <Button
                                 size="sm"
