@@ -1,7 +1,6 @@
-import { useMemo, useState } from "react";
-import { Search, Users, UsersRound, Clock, UserPlus, X, Check, Link2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Search, Users, UsersRound, Clock, UserPlus, X, Check, Link2, type LucideIcon } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -42,6 +41,8 @@ interface PlayerPickerSheetProps {
   allowGuest?: boolean;
 }
 
+type PickerTab = "friends" | "group" | "recent" | "search" | "guest";
+
 function initials(p: { full_name: string; display_name: string | null }) {
   const name = p.display_name || p.full_name || "?";
   return name
@@ -70,7 +71,7 @@ export function PlayerPickerSheet({
 }: PlayerPickerSheetProps) {
   const [open, setOpen] = useState(false);
   const [local, setLocal] = useState<PickerPlayer[]>(selectedPlayers);
-  const [tab, setTab] = useState("friends");
+  const [tab, setTab] = useState<PickerTab>("friends");
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 250);
   const [guestName, setGuestName] = useState("");
@@ -83,9 +84,18 @@ export function PlayerPickerSheet({
 
   // Reset local state every time the sheet opens
   const handleOpenChange = (v: boolean) => {
-    if (v) setLocal(selectedPlayers);
+    if (v) {
+      setLocal(selectedPlayers);
+      if (tab === "guest" && !showGuest) setTab("friends");
+      if (tab === "group" && !groupId) setTab("friends");
+    }
     setOpen(v);
   };
+
+  useEffect(() => {
+    if (tab === "guest" && !showGuest) setTab("friends");
+    if (tab === "group" && !groupId) setTab("friends");
+  }, [groupId, showGuest, tab]);
 
   const selectedIds = useMemo(() => new Set(local.map((p) => p.id)), [local]);
 
@@ -154,6 +164,14 @@ export function PlayerPickerSheet({
     setOpen(false);
   };
 
+  const tabs: { value: PickerTab; label: string; icon: LucideIcon }[] = [
+    { value: "friends", label: "Friends", icon: Users },
+    ...(groupId ? [{ value: "group" as const, label: "Group", icon: UsersRound }] : []),
+    { value: "recent", label: "Recent", icon: Clock },
+    { value: "search", label: "Search", icon: Search },
+    ...(showGuest ? [{ value: "guest" as const, label: "Guest", icon: UserPlus }] : []),
+  ];
+
 
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
@@ -205,58 +223,44 @@ export function PlayerPickerSheet({
           )}
         </div>
 
-        {/* Tabs */}
-        <Tabs
-          value={tab}
-          onValueChange={setTab}
-          className="flex-1 flex flex-col min-h-0"
-        >
-          <TabsList
-            className="mx-4 mt-3 h-auto grid"
-            style={{
-              gridTemplateColumns: `repeat(${
-                3 + (groupId ? 1 : 0) + (showGuest ? 1 : 0)
-              }, minmax(0, 1fr))`,
-            }}
+        {/* Picker tabs use plain buttons instead of Radix Tabs so the bottom-sheet
+            content stays reliable inside the Round Robin wizard on mobile. */}
+        <div className="flex-1 flex flex-col min-h-0">
+          <div
+            className="mx-4 mt-3 grid rounded-md bg-muted p-1 text-muted-foreground"
+            style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
+            role="tablist"
+            aria-label="Player sources"
           >
-            <TabsTrigger value="friends" className="text-xs py-2 gap-1">
-              <Users className="h-3.5 w-3.5" />
-              Friends
-            </TabsTrigger>
-            {groupId && (
-              <TabsTrigger value="group" className="text-xs py-2 gap-1">
-                <UsersRound className="h-3.5 w-3.5" />
-                Group
-              </TabsTrigger>
-            )}
-            <TabsTrigger value="recent" className="text-xs py-2 gap-1">
-              <Clock className="h-3.5 w-3.5" />
-              Recent
-            </TabsTrigger>
-            <TabsTrigger value="search" className="text-xs py-2 gap-1">
-              <Search className="h-3.5 w-3.5" />
-              Search
-            </TabsTrigger>
-            {showGuest && (
-              <TabsTrigger value="guest" className="text-xs py-2 gap-1">
-                <UserPlus className="h-3.5 w-3.5" />
-                Guest
-              </TabsTrigger>
-            )}
-          </TabsList>
+            {tabs.map(({ value, label, icon: Icon }) => (
+              <button
+                key={value}
+                type="button"
+                role="tab"
+                aria-selected={tab === value}
+                onClick={() => setTab(value)}
+                className={cn(
+                  "inline-flex min-h-10 items-center justify-center gap-1 rounded-sm px-1.5 py-2 text-xs font-medium transition-all",
+                  tab === value && "bg-background text-foreground shadow-sm",
+                )}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                <span className="truncate">{label}</span>
+              </button>
+            ))}
+          </div>
 
           <div className="flex-1 min-h-0 overflow-hidden">
-            <TabsContent value="friends" className="h-full m-0">
+            {tab === "friends" && (
               <FriendsList
                 selectedIds={selectedIds}
                 onToggle={toggle}
                 genderFilter={genderFilter}
                 excludeSet={excludeSet}
               />
-            </TabsContent>
+            )}
 
-            {groupId && (
-              <TabsContent value="group" className="h-full m-0">
+            {groupId && tab === "group" && (
                 <GroupList
                   groupId={groupId}
                   selectedIds={selectedIds}
@@ -265,19 +269,19 @@ export function PlayerPickerSheet({
                   excludeSet={excludeSet}
                   showAddAll={mode === "multi"}
                 />
-              </TabsContent>
             )}
 
-            <TabsContent value="recent" className="h-full m-0">
+            {tab === "recent" && (
               <RecentList
                 selectedIds={selectedIds}
                 onToggle={toggle}
                 genderFilter={genderFilter}
                 excludeSet={excludeSet}
               />
-            </TabsContent>
+            )}
 
-            <TabsContent value="search" className="h-full m-0 flex flex-col">
+            {tab === "search" && (
+              <div className="h-full m-0 flex flex-col">
               <div className="px-4 pt-3">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -297,7 +301,8 @@ export function PlayerPickerSheet({
                 genderFilter={genderFilter}
                 excludeSet={excludeSet}
               />
-            </TabsContent>
+              </div>
+            )}
 
             {showGuest && tab === "guest" && (
               <GuestPanel
@@ -312,7 +317,7 @@ export function PlayerPickerSheet({
             )}
 
           </div>
-        </Tabs>
+        </div>
 
         {/* Sticky footer — only in multi mode */}
         {mode === "multi" && (
