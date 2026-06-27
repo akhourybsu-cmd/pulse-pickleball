@@ -257,8 +257,9 @@ export function PlayerManagementDialog({
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                   {inactivePlayers.map((p) => {
-                    const name = p.profiles.display_name || p.profiles.full_name || 'Player';
-                    const initials = name.split(' ').map(s => s[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
+                    const resolved = resolveRRParticipant(p as any);
+                    const name = resolved.name;
+                    const initials = rrParticipantInitials(resolved);
                     return (
                       <div
                         key={p.id}
@@ -269,7 +270,7 @@ export function PlayerManagementDialog({
                             {initials}
                           </AvatarFallback>
                         </Avatar>
-                        <span className="text-sm text-muted-foreground truncate">{name}</span>
+                        <span className="text-sm text-muted-foreground truncate">{name}{resolved.isGuest ? ' (Guest)' : ''}</span>
                       </div>
                     );
                   })}
