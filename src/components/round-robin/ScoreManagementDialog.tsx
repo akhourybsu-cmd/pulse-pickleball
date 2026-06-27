@@ -286,11 +286,11 @@ export function ScoreManagementDialog({
                               <div className="space-y-0.5 text-foreground/90">
                                 <div className="truncate">
                                   <span className="text-muted-foreground">A:</span>{' '}
-                                  {getPlayerName(match.a1_player_id)} &amp; {getPlayerName(match.a2_player_id)}
+                                  {getPlayerName(match.a1_player_id ?? match.a1_guest_id)} &amp; {getPlayerName(match.a2_player_id ?? match.a2_guest_id)}
                                 </div>
                                 <div className="truncate">
                                   <span className="text-muted-foreground">B:</span>{' '}
-                                  {getPlayerName(match.b1_player_id)} &amp; {getPlayerName(match.b2_player_id)}
+                                  {getPlayerName(match.b1_player_id ?? match.b1_guest_id)} &amp; {getPlayerName(match.b2_player_id ?? match.b2_guest_id)}
                                 </div>
                               </div>
                             </div>
@@ -318,7 +318,7 @@ export function ScoreManagementDialog({
                         <SelectContent>
                           {roundMatches.map(match => (
                             <SelectItem key={match.id} value={match.id}>
-                              Court {match.court_no}: {getPlayerName(match.a1_player_id)} & {getPlayerName(match.a2_player_id)} vs {getPlayerName(match.b1_player_id)} & {getPlayerName(match.b2_player_id)}
+                              Court {match.court_no}: {getPlayerName(match.a1_player_id ?? match.a1_guest_id)} & {getPlayerName(match.a2_player_id ?? match.a2_guest_id)} vs {getPlayerName(match.b1_player_id ?? match.b1_guest_id)} & {getPlayerName(match.b2_player_id ?? match.b2_guest_id)}
                               {match.team1_score !== null && match.team2_score !== null && ` (${match.team1_score}-${match.team2_score})`}
                             </SelectItem>
                           ))}
@@ -341,7 +341,7 @@ export function ScoreManagementDialog({
                               className="h-12 text-2xl text-center font-bold tabular-nums focus-visible:ring-2 focus-visible:ring-primary"
                             />
                             <p className="text-xs text-muted-foreground truncate">
-                              {getPlayerName(selectedMatchData.a1_player_id)} &amp; {getPlayerName(selectedMatchData.a2_player_id)}
+                              {getPlayerName(selectedMatchData.a1_player_id ?? selectedMatchData.a1_guest_id)} &amp; {getPlayerName(selectedMatchData.a2_player_id ?? selectedMatchData.a2_guest_id)}
                             </p>
                           </div>
                           <div className="rounded-xl border border-border bg-card p-3 space-y-2">
@@ -356,7 +356,7 @@ export function ScoreManagementDialog({
                               className="h-12 text-2xl text-center font-bold tabular-nums focus-visible:ring-2 focus-visible:ring-primary"
                             />
                             <p className="text-xs text-muted-foreground truncate">
-                              {getPlayerName(selectedMatchData.b1_player_id)} &amp; {getPlayerName(selectedMatchData.b2_player_id)}
+                              {getPlayerName(selectedMatchData.b1_player_id ?? selectedMatchData.b1_guest_id)} &amp; {getPlayerName(selectedMatchData.b2_player_id ?? selectedMatchData.b2_guest_id)}
                             </p>
                           </div>
                         </div>
@@ -400,7 +400,7 @@ export function ScoreManagementDialog({
                         <SelectContent>
                           {roundMatches.map(match => (
                             <SelectItem key={match.id} value={match.id}>
-                              Court {match.court_no}: {getPlayerName(match.a1_player_id)} & {getPlayerName(match.a2_player_id)} vs {getPlayerName(match.b1_player_id)} & {getPlayerName(match.b2_player_id)} ({match.team1_score}-{match.team2_score})
+                              Court {match.court_no}: {getPlayerName(match.a1_player_id ?? match.a1_guest_id)} & {getPlayerName(match.a2_player_id ?? match.a2_guest_id)} vs {getPlayerName(match.b1_player_id ?? match.b1_guest_id)} & {getPlayerName(match.b2_player_id ?? match.b2_guest_id)} ({match.team1_score}-{match.team2_score})
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -422,7 +422,7 @@ export function ScoreManagementDialog({
                               className="h-12 text-2xl text-center font-bold tabular-nums focus-visible:ring-2 focus-visible:ring-primary"
                             />
                             <p className="text-xs text-muted-foreground truncate">
-                              {getPlayerName(selectedMatchData.a1_player_id)} &amp; {getPlayerName(selectedMatchData.a2_player_id)}
+                              {getPlayerName(selectedMatchData.a1_player_id ?? selectedMatchData.a1_guest_id)} &amp; {getPlayerName(selectedMatchData.a2_player_id ?? selectedMatchData.a2_guest_id)}
                             </p>
                           </div>
                           <div className="rounded-xl border border-border bg-card p-3 space-y-2">
@@ -437,7 +437,7 @@ export function ScoreManagementDialog({
                               className="h-12 text-2xl text-center font-bold tabular-nums focus-visible:ring-2 focus-visible:ring-primary"
                             />
                             <p className="text-xs text-muted-foreground truncate">
-                              {getPlayerName(selectedMatchData.b1_player_id)} &amp; {getPlayerName(selectedMatchData.b2_player_id)}
+                              {getPlayerName(selectedMatchData.b1_player_id ?? selectedMatchData.b1_guest_id)} &amp; {getPlayerName(selectedMatchData.b2_player_id ?? selectedMatchData.b2_guest_id)}
                             </p>
                           </div>
                         </div>
@@ -480,7 +480,7 @@ export function ScoreManagementDialog({
                         <SelectContent>
                           {roundMatches.map(match => (
                             <SelectItem key={match.id} value={match.id}>
-                              Court {match.court_no}: {getPlayerName(match.a1_player_id)} & {getPlayerName(match.a2_player_id)} vs {getPlayerName(match.b1_player_id)} & {getPlayerName(match.b2_player_id)} ({match.team1_score}-{match.team2_score})
+                              Court {match.court_no}: {getPlayerName(match.a1_player_id ?? match.a1_guest_id)} & {getPlayerName(match.a2_player_id ?? match.a2_guest_id)} vs {getPlayerName(match.b1_player_id ?? match.b1_guest_id)} & {getPlayerName(match.b2_player_id ?? match.b2_guest_id)} ({match.team1_score}-{match.team2_score})
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -505,7 +505,7 @@ export function ScoreManagementDialog({
                         <SelectContent>
                           {roundMatches.map(match => (
                             <SelectItem key={match.id} value={match.id}>
-                              Court {match.court_no}: {getPlayerName(match.a1_player_id)} & {getPlayerName(match.a2_player_id)} vs {getPlayerName(match.b1_player_id)} & {getPlayerName(match.b2_player_id)} ({match.team1_score}-{match.team2_score})
+                              Court {match.court_no}: {getPlayerName(match.a1_player_id ?? match.a1_guest_id)} & {getPlayerName(match.a2_player_id ?? match.a2_guest_id)} vs {getPlayerName(match.b1_player_id ?? match.b1_guest_id)} & {getPlayerName(match.b2_player_id ?? match.b2_guest_id)} ({match.team1_score}-{match.team2_score})
                             </SelectItem>
                           ))}
                         </SelectContent>
