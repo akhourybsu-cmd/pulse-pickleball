@@ -127,6 +127,18 @@ interface ScheduleMatch {
   a2_player_id: string | null;
   b1_player_id: string | null;
   b2_player_id: string | null;
+  a1_guest_id: string | null;
+  a2_guest_id: string | null;
+  b1_guest_id: string | null;
+  b2_guest_id: string | null;
+  a1_profile?: { display_name?: string | null; full_name?: string | null } | null;
+  a2_profile?: { display_name?: string | null; full_name?: string | null } | null;
+  b1_profile?: { display_name?: string | null; full_name?: string | null } | null;
+  b2_profile?: { display_name?: string | null; full_name?: string | null } | null;
+  a1_guest?: { display_name?: string | null } | null;
+  a2_guest?: { display_name?: string | null } | null;
+  b1_guest?: { display_name?: string | null } | null;
+  b2_guest?: { display_name?: string | null } | null;
   is_bye: boolean;
   team1_score: number | null;
   team2_score: number | null;
@@ -303,7 +315,11 @@ export default function RoundRobinDetail() {
           a1_profile:profiles_public!round_robin_schedule_a1_player_id_fkey(display_name, full_name),
           a2_profile:profiles_public!round_robin_schedule_a2_player_id_fkey(display_name, full_name),
           b1_profile:profiles_public!round_robin_schedule_b1_player_id_fkey(display_name, full_name),
-          b2_profile:profiles_public!round_robin_schedule_b2_player_id_fkey(display_name, full_name)
+          b2_profile:profiles_public!round_robin_schedule_b2_player_id_fkey(display_name, full_name),
+          a1_guest:guest_players!round_robin_schedule_a1_guest_id_fkey(display_name),
+          a2_guest:guest_players!round_robin_schedule_a2_guest_id_fkey(display_name),
+          b1_guest:guest_players!round_robin_schedule_b1_guest_id_fkey(display_name),
+          b2_guest:guest_players!round_robin_schedule_b2_guest_id_fkey(display_name)
         `)
         .eq("event_id", id)
         .order("round_no")
@@ -364,21 +380,14 @@ export default function RoundRobinDetail() {
       return;
     }
 
-    // Safety gate: the schedule generator and submit_rr_match_score RPC both
-    // assume every participant has a profiles(id) — they cannot yet store
-    // guest_players uuids in round_robin_schedule.*_player_id. Block here so
-    // organizers don't hit a silent FK violation. (See "Guest support
-    // schedule integration" follow-up.)
-    const guestParticipants = activePlayers.filter(
-      (p) => !p.player_id || (p as { guest_player_id?: string }).guest_player_id,
+    // Guests are now supported: just verify every seat has either a player or a guest.
+    const unfilled = activePlayers.filter(
+      (p) => !p.player_id && !(p as { guest_player_id?: string }).guest_player_id,
     );
-    if (guestParticipants.length > 0) {
-      toast.error(
-        "Guest players can't be included in generated schedules yet. Remove guest participants or wait for the upcoming guest scheduling release.",
-      );
+    if (unfilled.length > 0) {
+      toast.error("Every roster slot must be either a registered player or a guest.");
       return;
     }
-
 
     // Show confirmation dialog
     const hasExistingSchedule = schedule.length > 0;
@@ -399,7 +408,10 @@ export default function RoundRobinDetail() {
       const { data, error } = await supabase.functions.invoke("generate-round-robin-schedule", {
         body: {
           event_id: event.id,
-          player_ids: activePlayers.map((p) => p.player_id),
+          participants: activePlayers.map((p) => ({
+            player_id: p.player_id,
+            guest_id: (p as { guest_player_id?: string }).guest_player_id,
+          })),
           num_courts: event.num_courts,
           num_rounds: event.num_rounds,
           games_per_player: event.games_per_player || 3,
@@ -462,22 +474,29 @@ export default function RoundRobinDetail() {
 
   const getPlayerName = (playerId: string | null, matchData?: any) => {
     if (!playerId) return "—";
-    
-    // First try to get from the match data if provided (has joined profile data)
+
+    // Prefer joined data on the match row (handles both profiles and guests).
     if (matchData) {
-      const profileKey = 
-        playerId === matchData.a1_player_id ? 'a1_profile' :
-        playerId === matchData.a2_player_id ? 'a2_profile' :
-        playerId === matchData.b1_player_id ? 'b1_profile' :
-        playerId === matchData.b2_player_id ? 'b2_profile' : null;
-      
-      if (profileKey && matchData[profileKey]) {
-        return matchData[profileKey].display_name || matchData[profileKey].full_name;
+      const seat =
+        playerId === matchData.a1_player_id || playerId === matchData.a1_guest_id ? 'a1' :
+        playerId === matchData.a2_player_id || playerId === matchData.a2_guest_id ? 'a2' :
+        playerId === matchData.b1_player_id || playerId === matchData.b1_guest_id ? 'b1' :
+        playerId === matchData.b2_player_id || playerId === matchData.b2_guest_id ? 'b2' : null;
+
+      if (seat) {
+        const profile = matchData[`${seat}_profile`];
+        const guest = matchData[`${seat}_guest`];
+        if (profile?.display_name || profile?.full_name) {
+          return profile.display_name || profile.full_name;
+        }
+        if (guest?.display_name) return `${guest.display_name} (Guest)`;
       }
     }
-    
-    // Fallback to players array (covers both registered and guest participants)
-    const player = players.find((p) => p.player_id === playerId);
+
+    // Fallback to players array — id may be either a registered player_id or a guest_player_id.
+    const player = players.find(
+      (p) => p.player_id === playerId || (p as any).guest_player_id === playerId,
+    );
     if (player?.profiles?.display_name || player?.profiles?.full_name) {
       return player.profiles.display_name || player.profiles.full_name;
     }
@@ -488,6 +507,14 @@ export default function RoundRobinDetail() {
       return `${player.guest_name} (Guest)`;
     }
     return "Unknown Player";
+  };
+
+  // Resolve a seat's display name regardless of whether it's filled by a
+  // registered player or a guest. Use this in render paths where we'd
+  // previously have hard-coded `match.<seat>_player_id`.
+  const getSeatName = (match: any, seat: 'a1' | 'a2' | 'b1' | 'b2') => {
+    const id = match?.[`${seat}_player_id`] ?? match?.[`${seat}_guest_id`] ?? null;
+    return getPlayerName(id, match);
   };
 
   const getRoundMatches = (roundNo: number) => {
@@ -538,7 +565,16 @@ export default function RoundRobinDetail() {
       if (!match.is_bye && match.team1_score !== null && match.team2_score !== null) {
         const team1Won = match.team1_score > match.team2_score;
 
-        [match.a1_player_id, match.a2_player_id].forEach((pid) => {
+        const teamAIds = [
+          match.a1_player_id ?? match.a1_guest_id,
+          match.a2_player_id ?? match.a2_guest_id,
+        ];
+        const teamBIds = [
+          match.b1_player_id ?? match.b1_guest_id,
+          match.b2_player_id ?? match.b2_guest_id,
+        ];
+
+        teamAIds.forEach((pid) => {
           if (pid && stats[pid]) {
             stats[pid].points_for += match.team1_score;
             stats[pid].points_against += match.team2_score;
@@ -547,7 +583,7 @@ export default function RoundRobinDetail() {
           }
         });
 
-        [match.b1_player_id, match.b2_player_id].forEach((pid) => {
+        teamBIds.forEach((pid) => {
           if (pid && stats[pid]) {
             stats[pid].points_for += match.team2_score;
             stats[pid].points_against += match.team1_score;
@@ -817,17 +853,14 @@ export default function RoundRobinDetail() {
       return;
     }
 
-    // Same safety gate as handleGenerateSchedule — the generator + scoring
-    // RPC cannot store guest_players uuids in round_robin_schedule yet.
-    const guestParticipants = activePlayers.filter(
-      (p) => !p.player_id || (p as { guest_player_id?: string }).guest_player_id,
+    const unfilled = activePlayers.filter(
+      (p) => !p.player_id && !(p as { guest_player_id?: string }).guest_player_id,
     );
-    if (guestParticipants.length > 0) {
-      toast.error(
-        "Guest players can't be included in regenerated schedules yet. Remove guest participants first.",
-      );
+    if (unfilled.length > 0) {
+      toast.error("Every active roster slot must be either a registered player or a guest.");
       return;
     }
+
 
 
     try {
@@ -892,7 +925,10 @@ export default function RoundRobinDetail() {
       const { error: generateError } = await supabase.functions.invoke("generate-round-robin-schedule", {
         body: {
           event_id: event.id,
-          player_ids: activePlayers.map(p => p.player_id),
+          participants: activePlayers.map((p) => ({
+            player_id: p.player_id,
+            guest_id: (p as { guest_player_id?: string }).guest_player_id,
+          })),
           num_courts: event.num_courts,
           num_rounds: targetRounds,
           games_per_player: gamesPerPlayer,
@@ -1937,7 +1973,7 @@ export default function RoundRobinDetail() {
                                       }`}>
                                         <div className={`text-sm truncate flex-1 flex items-center gap-1.5 ${team1Won ? 'font-semibold' : ''}`}>
                                           {team1Won && <Trophy className="h-3.5 w-3.5 text-primary flex-shrink-0" />}
-                                          <span className="truncate">{getPlayerName(match.a1_player_id, match)} / {getPlayerName(match.a2_player_id, match)}</span>
+                                          <span className="truncate">{getSeatName(match, 'a1')} / {getSeatName(match, 'a2')}</span>
                                         </div>
                                         {match.team1_score !== null ? (
                                           <div className={`text-xl font-bold font-mono ml-2 ${team1Won ? 'text-primary' : ''}`}>{match.team1_score}</div>
@@ -1964,7 +2000,7 @@ export default function RoundRobinDetail() {
                                       }`}>
                                         <div className={`text-sm truncate flex-1 flex items-center gap-1.5 ${team2Won ? 'font-semibold' : ''}`}>
                                           {team2Won && <Trophy className="h-3.5 w-3.5 text-primary flex-shrink-0" />}
-                                          <span className="truncate">{getPlayerName(match.b1_player_id, match)} / {getPlayerName(match.b2_player_id, match)}</span>
+                                          <span className="truncate">{getSeatName(match, 'b1')} / {getSeatName(match, 'b2')}</span>
                                         </div>
                                         {match.team2_score !== null ? (
                                           <div className={`text-xl font-bold font-mono ml-2 ${team2Won ? 'text-primary' : ''}`}>{match.team2_score}</div>
@@ -2017,7 +2053,7 @@ export default function RoundRobinDetail() {
                                   className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-card border border-border/60 text-xs font-medium text-foreground"
                                 >
                                   <Users className="h-3 w-3 text-muted-foreground" />
-                                  {getPlayerName(match.a1_player_id, match)}
+                                  {getSeatName(match, 'a1')}
                                 </span>
                               ))}
                             </div>

@@ -128,12 +128,10 @@ export function MatchWizardContainer() {
         for (const slot of (team as typeof formData.team1).slice(0, slotsPerTeam)) {
           if (slot.isGuest && slot.guestName) {
             const { data: guestPlayer, error: guestError } = await supabase
-              .from('guest_match_players')
+              .from('guest_players')
               .insert({
-                match_id: match.id,
                 display_name: slot.guestName,
-                notes: slot.guestNotes || null,
-                team: teamNum,
+                created_by: user.id,
               })
               .select('id')
               .single();

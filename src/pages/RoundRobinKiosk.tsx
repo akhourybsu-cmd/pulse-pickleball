@@ -73,13 +73,21 @@ interface ScheduleMatch {
   a2_player_id: string | null;
   b1_player_id: string | null;
   b2_player_id: string | null;
+  a1_guest_id: string | null;
+  a2_guest_id: string | null;
+  b1_guest_id: string | null;
+  b2_guest_id: string | null;
   is_bye: boolean;
   team1_score: number | null;
   team2_score: number | null;
-  a1_profile?: { display_name: string | null; full_name: string };
-  a2_profile?: { display_name: string | null; full_name: string };
-  b1_profile?: { display_name: string | null; full_name: string };
-  b2_profile?: { display_name: string | null; full_name: string };
+  a1_profile?: { display_name: string | null; full_name: string } | null;
+  a2_profile?: { display_name: string | null; full_name: string } | null;
+  b1_profile?: { display_name: string | null; full_name: string } | null;
+  b2_profile?: { display_name: string | null; full_name: string } | null;
+  a1_guest?: { display_name: string | null } | null;
+  a2_guest?: { display_name: string | null } | null;
+  b1_guest?: { display_name: string | null } | null;
+  b2_guest?: { display_name: string | null } | null;
 }
 
 interface StandingsRow {
@@ -186,8 +194,14 @@ export default function RoundRobinKiosk() {
     schedule
       .filter(m => !m.is_bye && m.team1_score !== null && m.team2_score !== null)
       .forEach((match) => {
-        const team1 = [match.a1_player_id, match.a2_player_id].filter((id): id is string => id !== null);
-        const team2 = [match.b1_player_id, match.b2_player_id].filter((id): id is string => id !== null);
+        const team1 = [
+          match.a1_player_id ?? match.a1_guest_id,
+          match.a2_player_id ?? match.a2_guest_id,
+        ].filter((id): id is string => id !== null);
+        const team2 = [
+          match.b1_player_id ?? match.b1_guest_id,
+          match.b2_player_id ?? match.b2_guest_id,
+        ].filter((id): id is string => id !== null);
 
         const t1score = match.team1_score!;
         const t2score = match.team2_score!;
@@ -256,6 +270,18 @@ export default function RoundRobinKiosk() {
       if (match.b2_player_id === playerId && match.b2_profile) {
         return match.b2_profile.display_name || match.b2_profile.full_name;
       }
+      if (match.a1_guest_id === playerId && match.a1_guest?.display_name) {
+        return `${match.a1_guest.display_name} (Guest)`;
+      }
+      if (match.a2_guest_id === playerId && match.a2_guest?.display_name) {
+        return `${match.a2_guest.display_name} (Guest)`;
+      }
+      if (match.b1_guest_id === playerId && match.b1_guest?.display_name) {
+        return `${match.b1_guest.display_name} (Guest)`;
+      }
+      if (match.b2_guest_id === playerId && match.b2_guest?.display_name) {
+        return `${match.b2_guest.display_name} (Guest)`;
+      }
     }
     return "Unknown";
   };
@@ -308,60 +334,73 @@ export default function RoundRobinKiosk() {
 
       if (currentError) throw currentError;
 
-      // Get all unique player IDs from full schedule
+      // Collect every player and guest id referenced anywhere in the schedule.
       const allPlayerIds = new Set<string>();
-      fullSchedule?.forEach(match => {
+      const allGuestIds = new Set<string>();
+      fullSchedule?.forEach((match: any) => {
         if (match.a1_player_id) allPlayerIds.add(match.a1_player_id);
         if (match.a2_player_id) allPlayerIds.add(match.a2_player_id);
         if (match.b1_player_id) allPlayerIds.add(match.b1_player_id);
         if (match.b2_player_id) allPlayerIds.add(match.b2_player_id);
+        if (match.a1_guest_id) allGuestIds.add(match.a1_guest_id);
+        if (match.a2_guest_id) allGuestIds.add(match.a2_guest_id);
+        if (match.b1_guest_id) allGuestIds.add(match.b1_guest_id);
+        if (match.b2_guest_id) allGuestIds.add(match.b2_guest_id);
       });
 
       // Fetch all profiles at once (public view — kiosk may run unauthenticated)
-      const { data: profiles, error: profilesError } = await supabase
-        .from("profiles_public")
-        .select("id, display_name, full_name")
-        .in("id", Array.from(allPlayerIds));
+      const { data: profiles, error: profilesError } = allPlayerIds.size > 0
+        ? await supabase
+            .from("profiles_public")
+            .select("id, display_name, full_name")
+            .in("id", Array.from(allPlayerIds))
+        : { data: [], error: null };
 
       if (profilesError) {
         console.error("Profiles error:", profilesError);
       }
 
-      // Also resolve any IDs that belong to guests
-      const { data: guests } = await supabase
-        .from("guest_players")
-        .select("id, display_name")
-        .in("id", Array.from(allPlayerIds));
+      // Fetch guest display names
+      const { data: guests } = allGuestIds.size > 0
+        ? await supabase
+            .from("guest_players")
+            .select("id, display_name")
+            .in("id", Array.from(allGuestIds))
+        : { data: [] };
 
-      // Create profile map, falling back to guest display names
-      const profileMap = new Map<string, any>(profiles?.map(p => [p.id, p]) || []);
+      const profileMap = new Map<string, any>((profiles || []).map((p: any) => [p.id, p]));
+      const guestMap = new Map<string, any>(
+        (guests || []).map((g: any) => [g.id, { id: g.id, display_name: g.display_name }]),
+      );
+
+      // Backwards-compat for downstream code that previously merged guests
+      // into profileMap. Keep both maps available.
       (guests || []).forEach((g: any) => {
         if (!profileMap.has(g.id)) {
           profileMap.set(g.id, { id: g.id, display_name: g.display_name, full_name: g.display_name, is_guest: true });
         }
       });
 
-      // Attach profiles to full schedule for standings
-      const fullScheduleWithProfiles = fullSchedule?.map(match => ({
+      // Attach profile + guest joins to each schedule row so downstream code
+      // can resolve every seat's display name regardless of whether it's a
+      // registered player or a guest.
+      const attach = (match: any) => ({
         ...match,
         a1_profile: match.a1_player_id ? profileMap.get(match.a1_player_id) : null,
         a2_profile: match.a2_player_id ? profileMap.get(match.a2_player_id) : null,
         b1_profile: match.b1_player_id ? profileMap.get(match.b1_player_id) : null,
         b2_profile: match.b2_player_id ? profileMap.get(match.b2_player_id) : null,
-      })) || [];
+        a1_guest: match.a1_guest_id ? guestMap.get(match.a1_guest_id) : null,
+        a2_guest: match.a2_guest_id ? guestMap.get(match.a2_guest_id) : null,
+        b1_guest: match.b1_guest_id ? guestMap.get(match.b1_guest_id) : null,
+        b2_guest: match.b2_guest_id ? guestMap.get(match.b2_guest_id) : null,
+      });
 
+      const fullScheduleWithProfiles = (fullSchedule || []).map(attach);
       setAllSchedule(fullScheduleWithProfiles);
       setStandings(calculateStandings(fullScheduleWithProfiles));
 
-      // Attach profiles to current round matches
-      const currentWithProfiles = currentSchedule?.map(match => ({
-        ...match,
-        a1_profile: match.a1_player_id ? profileMap.get(match.a1_player_id) : null,
-        a2_profile: match.a2_player_id ? profileMap.get(match.a2_player_id) : null,
-        b1_profile: match.b1_player_id ? profileMap.get(match.b1_player_id) : null,
-        b2_profile: match.b2_player_id ? profileMap.get(match.b2_player_id) : null,
-      })) || [];
-
+      const currentWithProfiles = (currentSchedule || []).map(attach);
       setCurrentRoundMatches(currentWithProfiles);
 
       // Fetch next round if not last round
@@ -377,14 +416,7 @@ export default function RoundRobinKiosk() {
         if (nextError) {
           console.error("Error loading next round:", nextError);
         } else {
-          const nextWithProfiles = nextSchedule?.map(match => ({
-            ...match,
-            a1_profile: match.a1_player_id ? profileMap.get(match.a1_player_id) : null,
-            a2_profile: match.a2_player_id ? profileMap.get(match.a2_player_id) : null,
-            b1_profile: match.b1_player_id ? profileMap.get(match.b1_player_id) : null,
-            b2_profile: match.b2_player_id ? profileMap.get(match.b2_player_id) : null,
-          })) || [];
-
+          const nextWithProfiles = (nextSchedule || []).map(attach);
           setNextRoundMatches(nextWithProfiles);
         }
       } else {

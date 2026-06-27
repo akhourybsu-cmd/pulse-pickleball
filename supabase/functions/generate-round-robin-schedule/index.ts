@@ -6,18 +6,26 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+interface Participant {
+  player_id?: string | null;
+  guest_id?: string | null;
+}
+
 interface ScheduleRequest {
   event_id: string;
-  player_ids: string[];
+  // Back-compat: callers may still send player_ids only (all registered players).
+  player_ids?: string[];
+  // Preferred: mixed list of registered players and guests.
+  participants?: Participant[];
   num_courts: number;
-  num_rounds: number; // Calculated rounds
-  games_per_player: number; // Target games each player should play
+  num_rounds: number;
+  games_per_player: number;
   regenerate_from_round?: number;
   format?: 'open' | 'mixed' | 'male' | 'female';
 }
 
 interface PlayerStats {
-  playerId: string;
+  playerId: string; // synthetic seat id: "p:<uuid>" or "g:<uuid>"
   gamesPlayed: number;
   byesReceived: number;
   lastPlayedRound: number;
@@ -31,6 +39,7 @@ interface PlayerStats {
 interface ScheduleMatch {
   round_no: number;
   court_no: number;
+  // Synthetic seat ids during generation; split into player/guest at insert time.
   a1_player_id: string | null;
   a2_player_id: string | null;
   b1_player_id: string | null;
@@ -622,15 +631,30 @@ serve(async (req) => {
       });
     }
 
-    const { 
-      event_id, 
-      player_ids, 
-      num_courts, 
-      num_rounds, // Now calculated, but kept for backwards compatibility
+    const body: ScheduleRequest = await req.json();
+    const {
+      event_id,
+      num_courts,
+      num_rounds,
       games_per_player,
       regenerate_from_round,
-      format 
-    }: ScheduleRequest = await req.json();
+      format,
+    } = body;
+
+    // Normalize participants: prefer the new `participants` shape, fall back to
+    // `player_ids` for older callers (all registered players, no guests).
+    const rawParticipants: Participant[] = body.participants
+      ?? (body.player_ids ?? []).map((id) => ({ player_id: id }));
+
+    // Build synthetic seat ids — "p:<uuid>" for profiles, "g:<uuid>" for guests.
+    // The scheduler treats them opaquely; we split them again at insert time.
+    const seatIds: string[] = rawParticipants
+      .map((p) => p.player_id ? `p:${p.player_id}` : p.guest_id ? `g:${p.guest_id}` : null)
+      .filter((s): s is string => s !== null);
+
+    const registeredPlayerIds = rawParticipants
+      .map((p) => p.player_id)
+      .filter((id): id is string => !!id);
 
     // Verify user is organizer and get event format
     const { data: event, error: eventError } = await supabase
@@ -648,18 +672,20 @@ serve(async (req) => {
 
     const eventFormat = format || event.format || 'open';
 
-    // Fetch player genders if format requires it
+    // Fetch player genders if format requires it. Guests have no profile and
+    // therefore no gender — they're excluded from gender-gated formats below.
     const playerGenders = new Map<string, string>();
-    if (eventFormat === 'mixed' || eventFormat === 'male' || eventFormat === 'female') {
+    if ((eventFormat === 'mixed' || eventFormat === 'male' || eventFormat === 'female') && registeredPlayerIds.length > 0) {
       const { data: profiles } = await supabase
         .from('profiles')
         .select('id, gender')
-        .in('id', player_ids);
+        .in('id', registeredPlayerIds);
 
       if (profiles) {
-        profiles.forEach(p => {
+        profiles.forEach((p) => {
           if (p.gender) {
-            playerGenders.set(p.id, p.gender);
+            // Key by the synthetic seat id so the generator can look it up.
+            playerGenders.set(`p:${p.id}`, p.gender);
           }
         });
       }
@@ -677,7 +703,16 @@ serve(async (req) => {
         .lt('round_no', regenerate_from_round);
 
       if (existing) {
-        completedMatches = existing as ScheduleMatch[];
+        // Rehydrate completed rows back into synthetic-seat form for stat carry-over.
+        completedMatches = (existing as Array<Record<string, unknown>>).map((row) => ({
+          round_no: row.round_no as number,
+          court_no: row.court_no as number,
+          is_bye: row.is_bye as boolean,
+          a1_player_id: row.a1_player_id ? `p:${row.a1_player_id}` : row.a1_guest_id ? `g:${row.a1_guest_id}` : null,
+          a2_player_id: row.a2_player_id ? `p:${row.a2_player_id}` : row.a2_guest_id ? `g:${row.a2_guest_id}` : null,
+          b1_player_id: row.b1_player_id ? `p:${row.b1_player_id}` : row.b1_guest_id ? `g:${row.b1_guest_id}` : null,
+          b2_player_id: row.b2_player_id ? `p:${row.b2_player_id}` : row.b2_guest_id ? `g:${row.b2_guest_id}` : null,
+        }));
       }
       startFromRound = regenerate_from_round;
 
@@ -698,23 +733,49 @@ serve(async (req) => {
     // Generate schedule using games per player
     const schedule = generateRoundRobinSchedule(
       event_id,
-      player_ids,
+      seatIds,
       num_courts,
-      games_per_player || num_rounds, // Fallback to num_rounds for backwards compat
+      games_per_player || num_rounds,
       completedMatches,
       startFromRound,
       eventFormat,
-      playerGenders
+      playerGenders,
     );
 
-    // Insert new rounds only
-    const newRounds = schedule.filter(m => m.round_no >= startFromRound);
+    // Split synthetic seat ids back into player/guest columns for insert.
+    const splitSeat = (seat: string | null): { player_id: string | null; guest_id: string | null } => {
+      if (!seat) return { player_id: null, guest_id: null };
+      if (seat.startsWith('p:')) return { player_id: seat.slice(2), guest_id: null };
+      if (seat.startsWith('g:')) return { player_id: null, guest_id: seat.slice(2) };
+      // Legacy raw UUID — treat as a registered player.
+      return { player_id: seat, guest_id: null };
+    };
+
+    const newRounds = schedule.filter((m) => m.round_no >= startFromRound);
+    const insertRows = newRounds.map((m) => {
+      const a1 = splitSeat(m.a1_player_id);
+      const a2 = splitSeat(m.a2_player_id);
+      const b1 = splitSeat(m.b1_player_id);
+      const b2 = splitSeat(m.b2_player_id);
+      return {
+        event_id,
+        round_no: m.round_no,
+        court_no: m.court_no,
+        is_bye: m.is_bye,
+        a1_player_id: a1.player_id,
+        a1_guest_id: a1.guest_id,
+        a2_player_id: a2.player_id,
+        a2_guest_id: a2.guest_id,
+        b1_player_id: b1.player_id,
+        b1_guest_id: b1.guest_id,
+        b2_player_id: b2.player_id,
+        b2_guest_id: b2.guest_id,
+      };
+    });
+
     const { error: insertError } = await supabase
       .from('round_robin_schedule')
-      .insert(newRounds.map(m => ({
-        event_id,
-        ...m,
-      })));
+      .insert(insertRows);
 
     if (insertError) {
       console.error('Schedule insert failed:', insertError);

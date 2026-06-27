@@ -68,6 +68,10 @@ interface ScheduleMatch {
   a2_player_id: string | null;
   b1_player_id: string | null;
   b2_player_id: string | null;
+  a1_guest_id: string | null;
+  a2_guest_id: string | null;
+  b1_guest_id: string | null;
+  b2_guest_id: string | null;
   team1_score: number | null;
   team2_score: number | null;
   team_a_score: number | null;
@@ -136,12 +140,12 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
         if (p.player_id) userIdSet.add(p.player_id);
         if (p.guest_player_id) guestIdSet.add(p.guest_player_id);
       });
-      (scheduleData || []).forEach((m) => {
+      (scheduleData || []).forEach((m: any) => {
         [m.a1_player_id, m.a2_player_id, m.b1_player_id, m.b2_player_id].forEach((id) => {
-          if (!id) return;
-          // We don't know whether this id is a user or guest; query both.
-          userIdSet.add(id);
-          guestIdSet.add(id);
+          if (id) userIdSet.add(id);
+        });
+        [m.a1_guest_id, m.a2_guest_id, m.b1_guest_id, m.b2_guest_id].forEach((id) => {
+          if (id) guestIdSet.add(id);
         });
       });
 
@@ -266,8 +270,14 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
       
       if (!match.completed || teamAScore === null || teamBScore === null) return;
 
-      const teamAPlayers = [match.a1_player_id, match.a2_player_id].filter(Boolean) as string[];
-      const teamBPlayers = [match.b1_player_id, match.b2_player_id].filter(Boolean) as string[];
+      const teamAPlayers = [
+        match.a1_player_id ?? match.a1_guest_id,
+        match.a2_player_id ?? match.a2_guest_id,
+      ].filter(Boolean) as string[];
+      const teamBPlayers = [
+        match.b1_player_id ?? match.b1_guest_id,
+        match.b2_player_id ?? match.b2_guest_id,
+      ].filter(Boolean) as string[];
 
       const teamAWon = teamAScore > teamBScore;
 
@@ -302,13 +312,20 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
 
   const getPlayerName = (playerId: string | null) => {
     if (!playerId) return "BYE";
-    const player = players.find((p) => p.player_id === playerId);
+    // playerId may be either a profile uuid or a guest_player uuid.
+    const player = players.find(
+      (p) => p.player_id === playerId || (p as any).guest_player_id === playerId,
+    );
     if (!player) return "Someone";
     if (player.profiles) {
       return player.profiles.display_name || player.profiles.full_name || "Someone";
     }
     return `${player.guest_display_name || "Guest"} (Guest)`;
   };
+
+  /** Resolve a seat's name regardless of whether it's a registered player or a guest. */
+  const seatName = (match: ScheduleMatch, seat: 'a1' | 'a2' | 'b1' | 'b2') =>
+    getPlayerName(match[`${seat}_player_id`] ?? match[`${seat}_guest_id`] ?? null);
 
   const getInitials = (name: string) => {
     return name
@@ -580,10 +597,9 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
                         <CardContent>
                           <div className="space-y-3">
                             {matches.map((match, idx) => {
-                              const isBye =
-                                !match.a1_player_id ||
-                                !match.b1_player_id ||
-                                match.a1_player_id === match.b1_player_id;
+                              const a1Id = match.a1_player_id ?? match.a1_guest_id;
+                              const b1Id = match.b1_player_id ?? match.b1_guest_id;
+                              const isBye = !a1Id || !b1Id || a1Id === b1Id;
                               const teamAScore = match.team_a_score ?? match.team1_score ?? null;
                               const teamBScore = match.team_b_score ?? match.team2_score ?? null;
                               const teamAWon = match.completed && teamAScore !== null && teamBScore !== null && teamAScore > teamBScore;
@@ -611,12 +627,12 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
                                     
                                     {isBye ? (
                                       <div className="text-muted-foreground italic">
-                                        <span className="font-medium text-foreground">{getPlayerName(match.a1_player_id)}</span> — BYE
+                                        <span className="font-medium text-foreground">{seatName(match, 'a1')}</span> — BYE
                                       </div>
                                     ) : (
                                       <div className="flex-1 grid grid-cols-[1fr_auto_1fr] gap-4 items-center">
                                         <div className={`text-sm ${teamAWon ? "font-semibold text-primary" : ""}`}>
-                                          {getPlayerName(match.a1_player_id)} / {getPlayerName(match.a2_player_id)}
+                                          {seatName(match, 'a1')} / {seatName(match, 'a2')}
                                         </div>
                                         <div className="text-center">
                                           {match.completed ? (
@@ -634,7 +650,7 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
                                           )}
                                         </div>
                                         <div className={`text-sm text-right ${teamBWon ? "font-semibold text-primary" : ""}`}>
-                                          {getPlayerName(match.b1_player_id)} / {getPlayerName(match.b2_player_id)}
+                                          {seatName(match, 'b1')} / {seatName(match, 'b2')}
                                         </div>
                                       </div>
                                     )}

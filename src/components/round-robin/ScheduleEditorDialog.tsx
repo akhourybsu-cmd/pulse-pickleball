@@ -28,6 +28,10 @@ interface ScheduleMatch {
   a2_player_id: string | null;
   b1_player_id: string | null;
   b2_player_id: string | null;
+  a1_guest_id?: string | null;
+  a2_guest_id?: string | null;
+  b1_guest_id?: string | null;
+  b2_guest_id?: string | null;
   is_bye: boolean;
   team1_score: number | null;
   team2_score: number | null;
@@ -229,8 +233,8 @@ export function ScheduleEditorDialog({
                         )}
                       </div>
                       <div className="space-y-1">
-                        <div><strong>Team A:</strong> {getPlayerName(match.a1_player_id)} & {getPlayerName(match.a2_player_id)}</div>
-                        <div><strong>Team B:</strong> {getPlayerName(match.b1_player_id)} & {getPlayerName(match.b2_player_id)}</div>
+                        <div><strong>Team A:</strong> {getPlayerName(match.a1_player_id ?? match.a1_guest_id)} & {getPlayerName(match.a2_player_id ?? match.a2_guest_id)}</div>
+                        <div><strong>Team B:</strong> {getPlayerName(match.b1_player_id ?? match.b1_guest_id)} & {getPlayerName(match.b2_player_id ?? match.b2_guest_id)}</div>
                       </div>
                     </div>
                   ))}
@@ -255,7 +259,7 @@ export function ScheduleEditorDialog({
                   <SelectContent>
                     {roundMatches.map(match => (
                       <SelectItem key={match.id} value={match.id}>
-                        Court {match.court_no}: {getPlayerName(match.a1_player_id)} & {getPlayerName(match.a2_player_id)} vs {getPlayerName(match.b1_player_id)} & {getPlayerName(match.b2_player_id)}
+                        Court {match.court_no}: {getPlayerName(match.a1_player_id ?? match.a1_guest_id)} & {getPlayerName(match.a2_player_id ?? match.a2_guest_id)} vs {getPlayerName(match.b1_player_id ?? match.b1_guest_id)} & {getPlayerName(match.b2_player_id ?? match.b2_guest_id)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -280,9 +284,9 @@ export function ScheduleEditorDialog({
                   <p className="text-sm font-medium mb-2">Preview:</p>
                   <p className="text-sm">
                     {selectedTeam === 'A' ? (
-                      <><strong>{getPlayerName(selectedMatchData.a2_player_id)}</strong> & <strong>{getPlayerName(selectedMatchData.a1_player_id)}</strong> vs {getPlayerName(selectedMatchData.b1_player_id)} & {getPlayerName(selectedMatchData.b2_player_id)}</>
+                      <><strong>{getPlayerName(selectedMatchData.a2_player_id ?? selectedMatchData.a2_guest_id)}</strong> & <strong>{getPlayerName(selectedMatchData.a1_player_id ?? selectedMatchData.a1_guest_id)}</strong> vs {getPlayerName(selectedMatchData.b1_player_id ?? selectedMatchData.b1_guest_id)} & {getPlayerName(selectedMatchData.b2_player_id ?? selectedMatchData.b2_guest_id)}</>
                     ) : (
-                      <>{getPlayerName(selectedMatchData.a1_player_id)} & {getPlayerName(selectedMatchData.a2_player_id)} vs <strong>{getPlayerName(selectedMatchData.b2_player_id)}</strong> & <strong>{getPlayerName(selectedMatchData.b1_player_id)}</strong></>
+                      <>{getPlayerName(selectedMatchData.a1_player_id ?? selectedMatchData.a1_guest_id)} & {getPlayerName(selectedMatchData.a2_player_id ?? selectedMatchData.a2_guest_id)} vs <strong>{getPlayerName(selectedMatchData.b2_player_id ?? selectedMatchData.b2_guest_id)}</strong> & <strong>{getPlayerName(selectedMatchData.b1_player_id ?? selectedMatchData.b1_guest_id)}</strong></>
                     )}
                   </p>
                 </div>
@@ -306,7 +310,7 @@ export function ScheduleEditorDialog({
                   <SelectContent>
                     {roundMatches.map(match => (
                       <SelectItem key={match.id} value={match.id}>
-                        Court {match.court_no}: {getPlayerName(match.a1_player_id)} & {getPlayerName(match.a2_player_id)} vs {getPlayerName(match.b1_player_id)} & {getPlayerName(match.b2_player_id)}
+                        Court {match.court_no}: {getPlayerName(match.a1_player_id ?? match.a1_guest_id)} & {getPlayerName(match.a2_player_id ?? match.a2_guest_id)} vs {getPlayerName(match.b1_player_id ?? match.b1_guest_id)} & {getPlayerName(match.b2_player_id ?? match.b2_guest_id)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -322,7 +326,7 @@ export function ScheduleEditorDialog({
                   <SelectContent>
                     {roundMatches.filter(m => m.id !== selectedMatch).map(match => (
                       <SelectItem key={match.id} value={match.id}>
-                        Court {match.court_no}: {getPlayerName(match.a1_player_id)} & {getPlayerName(match.a2_player_id)} vs {getPlayerName(match.b1_player_id)} & {getPlayerName(match.b2_player_id)}
+                        Court {match.court_no}: {getPlayerName(match.a1_player_id ?? match.a1_guest_id)} & {getPlayerName(match.a2_player_id ?? match.a2_guest_id)} vs {getPlayerName(match.b1_player_id ?? match.b1_guest_id)} & {getPlayerName(match.b2_player_id ?? match.b2_guest_id)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -333,8 +337,8 @@ export function ScheduleEditorDialog({
                 <div className="p-3 border rounded-lg bg-muted">
                   <p className="text-sm font-medium mb-2">Preview After Swap:</p>
                   <div className="space-y-2 text-sm">
-                    <div><strong>Court {selectedMatchData.court_no}:</strong> {getPlayerName(selectedMatchData.a1_player_id)} & {getPlayerName(selectedMatchData.a2_player_id)} vs <strong>{getPlayerName(selectedMatch2Data.b1_player_id)} & {getPlayerName(selectedMatch2Data.b2_player_id)}</strong></div>
-                    <div><strong>Court {selectedMatch2Data.court_no}:</strong> <strong>{getPlayerName(selectedMatchData.b1_player_id)} & {getPlayerName(selectedMatchData.b2_player_id)}</strong> vs {getPlayerName(selectedMatch2Data.a1_player_id)} & {getPlayerName(selectedMatch2Data.a2_player_id)}</div>
+                    <div><strong>Court {selectedMatchData.court_no}:</strong> {getPlayerName(selectedMatchData.a1_player_id ?? selectedMatchData.a1_guest_id)} & {getPlayerName(selectedMatchData.a2_player_id ?? selectedMatchData.a2_guest_id)} vs <strong>{getPlayerName(selectedMatch2Data.b1_player_id)} & {getPlayerName(selectedMatch2Data.b2_player_id)}</strong></div>
+                    <div><strong>Court {selectedMatch2Data.court_no}:</strong> <strong>{getPlayerName(selectedMatchData.b1_player_id ?? selectedMatchData.b1_guest_id)} & {getPlayerName(selectedMatchData.b2_player_id ?? selectedMatchData.b2_guest_id)}</strong> vs {getPlayerName(selectedMatch2Data.a1_player_id)} & {getPlayerName(selectedMatch2Data.a2_player_id)}</div>
                   </div>
                 </div>
               )}
@@ -361,7 +365,7 @@ export function ScheduleEditorDialog({
                   <SelectContent>
                     {roundMatches.map(match => (
                       <SelectItem key={match.id} value={match.id}>
-                        Court {match.court_no}: {getPlayerName(match.a1_player_id)} & {getPlayerName(match.a2_player_id)} vs {getPlayerName(match.b1_player_id)} & {getPlayerName(match.b2_player_id)}
+                        Court {match.court_no}: {getPlayerName(match.a1_player_id ?? match.a1_guest_id)} & {getPlayerName(match.a2_player_id ?? match.a2_guest_id)} vs {getPlayerName(match.b1_player_id ?? match.b1_guest_id)} & {getPlayerName(match.b2_player_id ?? match.b2_guest_id)}
                       </SelectItem>
                     ))}
                   </SelectContent>
