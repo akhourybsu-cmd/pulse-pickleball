@@ -24,7 +24,8 @@ import {
   Fingerprint,
   Zap,
   Activity,
-  Building2
+  Building2,
+  Archive
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import logo from "@/assets/pulse-logo-premium.svg";
@@ -159,6 +160,29 @@ const AdminDashboard = () => {
 
       <div className="container mx-auto px-4 py-8">
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {/* Archived Surfaces — venues + tournaments, admin-only */}
+          <Card
+            className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-l-4 border-l-slate-500 hover:-translate-y-1"
+            onClick={() => navigate("/archive")}
+          >
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="p-2.5 bg-slate-500/20 rounded-lg">
+                  <Archive className="w-8 h-8 text-slate-500" />
+                </div>
+              </div>
+              <CardTitle className="mt-4">Archived Surfaces</CardTitle>
+              <CardDescription>
+                Venue console, tournament tools, and other surfaces hidden from players
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button className="w-full" variant="secondary">
+                Open Archive
+              </Button>
+            </CardContent>
+          </Card>
+
           {/* Venue Verification - Priority card */}
           <Card 
             className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-l-4 border-l-amber-500 hover:-translate-y-1" 
