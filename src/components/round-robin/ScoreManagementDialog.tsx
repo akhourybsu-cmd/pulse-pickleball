@@ -39,6 +39,10 @@ interface ScheduleMatch {
   a2_player_id: string | null;
   b1_player_id: string | null;
   b2_player_id: string | null;
+  a1_guest_id?: string | null;
+  a2_guest_id?: string | null;
+  b1_guest_id?: string | null;
+  b2_guest_id?: string | null;
   is_bye: boolean;
   team1_score: number | null;
   team2_score: number | null;
