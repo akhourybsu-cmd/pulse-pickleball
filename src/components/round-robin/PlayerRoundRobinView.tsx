@@ -247,7 +247,10 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
     playersList.forEach((p) => {
       stats[p.player_id] = {
         playerId: p.player_id,
-        playerName: p.profiles?.display_name || p.profiles?.full_name || "Unknown",
+        playerName:
+          p.profiles?.display_name ||
+          p.profiles?.full_name ||
+          (p.is_guest ? `${p.guest_display_name || "Guest"} (Guest)` : "Someone"),
         wins: 0,
         losses: 0,
         pointsFor: 0,
