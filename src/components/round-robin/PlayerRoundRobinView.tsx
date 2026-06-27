@@ -266,8 +266,14 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
       
       if (!match.completed || teamAScore === null || teamBScore === null) return;
 
-      const teamAPlayers = [match.a1_player_id, match.a2_player_id].filter(Boolean) as string[];
-      const teamBPlayers = [match.b1_player_id, match.b2_player_id].filter(Boolean) as string[];
+      const teamAPlayers = [
+        match.a1_player_id ?? match.a1_guest_id,
+        match.a2_player_id ?? match.a2_guest_id,
+      ].filter(Boolean) as string[];
+      const teamBPlayers = [
+        match.b1_player_id ?? match.b1_guest_id,
+        match.b2_player_id ?? match.b2_guest_id,
+      ].filter(Boolean) as string[];
 
       const teamAWon = teamAScore > teamBScore;
 
