@@ -510,11 +510,22 @@ export default function RoundRobinDetail() {
     const activePlayers = playersData.filter(p => p.active);
     const removedPlayers = playersData.filter(p => !p.active);
 
-    // Initialize stats for all players (active and removed)
+    // Initialize stats for all players (active and removed).
+    // Guests have no player_id / profiles row, so fall back to guest data
+    // and key the stats map by guest_player_id when needed.
     playersData.forEach((p) => {
-      stats[p.player_id] = {
-        player_id: p.player_id,
-        player_name: p.profiles.display_name || p.profiles.full_name,
+      const key = p.player_id || (p as any).guest_player_id;
+      if (!key) return;
+      const guestName =
+        (p as any).guest_players?.display_name ||
+        (p as any).guest_name ||
+        "Guest";
+      const name = p.profiles
+        ? p.profiles.display_name || p.profiles.full_name
+        : `${guestName} (Guest)`;
+      stats[key] = {
+        player_id: key,
+        player_name: name,
         wins: 0,
         losses: 0,
         points_for: 0,
@@ -548,16 +559,17 @@ export default function RoundRobinDetail() {
     });
 
     // Separate standings into active and removed
-    const activeStandingsArray = activePlayers.map(p => ({
-      ...stats[p.player_id],
-      point_diff: stats[p.player_id].points_for - stats[p.player_id].points_against,
-    }));
-
-    const removedStandingsArray = removedPlayers.map(p => ({
-      ...stats[p.player_id],
-      point_diff: stats[p.player_id].points_for - stats[p.player_id].points_against,
-      isRemoved: true,
-    }));
+    const toRow = (p: Player) => {
+      const key = p.player_id || (p as any).guest_player_id;
+      const s = key ? stats[key] : undefined;
+      if (!s) return null;
+      return { ...s, point_diff: s.points_for - s.points_against };
+    };
+    const activeStandingsArray = activePlayers.map(toRow).filter(Boolean) as StandingsRow[];
+    const removedStandingsArray = removedPlayers
+      .map(toRow)
+      .filter(Boolean)
+      .map((r) => ({ ...(r as StandingsRow), isRemoved: true }));
 
     // Sort active players normally
     activeStandingsArray.sort((a, b) => {
@@ -1560,7 +1572,12 @@ export default function RoundRobinDetail() {
 
   // Get player initials
   const getPlayerInitials = (player: Player) => {
-    const name = player.profiles.display_name || player.profiles.full_name;
+    const name =
+      player.profiles?.display_name ||
+      player.profiles?.full_name ||
+      (player as any).guest_players?.display_name ||
+      (player as any).guest_name ||
+      "Guest";
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
 
@@ -2036,10 +2053,20 @@ export default function RoundRobinDetail() {
                       <p className="text-sm font-medium text-muted-foreground mb-2">
                         Players ({players.length})
                       </p>
-                      {players.map((player) => (
+                      {players.map((player) => {
+                        const displayName =
+                          player.profiles?.display_name ||
+                          player.profiles?.full_name ||
+                          ((player as any).guest_players?.display_name
+                            ? `${(player as any).guest_players.display_name} (Guest)`
+                            : null) ||
+                          ((player as any).guest_name
+                            ? `${(player as any).guest_name} (Guest)`
+                            : "Guest");
+                        return (
                         <div key={player.id} className="flex items-center justify-between p-3 border rounded-lg">
                           <div className="font-medium">
-                            {player.profiles.display_name || player.profiles.full_name}
+                            {displayName}
                           </div>
                           <div className="flex items-center gap-2">
                             <Badge variant="default">Active</Badge>
@@ -2048,8 +2075,7 @@ export default function RoundRobinDetail() {
                                 size="sm"
                                 variant="ghost"
                                 onClick={async () => {
-                                  const playerName = player.profiles.display_name || player.profiles.full_name;
-                                  if (!confirm(`Remove ${playerName} from this event?`)) return;
+                                  if (!confirm(`Remove ${displayName} from this event?`)) return;
                                   
                                   try {
                                     const { error } = await supabase
@@ -2072,7 +2098,8 @@ export default function RoundRobinDetail() {
                             )}
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
                     </>
                   )}
                 </div>
