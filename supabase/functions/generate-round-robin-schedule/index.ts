@@ -731,16 +731,32 @@ serve(async (req) => {
     }
 
     // Generate schedule using games per player
-    const schedule = generateRoundRobinSchedule(
+    console.log('[generate-rr] inputs', JSON.stringify({
       event_id,
       seatIds,
       num_courts,
-      games_per_player || num_rounds,
-      completedMatches,
+      games_per_player,
+      num_rounds,
       startFromRound,
       eventFormat,
-      playerGenders,
-    );
+      completedMatches: completedMatches.length,
+    }));
+    let schedule: ScheduleMatch[];
+    try {
+      schedule = generateRoundRobinSchedule(
+        event_id,
+        seatIds,
+        num_courts,
+        games_per_player || num_rounds,
+        completedMatches,
+        startFromRound,
+        eventFormat,
+        playerGenders,
+      );
+    } catch (genErr) {
+      console.error('[generate-rr] generator threw', genErr, (genErr as Error)?.stack);
+      throw genErr;
+    }
 
     // Split synthetic seat ids back into player/guest columns for insert.
     const splitSeat = (seat: string | null): { player_id: string | null; guest_id: string | null } => {
