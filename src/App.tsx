@@ -335,7 +335,8 @@ const AppContent = () => {
          <Route path="/claim-guest/:token" element={<ClaimGuest />} />
          <Route path="/demo" element={<DemoTour />} />
           <Route path="/players" element={<PlayersLanding />} />
-          <Route path="/venues" element={<VenuesLanding />} />
+          {/* Venue surface archived — admin-only */}
+          <Route path="/venues" element={<AdminGuard><VenuesLanding /></AdminGuard>} />
           {/* Unified discovery hub (events + venues). Auth-required because
               every inner CTA (register, favorite, book) is auth-gated — letting
               unauthenticated users in causes a partial render then a forced
@@ -367,9 +368,9 @@ const AppContent = () => {
             <AuthGuard allowOnboarding><OnboardingComplete /></AuthGuard>
           } />
           
-          {/* Public venue landing pages (white-label) */}
-          <Route path="/v/:slug" element={<PublicVenueLanding />} />
-          <Route path="/venue/:slug" element={<PublicVenueLanding />} />
+          {/* Public venue landing pages archived — admin-only */}
+          <Route path="/v/:slug" element={<AdminGuard><PublicVenueLanding /></AdminGuard>} />
+          <Route path="/venue/:slug" element={<AdminGuard><PublicVenueLanding /></AdminGuard>} />
 
           {/* Player routes with shell - require auth */}
           <Route path="/player" element={
@@ -397,9 +398,10 @@ const AppContent = () => {
                 refocus. Venue browsing now lives behind the mode toggle on the
                 venue/organizer side. Legacy deep links land safely. */}
             <Route path="venues" element={<Navigate to="/player/play" replace />} />
-            <Route path="coaching" element={<PlayerCoaching />} />
-            <Route path="bookings" element={<PlayerBookings />} />
-            <Route path="my-bookings" element={<MyBookings />} />
+            {/* Coaching / bookings archived with the venue surface */}
+            <Route path="coaching" element={<Navigate to="/player/dashboard" replace />} />
+            <Route path="bookings" element={<Navigate to="/player/dashboard" replace />} />
+            <Route path="my-bookings" element={<Navigate to="/player/dashboard" replace />} />
             <Route path="my-events" element={<MyEvents />} />
             <Route path="community" element={<Community />} />
             <Route path="friends" element={<Friends />} />
@@ -411,20 +413,19 @@ const AppContent = () => {
             <Route path="profile/edit" element={<EditProfile />} />
           </Route>
 
-          {/* Venue routes with shell - require auth + venue access */}
+          {/* Venue console archived — admin-only (entire surface gated) */}
           <Route path="/venue" element={
-            <AuthGuard>
+            <AdminGuard>
               <VenueGuard>
                 <VenueShell />
               </VenueGuard>
-            </AuthGuard>
+            </AdminGuard>
           }>
             <Route index element={<VenueOverview />} />
             <Route path="profile" element={<VenueProfile />} />
             <Route path="branding" element={<VenueBranding />} />
             <Route path="facility" element={<VenueFacility />} />
             <Route path="media" element={<VenueMedia />} />
-            {/* Community route removed - orphaned feature */}
             <Route path="courts" element={<VenueCourts />} />
             <Route path="bookings" element={<VenueBookings />} />
             <Route path="events" element={<VenueEvents />} />
@@ -438,27 +439,26 @@ const AppContent = () => {
             <Route path="analytics" element={<VenueAnalytics />} />
           </Route>
           
-          {/* Venue onboarding routes - require auth but allow any venue state */}
-          {/* Legacy /venue/onboarding redirects to new flow */}
-          <Route path="/venue/onboarding" element={<Navigate to="/venue/create-fast" replace />} />
+          {/* Venue onboarding archived — admin-only */}
+          <Route path="/venue/onboarding" element={<AdminGuard><Navigate to="/venue/create-fast" replace /></AdminGuard>} />
           <Route path="/venue/onboarding/profile" element={
-            <AuthGuard><VenueGuard allowOnboarding><VenueOnboardingProfile /></VenueGuard></AuthGuard>
+            <AdminGuard><VenueGuard allowOnboarding><VenueOnboardingProfile /></VenueGuard></AdminGuard>
           } />
           <Route path="/venue/onboarding/first-event" element={
-            <AuthGuard><VenueGuard allowOnboarding><VenueOnboardingFirstEvent /></VenueGuard></AuthGuard>
+            <AdminGuard><VenueGuard allowOnboarding><VenueOnboardingFirstEvent /></VenueGuard></AdminGuard>
           } />
           <Route path="/venue/onboarding/share" element={
-            <AuthGuard><VenueGuard allowOnboarding><VenueOnboardingShare /></VenueGuard></AuthGuard>
+            <AdminGuard><VenueGuard allowOnboarding><VenueOnboardingShare /></VenueGuard></AdminGuard>
           } />
           <Route path="/venue/onboarding/complete" element={
-            <AuthGuard><VenueGuard allowOnboarding><VenueOnboardingComplete /></VenueGuard></AuthGuard>
+            <AdminGuard><VenueGuard allowOnboarding><VenueOnboardingComplete /></VenueGuard></AdminGuard>
           } />
-          <Route path="/venue/interest" element={<VenueInterestWizard />} />
-          <Route path="/venue/create-fast" element={<AuthGuard><CreateVenueFast /></AuthGuard>} />
+          <Route path="/venue/interest" element={<AdminGuard><VenueInterestWizard /></AdminGuard>} />
+          <Route path="/venue/create-fast" element={<AdminGuard><CreateVenueFast /></AdminGuard>} />
           <Route path="/venue/verification-pending" element={
-            <AuthGuard><VenueVerificationPending /></AuthGuard>
+            <AdminGuard><VenueVerificationPending /></AdminGuard>
           } />
-          {/* Public kiosk display - intentionally unprotected for venue display screens */}
+          {/* Kiosk redirect shim left public — QR codes rely on this alias */}
           <Route path="/venue/round-robins/:id/kiosk" element={<VenueRoundRobinKioskRedirect />} />
 
           {/* Legacy routes - redirect to new structure */}
@@ -525,22 +525,21 @@ const AppContent = () => {
           />
           <Route path="/round-robin/:id" element={<RoundRobinDetail />} />
           <Route path="/round-robin/:id/kiosk" element={<RoundRobinKiosk />} />
-          <Route path="/tournaments" element={<TournamentsLanding />} />
-          <Route path="/tournaments/browse" element={<BrowseTournaments />} />
-          <Route path="/tournaments/manage" element={<AuthGuard><ManageTournaments /></AuthGuard>} />
-          <Route path="/tournaments/new" element={<TournamentNewWithGating />} />
-          {/* Removed duplicate /venue/create-fast - the proper route is at line 277 with AuthGuard */}
-          <Route path="/tournaments/:id" element={<TournamentDetail />} />
-          <Route path="/tournaments/:id/divisions/:divisionId" element={<TournamentDivisionDetailNew />} />
-          <Route path="/tournaments/:id/customize" element={<TournamentCustomize />} />
-          <Route path="/tournaments/:id/payment-success" element={<TournamentPaymentSuccess />} />
-          <Route path="/tournaments/:id/payment-cancelled" element={<TournamentPaymentCancelled />} />
-          <Route path="/tournament/:slug" element={<TournamentLanding />} />
-          <Route path="/tournament/:eventId/register" element={<TournamentRegister />} />
+          {/* Tournament surface archived — admin-only */}
+          <Route path="/tournaments" element={<AdminGuard><TournamentsLanding /></AdminGuard>} />
+          <Route path="/tournaments/manage" element={<AdminGuard><ManageTournaments /></AdminGuard>} />
+          <Route path="/tournaments/new" element={<AdminGuard><TournamentNewWithGating /></AdminGuard>} />
+          <Route path="/tournaments/:id" element={<AdminGuard><TournamentDetail /></AdminGuard>} />
+          <Route path="/tournaments/:id/divisions/:divisionId" element={<AdminGuard><TournamentDivisionDetailNew /></AdminGuard>} />
+          <Route path="/tournaments/:id/customize" element={<AdminGuard><TournamentCustomize /></AdminGuard>} />
+          <Route path="/tournaments/:id/payment-success" element={<AdminGuard><TournamentPaymentSuccess /></AdminGuard>} />
+          <Route path="/tournaments/:id/payment-cancelled" element={<AdminGuard><TournamentPaymentCancelled /></AdminGuard>} />
+          <Route path="/tournament/:slug" element={<AdminGuard><TournamentLanding /></AdminGuard>} />
+          <Route path="/tournament/:eventId/register" element={<AdminGuard><TournamentRegister /></AdminGuard>} />
           <Route path="/my-registrations" element={<MyCalendarRegistrations />} />
-          <Route path="/tournament/:eventId/live" element={<TournamentLiveView />} />
-          <Route path="/tournament/:eventId/team/:teamId" element={<TournamentTeamView />} />
-          <Route path="/tournament/:eventId/match/:matchId/score" element={<TournamentMatchScore />} />
+          <Route path="/tournament/:eventId/live" element={<AdminGuard><TournamentLiveView /></AdminGuard>} />
+          <Route path="/tournament/:eventId/team/:teamId" element={<AdminGuard><TournamentTeamView /></AdminGuard>} />
+          <Route path="/tournament/:eventId/match/:matchId/score" element={<AdminGuard><TournamentMatchScore /></AdminGuard>} />
           {/* Platform tournament admin — gated at the router level (security fix Phase 5) */}
           <Route path="/tournament-admin" element={<AdminGuard><TournamentAdmin /></AdminGuard>} />
           <Route path="/tournament-admin/:eventId/customize" element={<AdminGuard><TournamentCustomize /></AdminGuard>} />

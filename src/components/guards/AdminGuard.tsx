@@ -27,7 +27,7 @@ const PageLoader = () => (
  */
 export function AdminGuard({
   children,
-  fallbackPath = '/app/home',
+  fallbackPath = '/player/dashboard',
 }: AdminGuardProps) {
   const { loading: authLoading, isAuthenticated, user } = useAuthState();
   const location = useLocation();
