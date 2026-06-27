@@ -847,14 +847,22 @@ export default function RoundRobinDetail() {
   ): Promise<{ previousRounds: number; targetRounds: number; roundsChanged: boolean } | undefined> => {
     if (!event) return;
 
-    const activePlayers = players.filter(p => p.active);
+    // Always read the live roster from the DB — React state may be stale
+    // immediately after an add/remove call.
+    const { data: liveRoster, error: rosterError } = await supabase
+      .from("round_robin_players")
+      .select("id, player_id, guest_player_id, active")
+      .eq("event_id", event.id);
+    if (rosterError) throw rosterError;
+
+    const activePlayers = (liveRoster || []).filter((p: any) => p.active !== false);
     if (activePlayers.length < 4) {
       toast.error("At least 4 active players are required");
       return;
     }
 
     const unfilled = activePlayers.filter(
-      (p) => !p.player_id && !(p as { guest_player_id?: string }).guest_player_id,
+      (p: any) => !p.player_id && !p.guest_player_id,
     );
     if (unfilled.length > 0) {
       toast.error("Every active roster slot must be either a registered player or a guest.");
@@ -925,9 +933,9 @@ export default function RoundRobinDetail() {
       const { error: generateError } = await supabase.functions.invoke("generate-round-robin-schedule", {
         body: {
           event_id: event.id,
-          participants: activePlayers.map((p) => ({
+          participants: activePlayers.map((p: any) => ({
             player_id: p.player_id,
-            guest_id: (p as { guest_player_id?: string }).guest_player_id,
+            guest_id: p.guest_player_id,
           })),
           num_courts: event.num_courts,
           num_rounds: targetRounds,
@@ -975,6 +983,9 @@ export default function RoundRobinDetail() {
           : "Player added by organizer",
       });
 
+      // Refresh roster immediately so the new player shows up even if regen short-circuits.
+      await fetchEventDetails();
+
       // Regenerate from current round (skipped automatically when guests are present)
       const fromRound = event.current_round || 1;
       const regenResult = await regenerateScheduleFromRound(fromRound).catch(() => null);
@@ -991,6 +1002,7 @@ export default function RoundRobinDetail() {
     } catch (error: any) {
       toast.error("Failed to add player");
       console.error(error);
+      await fetchEventDetails();
       throw error;
     }
   };
@@ -1022,18 +1034,22 @@ export default function RoundRobinDetail() {
         reason: "Player removed from roster (past scores preserved)",
       });
 
+      // Refresh roster immediately so the removed player disappears even if regen short-circuits.
+      await fetchEventDetails();
+
       // Regenerate from current round
       const fromRound = event.current_round || 1;
-      const regenResult = await regenerateScheduleFromRound(fromRound);
+      const regenResult = await regenerateScheduleFromRound(fromRound).catch(() => null);
 
       const roundsSuffix = regenResult?.roundsChanged
         ? ` · Schedule now ${regenResult.targetRounds} rounds to keep ${event.games_per_player || 3} games/player.`
         : "";
 
-      toast.success("Player removed and schedule regenerated - they can rejoin later" + roundsSuffix);
+      toast.success("Player removed - they can rejoin later" + roundsSuffix);
     } catch (error: any) {
       toast.error("Failed to remove player");
       console.error(error);
+      await fetchEventDetails();
       throw error;
     }
   };
