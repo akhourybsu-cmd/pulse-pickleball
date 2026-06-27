@@ -2032,7 +2032,7 @@ export default function RoundRobinDetail() {
                                   className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-card border border-border/60 text-xs font-medium text-foreground"
                                 >
                                   <Users className="h-3 w-3 text-muted-foreground" />
-                                  {getPlayerName(match.a1_player_id, match)}
+                                  {getSeatName(match, 'a1')}
                                 </span>
                               ))}
                             </div>
