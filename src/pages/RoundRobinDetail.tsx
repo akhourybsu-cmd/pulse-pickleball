@@ -553,7 +553,16 @@ export default function RoundRobinDetail() {
       if (!match.is_bye && match.team1_score !== null && match.team2_score !== null) {
         const team1Won = match.team1_score > match.team2_score;
 
-        [match.a1_player_id, match.a2_player_id].forEach((pid) => {
+        const teamAIds = [
+          match.a1_player_id ?? match.a1_guest_id,
+          match.a2_player_id ?? match.a2_guest_id,
+        ];
+        const teamBIds = [
+          match.b1_player_id ?? match.b1_guest_id,
+          match.b2_player_id ?? match.b2_guest_id,
+        ];
+
+        teamAIds.forEach((pid) => {
           if (pid && stats[pid]) {
             stats[pid].points_for += match.team1_score;
             stats[pid].points_against += match.team2_score;
@@ -562,7 +571,7 @@ export default function RoundRobinDetail() {
           }
         });
 
-        [match.b1_player_id, match.b2_player_id].forEach((pid) => {
+        teamBIds.forEach((pid) => {
           if (pid && stats[pid]) {
             stats[pid].points_for += match.team2_score;
             stats[pid].points_against += match.team1_score;
