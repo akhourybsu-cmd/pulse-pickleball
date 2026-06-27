@@ -312,13 +312,20 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
 
   const getPlayerName = (playerId: string | null) => {
     if (!playerId) return "BYE";
-    const player = players.find((p) => p.player_id === playerId);
+    // playerId may be either a profile uuid or a guest_player uuid.
+    const player = players.find(
+      (p) => p.player_id === playerId || (p as any).guest_player_id === playerId,
+    );
     if (!player) return "Someone";
     if (player.profiles) {
       return player.profiles.display_name || player.profiles.full_name || "Someone";
     }
     return `${player.guest_display_name || "Guest"} (Guest)`;
   };
+
+  /** Resolve a seat's name regardless of whether it's a registered player or a guest. */
+  const seatName = (match: ScheduleMatch, seat: 'a1' | 'a2' | 'b1' | 'b2') =>
+    getPlayerName(match[`${seat}_player_id`] ?? match[`${seat}_guest_id`] ?? null);
 
   const getInitials = (name: string) => {
     return name
