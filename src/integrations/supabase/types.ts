@@ -2603,7 +2603,7 @@ export type Database = {
             foreignKeyName: "match_participants_guest_player_id_fkey"
             columns: ["guest_player_id"]
             isOneToOne: false
-            referencedRelation: "guest_match_players"
+            referencedRelation: "guest_players"
             referencedColumns: ["id"]
           },
           {
@@ -3626,9 +3626,13 @@ export type Database = {
       }
       round_robin_schedule: {
         Row: {
+          a1_guest_id: string | null
           a1_player_id: string | null
+          a2_guest_id: string | null
           a2_player_id: string | null
+          b1_guest_id: string | null
           b1_player_id: string | null
+          b2_guest_id: string | null
           b2_player_id: string | null
           court_no: number
           created_at: string
@@ -3641,9 +3645,13 @@ export type Database = {
           team2_score: number | null
         }
         Insert: {
+          a1_guest_id?: string | null
           a1_player_id?: string | null
+          a2_guest_id?: string | null
           a2_player_id?: string | null
+          b1_guest_id?: string | null
           b1_player_id?: string | null
+          b2_guest_id?: string | null
           b2_player_id?: string | null
           court_no: number
           created_at?: string
@@ -3656,9 +3664,13 @@ export type Database = {
           team2_score?: number | null
         }
         Update: {
+          a1_guest_id?: string | null
           a1_player_id?: string | null
+          a2_guest_id?: string | null
           a2_player_id?: string | null
+          b1_guest_id?: string | null
           b1_player_id?: string | null
+          b2_guest_id?: string | null
           b2_player_id?: string | null
           court_no?: number
           created_at?: string
@@ -3672,6 +3684,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "round_robin_schedule_a1_guest_id_fkey"
+            columns: ["a1_guest_id"]
+            isOneToOne: false
+            referencedRelation: "guest_players"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "round_robin_schedule_a1_player_id_fkey"
             columns: ["a1_player_id"]
             isOneToOne: false
@@ -3683,6 +3702,13 @@ export type Database = {
             columns: ["a1_player_id"]
             isOneToOne: false
             referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "round_robin_schedule_a2_guest_id_fkey"
+            columns: ["a2_guest_id"]
+            isOneToOne: false
+            referencedRelation: "guest_players"
             referencedColumns: ["id"]
           },
           {
@@ -3700,6 +3726,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "round_robin_schedule_b1_guest_id_fkey"
+            columns: ["b1_guest_id"]
+            isOneToOne: false
+            referencedRelation: "guest_players"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "round_robin_schedule_b1_player_id_fkey"
             columns: ["b1_player_id"]
             isOneToOne: false
@@ -3711,6 +3744,13 @@ export type Database = {
             columns: ["b1_player_id"]
             isOneToOne: false
             referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "round_robin_schedule_b2_guest_id_fkey"
+            columns: ["b2_guest_id"]
+            isOneToOne: false
+            referencedRelation: "guest_players"
             referencedColumns: ["id"]
           },
           {
