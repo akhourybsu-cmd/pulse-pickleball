@@ -983,6 +983,9 @@ export default function RoundRobinDetail() {
           : "Player added by organizer",
       });
 
+      // Refresh roster immediately so the new player shows up even if regen short-circuits.
+      await fetchEventDetails();
+
       // Regenerate from current round (skipped automatically when guests are present)
       const fromRound = event.current_round || 1;
       const regenResult = await regenerateScheduleFromRound(fromRound).catch(() => null);
@@ -999,6 +1002,7 @@ export default function RoundRobinDetail() {
     } catch (error: any) {
       toast.error("Failed to add player");
       console.error(error);
+      await fetchEventDetails();
       throw error;
     }
   };
