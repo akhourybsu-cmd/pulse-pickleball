@@ -109,11 +109,6 @@ export function WizardContainer() {
   };
 
   const handleContinue = async () => {
-    // Auto-fill event name if empty
-    if (currentStep.id === "name" && !formData.eventName.trim()) {
-      updateFormData("eventName", generateDefaultEventName());
-    }
-
     if (isLastStep) {
       await handleCreate();
     } else {
