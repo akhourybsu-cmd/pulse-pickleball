@@ -485,6 +485,7 @@ const AppContent = () => {
           <Route path="/faq" element={<FAQ />} />
           <Route path="/session/queue" element={<SessionQueue />} />
           <Route path="/admin" element={<AdminGuard><AdminDashboard /></AdminGuard>} />
+          <Route path="/archive" element={<AdminGuard><AdminArchive /></AdminGuard>} />
           <Route path="/admin/session" element={<AdminGuard><AdminSession /></AdminGuard>} />
           <Route path="/admin/pairing" element={<AdminGuard><AdminPairing /></AdminGuard>} />
           <Route path="/admin/players" element={<AdminGuard><AdminPlayers /></AdminGuard>} />
