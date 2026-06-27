@@ -80,7 +80,9 @@ export function DetailsStep({
 
         {/* Location Name (free text) */}
         <div className="space-y-2">
-          <label className="text-sm font-medium">Location name</label>
+          <label className="text-sm font-medium flex items-center gap-1">
+            Location name <Asterisk className="h-3 w-3 text-destructive" />
+          </label>
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-lg bg-muted flex-shrink-0">
               <MapPin className="h-4 w-4" />
