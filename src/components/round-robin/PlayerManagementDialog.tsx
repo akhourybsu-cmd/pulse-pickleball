@@ -23,16 +23,25 @@ import {
 } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
+import { resolveRRParticipant, rrParticipantInitials } from "@/lib/roundRobin/resolveParticipant";
 
 interface Player {
   id: string;
-  player_id: string;
+  player_id: string | null;
+  guest_player_id?: string | null;
+  guest_name?: string | null;
   active: boolean;
   profiles: {
     id: string;
     full_name: string;
     display_name: string | null;
-  };
+    avatar_url?: string | null;
+  } | null;
+  guest_players?: {
+    id: string;
+    display_name: string | null;
+    linked_user_id: string | null;
+  } | null;
 }
 
 interface PlayerManagementDialogProps {
@@ -45,7 +54,7 @@ interface PlayerManagementDialogProps {
   groupId?: string | null;
   /** Restrict picker results when the event has a gender format. */
   genderFilter?: "male" | "female";
-  onAddPlayer: (input: { playerId: string | null; guestName?: string }) => Promise<void>;
+  onAddPlayer: (input: { playerId: string | null; guestPlayerId?: string | null; guestName?: string }) => Promise<void>;
   onMarkInactive: (playerEventId: string) => Promise<void>;
   onSubstitute: (originalPlayerId: string, newPlayerId: string, scope: 'global' | number) => Promise<void>;
 }
