@@ -1952,7 +1952,7 @@ export default function RoundRobinDetail() {
                                       }`}>
                                         <div className={`text-sm truncate flex-1 flex items-center gap-1.5 ${team1Won ? 'font-semibold' : ''}`}>
                                           {team1Won && <Trophy className="h-3.5 w-3.5 text-primary flex-shrink-0" />}
-                                          <span className="truncate">{getPlayerName(match.a1_player_id, match)} / {getPlayerName(match.a2_player_id, match)}</span>
+                                          <span className="truncate">{getSeatName(match, 'a1')} / {getSeatName(match, 'a2')}</span>
                                         </div>
                                         {match.team1_score !== null ? (
                                           <div className={`text-xl font-bold font-mono ml-2 ${team1Won ? 'text-primary' : ''}`}>{match.team1_score}</div>
