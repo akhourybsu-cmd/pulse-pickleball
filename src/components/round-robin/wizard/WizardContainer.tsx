@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { WizardProgress } from "./WizardProgress";
 import { WizardCard } from "./WizardCard";
 import { WizardNavigation } from "./WizardNavigation";
-import { useWizardSteps, WizardFormData, generateDefaultEventName, calculateScheduleMetrics } from "./hooks/useWizardSteps";
+import { useWizardSteps, WizardFormData, calculateScheduleMetrics } from "./hooks/useWizardSteps";
 import { EventModeStep } from "./steps/EventModeStep";
 import { FormatStep } from "./steps/FormatStep";
 import { DetailsStep } from "./steps/DetailsStep";
