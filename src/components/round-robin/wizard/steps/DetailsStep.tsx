@@ -1,4 +1,4 @@
-import { FileText, MapPin, Globe, Lock, Check, X } from "lucide-react";
+import { FileText, MapPin, Globe, Lock, Check, X, Asterisk } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
