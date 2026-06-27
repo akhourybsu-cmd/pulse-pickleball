@@ -93,6 +93,7 @@ export function PlayerManagementDialog({
       for (const pick of addPicks) {
         await onAddPlayer({
           playerId: pick.isGuest ? null : pick.id,
+          guestPlayerId: pick.isGuest ? pick.id : null,
           guestName: pick.isGuest ? pick.display_name || pick.full_name : undefined,
         });
       }
