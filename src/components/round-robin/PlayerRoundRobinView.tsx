@@ -650,7 +650,7 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
                                           )}
                                         </div>
                                         <div className={`text-sm text-right ${teamBWon ? "font-semibold text-primary" : ""}`}>
-                                          {getPlayerName(match.b1_player_id)} / {getPlayerName(match.b2_player_id)}
+                                          {seatName(match, 'b1')} / {seatName(match, 'b2')}
                                         </div>
                                       </div>
                                     )}
