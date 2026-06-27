@@ -143,16 +143,16 @@ export function PlayerManagementDialog({
   const getPlayerName = async (playerId: string) => {
     const player = players.find(p => p.player_id === playerId);
     if (player) {
-      return player.profiles.display_name || player.profiles.full_name || "Unknown";
+      return resolveRRParticipant(player as any).name;
     }
-    
+
     // If not in players list, fetch from database (for new substitutes)
     const { data } = await supabase
       .from('profiles_public')
       .select('display_name, full_name')
       .eq('id', playerId)
       .single();
-    
+
     return data?.display_name || data?.full_name || "Unknown";
   };
 
