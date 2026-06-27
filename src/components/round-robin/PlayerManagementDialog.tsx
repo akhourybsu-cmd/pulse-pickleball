@@ -363,11 +363,14 @@ export function PlayerManagementDialog({
                   <SelectValue placeholder="Choose a player..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {activePlayers.map(p => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.profiles.display_name || p.profiles.full_name}
-                    </SelectItem>
-                  ))}
+                  {activePlayers.map(p => {
+                    const resolved = resolveRRParticipant(p as any);
+                    return (
+                      <SelectItem key={p.id} value={p.id}>
+                        {resolved.name}{resolved.isGuest ? ' (Guest)' : ''}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>
