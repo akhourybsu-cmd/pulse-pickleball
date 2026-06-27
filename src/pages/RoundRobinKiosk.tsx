@@ -73,13 +73,21 @@ interface ScheduleMatch {
   a2_player_id: string | null;
   b1_player_id: string | null;
   b2_player_id: string | null;
+  a1_guest_id: string | null;
+  a2_guest_id: string | null;
+  b1_guest_id: string | null;
+  b2_guest_id: string | null;
   is_bye: boolean;
   team1_score: number | null;
   team2_score: number | null;
-  a1_profile?: { display_name: string | null; full_name: string };
-  a2_profile?: { display_name: string | null; full_name: string };
-  b1_profile?: { display_name: string | null; full_name: string };
-  b2_profile?: { display_name: string | null; full_name: string };
+  a1_profile?: { display_name: string | null; full_name: string } | null;
+  a2_profile?: { display_name: string | null; full_name: string } | null;
+  b1_profile?: { display_name: string | null; full_name: string } | null;
+  b2_profile?: { display_name: string | null; full_name: string } | null;
+  a1_guest?: { display_name: string | null } | null;
+  a2_guest?: { display_name: string | null } | null;
+  b1_guest?: { display_name: string | null } | null;
+  b2_guest?: { display_name: string | null } | null;
 }
 
 interface StandingsRow {
