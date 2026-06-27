@@ -33,6 +33,8 @@ import { format, parseISO } from "date-fns";
 import { EditEventDialog } from "@/components/round-robin/EditEventDialog";
 import { EditModeBanner } from "@/components/round-robin/EditModeBanner";
 import { InviteCodeCard } from "@/components/round-robin/InviteCodeCard";
+import { GuestInviteDialog } from "@/components/round-robin/GuestInviteDialog";
+import { Send } from "lucide-react";
 import { WhatsNextBanner } from "@/components/round-robin/WhatsNextBanner";
 import { RoundRobinTopBar } from "@/components/round-robin/RoundRobinTopBar";
 import { RoundRobinHostHero } from "@/components/round-robin/RoundRobinHostHero";
@@ -198,6 +200,7 @@ export default function RoundRobinDetail() {
   const [scoreManagementOpen, setScoreManagementOpen] = useState(false);
   const [auditHistoryOpen, setAuditHistoryOpen] = useState(false);
   const [auditEntries, setAuditEntries] = useState<any[]>([]);
+  const [inviteGuest, setInviteGuest] = useState<{ id: string; name: string; email: string | null } | null>(null);
 
   useEffect(() => {
     fetchEventDetails();
@@ -294,7 +297,7 @@ export default function RoundRobinDetail() {
 
       const { data: playersData, error: playersError } = await supabase
         .from("round_robin_players")
-        .select("*, profiles:profiles_public!round_robin_players_player_id_fkey(*), guest_players:guest_players!round_robin_players_guest_player_id_fkey(id, display_name, linked_user_id)")
+        .select("*, profiles:profiles_public!round_robin_players_player_id_fkey(*), guest_players:guest_players!round_robin_players_guest_player_id_fkey(id, display_name, linked_user_id, email)")
         .eq("event_id", id);
 
 
@@ -2108,15 +2111,14 @@ export default function RoundRobinDetail() {
                         Players ({players.length})
                       </p>
                       {players.map((player) => {
+                        const guest = (player as any).guest_players as { id?: string; display_name?: string; linked_user_id?: string | null; email?: string | null } | undefined;
+                        const guestId = (player as any).guest_player_id as string | null | undefined;
+                        const guestName = guest?.display_name || (player as any).guest_name;
+                        const isUnlinkedGuest = !!guestId && !guest?.linked_user_id;
                         const displayName =
                           player.profiles?.display_name ||
                           player.profiles?.full_name ||
-                          ((player as any).guest_players?.display_name
-                            ? `${(player as any).guest_players.display_name} (Guest)`
-                            : null) ||
-                          ((player as any).guest_name
-                            ? `${(player as any).guest_name} (Guest)`
-                            : "Guest");
+                          (guestName ? `${guestName} (Guest)` : "Guest");
                         return (
                         <div key={player.id} className="flex items-center justify-between p-3 border rounded-lg">
                           <div className="font-medium">
@@ -2124,6 +2126,20 @@ export default function RoundRobinDetail() {
                           </div>
                           <div className="flex items-center gap-2">
                             <Badge variant="default">Active</Badge>
+                            {isOrganizer && isUnlinkedGuest && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setInviteGuest({
+                                  id: guestId!,
+                                  name: guestName || "Guest",
+                                  email: guest?.email ?? null,
+                                })}
+                              >
+                                <Send className="h-3 w-3 mr-1" />
+                                Invite
+                              </Button>
+                            )}
                             {isOrganizer && !event.voided && event.status !== 'completed' && (
                               <Button
                                 size="sm"
@@ -2460,6 +2476,17 @@ export default function RoundRobinDetail() {
             onOpenChange={setAuditHistoryOpen}
             auditEntries={auditEntries}
           />
+
+          {inviteGuest && (
+            <GuestInviteDialog
+              open={!!inviteGuest}
+              onOpenChange={(o) => !o && setInviteGuest(null)}
+              guestPlayerId={inviteGuest.id}
+              guestDisplayName={inviteGuest.name}
+              defaultEmail={inviteGuest.email}
+            />
+          )}
+
 
 
           <EditNotifications
