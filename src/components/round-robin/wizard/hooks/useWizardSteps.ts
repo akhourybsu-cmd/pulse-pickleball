@@ -59,7 +59,7 @@ export interface WizardStep {
 const ALL_STEPS: WizardStep[] = [
   { id: "mode", label: "Event Mode", isOptional: false },
   { id: "format", label: "Format", isOptional: false },
-  { id: "details", label: "Details", isOptional: true },
+  { id: "details", label: "Details", isOptional: false },
   { id: "players", label: "Players", isOptional: false },
   { id: "schedule", label: "Schedule", isOptional: false },
   { id: "datetime", label: "Date & Time", isOptional: false },
