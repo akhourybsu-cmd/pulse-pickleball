@@ -510,11 +510,22 @@ export default function RoundRobinDetail() {
     const activePlayers = playersData.filter(p => p.active);
     const removedPlayers = playersData.filter(p => !p.active);
 
-    // Initialize stats for all players (active and removed)
+    // Initialize stats for all players (active and removed).
+    // Guests have no player_id / profiles row, so fall back to guest data
+    // and key the stats map by guest_player_id when needed.
     playersData.forEach((p) => {
-      stats[p.player_id] = {
-        player_id: p.player_id,
-        player_name: p.profiles.display_name || p.profiles.full_name,
+      const key = p.player_id || (p as any).guest_player_id;
+      if (!key) return;
+      const guestName =
+        (p as any).guest_players?.display_name ||
+        (p as any).guest_name ||
+        "Guest";
+      const name = p.profiles
+        ? p.profiles.display_name || p.profiles.full_name
+        : `${guestName} (Guest)`;
+      stats[key] = {
+        player_id: key,
+        player_name: name,
         wins: 0,
         losses: 0,
         points_for: 0,
