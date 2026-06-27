@@ -1,94 +1,68 @@
-# Round Robin Guest Players — Implementation Plan
+## Goal
+Compartmentalize every venue- and tournament-related surface so the live player app behaves as if those features don't exist. Code stays in the repo (nothing deleted) so it can be revived later, but normal users never see, link to, or land on any of it. Only platform admins (`user_roles.role = 'admin'`) can reach the archived surface.
 
-## Overview
-Add reusable guest player profiles to the Round Robin system, scoped to a creator (and optionally a community group), so the same guests can be added across multiple events. Guest-enabled events are automatically excluded from PULSE Ratings. Add an "Invite to Claim Profile" flow so guests can later link to a real account.
+## What changes for normal users
+- No `/venue/*` page is reachable. Public `/venues`, `/v/:slug`, `/venue/:slug` (white-label landing), `VenuesLanding` marketing page, and the entire `/venue` console redirect to `/player/dashboard`.
+- No `/tournament*` or `/tournaments*` page is reachable. `TournamentsLanding`, `BrowseTournaments`, `TournamentLanding`, `TournamentRegister`, `TournamentLiveView`, `TournamentTeamView`, `TournamentDetail`, `TournamentCustomize`, payment-success/cancel, and the `/tournament-admin/*` set all redirect to `/player/dashboard` for non-admins.
+- The "Switch to venue" `ModeSwitcher` in the page header is removed for all users (even those with venue memberships) for now.
+- Player nav loses any links to `coaching`, `bookings`, `my-bookings`, venue discovery, "follow venue", "favorite venue", and tournament browse.
+- `EnablePushBanner`, dashboard cards, and Find Play remain untouched — they have no venue/tournament dependency.
 
-## 1. Database Schema (single migration)
+## What still works (unchanged)
+- Round Robins, Matches, Community/Groups, Messages, Friends, Profiles, Notifications, Guests, Push.
+- Match recording and rating math.
+- The legacy `/venue/round-robins/:id/kiosk` and `/venue/round-robins/:id` redirects keep working because they shim to the unified `/round-robin/:id` route — those stay, since they're just URL aliases the kiosk QR codes rely on.
+- All `venue_*`, `tournaments_*`, `unified_events`, and `financial_transactions` tables remain in the database. RLS is untouched. Nothing user-facing reads them anymore from the player app.
 
-### New table: `guest_players`
-Reusable guest profiles owned by a creator, optionally scoped to a community group.
-- `id`, `display_name` (required), `created_by` (uuid → auth.users), `group_id` (nullable → groups), `email`, `phone`, `skill_estimate` (numeric), `linked_user_id` (nullable → profiles), `linked_at`, `created_at`, `updated_at`.
-- Index on `(created_by)`, `(group_id)`, `(linked_user_id)`.
-- RLS: creator can manage their own guests; group admins can read/manage guests for their group; everyone can read guests referenced in events they can view (via existing event policies).
-- GRANTs to `authenticated` + `service_role`.
+## Admin escape hatch
+A new `/archive` index page (admin-only) lists every archived surface and links into the existing `/venue/*` and `/tournament*` routes. To reach the archived UI, an admin navigates to `/archive` and clicks through. All archived routes are wrapped in `AdminGuard`, so even a direct URL works for admins and bounces everyone else.
 
-### New table: `guest_claim_invites`
-- `id`, `guest_player_id` (→ guest_players), `token` (unique, random), `invited_email` (nullable), `created_by`, `created_at`, `expires_at` (default now() + 30 days), `accepted_at`, `accepted_by_user_id`, `status` (`pending|accepted|revoked|expired`), `requires_approval` (bool — true for generic links, false for email-matched).
-- RLS: creator can manage; anyone with the token can SELECT (via SECURITY DEFINER RPC `get_claim_invite(token)`).
+## Implementation outline (technical)
 
-### Modify `round_robin_events`
-- Add `allow_guests boolean default false`.
-- Add `rating_exclusion_reason text` (nullable).
-- Trigger: when `allow_guests = true`, force `rating_eligible = false` and set `rating_exclusion_reason = 'Guest players enabled'`.
+### 1. Route gating in `src/App.tsx`
+- Wrap every venue route group in `AdminGuard`:
+  - `/venues`, `/v/:slug`, `/venue/:slug` (public landings) → `AdminGuard`.
+  - `/venue` shell tree (Overview, Profile, Branding, Facility, Media, Courts, Bookings, Events, Tournaments, RoundRobins, Coaching, Staff, Settings, Analytics) → wrap the parent route in `AdminGuard`.
+  - `/venue/onboarding/*`, `/venue/create-fast`, `/venue/interest`, `/venue/verification-pending` → `AdminGuard`.
+  - Keep `/venue/round-robins/:id/kiosk` and `/venue/round-robins/:id` redirect shims public (they're just unified-route aliases).
+- Wrap every tournament route in `AdminGuard`: `/tournaments`, `/tournaments/browse`, `/tournaments/manage`, `/tournaments/new`, `/tournaments/:id*`, `/tournament/:slug`, `/tournament/:eventId/*`. `/tournament-admin/*` is already admin-gated.
+- Remove `/player/coaching`, `/player/bookings`, `/player/my-bookings` from the `PlayerShell` children, or wrap them in `AdminGuard` (they only make sense with venues). `MyEvents` stays — it covers Round Robins / Community.
+- `AdminGuard` already redirects non-admins to `/player/dashboard` with a toast.
 
-### Modify `round_robin_players`
-- Add `guest_player_id uuid` (→ guest_players, ON DELETE CASCADE).
-- Add CHECK: exactly one of `player_id` or `guest_player_id` is non-null.
-- Drop the existing `(event_id, player_id)` unique key, replace with two partial unique indexes: one on `(event_id, player_id) where player_id is not null`, one on `(event_id, guest_player_id) where guest_player_id is not null`.
-- Keep legacy `guest_name` for backward compat (read-only fallback); new writes use `guest_player_id`.
-- Update RLS policies to allow organizer inserts where `guest_player_id` is set.
+### 2. Strip player entry points
+- `src/components/PageHeader.tsx`: remove the `ModeSwitcher` render entirely (was already conditional on `hasVenueAccess`). Keep the import for the admin archive page.
+- `src/components/dashboard/ExploreCard.tsx`: delete the "Tournaments" and "Venues" tiles. (Component is already unused per the Dashboard comment, but I'll prune the file so a future re-mount is safe.)
+- `src/components/dashboard/VenueActivitySection.tsx`, `RoleSwitcherCard.tsx`: leave on disk, no-op exports (already not mounted).
+- `src/components/onboarding/*`: remove any "Visit a venue", "Book a court", or "Browse tournaments" copy/steps. Verified none of the active onboarding steps reference these.
+- `src/pages/Index.tsx` and `src/pages/PlayersLanding.tsx`: scrub any "Find a venue" / "Browse tournaments" CTAs from the marketing surface; replace with "Find Play" / "Join a community".
+- Notification deep links: any notification that points at `/venue/*`, `/tournament/*`, or `/player/bookings` will now hit the admin redirect. I'll patch the dispatch SQL (`notif_url` builders) to suppress those notification types for now (they're orphaned), matching the prior cleanup of "Open Play Session" notifs.
 
-### RPCs
-- `claim_guest_profile(token text)`: validates token, matches authenticated user's email when present, sets `linked_user_id` on the guest, marks invite `accepted`. If `requires_approval` is true, creates a pending claim row instead and notifies creator.
-- `approve_guest_claim(invite_id)`: creator approval for generic-link claims.
+### 3. Admin archive index
+- New page `src/pages/admin/AdminArchive.tsx` wrapped in `AdminGuard`, route `/archive`. Sectioned list:
+  - **Venues** — links to `/venue`, `/venues`, `/venue/create-fast`, `/admin/venue-verification`.
+  - **Tournaments** — links to `/tournaments`, `/tournaments/manage`, `/tournament-admin`.
+  - **Public landings** — `/v/:slug` (with a slug picker pulled from `venues`).
+- Add a card on `AdminDashboard` pointing at `/archive`.
 
-## 2. Wizard Changes
+### 4. Database posture (recommended)
+No destructive migrations. The user picked "Other / whatever is recommended"; the safest path is:
+- **Leave all `venue_*` and `tournaments_*` tables, RLS, and grants exactly as they are.** RLS already restricts writes to venue staff / event organizers, and reads are mostly scoped or via public views the player app no longer calls.
+- **Disable the `unified_events` sync triggers from tournaments and venue_events** so archived activity stops landing in the unified discovery feed (which `FindEvents` reads). Triggers are dropped but the underlying functions remain, so a single `CREATE TRIGGER` re-enables them when we resurrect the surface.
+- **Suppress orphaned notification dispatchers** for booking reminders, venue announcements, tournament alerts. The corresponding `pg_cron` schedules get unscheduled (not deleted) and the trigger functions stay in place. This matches how `send-group-event-reminders` was archived earlier.
 
-### `useWizardSteps.ts`
-Add `allowGuests: boolean` to `WizardFormData`. Surface it on the Ratings step (or Details). When `allowGuests=true`, force `ratingEligible=false` and show explanatory helper text.
+I'll bundle the trigger drops + cron unschedules into one migration that's fully reversible.
 
-### `RatingsStep.tsx`
-- Add toggle: "Allow guest players (disables PULSE Ratings)".
-- When on: disable the rating-eligible toggle, show banner "Not eligible for PULSE Ratings — Guest players enabled".
+### 5. Verification
+- Build passes.
+- Playwright: signed-in non-admin tries `/venue`, `/venue/123`, `/tournaments`, `/tournament/foo`, `/v/anything` → each redirects to `/player/dashboard`.
+- Signed-in admin reaches `/archive` and can click into `/venue` and `/tournaments` without redirect.
+- `FindEvents` no longer surfaces tournament rows (sync disabled), only the player-relevant event types.
+- Notification bell shows no new venue/tournament notifications after the cron pause.
 
-### `PlayerPickerSheet.tsx`
-- Extend existing Guest tab to:
-  - List the creator's existing reusable guests (and group's guests if `groupId` is set).
-  - Quick-add input creates a new `guest_players` row (instead of an ephemeral object).
-  - Show "Guest" badge on results; if `linked_user_id` set, resolve to the registered user.
-- Only show Guest tab when `allowGuests` is true.
+## Out of scope
+- Deleting venue/tournament tables, RLS policies, or edge functions.
+- Refactoring `unified_events` to drop venue/tournament columns.
+- Reworking Stripe Connect, financial_transactions, or subscription tiers.
+- Player-facing copy beyond the marketing landing and onboarding scrub.
 
-### `WizardContainer.tsx` save
-- Persist `allow_guests` on the event.
-- For each selected guest, insert into `round_robin_players` with `guest_player_id`.
-
-## 3. Resolver / Display
-
-Add a small helper `resolveRRParticipant(row)` returning `{ id, name, avatar_url, isGuest, linkedUserId }`. Update standings, schedule, kiosk, score-entry, and host views to use it instead of reading `player_id` directly. Existing `guest_name` rows fall back to that text.
-
-## 4. Rating Pipeline Exclusion
-- Audit `recalculate-ratings` edge function + any client-side rating writes. Skip matches whose source RR has `allow_guests = true` OR any participant has `guest_player_id`. Already-correct path: `rating_eligible=false` events shouldn't feed ratings; we'll add a defensive guard.
-
-## 5. Invite-to-Claim Flow
-
-### Creator UI
-- In `PlayerManagementDialog` (and a new "Roster" view): for any guest participant, menu item **Invite to Claim Profile**.
-  - Modal: optionally enter email → calls `send-transactional-email` with a new `guest-claim-invite` template. Generates token, stores `guest_claim_invites` row.
-  - Button: **Copy share link** → `/claim-guest/:token` (sets `requires_approval=true`).
-
-### Claim page `/claim-guest/:token`
-- If not authenticated → redirect to `/auth?redirect=/claim-guest/:token`.
-- After auth, calls `claim_guest_profile` RPC. Shows success or "pending creator approval".
-
-### Email template
-- New `guest-claim-invite.tsx` in `_shared/transactional-email-templates/` with claim CTA.
-
-### Approval UI
-- In `PlayerManagementDialog`, badge on guests with pending claims; creator can approve/reject.
-
-## 6. Merge Duplicate Guests (admin)
-- New action in guest list: select two guest rows → `merge_guest_players(keep_id, remove_id)` RPC: rewrites `round_robin_players.guest_player_id`, then deletes loser. Creator/group-admin only.
-
-## 7. UI Helper Text
-- Wizard Ratings step: "Guests are great for casual or open play, but events with guests don't count toward PULSE Ratings."
-- Event header: badge "Not Rating Eligible — Guests Enabled" when applicable.
-
-## Out of Scope (deferred)
-- Bulk import of guests from CSV.
-- Guest stats/standings displayed publicly on profile pages (until linked).
-- Push notifications when a claim is approved (basic in-app notification only).
-
-## Technical Notes
-- All schema in one approved migration.
-- New edge functions: none required beyond the existing `send-transactional-email`.
-- Tests: rely on TS typecheck + manual QA in the wizard and kiosk.
+I'll execute this end-to-end on approval.

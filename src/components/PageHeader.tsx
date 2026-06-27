@@ -62,7 +62,7 @@ export function PageHeader({ userId }: PageHeaderProps) {
                 <UserIcon className="h-[1.2rem] w-[1.2rem]" />
                 <span className="sr-only">View Profile</span>
               </Button>
-              {!modeLoading && hasVenueAccess && <ModeSwitcher />}
+              {/* ModeSwitcher hidden — venue surface archived behind /archive */}
             </>
           )}
           <ThemeToggle />
