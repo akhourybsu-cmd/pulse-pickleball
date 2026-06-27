@@ -680,15 +680,18 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
                                 <AvatarImage src={player.profiles.avatar_url} alt={player.profiles?.display_name || player.profiles?.full_name || "Player"} />
                               )}
                               <AvatarFallback className="bg-gradient-to-br from-primary/20 to-secondary/20 text-foreground font-semibold">
-                                {getInitials(player.profiles?.display_name || player.profiles?.full_name || "?")}
+                                {getInitials(player.profiles?.display_name || player.profiles?.full_name || player.guest_display_name || "?")}
                               </AvatarFallback>
                             </Avatar>
                             <div className="flex-1 min-w-0">
                               <div className="font-medium truncate flex items-center gap-2">
                                 <span className="truncate">
-                                  {player.profiles?.display_name || player.profiles?.full_name || "Player"}
+                                  {player.profiles?.display_name || player.profiles?.full_name || player.guest_display_name || "Player"}
                                 </span>
-                                {player.player_id === userId && (
+                                {player.is_guest && (
+                                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">Guest</Badge>
+                                )}
+                                {player.player_id === userId && !player.is_guest && (
                                   <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-primary/40 text-primary">You</Badge>
                                 )}
                               </div>
