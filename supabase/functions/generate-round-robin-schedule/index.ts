@@ -6,18 +6,26 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+interface Participant {
+  player_id?: string | null;
+  guest_id?: string | null;
+}
+
 interface ScheduleRequest {
   event_id: string;
-  player_ids: string[];
+  // Back-compat: callers may still send player_ids only (all registered players).
+  player_ids?: string[];
+  // Preferred: mixed list of registered players and guests.
+  participants?: Participant[];
   num_courts: number;
-  num_rounds: number; // Calculated rounds
-  games_per_player: number; // Target games each player should play
+  num_rounds: number;
+  games_per_player: number;
   regenerate_from_round?: number;
   format?: 'open' | 'mixed' | 'male' | 'female';
 }
 
 interface PlayerStats {
-  playerId: string;
+  playerId: string; // synthetic seat id: "p:<uuid>" or "g:<uuid>"
   gamesPlayed: number;
   byesReceived: number;
   lastPlayedRound: number;
@@ -31,6 +39,7 @@ interface PlayerStats {
 interface ScheduleMatch {
   round_no: number;
   court_no: number;
+  // Synthetic seat ids during generation; split into player/guest at insert time.
   a1_player_id: string | null;
   a2_player_id: string | null;
   b1_player_id: string | null;
