@@ -627,7 +627,7 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
                                     
                                     {isBye ? (
                                       <div className="text-muted-foreground italic">
-                                        <span className="font-medium text-foreground">{getPlayerName(match.a1_player_id)}</span> — BYE
+                                        <span className="font-medium text-foreground">{seatName(match, 'a1')}</span> — BYE
                                       </div>
                                     ) : (
                                       <div className="flex-1 grid grid-cols-[1fr_auto_1fr] gap-4 items-center">
