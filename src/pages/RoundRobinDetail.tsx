@@ -33,6 +33,8 @@ import { format, parseISO } from "date-fns";
 import { EditEventDialog } from "@/components/round-robin/EditEventDialog";
 import { EditModeBanner } from "@/components/round-robin/EditModeBanner";
 import { InviteCodeCard } from "@/components/round-robin/InviteCodeCard";
+import { GuestInviteDialog } from "@/components/round-robin/GuestInviteDialog";
+import { Send } from "lucide-react";
 import { WhatsNextBanner } from "@/components/round-robin/WhatsNextBanner";
 import { RoundRobinTopBar } from "@/components/round-robin/RoundRobinTopBar";
 import { RoundRobinHostHero } from "@/components/round-robin/RoundRobinHostHero";
