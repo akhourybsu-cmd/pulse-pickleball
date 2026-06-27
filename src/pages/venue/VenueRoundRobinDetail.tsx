@@ -170,9 +170,15 @@ export default function VenueRoundRobinDetail() {
   const calculateStandings = (scheduleData: ScheduleMatch[], playersData: Player[]) => {
     const stats: Record<string, StandingsRow> = {};
     playersData.filter(p => p.active).forEach((p) => {
-      stats[p.player_id] = {
-        player_id: p.player_id,
-        player_name: p.profiles.display_name || p.profiles.full_name,
+      const key = p.player_id || p.guest_player_id;
+      if (!key) return;
+      const guestName = p.guest_players?.display_name || p.guest_name || "Guest";
+      const name = p.profiles
+        ? p.profiles.display_name || p.profiles.full_name
+        : `${guestName} (Guest)`;
+      stats[key] = {
+        player_id: key,
+        player_name: name,
         wins: 0, losses: 0, points_for: 0, points_against: 0, point_diff: 0,
       };
     });
