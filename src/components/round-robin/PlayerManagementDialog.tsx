@@ -23,16 +23,25 @@ import {
 } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
+import { resolveRRParticipant, rrParticipantInitials } from "@/lib/roundRobin/resolveParticipant";
 
 interface Player {
   id: string;
-  player_id: string;
+  player_id: string | null;
+  guest_player_id?: string | null;
+  guest_name?: string | null;
   active: boolean;
   profiles: {
     id: string;
     full_name: string;
     display_name: string | null;
-  };
+    avatar_url?: string | null;
+  } | null;
+  guest_players?: {
+    id: string;
+    display_name: string | null;
+    linked_user_id: string | null;
+  } | null;
 }
 
 interface PlayerManagementDialogProps {
@@ -45,7 +54,7 @@ interface PlayerManagementDialogProps {
   groupId?: string | null;
   /** Restrict picker results when the event has a gender format. */
   genderFilter?: "male" | "female";
-  onAddPlayer: (input: { playerId: string | null; guestName?: string }) => Promise<void>;
+  onAddPlayer: (input: { playerId: string | null; guestPlayerId?: string | null; guestName?: string }) => Promise<void>;
   onMarkInactive: (playerEventId: string) => Promise<void>;
   onSubstitute: (originalPlayerId: string, newPlayerId: string, scope: 'global' | number) => Promise<void>;
 }
@@ -84,6 +93,7 @@ export function PlayerManagementDialog({
       for (const pick of addPicks) {
         await onAddPlayer({
           playerId: pick.isGuest ? null : pick.id,
+          guestPlayerId: pick.isGuest ? pick.id : null,
           guestName: pick.isGuest ? pick.display_name || pick.full_name : undefined,
         });
       }
@@ -133,16 +143,16 @@ export function PlayerManagementDialog({
   const getPlayerName = async (playerId: string) => {
     const player = players.find(p => p.player_id === playerId);
     if (player) {
-      return player.profiles.display_name || player.profiles.full_name || "Unknown";
+      return resolveRRParticipant(player as any).name;
     }
-    
+
     // If not in players list, fetch from database (for new substitutes)
     const { data } = await supabase
       .from('profiles_public')
       .select('display_name, full_name')
       .eq('id', playerId)
       .single();
-    
+
     return data?.display_name || data?.full_name || "Unknown";
   };
 
@@ -219,8 +229,9 @@ export function PlayerManagementDialog({
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                 {activePlayers.map((p) => {
-                  const name = p.profiles.display_name || p.profiles.full_name || 'Player';
-                  const initials = name.split(' ').map(s => s[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
+                  const resolved = resolveRRParticipant(p as any);
+                  const name = resolved.name;
+                  const initials = rrParticipantInitials(resolved);
                   return (
                     <div
                       key={p.id}
@@ -231,7 +242,7 @@ export function PlayerManagementDialog({
                           {initials}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="text-sm text-foreground truncate">{name}</span>
+                      <span className="text-sm text-foreground truncate">{name}{resolved.isGuest ? ' (Guest)' : ''}</span>
                     </div>
                   );
                 })}
@@ -246,8 +257,9 @@ export function PlayerManagementDialog({
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                   {inactivePlayers.map((p) => {
-                    const name = p.profiles.display_name || p.profiles.full_name || 'Player';
-                    const initials = name.split(' ').map(s => s[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
+                    const resolved = resolveRRParticipant(p as any);
+                    const name = resolved.name;
+                    const initials = rrParticipantInitials(resolved);
                     return (
                       <div
                         key={p.id}
@@ -258,7 +270,7 @@ export function PlayerManagementDialog({
                             {initials}
                           </AvatarFallback>
                         </Avatar>
-                        <span className="text-sm text-muted-foreground truncate">{name}</span>
+                        <span className="text-sm text-muted-foreground truncate">{name}{resolved.isGuest ? ' (Guest)' : ''}</span>
                       </div>
                     );
                   })}
@@ -285,7 +297,10 @@ export function PlayerManagementDialog({
                 onPlayersChange={setAddPicks}
                 genderFilter={genderFilter}
                 groupId={groupId}
-                excludePlayerIds={players.map(p => p.player_id).filter(Boolean)}
+                excludePlayerIds={[
+                  ...players.map(p => p.player_id).filter(Boolean) as string[],
+                  ...players.map(p => p.guest_player_id).filter(Boolean) as string[],
+                ]}
                 trigger={
                   <button
                     type="button"
@@ -351,11 +366,14 @@ export function PlayerManagementDialog({
                   <SelectValue placeholder="Choose a player..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {activePlayers.map(p => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.profiles.display_name || p.profiles.full_name}
-                    </SelectItem>
-                  ))}
+                  {activePlayers.map(p => {
+                    const resolved = resolveRRParticipant(p as any);
+                    return (
+                      <SelectItem key={p.id} value={p.id}>
+                        {resolved.name}{resolved.isGuest ? ' (Guest)' : ''}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>
@@ -377,16 +395,19 @@ export function PlayerManagementDialog({
                   <SelectValue placeholder="Choose player to replace..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {activePlayers.map(p => (
-                    <SelectItem key={p.id} value={p.player_id}>
-                      {p.profiles.display_name || p.profiles.full_name}
-                    </SelectItem>
-                  ))}
+                  {activePlayers.filter(p => !!p.player_id).map(p => {
+                    const resolved = resolveRRParticipant(p as any);
+                    return (
+                      <SelectItem key={p.id} value={p.player_id as string}>
+                        {resolved.name}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
               {substituteOriginal && (
                 <div className="text-sm text-muted-foreground mt-1">
-                  Selected: <strong>{activePlayers.find(p => p.player_id === substituteOriginal)?.profiles.display_name || activePlayers.find(p => p.player_id === substituteOriginal)?.profiles.full_name}</strong>
+                  Selected: <strong>{resolveRRParticipant((activePlayers.find(p => p.player_id === substituteOriginal) ?? {}) as any).name}</strong>
                 </div>
               )}
             </div>
@@ -407,7 +428,8 @@ export function PlayerManagementDialog({
                 groupId={groupId}
                 excludePlayerIds={[
                   ...(substituteOriginal ? [substituteOriginal] : []),
-                  ...players.map(p => p.player_id).filter(Boolean),
+                  ...players.map(p => p.player_id).filter(Boolean) as string[],
+                  ...players.map(p => p.guest_player_id).filter(Boolean) as string[],
                 ]}
                 trigger={
                   <button

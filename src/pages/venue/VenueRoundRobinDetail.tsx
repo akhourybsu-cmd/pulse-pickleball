@@ -59,14 +59,21 @@ interface Event {
 interface Player {
   id: string;
   event_id: string;
-  player_id: string;
+  player_id: string | null;
+  guest_player_id?: string | null;
+  guest_name?: string | null;
   joined_at: string;
   active: boolean;
   profiles: {
     id: string;
     full_name: string;
     display_name: string | null;
-  };
+  } | null;
+  guest_players?: {
+    id: string;
+    display_name: string | null;
+    linked_user_id: string | null;
+  } | null;
 }
 
 interface ScheduleMatch {
@@ -136,7 +143,7 @@ export default function VenueRoundRobinDetail() {
 
       const { data: playersData } = await supabase
         .from("round_robin_players")
-        .select("*, profiles:profiles_public!round_robin_players_player_id_fkey(*)")
+        .select("*, profiles:profiles_public!round_robin_players_player_id_fkey(*), guest_players:guest_players!round_robin_players_guest_player_id_fkey(id, display_name, linked_user_id)")
         .eq("event_id", id);
 
       setPlayers(playersData || []);
@@ -163,9 +170,15 @@ export default function VenueRoundRobinDetail() {
   const calculateStandings = (scheduleData: ScheduleMatch[], playersData: Player[]) => {
     const stats: Record<string, StandingsRow> = {};
     playersData.filter(p => p.active).forEach((p) => {
-      stats[p.player_id] = {
-        player_id: p.player_id,
-        player_name: p.profiles.display_name || p.profiles.full_name,
+      const key = p.player_id || p.guest_player_id;
+      if (!key) return;
+      const guestName = p.guest_players?.display_name || p.guest_name || "Guest";
+      const name = p.profiles
+        ? p.profiles.display_name || p.profiles.full_name
+        : `${guestName} (Guest)`;
+      stats[key] = {
+        player_id: key,
+        player_name: name,
         wins: 0, losses: 0, points_for: 0, points_against: 0, point_diff: 0,
       };
     });
@@ -706,7 +719,7 @@ export default function VenueRoundRobinDetail() {
                         transition={{ delay: idx * 0.03 }}
                         className="p-4 bg-muted/50 rounded-xl border border-border/50 hover:border-primary/30 hover:shadow-sm transition-all"
                       >
-                        <p className="font-medium truncate">{p.profiles.display_name || p.profiles.full_name}</p>
+                        <p className="font-medium truncate">{p.profiles?.display_name || p.profiles?.full_name || p.guest_players?.display_name || p.guest_name || 'Guest'}{!p.profiles ? ' (Guest)' : ''}</p>
                       </motion.div>
                     ))}
                   </div>
@@ -732,10 +745,11 @@ export default function VenueRoundRobinDetail() {
         totalRounds={event.num_rounds}
         groupId={event.group_id}
         genderFilter={event.format === "male" ? "male" : event.format === "female" ? "female" : undefined}
-        onAddPlayer={async ({ playerId, guestName }) => {
+        onAddPlayer={async ({ playerId, guestPlayerId, guestName }) => {
           await supabase.from("round_robin_players").insert({
             event_id: event.id,
             player_id: playerId,
+            guest_player_id: guestPlayerId ?? null,
             guest_name: guestName ?? null,
           } as never);
           fetchEventDetails();

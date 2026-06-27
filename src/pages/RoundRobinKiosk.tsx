@@ -317,9 +317,9 @@ export default function RoundRobinKiosk() {
         if (match.b2_player_id) allPlayerIds.add(match.b2_player_id);
       });
 
-      // Fetch all profiles at once
+      // Fetch all profiles at once (public view — kiosk may run unauthenticated)
       const { data: profiles, error: profilesError } = await supabase
-        .from("profiles")
+        .from("profiles_public")
         .select("id, display_name, full_name")
         .in("id", Array.from(allPlayerIds));
 
@@ -327,8 +327,19 @@ export default function RoundRobinKiosk() {
         console.error("Profiles error:", profilesError);
       }
 
-      // Create profile map
-      const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
+      // Also resolve any IDs that belong to guests
+      const { data: guests } = await supabase
+        .from("guest_players")
+        .select("id, display_name")
+        .in("id", Array.from(allPlayerIds));
+
+      // Create profile map, falling back to guest display names
+      const profileMap = new Map<string, any>(profiles?.map(p => [p.id, p]) || []);
+      (guests || []).forEach((g: any) => {
+        if (!profileMap.has(g.id)) {
+          profileMap.set(g.id, { id: g.id, display_name: g.display_name, full_name: g.display_name, is_guest: true });
+        }
+      });
 
       // Attach profiles to full schedule for standings
       const fullScheduleWithProfiles = fullSchedule?.map(match => ({

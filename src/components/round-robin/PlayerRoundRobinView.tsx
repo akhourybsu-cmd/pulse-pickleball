@@ -49,6 +49,8 @@ interface Player {
   id: string;
   player_id: string;
   registration_status: string;
+  is_guest?: boolean;
+  guest_display_name?: string | null;
   profiles: {
     id: string;
     full_name: string | null;
@@ -112,7 +114,7 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
       // Fetch players (no active filter — names must resolve even for removed players)
       const { data: playersRaw, error: playersError } = await supabase
         .from("round_robin_players")
-        .select("id, player_id, registration_status, active")
+        .select("id, player_id, guest_player_id, guest_name, registration_status, active")
         .eq("event_id", eventId);
 
       if (playersError) throw playersError;
@@ -127,49 +129,77 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
 
       if (scheduleError) throw scheduleError;
 
-      // Collect ALL player IDs referenced (players list + schedule) so no name resolves to "Unknown"
-      const idSet = new Set<string>();
-      (playersRaw || []).forEach((p) => p.player_id && idSet.add(p.player_id));
+      // Collect referenced user-IDs and guest-IDs from roster + schedule
+      const userIdSet = new Set<string>();
+      const guestIdSet = new Set<string>();
+      (playersRaw || []).forEach((p: any) => {
+        if (p.player_id) userIdSet.add(p.player_id);
+        if (p.guest_player_id) guestIdSet.add(p.guest_player_id);
+      });
       (scheduleData || []).forEach((m) => {
         [m.a1_player_id, m.a2_player_id, m.b1_player_id, m.b2_player_id].forEach((id) => {
-          if (id) idSet.add(id);
+          if (!id) return;
+          // We don't know whether this id is a user or guest; query both.
+          userIdSet.add(id);
+          guestIdSet.add(id);
         });
       });
-      const allIds = Array.from(idSet);
 
-      // Batch fetch public profile data via the public view
+      // Batch fetch profiles
       let profilesById = new Map<string, Player["profiles"]>();
-      if (allIds.length > 0) {
-        const { data: profilesData, error: profilesError } = await supabase
+      if (userIdSet.size > 0) {
+        const { data: profilesData } = await supabase
           .from("profiles_public")
           .select("id, display_name, full_name, avatar_url, current_rating")
-          .in("id", allIds);
-
-        if (profilesError) throw profilesError;
+          .in("id", Array.from(userIdSet));
         profilesById = new Map(
           (profilesData || []).map((p) => [p.id, p as Player["profiles"]])
         );
       }
 
-      // Active registrations only show on the Players tab, but keep all profiles in the lookup
+      // Batch fetch guests
+      let guestsById = new Map<string, { id: string; display_name: string | null }>();
+      if (guestIdSet.size > 0) {
+        const { data: guestsData } = await supabase
+          .from("guest_players")
+          .select("id, display_name")
+          .in("id", Array.from(guestIdSet));
+        guestsById = new Map((guestsData || []).map((g: any) => [g.id, g]));
+      }
+
+      // Active registrations (Players tab)
       const activePlayersWithProfiles: Player[] = (playersRaw || [])
-        .filter((p) => p.active !== false)
-        .map((p) => ({
-          id: p.id,
-          player_id: p.player_id,
-          registration_status: p.registration_status,
-          profiles: profilesById.get(p.player_id) ?? null,
-        }));
+        .filter((p: any) => p.active !== false)
+        .map((p: any) => {
+          const isGuest = !!p.guest_player_id;
+          const lookupId = p.player_id || p.guest_player_id;
+          return {
+            id: p.id,
+            player_id: lookupId,
+            registration_status: p.registration_status,
+            is_guest: isGuest,
+            guest_display_name: isGuest
+              ? guestsById.get(p.guest_player_id)?.display_name || p.guest_name || "Guest"
+              : null,
+            profiles: isGuest ? null : profilesById.get(p.player_id) ?? null,
+          };
+        });
 
-      // Build a synthetic "all-known players" list used purely for name lookup in schedule
-      const lookupPlayers: Player[] = allIds.map((pid) => ({
-        id: pid,
-        player_id: pid,
-        registration_status: "",
-        profiles: profilesById.get(pid) ?? null,
-      }));
+      // Lookup roster (every id seen in schedule)
+      const allIds = new Set<string>([...userIdSet, ...guestIdSet]);
+      const lookupPlayers: Player[] = Array.from(allIds).map((pid) => {
+        const guest = guestsById.get(pid);
+        const profile = profilesById.get(pid);
+        return {
+          id: pid,
+          player_id: pid,
+          registration_status: "",
+          is_guest: !profile && !!guest,
+          guest_display_name: guest?.display_name ?? null,
+          profiles: profile ?? null,
+        };
+      });
 
-      // Store the lookup list so getPlayerName resolves every schedule reference
       setPlayers([
         ...activePlayersWithProfiles,
         ...lookupPlayers.filter(
@@ -177,7 +207,7 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
         ),
       ]);
 
-      // Map the data to include all needed fields
+      // Map schedule
       const mappedSchedule = (scheduleData || []).map((match) => ({
         ...match,
         team_a_score: match.team1_score,
@@ -187,15 +217,18 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
 
       setSchedule(mappedSchedule);
 
-      // Calculate standings over every player who is registered OR appears in the schedule,
-      // so the standings table is always complete (e.g. removed players who already played).
-      const standingsRoster: Player[] = allIds.map((pid) => {
-        const reg = (playersRaw || []).find((p) => p.player_id === pid);
+      // Standings roster covers every id with a name fallback
+      const standingsRoster: Player[] = Array.from(allIds).map((pid) => {
+        const reg = (playersRaw || []).find((p: any) => p.player_id === pid || p.guest_player_id === pid);
+        const guest = guestsById.get(pid);
+        const profile = profilesById.get(pid);
         return {
           id: reg?.id ?? pid,
           player_id: pid,
           registration_status: reg?.registration_status ?? "",
-          profiles: profilesById.get(pid) ?? null,
+          is_guest: !profile && !!guest,
+          guest_display_name: guest?.display_name ?? (reg as any)?.guest_name ?? null,
+          profiles: profile ?? null,
         };
       });
       calculateStandings(mappedSchedule, standingsRoster);
@@ -214,7 +247,10 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
     playersList.forEach((p) => {
       stats[p.player_id] = {
         playerId: p.player_id,
-        playerName: p.profiles?.display_name || p.profiles?.full_name || "Unknown",
+        playerName:
+          p.profiles?.display_name ||
+          p.profiles?.full_name ||
+          (p.is_guest ? `${p.guest_display_name || "Guest"} (Guest)` : "Someone"),
         wins: 0,
         losses: 0,
         pointsFor: 0,
@@ -267,7 +303,11 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
   const getPlayerName = (playerId: string | null) => {
     if (!playerId) return "BYE";
     const player = players.find((p) => p.player_id === playerId);
-    return player?.profiles?.display_name || player?.profiles?.full_name || "Unknown";
+    if (!player) return "Someone";
+    if (player.profiles) {
+      return player.profiles.display_name || player.profiles.full_name || "Someone";
+    }
+    return `${player.guest_display_name || "Guest"} (Guest)`;
   };
 
   const getInitials = (name: string) => {
@@ -307,7 +347,7 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
   };
 
   const filteredPlayers = players.filter((p) =>
-    (p.profiles?.display_name || p.profiles?.full_name || "")
+    (p.profiles?.display_name || p.profiles?.full_name || p.guest_display_name || "")
       .toLowerCase()
       .includes(searchTerm.toLowerCase())
   );
@@ -640,15 +680,18 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
                                 <AvatarImage src={player.profiles.avatar_url} alt={player.profiles?.display_name || player.profiles?.full_name || "Player"} />
                               )}
                               <AvatarFallback className="bg-gradient-to-br from-primary/20 to-secondary/20 text-foreground font-semibold">
-                                {getInitials(player.profiles?.display_name || player.profiles?.full_name || "?")}
+                                {getInitials(player.profiles?.display_name || player.profiles?.full_name || player.guest_display_name || "?")}
                               </AvatarFallback>
                             </Avatar>
                             <div className="flex-1 min-w-0">
                               <div className="font-medium truncate flex items-center gap-2">
                                 <span className="truncate">
-                                  {player.profiles?.display_name || player.profiles?.full_name || "Player"}
+                                  {player.profiles?.display_name || player.profiles?.full_name || player.guest_display_name || "Player"}
                                 </span>
-                                {player.player_id === userId && (
+                                {player.is_guest && (
+                                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">Guest</Badge>
+                                )}
+                                {player.player_id === userId && !player.is_guest && (
                                   <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-primary/40 text-primary">You</Badge>
                                 )}
                               </div>

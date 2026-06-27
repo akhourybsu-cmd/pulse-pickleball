@@ -910,8 +910,9 @@ export default function RoundRobinDetail() {
 
   const handleAddPlayer = async ({
     playerId,
+    guestPlayerId,
     guestName,
-  }: { playerId: string | null; guestName?: string }) => {
+  }: { playerId: string | null; guestPlayerId?: string | null; guestName?: string }) => {
     if (!event || !userId) return;
 
     try {
@@ -921,6 +922,7 @@ export default function RoundRobinDetail() {
         .insert({
           event_id: event.id,
           player_id: playerId,
+          guest_player_id: guestPlayerId ?? null,
           guest_name: guestName ?? null,
         } as never);
 
@@ -931,15 +933,15 @@ export default function RoundRobinDetail() {
         event_id: event.id,
         editor_id: userId,
         change_type: "player_add",
-        changes: { player_id: playerId, guest_name: guestName ?? null },
+        changes: { player_id: playerId, guest_player_id: guestPlayerId ?? null, guest_name: guestName ?? null },
         reason: guestName
           ? `Guest player added by organizer (${guestName})`
           : "Player added by organizer",
       });
 
-      // Regenerate from current round
+      // Regenerate from current round (skipped automatically when guests are present)
       const fromRound = event.current_round || 1;
-      const regenResult = await regenerateScheduleFromRound(fromRound);
+      const regenResult = await regenerateScheduleFromRound(fromRound).catch(() => null);
 
       const roundsSuffix = regenResult?.roundsChanged
         ? ` · Schedule now ${regenResult.targetRounds} rounds to keep ${event.games_per_player || 3} games/player.`
@@ -1368,8 +1370,8 @@ export default function RoundRobinDetail() {
           })
           .eq("id", match.match_id);
 
-        // Recalculate ratings if event is rating eligible
-        if (event.rating_eligible) {
+        // Recalculate ratings if event is rating eligible (and not a guest event)
+        if (event.rating_eligible && !event.allow_guests) {
           await supabase.rpc("recalculate_all_ratings");
         }
       }
@@ -1416,8 +1418,8 @@ export default function RoundRobinDetail() {
           .delete()
           .eq("id", match.match_id);
 
-        // Recalculate ratings if event is rating eligible
-        if (event.rating_eligible) {
+        // Recalculate ratings if event is rating eligible (and not a guest event)
+        if (event.rating_eligible && !event.allow_guests) {
           await supabase.rpc("recalculate_all_ratings");
         }
       }
