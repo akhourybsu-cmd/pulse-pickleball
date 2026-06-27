@@ -299,46 +299,16 @@ export function PlayerPickerSheet({
               />
             </TabsContent>
 
-            {showGuest && (
-              <TabsContent value="guest" className="h-full m-0 flex flex-col">
-                <div className="px-4 pt-4 pb-3 border-b space-y-2">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      Add new guest
-                    </p>
-                    <span className="text-[10px] uppercase tracking-wide text-muted-foreground/70">
-                      Name only — reusable later
-                    </span>
-                  </div>
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="e.g. Alex K"
-                      value={guestName}
-                      onChange={(e) => setGuestName(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          addGuest();
-                        }
-                      }}
-                      className="h-11 text-base"
-                    />
-                    <Button onClick={addGuest} disabled={!guestName.trim()}>
-                      <UserPlus className="h-4 w-4 mr-1" />
-                      Add
-                    </Button>
-                  </div>
-                </div>
-                <div className="px-4 pt-3 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Saved guests
-                </div>
-                <GuestRosterList
-                  groupId={groupId}
-                  selectedIds={selectedIds}
-                  onToggle={toggle}
-                  excludeSet={excludeSet}
-                />
-              </TabsContent>
+            {showGuest && tab === "guest" && (
+              <GuestPanel
+                guestName={guestName}
+                onGuestNameChange={setGuestName}
+                onAddGuest={addGuest}
+                groupId={groupId}
+                selectedIds={selectedIds}
+                onToggle={toggle}
+                excludeSet={excludeSet}
+              />
             )}
 
           </div>
@@ -357,6 +327,66 @@ export function PlayerPickerSheet({
         )}
       </SheetContent>
     </Sheet>
+  );
+}
+
+function GuestPanel({
+  guestName,
+  onGuestNameChange,
+  onAddGuest,
+  groupId,
+  selectedIds,
+  onToggle,
+  excludeSet,
+}: {
+  guestName: string;
+  onGuestNameChange: (value: string) => void;
+  onAddGuest: () => void;
+  groupId?: string | null;
+  selectedIds: Set<string>;
+  onToggle: (p: PickerPlayer) => void;
+  excludeSet?: Set<string>;
+}) {
+  return (
+    <div className="h-full m-0 flex flex-col">
+      <div className="px-4 pt-4 pb-3 border-b space-y-2">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Add new guest
+          </p>
+          <span className="text-[10px] uppercase tracking-wide text-muted-foreground/70 text-right">
+            Name only — reusable later
+          </span>
+        </div>
+        <div className="flex gap-2">
+          <Input
+            placeholder="e.g. Alex K"
+            value={guestName}
+            onChange={(e) => onGuestNameChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                onAddGuest();
+              }
+            }}
+            className="h-11 text-base"
+          />
+          <Button type="button" onClick={onAddGuest} disabled={!guestName.trim()}>
+            <UserPlus className="h-4 w-4 mr-1" />
+            Add
+          </Button>
+        </div>
+      </div>
+      <div className="px-4 pt-3 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        Saved guests
+      </div>
+      <GuestRosterList
+        groupId={groupId}
+        selectedIds={selectedIds}
+        onToggle={onToggle}
+        excludeSet={excludeSet}
+      />
+    </div>
   );
 }
 
