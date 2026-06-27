@@ -559,16 +559,17 @@ export default function RoundRobinDetail() {
     });
 
     // Separate standings into active and removed
-    const activeStandingsArray = activePlayers.map(p => ({
-      ...stats[p.player_id],
-      point_diff: stats[p.player_id].points_for - stats[p.player_id].points_against,
-    }));
-
-    const removedStandingsArray = removedPlayers.map(p => ({
-      ...stats[p.player_id],
-      point_diff: stats[p.player_id].points_for - stats[p.player_id].points_against,
-      isRemoved: true,
-    }));
+    const toRow = (p: Player) => {
+      const key = p.player_id || (p as any).guest_player_id;
+      const s = key ? stats[key] : undefined;
+      if (!s) return null;
+      return { ...s, point_diff: s.points_for - s.points_against };
+    };
+    const activeStandingsArray = activePlayers.map(toRow).filter(Boolean) as StandingsRow[];
+    const removedStandingsArray = removedPlayers
+      .map(toRow)
+      .filter(Boolean)
+      .map((r) => ({ ...(r as StandingsRow), isRemoved: true }));
 
     // Sort active players normally
     activeStandingsArray.sort((a, b) => {
