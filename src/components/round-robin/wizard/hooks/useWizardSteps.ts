@@ -81,9 +81,8 @@ export function useWizardSteps(formData: WizardFormData) {
       case "format":
         return !!formData.format;
       case "details":
-        // All three sub-fields are optional. Name auto-fills, location and
-        // notes can stay blank. So the combined step is always valid.
-        return true;
+        // Event name and location name are now required.
+        return formData.eventName.trim().length > 0 && formData.locationLabel.trim().length > 0;
       case "players":
         if (formData.eventMode === "immediate") {
           if (formData.playerInputMethod === "count") {
