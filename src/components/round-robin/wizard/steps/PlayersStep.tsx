@@ -70,8 +70,8 @@ export function PlayersStep({
         <div className="mt-3 flex items-start gap-2 rounded-lg bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
           <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
           <span>
-            Guest events don't count toward PULSE Ratings. You'll need to
-            swap guests for registered players before generating a schedule.
+            Guests can be scheduled and play matches like anyone else — but
+            results for this event won't count toward PULSE Ratings.
           </span>
         </div>
       )}
