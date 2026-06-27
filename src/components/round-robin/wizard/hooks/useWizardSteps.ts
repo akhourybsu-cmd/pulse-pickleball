@@ -59,7 +59,7 @@ export interface WizardStep {
 const ALL_STEPS: WizardStep[] = [
   { id: "mode", label: "Event Mode", isOptional: false },
   { id: "format", label: "Format", isOptional: false },
-  { id: "details", label: "Details", isOptional: true },
+  { id: "details", label: "Details", isOptional: false },
   { id: "players", label: "Players", isOptional: false },
   { id: "schedule", label: "Schedule", isOptional: false },
   { id: "datetime", label: "Date & Time", isOptional: false },
@@ -81,9 +81,8 @@ export function useWizardSteps(formData: WizardFormData) {
       case "format":
         return !!formData.format;
       case "details":
-        // All three sub-fields are optional. Name auto-fills, location and
-        // notes can stay blank. So the combined step is always valid.
-        return true;
+        // Event name and location name are now required.
+        return formData.eventName.trim().length > 0 && formData.locationLabel.trim().length > 0;
       case "players":
         if (formData.eventMode === "immediate") {
           if (formData.playerInputMethod === "count") {

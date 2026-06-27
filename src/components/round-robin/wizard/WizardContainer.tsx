@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { WizardProgress } from "./WizardProgress";
 import { WizardCard } from "./WizardCard";
 import { WizardNavigation } from "./WizardNavigation";
-import { useWizardSteps, WizardFormData, generateDefaultEventName, calculateScheduleMetrics } from "./hooks/useWizardSteps";
+import { useWizardSteps, WizardFormData, calculateScheduleMetrics } from "./hooks/useWizardSteps";
 import { EventModeStep } from "./steps/EventModeStep";
 import { FormatStep } from "./steps/FormatStep";
 import { DetailsStep } from "./steps/DetailsStep";
@@ -109,11 +109,6 @@ export function WizardContainer() {
   };
 
   const handleContinue = async () => {
-    // Auto-fill event name if empty
-    if (currentStep.id === "name" && !formData.eventName.trim()) {
-      updateFormData("eventName", generateDefaultEventName());
-    }
-
     if (isLastStep) {
       await handleCreate();
     } else {
@@ -126,10 +121,15 @@ export function WizardContainer() {
   };
 
   const handleCreate = async () => {
-    const name = formData.eventName.trim() || generateDefaultEventName();
-    
+    const name = formData.eventName.trim();
+    const locationLabel = formData.locationLabel.trim();
+
     if (!name) {
       toast.error("Event name is required");
+      return;
+    }
+    if (!locationLabel) {
+      toast.error("Location name is required");
       return;
     }
 
