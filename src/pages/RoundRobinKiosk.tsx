@@ -334,33 +334,47 @@ export default function RoundRobinKiosk() {
 
       if (currentError) throw currentError;
 
-      // Get all unique player IDs from full schedule
+      // Collect every player and guest id referenced anywhere in the schedule.
       const allPlayerIds = new Set<string>();
-      fullSchedule?.forEach(match => {
+      const allGuestIds = new Set<string>();
+      fullSchedule?.forEach((match: any) => {
         if (match.a1_player_id) allPlayerIds.add(match.a1_player_id);
         if (match.a2_player_id) allPlayerIds.add(match.a2_player_id);
         if (match.b1_player_id) allPlayerIds.add(match.b1_player_id);
         if (match.b2_player_id) allPlayerIds.add(match.b2_player_id);
+        if (match.a1_guest_id) allGuestIds.add(match.a1_guest_id);
+        if (match.a2_guest_id) allGuestIds.add(match.a2_guest_id);
+        if (match.b1_guest_id) allGuestIds.add(match.b1_guest_id);
+        if (match.b2_guest_id) allGuestIds.add(match.b2_guest_id);
       });
 
       // Fetch all profiles at once (public view — kiosk may run unauthenticated)
-      const { data: profiles, error: profilesError } = await supabase
-        .from("profiles_public")
-        .select("id, display_name, full_name")
-        .in("id", Array.from(allPlayerIds));
+      const { data: profiles, error: profilesError } = allPlayerIds.size > 0
+        ? await supabase
+            .from("profiles_public")
+            .select("id, display_name, full_name")
+            .in("id", Array.from(allPlayerIds))
+        : { data: [], error: null };
 
       if (profilesError) {
         console.error("Profiles error:", profilesError);
       }
 
-      // Also resolve any IDs that belong to guests
-      const { data: guests } = await supabase
-        .from("guest_players")
-        .select("id, display_name")
-        .in("id", Array.from(allPlayerIds));
+      // Fetch guest display names
+      const { data: guests } = allGuestIds.size > 0
+        ? await supabase
+            .from("guest_players")
+            .select("id, display_name")
+            .in("id", Array.from(allGuestIds))
+        : { data: [] };
 
-      // Create profile map, falling back to guest display names
-      const profileMap = new Map<string, any>(profiles?.map(p => [p.id, p]) || []);
+      const profileMap = new Map<string, any>((profiles || []).map((p: any) => [p.id, p]));
+      const guestMap = new Map<string, any>(
+        (guests || []).map((g: any) => [g.id, { id: g.id, display_name: g.display_name }]),
+      );
+
+      // Backwards-compat for downstream code that previously merged guests
+      // into profileMap. Keep both maps available.
       (guests || []).forEach((g: any) => {
         if (!profileMap.has(g.id)) {
           profileMap.set(g.id, { id: g.id, display_name: g.display_name, full_name: g.display_name, is_guest: true });
