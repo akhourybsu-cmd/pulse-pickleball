@@ -200,6 +200,7 @@ export default function RoundRobinDetail() {
   const [scoreManagementOpen, setScoreManagementOpen] = useState(false);
   const [auditHistoryOpen, setAuditHistoryOpen] = useState(false);
   const [auditEntries, setAuditEntries] = useState<any[]>([]);
+  const [inviteGuest, setInviteGuest] = useState<{ id: string; name: string; email: string | null } | null>(null);
 
   useEffect(() => {
     fetchEventDetails();
