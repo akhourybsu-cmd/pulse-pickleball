@@ -125,7 +125,6 @@ export function PlayerShell() {
               <Logo className="h-[52px] sm:h-[65px] w-auto" />
             </NavLink>
             <div className="flex items-center gap-1.5 sm:gap-2">
-              <UnverifiedMatchesIndicator />
               <ThemeToggle />
               <NotificationBell unreadCount={unreadCount} onOpen={() => setIsNotificationCenterOpen(true)} />
               {/* Avatar → Profile tab (was the public /profile/:id view,
