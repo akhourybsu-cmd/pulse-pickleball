@@ -85,7 +85,7 @@ export const ActivityModule = ({ userId }: ActivityModuleProps) => {
               type: "verify_match",
               title: "Verify Match Result",
               description: `${match.team1_score}-${match.team2_score} on ${format(new Date(match.match_date), "MMM d")}`,
-              link: `/match/history`,
+              link: `/player/matches`,
               matchId: match.id,
               urgency: "high",
               timestamp: match.created_at,
@@ -136,37 +136,8 @@ export const ActivityModule = ({ userId }: ActivityModuleProps) => {
         }
       }
 
-      // 3. Fetch upcoming venue bookings (within 24 hours)
-      const in24Hours = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-      
-      const { data: upcomingBookings } = await supabase
-        .from("venue_bookings")
-        .select(`
-          id,
-          start_time,
-          venue:venues (name)
-        `)
-        .eq("user_id", userId)
-        .eq("status", "confirmed")
-        .gte("start_time", now.toISOString())
-        .lte("start_time", in24Hours.toISOString());
+      // 3. Venue bookings removed — venue surface archived in player beta.
 
-      if (upcomingBookings) {
-        for (const booking of upcomingBookings) {
-          const startTime = new Date(booking.start_time);
-          const hoursUntil = differenceInHours(startTime, now);
-          
-          timeAlerts.push({
-            id: `booking-${booking.id}`,
-            type: "booking_soon",
-            title: "Court Reservation",
-            description: `${(booking.venue as any)?.name || 'Venue'} - ${format(startTime, "h:mm a")}`,
-            link: "/player/bookings",
-            urgency: hoursUntil < 2 ? "high" : "medium",
-            timestamp: booking.start_time,
-          });
-        }
-      }
 
       // 4. Fetch recent system updates (last 7 days) - recently approved matches
       const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -199,7 +170,7 @@ export const ActivityModule = ({ userId }: ActivityModuleProps) => {
             title: "Match Recorded",
             description: `${match.team1_score}-${match.team2_score}${p.rating_change ? ` (${p.rating_change > 0 ? '+' : ''}${p.rating_change.toFixed(2)})` : ''}`,
             timestamp: match.updated_at,
-            link: "/match/history",
+            link: "/player/matches",
           });
         }
       }

@@ -55,12 +55,6 @@ const ACTIVITY_LINKS: HubLink[] = [
     label: 'My Events',
     description: 'Upcoming and past registrations',
   },
-  {
-    to: '/player/my-bookings',
-    icon: ClipboardList,
-    label: 'My Bookings',
-    description: 'Court reservations',
-  },
 ];
 
 const COMMUNITY_LINKS: HubLink[] = [

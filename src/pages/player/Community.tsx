@@ -147,7 +147,7 @@ export default function Community() {
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold tracking-tight font-display">Recent Activity</h2>
                 <button
-                  onClick={() => navigate('/player/notifications')}
+                  onClick={() => navigate('/settings/notifications')}
                   className="flex items-center gap-1 text-sm font-medium text-primary"
                 >
                   View all
