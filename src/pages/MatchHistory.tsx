@@ -94,9 +94,9 @@ const MatchHistory = () => {
   useEffect(() => {
     fetchMatchHistory();
 
-    console.log('👀 Setting up realtime subscription for match verifications');
-    
-    // Subscribe to realtime updates for match verifications
+    // Subscribe to realtime updates for match verifications so the
+    // verified count + "Verified · X/Y" footer updates in place when
+    // a co-player confirms.
     const channel = supabase
       .channel('match-verifications')
       .on(
@@ -107,36 +107,21 @@ const MatchHistory = () => {
           table: 'matches'
         },
         (payload: any) => {
-          console.log('🔔 Realtime verification update received:', payload);
-          console.log('🔔 Updated match ID:', (payload.new as any).id);
-          console.log('🔔 New verified_by:', (payload.new as any).verified_by);
-          
-          // Update local state when a match is verified
+          // Update local state when a match is verified.
           if (payload.new && 'verified_by' in payload.new) {
             const newVerifiedBy = (payload.new as any).verified_by || [];
             const matchId = (payload.new as any).id;
-            console.log('🔄 Updating local state for match', matchId, 'with verified_by:', newVerifiedBy);
-            
-            setMatches(prevMatches => {
-              const updated = prevMatches.map(m => {
-                if (m.match_id === matchId) {
-                  console.log('✅ Found match to update:', m.match_id);
-                  return { ...m, verified_by: newVerifiedBy };
-                }
-                return m;
-              });
-              console.log('📊 Updated matches state');
-              return updated;
-            });
+            setMatches(prevMatches =>
+              prevMatches.map(m =>
+                m.match_id === matchId ? { ...m, verified_by: newVerifiedBy } : m
+              )
+            );
           }
         }
       )
-      .subscribe((status) => {
-        console.log('📡 Realtime subscription status:', status);
-      });
+      .subscribe();
 
     return () => {
-      console.log('🔌 Cleaning up realtime subscription');
       supabase.removeChannel(channel);
     };
   }, [playerId]);
@@ -144,10 +129,7 @@ const MatchHistory = () => {
   const fetchMatchHistory = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     const playerIdToUse = playerId || user?.id;
-    
-    console.log('Fetching match history for player:', playerIdToUse);
-    console.log('Current user ID:', user?.id);
-    
+
     if (!playerIdToUse) {
       navigate("/auth");
       return;
@@ -203,8 +185,9 @@ const MatchHistory = () => {
       .eq("matches.status", "approved")
       .not("matches.voided", "is", true);
 
-    console.log('Fetched participants data:', participantsData);
-    console.log('Fetch error:', fetchError);
+    if (fetchError) {
+      console.error('Failed to fetch match history:', fetchError);
+    }
 
     if (!participantsData) {
       setLoading(false);
@@ -242,7 +225,7 @@ const MatchHistory = () => {
           courtName = p.matches.courts.name;
         }
 
-        const matchData = {
+        return {
           match_id: p.match_id,
           match_date: p.matches.match_date,
           created_at: p.matches.created_at,
@@ -262,11 +245,6 @@ const MatchHistory = () => {
           won,
           verified_by: p.matches.verified_by || [],
         };
-        
-        console.log('Match data for', p.match_id, ':', matchData);
-        console.log('Verified by array:', p.matches.verified_by);
-        
-        return matchData;
       })
     );
 
@@ -456,9 +434,6 @@ const MatchHistory = () => {
       return;
     }
 
-    console.log('Current match verified_by:', match.verified_by);
-    console.log('Current user ID:', currentUserId);
-
     // Don't add if already verified
     if (match.verified_by.includes(currentUserId)) {
       toast.info("You have already verified this match");
@@ -469,11 +444,9 @@ const MatchHistory = () => {
 
     try {
       // Use RPC function to safely append and dedupe
-      const { data, error } = await supabase.rpc('verify_match', { 
-        p_match_id: matchToVerify 
+      const { data, error } = await supabase.rpc('verify_match', {
+        p_match_id: matchToVerify
       });
-
-      console.log('RPC response:', { data, error });
 
       if (error) throw error;
 
@@ -486,12 +459,11 @@ const MatchHistory = () => {
         ));
       }
 
-      console.log('✅ Match verified successfully');
       toast.success("Match verified");
       setVerifyDialogOpen(false);
       setMatchToVerify(null);
     } catch (error: any) {
-      console.error("❌ Error verifying match:", error);
+      console.error('Error verifying match:', error);
       toast.error(error?.message || "Failed to verify match");
     }
   };
