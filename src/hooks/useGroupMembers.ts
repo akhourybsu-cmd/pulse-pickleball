@@ -42,16 +42,24 @@ async function fetchGroupMembers(groupId: string): Promise<{ members: GroupMembe
   const profilesMap = new Map((profilesData || []).map(p => [p.id, p]));
 
   const membersWithProfiles: GroupMemberWithProfile[] = (membersData || [])
+    .filter(m => profilesMap.has(m.user_id))
     .map(m => {
       const profile = profilesMap.get(m.user_id);
-      if (!profile) return null;
       return {
         ...m,
         status: m.status as 'active' | 'pending' | 'banned',
-        profile: { ...profile, phone_number: null },
+        profile: profile
+          ? { ...profile, phone_number: null }
+          : {
+              id: m.user_id,
+              display_name: null,
+              full_name: 'Player',
+              avatar_url: null,
+              current_rating: null,
+              phone_number: null,
+            },
       };
-    })
-    .filter((m): m is GroupMemberWithProfile => m !== null);
+    });
 
   return {
     members: membersWithProfiles.filter(m => m.status === 'active'),
