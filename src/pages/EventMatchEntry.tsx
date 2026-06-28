@@ -158,7 +158,7 @@ const EventMatchEntry = () => {
           match_type: ratingType,
           team1_score: score1,
           team2_score: score2,
-          court_id: event.location === 'other' ? null : undefined,
+          court_id: null,
           other_location: event.location === 'other' ? event.other_location : null,
           status: "pending",
         })

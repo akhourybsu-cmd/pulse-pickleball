@@ -112,7 +112,7 @@ export const PlayerIdentityCard = ({
             ) : (
               <button 
                 className="flex items-center gap-1.5 text-muted-foreground/70 hover:text-primary transition-colors group"
-                onClick={() => navigate("/profile/edit?focus=location")}
+                onClick={() => navigate("/player/profile/edit?focus=location")}
               >
                 <Settings className="h-3.5 w-3.5 group-hover:rotate-45 transition-transform" />
                 <span className="text-sm">Add location</span>

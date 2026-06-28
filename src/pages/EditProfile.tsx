@@ -464,7 +464,7 @@ const EditProfile = () => {
         {/* Account utilities */}
         <div className="border rounded-xl bg-card divide-y divide-border overflow-hidden">
           <Link
-            to="/notifications/settings"
+            to="/settings/notifications"
             className="flex items-center gap-3 px-4 py-3 hover:bg-muted/40 transition-colors"
           >
             <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">

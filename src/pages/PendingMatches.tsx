@@ -196,6 +196,7 @@ const PendingMatches = () => {
     if (!participants || !match) return;
 
     for (const participant of participants) {
+      if (!participant.player_id) continue; // skip guests — no profile to update
       const { data: profile } = await supabase
         .from("profiles")
         .select("*")
@@ -203,19 +204,23 @@ const PendingMatches = () => {
         .single();
 
       if (profile) {
-        const isWinner = participant.rating_change > 0;
+        // Determine winner from final scores, not rating_change (which may be null
+        // before ratings are computed). Use canonical helper.
+        const isWinner =
+          (participant.team === 1 && match.team1_score > match.team2_score) ||
+          (participant.team === 2 && match.team2_score > match.team1_score);
         const pointsFor = participant.team === 1 ? match.team1_score : match.team2_score;
         const pointsAgainst = participant.team === 1 ? match.team2_score : match.team1_score;
 
         await supabase
           .from("profiles")
           .update({
-            current_rating: participant.rating_after,
-            total_matches: profile.total_matches + 1,
-            wins: isWinner ? profile.wins + 1 : profile.wins,
-            losses: !isWinner ? profile.losses + 1 : profile.losses,
-            total_points_for: profile.total_points_for + pointsFor,
-            total_points_against: profile.total_points_against + pointsAgainst,
+            current_rating: participant.rating_after ?? profile.current_rating,
+            total_matches: (profile.total_matches || 0) + 1,
+            wins: isWinner ? (profile.wins || 0) + 1 : (profile.wins || 0),
+            losses: !isWinner ? (profile.losses || 0) + 1 : (profile.losses || 0),
+            total_points_for: (profile.total_points_for || 0) + pointsFor,
+            total_points_against: (profile.total_points_against || 0) + pointsAgainst,
           })
           .eq("id", participant.player_id);
       }
