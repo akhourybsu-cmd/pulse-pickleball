@@ -6,7 +6,7 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 import { NotificationBell } from '@/components/NotificationBell';
 import { NotificationCenter } from '@/components/notifications/NotificationCenter';
 import { useNotifications } from '@/hooks/useNotifications';
-import { UnverifiedMatchesIndicator } from '@/components/UnverifiedMatchesIndicator';
+
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
 import { Logo } from '@/components/Logo';
@@ -125,7 +125,6 @@ export function PlayerShell() {
               <Logo className="h-[52px] sm:h-[65px] w-auto" />
             </NavLink>
             <div className="flex items-center gap-1.5 sm:gap-2">
-              <UnverifiedMatchesIndicator />
               <ThemeToggle />
               <NotificationBell unreadCount={unreadCount} onOpen={() => setIsNotificationCenterOpen(true)} />
               {/* Avatar → Profile tab (was the public /profile/:id view,
