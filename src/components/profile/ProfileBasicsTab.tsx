@@ -144,8 +144,16 @@ export function ProfileBasicsTab({
               value={formData.display_name || ""}
               onChange={(e) => onFormChange({ display_name: e.target.value })}
               placeholder="Alex K."
+              maxLength={50}
             />
-            <p className="text-xs text-muted-foreground">How you want to be shown on leaderboards</p>
+            <p className="text-xs text-muted-foreground">
+              How you want to be shown on leaderboards.{' '}
+              {!formData.display_name?.trim() && (
+                <span className="text-foreground/80">
+                  Leave blank to use your first name ({formData.first_name || '—'}).
+                </span>
+              )}
+            </p>
           </div>
 
           <div className="space-y-2">

@@ -304,11 +304,25 @@ const EditProfile = () => {
       return;
     }
 
+    // Phase 3.A.1 — normalize display_name on save:
+    //   • Trim leading/trailing whitespace so " " doesn't read as "set".
+    //   • Coerce blank → null so the column reflects "no override" rather
+    //     than an empty string (downstream rendering uses
+    //     `display_name || first_name || 'User'` and the truthiness of
+    //     '' is the same as null, but null is the honest value).
+    const trimmedDisplayName = formData.display_name?.trim() ?? null;
+    const normalized = {
+      ...formData,
+      display_name: trimmedDisplayName && trimmedDisplayName.length > 0
+        ? trimmedDisplayName
+        : null,
+    };
+
     setSaving(true);
     try {
       const { error } = await supabase
         .from("profiles")
-        .update(formData)
+        .update(normalized)
         .eq("id", user.id);
 
       if (error) throw error;

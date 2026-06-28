@@ -36,92 +36,64 @@ export function useDirectMessages() {
 
   const fetchConversations = useCallback(async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      // Phase 3.C — one RPC call replaces the prior 4×N round-trips.
+      // list_dm_conversation_previews returns one row per conversation
+      // the caller participates in, with the peer profile, last
+      // message, and unread count all joined server-side. See
+      // migration 20260618030200.
+      const { data, error } = await supabase.rpc(
+        'list_dm_conversation_previews' as any,
+      );
 
-      // Get all conversation participations for current user
-      const { data: participations, error: partError } = await supabase
-        .from('conversation_participants')
-        .select('conversation_id, last_read_at')
-        .eq('user_id', user.id);
+      if (error) throw error;
 
-      if (partError) throw partError;
-      if (!participations || participations.length === 0) {
-        setConversations([]);
-        setLoading(false);
-        return;
-      }
+      const rows = (data ?? []) as Array<{
+        conversation_id: string;
+        conversation_updated_at: string;
+        other_user_id: string | null;
+        other_display_name: string | null;
+        other_full_name: string | null;
+        other_avatar_url: string | null;
+        other_current_rating: number | null;
+        last_message_id: string | null;
+        last_message_content: string | null;
+        last_message_created_at: string | null;
+        last_message_sender_id: string | null;
+        unread_count: number | null;
+      }>;
 
-      const conversationIds = participations.map(p => p.conversation_id);
-      const lastReadMap = new Map(participations.map(p => [p.conversation_id, p.last_read_at]));
-
-      // Get conversation details
-      const { data: convos, error: convError } = await supabase
-        .from('conversations')
-        .select('id, updated_at')
-        .in('id', conversationIds)
-        .order('updated_at', { ascending: false });
-
-      if (convError) throw convError;
-
-      const previews: ConversationPreview[] = [];
       let totalUnreadCount = 0;
+      const previews: ConversationPreview[] = [];
 
-      for (const convo of convos || []) {
-        // Get the other participant
-        const { data: otherParticipants } = await supabase
-          .from('conversation_participants')
-          .select('user_id')
-          .eq('conversation_id', convo.id)
-          .neq('user_id', user.id);
+      for (const row of rows) {
+        if (!row.other_user_id) continue;
+        const unread = row.unread_count ?? 0;
+        totalUnreadCount += unread;
 
-        if (!otherParticipants || otherParticipants.length === 0) continue;
-
-        const otherUserId = otherParticipants[0].user_id;
-        
-        // Get profile
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('id, display_name, full_name, avatar_url, current_rating')
-          .eq('id', otherUserId)
-          .single();
-
-        if (!profile) continue;
-
-        // Get last message
-        const { data: messages } = await supabase
-          .from('direct_messages')
-          .select('*')
-          .eq('conversation_id', convo.id)
-          .order('created_at', { ascending: false })
-          .limit(1);
-
-        const lastMessage = messages && messages.length > 0 ? messages[0] : null;
-
-        // Calculate unread count
-        const lastRead = lastReadMap.get(convo.id);
-        const { count: unreadCount } = await supabase
-          .from('direct_messages')
-          .select('*', { count: 'exact', head: true })
-          .eq('conversation_id', convo.id)
-          .neq('sender_id', user.id)
-          .gt('created_at', lastRead || '1970-01-01');
-
-        totalUnreadCount += unreadCount || 0;
+        const lastMessage: DirectMessage | null =
+          row.last_message_id && row.last_message_content && row.last_message_created_at && row.last_message_sender_id
+            ? {
+                id: row.last_message_id,
+                conversation_id: row.conversation_id,
+                sender_id: row.last_message_sender_id,
+                content: row.last_message_content,
+                created_at: row.last_message_created_at,
+              }
+            : null;
 
         previews.push({
-          id: convo.id,
-          updated_at: convo.updated_at,
+          id: row.conversation_id,
+          updated_at: row.conversation_updated_at,
           participant: {
-            id: profile.id,
-            user_id: profile.id,
-            display_name: profile.display_name,
-            full_name: profile.full_name,
-            avatar_url: profile.avatar_url,
-            current_rating: profile.current_rating
+            id: row.other_user_id,
+            user_id: row.other_user_id,
+            display_name: row.other_display_name,
+            full_name: row.other_full_name,
+            avatar_url: row.other_avatar_url,
+            current_rating: row.other_current_rating,
           },
           lastMessage,
-          unreadCount: unreadCount || 0
+          unreadCount: unread,
         });
       }
 

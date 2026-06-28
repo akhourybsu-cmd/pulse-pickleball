@@ -40,7 +40,11 @@ const PendingMatches = () => {
     }
     setCurrentUserId(user.id);
 
-    // Get all matches where user is a participant and status is pending
+    // Get all matches where user is a participant and status is pending.
+    // Phase 3.A.3: exclude voided matches. Without this filter an admin
+    // voiding a pending match leaves it in the user's pending list with
+    // "Confirm Result" still tappable — clicking it would either no-op
+    // (RLS rejects update of a voided row) or surface a confusing error.
     const { data: participantsData } = await supabase
       .from("match_participants")
       .select(`
@@ -51,11 +55,13 @@ const PendingMatches = () => {
           team2_score,
           status,
           court_id,
+          voided,
           courts(name)
         )
       `)
       .eq("player_id", user.id)
-      .eq("matches.status", "pending");
+      .eq("matches.status", "pending")
+      .not("matches.voided", "is", true);
 
     if (!participantsData) {
       setLoading(false);
