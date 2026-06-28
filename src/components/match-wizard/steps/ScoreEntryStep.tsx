@@ -100,20 +100,29 @@ export function ScoreEntryStep({ formData, updateFormData }: ScoreEntryStepProps
     return names.join(' & ');
   };
 
+  // Pickleball "win by 2" rule. Winner must be strictly greater AND
+  // ahead by at least 2 (allows overtime scores like 12-10, 13-11).
   const isScoreValid = formData.winnerScore !== null &&
                        formData.loserScore !== null &&
-                       formData.winnerScore > formData.loserScore;
+                       formData.winnerScore > formData.loserScore &&
+                       formData.winnerScore - formData.loserScore >= 2;
+
+  // Specific message for the most common offender: a 1-point win
+  // (e.g., 11-10). Falls through to the generic "must be higher"
+  // message for ties and reversed scores.
+  const marginViolation =
+    formData.winnerScore !== null &&
+    formData.loserScore !== null &&
+    formData.winnerScore > formData.loserScore &&
+    formData.winnerScore - formData.loserScore < 2;
 
   // Soft heuristic for "this looks unusual for pickleball" — not a hard block,
-  // just a gentle nudge. Standard pickleball games are played to 11 (win by 2).
-  // 11-game scores: anything above 10 for the loser implies the game went into
-  // overtime past expected win-by-2 territory. 15- and 21-game scores have
-  // their own thresholds. This is presentational only — never blocks submit.
+  // just a gentle nudge. Standard games to 11 / 15 / 21 occasionally go to
+  // overtime; the dial-back here is only for clearly weird inputs.
   const unusualScoreReason: string | null = (() => {
     const w = formData.winnerScore;
     const l = formData.loserScore;
-    if (w == null || l == null || w <= l) return null;
-    // Allow up to win-by-2 + a small overtime buffer for each preset
+    if (w == null || l == null || w <= l || w - l < 2) return null;
     if (w === 11 && l > 13) return "Pickleball games to 11 usually end before 11–14.";
     if (w === 15 && l > 17) return "Pickleball games to 15 usually end before 15–18.";
     if (w === 21 && l > 23) return "Pickleball games to 21 usually end before 21–24.";
@@ -257,10 +266,15 @@ export function ScoreEntryStep({ formData, updateFormData }: ScoreEntryStepProps
             </div>
           )}
 
-          {/* Hard validation — submit is blocked while this is shown */}
+          {/* Hard validation — submit is blocked while this is shown.
+              Two distinct messages: the most common offender (a 1-point
+              win) gets its own copy; everything else falls back to the
+              generic "must be higher" line. */}
           {formData.loserScore !== null && formData.winnerScore !== null && !isScoreValid && (
             <div className="text-center text-sm text-destructive">
-              Winner's score must be higher than loser's score
+              {marginViolation
+                ? "Pickleball requires winning by 2 — keep playing until someone is ahead by 2."
+                : "Winner's score must be higher than loser's score"}
             </div>
           )}
 

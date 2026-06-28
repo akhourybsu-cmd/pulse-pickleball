@@ -165,38 +165,36 @@ export function useFriends() {
 
   const sendFriendRequest = useCallback(async (friendId: string) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
+      // send_friend_request is an RPC that takes a canonical-pair
+      // advisory lock and handles the A↔B simultaneous case
+      // (reverse-direction pending auto-accepts). Returns the
+      // resulting status: 'pending' | 'accepted' | 'blocked'.
+      // See migration 20260618020100.
+      const { data, error } = await supabase.rpc(
+        'send_friend_request' as any,
+        { p_friend_id: friendId },
+      );
 
-      // Check if friendship already exists in either direction
-      const { data: existing } = await supabase
-        .from('friendships')
-        .select('id, status')
-        .or(`and(user_id.eq.${user.id},friend_id.eq.${friendId}),and(user_id.eq.${friendId},friend_id.eq.${user.id})`)
-        .maybeSingle();
-
-      if (existing) {
-        if (existing.status === 'blocked') {
+      if (error) {
+        const code = (error as any).code;
+        if (code === '42501') {
           toast.error('Unable to send friend request');
-          return false;
+        } else {
+          toast.error('Failed to send friend request');
         }
-        if (existing.status === 'pending') {
-          toast.info('Friend request already pending');
-          return false;
-        }
-        if (existing.status === 'accepted') {
-          toast.info('Already friends');
-          return false;
-        }
+        console.error('Error sending friend request:', error);
+        return false;
       }
 
-      const { error } = await supabase
-        .from('friendships')
-        .insert({ user_id: user.id, friend_id: friendId, status: 'pending' });
-
-      if (error) throw error;
-
-      toast.success('Friend request sent!');
+      const status = (data as string | null) ?? 'pending';
+      if (status === 'accepted') {
+        toast.success("You're now friends!");
+      } else if (status === 'pending') {
+        toast.success('Friend request sent!');
+      } else if (status === 'blocked') {
+        toast.error('Unable to send friend request');
+        return false;
+      }
       await fetchFriends();
       return true;
     } catch (error) {

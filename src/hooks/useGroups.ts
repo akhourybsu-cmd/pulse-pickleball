@@ -218,16 +218,31 @@ export function useGroups() {
     // Records an outcome to group_invite_uses for the admin analytics
     // UI. Fire-and-forget — failing to log shouldn't break the join
     // flow, so we don't await the response and we don't toast on error.
+    //
+    // Phase 2.C.1: explicitly attach .then(.catch) so analytics-log
+    // failures surface in console.error instead of becoming silent
+    // unhandled-promise rejections. The join flow itself is
+    // unaffected. Note that every existing call site of this helper
+    // already runs AFTER its corresponding insert error path has
+    // thrown — see e.g. line 291 (joinError check) before line 293
+    // record('joined') — so no ordering change is required.
     const record = (
       outcome: 'joined' | 'pending' | 'duplicate' | 'failed',
       groupId: string | null,
     ) => {
-      void supabase.from('group_invite_uses').insert({
-        group_id: groupId,
-        invite_code: normalizedCode,
-        user_id: currentUserId,
-        outcome,
-      });
+      supabase
+        .from('group_invite_uses')
+        .insert({
+          group_id: groupId,
+          invite_code: normalizedCode,
+          user_id: currentUserId,
+          outcome,
+        })
+        .then(({ error }) => {
+          if (error) {
+            console.error('Failed to record invite use:', error);
+          }
+        });
     };
 
     try {

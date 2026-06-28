@@ -52,6 +52,13 @@ export function MatchWizardContainer() {
   };
 
   const handleContinue = async () => {
+    // Race guard — without this, a rapid second click between "user
+    // taps submit" and the `isLoading` prop flipping the button into
+    // its disabled state can re-enter handleSubmit and create a
+    // duplicate match. The server-side dedupe trigger
+    // (prevent_duplicate_match_insert) is the safety net; this is the
+    // optimistic block.
+    if (isSubmitting) return;
     if (isLastStep) {
       await handleSubmit();
     } else {
@@ -60,6 +67,7 @@ export function MatchWizardContainer() {
   };
 
   const handleSubmit = async () => {
+    if (isSubmitting) return; // belt + suspenders
     setIsSubmitting(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();

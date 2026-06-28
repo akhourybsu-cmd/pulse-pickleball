@@ -244,13 +244,25 @@ const Auth = () => {
     }
   };
 
-  const handleMFASuccess = () => {
+  const handleMFASuccess = async () => {
     setShowMFAChallenge(false);
     setShowEmailMFA(false);
     toast.success("Logged in successfully!");
-    setTimeout(() => {
-      navigate(redirectPath);
-    }, 100);
+
+    // Phase 2.D.1: don't navigate until Supabase actually reports a
+    // durable session. The prior 100ms setTimeout was a guess at how
+    // long verifyMFA needs to finish writing the auth token to
+    // storage; on slow networks the redirect target's AuthGuard
+    // could fire before the session existed and bounce the user
+    // straight back to /auth. Poll briefly (max ~1.5s) then fall
+    // through so the user still moves forward even on truly slow
+    // network — AuthGuard's own loading state covers the gap.
+    for (let i = 0; i < 15; i++) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) break;
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    navigate(redirectPath);
   };
 
   const handleMFACancel = async () => {
@@ -318,10 +330,27 @@ const Auth = () => {
   };
 
   useEffect(() => {
+    // Phase 2.D.2 — Auto-checking biometric availability on every
+    // keystroke leaks "does this email have a registered account?" as
+    // an enumeration side-channel (the response time differs and the
+    // returned data flips a UI state).
+    //
+    // Two changes here:
+    //   • Lengthen debounce to 1500ms so a typing attacker can't
+    //     trivially scrape responses by holding the field.
+    //   • Skip entirely when the user has already opened the password
+    //     form (showPasswordLogin === true), since at that point the
+    //     biometric path won't surface anyway and an extra probe just
+    //     adds enumeration surface.
+    //
+    // The server-side belt is rate-limiting get-biometric-credentials
+    // in the edge function — that's the real defense; this is the
+    // client-side mitigation.
+    if (showPasswordLogin) return;
     if (isLogin && email && email.includes('@')) {
       const debounce = setTimeout(() => {
         checkBiometricAvailability();
-      }, 500);
+      }, 1500);
       return () => clearTimeout(debounce);
     } else {
       setShowBiometric(false);
