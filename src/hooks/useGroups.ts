@@ -305,13 +305,14 @@ export function useGroups() {
         return null;
       }
 
-      // Check if already a member
+      // maybeSingle() — `single()` errors on zero rows and crashes the
+      // try block; non-members aren't an error.
       const { data: existingMember } = await supabase
         .from('group_members')
         .select('*')
         .eq('group_id', groupId)
         .eq('user_id', currentUserId)
-        .single();
+        .maybeSingle();
 
       if (existingMember) {
         if (existingMember.status === 'active') {
@@ -326,6 +327,12 @@ export function useGroups() {
 
       const status = group.join_method === 'request_to_join' ? 'pending' : 'active';
 
+      // Race-safe insert: two rapid join clicks (or two browser tabs)
+      // can both pass the "not a member" check above and race to insert.
+      // The DB has a unique (group_id, user_id) constraint, so the
+      // second insert fails with 23505 — translate that into the same
+      // "already a member" UX as the pre-check, rather than a generic
+      // error toast.
       const { error: joinError } = await supabase
         .from('group_members')
         .insert({
@@ -335,7 +342,13 @@ export function useGroups() {
           status,
         });
 
-      if (joinError) throw joinError;
+      if (joinError) {
+        if (joinError.code === '23505') {
+          toast({ title: 'Already a Member', description: 'You are already in this group' });
+          return group;
+        }
+        throw joinError;
+      }
 
       if (status === 'pending') {
         toast({ title: 'Request Sent', description: 'Your join request has been sent to the group admins' });

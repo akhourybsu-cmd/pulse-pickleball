@@ -47,12 +47,15 @@ export function useCommunityActivity() {
         return;
       }
 
-      // Get user's group IDs where they are approved members
+      // Get user's group IDs where they are active members. The enum is
+      // 'active' | 'pending' | 'banned' — the prior 'approved' filter
+      // matched zero rows, so the activity feed silently returned no
+      // posts or upcoming events for everyone.
       const { data: memberships, error: memberError } = await supabase
         .from('group_members')
         .select('group_id')
         .eq('user_id', user.id)
-        .eq('status', 'approved');
+        .eq('status', 'active');
 
       if (memberError) throw memberError;
       

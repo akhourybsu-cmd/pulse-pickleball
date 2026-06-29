@@ -25,27 +25,32 @@ export function GroupWelcomeCard({
   onAskQuestion,
   className,
 }: GroupWelcomeCardProps) {
+  // All three actions hover to the same primary tint instead of three
+  // unrelated palette colors (teal / emerald / amber). The previous
+  // multi-color hover read as "kid's app" against the brand's gold +
+  // ink palette and washed out in dark mode.
+  const sharedHover = 'hover:border-primary/40 hover:bg-primary/[0.04]';
   const actions: ActionCard[] = [
     {
       icon: <span className="text-2xl">📣</span>,
       label: 'Post an Update',
       description: 'Share news with the group',
       onClick: onPostUpdate,
-      colorClass: 'hover:border-teal-500/30 hover:bg-teal-500/5',
+      colorClass: sharedHover,
     },
     {
       icon: <span className="text-2xl">📅</span>,
       label: 'Schedule a Session',
       description: 'Plan your next game',
       onClick: onScheduleSession,
-      colorClass: 'hover:border-emerald-500/30 hover:bg-emerald-500/5',
+      colorClass: sharedHover,
     },
     {
       icon: <span className="text-2xl">🏓</span>,
       label: 'Ask a Question',
       description: 'Get help from members',
       onClick: onAskQuestion,
-      colorClass: 'hover:border-amber-500/30 hover:bg-amber-500/5',
+      colorClass: sharedHover,
     },
   ];
 
