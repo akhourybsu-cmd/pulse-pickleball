@@ -6758,6 +6758,10 @@ export type Database = {
         Args: { p_player_id: string }
         Returns: undefined
       }
+      regenerate_group_invite_code: {
+        Args: { p_group_id: string }
+        Returns: string
+      }
       search_connectable_users: {
         Args: { _query: string }
         Returns: {
