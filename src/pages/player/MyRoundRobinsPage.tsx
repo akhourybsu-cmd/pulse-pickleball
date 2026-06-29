@@ -286,17 +286,34 @@ function RREventRow({ entry, onClick }: { entry: RREntry; onClick: () => void })
         ? "bg-muted text-muted-foreground"
         : "bg-primary/10 text-primary";
 
+  const isLive = entry.status === "live";
+
   return (
     <button
       onClick={onClick}
       className={cn(
-        "w-full flex items-center gap-3 px-3 py-3 rounded-xl border border-border/60 bg-card",
+        "w-full flex items-center gap-3 px-3 py-3 rounded-xl border bg-card",
+        isLive ? "border-primary/40 bg-primary/[0.03]" : "border-border/60",
         "hover:bg-accent/40 hover:border-border active:scale-[0.99] transition-all text-left group",
         entry.status === "voided" && "opacity-75",
       )}
     >
-      <div className={cn("h-10 w-10 rounded-lg flex items-center justify-center flex-shrink-0", tileTone)}>
-        <Trophy className="h-5 w-5" />
+      <div className="relative flex-shrink-0">
+        {isLive && (
+          <span
+            aria-hidden
+            className="absolute inset-0 rounded-lg bg-primary/40 animate-ping"
+          />
+        )}
+        <div
+          className={cn(
+            "relative h-10 w-10 rounded-lg flex items-center justify-center",
+            tileTone,
+            isLive && "ring-2 ring-primary/30",
+          )}
+        >
+          <Trophy className="h-5 w-5" />
+        </div>
       </div>
 
       <div className="flex-1 min-w-0">

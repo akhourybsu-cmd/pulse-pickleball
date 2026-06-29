@@ -23,6 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Edit3, Trash2, Ban, AlertTriangle, ChevronRight, ChevronLeft, ShieldCheck } from "lucide-react";
+import { MatchTeamLine } from "./MatchTeamLine";
 import {
   Select,
   SelectContent,
@@ -285,6 +286,8 @@ export function ScoreManagementDialog({
                       <div className="space-y-2">
                         {roundMatches.map((match) => {
                           const hasScore = match.team1_score !== null && match.team2_score !== null;
+                          const aWon = hasScore && (match.team1_score ?? 0) > (match.team2_score ?? 0);
+                          const bWon = hasScore && (match.team2_score ?? 0) > (match.team1_score ?? 0);
                           return (
                             <div key={match.id} className="p-3 rounded-xl bg-muted/40 text-sm space-y-2">
                               <div className="flex items-center justify-between">
@@ -299,15 +302,21 @@ export function ScoreManagementDialog({
                                   <span className="text-xs text-muted-foreground">No score</span>
                                 )}
                               </div>
-                              <div className="space-y-0.5 text-foreground/90">
-                                <div className="truncate">
-                                  <span className="text-muted-foreground">A:</span>{' '}
-                                  {getPlayerName(match.a1_player_id ?? match.a1_guest_id)} &amp; {getPlayerName(match.a2_player_id ?? match.a2_guest_id)}
-                                </div>
-                                <div className="truncate">
-                                  <span className="text-muted-foreground">B:</span>{' '}
-                                  {getPlayerName(match.b1_player_id ?? match.b1_guest_id)} &amp; {getPlayerName(match.b2_player_id ?? match.b2_guest_id)}
-                                </div>
+                              <div className="space-y-1">
+                                <MatchTeamLine
+                                  label="A"
+                                  player1={getPlayerName(match.a1_player_id ?? match.a1_guest_id)}
+                                  player2={getPlayerName(match.a2_player_id ?? match.a2_guest_id)}
+                                  isWinner={aWon}
+                                  isLoser={bWon}
+                                />
+                                <MatchTeamLine
+                                  label="B"
+                                  player1={getPlayerName(match.b1_player_id ?? match.b1_guest_id)}
+                                  player2={getPlayerName(match.b2_player_id ?? match.b2_guest_id)}
+                                  isWinner={bWon}
+                                  isLoser={aWon}
+                                />
                               </div>
                             </div>
                           );
