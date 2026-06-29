@@ -50,8 +50,9 @@ export interface GroupPost {
 
 async function fetchGroupPosts(groupId: string): Promise<GroupPost[]> {
   const { data: { user } } = await supabase.auth.getUser();
-  
-  // Fetch posts
+
+  // Stage 1 — fetch posts. The IDs we derive from this drive every
+  // subsequent query, so this one has to run first.
   const { data: postsData, error } = await supabase
     .from('group_posts')
     .select('*')
@@ -61,35 +62,84 @@ async function fetchGroupPosts(groupId: string): Promise<GroupPost[]> {
 
   if (error) throw error;
 
-  // Fetch profiles for post authors
   const userIds = [...new Set((postsData || []).map(p => p.user_id))];
-  const { data: profilesData } = await supabase
-    .from('profiles_public')
-    .select('id, display_name, full_name, avatar_url, current_rating')
-    .in('id', userIds);
+  const postIds = (postsData || []).map(p => p.id);
+  const pollIds = (postsData || [])
+    .filter((p: any) => p.type === 'poll' && Array.isArray(p.poll_options) && p.poll_options.length > 0)
+    .map(p => p.id);
+  const rrIds = Array.from(
+    new Set(
+      (postsData || [])
+        .filter((p: any) => p.type === 'round_robin' && p.round_robin_event_id)
+        .map((p: any) => p.round_robin_event_id as string)
+    )
+  );
+
+  // Stage 2 — fan out every dependent query in parallel. Pre-consolidation
+  // these ran serially (profiles → reactions → comments → participants →
+  // polls → rr-events → rr-players), turning a feed load into 6-7
+  // round-trips of perceived latency. They have no inter-dependencies,
+  // so Promise.all collapses wall-clock to a single RTT for the slowest.
+  //
+  // Empty-list cases short-circuit with Promise.resolve({ data: [] })
+  // rather than firing a useless `.in('id', [])` query.
+  const [
+    { data: profilesData },
+    { data: reactionsData },
+    { data: commentsData },
+    { data: participantsData },
+    { data: votesData },
+    { data: rrData },
+    { data: rrPlayers },
+  ] = await Promise.all([
+    userIds.length
+      ? supabase
+          .from('profiles_public')
+          .select('id, display_name, full_name, avatar_url, current_rating')
+          .in('id', userIds)
+      : Promise.resolve({ data: [] as Array<{ id: string; display_name: string | null; full_name: string; avatar_url: string | null; current_rating: number | null }> }),
+    postIds.length
+      ? supabase
+          .from('group_post_reactions')
+          .select('post_id, emoji, user_id')
+          .in('post_id', postIds)
+      : Promise.resolve({ data: [] as Array<{ post_id: string; emoji: string; user_id: string }> }),
+    postIds.length
+      ? supabase
+          .from('group_post_comments')
+          .select('post_id')
+          .in('post_id', postIds)
+      : Promise.resolve({ data: [] as Array<{ post_id: string }> }),
+    postIds.length
+      ? supabase
+          .from('group_post_participants')
+          .select('post_id, user_id')
+          .in('post_id', postIds)
+      : Promise.resolve({ data: [] as Array<{ post_id: string; user_id: string }> }),
+    pollIds.length
+      ? supabase
+          .from('group_poll_votes')
+          .select('post_id, user_id, option_idx')
+          .in('post_id', pollIds)
+      : Promise.resolve({ data: [] as Array<{ post_id: string; user_id: string; option_idx: number }> }),
+    rrIds.length
+      ? supabase
+          .from('round_robin_events')
+          .select('id, name, date, start_time, num_courts, max_players, status, invite_code, registration_mode')
+          .in('id', rrIds)
+      : Promise.resolve({ data: [] as Array<any> }),
+    rrIds.length
+      ? supabase
+          .from('round_robin_players')
+          .select('event_id')
+          .in('event_id', rrIds)
+          .eq('active', true)
+      : Promise.resolve({ data: [] as Array<{ event_id: string }> }),
+  ]);
 
   const profilesMap = new Map((profilesData || []).map(p => [p.id, p]));
 
-  // Fetch reactions for each post
-  const postIds = (postsData || []).map(p => p.id);
-  const { data: reactionsData } = await supabase
-    .from('group_post_reactions')
-    .select('post_id, emoji, user_id')
-    .in('post_id', postIds);
-
-  // Fetch comment counts
-  const { data: commentsData } = await supabase
-    .from('group_post_comments')
-    .select('post_id')
-    .in('post_id', postIds);
-
-  // Fetch participants for LFG posts
-  const { data: participantsData } = await supabase
-    .from('group_post_participants')
-    .select('post_id, user_id')
-    .in('post_id', postIds);
-
-  // Group participants by post
+  // Group participants by post — same aggregation as before.
   const participantsMap = new Map<string, { count: number; userJoined: boolean }>();
   (participantsData || []).forEach(p => {
     const existing = participantsMap.get(p.post_id) || { count: 0, userJoined: false };
@@ -98,7 +148,7 @@ async function fetchGroupPosts(groupId: string): Promise<GroupPost[]> {
     participantsMap.set(p.post_id, existing);
   });
 
-  // Group reactions by post
+  // Group reactions by post.
   const reactionsMap = new Map<string, { emoji: string; count: number; user_reacted: boolean }[]>();
   (reactionsData || []).forEach(r => {
     const existing = reactionsMap.get(r.post_id) || [];
@@ -112,23 +162,15 @@ async function fetchGroupPosts(groupId: string): Promise<GroupPost[]> {
     reactionsMap.set(r.post_id, existing);
   });
 
-  // Count comments by post
+  // Count comments by post.
   const commentCountMap = new Map<string, number>();
   (commentsData || []).forEach(c => {
     commentCountMap.set(c.post_id, (commentCountMap.get(c.post_id) || 0) + 1);
   });
 
-  // Fetch poll votes (only for poll posts that have options defined).
-  const pollIds = (postsData || [])
-    .filter((p: any) => p.type === 'poll' && Array.isArray(p.poll_options) && p.poll_options.length > 0)
-    .map(p => p.id);
+  // Poll vote aggregation — per-option counts + this viewer's vote.
   const pollVotesByPost = new Map<string, { counts: number[]; myVote: number | null }>();
   if (pollIds.length > 0) {
-    const { data: votesData } = await supabase
-      .from('group_poll_votes')
-      .select('post_id, user_id, option_idx')
-      .in('post_id', pollIds);
-
     (postsData || []).forEach((p: any) => {
       if (!pollIds.includes(p.id)) return;
       const counts = (p.poll_options as any[]).map(() => 0);
@@ -142,25 +184,9 @@ async function fetchGroupPosts(groupId: string): Promise<GroupPost[]> {
     });
   }
 
-  // Fetch linked round-robin events for round_robin posts.
-  const rrIds = Array.from(
-    new Set(
-      (postsData || [])
-        .filter((p: any) => p.type === 'round_robin' && p.round_robin_event_id)
-        .map((p: any) => p.round_robin_event_id as string)
-    )
-  );
+  // Round-robin event + active player count.
   const rrMap = new Map<string, GroupPost['round_robin']>();
   if (rrIds.length > 0) {
-    const { data: rrData } = await supabase
-      .from('round_robin_events')
-      .select('id, name, date, start_time, num_courts, max_players, status, invite_code, registration_mode')
-      .in('id', rrIds);
-    const { data: rrPlayers } = await supabase
-      .from('round_robin_players')
-      .select('event_id')
-      .in('event_id', rrIds)
-      .eq('active', true);
     const countMap = new Map<string, number>();
     (rrPlayers || []).forEach((row: any) => {
       countMap.set(row.event_id, (countMap.get(row.event_id) || 0) + 1);
