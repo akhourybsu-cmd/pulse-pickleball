@@ -35,7 +35,10 @@ export function JoinGroupDialog({ open, onOpenChange, onJoin }: JoinGroupDialogP
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && code.trim()) {
+    // Guard on `loading` too — the submit button is already disabled
+    // while loading, but holding Enter (or hitting it twice fast on a
+    // slow network) would otherwise re-fire the RPC.
+    if (e.key === 'Enter' && code.trim() && !loading) {
       handleJoin();
     }
   };
