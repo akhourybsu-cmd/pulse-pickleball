@@ -160,7 +160,7 @@ const MemberCard = memo(function MemberCard({
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-green-600 hover:bg-green-500/10"
+              className="h-10 w-10 text-green-600 hover:bg-green-500/10"
               onClick={() => onApprove(member.id)}
             >
               <Check className="h-4 w-4" />
@@ -168,7 +168,7 @@ const MemberCard = memo(function MemberCard({
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-red-600 hover:bg-red-500/10"
+              className="h-10 w-10 text-red-600 hover:bg-red-500/10"
               onClick={() => onReject(member.id)}
             >
               <X className="h-4 w-4" />
@@ -183,7 +183,7 @@ const MemberCard = memo(function MemberCard({
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8"
+              className="h-10 w-10"
               onClick={() => onStartDM(member.user_id)}
             >
               <MessageCircle className="h-4 w-4" />
@@ -194,7 +194,7 @@ const MemberCard = memo(function MemberCard({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8"
+                className="h-10 w-10"
                 onClick={() => onSendFriendRequest(member.user_id)}
               >
                 <UserPlus className="h-4 w-4" />
@@ -204,7 +204,7 @@ const MemberCard = memo(function MemberCard({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 text-muted-foreground"
+                className="h-10 w-10 text-muted-foreground"
                 disabled
               >
                 <Clock className="h-4 w-4" />
@@ -214,7 +214,7 @@ const MemberCard = memo(function MemberCard({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 text-primary"
+                className="h-10 w-10 text-primary"
                 disabled
               >
                 <Check className="h-4 w-4" />
@@ -227,7 +227,7 @@ const MemberCard = memo(function MemberCard({
         {!isPending && canManage && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
+              <Button variant="ghost" size="icon" className="h-10 w-10">
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>

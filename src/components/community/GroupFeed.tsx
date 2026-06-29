@@ -181,13 +181,11 @@ export function GroupFeed({
   }, [regularPosts]);
 
   if (loading) {
-    return (
-      <div className="space-y-4">
-        <Skeleton className="h-28 w-full" />
-        <Skeleton className="h-48 w-full" />
-        <Skeleton className="h-48 w-full" />
-      </div>
-    );
+    // Use the post-shaped placeholder (avatar + name + content + reaction
+    // row) instead of three generic flat skeleton blocks — the prior
+    // heights (28 / 48 / 48) didn't match real post heights, causing a
+    // visible layout shift when posts loaded in.
+    return <GroupFeedPlaceholder />;
   }
 
   return (
@@ -393,8 +391,12 @@ const PostCard = memo(function PostCard({
         {canManage && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7">
-                <MoreVertical className="h-3.5 w-3.5" />
+              {/* Post overflow — bumped from 28px (well below tap
+                  target) to 36px in a corner cluster where 40px would
+                  feel too heavy. The dropdown items themselves are
+                  comfortable touch targets. */}
+              <Button variant="ghost" size="icon" className="h-9 w-9">
+                <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">

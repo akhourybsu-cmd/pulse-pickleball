@@ -277,13 +277,14 @@ export default function GroupDetail() {
             </div>
           </div>
 
-          {/* Right-side action cluster */}
-          <div className="flex items-center gap-0.5 shrink-0">
+          {/* Right-side action cluster — 40px tap zones with a small
+              gap between so adjacent buttons can't share a tap. */}
+          <div className="flex items-center gap-1 shrink-0">
             {group.invite_code && (
               <Button 
                 variant="ghost" 
                 size="icon"
-                className="h-9 w-9"
+                className="h-10 w-10"
                 onClick={() => setInviteModalOpen(true)}
                 aria-label="Invite"
               >
