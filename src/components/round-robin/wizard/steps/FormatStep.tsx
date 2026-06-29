@@ -1,5 +1,6 @@
 import { Users, UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { StepHeader } from "../StepHeader";
 
 interface FormatStepProps {
   value: "open" | "mixed" | "male" | "female";
@@ -36,10 +37,11 @@ const formats = [
 export function FormatStep({ value, onChange }: FormatStepProps) {
   return (
     <div className="flex flex-col h-full">
-      <h2 className="text-xl font-semibold mb-2">Format</h2>
-      <p className="text-muted-foreground text-sm mb-6">
-        Select the format for your Round Robin
-      </p>
+      <StepHeader
+        icon={Users}
+        title="Who's playing?"
+        description="Pick the player mix for this event."
+      />
 
       <div className="flex-1 grid grid-cols-2 gap-3">
         {formats.map((format) => {

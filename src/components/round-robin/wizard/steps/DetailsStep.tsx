@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { CityAutocomplete, VerifiedCity } from "@/components/match-wizard/CityAutocomplete";
 import { generateDefaultEventName } from "../hooks/useWizardSteps";
 import { cn } from "@/lib/utils";
+import { StepHeader } from "../StepHeader";
 
 interface DetailsStepProps {
   eventName: string;
@@ -55,10 +56,11 @@ export function DetailsStep({
 
   return (
     <div className="flex flex-col h-full">
-      <h2 className="text-xl font-semibold mb-2">Event details</h2>
-      <p className="text-muted-foreground text-sm mb-6">
-        A few details so players know what they're joining.
-      </p>
+      <StepHeader
+        icon={FileText}
+        title="Event details"
+        description="Just the essentials — players see these in the invite."
+      />
 
       <div className="flex-1 space-y-5">
         {/* Event name */}

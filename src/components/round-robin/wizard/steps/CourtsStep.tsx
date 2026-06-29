@@ -1,5 +1,6 @@
-import { Minus, Plus } from "lucide-react";
+import { Minus, Plus, LayoutGrid } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { StepHeader } from "../StepHeader";
 
 interface CourtsStepProps {
   value: number;
@@ -9,10 +10,11 @@ interface CourtsStepProps {
 export function CourtsStep({ value, onChange }: CourtsStepProps) {
   return (
     <div className="flex flex-col h-full">
-      <h2 className="text-xl font-semibold mb-2">How many courts available?</h2>
-      <p className="text-muted-foreground text-sm mb-6">
-        More courts means more simultaneous games
-      </p>
+      <StepHeader
+        icon={LayoutGrid}
+        title="How many courts?"
+        description="More courts = more games at the same time."
+      />
 
       <div className="flex-1 flex flex-col items-center justify-center">
         <div className="flex items-center gap-6">

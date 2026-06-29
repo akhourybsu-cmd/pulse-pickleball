@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Zap, Target, Trophy, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { StepHeader } from "../StepHeader";
 import {
   Select,
   SelectContent,
@@ -35,10 +36,11 @@ export function GamesStep({ value, onChange }: GamesStepProps) {
 
   return (
     <div className="flex flex-col h-full">
-      <h2 className="text-xl font-semibold mb-2">How much play time?</h2>
-      <p className="text-muted-foreground text-sm mb-6">
-        Games each player will participate in
-      </p>
+      <StepHeader
+        icon={Target}
+        title="How much play time?"
+        description="Games each player will get on the court."
+      />
 
       <div className="flex-1">
         <div className="grid grid-cols-2 gap-3 mb-4">

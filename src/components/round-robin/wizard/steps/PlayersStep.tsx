@@ -2,6 +2,7 @@ import { useState } from "react";
 import { UserPlus, Hash, Plus, Minus, Users, Pencil, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { StepHeader } from "../StepHeader";
 
 import { PlayerPickerSheet } from "@/components/round-robin/PlayerPickerSheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -82,10 +83,11 @@ export function PlayersStep({
   if (eventMode === "open_registration") {
     return (
       <div className="flex flex-col h-full">
-        <h2 className="text-xl font-semibold mb-2">Expected Players</h2>
-        <p className="text-muted-foreground text-sm mb-6">
-          Set the maximum number of players
-        </p>
+        <StepHeader
+          icon={Users}
+          title="Expected players"
+          description="Set the cap on registrations."
+        />
 
         <div className="flex-1 flex flex-col items-center justify-center">
           <div className="flex items-center gap-6">
@@ -128,10 +130,11 @@ export function PlayersStep({
   if (!inputMethod) {
     return (
       <div className="flex flex-col h-full">
-        <h2 className="text-xl font-semibold mb-2">How many players?</h2>
-        <p className="text-muted-foreground text-sm mb-6">
-          Choose how to add players
-        </p>
+        <StepHeader
+          icon={Users}
+          title="How are you adding players?"
+          description="Count only, or pick them individually."
+        />
 
         <div className="flex-1 flex flex-col gap-4">
           <button
@@ -176,10 +179,11 @@ export function PlayersStep({
   if (inputMethod === "count") {
     return (
       <div className="flex flex-col h-full">
-        <h2 className="text-xl font-semibold mb-2">How many players?</h2>
-        <p className="text-muted-foreground text-sm mb-6">
-          Minimum 4 players required
-        </p>
+        <StepHeader
+          icon={Hash}
+          title="How many players?"
+          description="Minimum 4 — partners are paired automatically."
+        />
 
         <div className="flex-1 flex flex-col items-center justify-center">
           <div className="flex items-center gap-6">
@@ -241,10 +245,11 @@ export function PlayersStep({
 
   return (
     <div className="flex flex-col h-full">
-      <h2 className="text-xl font-semibold mb-2">Add Players</h2>
-      <p className="text-muted-foreground text-sm mb-4">
-        {selectedPlayers.length} selected (minimum 4)
-      </p>
+      <StepHeader
+        icon={UserPlus}
+        title="Add players"
+        description={`${selectedPlayers.length} selected · minimum 4`}
+      />
 
       <div className="flex-1 space-y-4">
         {guestToggle}

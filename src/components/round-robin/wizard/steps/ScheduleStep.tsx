@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Minus, Plus, Zap, Target, Trophy, Settings } from "lucide-react";
+import { Minus, Plus, Zap, Target, Trophy, Settings, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { StepHeader } from "../StepHeader";
 import {
   Select,
   SelectContent,
@@ -51,10 +52,11 @@ export function ScheduleStep({
 
   return (
     <div className="flex flex-col h-full">
-      <h2 className="text-xl font-semibold mb-2">Schedule</h2>
-      <p className="text-muted-foreground text-sm mb-6">
-        Set up how many courts you have and how many games each player gets.
-      </p>
+      <StepHeader
+        icon={CalendarDays}
+        title="Schedule setup"
+        description="Courts you have, and games each player gets."
+      />
 
       <div className="flex-1 space-y-7">
         {/* Courts stepper */}

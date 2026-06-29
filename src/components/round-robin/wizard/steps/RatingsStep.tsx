@@ -1,7 +1,8 @@
-import { TrendingUp, UserPlus, AlertCircle } from "lucide-react";
+import { TrendingUp, UserPlus, AlertCircle, Trophy } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { StepHeader } from "../StepHeader";
 import {
   Select,
   SelectContent,
@@ -32,10 +33,11 @@ export function RatingsStep({
 
   return (
     <div className="flex flex-col h-full">
-      <h2 className="text-xl font-semibold mb-2">Ratings & guests</h2>
-      <p className="text-muted-foreground text-sm mb-6">
-        Decide whether this round robin counts toward PULSE Ratings.
-      </p>
+      <StepHeader
+        icon={Trophy}
+        title="Ratings & guests"
+        description="Does this event count toward PULSE ratings?"
+      />
 
       <div className="flex-1 space-y-6">
         {/* Guest toggle */}

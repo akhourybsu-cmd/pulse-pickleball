@@ -179,6 +179,15 @@ export function PlayerManagementDialog({
                   title: 'Add Player',
                   description: 'Late join — regenerates remaining rounds',
                   disabled: false,
+                  tone: 'neutral' as const,
+                },
+                {
+                  id: 'substitute' as const,
+                  icon: Users,
+                  title: 'Substitute Player',
+                  description: 'Swap one player for another, globally or for a single round',
+                  disabled: false,
+                  tone: 'neutral' as const,
                 },
                 {
                   id: 'remove' as const,
@@ -188,25 +197,28 @@ export function PlayerManagementDialog({
                     ? `Minimum 4 active players required (you have ${activePlayers.length})`
                     : 'Excludes player from future rounds; past scores preserved',
                   disabled: activePlayers.length <= 4,
-                },
-                {
-                  id: 'substitute' as const,
-                  icon: Users,
-                  title: 'Substitute Player',
-                  description: 'Swap one player for another, globally or for a single round',
-                  disabled: false,
+                  tone: 'destructive' as const,
                 },
               ].map((action) => {
                 const Icon = action.icon;
+                const isDestructive = action.tone === 'destructive';
                 return (
                   <button
                     key={action.id}
                     type="button"
                     onClick={() => !action.disabled && setMode(action.id)}
                     disabled={action.disabled}
-                    className="w-full flex items-center gap-3 p-3 rounded-xl border border-border bg-card hover:border-primary/40 hover:bg-muted/30 active:scale-[0.99] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-border disabled:hover:bg-card text-left"
+                    className={`w-full flex items-center gap-3 p-3 rounded-xl border bg-card active:scale-[0.99] transition-all disabled:opacity-50 disabled:cursor-not-allowed text-left ${
+                      isDestructive
+                        ? 'border-destructive/25 hover:border-destructive/50 hover:bg-destructive/5 disabled:hover:border-destructive/25 disabled:hover:bg-card'
+                        : 'border-border hover:border-primary/40 hover:bg-muted/30 disabled:hover:border-border disabled:hover:bg-card'
+                    }`}
                   >
-                    <div className="h-10 w-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
+                    <div className={`h-10 w-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                      isDestructive
+                        ? 'bg-destructive/10 text-destructive'
+                        : 'bg-primary/10 text-primary'
+                    }`}>
                       <Icon className="h-5 w-5" />
                     </div>
                     <div className="flex-1 min-w-0">

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Calendar, Clock, CalendarClock } from "lucide-react";
+import { StepHeader } from "../StepHeader";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -125,10 +126,11 @@ export function DateTimeStep({
   if (eventMode === "immediate") {
     return (
       <div className="flex flex-col h-full">
-        <h2 className="text-xl font-semibold mb-2">What time does it start?</h2>
-        <p className="text-muted-foreground text-sm mb-6">
-          Today • {format(new Date(), "EEEE, MMMM d")}
-        </p>
+        <StepHeader
+          icon={Clock}
+          title="What time does it start?"
+          description={`Today · ${format(new Date(), "EEEE, MMMM d")}`}
+        />
 
         <div className="flex-1 space-y-4">
           {/* Quick time presets */}
@@ -178,10 +180,11 @@ export function DateTimeStep({
   // For open_registration mode - show full date/time picker
   return (
     <div className="flex flex-col h-full">
-      <h2 className="text-xl font-semibold mb-2">When is your event?</h2>
-      <p className="text-muted-foreground text-sm mb-6">
-        Set the date, start time, and registration deadline
-      </p>
+      <StepHeader
+        icon={CalendarClock}
+        title="When is your event?"
+        description="Date, start time, and registration deadline."
+      />
 
       <div className="flex-1 space-y-5">
         {/* Event Date Picker */}
