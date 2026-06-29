@@ -82,6 +82,20 @@ export function useGroupMembers(groupId: string | undefined) {
   const members = data?.members || [];
   const pendingMembers = data?.pendingMembers || [];
 
+  // Shared cache key + helper. Member mutations used to invalidate the
+  // entire ['group-members', groupId] on every action — for a 100+
+  // member roster that's a full re-fetch on every approve/role-change.
+  // Now we patch in place and rely on the realtime subscription
+  // (useGroupRealtime) + 1-min staleTime to converge on server truth.
+  const cacheKey = ['group-members', groupId];
+  type CacheShape = { members: GroupMemberWithProfile[]; pendingMembers: GroupMemberWithProfile[] };
+  const patchCache = (mutator: (prev: CacheShape) => CacheShape) => {
+    const prev = queryClient.getQueryData<CacheShape>(cacheKey);
+    if (!prev) return undefined;
+    queryClient.setQueryData<CacheShape>(cacheKey, mutator(prev));
+    return prev;
+  };
+
   const approveMemberMutation = useMutation({
     mutationFn: async (memberId: string) => {
       const { error } = await supabase
@@ -91,12 +105,22 @@ export function useGroupMembers(groupId: string | undefined) {
 
       if (error) throw error;
     },
+    onMutate: (memberId) =>
+      ({
+        prev: patchCache((p) => {
+          const target = p.pendingMembers.find((m) => m.id === memberId);
+          if (!target) return p;
+          return {
+            members: [...p.members, { ...target, status: 'active' }],
+            pendingMembers: p.pendingMembers.filter((m) => m.id !== memberId),
+          };
+        }),
+      }),
     onSuccess: () => {
       toast({ title: 'Approved', description: 'Member has been approved' });
-      queryClient.invalidateQueries({ queryKey: ['group-members', groupId] });
     },
-    onError: (error: any) => {
-      console.error('Error approving member:', error);
+    onError: (error: any, _v, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(cacheKey, ctx.prev);
       toast({
         title: 'Error',
         description: error.message || 'Failed to approve member',
@@ -114,12 +138,18 @@ export function useGroupMembers(groupId: string | undefined) {
 
       if (error) throw error;
     },
+    onMutate: (memberId) =>
+      ({
+        prev: patchCache((p) => ({
+          ...p,
+          pendingMembers: p.pendingMembers.filter((m) => m.id !== memberId),
+        })),
+      }),
     onSuccess: () => {
       toast({ title: 'Rejected', description: 'Join request has been rejected' });
-      queryClient.invalidateQueries({ queryKey: ['group-members', groupId] });
     },
-    onError: (error: any) => {
-      console.error('Error rejecting member:', error);
+    onError: (error: any, _v, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(cacheKey, ctx.prev);
       toast({
         title: 'Error',
         description: error.message || 'Failed to reject member',
@@ -138,15 +168,21 @@ export function useGroupMembers(groupId: string | undefined) {
       if (error) throw error;
       return role;
     },
+    onMutate: ({ memberId, role }) =>
+      ({
+        prev: patchCache((p) => ({
+          ...p,
+          members: p.members.map((m) => (m.id === memberId ? { ...m, role } : m)),
+        })),
+      }),
     onSuccess: (role) => {
-      toast({ 
-        title: 'Role Updated', 
-        description: `Member is now a ${role}` 
+      toast({
+        title: 'Role Updated',
+        description: `Member is now a ${role}`,
       });
-      queryClient.invalidateQueries({ queryKey: ['group-members', groupId] });
     },
-    onError: (error: any) => {
-      console.error('Error updating role:', error);
+    onError: (error: any, _v, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(cacheKey, ctx.prev);
       toast({
         title: 'Error',
         description: error.message || 'Failed to update role',
@@ -164,12 +200,18 @@ export function useGroupMembers(groupId: string | undefined) {
 
       if (error) throw error;
     },
+    onMutate: (memberId) =>
+      ({
+        prev: patchCache((p) => ({
+          ...p,
+          members: p.members.filter((m) => m.id !== memberId),
+        })),
+      }),
     onSuccess: () => {
       toast({ title: 'Removed', description: 'Member has been removed from the group' });
-      queryClient.invalidateQueries({ queryKey: ['group-members', groupId] });
     },
-    onError: (error: any) => {
-      console.error('Error removing member:', error);
+    onError: (error: any, _v, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(cacheKey, ctx.prev);
       toast({
         title: 'Error',
         description: error.message || 'Failed to remove member',
@@ -187,12 +229,20 @@ export function useGroupMembers(groupId: string | undefined) {
 
       if (error) throw error;
     },
+    onMutate: (memberId) =>
+      ({
+        // Banned members drop out of both visible lists (members filter
+        // is status='active', pendingMembers is status='pending').
+        prev: patchCache((p) => ({
+          members: p.members.filter((m) => m.id !== memberId),
+          pendingMembers: p.pendingMembers.filter((m) => m.id !== memberId),
+        })),
+      }),
     onSuccess: () => {
       toast({ title: 'Banned', description: 'Member has been banned from the group' });
-      queryClient.invalidateQueries({ queryKey: ['group-members', groupId] });
     },
-    onError: (error: any) => {
-      console.error('Error banning member:', error);
+    onError: (error: any, _v, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(cacheKey, ctx.prev);
       toast({
         title: 'Error',
         description: error.message || 'Failed to ban member',

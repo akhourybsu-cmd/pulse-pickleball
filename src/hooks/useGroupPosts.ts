@@ -303,49 +303,67 @@ export function useGroupPosts(groupId: string | undefined) {
     },
   });
 
-  const toggleReaction = async (postId: string, emoji: string) => {
-    const prev = queryClient.getQueryData<GroupPost[]>(queryKey);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    // Optimistic: flip the reaction now.
-    let wasReacted = false;
-    queryClient.setQueryData<GroupPost[]>(queryKey, (p = []) =>
-      p.map((post) => {
-        if (post.id !== postId) return post;
-        const reactions = [...(post.reactions || [])];
-        const entry = reactions.find((r) => r.emoji === emoji);
-        if (entry?.user_reacted) {
-          wasReacted = true;
-          entry.count = Math.max(0, entry.count - 1);
-          entry.user_reacted = false;
-        } else if (entry) {
-          entry.count += 1;
-          entry.user_reacted = true;
-        } else {
-          reactions.push({ emoji, count: 1, user_reacted: true });
-        }
-        return { ...post, reactions: reactions.filter((r) => r.count > 0) };
-      }),
-    );
-
-    try {
+  // Converted from the prior manual snapshot-then-await pattern to a
+  // proper mutation so each in-flight reaction owns its own rollback
+  // context. Pre-conversion, two rapid taps on different emoji could
+  // share a closure that rolled back to a stale snapshot when one
+  // failed. Same fix as togglePinMessage in useGroupChat.
+  const toggleReactionMutation = useMutation({
+    mutationFn: async ({ postId, emoji, wasReacted, userId }: {
+      postId: string; emoji: string; wasReacted: boolean; userId: string;
+    }) => {
       if (wasReacted) {
-        await supabase
+        const { error } = await supabase
           .from('group_post_reactions')
           .delete()
           .eq('post_id', postId)
-          .eq('user_id', user.id)
+          .eq('user_id', userId)
           .eq('emoji', emoji);
+        if (error) throw error;
       } else {
-        await supabase
+        const { error } = await supabase
           .from('group_post_reactions')
-          .insert({ post_id: postId, user_id: user.id, emoji });
+          .insert({ post_id: postId, user_id: userId, emoji });
+        if (error) throw error;
       }
-    } catch (error: any) {
-      console.error('Error toggling reaction:', error);
-      if (prev) queryClient.setQueryData(queryKey, prev);
-    }
+    },
+    onMutate: async ({ postId, emoji }) => {
+      const prev = queryClient.getQueryData<GroupPost[]>(queryKey);
+      queryClient.setQueryData<GroupPost[]>(queryKey, (p = []) =>
+        p.map((post) => {
+          if (post.id !== postId) return post;
+          const reactions = [...(post.reactions || [])];
+          const entry = reactions.find((r) => r.emoji === emoji);
+          if (entry?.user_reacted) {
+            entry.count = Math.max(0, entry.count - 1);
+            entry.user_reacted = false;
+          } else if (entry) {
+            entry.count += 1;
+            entry.user_reacted = true;
+          } else {
+            reactions.push({ emoji, count: 1, user_reacted: true });
+          }
+          return { ...post, reactions: reactions.filter((r) => r.count > 0) };
+        }),
+      );
+      return { prev };
+    },
+    onError: (error: any, _v, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(queryKey, ctx.prev);
+      toast({ title: 'Error', description: error.message || 'Failed to update reaction', variant: 'destructive' });
+    },
+  });
+
+  const toggleReaction = async (postId: string, emoji: string) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    // Compute wasReacted from current cache before firing the mutation
+    // so the server-side branch (delete vs insert) matches the optimistic
+    // flip that onMutate will perform.
+    const current = queryClient.getQueryData<GroupPost[]>(queryKey);
+    const wasReacted =
+      current?.find((p) => p.id === postId)?.reactions?.find((r) => r.emoji === emoji)?.user_reacted ?? false;
+    await toggleReactionMutation.mutateAsync({ postId, emoji, wasReacted, userId: user.id });
   };
 
   const togglePin = async (postId: string, pinned: boolean) => {
