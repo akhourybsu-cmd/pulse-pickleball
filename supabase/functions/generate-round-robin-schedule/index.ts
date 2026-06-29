@@ -804,11 +804,31 @@ serve(async (req) => {
       throw insertError;
     }
 
+    // Sync round_robin_events.num_rounds with what was ACTUALLY generated.
+    // Pre-fix, num_rounds was stamped at wizard time using a different player
+    // count than what reached this function (e.g. maxPlayers cap for
+    // open_registration events vs. the actual confirmed seat count). The
+    // generator correctly uses the real player count, but the event row kept
+    // the stale estimate — so the UI showed "Round X of N" with N rounds that
+    // never had matches inserted. Always overwrite from the generator's truth.
+    const actualRounds = schedule.reduce((m, row) => Math.max(m, row.round_no), 0);
+    if (actualRounds > 0) {
+      const { error: updateError } = await supabase
+        .from('round_robin_events')
+        .update({ num_rounds: actualRounds })
+        .eq('id', event_id);
+      if (updateError) {
+        // Non-fatal: the schedule is already inserted. Log and move on.
+        console.error('[generate-rr] failed to sync num_rounds', updateError);
+      }
+    }
+
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         matches_created: newRounds.length,
-        total_matches: schedule.length 
+        total_matches: schedule.length,
+        num_rounds: actualRounds,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
