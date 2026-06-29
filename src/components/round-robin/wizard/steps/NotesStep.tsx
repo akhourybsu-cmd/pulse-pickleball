@@ -1,4 +1,4 @@
-import { StickyNote } from "lucide-react";
+import { StickyNote, FileText } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { StepHeader } from "../StepHeader";
 
