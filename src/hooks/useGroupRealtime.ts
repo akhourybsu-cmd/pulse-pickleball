@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import type { GroupMessage } from './useGroupChat';
 import type { GroupPost } from './useGroupPosts';
 import type { PostComment } from './useGroupPostComments';
+import type { GroupEvent } from './useGroupEvents';
 
 /**
  * Granular realtime: patch React Query caches in place instead of invalidating.
@@ -252,10 +253,53 @@ export function useGroupRealtime(groupId: string | undefined) {
       }, () => {
         queryClient.invalidateQueries({ queryKey: ['group-events', groupId] });
       })
+      // RSVP changes patch the affected event's rsvp counts in place
+      // instead of invalidating the entire events list. Pre-patch, 20
+      // concurrent RSVPs to one event caused 20 full ['group-events']
+      // refetches. Mirrors the post-reactions patch pattern above.
+      // Self-originated changes are skipped — the optimistic update
+      // in useGroupEvents.toggleRSVP already applied them locally.
       .on('postgres_changes', {
         event: '*', schema: 'public', table: 'group_event_rsvps',
-      }, () => {
-        queryClient.invalidateQueries({ queryKey: ['group-events', groupId] });
+      }, (payload) => {
+        const newRow = payload.new as { event_id?: string; user_id?: string; status?: GroupEvent['user_rsvp'] } | null;
+        const oldRow = payload.old as { event_id?: string; user_id?: string; status?: GroupEvent['user_rsvp'] } | null;
+        const eventId = newRow?.event_id ?? oldRow?.event_id;
+        if (!eventId) return;
+        const userId = newRow?.user_id ?? oldRow?.user_id;
+        if (userId === currentUserId) return; // optimistic already applied
+
+        const key = ['group-events', groupId];
+        queryClient.setQueryData<GroupEvent[]>(key, (prev) => {
+          if (!prev) return prev;
+          // Skip if the event isn't in this group's cached list (the
+          // subscription is unfiltered by group_id since rsvps don't
+          // carry one; non-matching events are just no-ops).
+          const idx = prev.findIndex((e) => e.id === eventId);
+          if (idx === -1) return prev;
+          const event = prev[idx];
+          const rsvps = { ...(event.rsvps ?? { going: 0, maybe: 0, not_going: 0, waitlist: 0 }) };
+          const bump = (status: GroupEvent['user_rsvp'], delta: number) => {
+            if (!status) return;
+            (rsvps as Record<string, number>)[status] = Math.max(
+              0,
+              ((rsvps as Record<string, number>)[status] || 0) + delta,
+            );
+          };
+          if (payload.eventType === 'INSERT') {
+            bump(newRow?.status, +1);
+          } else if (payload.eventType === 'DELETE') {
+            bump(oldRow?.status, -1);
+          } else if (payload.eventType === 'UPDATE') {
+            if (oldRow?.status !== newRow?.status) {
+              bump(oldRow?.status, -1);
+              bump(newRow?.status, +1);
+            }
+          }
+          const next = [...prev];
+          next[idx] = { ...event, rsvps };
+          return next;
+        });
       })
       .on('postgres_changes', {
         event: '*', schema: 'public', table: 'group_members',

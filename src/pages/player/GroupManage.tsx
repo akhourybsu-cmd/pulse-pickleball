@@ -129,20 +129,26 @@ export default function GroupManage() {
     if (!groupId) return;
 
     try {
-      const newCode = `${Math.random().toString(36).substring(2, 6).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-      
-      const { error } = await supabase
-        .from('groups')
-        .update({ invite_code: newCode })
-        .eq('id', groupId);
+      // Server-side RPC — runs generate_group_invite_code() under
+      // SECURITY DEFINER with retry-until-unique, after a server-side
+      // owner check. Replaces the prior client-side Math.random()
+      // path which had no uniqueness guarantee.
+      const { data, error } = await supabase.rpc('regenerate_group_invite_code' as any, {
+        p_group_id: groupId,
+      });
 
       if (error) throw error;
+      const newCode = data as string | null;
+      if (!newCode) throw new Error('Failed to generate invite code');
 
       setGroup(prev => prev ? { ...prev, invite_code: newCode } : null);
       toast({ title: 'Regenerated', description: 'New invite code generated' });
     } catch (error: any) {
-      console.error('Error regenerating code:', error);
-      toast({ title: 'Error', description: 'Failed to regenerate code', variant: 'destructive' });
+      toast({
+        title: 'Error',
+        description: error?.message || 'Failed to regenerate code',
+        variant: 'destructive',
+      });
     }
   };
 

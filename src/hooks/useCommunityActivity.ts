@@ -68,59 +68,95 @@ export function useCommunityActivity() {
         return;
       }
 
-      // Fetch recent posts from those groups (last 7 days)
+      // Parallelize the two independent root queries — posts and
+      // events don't depend on each other, so there's no reason to
+      // wait for posts before starting events.
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-      const { data: postsData, error: postsError } = await supabase
-        .from('group_posts')
-        .select(`
-          id,
-          type,
-          content,
-          title,
-          created_at,
-          group_id,
-          user_id,
-          groups!inner(name)
-        `)
-        .in('group_id', groupIds)
-        .gte('created_at', sevenDaysAgo.toISOString())
-        .order('created_at', { ascending: false })
-        .limit(20);
+      const [
+        { data: postsData, error: postsError },
+        { data: eventsData, error: eventsError },
+      ] = await Promise.all([
+        supabase
+          .from('group_posts')
+          .select(`
+            id,
+            type,
+            content,
+            title,
+            created_at,
+            group_id,
+            user_id,
+            groups!inner(name)
+          `)
+          .in('group_id', groupIds)
+          .gte('created_at', sevenDaysAgo.toISOString())
+          .order('created_at', { ascending: false })
+          .limit(20),
+        supabase
+          .from('group_events')
+          .select(`
+            id,
+            title,
+            start_time,
+            end_time,
+            description,
+            capacity,
+            group_id,
+            groups!inner(name)
+          `)
+          .in('group_id', groupIds)
+          .gte('start_time', new Date().toISOString())
+          .order('start_time', { ascending: true })
+          .limit(10),
+      ]);
 
       if (postsError) throw postsError;
+      if (eventsError) throw eventsError;
 
-      // Get profiles for post authors
+      // Now parallelize the dependent sub-fetches (profiles, reactions,
+      // comments for posts; rsvps for events). All four hit different
+      // tables and can fan out at once.
       const userIds = [...new Set(postsData?.map(p => p.user_id) || [])];
-      const { data: profiles } = await supabase
-        .from('profiles_public')
-        .select('id, display_name, avatar_url')
-        .in('id', userIds);
+      const postIds = postsData?.map(p => p.id) || [];
+      const eventIds = eventsData?.map(e => e.id) || [];
+
+      const [
+        { data: profiles },
+        { data: reactions },
+        { data: comments },
+        { data: rsvps },
+      ] = await Promise.all([
+        userIds.length
+          ? supabase.from('profiles_public').select('id, display_name, avatar_url').in('id', userIds)
+          : Promise.resolve({ data: [] as Array<{ id: string; display_name: string | null; avatar_url: string | null }> }),
+        postIds.length
+          ? supabase.from('group_post_reactions').select('post_id').in('post_id', postIds)
+          : Promise.resolve({ data: [] as Array<{ post_id: string }> }),
+        postIds.length
+          ? supabase.from('group_post_comments').select('post_id').in('post_id', postIds)
+          : Promise.resolve({ data: [] as Array<{ post_id: string }> }),
+        eventIds.length
+          ? supabase.from('group_event_rsvps').select('event_id').in('event_id', eventIds).eq('status', 'going')
+          : Promise.resolve({ data: [] as Array<{ event_id: string }> }),
+      ]);
 
       const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
-
-      // Get reaction counts for posts
-      const postIds = postsData?.map(p => p.id) || [];
-      const { data: reactions } = await supabase
-        .from('group_post_reactions')
-        .select('post_id')
-        .in('post_id', postIds);
 
       const reactionCounts = new Map<string, number>();
       reactions?.forEach(r => {
         reactionCounts.set(r.post_id, (reactionCounts.get(r.post_id) || 0) + 1);
       });
 
-      // Get comment counts for posts
-      const { data: comments } = await supabase
-        .from('group_post_comments')
-        .select('post_id')
-        .in('post_id', postIds);
-
       const commentCounts = new Map<string, number>();
       comments?.forEach(c => {
         commentCounts.set(c.post_id, (commentCounts.get(c.post_id) || 0) + 1);
+      });
+
+      const rsvpCounts = new Map<string, number>();
+      rsvps?.forEach(r => {
+        rsvpCounts.set(r.event_id, (rsvpCounts.get(r.event_id) || 0) + 1);
       });
 
       // Transform posts data
@@ -139,39 +175,6 @@ export function useCommunityActivity() {
       }));
 
       setPosts(transformedPosts);
-
-      // Fetch upcoming events from those groups
-      const { data: eventsData, error: eventsError } = await supabase
-        .from('group_events')
-        .select(`
-          id,
-          title,
-          start_time,
-          end_time,
-          description,
-          capacity,
-          group_id,
-          groups!inner(name)
-        `)
-        .in('group_id', groupIds)
-        .gte('start_time', new Date().toISOString())
-        .order('start_time', { ascending: true })
-        .limit(10);
-
-      if (eventsError) throw eventsError;
-
-      // Get RSVP counts for events
-      const eventIds = eventsData?.map(e => e.id) || [];
-      const { data: rsvps } = await supabase
-        .from('group_event_rsvps')
-        .select('event_id')
-        .in('event_id', eventIds)
-        .eq('status', 'going');
-
-      const rsvpCounts = new Map<string, number>();
-      rsvps?.forEach(r => {
-        rsvpCounts.set(r.event_id, (rsvpCounts.get(r.event_id) || 0) + 1);
-      });
 
       // Transform events data
       const transformedEvents: ActivityEvent[] = (eventsData || []).map(event => ({

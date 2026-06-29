@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { Json } from '@/integrations/supabase/types';
@@ -58,6 +59,7 @@ export function useGroups() {
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -271,6 +273,16 @@ export function useGroups() {
         .eq('user_id', currentUserId);
 
       if (error) throw error;
+
+      // Cross-cache invalidation — other React Query slices keyed by
+      // this groupId would otherwise show stale members/posts/events
+      // if the user still has those tabs mounted (multi-tab is the
+      // main offender, but a back-nav after leaving from GroupDetail
+      // hits the same staleness).
+      queryClient.invalidateQueries({ queryKey: ['group-members', groupId] });
+      queryClient.invalidateQueries({ queryKey: ['group-posts', groupId] });
+      queryClient.invalidateQueries({ queryKey: ['group-events', groupId] });
+      queryClient.invalidateQueries({ queryKey: ['group-chat', groupId] });
 
       toast({ title: 'Left Group', description: 'You have left the group' });
       await fetchMyGroups();

@@ -180,12 +180,16 @@ export function useGroupEvents(groupId: string | undefined) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
+      // maybeSingle — single() errors when no row exists (the
+      // first-RSVP case for every user), which fell into the catch
+      // and surfaced "Failed to update RSVP" even though the user's
+      // first RSVP would have succeeded via the insert branch below.
       const { data: existing } = await supabase
         .from('group_event_rsvps')
         .select('id')
         .eq('event_id', eventId)
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       if (existing) {
         await supabase
