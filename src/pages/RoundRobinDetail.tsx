@@ -187,6 +187,9 @@ export default function RoundRobinDetail() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isParticipant, setIsParticipant] = useState(false);
   const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
+  // Controlled tab state — lets the custom strip animate a sliding
+  // underline indicator (the uncontrolled shadcn TabsList can't).
+  const [activeTab, setActiveTab] = useState<"schedule" | "players" | "standings">("schedule");
   const [scores, setScores] = useState<MatchScore>({});
   const [savingScore, setSavingScore] = useState<string | null>(null);
   const [standings, setStandings] = useState<StandingsRow[]>([]);
@@ -1806,30 +1809,64 @@ export default function RoundRobinDetail() {
         )}
 
         <div>
-        <Tabs defaultValue="schedule" className="w-full">
-          {/* Tab strip — design-system styling, no decorative blur/shadow. */}
-          <TabsList className="w-full max-w-md mx-auto grid grid-cols-3 mb-4 p-1 bg-muted rounded-xl h-auto">
-            <TabsTrigger
-              value="schedule"
-              className="data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm rounded-lg transition-colors py-2 gap-1.5"
-            >
-              <Calendar className="h-4 w-4" />
-              <span>Schedule</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="players"
-              className="data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm rounded-lg transition-colors py-2 gap-1.5"
-            >
-              <Users className="h-4 w-4" />
-              <span>Players · {players.length}</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="standings"
-              className="data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm rounded-lg transition-colors py-2 gap-1.5"
-            >
-              <Trophy className="h-4 w-4" />
-              <span>Standings</span>
-            </TabsTrigger>
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="w-full">
+          {/* Premium tab strip — sliding primary underline indicator.
+              Mirrors the MatchHistory pattern (and PlayerShell's bottom
+              nav) so the visual language carries across the app. The
+              hidden shadcn TabsList stays mounted to satisfy Radix's
+              accessibility tree without rendering its pill chrome. */}
+          {(() => {
+            const tabs: { value: typeof activeTab; label: string; icon: typeof Calendar; count?: number }[] = [
+              { value: "schedule", label: "Schedule", icon: Calendar },
+              { value: "players", label: "Players", icon: Users, count: players.length },
+              { value: "standings", label: "Standings", icon: Trophy },
+            ];
+            const activeIndex = tabs.findIndex((t) => t.value === activeTab);
+            return (
+              <div className="relative border-b border-border/40 max-w-md mx-auto mb-4">
+                <div className="grid grid-cols-3">
+                  {tabs.map((tab) => {
+                    const Icon = tab.icon;
+                    const isActive = tab.value === activeTab;
+                    return (
+                      <button
+                        key={tab.value}
+                        type="button"
+                        onClick={() => setActiveTab(tab.value)}
+                        className={cn(
+                          "relative inline-flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium transition-colors duration-200",
+                          isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        <Icon className="h-4 w-4" />
+                        <span>{tab.label}</span>
+                        {tab.count != null && (
+                          <span className={cn(
+                            "ml-0.5 text-xs font-semibold tabular-nums transition-colors",
+                            isActive ? "text-primary" : "text-muted-foreground/70"
+                          )}>
+                            {tab.count}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+                {/* Sliding underline indicator */}
+                <div
+                  className="absolute bottom-0 h-[2px] bg-primary rounded-full transition-all duration-[240ms] ease-out"
+                  style={{
+                    width: `${100 / tabs.length}%`,
+                    left: `${(100 / tabs.length) * activeIndex}%`,
+                  }}
+                />
+              </div>
+            );
+          })()}
+          <TabsList className="sr-only">
+            <TabsTrigger value="schedule">Schedule</TabsTrigger>
+            <TabsTrigger value="players">Players</TabsTrigger>
+            <TabsTrigger value="standings">Standings</TabsTrigger>
           </TabsList>
 
           <TabsContent value="schedule" className="mt-4 space-y-4">
