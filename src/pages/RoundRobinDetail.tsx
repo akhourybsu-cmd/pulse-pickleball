@@ -32,6 +32,7 @@ import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
 import { EditEventDialog } from "@/components/round-robin/EditEventDialog";
 import { EditModeBanner } from "@/components/round-robin/EditModeBanner";
+import { RankBadge } from "@/components/round-robin/RankBadge";
 import { InviteCodeCard } from "@/components/round-robin/InviteCodeCard";
 import { GuestInviteDialog } from "@/components/round-robin/GuestInviteDialog";
 import { Send } from "lucide-react";
@@ -2190,27 +2191,19 @@ export default function RoundRobinDetail() {
                 <CardContent>
                   <div className="grid grid-cols-3 gap-3">
                     {standings.filter(s => !(s as any).isRemoved).slice(0, 3).map((row, idx) => (
-                      <div 
-                        key={row.player_id} 
-                        className={`relative p-4 rounded-lg border-2 ${
-                          idx === 0 
-                            ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-400 dark:border-amber-600' 
+                      <div
+                        key={row.player_id}
+                        className={`relative p-4 rounded-xl border ${
+                          idx === 0
+                            ? 'bg-amber-50/60 dark:bg-amber-500/5 border-amber-400/50 dark:border-amber-500/30'
                             : idx === 1
-                            ? 'bg-slate-50 dark:bg-slate-950/30 border-slate-400 dark:border-slate-600'
-                            : 'bg-orange-50 dark:bg-orange-950/30 border-orange-400 dark:border-orange-600'
+                            ? 'bg-slate-50/60 dark:bg-slate-500/5 border-slate-400/50 dark:border-slate-500/30'
+                            : 'bg-orange-50/60 dark:bg-orange-500/5 border-orange-400/50 dark:border-orange-500/30'
                         }`}
                       >
-                        <div className="text-center space-y-2">
-                          <div className={`text-3xl font-bold ${
-                            idx === 0 
-                              ? 'text-amber-600 dark:text-amber-400' 
-                              : idx === 1
-                              ? 'text-slate-600 dark:text-slate-400'
-                              : 'text-orange-600 dark:text-orange-400'
-                          }`}>
-                            {idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉'}
-                          </div>
-                          <div className="font-semibold text-sm line-clamp-1">
+                        <div className="flex flex-col items-center space-y-2">
+                          <RankBadge rank={idx + 1} variant="tile" />
+                          <div className="font-semibold text-sm line-clamp-1 text-center">
                             {row.player_name}
                           </div>
                           <div className="flex justify-center gap-3 text-xs">
@@ -2264,9 +2257,7 @@ export default function RoundRobinDetail() {
                         {standings.filter(s => !(s as any).isRemoved).map((row, idx) => (
                           <tr key={row.player_id} className="border-b hover:bg-muted/50">
                             <td className="py-3 px-2">
-                              <Badge variant={idx < 3 ? "default" : "outline"} className="w-8 h-8 flex items-center justify-center">
-                                {idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : idx + 1}
-                              </Badge>
+                              <RankBadge rank={idx + 1} />
                             </td>
                             <td className="py-3 px-2 font-medium">{row.player_name}</td>
                             <td className="text-center py-3 px-2 font-semibold text-green-600 dark:text-green-400">{row.wins}</td>

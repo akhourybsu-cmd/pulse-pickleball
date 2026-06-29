@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { MapPin } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { StepHeader } from "../StepHeader";
 import {
   Select,
   SelectContent,
@@ -35,10 +36,11 @@ export function LocationStep({ value, onChange }: LocationStepProps) {
 
   return (
     <div className="flex flex-col h-full">
-      <h2 className="text-xl font-semibold mb-2">Where are you playing?</h2>
-      <p className="text-muted-foreground text-sm mb-6">
-        Select a court location (optional)
-      </p>
+      <StepHeader
+        icon={MapPin}
+        title="Where are you playing?"
+        description="Pick a saved court — or skip and add the address later."
+      />
 
       <div className="flex-1">
         <div className="flex items-center gap-3 mb-4">

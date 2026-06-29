@@ -1,5 +1,6 @@
 import { CalendarClock, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { StepHeader } from "../StepHeader";
 
 interface EventModeStepProps {
   value: "immediate" | "open_registration";
@@ -9,11 +10,12 @@ interface EventModeStepProps {
 export function EventModeStep({ value, onChange }: EventModeStepProps) {
   return (
     <div className="flex flex-col h-full">
-      <h2 className="text-xl font-semibold mb-2">How are you running this Round Robin?</h2>
-      <p className="text-muted-foreground text-sm mb-6">
-        Choose how you want to set up your event
-      </p>
-      
+      <StepHeader
+        icon={Zap}
+        title="How are you running this?"
+        description="Pick a mode — you can change the details next."
+      />
+
       <div className="flex-1 flex flex-col gap-4">
         <button
           type="button"

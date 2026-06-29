@@ -1,5 +1,6 @@
-import { FileText } from "lucide-react";
+import { StickyNote } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import { StepHeader } from "../StepHeader";
 
 interface NotesStepProps {
   value: string;
@@ -9,10 +10,11 @@ interface NotesStepProps {
 export function NotesStep({ value, onChange }: NotesStepProps) {
   return (
     <div className="flex flex-col h-full">
-      <h2 className="text-xl font-semibold mb-2">Anything players should know?</h2>
-      <p className="text-muted-foreground text-sm mb-6">
-        Add additional details or instructions (optional)
-      </p>
+      <StepHeader
+        icon={StickyNote}
+        title="Anything players should know?"
+        description="What to bring, skill notes, format quirks — optional."
+      />
 
       <div className="flex-1">
         <div className="flex items-start gap-3">

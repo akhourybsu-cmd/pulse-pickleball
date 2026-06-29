@@ -1,5 +1,7 @@
+import { Tag } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { generateDefaultEventName } from "../hooks/useWizardSteps";
+import { StepHeader } from "../StepHeader";
 
 interface EventNameStepProps {
   value: string;
@@ -11,10 +13,11 @@ export function EventNameStep({ value, onChange }: EventNameStepProps) {
 
   return (
     <div className="flex flex-col h-full">
-      <h2 className="text-xl font-semibold mb-2">Name your event</h2>
-      <p className="text-muted-foreground text-sm mb-6">
-        Give your Round Robin a memorable name
-      </p>
+      <StepHeader
+        icon={Tag}
+        title="Name your event"
+        description="Short and memorable — players see this everywhere."
+      />
 
       <div className="flex-1">
         <Input

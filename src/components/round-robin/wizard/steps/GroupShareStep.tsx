@@ -1,7 +1,8 @@
-import { Users, Lock, Megaphone, ChevronRight } from "lucide-react";
+import { Users, Lock, Megaphone, ChevronRight, Share2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAdminGroups } from "@/hooks/useAdminGroups";
+import { StepHeader } from "../StepHeader";
 import {
   Select,
   SelectContent,
@@ -56,10 +57,11 @@ export function GroupShareStep({ visibility, groupId, onChange }: GroupShareStep
 
   return (
     <div className="flex flex-col h-full">
-      <h2 className="text-xl font-semibold mb-2">Where should this Round Robin live?</h2>
-      <p className="text-muted-foreground text-sm mb-6">
-        Choose who can see and join this event.
-      </p>
+      <StepHeader
+        icon={Share2}
+        title="Where should this live?"
+        description="Decide who can see and join."
+      />
 
       <div className="flex-1 flex flex-col gap-3">
         {options.map((opt) => {
