@@ -182,28 +182,40 @@ export function useGroupChat(groupId: string | undefined) {
     },
   });
 
-  const togglePinMessage = async (messageId: string, pinned: boolean) => {
-    // Optimistic: flip pin state on the target, clear other pins.
-    const prev = queryClient.getQueryData<GroupMessage[]>(queryKey);
-    queryClient.setQueryData<GroupMessage[]>(queryKey, (p = []) =>
-      p.map((m) => {
-        if (m.id === messageId) return { ...m, is_pinned: pinned };
-        if (pinned && m.is_pinned) return { ...m, is_pinned: false };
-        return m;
-      }),
-    );
-    try {
+  // Converted from a manual async to a proper mutation so each in-flight
+  // pin toggle owns its own `prev` snapshot via onMutate/onError context.
+  // Pre-conversion, two rapid clicks shared a closure pattern that could
+  // rollback to a stale snapshot if the calls interleaved with failures.
+  const togglePinMessageMutation = useMutation({
+    mutationFn: async ({ messageId, pinned }: { messageId: string; pinned: boolean }) => {
       const { error } = await supabase.rpc('set_group_message_pin', {
         p_message_id: messageId,
         p_pinned: pinned,
       });
       if (error) throw error;
+    },
+    onMutate: async ({ messageId, pinned }) => {
+      const prev = queryClient.getQueryData<GroupMessage[]>(queryKey);
+      queryClient.setQueryData<GroupMessage[]>(queryKey, (p = []) =>
+        p.map((m) => {
+          if (m.id === messageId) return { ...m, is_pinned: pinned };
+          if (pinned && m.is_pinned) return { ...m, is_pinned: false };
+          return m;
+        }),
+      );
+      return { prev };
+    },
+    onSuccess: (_d, { pinned }) => {
       toast({ title: pinned ? 'Pinned' : 'Unpinned' });
-    } catch (error: any) {
-      if (prev) queryClient.setQueryData(queryKey, prev);
+    },
+    onError: (error: any, _v, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(queryKey, ctx.prev);
       toast({ title: 'Error', description: error.message || 'Failed to update pin', variant: 'destructive' });
-    }
-  };
+    },
+  });
+
+  const togglePinMessage = (messageId: string, pinned: boolean) =>
+    togglePinMessageMutation.mutateAsync({ messageId, pinned });
 
   return {
     messages,

@@ -58,39 +58,46 @@ export default function Community() {
         }
       />
 
-      {/* Sliding-underline Tabs */}
+      {/* Sliding-underline Tabs — index-driven so adding a tab is one
+          array entry rather than a new manual left:% branch. Matches
+          the MatchHistory / RoundRobinDetail pattern. */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
         <div className="px-4 sm:px-6 pt-4">
-          <div className="relative border-b border-border/40">
-            <div className="grid grid-cols-2">
-              {[
-                { value: 'my-community', label: 'My Community' },
-                { value: 'explore', label: 'Explore' },
-              ].map((tab) => {
-                const isActive = activeTab === tab.value;
-                return (
-                  <button
-                    key={tab.value}
-                    onClick={() => setActiveTab(tab.value)}
-                    className={cn(
-                      'relative py-2.5 text-sm font-medium transition-colors duration-200',
-                      isActive ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
-                    )}
-                  >
-                    <span>{tab.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-            {/* Sliding underline indicator */}
-            <div
-              className="absolute bottom-0 h-[2px] bg-primary rounded-full transition-all duration-[240ms] ease-out"
-              style={{
-                width: '50%',
-                left: activeTab === 'my-community' ? '0%' : '50%',
-              }}
-            />
-          </div>
+          {(() => {
+            const tabs = [
+              { value: 'my-community', label: 'My Community' },
+              { value: 'explore', label: 'Explore' },
+            ];
+            const activeIndex = tabs.findIndex((t) => t.value === activeTab);
+            return (
+              <div className="relative border-b border-border/40">
+                <div className="grid grid-cols-2">
+                  {tabs.map((tab) => {
+                    const isActive = activeTab === tab.value;
+                    return (
+                      <button
+                        key={tab.value}
+                        onClick={() => setActiveTab(tab.value)}
+                        className={cn(
+                          'relative py-2.5 text-sm font-medium transition-colors duration-200',
+                          isActive ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+                        )}
+                      >
+                        <span>{tab.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div
+                  className="absolute bottom-0 h-[2px] bg-primary rounded-full transition-all duration-[240ms] ease-out"
+                  style={{
+                    width: `${100 / tabs.length}%`,
+                    left: `${(100 / tabs.length) * Math.max(0, activeIndex)}%`,
+                  }}
+                />
+              </div>
+            );
+          })()}
         </div>
 
         <div className="flex-1 overflow-y-auto">
