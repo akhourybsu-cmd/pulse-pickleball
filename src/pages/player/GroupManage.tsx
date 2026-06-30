@@ -125,24 +125,37 @@ export default function GroupManage() {
     }
   };
 
-  const regenerateInviteCode = async () => {
+  // Optional expiry duration in seconds — null means "never expires".
+  // 86400 = 24h, 604800 = 7 days. Driven by the duration picker in
+  // AdminPrivacyTab.
+  const regenerateInviteCode = async (expiresInSeconds: number | null = null) => {
     if (!groupId) return;
 
     try {
-      // Server-side RPC — runs generate_group_invite_code() under
-      // SECURITY DEFINER with retry-until-unique, after a server-side
-      // owner check. Replaces the prior client-side Math.random()
-      // path which had no uniqueness guarantee.
       const { data, error } = await supabase.rpc('regenerate_group_invite_code' as any, {
         p_group_id: groupId,
+        p_expires_in_seconds: expiresInSeconds,
       });
 
       if (error) throw error;
-      const newCode = data as string | null;
-      if (!newCode) throw new Error('Failed to generate invite code');
+      const result = (data ?? {}) as { invite_code?: string; expires_at?: string | null };
+      if (!result.invite_code) throw new Error('Failed to generate invite code');
 
-      setGroup(prev => prev ? { ...prev, invite_code: newCode } : null);
-      toast({ title: 'Regenerated', description: 'New invite code generated' });
+      setGroup(prev =>
+        prev
+          ? {
+              ...prev,
+              invite_code: result.invite_code!,
+              invite_code_expires_at: result.expires_at ?? null,
+            }
+          : null,
+      );
+      toast({
+        title: 'Regenerated',
+        description: result.expires_at
+          ? `New invite code generated · expires ${new Date(result.expires_at).toLocaleString()}`
+          : 'New invite code generated',
+      });
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -368,6 +381,7 @@ export default function GroupManage() {
             visibility={visibility}
             joinMethod={joinMethod}
             inviteCode={group.invite_code}
+            inviteCodeExpiresAt={group.invite_code_expires_at ?? null}
             onVisibilityChange={(v) => setVisibility(v as Group['visibility'])}
             onJoinMethodChange={(v) => setJoinMethod(v as Group['join_method'])}
             onRegenerateCode={regenerateInviteCode}
