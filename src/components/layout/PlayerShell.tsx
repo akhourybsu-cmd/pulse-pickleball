@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Trophy, Users, User, Plus } from 'lucide-react';
+import { Home, Trophy, Users, User, Plus, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { NotificationBell } from '@/components/NotificationBell';
 import { NotificationCenter } from '@/components/notifications/NotificationCenter';
 import { useNotifications } from '@/hooks/useNotifications';
+import { useDirectMessages } from '@/hooks/useDirectMessages';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
@@ -49,7 +50,12 @@ export function PlayerShell() {
     clearAll,
     groupedByTime,
   } = useNotifications(user?.id);
-  
+
+  // Surfacing total unread DM count in the header so Messages is one
+  // tap from anywhere instead of being buried 2-3 levels deep behind
+  // the Community tab.
+  const { totalUnread: dmUnread } = useDirectMessages();
+
   // Full-screen immersive routes (hide all shell chrome).
   // Match entry has its own sticky header + fixed bottom CTA bar; rendering
   // PlayerShell's bottom nav alongside it would stack two fixed bars on top
@@ -126,6 +132,22 @@ export function PlayerShell() {
             </NavLink>
             <div className="flex items-center gap-1.5 sm:gap-2">
               <ThemeToggle />
+              {/* Messages — one-tap entry to /player/messages from any
+                  page. Pre-add this was 2-3 taps deep behind Community.
+                  Unread count mirrors useDirectMessages.totalUnread. */}
+              <button
+                type="button"
+                onClick={() => navigate('/player/messages')}
+                aria-label={dmUnread > 0 ? `Messages, ${dmUnread} unread` : 'Messages'}
+                className="relative inline-flex items-center justify-center h-8 w-8 sm:h-9 sm:w-9 rounded-full text-secondary-foreground hover:bg-secondary-foreground/10 transition-colors"
+              >
+                <MessageSquare className="h-[18px] w-[18px] sm:h-5 sm:w-5" />
+                {dmUnread > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center tabular-nums">
+                    {dmUnread > 99 ? '99+' : dmUnread}
+                  </span>
+                )}
+              </button>
               <NotificationBell unreadCount={unreadCount} onOpen={() => setIsNotificationCenterOpen(true)} />
               {/* Avatar → Profile tab (was the public /profile/:id view,
                   which surprised users expecting to land in their own hub). */}

@@ -6,6 +6,16 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useFriends } from '@/hooks/useFriends';
 import { useFriendSuggestions } from '@/hooks/useFriendSuggestions';
 import { ConnectSheet } from '@/components/community/ConnectSheet';
@@ -20,6 +30,12 @@ const initials = (name: string | null) =>
 export default function Friends() {
   const navigate = useNavigate();
   const [connectOpen, setConnectOpen] = useState(false);
+  // Friend-removal confirmation. Previously the X icon called
+  // removeFriend() directly on click — a single-tap mistake (very
+  // easy to fat-finger on mobile) nuked the friendship with no undo.
+  // Now the tap opens a confirm dialog that names the person and the
+  // consequence.
+  const [removeTarget, setRemoveTarget] = useState<{ friendshipId: string; name: string } | null>(null);
   const {
     friends,
     pendingRequests,
@@ -154,7 +170,18 @@ export default function Friends() {
                   <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => openDM(f.profile.id)} aria-label="Message">
                     <MessageCircle className="h-4 w-4" />
                   </Button>
-                  <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground" onClick={() => removeFriend(f.id)} aria-label="Remove friend">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9 text-muted-foreground"
+                    onClick={() =>
+                      setRemoveTarget({
+                        friendshipId: f.id,
+                        name: f.profile.display_name || f.profile.full_name || 'this friend',
+                      })
+                    }
+                    aria-label="Remove friend"
+                  >
                     <UserMinus className="h-4 w-4" />
                   </Button>
                 </div>
@@ -263,6 +290,36 @@ export default function Friends() {
           </TabsContent>
         </div>
       </Tabs>
+
+      {/* Confirm before removing a friend — single-tap removal was a
+          mobile footgun pre-fix. */}
+      <AlertDialog
+        open={!!removeTarget}
+        onOpenChange={(open) => !open && setRemoveTarget(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove {removeTarget?.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You'll need to send a new friend request to reconnect. Direct messages and shared groups stay.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async () => {
+                if (removeTarget) {
+                  await removeFriend(removeTarget.friendshipId);
+                  setRemoveTarget(null);
+                }
+              }}
+            >
+              Remove friend
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

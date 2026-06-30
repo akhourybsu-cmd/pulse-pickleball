@@ -18,6 +18,16 @@ import { useDirectMessages } from '@/hooks/useDirectMessages';
 import { useFriendsPresence } from '@/hooks/useFriendsPresence';
 import { OnlineIndicator } from './OnlineIndicator';
 import { ConnectSheet } from './ConnectSheet';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 type Segment = 'all' | 'online' | 'requests';
 
@@ -31,6 +41,10 @@ export function FriendsTab() {
   const [searchQuery, setSearchQuery] = useState('');
   const [connectOpen, setConnectOpen] = useState(false);
   const [segment, setSegment] = useState<Segment>('all');
+  // Confirm dialog state — see Friends.tsx for the same pattern. The
+  // FriendCard's Remove menu item used to call removeFriend on click
+  // with zero confirmation; now it stages here instead.
+  const [removeTarget, setRemoveTarget] = useState<{ friendshipId: string; name: string } | null>(null);
 
   const friendIds = useMemo(() => friends.map((f) => f.profile.id), [friends]);
   const { isOnline } = useFriendsPresence(friendIds);
@@ -140,7 +154,12 @@ export function FriendsTab() {
                     friend={friend}
                     isOnline={isOnline(friend.profile.id)}
                     onMessage={() => handleMessage(friend.profile.id)}
-                    onRemove={() => removeFriend(friend.id)}
+                    onRemove={() =>
+                      setRemoveTarget({
+                        friendshipId: friend.id,
+                        name: friend.profile.display_name || friend.profile.full_name || 'this friend',
+                      })
+                    }
                     onBlock={() => blockUser(friend.profile.id)}
                     onView={() => navigate(`/profile/${friend.profile.id}`)}
                     getInitials={getInitials}
@@ -163,6 +182,34 @@ export function FriendsTab() {
       </motion.button>
 
       <ConnectSheet open={connectOpen} onOpenChange={setConnectOpen} />
+
+      <AlertDialog
+        open={!!removeTarget}
+        onOpenChange={(open) => !open && setRemoveTarget(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove {removeTarget?.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You'll need to send a new friend request to reconnect. Direct messages and shared groups stay.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async () => {
+                if (removeTarget) {
+                  await removeFriend(removeTarget.friendshipId);
+                  setRemoveTarget(null);
+                }
+              }}
+            >
+              Remove friend
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

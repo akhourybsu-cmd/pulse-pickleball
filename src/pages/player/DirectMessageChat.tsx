@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, MoreVertical, BellOff, Bell, Shield, Flag, UserX } from 'lucide-react';
+import { ArrowLeft, MoreVertical, BellOff, Bell, Shield, Flag, UserX, Check, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { format, isToday, isYesterday, isSameDay } from 'date-fns';
 import { toast } from 'sonner';
@@ -29,11 +29,14 @@ import { cn } from '@/lib/utils';
 export default function DirectMessageChat() {
   const { conversationId } = useParams<{ conversationId: string }>();
   const navigate = useNavigate();
-  const { messages, loading, participant, sendMessage } = useConversation(conversationId || null);
+  const { messages, loading, participant, sendMessage, retryMessage } = useConversation(conversationId || null);
   const { block } = useBlockedUsers();
   const [newMessage, setNewMessage] = useState('');
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [isSending, setIsSending] = useState(false);
+  // No more isSending state — sends are optimistic and the spinner UX
+  // moved onto the per-bubble _status='sending' indicator. The
+  // composer's `sending` prop is hardcoded false now so the send
+  // button stays live for back-to-back sends.
   const [muted, setMuted] = useState(false);
   const [leftAt, setLeftAt] = useState<string | null>(null);
   const [restricted, setRestricted] = useState<string | null>(null);
@@ -100,15 +103,18 @@ export default function DirectMessageChat() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSend = async () => {
-    if (!newMessage.trim() || isSending || restricted || leftAt) return;
-    setIsSending(true);
-    const success = await sendMessage(newMessage);
-    if (success) {
-      setNewMessage('');
-      inputRef.current?.focus();
-    }
-    setIsSending(false);
+  // Fire-and-forget — sendMessage is optimistic now, so the bubble
+  // renders before the network completes. Clear the input synchronously
+  // and refocus immediately to keep the composer ready for the next
+  // message. Pre-conversion the input was blocked behind an
+  // await + spinner until the server ACK'd, which felt sluggish on
+  // anything but a perfect connection.
+  const handleSend = () => {
+    const text = newMessage.trim();
+    if (!text || restricted || leftAt) return;
+    setNewMessage('');
+    inputRef.current?.focus();
+    void sendMessage(text);
   };
 
   const handleInputChange = (value: string) => {
@@ -312,14 +318,43 @@ export default function DirectMessageChat() {
                   className={cn('flex', isOwn ? 'justify-end' : 'justify-start', grouped ? 'mt-0.5' : 'mt-3')}
                 >
                   <div className={cn(
-                    'max-w-[80%] px-3 py-2 rounded-2xl text-sm',
-                    isOwn ? 'bg-primary text-primary-foreground rounded-br-md' : 'bg-muted rounded-bl-md'
+                    'max-w-[80%] px-3 py-2 rounded-2xl text-sm transition-opacity duration-200',
+                    isOwn ? 'bg-primary text-primary-foreground rounded-br-md' : 'bg-muted rounded-bl-md',
+                    // Faded while in-flight, bright once acked. Mirrors
+                    // the iMessage "sending → sent" pulse.
+                    message._status === 'sending' && 'opacity-70',
+                    message._status === 'failed' && 'bg-destructive/15 text-destructive-foreground/90',
                   )}>
                     <p className="break-words">{message.content}</p>
                     {!grouped && (
-                      <p className={cn('text-[10px] mt-1', isOwn ? 'text-primary-foreground/70' : 'text-muted-foreground')}>
-                        {format(new Date(message.created_at), 'h:mm a')}
+                      <p className={cn(
+                        'text-[10px] mt-1 flex items-center gap-1',
+                        isOwn ? 'text-primary-foreground/70' : 'text-muted-foreground',
+                      )}>
+                        <span>{format(new Date(message.created_at), 'h:mm a')}</span>
+                        {/* Status indicator for own messages only. The
+                            "sent" check ack is intentionally subtle —
+                            no double-tick, no read receipt yet. */}
+                        {isOwn && message._status === 'sending' && (
+                          <span className="inline-flex h-2 w-2 rounded-full bg-current opacity-50 animate-pulse" aria-label="Sending" />
+                        )}
+                        {isOwn && message._status === 'sent' && (
+                          <Check className="h-3 w-3 opacity-80" aria-label="Sent" />
+                        )}
                       </p>
+                    )}
+                    {/* Failed-send affordance — tap the bubble to retry.
+                        Only renders for own optimistic rows that
+                        couldn't reach the server. */}
+                    {isOwn && message._status === 'failed' && message._clientId && (
+                      <button
+                        type="button"
+                        onClick={() => retryMessage(message._clientId!)}
+                        className="mt-1 text-[10px] underline text-destructive hover:opacity-80 flex items-center gap-1"
+                      >
+                        <RefreshCw className="h-2.5 w-2.5" />
+                        Tap to retry
+                      </button>
                     )}
                   </div>
                 </motion.div>
@@ -347,7 +382,7 @@ export default function DirectMessageChat() {
         value={newMessage}
         onChange={handleInputChange}
         onSubmit={handleSend}
-        sending={isSending}
+        sending={false}
         disabled={!!sendDisabled}
         placeholder={sendDisabled ? 'Messaging unavailable' : 'Type a message…'}
         sendLabel="Send message"
