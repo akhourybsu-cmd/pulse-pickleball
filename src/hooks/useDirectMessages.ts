@@ -19,6 +19,12 @@ export interface DirectMessage {
   sender_id: string;
   content: string;
   created_at: string;
+  /** Set on optimistic rows pre-server-ACK so the realtime handler can
+   *  swap by client id rather than blind-appending a duplicate. */
+  _clientId?: string;
+  /** Lifecycle: 'sending' while the network request is in flight,
+   *  'sent' after server confirms, 'failed' on error (retry-able). */
+  _status?: 'sending' | 'sent' | 'failed';
 }
 
 export interface ConversationPreview {
@@ -327,7 +333,30 @@ export function useConversation(conversationId: string | null) {
           filter: `conversation_id=eq.${conversationId}`,
         },
         (payload) => {
-          setMessages(prev => [...prev, payload.new as DirectMessage]);
+          const incoming = payload.new as DirectMessage;
+          setMessages(prev => {
+            // If this is the server confirming an optimistic row we
+            // already inserted locally, swap by matching sender +
+            // content rather than appending a duplicate. The temp
+            // row's _clientId stays attached to the swapped row so
+            // any in-flight UI references continue to resolve.
+            const tempIdx = prev.findIndex(
+              (m) => m._status === 'sending'
+                && m.sender_id === incoming.sender_id
+                && m.content === incoming.content,
+            );
+            if (tempIdx !== -1) {
+              const next = [...prev];
+              next[tempIdx] = { ...incoming, _status: 'sent', _clientId: prev[tempIdx]._clientId };
+              return next;
+            }
+            // Otherwise it's a message we haven't seen — append.
+            // De-dupe by id in case the row was both optimistically
+            // inserted and re-broadcast (rare with the temp swap above
+            // but defensive).
+            if (prev.some((m) => m.id === incoming.id)) return prev;
+            return [...prev, incoming];
+          });
           supabase.auth.getUser().then(({ data: { user } }) => {
             if (user) {
               supabase
@@ -346,33 +375,99 @@ export function useConversation(conversationId: string | null) {
     };
   }, [conversationId, fetchMessages]);
 
+  // Optimistic send — matches the useGroupChat pattern so DMs feel as
+  // snappy as group messages. Pre-conversion the caller awaited the
+  // server round-trip while the input was disabled and a spinner spun
+  // on the send button; now we insert the message into local state
+  // synchronously with _status='sending', return immediately so the
+  // composer can clear, and let the network INSERT happen in the
+  // background. The realtime INSERT handler (see useEffect above)
+  // swaps the temp row for the server row on confirmation. On error
+  // the temp row flips to _status='failed' so the bubble can show a
+  // "tap to retry" affordance.
   const sendMessage = useCallback(async (content: string): Promise<boolean> => {
-    if (!conversationId || !content.trim()) return false;
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
+    const trimmed = content.trim();
+    if (!conversationId || !trimmed) return false;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      toast.error('Not authenticated');
+      return false;
+    }
 
+    const clientId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const optimistic: DirectMessage = {
+      id: `temp-${clientId}`,
+      conversation_id: conversationId,
+      sender_id: user.id,
+      content: trimmed,
+      created_at: new Date().toISOString(),
+      _clientId: clientId,
+      _status: 'sending',
+    };
+    setMessages(prev => [...prev, optimistic]);
+
+    // Fire-and-await the network in the background. We don't block the
+    // caller — sendMessage resolves "true" once the optimistic row is
+    // on screen, which is what the composer needs to clear its input.
+    (async () => {
+      try {
+        const { error } = await supabase
+          .from('direct_messages')
+          .insert({
+            conversation_id: conversationId,
+            sender_id: user.id,
+            content: trimmed,
+          });
+        if (error) throw error;
+        // On success we leave the swap to the realtime INSERT handler,
+        // which will match by sender+content and replace the temp row
+        // with the server row (carrying the real UUID).
+      } catch (error) {
+        console.error('Error sending message:', error);
+        // Mark the optimistic row failed so the UI can offer a retry.
+        setMessages(prev =>
+          prev.map(m => (m._clientId === clientId ? { ...m, _status: 'failed' as const } : m)),
+        );
+        toast.error('Failed to send message');
+      }
+    })();
+
+    return true;
+  }, [conversationId]);
+
+  // Retry a failed send by re-firing the network insert for an existing
+  // optimistic row. Same dedupe rules apply — realtime swap finishes
+  // the job once the server confirms.
+  const retryMessage = useCallback(async (clientId: string): Promise<void> => {
+    if (!conversationId) return;
+    const target = messages.find((m) => m._clientId === clientId && m._status === 'failed');
+    if (!target) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    // Flip back to 'sending' for the spinner / pulse.
+    setMessages(prev => prev.map(m => (m._clientId === clientId ? { ...m, _status: 'sending' as const } : m)));
+    try {
       const { error } = await supabase
         .from('direct_messages')
         .insert({
           conversation_id: conversationId,
           sender_id: user.id,
-          content: content.trim(),
+          content: target.content,
         });
       if (error) throw error;
-      return true;
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error('Error retrying message:', error);
+      setMessages(prev => prev.map(m => (m._clientId === clientId ? { ...m, _status: 'failed' as const } : m)));
       toast.error('Failed to send message');
-      return false;
     }
-  }, [conversationId]);
+  }, [conversationId, messages]);
 
   return {
     messages,
     loading,
     participant,
     sendMessage,
+    retryMessage,
     channelRef,
     refetch: fetchMessages,
   };
