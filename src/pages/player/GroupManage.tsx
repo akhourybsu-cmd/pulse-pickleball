@@ -135,10 +135,12 @@ export default function GroupManage() {
       // path which had no uniqueness guarantee.
       const { data, error } = await supabase.rpc('regenerate_group_invite_code' as any, {
         p_group_id: groupId,
+        p_ttl_hours: null,
       });
 
       if (error) throw error;
-      const newCode = data as string | null;
+      const payload = (data ?? {}) as { invite_code?: string | null };
+      const newCode = payload.invite_code ?? null;
       if (!newCode) throw new Error('Failed to generate invite code');
 
       setGroup(prev => prev ? { ...prev, invite_code: newCode } : null);
