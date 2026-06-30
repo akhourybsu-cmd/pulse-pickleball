@@ -134,28 +134,16 @@ export default function GroupManage() {
     try {
       const { data, error } = await supabase.rpc('regenerate_group_invite_code' as any, {
         p_group_id: groupId,
-        p_expires_in_seconds: expiresInSeconds,
+        p_ttl_hours: null,
       });
 
       if (error) throw error;
-      const result = (data ?? {}) as { invite_code?: string; expires_at?: string | null };
-      if (!result.invite_code) throw new Error('Failed to generate invite code');
+      const payload = (data ?? {}) as { invite_code?: string | null };
+      const newCode = payload.invite_code ?? null;
+      if (!newCode) throw new Error('Failed to generate invite code');
 
-      setGroup(prev =>
-        prev
-          ? {
-              ...prev,
-              invite_code: result.invite_code!,
-              invite_code_expires_at: result.expires_at ?? null,
-            }
-          : null,
-      );
-      toast({
-        title: 'Regenerated',
-        description: result.expires_at
-          ? `New invite code generated · expires ${new Date(result.expires_at).toLocaleString()}`
-          : 'New invite code generated',
-      });
+      setGroup(prev => prev ? { ...prev, invite_code: newCode } : null);
+      toast({ title: 'Regenerated', description: 'New invite code generated' });
     } catch (error: any) {
       toast({
         title: 'Error',

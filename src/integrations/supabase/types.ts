@@ -1515,6 +1515,48 @@ export type Database = {
         }
         Relationships: []
       }
+      group_audit_log: {
+        Row: {
+          action: string
+          actor_user_id: string | null
+          created_at: string
+          group_id: string
+          id: string
+          metadata: Json | null
+          new_role: string | null
+          new_status: string | null
+          old_role: string | null
+          old_status: string | null
+          target_user_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_user_id?: string | null
+          created_at?: string
+          group_id: string
+          id?: string
+          metadata?: Json | null
+          new_role?: string | null
+          new_status?: string | null
+          old_role?: string | null
+          old_status?: string | null
+          target_user_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_user_id?: string | null
+          created_at?: string
+          group_id?: string
+          id?: string
+          metadata?: Json | null
+          new_role?: string | null
+          new_status?: string | null
+          old_role?: string | null
+          old_status?: string | null
+          target_user_id?: string | null
+        }
+        Relationships: []
+      }
       group_event_rsvps: {
         Row: {
           created_at: string | null
@@ -2069,6 +2111,7 @@ export type Database = {
           icon_url: string | null
           id: string
           invite_code: string | null
+          invite_code_expires_at: string | null
           is_venue_verified: boolean | null
           join_method: Database["public"]["Enums"]["group_join_method"]
           member_count: number | null
@@ -2088,6 +2131,7 @@ export type Database = {
           icon_url?: string | null
           id?: string
           invite_code?: string | null
+          invite_code_expires_at?: string | null
           is_venue_verified?: boolean | null
           join_method?: Database["public"]["Enums"]["group_join_method"]
           member_count?: number | null
@@ -2107,6 +2151,7 @@ export type Database = {
           icon_url?: string | null
           id?: string
           invite_code?: string | null
+          invite_code_expires_at?: string | null
           is_venue_verified?: boolean | null
           join_method?: Database["public"]["Enums"]["group_join_method"]
           member_count?: number | null
@@ -3782,6 +3827,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      rpc_rate_limit_log: {
+        Row: {
+          action: string
+          attempted_at: string
+          caller_id: string | null
+          id: number
+        }
+        Insert: {
+          action: string
+          attempted_at?: string
+          caller_id?: string | null
+          id?: number
+        }
+        Update: {
+          action?: string
+          attempted_at?: string
+          caller_id?: string | null
+          id?: number
+        }
+        Relationships: []
       }
       sessions: {
         Row: {
@@ -6486,6 +6552,7 @@ export type Database = {
         Returns: undefined
       }
       cleanup_expired_mfa_codes: { Args: never; Returns: undefined }
+      cleanup_rpc_rate_limit_log: { Args: never; Returns: undefined }
       clear_all_match_history: { Args: never; Returns: undefined }
       clear_all_match_history_authenticated: { Args: never; Returns: undefined }
       create_notification: {
@@ -6510,6 +6577,14 @@ export type Database = {
       delete_old_court_posts: { Args: never; Returns: undefined }
       delete_round_robin_event: {
         Args: { p_event_id: string }
+        Returns: undefined
+      }
+      enforce_rpc_rate_limit: {
+        Args: {
+          p_action: string
+          p_max_attempts: number
+          p_window_seconds: number
+        }
         Returns: undefined
       }
       enqueue_email: {
@@ -6544,6 +6619,7 @@ export type Database = {
           description: string
           icon_url: string
           id: string
+          invite_code_expires_at: string
           join_method: string
           member_count: number
           name: string
@@ -6759,8 +6835,8 @@ export type Database = {
         Returns: undefined
       }
       regenerate_group_invite_code: {
-        Args: { p_group_id: string }
-        Returns: string
+        Args: { p_group_id: string; p_ttl_hours?: number }
+        Returns: Json
       }
       search_connectable_users: {
         Args: { _query: string }
