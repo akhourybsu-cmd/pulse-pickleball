@@ -1515,6 +1515,48 @@ export type Database = {
         }
         Relationships: []
       }
+      group_audit_log: {
+        Row: {
+          action: string
+          actor_user_id: string | null
+          created_at: string
+          group_id: string
+          id: string
+          metadata: Json | null
+          new_role: string | null
+          new_status: string | null
+          old_role: string | null
+          old_status: string | null
+          target_user_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_user_id?: string | null
+          created_at?: string
+          group_id: string
+          id?: string
+          metadata?: Json | null
+          new_role?: string | null
+          new_status?: string | null
+          old_role?: string | null
+          old_status?: string | null
+          target_user_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_user_id?: string | null
+          created_at?: string
+          group_id?: string
+          id?: string
+          metadata?: Json | null
+          new_role?: string | null
+          new_status?: string | null
+          old_role?: string | null
+          old_status?: string | null
+          target_user_id?: string | null
+        }
+        Relationships: []
+      }
       group_event_rsvps: {
         Row: {
           created_at: string | null
@@ -2069,6 +2111,7 @@ export type Database = {
           icon_url: string | null
           id: string
           invite_code: string | null
+          invite_code_expires_at: string | null
           is_venue_verified: boolean | null
           join_method: Database["public"]["Enums"]["group_join_method"]
           member_count: number | null
@@ -2088,6 +2131,7 @@ export type Database = {
           icon_url?: string | null
           id?: string
           invite_code?: string | null
+          invite_code_expires_at?: string | null
           is_venue_verified?: boolean | null
           join_method?: Database["public"]["Enums"]["group_join_method"]
           member_count?: number | null
@@ -2107,6 +2151,7 @@ export type Database = {
           icon_url?: string | null
           id?: string
           invite_code?: string | null
+          invite_code_expires_at?: string | null
           is_venue_verified?: boolean | null
           join_method?: Database["public"]["Enums"]["group_join_method"]
           member_count?: number | null
@@ -6574,6 +6619,7 @@ export type Database = {
           description: string
           icon_url: string
           id: string
+          invite_code_expires_at: string
           join_method: string
           member_count: number
           name: string
@@ -6789,8 +6835,8 @@ export type Database = {
         Returns: undefined
       }
       regenerate_group_invite_code: {
-        Args: { p_group_id: string }
-        Returns: string
+        Args: { p_group_id: string; p_ttl_hours?: number }
+        Returns: Json
       }
       search_connectable_users: {
         Args: { _query: string }
