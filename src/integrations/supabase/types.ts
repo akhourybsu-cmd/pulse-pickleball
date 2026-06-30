@@ -3783,6 +3783,27 @@ export type Database = {
           },
         ]
       }
+      rpc_rate_limit_log: {
+        Row: {
+          action: string
+          attempted_at: string
+          caller_id: string | null
+          id: number
+        }
+        Insert: {
+          action: string
+          attempted_at?: string
+          caller_id?: string | null
+          id?: number
+        }
+        Update: {
+          action?: string
+          attempted_at?: string
+          caller_id?: string | null
+          id?: number
+        }
+        Relationships: []
+      }
       sessions: {
         Row: {
           court_id: string
@@ -6486,6 +6507,7 @@ export type Database = {
         Returns: undefined
       }
       cleanup_expired_mfa_codes: { Args: never; Returns: undefined }
+      cleanup_rpc_rate_limit_log: { Args: never; Returns: undefined }
       clear_all_match_history: { Args: never; Returns: undefined }
       clear_all_match_history_authenticated: { Args: never; Returns: undefined }
       create_notification: {
@@ -6510,6 +6532,14 @@ export type Database = {
       delete_old_court_posts: { Args: never; Returns: undefined }
       delete_round_robin_event: {
         Args: { p_event_id: string }
+        Returns: undefined
+      }
+      enforce_rpc_rate_limit: {
+        Args: {
+          p_action: string
+          p_max_attempts: number
+          p_window_seconds: number
+        }
         Returns: undefined
       }
       enqueue_email: {
