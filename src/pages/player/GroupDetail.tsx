@@ -353,35 +353,65 @@ export default function GroupDetail() {
         </div>
       </div>
 
-      {/* Labeled Tab Bar */}
+      {/* Tab strip — sliding-underline pattern (matches MatchHistory,
+          RoundRobinDetail, Community.tsx). Pre-overhaul each TabsTrigger
+          had its own per-tab border-bottom which read as five disjoint
+          underline states; the single sliding bar reads as one nav
+          element with continuous motion. The radix TabsList stays
+          mounted as sr-only so keyboard/screen-reader semantics are
+          preserved — clicks still flow through the underlying Tabs
+          value to drive TabsContent visibility. Venue-branded groups
+          override the underline color to the venue accent inline. */}
       <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col overflow-hidden">
-        <div 
-          className="border-b border-border/30 bg-background shrink-0"
+        <div
+          className="border-b border-border/30 bg-background shrink-0 relative"
           style={isVenueGroup ? { borderColor: `${venueColor}20` } : undefined}
         >
-          <TabsList className="h-14 bg-transparent p-0 w-full justify-between gap-0 rounded-none">
+          <div className="grid" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
             {tabs.map((tab) => {
               const active = activeTab === tab.value;
               return (
-                <TabsTrigger 
+                <button
                   key={tab.value}
-                  value={tab.value} 
+                  type="button"
+                  onClick={() => handleTabChange(tab.value)}
                   className={cn(
-                    "flex-1 h-14 rounded-none border-b-2 border-transparent bg-transparent",
-                    "data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none",
-                    "flex flex-col items-center justify-center gap-1 px-1 text-[11px] font-medium",
-                    active ? "text-primary" : "text-muted-foreground"
+                    'relative h-14 flex flex-col items-center justify-center gap-1 px-1 text-[11px] font-medium transition-colors duration-200',
+                    active ? 'text-primary' : 'text-muted-foreground hover:text-foreground',
                   )}
-                  style={isVenueGroup && active ? {
-                    borderColor: venueColor || undefined,
-                    color: venueColor || undefined
-                  } : undefined}
+                  style={isVenueGroup && active ? { color: venueColor || undefined } : undefined}
+                  aria-current={active ? 'page' : undefined}
                 >
                   <tab.icon className="h-[18px] w-[18px]" strokeWidth={active ? 2.25 : 1.75} />
                   <span>{tab.label}</span>
-                </TabsTrigger>
+                </button>
               );
             })}
+          </div>
+          {/* Sliding underline — index-driven width/left so adding a
+              tab is one array entry rather than per-tab branches.
+              Honors venueColor for branded groups. */}
+          {(() => {
+            const idx = Math.max(0, tabs.findIndex((t) => t.value === activeTab));
+            const w = 100 / tabs.length;
+            return (
+              <div
+                aria-hidden
+                className="absolute bottom-0 h-[2px] bg-primary rounded-full transition-all duration-[240ms] ease-out"
+                style={{
+                  width: `${w}%`,
+                  left: `${w * idx}%`,
+                  ...(isVenueGroup ? { backgroundColor: venueColor || undefined } : null),
+                }}
+              />
+            );
+          })()}
+          {/* Keep the Radix TabsList in the tree so the a11y / keyboard
+              wiring still works — visually hidden via sr-only. */}
+          <TabsList className="sr-only">
+            {tabs.map((t) => (
+              <TabsTrigger key={t.value} value={t.value}>{t.label}</TabsTrigger>
+            ))}
           </TabsList>
         </div>
 
