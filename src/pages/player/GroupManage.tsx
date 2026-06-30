@@ -128,22 +128,42 @@ export default function GroupManage() {
   // Optional expiry duration in seconds — null means "never expires".
   // 86400 = 24h, 604800 = 7 days. Driven by the duration picker in
   // AdminPrivacyTab.
+  //
+  // The live function signature is regenerate_group_invite_code(
+  //   p_group_id uuid, p_expires_in_seconds int DEFAULT NULL
+  // ) per migration 20260702000000. A later commit on main had the
+  // client calling p_ttl_hours and discarding the expiresInSeconds
+  // arg, which throws at runtime ("function ... does not exist") AND
+  // silently drops the duration picker's value. This restores both
+  // the correct param name and the wiring from the picker.
   const regenerateInviteCode = async (expiresInSeconds: number | null = null) => {
     if (!groupId) return;
 
     try {
       const { data, error } = await supabase.rpc('regenerate_group_invite_code' as any, {
         p_group_id: groupId,
-        p_ttl_hours: null,
+        p_expires_in_seconds: expiresInSeconds,
       });
 
       if (error) throw error;
-      const payload = (data ?? {}) as { invite_code?: string | null };
-      const newCode = payload.invite_code ?? null;
-      if (!newCode) throw new Error('Failed to generate invite code');
+      const result = (data ?? {}) as { invite_code?: string; expires_at?: string | null };
+      if (!result.invite_code) throw new Error('Failed to generate invite code');
 
-      setGroup(prev => prev ? { ...prev, invite_code: newCode } : null);
-      toast({ title: 'Regenerated', description: 'New invite code generated' });
+      setGroup(prev =>
+        prev
+          ? {
+              ...prev,
+              invite_code: result.invite_code!,
+              invite_code_expires_at: result.expires_at ?? null,
+            }
+          : null,
+      );
+      toast({
+        title: 'Regenerated',
+        description: result.expires_at
+          ? `New invite code generated · expires ${new Date(result.expires_at).toLocaleString()}`
+          : 'New invite code generated',
+      });
     } catch (error: any) {
       toast({
         title: 'Error',
