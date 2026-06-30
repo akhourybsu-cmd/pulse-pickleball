@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { Card } from '@/components/ui/card';
 import { useGroupEvents } from '@/hooks/useGroupEvents';
-import { EventWizardFormData, EVENT_WIZARD_STEPS } from './types';
+import { EventWizardFormData, EVENT_WIZARD_STEPS, encodeRecurringRule, generateOccurrenceStarts } from './types';
 import { EventWizardProgress } from './EventWizardProgress';
 import { EventWizardNav } from './EventWizardNav';
 import { EventWizardCard } from './EventWizardCard';
@@ -33,6 +33,8 @@ export function EventWizardContainer({ groupId, onClose, onSuccess }: EventWizar
     endTime: '',
     location: '',
     capacity: null,
+    recurringFrequency: 'none',
+    recurringCount: 4,
   });
 
   const step = EVENT_WIZARD_STEPS[currentStep];
@@ -80,13 +82,26 @@ export function EventWizardContainer({ groupId, onClose, onSuccess }: EventWizar
   const handleCreate = async () => {
     setIsLoading(true);
     try {
-      // Construct start_time as ISO string
       const startDateTime = new Date(`${formData.date}T${formData.startTime}`);
       let endDateTime: Date | undefined;
-      
       if (formData.endTime) {
         endDateTime = new Date(`${formData.date}T${formData.endTime}`);
       }
+
+      // Generate occurrences for the series. generateOccurrenceStarts
+      // returns [firstStart] for 'none', so we always slice the first
+      // element off — that's the start_time on the base row — and pass
+      // the rest as additional_starts to useGroupEvents.createEvent.
+      const occurrences = generateOccurrenceStarts(
+        startDateTime,
+        formData.recurringFrequency,
+        formData.recurringCount,
+      );
+      const additionalStarts = occurrences.slice(1).map((d) => d.toISOString());
+      const recurringRule = encodeRecurringRule(
+        formData.recurringFrequency,
+        formData.recurringCount,
+      );
 
       await createEvent({
         title: formData.title,
@@ -95,6 +110,9 @@ export function EventWizardContainer({ groupId, onClose, onSuccess }: EventWizar
         end_time: endDateTime?.toISOString(),
         custom_location: formData.location || undefined,
         capacity: formData.capacity || undefined,
+        ...(recurringRule
+          ? { recurring_rule: recurringRule, additional_starts: additionalStarts }
+          : {}),
       });
 
       onSuccess();
@@ -132,9 +150,17 @@ export function EventWizardContainer({ groupId, onClose, onSuccess }: EventWizar
             date={formData.date}
             startTime={formData.startTime}
             endTime={formData.endTime}
+            recurringFrequency={formData.recurringFrequency}
+            recurringCount={formData.recurringCount}
             onDateChange={(date) => setFormData((prev) => ({ ...prev, date }))}
             onStartTimeChange={(startTime) => setFormData((prev) => ({ ...prev, startTime }))}
             onEndTimeChange={(endTime) => setFormData((prev) => ({ ...prev, endTime }))}
+            onRecurringFrequencyChange={(recurringFrequency) =>
+              setFormData((prev) => ({ ...prev, recurringFrequency }))
+            }
+            onRecurringCountChange={(recurringCount) =>
+              setFormData((prev) => ({ ...prev, recurringCount }))
+            }
           />
         );
       case 'details':

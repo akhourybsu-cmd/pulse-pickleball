@@ -1,6 +1,6 @@
-import { Calendar, Clock, MapPin, Users } from 'lucide-react';
+import { Calendar, Clock, MapPin, Users, Repeat } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
-import { EventWizardFormData, EVENT_TYPE_OPTIONS } from '../types';
+import { EventWizardFormData, EVENT_TYPE_OPTIONS, RECURRING_OPTIONS } from '../types';
 
 interface EventReviewStepProps {
   formData: EventWizardFormData;
@@ -65,6 +65,17 @@ export function EventReviewStep({ formData }: EventReviewStepProps) {
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Users className="h-3.5 w-3.5" />
             <span>Max {formData.capacity} participants</span>
+          </div>
+        )}
+
+        {formData.recurringFrequency !== 'none' && (
+          <div className="flex items-center gap-2 text-sm text-primary font-medium">
+            <Repeat className="h-3.5 w-3.5" />
+            <span>
+              {RECURRING_OPTIONS.find((o) => o.value === formData.recurringFrequency)?.label}
+              {' · '}
+              {formData.recurringCount} occurrences
+            </span>
           </div>
         )}
       </div>

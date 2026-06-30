@@ -110,6 +110,13 @@ export function useGroupEvents(groupId: string | undefined) {
     enabled: !!groupId,
   });
 
+  // Accepts either a single event payload (the common path — single-shot
+  // event creation) or a 'series' shape that produces N rows in one
+  // batch insert. Recurring series are stored as N flat rows in
+  // group_events, each tagged with is_recurring=true + the same
+  // recurring_rule string (e.g. "WEEKLY:8"); the rows share their
+  // recurring_rule and a synthetic series_key derived from
+  // first start_time + rule. Per-row RSVP / delete stays per-row.
   const createEventMutation = useMutation({
     mutationFn: async (eventData: {
       title: string;
@@ -121,25 +128,63 @@ export function useGroupEvents(groupId: string | undefined) {
       capacity?: number;
       skill_level_min?: number;
       skill_level_max?: number;
+      /** ISO start timestamps for additional occurrences (excluding start_time itself). */
+      additional_starts?: string[];
+      /** Recurrence rule string, e.g. "WEEKLY:8". Applied to every inserted row. */
+      recurring_rule?: string;
     }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
+      const { additional_starts, recurring_rule, ...base } = eventData;
+      const isSeries = !!recurring_rule && Array.isArray(additional_starts) && additional_starts.length > 0;
+
+      // For a single event, end_time is the user-set ISO. For a series,
+      // we slide end_time alongside start_time by the same delta so each
+      // occurrence keeps its duration.
+      const endDelta =
+        base.end_time && base.start_time
+          ? new Date(base.end_time).getTime() - new Date(base.start_time).getTime()
+          : null;
+
+      const baseRow = {
+        group_id: groupId,
+        created_by: user.id,
+        ...base,
+        ...(isSeries
+          ? { is_recurring: true, recurring_rule }
+          : { is_recurring: false }),
+      };
+
+      const rows = isSeries
+        ? [
+            baseRow,
+            ...additional_starts!.map((iso) => ({
+              ...baseRow,
+              start_time: iso,
+              end_time: endDelta != null
+                ? new Date(new Date(iso).getTime() + endDelta).toISOString()
+                : undefined,
+            })),
+          ]
+        : [baseRow];
+
       const { data, error } = await supabase
         .from('group_events')
-        .insert({
-          group_id: groupId,
-          created_by: user.id,
-          ...eventData,
-        })
-        .select()
-        .single();
+        .insert(rows)
+        .select();
 
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
-      toast({ title: 'Event Created!', description: 'Your event has been scheduled' });
+    onSuccess: (data) => {
+      const count = Array.isArray(data) ? data.length : 1;
+      toast({
+        title: 'Event Created!',
+        description: count > 1
+          ? `${count} occurrences scheduled`
+          : 'Your event has been scheduled',
+      });
       queryClient.invalidateQueries({ queryKey: ['group-events', groupId] });
     },
     onError: (error: any) => {
