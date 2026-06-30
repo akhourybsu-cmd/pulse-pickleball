@@ -373,6 +373,15 @@ const AppContent = () => {
           <Route path="/v/:slug" element={<AdminGuard><PublicVenueLanding /></AdminGuard>} />
           <Route path="/venue/:slug" element={<AdminGuard><PublicVenueLanding /></AdminGuard>} />
 
+          {/* Invite-link landing — intentionally OUTSIDE the /player
+              AuthGuard wrapper below. JoinGroupByCode supports both
+              anon (shows preview + Sign in / Sign up) and authenticated
+              (auto-joins) flows; the find_group_by_invite_code RPC is
+              granted to anon. Path is kept identical so existing
+              shared invite links keep working. Must be declared
+              BEFORE the /player block so it wins the URL match. */}
+          <Route path="/player/community/join/:code" element={<JoinGroupByCode />} />
+
           {/* Player routes with shell - require auth */}
           <Route path="/player" element={
             <AuthGuard>
@@ -406,7 +415,14 @@ const AppContent = () => {
             <Route path="my-events" element={<MyEvents />} />
             <Route path="community" element={<Community />} />
             <Route path="friends" element={<Friends />} />
-            <Route path="community/join/:code" element={<JoinGroupByCode />} />
+            {/* community/join/:code is mounted as a top-level route below
+                (outside this AuthGuard wrapper) so anon users can land
+                on the preview before signing in. The
+                find_group_by_invite_code RPC is granted to anon, and
+                JoinGroupByCode already has a `need_auth` phase that
+                shows Sign in / Sign up CTAs and stashes the redirect.
+                Pre-fix the auth gate fired before the preview could
+                render, defeating the purpose of an invite link. */}
             <Route path="community/group/:groupId" element={<GroupDetail />} />
             <Route path="community/group/:groupId/manage" element={<GroupManage />} />
             <Route path="messages" element={<DirectMessages />} />
