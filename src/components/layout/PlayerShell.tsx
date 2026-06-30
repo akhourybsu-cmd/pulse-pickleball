@@ -222,7 +222,7 @@ export function PlayerShell() {
 
       {/* Bottom Navigation - Mobile Only - Premium Polish */}
       {!isImmersiveRoute && (
-        <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/40 bg-card/98 backdrop-blur-md md:hidden pb-[env(safe-area-inset-bottom)]">
+        <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/40 bg-card md:hidden pb-[env(safe-area-inset-bottom)]">
           {/* Sliding active indicator - refined */}
           <div
             className="absolute top-0 h-[2.5px] bg-primary rounded-full transition-all duration-[240ms] ease-out"
@@ -266,7 +266,7 @@ export function PlayerShell() {
 
       {/* Desktop Horizontal Nav - Premium Polish */}
       {!isImmersiveRoute && (
-        <nav className="hidden md:block fixed bottom-0 left-0 right-0 z-50 border-t border-border/40 bg-card/98 backdrop-blur-md">
+        <nav className="hidden md:block fixed bottom-0 left-0 right-0 z-50 border-t border-border/40 bg-card">
           <div className="container mx-auto px-4 relative">
             {/* Sliding active indicator for desktop - refined */}
             <div

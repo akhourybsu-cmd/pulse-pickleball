@@ -1,16 +1,17 @@
-import { useState } from 'react';
-import { Reorder, useDragControls } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Users, Lock, Globe, Eye, Crown, Shield, ChevronRight, BadgeCheck, GripVertical } from 'lucide-react';
+import { Users, Lock, Globe, Eye, Crown, Shield, ChevronRight, BadgeCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Card, CardHeader } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Card } from '@/components/ui/card';
 import type { GroupWithMembership } from '@/hooks/useGroups';
 
 interface ReorderableGroupListProps {
   groups: GroupWithMembership[];
-  onReorder: (groups: GroupWithMembership[]) => void;
+  /**
+   * No-op since drag-to-reorder was removed for a cleaner mobile list.
+   * Prop kept on the API so callers (Community.tsx) don't need to know
+   * about the rewrite. Pass anything — it's ignored.
+   */
+  onReorder?: (groups: GroupWithMembership[]) => void;
 }
 
 const typeLabels: Record<string, string> = {
@@ -21,156 +22,127 @@ const typeLabels: Record<string, string> = {
   tournament: 'Tournament',
 };
 
-const typeColors: Record<string, string> = {
-  crew: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
-  league: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
-  open_play: 'bg-green-500/10 text-green-600 dark:text-green-400',
-  venue_official: 'bg-purple-500/10 text-purple-600 dark:text-purple-400',
-  tournament: 'bg-red-500/10 text-red-600 dark:text-red-400',
-};
-
-const avatarColors = [
-  'bg-primary/20 text-primary',
-  'bg-blue-500/20 text-blue-600',
-  'bg-green-500/20 text-green-600',
-  'bg-amber-500/20 text-amber-600',
-  'bg-purple-500/20 text-purple-600',
-  'bg-rose-500/20 text-rose-600',
+// Avatar fallback gradients — soft, brand-aligned. Replaced the prior
+// per-type pill colors (blue/amber/green/purple/red) which read busy
+// and off-brand against the gold + ink palette.
+const avatarGradients = [
+  'bg-gradient-to-br from-primary/30 to-primary/10 text-primary',
+  'bg-gradient-to-br from-amber-400/30 to-amber-500/10 text-amber-700 dark:text-amber-300',
+  'bg-gradient-to-br from-emerald-400/25 to-emerald-500/10 text-emerald-700 dark:text-emerald-300',
+  'bg-gradient-to-br from-sky-400/25 to-sky-500/10 text-sky-700 dark:text-sky-300',
+  'bg-gradient-to-br from-rose-400/25 to-rose-500/10 text-rose-700 dark:text-rose-300',
+  'bg-gradient-to-br from-violet-400/25 to-violet-500/10 text-violet-700 dark:text-violet-300',
 ];
 
-function ReorderableGroupCard({ group }: { group: GroupWithMembership }) {
+function GroupRow({ group }: { group: GroupWithMembership }) {
   const navigate = useNavigate();
-  const controls = useDragControls();
-  
-  const roleIcon = group.membership?.role === 'owner' 
-    ? <Crown className="h-3 w-3" />
-    : group.membership?.role === 'moderator'
-    ? <Shield className="h-3 w-3" />
+
+  const roleIcon =
+    group.membership?.role === 'owner' ? <Crown className="h-3 w-3" />
+    : group.membership?.role === 'moderator' ? <Shield className="h-3 w-3" />
     : null;
+  const roleLabel =
+    group.membership?.role === 'owner' ? 'Owner'
+    : group.membership?.role === 'moderator' ? 'Mod'
+    : null; // plain members don't get a label — reduces visual noise
 
-  const roleLabel = group.membership?.role === 'owner'
-    ? 'Owner'
-    : group.membership?.role === 'moderator'
-    ? 'Mod'
-    : 'Member';
-
-  const visibilityIcon = group.visibility === 'private'
-    ? <Lock className="h-3 w-3" />
-    : group.visibility === 'unlisted'
-    ? <Eye className="h-3 w-3" />
+  const visibilityIcon =
+    group.visibility === 'private' ? <Lock className="h-3 w-3" />
+    : group.visibility === 'unlisted' ? <Eye className="h-3 w-3" />
     : <Globe className="h-3 w-3" />;
 
   const isVerifiedVenue = group.type === 'venue_official' && group.is_venue_verified;
-
-  const initials = group.name
-    .split(' ')
-    .map(w => w[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
-
-  const colorIndex = group.name.charCodeAt(0) % 6;
+  const initials = group.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+  const colorIndex = group.name.charCodeAt(0) % avatarGradients.length;
 
   return (
-    <Reorder.Item
-      value={group}
-      id={group.id}
-      dragListener={false}
-      dragControls={controls}
-      className="list-none"
+    <Card
+      className={cn(
+        'cursor-pointer border-border/40 transition-all duration-200',
+        // Premium-feeling hover: soft primary tint + subtle lift, no
+        // visual jump on press.
+        'hover:border-primary/30 hover:bg-gradient-to-br hover:from-primary/[0.03] hover:to-transparent',
+        'active:scale-[0.995]',
+      )}
+      onClick={() => navigate(`/player/community/group/${group.id}`)}
     >
-      <Card 
-        className="cursor-pointer hover:bg-accent/30 hover:shadow-sm transition-all duration-200 border-border/40"
-        onClick={() => navigate(`/player/community/group/${group.id}`)}
-      >
-        <CardHeader className="p-5">
-          <div className="flex items-center gap-3">
-            {/* Drag Handle */}
-            <div
-              className="touch-none cursor-grab active:cursor-grabbing p-1 -ml-2 text-muted-foreground/50 hover:text-muted-foreground transition-colors"
-              onPointerDown={(e) => {
-                e.stopPropagation();
-                controls.start(e);
-              }}
-            >
-              <GripVertical className="h-5 w-5" />
-            </div>
+      <div className="p-4 flex items-center gap-3">
+        {/* Avatar — soft gradient swatch when no icon. Subtle ring on
+            verified venues for status without yet another pill. */}
+        <div
+          className={cn(
+            'h-12 w-12 rounded-xl flex items-center justify-center text-base font-semibold shrink-0 ring-1 ring-border/40',
+            isVerifiedVenue && 'ring-amber-400/40',
+            group.icon_url ? '' : avatarGradients[colorIndex],
+          )}
+          style={
+            group.icon_url
+              ? { backgroundImage: `url(${group.icon_url})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+              : undefined
+          }
+        >
+          {!group.icon_url && initials}
+        </div>
 
-            {/* Avatar */}
-            <div 
-              className={cn(
-                'h-14 w-14 rounded-xl flex items-center justify-center text-lg font-bold shrink-0',
-                group.icon_url ? '' : avatarColors[colorIndex]
-              )}
-              style={group.icon_url ? { backgroundImage: `url(${group.icon_url})`, backgroundSize: 'cover' } : undefined}
-            >
-              {!group.icon_url && initials}
-            </div>
+        {/* Content — title row + one tight metadata line. The role +
+            type + members + visibility used to render as four separate
+            chips that wrapped to 2-3 lines on mobile; now it's a
+            single inline strip with subtle dot separators. */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <h3 className="font-semibold text-sm text-foreground truncate">{group.name}</h3>
+            {isVerifiedVenue && (
+              <BadgeCheck className="h-3.5 w-3.5 text-amber-500 shrink-0" aria-label="Official venue group" />
+            )}
+          </div>
 
-            {/* Content */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2.5 mb-1">
-                <h3 className="font-semibold text-base text-foreground line-clamp-2 break-words leading-relaxed">{group.name}</h3>
-                {isVerifiedVenue && (
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <BadgeCheck className="h-4 w-4 text-amber-500 shrink-0" />
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Official venue group</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                )}
-              </div>
-              
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <Badge variant="secondary" className="text-xs gap-1 px-1.5 py-0 opacity-80">
+          <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground truncate">
+            {roleLabel && (
+              <>
+                <span className="inline-flex items-center gap-1 text-foreground/80">
                   {roleIcon}
                   {roleLabel}
-                </Badge>
-                
-                <Badge variant="outline" className={cn('text-xs px-1.5 py-0 opacity-80', typeColors[group.type])}>
-                  {typeLabels[group.type]}
-                </Badge>
-
-                <span className="text-muted-foreground/70">{visibilityIcon}</span>
-
-                <span className="text-xs text-muted-foreground/70 flex items-center gap-1">
-                  <Users className="h-3 w-3" />
-                  {group.member_count}
                 </span>
-              </div>
-            </div>
-
-            {/* Right side */}
-            <div className="flex items-center gap-2 shrink-0">
-              {group.unread_count && group.unread_count > 0 && (
-                <Badge className="bg-primary text-primary-foreground text-xs px-2 min-w-[20px] justify-center">
-                  {group.unread_count > 99 ? '99+' : group.unread_count}
-                </Badge>
-              )}
-              <ChevronRight className="h-5 w-5 text-muted-foreground" />
-            </div>
+                <span className="opacity-40">·</span>
+              </>
+            )}
+            <span className="truncate">{typeLabels[group.type]}</span>
+            <span className="opacity-40">·</span>
+            <span className="inline-flex items-center gap-1 shrink-0">
+              <Users className="h-3 w-3" />
+              {group.member_count}
+            </span>
+            <span className="opacity-40">·</span>
+            <span className="inline-flex items-center text-muted-foreground/70 shrink-0">
+              {visibilityIcon}
+            </span>
           </div>
-        </CardHeader>
-      </Card>
-    </Reorder.Item>
+        </div>
+
+        {/* Right side — unread chip + chevron */}
+        <div className="flex items-center gap-2 shrink-0">
+          {group.unread_count && group.unread_count > 0 ? (
+            <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold tabular-nums">
+              {group.unread_count > 99 ? '99+' : group.unread_count}
+            </span>
+          ) : null}
+          <ChevronRight className="h-4 w-4 text-muted-foreground/60" />
+        </div>
+      </div>
+    </Card>
   );
 }
 
-export function ReorderableGroupList({ groups, onReorder }: ReorderableGroupListProps) {
+// Export name preserved so callers don't need to change. Drag-to-reorder
+// was removed for a cleaner list; the grip handle on the left of each
+// row added visual noise for a low-engagement power-user feature.
+// Reordering can come back as a long-press affordance later if needed.
+export function ReorderableGroupList({ groups }: ReorderableGroupListProps) {
   return (
-    <Reorder.Group
-      axis="y"
-      values={groups}
-      onReorder={onReorder}
-      className="space-y-4"
-    >
+    <div className="space-y-2.5">
       {groups.map((group) => (
-        <ReorderableGroupCard key={group.id} group={group} />
+        <GroupRow key={group.id} group={group} />
       ))}
-    </Reorder.Group>
+    </div>
   );
 }

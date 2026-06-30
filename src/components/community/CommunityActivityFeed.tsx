@@ -1,23 +1,28 @@
 import { useNavigate } from 'react-router-dom';
 import { format, formatDistanceToNow } from 'date-fns';
-import { Calendar, MessageCircle, ThumbsUp, Clock, Users, MapPin } from 'lucide-react';
+import { Calendar, MessageCircle, ThumbsUp, Clock, Users } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
 import { useCommunityActivity, ActivityPost, ActivityEvent } from '@/hooks/useCommunityActivity';
 
 export function CommunityActivityFeed() {
   const { posts, upcomingEvents, loading } = useCommunityActivity();
   const navigate = useNavigate();
 
+  // Routes had two bugs: missing /player prefix and pluralized "groups".
+  // Actual route per App.tsx is /player/community/group/:groupId. The
+  // ?tab= search params were also no-ops since GroupDetail's active tab
+  // is local React state, not URL-driven — dropped them to avoid
+  // suggesting a behavior we don't honor.
   const handlePostClick = (post: ActivityPost) => {
-    navigate(`/community/groups/${post.group_id}?tab=feed`);
+    navigate(`/player/community/group/${post.group_id}`);
   };
 
   const handleEventClick = (event: ActivityEvent) => {
-    navigate(`/community/groups/${event.group_id}?tab=schedule`);
+    navigate(`/player/community/group/${event.group_id}`);
   };
 
   if (loading) {
@@ -103,23 +108,31 @@ export function CommunityActivityFeed() {
 
 function EventCard({ event, onClick }: { event: ActivityEvent; onClick: () => void }) {
   const eventDate = new Date(event.start_time);
-  const spotsText = event.capacity 
-    ? `${event.rsvp_count}/${event.capacity}` 
+  const spotsText = event.capacity
+    ? `${event.rsvp_count}/${event.capacity}`
     : `${event.rsvp_count} going`;
 
   return (
-    <Card 
-      className="w-48 flex-shrink-0 cursor-pointer hover:bg-accent/30 transition-colors border-border/40"
+    <Card
+      className={cn(
+        'w-52 flex-shrink-0 cursor-pointer border-border/40',
+        // Premium feel: soft primary gradient on hover instead of a
+        // flat accent/30 wash, slight ring on the date "stamp."
+        'bg-gradient-to-br from-primary/[0.04] to-transparent',
+        'hover:from-primary/10 hover:border-primary/30 transition-all duration-200',
+      )}
       onClick={onClick}
     >
-      <CardContent className="p-4 space-y-2.5">
-        <Badge variant="secondary" className="text-xs truncate max-w-full">
+      <CardContent className="p-4 space-y-3">
+        {/* Group name surfaced as quiet caption text, not a pill —
+            the pill chrome was visually heavy for what is metadata. */}
+        <p className="text-[10px] uppercase tracking-wider text-muted-foreground/80 truncate font-medium">
           {event.group_name}
-        </Badge>
-        <p className="font-medium text-sm line-clamp-2 whitespace-normal leading-relaxed">
+        </p>
+        <p className="font-semibold text-sm line-clamp-2 whitespace-normal leading-snug">
           {event.title}
         </p>
-        <div className="space-y-1.5 text-xs text-muted-foreground/70">
+        <div className="space-y-1.5 text-xs text-muted-foreground">
           <div className="flex items-center gap-1.5">
             <Calendar className="h-3 w-3" />
             <span>{format(eventDate, 'EEE, MMM d')}</span>
@@ -144,22 +157,27 @@ function PostCard({ post, onClick }: { post: ActivityPost; onClick: () => void }
   const initials = displayName.slice(0, 2).toUpperCase();
 
   return (
-    <Card 
-      className="cursor-pointer hover:bg-accent/30 transition-colors border-border/40"
+    <Card
+      className={cn(
+        'cursor-pointer border-border/40 transition-all duration-200',
+        // Subtle premium shading on hover — primary tint replaces the
+        // generic accent wash. Group name moves from a pill to a caption.
+        'hover:border-primary/30 hover:bg-gradient-to-br hover:from-primary/[0.03] hover:to-transparent',
+      )}
       onClick={onClick}
     >
-      <CardContent className="p-5">
-        <div className="flex gap-4">
-          <Avatar className="h-10 w-10 flex-shrink-0">
+      <CardContent className="p-4">
+        <div className="flex gap-3">
+          <Avatar className="h-10 w-10 flex-shrink-0 ring-1 ring-border/40">
             <AvatarImage src={post.profile?.avatar_url || undefined} />
-            <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+            <AvatarFallback className="text-xs bg-primary/10 text-primary font-semibold">{initials}</AvatarFallback>
           </Avatar>
-          <div className="flex-1 min-w-0 space-y-1.5">
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <span className="font-medium text-sm">{displayName}</span>
-              <Badge variant="outline" className="text-xs opacity-80">
-                {post.group_name}
-              </Badge>
+          <div className="flex-1 min-w-0 space-y-1">
+            {/* Header line: name + dot + group name as quiet caption. */}
+            <div className="flex items-center gap-1.5 text-sm">
+              <span className="font-semibold">{displayName}</span>
+              <span className="text-muted-foreground/40">·</span>
+              <span className="text-muted-foreground truncate">{post.group_name}</span>
             </div>
             {post.title && (
               <p className="font-medium text-sm">{post.title}</p>
@@ -169,7 +187,7 @@ function PostCard({ post, onClick }: { post: ActivityPost; onClick: () => void }
                 {post.content}
               </p>
             )}
-            <div className="flex items-center gap-4 text-xs text-muted-foreground/70 pt-2">
+            <div className="flex items-center gap-3 text-xs text-muted-foreground/80 pt-1.5">
               <span className="flex items-center gap-1">
                 <ThumbsUp className="h-3 w-3" />
                 {post.reactions_count}
@@ -178,6 +196,7 @@ function PostCard({ post, onClick }: { post: ActivityPost; onClick: () => void }
                 <MessageCircle className="h-3 w-3" />
                 {post.comments_count}
               </span>
+              <span className="opacity-40">·</span>
               <span>{timeAgo}</span>
             </div>
           </div>
