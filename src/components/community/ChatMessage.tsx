@@ -2,7 +2,7 @@ import { memo, useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow, format, isToday, isYesterday, isSameDay } from 'date-fns';
 import { motion } from 'framer-motion';
-import { MoreVertical, Pin, Pencil, Trash2, Check, X } from 'lucide-react';
+import { MoreVertical, Pin, Pencil, Trash2, Check, X, RefreshCw } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -30,6 +30,8 @@ interface ChatMessageProps {
   onDelete?: (messageId: string) => void;
   onTogglePin?: (messageId: string, pinned: boolean) => void;
   onImageClick?: (url: string) => void;
+  /** Re-fire a failed send for an own optimistic row. */
+  onRetry?: (clientId: string) => void;
 }
 
 function getDateSeparatorText(date: Date): string {
@@ -51,6 +53,7 @@ export const ChatMessage = memo(function ChatMessage({
   onDelete,
   onTogglePin,
   onImageClick,
+  onRetry,
 }: ChatMessageProps) {
   const [showReactions, setShowReactions] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -241,23 +244,50 @@ export const ChatMessage = memo(function ChatMessage({
                 </div>
               </div>
             ) : message.content ? (
-              <div
-                className={cn(
-                  'rounded-2xl px-3 py-2 text-sm transition-colors whitespace-pre-wrap',
-                  isOwn
-                    ? 'bg-primary text-primary-foreground rounded-br-md'
-                    : 'bg-muted/70 rounded-bl-md',
-                  message.is_pinned && 'ring-1 ring-primary/40',
-                  'group-hover:ring-1 group-hover:ring-border/20',
-                  message._status === 'sending' && 'opacity-70',
-                  message._status === 'failed' && 'ring-1 ring-destructive/60',
-                )}
-              >
-                {message.content}
-                {message._status === 'failed' && (
-                  <span className="block text-[10px] mt-1 text-destructive-foreground/90">
-                    Failed to send
+              <div className="flex flex-col items-end">
+                <div
+                  className={cn(
+                    'rounded-2xl px-3 py-2 text-sm transition-colors whitespace-pre-wrap',
+                    isOwn
+                      ? 'bg-primary text-primary-foreground rounded-br-md'
+                      : 'bg-muted/70 rounded-bl-md',
+                    message.is_pinned && 'ring-1 ring-primary/40',
+                    'group-hover:ring-1 group-hover:ring-border/20',
+                    message._status === 'sending' && 'opacity-70',
+                    message._status === 'failed' && 'ring-1 ring-destructive/60',
+                  )}
+                >
+                  {message.content}
+                </div>
+                {/* Per-bubble status indicator for own messages — matches
+                    the DM pattern (pulse during sending, subtle check on
+                    sent, tap-to-retry on failed). Off-bubble so the
+                    bubble shape stays clean and the indicator can be
+                    color-tuned independently. */}
+                {isOwn && message._status === 'sending' && (
+                  <span
+                    className="mt-1 inline-flex items-center gap-1 text-[10px] text-muted-foreground"
+                    aria-label="Sending"
+                  >
+                    <span className="h-1.5 w-1.5 rounded-full bg-current opacity-50 animate-pulse" />
+                    Sending
                   </span>
+                )}
+                {isOwn && message._status === 'sent' && (
+                  <Check
+                    className="mt-1 h-3 w-3 text-muted-foreground opacity-70"
+                    aria-label="Sent"
+                  />
+                )}
+                {isOwn && message._status === 'failed' && message._clientId && (
+                  <button
+                    type="button"
+                    onClick={() => onRetry?.(message._clientId!)}
+                    className="mt-1 inline-flex items-center gap-1 text-[10px] text-destructive underline hover:opacity-80"
+                  >
+                    <RefreshCw className="h-2.5 w-2.5" />
+                    Failed — tap to retry
+                  </button>
                 )}
               </div>
             ) : null}
