@@ -103,21 +103,34 @@ export default function Community() {
         <div className="flex-1 overflow-y-auto">
           {/* My Community */}
           <TabsContent value="my-community" className="m-0 px-4 sm:px-6 pt-4 pb-8 space-y-6">
-            {/* Action row */}
+            {/* Action row — premium feel via a soft gradient backdrop +
+                primary-tinted icon disc. Pre-overhaul both tiles were
+                flat cards with the same border treatment, which read as
+                "form fields" rather than "primary affordances." */}
             <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={() => setJoinDialogOpen(true)}
-                className="flex items-center gap-3 p-4 rounded-xl bg-card border border-border/40 hover:bg-muted/30 transition-colors active:scale-[0.99] text-left"
+                className="group flex items-center gap-3 p-4 rounded-xl bg-gradient-to-br from-primary/[0.06] to-transparent border border-border/40 hover:border-primary/30 hover:from-primary/10 transition-all active:scale-[0.99] text-left"
               >
-                <QrCode className="h-5 w-5 text-primary shrink-0" />
-                <span className="text-sm font-medium">Join with Code</span>
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary/12 text-primary shrink-0 transition-transform group-hover:scale-105">
+                  <QrCode className="h-5 w-5" />
+                </span>
+                <span className="flex flex-col leading-tight">
+                  <span className="text-sm font-semibold">Join with Code</span>
+                  <span className="text-[11px] text-muted-foreground">From a friend or admin</span>
+                </span>
               </button>
               <button
                 onClick={() => setCreateDialogOpen(true)}
-                className="flex items-center gap-3 p-4 rounded-xl bg-card border border-border/40 hover:bg-muted/30 transition-colors active:scale-[0.99] text-left"
+                className="group flex items-center gap-3 p-4 rounded-xl bg-gradient-to-br from-primary/[0.06] to-transparent border border-border/40 hover:border-primary/30 hover:from-primary/10 transition-all active:scale-[0.99] text-left"
               >
-                <Users className="h-5 w-5 shrink-0" />
-                <span className="text-sm font-medium">Create Group</span>
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary/12 text-primary shrink-0 transition-transform group-hover:scale-105">
+                  <Users className="h-5 w-5" />
+                </span>
+                <span className="flex flex-col leading-tight">
+                  <span className="text-sm font-semibold">Create Group</span>
+                  <span className="text-[11px] text-muted-foreground">Start your own crew</span>
+                </span>
               </button>
             </div>
 
