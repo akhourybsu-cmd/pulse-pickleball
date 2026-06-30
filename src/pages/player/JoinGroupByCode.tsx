@@ -59,6 +59,16 @@ export default function JoinGroupByCode() {
         return;
       }
       const row: any = Array.isArray(data) ? data[0] : data;
+
+      // Expired codes return the group row (so we can show its name)
+      // but with is_expired = true. Distinct copy from "not found" so
+      // the visitor knows the link was real but has expired.
+      if (row.is_expired) {
+        setPhase('error');
+        setErrorMsg(`The invite to ${row.name} has expired. Ask an admin for a new link.`);
+        return;
+      }
+
       setGroup({
         id: row.id,
         name: row.name,

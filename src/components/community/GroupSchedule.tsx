@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Calendar, Clock, MapPin, Users, Check, HelpCircle, X, Plus, Trash2, List, CalendarDays } from 'lucide-react';
+import { Calendar, Clock, MapPin, Users, Check, HelpCircle, X, Plus, Trash2, List, CalendarDays, Repeat } from 'lucide-react';
 import { format, isSameDay, parseISO } from 'date-fns';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -133,7 +133,18 @@ export function GroupSchedule({ groupId, isAdmin, currentUserId }: GroupSchedule
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
-                    <CardTitle className="text-lg">{event.title}</CardTitle>
+                    <div className="flex items-center gap-2">
+                      <CardTitle className="text-lg">{event.title}</CardTitle>
+                      {event.is_recurring && (
+                        <span
+                          className="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5"
+                          aria-label={event.recurring_rule ? `Recurring · ${event.recurring_rule}` : 'Recurring event'}
+                        >
+                          <Repeat className="h-3 w-3" />
+                          Recurring
+                        </span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-3 mt-2 text-sm text-muted-foreground flex-wrap">
                       <div className="flex items-center gap-1">
                         <Calendar className="h-4 w-4" />

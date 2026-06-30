@@ -125,14 +125,13 @@ export default function GroupManage() {
     }
   };
 
-  const regenerateInviteCode = async () => {
+  // Optional expiry duration in seconds — null means "never expires".
+  // 86400 = 24h, 604800 = 7 days. Driven by the duration picker in
+  // AdminPrivacyTab.
+  const regenerateInviteCode = async (expiresInSeconds: number | null = null) => {
     if (!groupId) return;
 
     try {
-      // Server-side RPC — runs generate_group_invite_code() under
-      // SECURITY DEFINER with retry-until-unique, after a server-side
-      // owner check. Replaces the prior client-side Math.random()
-      // path which had no uniqueness guarantee.
       const { data, error } = await supabase.rpc('regenerate_group_invite_code' as any, {
         p_group_id: groupId,
         p_ttl_hours: null,
@@ -370,6 +369,7 @@ export default function GroupManage() {
             visibility={visibility}
             joinMethod={joinMethod}
             inviteCode={group.invite_code}
+            inviteCodeExpiresAt={group.invite_code_expires_at ?? null}
             onVisibilityChange={(v) => setVisibility(v as Group['visibility'])}
             onJoinMethodChange={(v) => setJoinMethod(v as Group['join_method'])}
             onRegenerateCode={regenerateInviteCode}

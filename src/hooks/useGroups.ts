@@ -12,6 +12,8 @@ export interface Group {
   visibility: 'public' | 'unlisted' | 'private';
   join_method: 'open' | 'request_to_join' | 'invite_only';
   invite_code: string | null;
+  /** When set, the invite_code is rejected after this timestamp. NULL = never expires. */
+  invite_code_expires_at: string | null;
   cover_url: string | null;
   icon_url: string | null;
   venue_id: string | null;
@@ -245,6 +247,9 @@ export function useGroups() {
           return { id: result.group_id, name: result.group_name } as any;
         case 'banned':
           toast({ title: 'Access Denied', description: result.message || 'You have been banned from this group', variant: 'destructive' });
+          return null;
+        case 'expired':
+          toast({ title: 'Code Expired', description: result.message || 'This invite code has expired', variant: 'destructive' });
           return null;
         case 'not_found':
         default:
