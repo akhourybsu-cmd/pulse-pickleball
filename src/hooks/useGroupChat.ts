@@ -217,6 +217,42 @@ export function useGroupChat(groupId: string | undefined) {
   const togglePinMessage = (messageId: string, pinned: boolean) =>
     togglePinMessageMutation.mutateAsync({ messageId, pinned });
 
+  // Retry a failed group message send. Mirrors the DM retry pattern in
+  // useDirectMessages — flip the existing temp row's _status back to
+  // 'sending' so the bubble re-pulses, then re-fire the insert. The
+  // realtime INSERT handler in useGroupRealtime swaps the temp row for
+  // the server row by clientId match on success; on error we flip the
+  // _status back to 'failed' so the retry button reappears.
+  const retryMessage = async (clientId: string): Promise<void> => {
+    const cached = queryClient.getQueryData<GroupMessage[]>(queryKey) || [];
+    const target = cached.find((m) => m._clientId === clientId && m._status === 'failed');
+    if (!target) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    queryClient.setQueryData<GroupMessage[]>(queryKey, (prev = []) =>
+      prev.map((m) => (m._clientId === clientId ? { ...m, _status: 'sending' as const } : m)),
+    );
+
+    try {
+      const { error } = await supabase
+        .from('group_messages')
+        .insert({
+          group_id: groupId,
+          user_id: user.id,
+          content: target.content.trim(),
+          ...(target.image_url ? { image_url: target.image_url } : {}),
+        } as any);
+      if (error) throw error;
+    } catch (error: any) {
+      queryClient.setQueryData<GroupMessage[]>(queryKey, (prev = []) =>
+        prev.map((m) => (m._clientId === clientId ? { ...m, _status: 'failed' as const } : m)),
+      );
+      console.error('Error retrying message:', error);
+      toast({ title: 'Message failed', description: error.message || 'Tap to retry', variant: 'destructive' });
+    }
+  };
+
   return {
     messages,
     loading,
@@ -227,6 +263,7 @@ export function useGroupChat(groupId: string | undefined) {
         imageUrl,
         clientId: clientId || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       }),
+    retryMessage,
     deleteMessage: deleteMessageMutation.mutateAsync,
     editMessage: (messageId: string, content: string) =>
       editMessageMutation.mutateAsync({ messageId, content }),

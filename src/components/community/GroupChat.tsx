@@ -42,7 +42,7 @@ export const GroupChat = memo(function GroupChat({
 }: GroupChatProps) {
   const {
     messages, loading, sending,
-    sendMessage, deleteMessage, editMessage, togglePinMessage,
+    sendMessage, retryMessage, deleteMessage, editMessage, togglePinMessage,
   } = useGroupChat(groupId);
   const { typingUsers, startTyping, stopTyping } = useTypingIndicator(groupId);
 
@@ -270,6 +270,7 @@ export const GroupChat = memo(function GroupChat({
                     onDelete={deleteMessage as any}
                     onTogglePin={togglePinMessage}
                     onImageClick={setLightboxImage}
+                    onRetry={retryMessage}
                   />
                 );
               })}
