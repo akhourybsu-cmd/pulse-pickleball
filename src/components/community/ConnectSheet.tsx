@@ -95,36 +95,32 @@ export function ConnectSheet({ open, onOpenChange }: ConnectSheetProps) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="h-[92vh] p-0 flex flex-col rounded-t-2xl">
-        <SheetHeader className="px-5 pt-5 pb-3 border-b border-border/30 text-left">
-          <SheetTitle className="font-display text-xl">Connect with players</SheetTitle>
+        <SheetHeader className="px-4 pt-4 pb-2 border-b border-border/30 text-left">
+          <SheetTitle className="font-display text-lg">Connect with players</SheetTitle>
           <SheetDescription className="text-xs">
             Add friends from people you've played with — no public directory.
           </SheetDescription>
         </SheetHeader>
 
-        {/* Tab order rationale — sequenced as the user would explore:
-              1. Suggested  — primary path, people we already know about
-              2. Search     — find by name when you have someone in mind
-              3. By handle  — exact lookup, secondary path
-              4. My code    — outbound share-out, last because it inverts intent
-            Labels are spelled out ("Suggested", "By handle") instead of
-            "For you" / "Enter" which were too clever and read as filler. */}
+        {/* Tab order: Suggested first (primary path — RR co-players &
+            mutuals), then Search, then handle lookup, then My code
+            (outbound share is last since it inverts intent). */}
         <Tabs defaultValue="suggested" className="flex-1 flex flex-col min-h-0">
-          <div className="px-5 pt-3">
-            <TabsList className="grid grid-cols-4 h-10 w-full">
-              <TabsTrigger value="suggested" className="text-xs gap-1.5">
+          <div className="px-4 pt-2">
+            <TabsList className="grid grid-cols-4 h-9 w-full">
+              <TabsTrigger value="suggested" className="text-xs gap-1">
                 <Sparkles className="h-3.5 w-3.5" />
                 Suggested
               </TabsTrigger>
-              <TabsTrigger value="search" className="text-xs gap-1.5">
+              <TabsTrigger value="search" className="text-xs gap-1">
                 <Search className="h-3.5 w-3.5" />
                 Search
               </TabsTrigger>
-              <TabsTrigger value="enter" className="text-xs gap-1.5">
+              <TabsTrigger value="enter" className="text-xs gap-1">
                 <AtSign className="h-3.5 w-3.5" />
-                By handle
+                Handle
               </TabsTrigger>
-              <TabsTrigger value="code" className="text-xs gap-1.5">
+              <TabsTrigger value="code" className="text-xs gap-1">
                 <QrCode className="h-3.5 w-3.5" />
                 My code
               </TabsTrigger>
@@ -132,19 +128,19 @@ export function ConnectSheet({ open, onOpenChange }: ConnectSheetProps) {
           </div>
 
           <div className="flex-1 overflow-y-auto">
-            <TabsContent value="suggested" className="m-0 p-5">
+            <TabsContent value="suggested" className="m-0 p-4">
               <SuggestionsPanel actionButton={actionButton} />
             </TabsContent>
 
-            <TabsContent value="search" className="m-0 p-5">
+            <TabsContent value="search" className="m-0 p-4">
               <ScopedSearchPanel actionButton={actionButton} />
             </TabsContent>
 
-            <TabsContent value="enter" className="m-0 p-5">
+            <TabsContent value="enter" className="m-0 p-4">
               <EnterCodePanel actionButton={actionButton} />
             </TabsContent>
 
-            <TabsContent value="code" className="m-0 p-5">
+            <TabsContent value="code" className="m-0 p-4">
               <MyCodePanel handle={myHandle} displayNameStr={displayName} />
             </TabsContent>
           </div>
