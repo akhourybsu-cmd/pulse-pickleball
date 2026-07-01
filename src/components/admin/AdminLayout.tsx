@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
   ArrowLeft, Menu, LayoutDashboard, Calendar, Users, Trophy, FileText,
   Shuffle, QrCode, Fingerprint, Shield, Activity, Megaphone, UserPlus,
-  Building2, Archive, Swords, Zap,
+  Building2, Archive, Swords, Zap, ListChecks,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -34,6 +34,7 @@ const NAV: AdminNavItem[] = [
 
   { href: "/admin/players",             label: "Players",          icon: Users,         group: "manage" },
   { href: "/admin/matches",             label: "Matches",          icon: FileText,      group: "manage" },
+  { href: "/admin/leagues",             label: "Leagues (admin)",  icon: ListChecks,    group: "manage" },
   { href: "/admin/badges",              label: "Badges",           icon: Trophy,        group: "manage" },
   { href: "/pending-matches",           label: "Pending Matches",  icon: Trophy,        group: "manage" },
 
