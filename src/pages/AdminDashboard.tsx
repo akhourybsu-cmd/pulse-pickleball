@@ -1,105 +1,80 @@
 import { useEffect, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { isPlatformAdmin } from "@/lib/permissions";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { toast } from "sonner";
-import { 
-  Users, 
-  Calendar, 
-  Shuffle, 
-  Settings, 
-  QrCode,
-  ArrowLeft,
-  Trophy,
-  LayoutDashboard,
-  Download,
-  UserPlus,
-  FileText,
-  Swords,
-  Megaphone,
-  Shield,
-  Fingerprint,
-  Zap,
-  Activity,
-  Building2,
-  Archive
+import {
+  Users, Calendar, Shuffle, QrCode, Download, LayoutDashboard, UserPlus,
+  FileText, Swords, Megaphone, Shield, Fingerprint, Zap, Activity,
+  Building2, Archive, Trophy, ChevronDown, RefreshCw, ExternalLink,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-import logo from "@/assets/pulse-logo-premium.svg";
-import { ThemeToggle } from "@/components/ThemeToggle";
-import { Footer } from "@/components/Footer";
+import { AdminLayout } from "@/components/admin/AdminLayout";
+import { cn } from "@/lib/utils";
 
 const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [showSignupQR, setShowSignupQR] = useState(false);
   const [recalculating, setRecalculating] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
     const checkAdminAccess = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      
       if (!user) {
         toast.error("Please sign in to access admin features");
         navigate("/auth");
         return;
       }
-
       if (!(await isPlatformAdmin(user.id))) {
         toast.error("Access denied: Admin privileges required");
         navigate("/player/dashboard");
         return;
       }
-
       setIsAdmin(true);
       setLoading(false);
     };
-
     checkAdminAccess();
   }, [navigate]);
-
-  const getSignupUrl = () => {
-    return `https://pulsepb.com/auth`;
-  };
 
   const handleDownloadSignupQR = () => {
     const svg = document.getElementById("signup-qr-code");
     if (!svg) return;
-
     const svgData = new XMLSerializer().serializeToString(svg);
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
     const img = new Image();
-
     img.onload = () => {
       canvas.width = img.width;
       canvas.height = img.height;
       ctx?.drawImage(img, 0, 0);
       const pngFile = canvas.toDataURL("image/png");
-
-      const downloadLink = document.createElement("a");
-      downloadLink.download = "pickleball-signup-qr.png";
-      downloadLink.href = pngFile;
-      downloadLink.click();
-
-      toast.success("QR code downloaded successfully!");
+      const a = document.createElement("a");
+      a.download = "pulse-signup-qr.png";
+      a.href = pngFile;
+      a.click();
+      toast.success("QR code downloaded");
     };
-
     img.src = "data:image/svg+xml;base64," + btoa(svgData);
   };
 
   const handleRecalculateRatings = async () => {
     setRecalculating(true);
     try {
-      const { error } = await supabase.rpc('recalculate_all_ratings_authenticated');
+      const { error } = await supabase.rpc("recalculate_all_ratings_authenticated");
       if (error) throw error;
-      toast.success("All player ratings and stats have been recalculated!");
-    } catch (error: any) {
-      toast.error("Failed to recalculate ratings. Please try again.");
+      toast.success("All ratings recalculated");
+    } catch (error) {
+      toast.error("Recalc failed — see console");
       console.error(error);
     } finally {
       setRecalculating(false);
@@ -109,511 +84,308 @@ const AdminDashboard = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-muted-foreground">Checking admin access...</p>
+        <p className="text-muted-foreground">Checking admin access…</p>
       </div>
     );
   }
-
-  if (!isAdmin) {
-    return null;
-  }
+  if (!isAdmin) return null;
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Premium Dark Header */}
-      <nav className="bg-[#0B171F] border-b border-slate-800">
-        <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-5 flex items-center justify-between h-[72px]">
-          <Link to="/dashboard" className="flex items-center gap-3">
-            <img src={logo} alt="PULSE Logo" className="h-[60px] sm:h-[75px] w-auto cursor-pointer hover:opacity-90 transition-opacity" />
-          </Link>
-          <div className="flex items-center gap-3">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => navigate("/player/dashboard")}
-              className="border-slate-600 text-slate-200 hover:bg-slate-800 hover:text-white"
+    <AdminLayout subtitle="Sessions, players, matches, and system tools">
+      <div className="container mx-auto px-4 py-6 space-y-8">
+        {/* ============= LIVE OPS (hero) ============= */}
+        <section>
+          <SectionHeader
+            icon={<Zap className="w-4 h-4 text-primary" />}
+            title="Live ops"
+            hint="What you need during a session"
+          />
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <HeroTile
+              icon={Calendar}
+              title="Sessions"
+              desc="Create, manage, generate check-in QR codes"
+              onClick={() => navigate("/admin/session")}
+              tone="primary"
+            />
+            <HeroTile
+              icon={Zap}
+              title="Live Session Control"
+              desc="Monitor active queues, create manual matches"
+              onClick={() => navigate("/admin/manage")}
+              tone="primary"
+            />
+            <HeroTile
+              icon={Shuffle}
+              title="Auto Pair"
+              desc="Generate balanced pairings from the queue"
+              onClick={() => navigate("/admin/pairing")}
+            />
+            <HeroTile
+              icon={QrCode}
+              title="QR Check-In"
+              desc="Player self-service check-in portal"
+              onClick={() => navigate("/qr-checkin")}
+            />
+            <HeroTile
+              icon={LayoutDashboard}
+              title="Kiosk Display"
+              desc="Full-screen court + queue board for the room"
+              onClick={() => navigate("/kiosk")}
+            />
+            <HeroTile
+              icon={UserPlus}
+              title="Sign-up QR"
+              desc="Share a QR that jumps new players to registration"
+              onClick={() => setShowSignupQR(true)}
+            />
+          </div>
+        </section>
+
+        {/* ============= PLAYERS & MATCHES ============= */}
+        <section>
+          <SectionHeader
+            icon={<Users className="w-4 h-4 text-primary" />}
+            title="Players & matches"
+            hint="Directories and moderation"
+          />
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <ListTile
+              icon={Users}
+              title="Player Directory"
+              onClick={() => navigate("/admin/players")}
+            />
+            <ListTile
+              icon={FileText}
+              title="Match Directory"
+              onClick={() => navigate("/admin/matches")}
+            />
+            <ListTile
+              icon={Trophy}
+              title="Badges"
+              onClick={() => navigate("/admin/badges")}
+            />
+            <ListTile
+              icon={Trophy}
+              title="Pending Matches"
+              onClick={() => navigate("/pending-matches")}
+            />
+          </div>
+        </section>
+
+        {/* ============= DIAGNOSTICS (compact) ============= */}
+        <section>
+          <SectionHeader
+            icon={<Activity className="w-4 h-4 text-primary" />}
+            title="Diagnostics"
+            hint="Troubleshoot and recompute"
+          />
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            <ChipTile
+              icon={Activity}
+              title="System Health"
+              onClick={() => navigate("/admin/system-health")}
+            />
+            <ChipTile
+              icon={Shield}
+              title="Audit Log"
+              onClick={() => navigate("/admin/audit-log")}
+            />
+            <ChipTile
+              icon={Fingerprint}
+              title="Biometrics"
+              onClick={() => navigate("/admin/biometrics")}
+            />
+            <button
+              type="button"
+              onClick={handleRecalculateRatings}
+              disabled={recalculating}
+              className="flex items-center gap-2 rounded-lg border border-border/70 bg-card px-3.5 py-2.5 text-left text-sm hover:bg-muted transition-colors disabled:opacity-60"
             >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Dashboard
-            </Button>
-            <ThemeToggle />
+              <RefreshCw className={cn("w-4 h-4 text-primary shrink-0", recalculating && "animate-spin")} />
+              <span className="truncate">
+                {recalculating ? "Recalculating…" : "Recalculate ratings"}
+              </span>
+            </button>
           </div>
-        </div>
-      </nav>
+        </section>
 
-      {/* Gradient Hero Section */}
-      <div className="bg-gradient-to-b from-[#0B171F] via-[#142029] to-background py-10 px-4">
-        <div className="container mx-auto">
-          <div className="flex items-center gap-4 mb-3">
-            <div className="p-3 bg-[#A6DB5A]/20 rounded-xl">
-              <Settings className="w-8 h-8 text-[#A6DB5A]" />
+        {/* ============= ADVANCED (collapsed) ============= */}
+        <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="w-full flex items-center justify-between rounded-lg border border-border/70 bg-card px-4 py-3 hover:bg-muted/60 transition-colors"
+            >
+              <span className="text-sm font-medium">Advanced tools</span>
+              <ChevronDown
+                className={cn(
+                  "w-4 h-4 text-muted-foreground transition-transform",
+                  advancedOpen && "rotate-180",
+                )}
+              />
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-3">
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              <ChipTile
+                icon={UserPlus}
+                title="Test Accounts"
+                onClick={() => navigate("/admin/test-accounts")}
+              />
+              <ChipTile
+                icon={Megaphone}
+                title="Marketing Materials"
+                onClick={() => navigate("/admin/marketing")}
+              />
+              <ChipTile
+                icon={Swords}
+                title="Tournament Portal"
+                onClick={() => navigate("/tournament-admin")}
+              />
             </div>
-            <h1 className="text-3xl md:text-4xl font-bold text-white">
-              Admin Control Center
-            </h1>
-          </div>
-          <p className="text-slate-400 ml-[68px]">
-            Manage sessions, pairings, and system settings
-          </p>
-        </div>
-      </div>
+          </CollapsibleContent>
+        </Collapsible>
 
-      <div className="container mx-auto px-4 py-8">
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {/* Archived Surfaces — venues + tournaments, admin-only */}
-          <Card
-            className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-l-4 border-l-slate-500 hover:-translate-y-1"
-            onClick={() => navigate("/archive")}
-          >
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="p-2.5 bg-slate-500/20 rounded-lg">
-                  <Archive className="w-8 h-8 text-slate-500" />
-                </div>
-              </div>
-              <CardTitle className="mt-4">Archived Surfaces</CardTitle>
-              <CardDescription>
-                Venue console, tournament tools, and other surfaces hidden from players
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button className="w-full" variant="secondary">
-                Open Archive
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Venue Verification - Priority card */}
-          <Card 
-            className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-l-4 border-l-amber-500 hover:-translate-y-1" 
+        {/* ============= ARCHIVED (small link footer) ============= */}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pt-2 text-xs text-muted-foreground border-t border-border/60 pt-4">
+          <span className="font-medium">Archived surfaces:</span>
+          <button
+            type="button"
             onClick={() => navigate("/admin/venue-verification")}
+            className="inline-flex items-center gap-1 hover:text-foreground"
           >
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="p-2.5 bg-amber-500/20 rounded-lg">
-                  <Building2 className="w-8 h-8 text-amber-500" />
-                </div>
-              </div>
-              <CardTitle className="mt-4">Venue Verification</CardTitle>
-              <CardDescription>
-                Review and approve pending venue ownership claims
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button className="w-full" variant="secondary">
-                Review Venues
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card 
-            className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-l-4 border-l-transparent hover:border-l-[#A6DB5A] hover:-translate-y-1" 
-            onClick={() => navigate("/admin/session")}
+            <Building2 className="w-3.5 h-3.5" />
+            Venue verification
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate("/archive")}
+            className="inline-flex items-center gap-1 hover:text-foreground"
           >
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="p-2.5 bg-primary/10 rounded-lg group-hover:bg-[#A6DB5A]/20 transition-colors">
-                  <Calendar className="w-8 h-8 text-primary group-hover:text-[#A6DB5A] transition-colors" />
-                </div>
-              </div>
-              <CardTitle className="mt-4">Session Management</CardTitle>
-              <CardDescription>
-                Create and manage pickleball sessions, generate QR codes for check-ins
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button className="w-full" variant="secondary">
-                Manage Sessions
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card 
-            className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-l-4 border-l-transparent hover:border-l-[#A6DB5A] hover:-translate-y-1" 
-            onClick={() => navigate("/admin/players")}
-          >
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="p-2.5 bg-primary/10 rounded-lg group-hover:bg-[#A6DB5A]/20 transition-colors">
-                  <Users className="w-8 h-8 text-primary group-hover:text-[#A6DB5A] transition-colors" />
-                </div>
-              </div>
-              <CardTitle className="mt-4">Player Directory</CardTitle>
-              <CardDescription>
-                Search and view all player profiles in the system
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button className="w-full" variant="secondary">
-                View Players
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card 
-            className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-l-4 border-l-transparent hover:border-l-[#A6DB5A] hover:-translate-y-1" 
-            onClick={() => navigate("/admin/badges")}
-          >
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="p-2.5 bg-primary/10 rounded-lg group-hover:bg-[#A6DB5A]/20 transition-colors">
-                  <Trophy className="w-8 h-8 text-primary group-hover:text-[#A6DB5A] transition-colors" />
-                </div>
-              </div>
-              <CardTitle className="mt-4">Badge Management</CardTitle>
-              <CardDescription>
-                Manually assign and remove badges from player profiles
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button className="w-full" variant="secondary">
-                Manage Badges
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card 
-            className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-l-4 border-l-transparent hover:border-l-[#A6DB5A] hover:-translate-y-1" 
-            onClick={() => navigate("/admin/manage")}
-          >
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="p-2.5 bg-secondary/20 rounded-lg group-hover:bg-[#A6DB5A]/20 transition-colors">
-                  <Users className="w-8 h-8 text-secondary group-hover:text-[#A6DB5A] transition-colors" />
-                </div>
-              </div>
-              <CardTitle className="mt-4">Active Session Control</CardTitle>
-              <CardDescription>
-                Monitor live sessions, manage queues, create manual matches
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button className="w-full" variant="secondary">
-                Control Sessions
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card 
-            className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-l-4 border-l-transparent hover:border-l-[#A6DB5A] hover:-translate-y-1" 
-            onClick={() => navigate("/admin/pairing")}
-          >
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="p-2.5 bg-primary/10 rounded-lg group-hover:bg-[#A6DB5A]/20 transition-colors">
-                  <Shuffle className="w-8 h-8 text-primary group-hover:text-[#A6DB5A] transition-colors" />
-                </div>
-              </div>
-              <CardTitle className="mt-4">Auto Pairing System</CardTitle>
-              <CardDescription>
-                Generate balanced match pairings based on player ratings
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button className="w-full" variant="secondary">
-                Generate Pairings
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card 
-            className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-l-4 border-l-transparent hover:border-l-[#A6DB5A] hover:-translate-y-1" 
-            onClick={() => navigate("/admin/matches")}
-          >
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="p-2.5 bg-primary/10 rounded-lg group-hover:bg-[#A6DB5A]/20 transition-colors">
-                  <FileText className="w-8 h-8 text-primary group-hover:text-[#A6DB5A] transition-colors" />
-                </div>
-              </div>
-              <CardTitle className="mt-4">Match Directory</CardTitle>
-              <CardDescription>
-                View, edit, and manage all matches with filters and CSV export
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button className="w-full" variant="secondary">
-                View Matches
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card 
-            className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-l-4 border-l-transparent hover:border-l-[#A6DB5A] hover:-translate-y-1" 
-            onClick={() => navigate("/kiosk")}
-          >
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="p-2.5 bg-secondary/20 rounded-lg group-hover:bg-[#A6DB5A]/20 transition-colors">
-                  <LayoutDashboard className="w-8 h-8 text-secondary group-hover:text-[#A6DB5A] transition-colors" />
-                </div>
-              </div>
-              <CardTitle className="mt-4">Kiosk Display</CardTitle>
-              <CardDescription>
-                View live match board and queue status for court displays
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button className="w-full" variant="secondary">
-                Open Kiosk
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card 
-            className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-l-4 border-l-transparent hover:border-l-[#A6DB5A] hover:-translate-y-1" 
-            onClick={() => navigate("/tournament-admin")}
-          >
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="p-2.5 bg-primary/10 rounded-lg group-hover:bg-[#A6DB5A]/20 transition-colors">
-                  <Swords className="w-8 h-8 text-primary group-hover:text-[#A6DB5A] transition-colors" />
-                </div>
-              </div>
-              <CardTitle className="mt-4">Tournament Portal</CardTitle>
-              <CardDescription>
-                Manage tournaments, divisions, and round-robin play
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button className="w-full" variant="secondary">
-                Manage Tournaments
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card 
-            className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-l-4 border-l-transparent hover:border-l-[#A6DB5A] hover:-translate-y-1" 
-            onClick={() => navigate("/qr-checkin")}
-          >
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="p-2.5 bg-primary/10 rounded-lg group-hover:bg-[#A6DB5A]/20 transition-colors">
-                  <QrCode className="w-8 h-8 text-primary group-hover:text-[#A6DB5A] transition-colors" />
-                </div>
-              </div>
-              <CardTitle className="mt-4">QR Check-In</CardTitle>
-              <CardDescription>
-                Player check-in interface for session queues
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button className="w-full" variant="secondary">
-                Check-In Portal
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card 
-            className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-l-4 border-l-transparent hover:border-l-[#A6DB5A] hover:-translate-y-1" 
-            onClick={() => navigate("/pending-matches")}
-          >
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="p-2.5 bg-secondary/20 rounded-lg group-hover:bg-[#A6DB5A]/20 transition-colors">
-                  <Trophy className="w-8 h-8 text-secondary group-hover:text-[#A6DB5A] transition-colors" />
-                </div>
-              </div>
-              <CardTitle className="mt-4">Pending Matches</CardTitle>
-              <CardDescription>
-                Review and approve match results, handle contested matches
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button className="w-full" variant="secondary">
-                Review Matches
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card 
-            className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-l-4 border-l-transparent hover:border-l-[#A6DB5A] hover:-translate-y-1" 
-            onClick={() => setShowSignupQR(true)}
-          >
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="p-2.5 bg-primary/10 rounded-lg group-hover:bg-[#A6DB5A]/20 transition-colors">
-                  <UserPlus className="w-8 h-8 text-primary group-hover:text-[#A6DB5A] transition-colors" />
-                </div>
-              </div>
-              <CardTitle className="mt-4">Sign Up QR Code</CardTitle>
-              <CardDescription>
-                Generate QR code for new players to join and register
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button className="w-full" variant="secondary">
-                View QR Code
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card 
-            className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-l-4 border-l-transparent hover:border-l-[#A6DB5A] hover:-translate-y-1" 
-            onClick={() => navigate("/admin/marketing")}
-          >
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="p-2.5 bg-primary/10 rounded-lg group-hover:bg-[#A6DB5A]/20 transition-colors">
-                  <Megaphone className="w-8 h-8 text-primary group-hover:text-[#A6DB5A] transition-colors" />
-                </div>
-              </div>
-              <CardTitle className="mt-4">Marketing Materials</CardTitle>
-              <CardDescription>
-                One-pagers, talking points, and sales tools for promoting Pulse
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button className="w-full" variant="secondary">
-                View Materials
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card 
-            className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-l-4 border-l-transparent hover:border-l-[#A6DB5A] hover:-translate-y-1" 
-            onClick={() => navigate("/admin/biometrics")}
-          >
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="p-2.5 bg-primary/10 rounded-lg group-hover:bg-[#A6DB5A]/20 transition-colors">
-                  <Fingerprint className="w-8 h-8 text-primary group-hover:text-[#A6DB5A] transition-colors" />
-                </div>
-              </div>
-              <CardTitle className="mt-4">Biometric Analytics</CardTitle>
-              <CardDescription>
-                Track biometric authentication adoption and performance metrics
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button className="w-full" variant="secondary">
-                View Analytics
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card 
-            className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-l-4 border-l-transparent hover:border-l-[#A6DB5A] hover:-translate-y-1" 
-            onClick={() => navigate("/admin/audit-log")}
-          >
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="p-2.5 bg-primary/10 rounded-lg group-hover:bg-[#A6DB5A]/20 transition-colors">
-                  <Shield className="w-8 h-8 text-primary group-hover:text-[#A6DB5A] transition-colors" />
-                </div>
-              </div>
-              <CardTitle className="mt-4">Admin Audit Log</CardTitle>
-              <CardDescription>
-                View complete history of all administrative actions
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button className="w-full" variant="secondary">
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card 
-            className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-l-4 border-l-transparent hover:border-l-[#A6DB5A] hover:-translate-y-1" 
-            onClick={() => navigate("/admin/system-health")}
-          >
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="p-2.5 bg-primary/10 rounded-lg group-hover:bg-[#A6DB5A]/20 transition-colors">
-                  <Activity className="w-8 h-8 text-primary group-hover:text-[#A6DB5A] transition-colors" />
-                </div>
-              </div>
-              <CardTitle className="mt-4">System Health</CardTitle>
-              <CardDescription>
-                Monitor data integrity and run health checks on the platform
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button className="w-full" variant="secondary">
-                View Health Status
-              </Button>
-            </CardContent>
-          </Card>
+            <Archive className="w-3.5 h-3.5" />
+            Full archive
+            <ExternalLink className="w-3 h-3" />
+          </button>
         </div>
-
-        <Card className="mt-8 bg-[#142029] border-slate-700/50">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Zap className="w-5 h-5 text-[#A6DB5A]" />
-              <CardTitle className="text-white">Quick Actions</CardTitle>
-            </div>
-            <CardDescription className="text-slate-400">Common administrative tasks</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex gap-3 flex-wrap">
-              <Button 
-                variant="outline" 
-                onClick={() => navigate("/admin/session")}
-                className="border-slate-600 text-slate-200 hover:bg-slate-700 hover:text-white hover:border-[#A6DB5A]"
-              >
-                Create New Session
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => navigate("/match/new")}
-                className="border-slate-600 text-slate-200 hover:bg-slate-700 hover:text-white hover:border-[#A6DB5A]"
-              >
-                Record Match
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => navigate("/court-board")}
-                className="border-slate-600 text-slate-200 hover:bg-slate-700 hover:text-white hover:border-[#A6DB5A]"
-              >
-                View Court Board
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={handleRecalculateRatings}
-                disabled={recalculating}
-                className="border-slate-600 text-slate-200 hover:bg-slate-700 hover:text-white hover:border-[#A6DB5A] disabled:opacity-50"
-              >
-                {recalculating ? "Recalculating..." : "Recalculate All Ratings"}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
+      {/* Sign-up QR modal */}
       <Dialog open={showSignupQR} onOpenChange={setShowSignupQR}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Pickleball Sign Up QR Code</DialogTitle>
+            <DialogTitle>Sign-up QR code</DialogTitle>
           </DialogHeader>
-          <div className="flex flex-col items-center space-y-4 p-6">
+          <div className="flex flex-col items-center space-y-4 p-4">
             <div className="bg-white p-6 rounded-lg">
               <QRCodeSVG
                 id="signup-qr-code"
-                value={getSignupUrl()}
-                size={256}
+                value="https://pulsepb.com/auth"
+                size={240}
                 level="H"
                 includeMargin
               />
             </div>
             <p className="text-sm text-muted-foreground text-center">
-              Scan this QR code to sign up for Pickleball
+              Point a camera at this code to jump to sign-up.
             </p>
-            <div className="flex gap-2 w-full">
-              <Button 
-                onClick={handleDownloadSignupQR}
-                className="flex-1"
-              >
-                <Download className="w-4 h-4 mr-2" />
-                Download QR Code
-              </Button>
-            </div>
+            <Button onClick={handleDownloadSignupQR} className="w-full">
+              <Download className="w-4 h-4 mr-2" />
+              Download PNG
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
-
-      <Footer />
-    </div>
+    </AdminLayout>
   );
 };
+
+/* ---------- section primitives ---------- */
+
+const SectionHeader = ({
+  icon, title, hint,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  hint?: string;
+}) => (
+  <div className="mb-3 flex items-baseline gap-2">
+    <div className="flex items-center gap-1.5">
+      {icon}
+      <h2 className="text-sm font-semibold uppercase tracking-wider">{title}</h2>
+    </div>
+    {hint && (
+      <span className="text-xs text-muted-foreground truncate">{hint}</span>
+    )}
+  </div>
+);
+
+const HeroTile = ({
+  icon: Icon, title, desc, onClick, tone,
+}: {
+  icon: typeof Users;
+  title: string;
+  desc: string;
+  onClick: () => void;
+  tone?: "primary";
+}) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={cn(
+      "text-left rounded-xl border bg-card p-4 hover:bg-muted/50 hover:border-primary/40 transition-colors",
+      tone === "primary" && "border-primary/30",
+    )}
+  >
+    <div className="flex items-start gap-3">
+      <div
+        className={cn(
+          "p-2 rounded-lg shrink-0",
+          tone === "primary" ? "bg-primary/15 text-primary" : "bg-muted text-foreground",
+        )}
+      >
+        <Icon className="w-5 h-5" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="font-semibold text-sm">{title}</div>
+        <div className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{desc}</div>
+      </div>
+    </div>
+  </button>
+);
+
+const ListTile = ({
+  icon: Icon, title, onClick,
+}: {
+  icon: typeof Users;
+  title: string;
+  onClick: () => void;
+}) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className="flex items-center gap-2.5 rounded-lg border border-border/70 bg-card p-3 hover:bg-muted/60 hover:border-primary/40 transition-colors text-left"
+  >
+    <Icon className="w-4 h-4 text-primary shrink-0" />
+    <span className="text-sm font-medium truncate">{title}</span>
+  </button>
+);
+
+const ChipTile = ({
+  icon: Icon, title, onClick,
+}: {
+  icon: typeof Users;
+  title: string;
+  onClick: () => void;
+}) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className="flex items-center gap-2 rounded-lg border border-border/70 bg-card px-3.5 py-2.5 hover:bg-muted transition-colors text-left"
+  >
+    <Icon className="w-4 h-4 text-primary shrink-0" />
+    <span className="text-sm truncate">{title}</span>
+  </button>
+);
 
 export default AdminDashboard;
