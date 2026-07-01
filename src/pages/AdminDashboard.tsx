@@ -14,6 +14,7 @@ import {
   Users, Calendar, Shuffle, QrCode, Download, LayoutDashboard, UserPlus,
   FileText, Swords, Megaphone, Shield, Fingerprint, Zap, Activity,
   Building2, Archive, Trophy, ChevronDown, RefreshCw, ExternalLink,
+  ListChecks,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
@@ -159,6 +160,11 @@ const AdminDashboard = () => {
               icon={FileText}
               title="Match Directory"
               onClick={() => navigate("/admin/matches")}
+            />
+            <ListTile
+              icon={ListChecks}
+              title="Leagues (admin)"
+              onClick={() => navigate("/admin/leagues")}
             />
             <ListTile
               icon={Trophy}
