@@ -6,19 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { 
-  ArrowLeft, 
-  Filter, 
-  Download, 
-  Edit, 
-  Trash2, 
-  AlertTriangle,
-  CheckCircle2,
-  Search
+import {
+  Filter,
+  Download,
+  Edit,
+  Search,
+  SlidersHorizontal,
 } from "lucide-react";
 import { toast } from "sonner";
-import { ThemeToggle } from "@/components/ThemeToggle";
-import { Footer } from "@/components/Footer";
 import {
   Select,
   SelectContent,
@@ -29,12 +24,13 @@ import {
 import {
   Sheet,
   SheetContent,
-  SheetDescription,
   SheetHeader,
   SheetTitle,
+  SheetTrigger,
 } from "@/components/ui/sheet";
 import { EditMatchSheet } from "@/components/admin/EditMatchSheet";
 import { toLocaleDateStringEST } from "@/lib/utils";
+import { AdminLayout } from "@/components/admin/AdminLayout";
 
 interface MatchRow {
   match_id: string;
@@ -277,97 +273,143 @@ const AdminMatches = () => {
     return <div className="flex justify-center items-center min-h-screen">Loading...</div>;
   }
 
-  return (
-    <div className="min-h-screen bg-background">
-      <nav className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Button variant="ghost" onClick={() => navigate("/admin")}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Admin
-          </Button>
-          <ThemeToggle />
-        </div>
-      </nav>
+  const activeFilterCount =
+    (dateFilter !== "all" ? 1 : 0) +
+    (verifiedFilter !== "all" ? 1 : 0) +
+    (typeFilter !== "all" ? 1 : 0) +
+    (venueFilter !== "all" ? 1 : 0);
 
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Match Directory</h1>
-          <Button onClick={exportToCSV} variant="outline">
-            <Download className="w-4 h-4 mr-2" />
+  const filterControls = (
+    <>
+      <div className="space-y-1.5">
+        <label className="text-xs font-medium text-muted-foreground">Date range</label>
+        <Select value={dateFilter} onValueChange={setDateFilter}>
+          <SelectTrigger>
+            <SelectValue placeholder="Date range" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All dates</SelectItem>
+            <SelectItem value="today">Today</SelectItem>
+            <SelectItem value="7d">Last 7 days</SelectItem>
+            <SelectItem value="30d">Last 30 days</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-1.5">
+        <label className="text-xs font-medium text-muted-foreground">Verification</label>
+        <Select value={verifiedFilter} onValueChange={setVerifiedFilter}>
+          <SelectTrigger>
+            <SelectValue placeholder="Verification" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All</SelectItem>
+            <SelectItem value="full">Fully verified (4/4)</SelectItem>
+            <SelectItem value="partial">Partial (1-3)</SelectItem>
+            <SelectItem value="none">None (0/4)</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-1.5">
+        <label className="text-xs font-medium text-muted-foreground">Match type</label>
+        <Select value={typeFilter} onValueChange={setTypeFilter}>
+          <SelectTrigger>
+            <SelectValue placeholder="Match type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All types</SelectItem>
+            <SelectItem value="ladder">Ladder</SelectItem>
+            <SelectItem value="league">League</SelectItem>
+            <SelectItem value="playoffs">Playoffs</SelectItem>
+            <SelectItem value="casual">Casual</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-1.5">
+        <label className="text-xs font-medium text-muted-foreground">Location</label>
+        <Select value={venueFilter} onValueChange={setVenueFilter}>
+          <SelectTrigger>
+            <SelectValue placeholder="Location" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All locations</SelectItem>
+            <SelectItem value="official">Community location</SelectItem>
+            <SelectItem value="other">Custom location</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+    </>
+  );
+
+  return (
+    <AdminLayout title="Match Directory">
+      <div className="container mx-auto px-4 py-6">
+        <div className="flex items-center justify-between mb-4">
+          <div />
+          <Button onClick={exportToCSV} variant="outline" size="sm">
+            <Download className="w-4 h-4 mr-1.5" />
             Export CSV
           </Button>
         </div>
 
-        {/* Filters */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Filter className="w-4 h-4" />
-              Filters
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-
-              <Select value={dateFilter} onValueChange={setDateFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Date range" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All dates</SelectItem>
-                  <SelectItem value="today">Today</SelectItem>
-                  <SelectItem value="7d">Last 7 days</SelectItem>
-                  <SelectItem value="30d">Last 30 days</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={verifiedFilter} onValueChange={setVerifiedFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Verification" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="full">Fully verified (4/4)</SelectItem>
-                  <SelectItem value="partial">Partial (1-3)</SelectItem>
-                  <SelectItem value="none">None (0/4)</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Match type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All types</SelectItem>
-                  <SelectItem value="ladder">Ladder</SelectItem>
-                  <SelectItem value="league">League</SelectItem>
-                  <SelectItem value="playoffs">Playoffs</SelectItem>
-                  <SelectItem value="casual">Casual</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={venueFilter} onValueChange={setVenueFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Location" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All locations</SelectItem>
-                  <SelectItem value="official">Community location</SelectItem>
-                  <SelectItem value="other">Custom location</SelectItem>
-                </SelectContent>
-              </Select>
+        {/* Search + filter access. On mobile: search + filter chip.
+            On desktop: 4 select controls stay inline. */}
+        <div className="mb-6 space-y-3">
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search matches, players, locations…"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9 h-10"
+              />
             </div>
-          </CardContent>
-        </Card>
+            {/* Mobile filter sheet */}
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="outline" className="md:hidden shrink-0 h-10">
+                  <SlidersHorizontal className="w-4 h-4" />
+                  {activeFilterCount > 0 && (
+                    <span className="ml-1.5 rounded-full bg-primary text-primary-foreground text-[10px] px-1.5 py-0.5 min-w-[1.25rem] text-center">
+                      {activeFilterCount}
+                    </span>
+                  )}
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="bottom" className="h-[80vh]">
+                <SheetHeader className="text-left pb-4">
+                  <SheetTitle className="flex items-center gap-2">
+                    <Filter className="w-4 h-4" />
+                    Filters
+                  </SheetTitle>
+                </SheetHeader>
+                <div className="space-y-4">
+                  {filterControls}
+                  {activeFilterCount > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setDateFilter("all");
+                        setVerifiedFilter("all");
+                        setTypeFilter("all");
+                        setVenueFilter("all");
+                      }}
+                      className="w-full"
+                    >
+                      Clear all filters
+                    </Button>
+                  )}
+                </div>
+              </SheetContent>
+            </Sheet>
+          </div>
+
+          {/* Desktop: inline 4-col filter grid */}
+          <div className="hidden md:grid md:grid-cols-4 gap-3">
+            {filterControls}
+          </div>
+        </div>
 
         {/* Results count */}
         <p className="text-sm text-muted-foreground mb-4">
@@ -466,9 +508,7 @@ const AdminMatches = () => {
           }}
         />
       )}
-
-      <Footer />
-    </div>
+    </AdminLayout>
   );
 };
 
