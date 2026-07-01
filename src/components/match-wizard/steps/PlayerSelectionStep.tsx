@@ -148,6 +148,7 @@ export function PlayerSelectionStep({
   const [guestData, setGuestData] = useState({ name: "", notes: "" });
   const [profileCache, setProfileCache] = useState<Record<string, Player>>({});
   const [currentUserProfile, setCurrentUserProfile] = useState<Player | null>(null);
+  const [recentGuests, setRecentGuests] = useState<{ id: string; display_name: string }[]>([]);
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
@@ -163,6 +164,15 @@ export function PlayerSelectionStep({
         setCurrentUserProfile(me);
         setProfileCache((prev) => ({ ...prev, [me.id]: me }));
       }
+
+      // Recent guests owned by this user — RLS scopes to created_by = auth.uid()
+      const { data: guests } = await supabase
+        .from("guest_players")
+        .select("id, display_name")
+        .eq("created_by", user.id)
+        .order("created_at", { ascending: false })
+        .limit(10);
+      if (guests) setRecentGuests(guests as { id: string; display_name: string }[]);
     });
   }, []);
 
@@ -362,6 +372,33 @@ export function PlayerSelectionStep({
             <DialogTitle>Add Guest Player</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {recentGuests.length > 0 && (
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">
+                  Recent guests
+                </Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {recentGuests.map((g) => (
+                    <button
+                      key={g.id}
+                      type="button"
+                      onClick={() => {
+                        if (!activeSlot) return;
+                        commitGuestToSlot(g.display_name, "", activeSlot);
+                        setShowGuestModal(false);
+                        setGuestData({ name: "", notes: "" });
+                      }}
+                      className="rounded-full border border-border/70 bg-muted/40 px-3 py-1 text-xs font-medium hover:bg-muted transition-colors"
+                    >
+                      {g.display_name}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  Tap a name to reuse — their history stays linked.
+                </p>
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="guest-name">Display name</Label>
               <Input
