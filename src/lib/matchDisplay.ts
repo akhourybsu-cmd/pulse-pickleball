@@ -14,6 +14,24 @@ export interface MinimalProfile {
   last_name?: string | null;
 }
 
+export interface MinimalGuest {
+  display_name?: string | null;
+}
+
+/**
+ * Shape produced when a match participant row is selected with both
+ * the profile and guest joins. Every read site that renders a match
+ * card should shape its rows this way so guests stop dropping off
+ * silently — which was the previous behavior when the SELECT only
+ * joined profiles_public.
+ */
+export interface ParticipantLike {
+  player_id: string | null;
+  guest_player_id?: string | null;
+  profiles?: MinimalProfile | null;
+  guest?: MinimalGuest | null;
+}
+
 /**
  * Canonical player-name resolver.
  *
@@ -32,6 +50,38 @@ export function resolvePlayerName(profile: MinimalProfile | null | undefined): s
   const composed = `${profile.first_name ?? ""} ${profile.last_name ?? ""}`.trim();
   if (composed) return composed;
   return "Removed player";
+}
+
+/**
+ * Guest-aware participant name resolver.
+ *
+ * Fallback order:
+ *   1. Real profile (via player_id) — resolved through resolvePlayerName
+ *   2. Guest's display_name with " (Guest)" suffix — matches how
+ *      RoundRobinKiosk + RoundRobinDetail tag guests so the reader
+ *      knows the row isn't a claimed profile
+ *   3. "Removed player" when both joins came back null (deleted user
+ *      / deleted guest / RLS blocked the join)
+ *
+ * Every match-card surface should route through this instead of
+ * resolvePlayerName directly, because a raw resolvePlayerName call
+ * silently prints "Removed player" for guest rows — that's the bug
+ * the user hit.
+ */
+export function resolveParticipantName(participant: ParticipantLike | null | undefined): string {
+  if (!participant) return "Removed player";
+  if (participant.player_id && participant.profiles) {
+    return resolvePlayerName(participant.profiles);
+  }
+  const guestName = participant.guest?.display_name?.trim();
+  if (guestName) return `${guestName} (Guest)`;
+  return "Removed player";
+}
+
+/** True when the participant row represents a guest, not a real user. */
+export function isGuestParticipant(participant: ParticipantLike | null | undefined): boolean {
+  if (!participant) return false;
+  return !participant.player_id && !!participant.guest_player_id;
 }
 
 /** Two-letter avatar initials. Safe on empty / single-word names. */

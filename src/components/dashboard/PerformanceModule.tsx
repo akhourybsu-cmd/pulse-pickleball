@@ -6,7 +6,7 @@ import { Trophy, TrendingUp, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DashboardModuleSkeleton } from "@/components/layout/DashboardModuleSkeleton";
 import { PremiumMatchCard } from "@/components/matches/PremiumMatchCard";
-import { resolvePlayerName, didTeamWin } from "@/lib/matchDisplay";
+import { resolvePlayerName, resolveParticipantName, didTeamWin } from "@/lib/matchDisplay";
 
 interface Participant {
   id: string;
@@ -92,9 +92,19 @@ export const PerformanceModule = ({ userId }: PerformanceModuleProps) => {
         .filter((p: any) => p.match)
         .map((p: any) => p.match.id);
 
+      // Include guest_player_id + guest join so the dashboard match
+      // cards show guest names instead of resolving them to "Removed
+      // player" — same bug the top-level MatchHistory had.
       const { data: allParticipants } = await supabase
         .from("match_participants")
-        .select("match_id, player_id, team, player:profiles_public!match_participants_player_id_fkey(id, display_name, full_name, first_name, last_name, avatar_url)")
+        .select(`
+          match_id,
+          player_id,
+          guest_player_id,
+          team,
+          player:profiles_public!match_participants_player_id_fkey(id, display_name, full_name, first_name, last_name, avatar_url),
+          guest:guest_players!match_participants_guest_player_id_fkey(display_name)
+        `)
         .in("match_id", matchIds);
 
       const participantsByMatch = (allParticipants || []).reduce((acc: Record<string, any[]>, p: any) => {
@@ -110,9 +120,16 @@ export const PerformanceModule = ({ userId }: PerformanceModuleProps) => {
           const parts = participantsByMatch[m.id] || [];
           const myTeam = (p.team as 1 | 2);
 
+          // The joined column here is aliased `player` (not `profiles`)
+          // so shape it up before the shared resolver looks at it.
           const toParticipant = (row: any): Participant => ({
-            id: row.player?.id || row.player_id,
-            name: resolvePlayerName(row.player),
+            id: row.player?.id || row.player_id || row.guest_player_id,
+            name: resolveParticipantName({
+              player_id: row.player_id,
+              guest_player_id: row.guest_player_id,
+              profiles: row.player,
+              guest: row.guest,
+            }),
             avatar_url: row.player?.avatar_url || null,
           });
 

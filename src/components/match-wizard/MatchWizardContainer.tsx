@@ -121,23 +121,58 @@ export function MatchWizardContainer() {
       if (matchError) throw matchError;
       createdMatchId = match.id;
 
-      // 3. Create guest players if any
-      const guestPlayerMap = new Map<string, string>(); // guestName -> guestPlayerId
-      
-      for (const [teamNum, team] of [[1, formData.team1], [2, formData.team2]] as const) {
-        for (const slot of (team as typeof formData.team1).slice(0, slotsPerTeam)) {
-          if (slot.isGuest && slot.guestName) {
-            const { data: guestPlayer, error: guestError } = await supabase
-              .from('guest_players')
-              .insert({
-                display_name: slot.guestName,
-                created_by: user.id,
-              })
-              .select('id')
-              .single();
+      // 3. Resolve guest players — reuse an existing row when the
+      // caller has already saved a guest with the same display name
+      // (case-insensitive, trimmed). Pre-fix, every submission
+      // inserted a fresh guest_players row, so "played 5 matches with
+      // Dan" produced 5 separate Dan rows and made cumulative stats
+      // for that guest impossible. Now the same-name guest is looked
+      // up first via a single batch query, then any names not found
+      // are inserted in one round-trip.
+      const guestPlayerMap = new Map<string, string>(); // guestName (lowercased) -> guestPlayerId
 
-            if (guestError) throw guestError;
-            guestPlayerMap.set(`${teamNum}-${slot.guestName}`, guestPlayer.id);
+      const requestedGuestNames = Array.from(new Set(
+        ([formData.team1, formData.team2] as const)
+          .flatMap(team => team.slice(0, slotsPerTeam))
+          .filter(slot => slot.isGuest && slot.guestName)
+          .map(slot => slot.guestName!.trim())
+          .filter(name => name.length > 0),
+      ));
+
+      if (requestedGuestNames.length > 0) {
+        // Lookup existing guests I own with any of these names. RLS
+        // policy "Creators manage own guests" already scopes this to
+        // created_by = auth.uid(), so we don't need to filter here.
+        const { data: existingGuests, error: lookupError } = await supabase
+          .from('guest_players')
+          .select('id, display_name')
+          .eq('created_by', user.id);
+        if (lookupError) throw lookupError;
+
+        const existingByName = new Map<string, string>();
+        for (const g of existingGuests || []) {
+          existingByName.set((g.display_name as string).trim().toLowerCase(), g.id as string);
+        }
+
+        // Collect names still needing insert (case-insensitive miss).
+        const namesToInsert: string[] = [];
+        for (const name of requestedGuestNames) {
+          const hit = existingByName.get(name.toLowerCase());
+          if (hit) {
+            guestPlayerMap.set(name.toLowerCase(), hit);
+          } else {
+            namesToInsert.push(name);
+          }
+        }
+
+        if (namesToInsert.length > 0) {
+          const { data: inserted, error: insertError } = await supabase
+            .from('guest_players')
+            .insert(namesToInsert.map(name => ({ display_name: name, created_by: user.id })))
+            .select('id, display_name');
+          if (insertError) throw insertError;
+          for (const g of inserted || []) {
+            guestPlayerMap.set((g.display_name as string).trim().toLowerCase(), g.id as string);
           }
         }
       }
@@ -156,8 +191,11 @@ export function MatchWizardContainer() {
             participants.push({
               match_id: match.id,
               player_id: slot.isGuest ? null : slot.playerId,
-              guest_player_id: slot.isGuest && slot.guestName 
-                ? guestPlayerMap.get(`${teamNum}-${slot.guestName}`) || null 
+              // Lookup key is the trimmed lowercased name — matches the
+              // deduped map built above, so team-1 Dan and team-2 Dan
+              // resolve to the same guest_players row.
+              guest_player_id: slot.isGuest && slot.guestName
+                ? guestPlayerMap.get(slot.guestName.trim().toLowerCase()) || null
                 : null,
               team: teamNum,
             });
