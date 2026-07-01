@@ -8,7 +8,7 @@ import { ArrowLeft } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Footer } from "@/components/Footer";
 import { PremiumMatchCard } from "@/components/matches/PremiumMatchCard";
-import { resolvePlayerName, didTeamWin } from "@/lib/matchDisplay";
+import { resolvePlayerName, resolveParticipantName, didTeamWin } from "@/lib/matchDisplay";
 
 interface Participant {
   id: string;
@@ -87,8 +87,10 @@ const PendingMatches = () => {
           .from("match_participants")
           .select(`
             player_id,
+            guest_player_id,
             team,
-            profiles:profiles_public!match_participants_player_id_fkey(id, display_name, full_name, first_name, last_name, avatar_url)
+            profiles:profiles_public!match_participants_player_id_fkey(id, display_name, full_name, first_name, last_name, avatar_url),
+            guest:guest_players!match_participants_guest_player_id_fkey(display_name)
           `)
           .eq("match_id", p.match_id);
 
@@ -100,9 +102,12 @@ const PendingMatches = () => {
         const myTeam = p.team as 1 | 2;
         const parts = allParticipants || [];
 
+        // resolveParticipantName picks up the guest suffix when the
+        // row is a guest. Pre-fix, guests came through as "Removed
+        // player" on the pending-matches list.
         const toParticipant = (row: any): Participant => ({
-          id: row.profiles?.id || row.player_id,
-          name: resolvePlayerName(row.profiles),
+          id: row.profiles?.id || row.player_id || row.guest_player_id,
+          name: resolveParticipantName(row),
           avatar_url: row.profiles?.avatar_url || null,
           team: row.team,
         });

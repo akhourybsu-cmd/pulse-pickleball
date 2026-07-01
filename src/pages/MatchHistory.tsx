@@ -33,7 +33,7 @@ import { PlayerPageHeader } from "@/components/layout/PlayerPageHeader";
 import { PremiumMatchCard } from "@/components/matches/PremiumMatchCard";
 import { RoundRobinMatchGroup, type RoundRobinGroup } from "@/components/matches/RoundRobinMatchGroup";
 import { cn } from "@/lib/utils";
-import { resolvePlayerName, didTeamWin } from "@/lib/matchDisplay";
+import { resolvePlayerName, resolveParticipantName, didTeamWin } from "@/lib/matchDisplay";
 
 const issueSchema = z.object({
   details: z.string().trim().max(500, "Details too long").optional(),
@@ -224,16 +224,25 @@ const MatchHistory = () => {
     // Get details for each match
     const matchesWithDetails = await Promise.all(
       participantsData.map(async (p: any) => {
+        // Select guest_player_id + join guest_players alongside the
+        // profile join. Without this, guest rows had no name to
+        // display and got resolved as "Removed player" — the visible
+        // symptom the user hit ("guest doesn't register on the match
+        // card").
         const { data: allParticipants } = await supabase
           .from("match_participants")
           .select(`
             player_id,
+            guest_player_id,
             team,
-            profiles:profiles_public!match_participants_player_id_fkey(full_name, display_name, avatar_url)
+            profiles:profiles_public!match_participants_player_id_fkey(full_name, display_name, avatar_url),
+            guest:guest_players!match_participants_guest_player_id_fkey(display_name)
           `)
           .eq("match_id", p.match_id);
 
         const myTeam = p.team;
+        // "!== playerIdToUse" only filters real players; guests can't
+        // BE the viewer, so guest rows naturally stay in teammates.
         const teammates = allParticipants?.filter(
           part => part.team === myTeam && part.player_id !== playerIdToUse
         );
@@ -264,13 +273,17 @@ const MatchHistory = () => {
           team1_score: p.matches.team1_score,
           team2_score: p.matches.team2_score,
           my_team: myTeam,
-          partner_name: resolvePlayerName(teammates?.[0]?.profiles as any),
+          // resolveParticipantName handles both real profiles and
+          // guests (with "(Guest)" suffix), so guest rows now surface
+          // by their display_name instead of being labelled "Removed
+          // player" which was the visible bug.
+          partner_name: resolveParticipantName(teammates?.[0] as any),
           partner_id: teammates?.[0]?.player_id || "",
           partner_avatar_url: (teammates?.[0]?.profiles as any)?.avatar_url || null,
-          opponent1_name: resolvePlayerName(opponents?.[0]?.profiles as any),
+          opponent1_name: resolveParticipantName(opponents?.[0] as any),
           opponent1_id: opponents?.[0]?.player_id || "",
           opponent1_avatar_url: (opponents?.[0]?.profiles as any)?.avatar_url || null,
-          opponent2_name: opponents?.[1] ? resolvePlayerName(opponents[1].profiles as any) : "",
+          opponent2_name: opponents?.[1] ? resolveParticipantName(opponents[1] as any) : "",
           opponent2_id: opponents?.[1]?.player_id || "",
           opponent2_avatar_url: (opponents?.[1]?.profiles as any)?.avatar_url || null,
           rating_change: p.rating_change ?? null,
@@ -390,12 +403,15 @@ const MatchHistory = () => {
 
     const pendingMatchesWithDetails = await Promise.all(
       participantsData.map(async (p: any) => {
+        // Pending-matches query — same guest fix as the verified path above.
         const { data: allParticipants } = await supabase
           .from("match_participants")
           .select(`
             player_id,
+            guest_player_id,
             team,
-            profiles:profiles_public!match_participants_player_id_fkey(full_name, display_name, avatar_url)
+            profiles:profiles_public!match_participants_player_id_fkey(full_name, display_name, avatar_url),
+            guest:guest_players!match_participants_guest_player_id_fkey(display_name)
           `)
           .eq("match_id", p.match_id);
 
@@ -427,13 +443,17 @@ const MatchHistory = () => {
           team1_score: p.matches.team1_score,
           team2_score: p.matches.team2_score,
           my_team: myTeam,
-          partner_name: resolvePlayerName(teammates?.[0]?.profiles as any),
+          // resolveParticipantName handles both real profiles and
+          // guests (with "(Guest)" suffix), so guest rows now surface
+          // by their display_name instead of being labelled "Removed
+          // player" which was the visible bug.
+          partner_name: resolveParticipantName(teammates?.[0] as any),
           partner_id: teammates?.[0]?.player_id || "",
           partner_avatar_url: (teammates?.[0]?.profiles as any)?.avatar_url || null,
-          opponent1_name: resolvePlayerName(opponents?.[0]?.profiles as any),
+          opponent1_name: resolveParticipantName(opponents?.[0] as any),
           opponent1_id: opponents?.[0]?.player_id || "",
           opponent1_avatar_url: (opponents?.[0]?.profiles as any)?.avatar_url || null,
-          opponent2_name: opponents?.[1] ? resolvePlayerName(opponents[1].profiles as any) : "",
+          opponent2_name: opponents?.[1] ? resolveParticipantName(opponents[1] as any) : "",
           opponent2_id: opponents?.[1]?.player_id || "",
           opponent2_avatar_url: (opponents?.[1]?.profiles as any)?.avatar_url || null,
           rating_change: 0,
