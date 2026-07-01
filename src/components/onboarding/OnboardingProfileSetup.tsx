@@ -8,7 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { OnboardingLayout } from "./OnboardingLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { User, Upload, MapPin } from "lucide-react";
+import { User, Upload, MapPin, Trophy } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 import { US_STATE_CODES } from "@/lib/us-states";
 
@@ -33,6 +34,7 @@ export const OnboardingProfileSetup = ({
     avatar_url: "",
     town: "",
     state: "",
+    initial_self_rating: null as number | null,
   });
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -85,10 +87,10 @@ export const OnboardingProfileSetup = ({
 
     setSaving(true);
     try {
-      const updateData: Record<string, string> = {
+      const updateData: Record<string, string | number> = {
         display_name: formData.display_name.trim(),
       };
-      
+
       if (formData.avatar_url) {
         updateData.avatar_url = formData.avatar_url;
       }
@@ -97,6 +99,15 @@ export const OnboardingProfileSetup = ({
       }
       if (formData.state) {
         updateData.state = formData.state;
+      }
+      // Self-assessment: seed both the one-shot column (used as the
+      // starting rating in recalculate_all_ratings) and current_rating
+      // so the player sees the chosen value immediately instead of
+      // waiting for their first match to trigger a recalc.
+      if (formData.initial_self_rating != null) {
+        updateData.initial_self_rating = formData.initial_self_rating;
+        updateData.current_rating = formData.initial_self_rating;
+        updateData.week_start_rating = formData.initial_self_rating;
       }
 
       const { error } = await supabase
@@ -214,6 +225,54 @@ export const OnboardingProfileSetup = ({
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+          </div>
+
+          {/* Self-assessment */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium flex items-center gap-1.5">
+              <Trophy className="w-3.5 h-3.5" />
+              Your skill level <span className="text-muted-foreground">(optional)</span>
+            </Label>
+            <p className="text-xs text-muted-foreground -mt-1">
+              Helps us start you at the right rating. You can't change this later.
+            </p>
+            <div className="grid grid-cols-1 gap-2">
+              {[
+                { value: 2.5, label: "Just starting", hint: "New to the sport" },
+                { value: 3.0, label: "Recreational", hint: "Play for fun, still learning" },
+                { value: 3.5, label: "Intermediate", hint: "Comfortable with basic strategy" },
+                { value: 4.0, label: "Competitive", hint: "Play in leagues or tournaments" },
+                { value: 4.5, label: "Advanced", hint: "Consistent performer at high levels" },
+              ].map((opt) => {
+                const selected = formData.initial_self_rating === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        initial_self_rating: selected ? null : opt.value,
+                      }))
+                    }
+                    className={cn(
+                      "w-full text-left rounded-lg border px-3.5 py-2.5 transition-colors",
+                      selected
+                        ? "border-primary bg-primary/10"
+                        : "border-border hover:border-border/70 hover:bg-muted/40",
+                    )}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">{opt.label}</span>
+                      <span className="text-xs font-mono text-muted-foreground">
+                        {opt.value.toFixed(1)}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">{opt.hint}</p>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
