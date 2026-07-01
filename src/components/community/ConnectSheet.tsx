@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import {
   Search, UserPlus, Check, Clock, QrCode, Copy, Share2,
-  Sparkles, AtSign, Loader2, Users,
+  Sparkles, AtSign, Loader2, Users, X,
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
@@ -102,20 +102,31 @@ export function ConnectSheet({ open, onOpenChange }: ConnectSheetProps) {
           </SheetDescription>
         </SheetHeader>
 
+        {/* Tab order rationale — sequenced as the user would explore:
+              1. Suggested  — primary path, people we already know about
+              2. Search     — find by name when you have someone in mind
+              3. By handle  — exact lookup, secondary path
+              4. My code    — outbound share-out, last because it inverts intent
+            Labels are spelled out ("Suggested", "By handle") instead of
+            "For you" / "Enter" which were too clever and read as filler. */}
         <Tabs defaultValue="suggested" className="flex-1 flex flex-col min-h-0">
           <div className="px-5 pt-3">
-            <TabsList className="grid grid-cols-4 h-9 w-full">
-              <TabsTrigger value="suggested" className="text-xs">
-                <Sparkles className="h-3.5 w-3.5 mr-1" />For you
+            <TabsList className="grid grid-cols-4 h-10 w-full">
+              <TabsTrigger value="suggested" className="text-xs gap-1.5">
+                <Sparkles className="h-3.5 w-3.5" />
+                Suggested
               </TabsTrigger>
-              <TabsTrigger value="code" className="text-xs">
-                <QrCode className="h-3.5 w-3.5 mr-1" />My code
+              <TabsTrigger value="search" className="text-xs gap-1.5">
+                <Search className="h-3.5 w-3.5" />
+                Search
               </TabsTrigger>
-              <TabsTrigger value="enter" className="text-xs">
-                <AtSign className="h-3.5 w-3.5 mr-1" />Enter
+              <TabsTrigger value="enter" className="text-xs gap-1.5">
+                <AtSign className="h-3.5 w-3.5" />
+                By handle
               </TabsTrigger>
-              <TabsTrigger value="search" className="text-xs">
-                <Search className="h-3.5 w-3.5 mr-1" />Search
+              <TabsTrigger value="code" className="text-xs gap-1.5">
+                <QrCode className="h-3.5 w-3.5" />
+                My code
               </TabsTrigger>
             </TabsList>
           </div>
@@ -125,16 +136,16 @@ export function ConnectSheet({ open, onOpenChange }: ConnectSheetProps) {
               <SuggestionsPanel actionButton={actionButton} />
             </TabsContent>
 
-            <TabsContent value="code" className="m-0 p-5">
-              <MyCodePanel handle={myHandle} displayNameStr={displayName} />
+            <TabsContent value="search" className="m-0 p-5">
+              <ScopedSearchPanel actionButton={actionButton} />
             </TabsContent>
 
             <TabsContent value="enter" className="m-0 p-5">
               <EnterCodePanel actionButton={actionButton} />
             </TabsContent>
 
-            <TabsContent value="search" className="m-0 p-5">
-              <ScopedSearchPanel actionButton={actionButton} />
+            <TabsContent value="code" className="m-0 p-5">
+              <MyCodePanel handle={myHandle} displayNameStr={displayName} />
             </TabsContent>
           </div>
         </Tabs>
@@ -145,7 +156,7 @@ export function ConnectSheet({ open, onOpenChange }: ConnectSheetProps) {
 
 // ---------- Suggestions ----------
 function SuggestionsPanel({ actionButton }: { actionButton: (id: string) => JSX.Element }) {
-  const { suggestions, loading } = useFriendSuggestions();
+  const { suggestions, loading, dismissSuggestion } = useFriendSuggestions();
 
   if (loading) {
     return (
@@ -163,7 +174,7 @@ function SuggestionsPanel({ actionButton }: { actionButton: (id: string) => JSX.
         </div>
         <h3 className="text-base font-medium mb-1">No suggestions yet</h3>
         <p className="text-sm text-muted-foreground max-w-[280px]">
-          Play matches, join groups, or register for events — we'll suggest people from there.
+          Play matches, join a round robin, or share a group — we'll surface familiar players here.
         </p>
       </div>
     );
@@ -174,19 +185,36 @@ function SuggestionsPanel({ actionButton }: { actionButton: (id: string) => JSX.
       <p className="text-xs text-muted-foreground mb-2">
         People you've already crossed paths with on Pulse.
       </p>
-      {suggestions.map((s) => <SuggestionRow key={s.id} player={s} action={actionButton(s.id)} />)}
+      {suggestions.map((s) => (
+        <SuggestionRow
+          key={s.id}
+          player={s}
+          action={actionButton(s.id)}
+          onDismiss={() => dismissSuggestion(s.id)}
+        />
+      ))}
     </div>
   );
 }
 
-function SuggestionRow({ player, action }: { player: SuggestedFriend; action: JSX.Element }) {
+function SuggestionRow({
+  player,
+  action,
+  onDismiss,
+}: {
+  player: SuggestedFriend;
+  action: JSX.Element;
+  onDismiss: () => void;
+}) {
   const navigate = useNavigate();
   return (
-    <div className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border/30">
-      <button onClick={() => navigate(`/profile/${player.id}`)} aria-label="View profile">
-        <Avatar className="h-10 w-10">
+    <div className="flex items-center gap-2 p-3 rounded-xl bg-card border border-border/30">
+      <button onClick={() => navigate(`/profile/${player.id}`)} aria-label="View profile" className="shrink-0">
+        <Avatar className="h-10 w-10 ring-1 ring-border/40">
           <AvatarImage src={player.avatar_url || undefined} />
-          <AvatarFallback>{getInitials(displayName(player))}</AvatarFallback>
+          <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+            {getInitials(displayName(player))}
+          </AvatarFallback>
         </Avatar>
       </button>
       <button
@@ -198,12 +226,23 @@ function SuggestionRow({ player, action }: { player: SuggestedFriend; action: JS
           <span className="truncate">{player.reason}</span>
           {player.current_rating && (
             <>
-              <span>·</span>
+              <span className="opacity-50">·</span>
               <span>{player.current_rating.toFixed(2)}</span>
             </>
           )}
         </div>
       </button>
+      {/* Dismiss — quiet secondary affordance sitting left of the
+          primary Add CTA so the eye still lands on Add first. */}
+      <Button
+        size="icon"
+        variant="ghost"
+        className="h-8 w-8 text-muted-foreground/60 hover:text-muted-foreground shrink-0"
+        onClick={onDismiss}
+        aria-label={`Dismiss ${displayName(player)}`}
+      >
+        <X className="h-4 w-4" />
+      </Button>
       {action}
     </div>
   );

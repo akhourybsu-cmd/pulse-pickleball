@@ -46,7 +46,7 @@ export default function Friends() {
     removeFriend,
     sendFriendRequest,
   } = useFriends();
-  const { suggestions, loading: suggestionsLoading, refetch: refetchSuggestions } = useFriendSuggestions();
+  const { suggestions, loading: suggestionsLoading, refetch: refetchSuggestions, dismissSuggestion } = useFriendSuggestions();
 
   const openDM = async (userId: string) => {
     try {
@@ -263,10 +263,12 @@ export default function Friends() {
               />
             ) : (
               suggestions.map(s => (
-                <div key={s.id} className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border/40">
-                  <Avatar className="h-11 w-11">
+                <div key={s.id} className="flex items-center gap-2 p-3 rounded-xl bg-card border border-border/40">
+                  <Avatar className="h-11 w-11 ring-1 ring-border/40 shrink-0">
                     <AvatarImage src={s.avatar_url || undefined} />
-                    <AvatarFallback>{initials(s.display_name || s.full_name)}</AvatarFallback>
+                    <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                      {initials(s.display_name || s.full_name)}
+                    </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium truncate">
@@ -274,8 +276,21 @@ export default function Friends() {
                     </div>
                     <div className="text-xs text-muted-foreground truncate">{s.reason}</div>
                   </div>
+                  {/* Dismiss — quiet, secondary affordance. Sits to the
+                      left of the primary Add CTA so the eye lands on
+                      Add first; X is for "not interested". */}
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-9 w-9 text-muted-foreground/60 hover:text-muted-foreground shrink-0"
+                    onClick={() => dismissSuggestion(s.id)}
+                    aria-label={`Dismiss ${s.display_name || s.full_name || 'this suggestion'}`}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
                   <Button
                     size="sm"
+                    className="shrink-0"
                     onClick={async () => {
                       const ok = await sendFriendRequest(s.id);
                       if (ok) refetchSuggestions();
