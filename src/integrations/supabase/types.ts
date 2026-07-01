@@ -1488,6 +1488,27 @@ export type Database = {
           },
         ]
       }
+      friend_suggestion_dismissals: {
+        Row: {
+          created_at: string
+          dismissed_user_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          dismissed_user_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          dismissed_user_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       friendships: {
         Row: {
           accepted_at: string | null
@@ -6577,6 +6598,10 @@ export type Database = {
       delete_old_court_posts: { Args: never; Returns: undefined }
       delete_round_robin_event: {
         Args: { p_event_id: string }
+        Returns: undefined
+      }
+      dismiss_friend_suggestion: {
+        Args: { target_user_id: string }
         Returns: undefined
       }
       enforce_rpc_rate_limit: {
