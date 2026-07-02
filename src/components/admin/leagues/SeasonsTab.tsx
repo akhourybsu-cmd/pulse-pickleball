@@ -16,15 +16,16 @@ import { Plus, Calendar as CalendarIcon } from "lucide-react";
 import type { League, LeagueSeason, SeasonStatus } from "@/lib/leagues/types";
 import { logLeagueAction } from "@/lib/leagues/audit";
 import { cn } from "@/lib/utils";
-import { EmptyState, TabSkeleton } from "./_shared";
+import { EmptyState, TabSkeleton, LeagueTabProps } from "./_shared";
 
-export function SeasonsTab({ league }: { league: League }) {
+export function SeasonsTab({ league, dataVersion, onMutated }: LeagueTabProps) {
   const [seasons, setSeasons] = useState<LeagueSeason[]>([]);
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<LeagueSeason | null>(null);
 
-  useEffect(() => { void refresh(); /* eslint-disable-next-line */ }, [league.id]);
+  // dataVersion in deps → sibling-tab mutations trigger a refetch.
+  useEffect(() => { void refresh(); /* eslint-disable-next-line */ }, [league.id, dataVersion]);
 
   const refresh = async () => {
     setLoading(true);
@@ -51,7 +52,7 @@ export function SeasonsTab({ league }: { league: League }) {
           <SeasonEditor
             league={league}
             initial={null}
-            onDone={async () => { setCreateOpen(false); await refresh(); }}
+            onDone={async () => { setCreateOpen(false); await refresh(); onMutated(); }}
           />
         </Dialog>
       </div>
@@ -99,7 +100,7 @@ export function SeasonsTab({ league }: { league: League }) {
         <SeasonEditor
           league={league}
           initial={editing}
-          onDone={async () => { setEditing(null); await refresh(); }}
+          onDone={async () => { setEditing(null); await refresh(); onMutated(); }}
         />
       </Dialog>
     </div>

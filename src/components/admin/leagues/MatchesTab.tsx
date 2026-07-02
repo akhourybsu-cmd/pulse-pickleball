@@ -20,7 +20,7 @@ import type {
 import { logLeagueAction } from "@/lib/leagues/audit";
 import { resolvePlayerName } from "@/lib/matchDisplay";
 import { cn } from "@/lib/utils";
-import { EmptyState, TabSkeleton } from "./_shared";
+import { EmptyState, TabSkeleton, LeagueTabProps } from "./_shared";
 
 interface PlayerRow {
   id: string;
@@ -40,7 +40,7 @@ const STATUS_TONE: Record<LeagueMatchStatus, string> = {
   forfeit:         "bg-slate-500/15 text-slate-500",
 };
 
-export function MatchesTab({ league }: { league: League }) {
+export function MatchesTab({ league, dataVersion, onMutated }: LeagueTabProps) {
   const [seasons, setSeasons] = useState<LeagueSeason[]>([]);
   const [seasonId, setSeasonId] = useState<string | "">("");
   const [sessions, setSessions] = useState<LeagueSession[]>([]);
@@ -63,13 +63,13 @@ export function MatchesTab({ league }: { league: League }) {
       setLoading(false);
     })();
     // eslint-disable-next-line
-  }, [league.id]);
+  }, [league.id, dataVersion]);
 
   useEffect(() => {
     if (!seasonId) return;
     void reload();
     // eslint-disable-next-line
-  }, [seasonId]);
+  }, [seasonId, dataVersion]);
 
   const reload = async () => {
     const [{ data: sess }, { data: t }, { data: mt }, { data: mems }] = await Promise.all([
@@ -142,7 +142,7 @@ export function MatchesTab({ league }: { league: League }) {
               league={league} seasonId={seasonId}
               sessions={sessions} teams={teams} members={members} profilesById={profilesById}
               initial={null}
-              onDone={async () => { setCreateOpen(false); await reload(); }}
+              onDone={async () => { setCreateOpen(false); await reload(); onMutated(); }}
             />
           )}
         </Dialog>
@@ -242,7 +242,7 @@ export function MatchesTab({ league }: { league: League }) {
             league={league} seasonId={seasonId as string}
             sessions={sessions} teams={teams} members={members} profilesById={profilesById}
             initial={editing}
-            onDone={async () => { setEditing(null); await reload(); }}
+            onDone={async () => { setEditing(null); await reload(); onMutated(); }}
           />
         </Dialog>
       )}

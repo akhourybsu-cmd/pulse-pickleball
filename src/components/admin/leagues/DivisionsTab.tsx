@@ -15,9 +15,9 @@ import {
 import { Plus, ArrowUp, Layers } from "lucide-react";
 import type { League, LeagueSeason, LeagueDivision } from "@/lib/leagues/types";
 import { logLeagueAction } from "@/lib/leagues/audit";
-import { EmptyState, TabSkeleton } from "./_shared";
+import { EmptyState, TabSkeleton, LeagueTabProps } from "./_shared";
 
-export function DivisionsTab({ league }: { league: League }) {
+export function DivisionsTab({ league, dataVersion, onMutated }: LeagueTabProps) {
   const [seasons, setSeasons] = useState<LeagueSeason[]>([]);
   const [seasonId, setSeasonId] = useState<string | "">("");
   const [divisions, setDivisions] = useState<LeagueDivision[]>([]);
@@ -25,6 +25,8 @@ export function DivisionsTab({ league }: { league: League }) {
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<LeagueDivision | null>(null);
 
+  // Season list refetch — subscribes to dataVersion so newly-created
+  // seasons from SeasonsTab appear immediately.
   useEffect(() => {
     (async () => {
       const { data } = await supabase
@@ -36,7 +38,7 @@ export function DivisionsTab({ league }: { league: League }) {
       setLoading(false);
     })();
     // eslint-disable-next-line
-  }, [league.id]);
+  }, [league.id, dataVersion]);
 
   useEffect(() => {
     if (!seasonId) { setDivisions([]); return; }
@@ -47,7 +49,7 @@ export function DivisionsTab({ league }: { league: League }) {
       if (error) toast.error(error.message);
       setDivisions((data ?? []) as unknown as LeagueDivision[]);
     })();
-  }, [seasonId]);
+  }, [seasonId, dataVersion]);
 
   if (loading) return <TabSkeleton lines={2} />;
 
@@ -89,6 +91,7 @@ export function DivisionsTab({ league }: { league: League }) {
                   .from("league_divisions" as never).select("*")
                   .eq("season_id", seasonId).order("skill_min", { ascending: true });
                 setDivisions((data ?? []) as unknown as LeagueDivision[]);
+                onMutated();
               }}
             />
           )}
@@ -134,6 +137,7 @@ export function DivisionsTab({ league }: { league: League }) {
                 .from("league_divisions" as never).select("*")
                 .eq("season_id", seasonId).order("skill_min", { ascending: true });
               setDivisions((data ?? []) as unknown as LeagueDivision[]);
+              onMutated();
             }}
           />
         )}

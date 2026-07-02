@@ -20,10 +20,11 @@ import type {
 import { logLeagueAction } from "@/lib/leagues/audit";
 
 export function OverviewTab({
-  league, onRefresh,
+  league, onRefresh, onMutated,
 }: {
   league: League;
   onRefresh: () => Promise<void> | void;
+  onMutated: () => void;
 }) {
   const [name, setName] = useState(league.name);
   const [description, setDescription] = useState(league.description ?? "");
@@ -84,6 +85,7 @@ export function OverviewTab({
     toast.success("League updated");
     setSaving(false);
     await onRefresh();
+    onMutated();
   };
 
   const archive = async () => {
@@ -108,6 +110,7 @@ export function OverviewTab({
     toast.success("League archived");
     setSaving(false);
     await onRefresh();
+    onMutated();
   };
 
   return (
