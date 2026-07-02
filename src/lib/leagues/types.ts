@@ -141,6 +141,8 @@ export interface LeagueMatch {
   linked_match_id: string | null;
   status: LeagueMatchStatus;
   rating_status: LeagueMatchRatingStatus;
+  team_a_score: number | null;
+  team_b_score: number | null;
   created_at: string;
   updated_at: string;
 }

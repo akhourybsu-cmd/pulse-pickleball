@@ -11,7 +11,8 @@ import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Search, UserX } from "lucide-react";
+import { Plus, Search, UserX, Users } from "lucide-react";
+import { EmptyState, TabSkeleton } from "./_shared";
 import type {
   League, LeagueSeason, LeagueDivision, LeagueMember, MemberRole,
   MemberStatus,
@@ -79,12 +80,14 @@ export function MembersTab({ league }: { league: League }) {
     }
   };
 
-  if (loading) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  if (loading) return <TabSkeleton lines={3} />;
   if (seasons.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-        Create a season first — members are scoped to a season.
-      </div>
+      <EmptyState
+        icon={<Users className="w-5 h-5" />}
+        title="Create a season first"
+        desc="Members are scoped to a season so history stays clean."
+      />
     );
   }
 
@@ -116,9 +119,12 @@ export function MembersTab({ league }: { league: League }) {
       </div>
 
       {members.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-          No members in this season.
-        </div>
+        <EmptyState
+          icon={<Users className="w-5 h-5" />}
+          title="No members in this season"
+          desc="Search for existing players and add them as league members."
+          action={{ label: "Add member", onClick: () => setAddOpen(true) }}
+        />
       ) : (
         <ul className="space-y-2">
           {members.map((m) => {

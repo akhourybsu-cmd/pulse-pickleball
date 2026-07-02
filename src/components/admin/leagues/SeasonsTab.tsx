@@ -16,6 +16,7 @@ import { Plus, Calendar as CalendarIcon } from "lucide-react";
 import type { League, LeagueSeason, SeasonStatus } from "@/lib/leagues/types";
 import { logLeagueAction } from "@/lib/leagues/audit";
 import { cn } from "@/lib/utils";
+import { EmptyState, TabSkeleton } from "./_shared";
 
 export function SeasonsTab({ league }: { league: League }) {
   const [seasons, setSeasons] = useState<LeagueSeason[]>([]);
@@ -55,11 +56,16 @@ export function SeasonsTab({ league }: { league: League }) {
         </Dialog>
       </div>
 
-      {!loading && seasons.length === 0 && (
-        <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-          No seasons yet.
-        </div>
-      )}
+      {loading ? (
+        <TabSkeleton lines={2} />
+      ) : seasons.length === 0 ? (
+        <EmptyState
+          icon={<CalendarIcon className="w-5 h-5" />}
+          title="No seasons yet"
+          desc="Start with a season — divisions, members, teams, and sessions all live inside one."
+          action={{ label: "New season", onClick: () => setCreateOpen(true) }}
+        />
+      ) : null}
 
       <ul className="space-y-2">
         {seasons.map((s) => (

@@ -12,9 +12,10 @@ import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, ArrowUp } from "lucide-react";
+import { Plus, ArrowUp, Layers } from "lucide-react";
 import type { League, LeagueSeason, LeagueDivision } from "@/lib/leagues/types";
 import { logLeagueAction } from "@/lib/leagues/audit";
+import { EmptyState, TabSkeleton } from "./_shared";
 
 export function DivisionsTab({ league }: { league: League }) {
   const [seasons, setSeasons] = useState<LeagueSeason[]>([]);
@@ -48,14 +49,15 @@ export function DivisionsTab({ league }: { league: League }) {
     })();
   }, [seasonId]);
 
-  if (loading) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  if (loading) return <TabSkeleton lines={2} />;
 
   if (seasons.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-        <ArrowUp className="w-5 h-5 mx-auto mb-2" />
-        Create a season on the Seasons tab first — divisions live inside a season.
-      </div>
+      <EmptyState
+        icon={<ArrowUp className="w-5 h-5" />}
+        title="Create a season first"
+        desc="Divisions live inside a season. Head to the Seasons tab to add one."
+      />
     );
   }
 
@@ -94,9 +96,12 @@ export function DivisionsTab({ league }: { league: League }) {
       </div>
 
       {divisions.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-          No divisions in this season yet.
-        </div>
+        <EmptyState
+          icon={<Layers className="w-5 h-5" />}
+          title="No divisions in this season"
+          desc="Divisions let you split players by skill range."
+          action={{ label: "New division", onClick: () => setCreateOpen(true) }}
+        />
       ) : (
         <ul className="space-y-2">
           {divisions.map((d) => (
