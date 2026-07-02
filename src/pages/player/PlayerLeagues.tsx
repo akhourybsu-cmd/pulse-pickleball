@@ -1,11 +1,14 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ListChecks, CalendarDays, Trophy, ChevronRight, MapPin,
-  Shuffle, Zap, Sparkles, Layers,
+  Shuffle, Zap, Sparkles, Layers, KeyRound,
 } from "lucide-react";
 import { useMyLeagues } from "@/hooks/useMyLeagues";
 import type { LeagueType } from "@/lib/leagues/types";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { JoinByCodeDialog } from "@/components/leagues/JoinByCodeDialog";
 
 const TYPE_META: Record<LeagueType, { stripe: string; icon: typeof Trophy; label: string }> = {
   singles:  { stripe: "bg-blue-500",    icon: Zap,      label: "Singles"  },
@@ -18,6 +21,7 @@ const TYPE_META: Record<LeagueType, { stripe: string; icon: typeof Trophy; label
 export default function PlayerLeagues() {
   const navigate = useNavigate();
   const { rows, loading, error } = useMyLeagues();
+  const [joinOpen, setJoinOpen] = useState(false);
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-2xl space-y-4">
@@ -25,12 +29,20 @@ export default function PlayerLeagues() {
         <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
           <ListChecks className="w-4 h-4 text-primary" />
         </div>
-        <div>
+        <div className="min-w-0 flex-1">
           <h1 className="text-xl font-bold leading-tight">My Leagues</h1>
           <p className="text-xs text-muted-foreground">
             Leagues you're actively part of
           </p>
         </div>
+        <Button
+          size="sm" variant="outline"
+          onClick={() => setJoinOpen(true)}
+          className="shrink-0"
+        >
+          <KeyRound className="w-4 h-4 mr-1.5" />
+          Join with code
+        </Button>
       </div>
 
       {loading ? (
@@ -47,11 +59,19 @@ export default function PlayerLeagues() {
           <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
             <Trophy className="w-6 h-6" />
           </div>
-          <p className="text-sm font-semibold">No league play yet</p>
+          <p className="text-sm font-semibold">No leagues yet</p>
           <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
-            When an organizer adds you to a league, it'll show up here.
-            League play is invite-based for now.
+            Got an invite code from an organizer? Enter it below to join.
+            Otherwise, your leagues will appear here once an admin adds you.
           </p>
+          <Button
+            size="sm"
+            onClick={() => setJoinOpen(true)}
+            className="mt-4"
+          >
+            <KeyRound className="w-4 h-4 mr-1.5" />
+            Enter invite code
+          </Button>
         </div>
       ) : (
         <ul className="space-y-2.5">
@@ -113,6 +133,8 @@ export default function PlayerLeagues() {
           })}
         </ul>
       )}
+
+      <JoinByCodeDialog open={joinOpen} onOpenChange={setJoinOpen} />
     </div>
   );
 }
