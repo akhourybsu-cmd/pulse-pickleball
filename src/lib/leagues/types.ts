@@ -44,8 +44,20 @@ export interface League {
   league_type: LeagueType;
   rating_eligible: boolean;
   guests_allowed: boolean;
+  invite_code: string | null;
   created_at: string;
   updated_at: string;
+}
+
+/** Teaser shape returned by the find_league_by_invite_code RPC. */
+export interface LeagueTeaser {
+  id: string;
+  name: string;
+  description: string | null;
+  location: string | null;
+  league_type: LeagueType;
+  visibility: LeagueVisibility;
+  guests_allowed: boolean;
 }
 
 export interface LeagueSeason {

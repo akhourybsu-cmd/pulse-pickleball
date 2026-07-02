@@ -18,6 +18,7 @@ import type {
   League, LeagueStatus, LeagueType, LeagueVisibility,
 } from "@/lib/leagues/types";
 import { logLeagueAction } from "@/lib/leagues/audit";
+import { InviteCodeCard } from "./InviteCodeCard";
 
 export function OverviewTab({
   league, onRefresh, onMutated,
@@ -234,6 +235,11 @@ export function OverviewTab({
           </AlertDialog>
         )}
       </div>
+
+      {/* Invite code — separated from the main league form since it has
+          its own lifecycle (set / regenerate / clear) and doesn't
+          participate in the dirty/save pattern above. */}
+      <InviteCodeCard league={league} onMutated={onMutated} />
     </div>
   );
 }
