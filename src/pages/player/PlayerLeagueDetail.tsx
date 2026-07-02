@@ -1,15 +1,12 @@
-import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
   ArrowLeft, MapPin, Trophy, Shuffle, Zap, Sparkles, Layers,
-  CalendarDays, Users, UsersRound,
+  CalendarDays, Users, UsersRound, CalendarClock, Crown,
+  Swords,
 } from "lucide-react";
-import type {
-  League, LeagueMember, LeagueSeason, LeagueDivision, LeagueTeam,
-  LeagueType,
-} from "@/lib/leagues/types";
+import type { LeagueType, LeagueMatchStatus } from "@/lib/leagues/types";
+import { useLeagueDetailForPlayer } from "@/hooks/useLeagueDetailForPlayer";
 import { cn } from "@/lib/utils";
 
 const TYPE_META: Record<LeagueType, { stripe: string; pill: string; icon: typeof Trophy; label: string }> = {
@@ -40,73 +37,24 @@ const TYPE_META: Record<LeagueType, { stripe: string; pill: string; icon: typeof
   },
 };
 
+const MATCH_STATUS_TONE: Record<LeagueMatchStatus, string> = {
+  scheduled:       "bg-muted text-muted-foreground",
+  in_progress:     "bg-primary/15 text-primary",
+  score_submitted: "bg-amber-500/15 text-amber-600",
+  verified:        "bg-emerald-500/15 text-emerald-500",
+  disputed:        "bg-destructive/15 text-destructive",
+  canceled:        "bg-slate-500/15 text-slate-500",
+  forfeit:         "bg-slate-500/15 text-slate-500",
+};
+
 export default function PlayerLeagueDetail() {
   const { leagueId } = useParams<{ leagueId: string }>();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-  const [league, setLeague] = useState<League | null>(null);
-  const [membership, setMembership] = useState<LeagueMember | null>(null);
-  const [season, setSeason] = useState<LeagueSeason | null>(null);
-  const [division, setDivision] = useState<LeagueDivision | null>(null);
-  const [teams, setTeams] = useState<LeagueTeam[]>([]);
-
-  useEffect(() => {
-    if (!leagueId) return;
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        navigate("/auth");
-        return;
-      }
-
-      // RLS ensures we only get the league if we can view it.
-      const { data: leagueData } = await supabase
-        .from("leagues" as never)
-        .select("*").eq("id", leagueId).maybeSingle();
-      if (!leagueData) {
-        // Either doesn't exist, is admin_only, or user isn't a member.
-        if (!cancelled) { setLeague(null); setLoading(false); }
-        return;
-      }
-      const l = leagueData as unknown as League;
-
-      const [{ data: memRow }, { data: teamsData }] = await Promise.all([
-        supabase.from("league_members" as never).select("*")
-          .eq("league_id", l.id).eq("user_id", user.id).eq("status", "active")
-          .maybeSingle(),
-        // Player-scoped team policy — this returns only teams the user
-        // is on/captains. Others are invisible.
-        supabase.from("league_teams" as never).select("*")
-          .eq("league_id", l.id),
-      ]);
-      const m = (memRow ?? null) as unknown as LeagueMember | null;
-
-      let s: LeagueSeason | null = null;
-      let d: LeagueDivision | null = null;
-      if (m?.season_id) {
-        const { data } = await supabase.from("league_seasons" as never)
-          .select("*").eq("id", m.season_id).maybeSingle();
-        s = (data ?? null) as unknown as LeagueSeason | null;
-      }
-      if (m?.division_id) {
-        const { data } = await supabase.from("league_divisions" as never)
-          .select("*").eq("id", m.division_id).maybeSingle();
-        d = (data ?? null) as unknown as LeagueDivision | null;
-      }
-
-      if (!cancelled) {
-        setLeague(l);
-        setMembership(m);
-        setSeason(s);
-        setDivision(d);
-        setTeams((teamsData ?? []) as unknown as LeagueTeam[]);
-        setLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [leagueId, navigate]);
+  const detail = useLeagueDetailForPlayer(leagueId);
+  const {
+    league, membership, season, division, myTeams,
+    teammates, matches, teamsById, loading,
+  } = detail;
 
   if (loading) {
     return (
@@ -136,6 +84,33 @@ export default function PlayerLeagueDetail() {
   const meta = TYPE_META[league.league_type];
   const Icon = meta.icon;
 
+  // Split matches into upcoming (no result yet) and past (either
+  // scored or in a terminal non-scored state like canceled/forfeit).
+  const now = Date.now();
+  const upcoming = matches.filter((m) => {
+    if (m.team_a_score !== null && m.team_b_score !== null) return false;
+    if (m.status === "canceled" || m.status === "forfeit") return false;
+    if (m.scheduled_time && new Date(m.scheduled_time).getTime() < now - 24 * 3600 * 1000) {
+      return false;
+    }
+    return true;
+  });
+  const past = matches
+    .filter((m) => !upcoming.includes(m))
+    .sort((a, b) => {
+      const ta = a.scheduled_time ? new Date(a.scheduled_time).getTime() : 0;
+      const tb = b.scheduled_time ? new Date(b.scheduled_time).getTime() : 0;
+      return tb - ta;
+    });
+
+  // Group teammates by team_id — a player can be on more than one team.
+  const teammatesByTeam = new Map<string, typeof teammates>();
+  teammates.forEach((t) => {
+    const arr = teammatesByTeam.get(t.team_id) ?? [];
+    arr.push(t);
+    teammatesByTeam.set(t.team_id, arr);
+  });
+
   return (
     <div className="container mx-auto px-4 py-5 max-w-3xl space-y-4">
       <Button
@@ -146,7 +121,7 @@ export default function PlayerLeagueDetail() {
         My leagues
       </Button>
 
-      {/* Sporty hero — same visual language as the admin detail page */}
+      {/* Sporty hero */}
       <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-br from-[#0B171F] via-[#142029] to-[#1a2d38]">
         <div className={cn("absolute top-0 bottom-0 left-0 w-1.5", meta.stripe)} aria-hidden />
         <div className="absolute inset-0 opacity-[0.04] pointer-events-none"
@@ -187,44 +162,128 @@ export default function PlayerLeagueDetail() {
         </div>
       </div>
 
-      {/* My info card */}
+      {/* Your spot */}
       <div className="rounded-xl border border-border/70 bg-card p-4">
         <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
           Your spot in this league
         </h2>
         <div className="grid gap-3 sm:grid-cols-2">
-          <InfoRow
-            icon={<CalendarDays className="w-4 h-4" />}
-            label="Season"
-            value={season?.name ?? "Not assigned"}
-          />
-          <InfoRow
-            icon={<Users className="w-4 h-4" />}
-            label="Division"
-            value={division?.name ?? "Not assigned"}
-          />
-          <InfoRow
-            icon={<Trophy className="w-4 h-4" />}
-            label="Role"
-            value={membership?.role ?? "player"}
-          />
-          <InfoRow
-            icon={<UsersRound className="w-4 h-4" />}
-            label="Teams"
-            value={teams.length === 0
-              ? "Not on a team yet"
-              : teams.map((t) => t.name).join(", ")}
-          />
+          <InfoRow icon={<CalendarDays className="w-4 h-4" />} label="Season"
+                   value={season?.name ?? "Not assigned"} />
+          <InfoRow icon={<Users className="w-4 h-4" />} label="Division"
+                   value={division?.name ?? "Not assigned"} />
+          <InfoRow icon={<Trophy className="w-4 h-4" />} label="Role"
+                   value={membership?.role ?? "player"} />
+          <InfoRow icon={<UsersRound className="w-4 h-4" />} label="Teams"
+                   value={myTeams.length === 0
+                     ? "Not on a team yet"
+                     : myTeams.map((t) => t.name).join(", ")} />
         </div>
       </div>
 
-      {/* Placeholder for future: match schedule, standings */}
-      <div className="rounded-xl border border-dashed border-border p-5 text-center">
-        <p className="text-xs text-muted-foreground">
-          Match schedules and standings will appear here as league play
-          begins.
-        </p>
+      {/* Teammates — one section per team the player is on */}
+      {myTeams.length > 0 && (
+        <div className="rounded-xl border border-border/70 bg-card p-4 space-y-4">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+            <UsersRound className="w-3.5 h-3.5" />
+            Team roster
+          </h2>
+          {myTeams.map((team) => {
+            const roster = teammatesByTeam.get(team.id) ?? [];
+            return (
+              <div key={team.id} className="space-y-2">
+                {myTeams.length > 1 && (
+                  <div className="text-sm font-semibold">{team.name}</div>
+                )}
+                {roster.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    Just you on the roster so far.
+                  </p>
+                ) : (
+                  <ul className="grid gap-2 sm:grid-cols-2">
+                    {roster
+                      // Show captain first, then me, then others alphabetically.
+                      .sort((a, b) => {
+                        if (a.is_captain !== b.is_captain) return a.is_captain ? -1 : 1;
+                        if (a.is_me !== b.is_me) return a.is_me ? -1 : 1;
+                        return a.display_name.localeCompare(b.display_name);
+                      })
+                      .map((tm) => (
+                        <li
+                          key={tm.team_member_id}
+                          className={cn(
+                            "flex items-center gap-2.5 rounded-lg border border-border/70 bg-background/50 px-3 py-2",
+                            tm.is_me && "border-primary/40 bg-primary/5",
+                          )}
+                        >
+                          <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0 overflow-hidden">
+                            {tm.avatar_url ? (
+                              <img src={tm.avatar_url} alt="" className="h-full w-full object-cover" />
+                            ) : (
+                              <span className="text-[10px] font-bold text-muted-foreground">
+                                {tm.display_name.split(/\s+/).slice(0, 2).map((p) => p[0]).join("").toUpperCase() || "?"}
+                              </span>
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className="text-sm font-medium truncate">
+                                {tm.is_me ? "You" : tm.display_name}
+                              </span>
+                              {tm.is_captain && (
+                                <Crown className="w-3.5 h-3.5 text-amber-500 shrink-0" aria-label="Captain" />
+                              )}
+                            </div>
+                            {tm.role !== "player" && (
+                              <div className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground">
+                                {tm.role}
+                              </div>
+                            )}
+                          </div>
+                        </li>
+                      ))}
+                  </ul>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Upcoming matches */}
+      <div className="rounded-xl border border-border/70 bg-card p-4">
+        <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-1.5">
+          <CalendarClock className="w-3.5 h-3.5" />
+          Upcoming matches
+        </h2>
+        {upcoming.length === 0 ? (
+          <p className="text-xs text-muted-foreground">
+            No upcoming matches yet. Your organizer will schedule matches as
+            the season gets going.
+          </p>
+        ) : (
+          <ul className="space-y-2">
+            {upcoming.map((m) => (
+              <MatchRow key={m.id} match={m} teamsById={teamsById} />
+            ))}
+          </ul>
+        )}
       </div>
+
+      {/* Past matches (only if any) */}
+      {past.length > 0 && (
+        <div className="rounded-xl border border-border/70 bg-card p-4">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-1.5">
+            <Swords className="w-3.5 h-3.5" />
+            Past matches
+          </h2>
+          <ul className="space-y-2">
+            {past.map((m) => (
+              <MatchRow key={m.id} match={m} teamsById={teamsById} />
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
@@ -246,5 +305,75 @@ function InfoRow({
         <div className="text-sm font-medium truncate">{value}</div>
       </div>
     </div>
+  );
+}
+
+function MatchRow({
+  match, teamsById,
+}: {
+  match: import("@/lib/leagues/types").LeagueMatch;
+  teamsById: Record<string, import("@/lib/leagues/types").LeagueTeam>;
+}) {
+  const teamA = match.team_a_id ? teamsById[match.team_a_id] : null;
+  const teamB = match.team_b_id ? teamsById[match.team_b_id] : null;
+  const scoreShown =
+    match.team_a_score !== null && match.team_b_score !== null;
+  const aWon = scoreShown && (match.team_a_score ?? 0) > (match.team_b_score ?? 0);
+  const bWon = scoreShown && (match.team_b_score ?? 0) > (match.team_a_score ?? 0);
+
+  return (
+    <li className="rounded-lg border border-border/70 bg-background/50 overflow-hidden">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-muted/30 border-b border-border/40">
+        <div className="flex items-center gap-2 flex-wrap text-[10px] text-muted-foreground">
+          <span className={cn(
+            "font-bold uppercase tracking-wider px-1.5 py-0.5 rounded",
+            MATCH_STATUS_TONE[match.status],
+          )}>{match.status.replace("_", " ")}</span>
+          {match.scheduled_time && (
+            <span className="inline-flex items-center gap-1">
+              <CalendarClock className="w-3 h-3" />
+              {new Date(match.scheduled_time).toLocaleString(undefined, {
+                month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
+              })}
+            </span>
+          )}
+          {match.court_number && <span>· Court {match.court_number}</span>}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-4 py-3">
+        <div className={cn(
+          "text-sm truncate text-right",
+          aWon ? "font-bold text-primary" : "font-medium",
+        )}>
+          {teamA?.name ?? (match.team_a_id ? "Opponent" : "TBD")}
+        </div>
+        <div className="flex items-center gap-2 font-black tabular-nums">
+          {scoreShown ? (
+            <>
+              <span className={cn(
+                "text-xl leading-none",
+                aWon ? "text-primary" : "text-muted-foreground",
+              )}>{match.team_a_score}</span>
+              <span className="text-muted-foreground text-xs font-bold">–</span>
+              <span className={cn(
+                "text-xl leading-none",
+                bWon ? "text-primary" : "text-muted-foreground",
+              )}>{match.team_b_score}</span>
+            </>
+          ) : (
+            <span className="text-xs uppercase tracking-wider text-muted-foreground font-bold">
+              vs
+            </span>
+          )}
+        </div>
+        <div className={cn(
+          "text-sm truncate text-left",
+          bWon ? "font-bold text-primary" : "font-medium",
+        )}>
+          {teamB?.name ?? (match.team_b_id ? "Opponent" : "TBD")}
+        </div>
+      </div>
+    </li>
   );
 }
