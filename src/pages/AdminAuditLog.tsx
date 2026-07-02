@@ -6,8 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { 
-  ArrowLeft,
+import {
   Shield,
   Search,
   Calendar,
@@ -16,8 +15,7 @@ import {
   Filter
 } from "lucide-react";
 import { toast } from "sonner";
-import { ThemeToggle } from "@/components/ThemeToggle";
-import { Footer } from "@/components/Footer";
+import { AdminLayout } from "@/components/admin/AdminLayout";
 import {
   Select,
   SelectContent,
@@ -180,33 +178,19 @@ export default function AdminAuditLog() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-muted-foreground">Loading audit logs...</p>
-      </div>
+      <AdminLayout title="Admin Audit Log">
+        <div className="min-h-[40vh] flex items-center justify-center">
+          <p className="text-muted-foreground">Loading audit logs…</p>
+        </div>
+      </AdminLayout>
     );
   }
 
-  if (!isAdmin) {
-    return null;
-  }
+  if (!isAdmin) return null;
 
   return (
-    <div className="min-h-screen bg-background">
-      <nav className="border-b bg-secondary">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={() => navigate("/admin")}
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Admin
-          </Button>
-          <ThemeToggle />
-        </div>
-      </nav>
-
-      <div className="container mx-auto px-4 py-8 space-y-6">
+    <AdminLayout title="Admin Audit Log">
+      <div className="container mx-auto px-4 py-6 space-y-6">
         <div className="space-y-2">
           <div className="flex items-center gap-3">
             <Shield className="w-8 h-8 text-primary" />
@@ -336,8 +320,6 @@ export default function AdminAuditLog() {
           </Card>
         )}
       </div>
-
-      <Footer />
-    </div>
+    </AdminLayout>
   );
 }

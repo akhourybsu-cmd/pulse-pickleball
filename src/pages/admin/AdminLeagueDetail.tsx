@@ -5,9 +5,11 @@ import { isPlatformAdmin } from "@/lib/permissions";
 import { toast } from "sonner";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import type { League } from "@/lib/leagues/types";
-import { CalendarDays, Users, UsersRound, CalendarClock } from "lucide-react";
+import type { League, LeagueType } from "@/lib/leagues/types";
+import {
+  CalendarDays, Users, UsersRound, CalendarClock,
+  Trophy, MapPin, Shuffle, Layers, Sparkles, Zap,
+} from "lucide-react";
 import { OverviewTab } from "@/components/admin/leagues/OverviewTab";
 import { SeasonsTab } from "@/components/admin/leagues/SeasonsTab";
 import { DivisionsTab } from "@/components/admin/leagues/DivisionsTab";
@@ -92,57 +94,78 @@ export default function AdminLeagueDetail() {
     );
   }
 
+  const typeAccent = TYPE_META[league.league_type];
+  const TypeIcon = typeAccent.icon;
+
   return (
     <AdminLayout title={league.name}>
-      <div className="container mx-auto px-4 py-5 max-w-5xl space-y-4">
-        {/* Compact hero */}
-        <div className="rounded-xl border border-border/70 bg-card p-4">
-          <div className="flex items-start justify-between gap-3 flex-wrap">
-            <div className="min-w-0 flex-1">
-              <h1 className="text-lg sm:text-xl font-bold truncate">{league.name}</h1>
-              {league.description && (
-                <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                  {league.description}
-                </p>
-              )}
-              <div className="flex items-center gap-2 mt-2 flex-wrap">
-                <StatusPill status={league.status} />
-                <Badge variant="outline" className="text-[10px]">
-                  {league.league_type}
-                </Badge>
-                <Badge variant="outline" className="text-[10px]">
-                  {league.visibility.replace("_", " ")}
-                </Badge>
-                {league.rating_eligible ? (
-                  <Badge className="text-[10px]">Rating-eligible</Badge>
-                ) : (
-                  <Badge variant="secondary" className="text-[10px]">
-                    Not rating-eligible
-                  </Badge>
-                )}
-                {league.guests_allowed && (
-                  <Badge variant="secondary" className="text-[10px]">
-                    Guests allowed
-                  </Badge>
-                )}
-              </div>
-              {league.location && (
-                <div className="text-xs text-muted-foreground mt-2">
-                  {league.location}
-                </div>
-              )}
-            </div>
-          </div>
+      <div className="container mx-auto px-4 py-5 max-w-5xl space-y-5">
+        {/* Sporty hero — dark gradient stadium vibe */}
+        <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-br from-[#0B171F] via-[#142029] to-[#1a2d38]">
+          {/* Type-accent side stripe */}
+          <div className={cn("absolute top-0 bottom-0 left-0 w-1.5", typeAccent.stripe)} aria-hidden />
+          {/* Decorative diagonal stripes */}
+          <div className="absolute inset-0 opacity-[0.04] pointer-events-none"
+               style={{
+                 backgroundImage: "repeating-linear-gradient(45deg, transparent 0, transparent 12px, currentColor 12px, currentColor 13px)",
+                 color: "#A6DB5A",
+               }}
+               aria-hidden />
 
-          {/* Summary strip */}
-          {counts && (
-            <div className="grid grid-cols-4 gap-2 mt-3 pt-3 border-t border-border/60">
-              <SummaryStat icon={<CalendarDays className="w-3.5 h-3.5" />} label="Seasons"  value={counts.seasons} />
-              <SummaryStat icon={<Users className="w-3.5 h-3.5" />}        label="Members"  value={counts.members} />
-              <SummaryStat icon={<UsersRound className="w-3.5 h-3.5" />}   label="Teams"    value={counts.teams} />
-              <SummaryStat icon={<CalendarClock className="w-3.5 h-3.5" />} label="Sessions" value={counts.sessions} />
+          <div className="relative p-5 sm:p-6">
+            {/* Type + status row */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className={cn(
+                "inline-flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider",
+                typeAccent.pillBg,
+              )}>
+                <TypeIcon className="w-3 h-3" />
+                {typeAccent.label}
+              </span>
+              <StatusPill status={league.status} />
+              {league.rating_eligible && (
+                <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider bg-[#A6DB5A]/15 text-[#A6DB5A] ring-1 ring-[#A6DB5A]/30">
+                  Rating-eligible
+                </span>
+              )}
+              <span className="text-[10px] uppercase tracking-wider font-semibold text-slate-500">
+                {league.visibility.replace("_", " ")}
+              </span>
+              {league.guests_allowed && (
+                <span className="text-[10px] uppercase tracking-wider font-semibold text-slate-500">
+                  · Guests allowed
+                </span>
+              )}
             </div>
-          )}
+
+            {/* Big league name */}
+            <h1 className="mt-3 text-2xl sm:text-3xl font-black text-white tracking-tight leading-tight">
+              {league.name}
+            </h1>
+
+            {league.description && (
+              <p className="text-slate-400 text-sm mt-2 max-w-2xl">
+                {league.description}
+              </p>
+            )}
+
+            {league.location && (
+              <div className="text-xs text-slate-400 mt-2 inline-flex items-center gap-1">
+                <MapPin className="w-3 h-3" />
+                {league.location}
+              </div>
+            )}
+
+            {/* Summary stats — the "scoreboard" */}
+            {counts && (
+              <div className="mt-5 grid grid-cols-4 gap-3 pt-4 border-t border-slate-800">
+                <HeroStat icon={<CalendarDays className="w-3.5 h-3.5" />} label="Seasons"  value={counts.seasons} />
+                <HeroStat icon={<Users className="w-3.5 h-3.5" />}        label="Members"  value={counts.members} />
+                <HeroStat icon={<UsersRound className="w-3.5 h-3.5" />}   label="Teams"    value={counts.teams} />
+                <HeroStat icon={<CalendarClock className="w-3.5 h-3.5" />} label="Sessions" value={counts.sessions} />
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Tabs */}
@@ -188,7 +211,11 @@ export default function AdminLeagueDetail() {
   );
 }
 
-function SummaryStat({
+/**
+ * Big scoreboard-style stat callout. White numbers on the dark hero,
+ * with an accent label above.
+ */
+function HeroStat({
   icon, label, value,
 }: {
   icon: React.ReactNode;
@@ -197,11 +224,13 @@ function SummaryStat({
 }) {
   return (
     <div className="flex flex-col items-start">
-      <div className="flex items-center gap-1 text-muted-foreground">
+      <div className="flex items-center gap-1 text-slate-500">
         {icon}
-        <span className="text-[10px] uppercase tracking-wider font-semibold">{label}</span>
+        <span className="text-[10px] uppercase tracking-wider font-bold">{label}</span>
       </div>
-      <div className="text-lg font-bold tabular-nums mt-0.5 leading-none">{value}</div>
+      <div className="text-2xl sm:text-3xl font-black tabular-nums mt-1 leading-none text-white">
+        {value}
+      </div>
     </div>
   );
 }
@@ -209,14 +238,14 @@ function SummaryStat({
 function StatusPill({ status }: { status: League["status"] }) {
   const tone =
     status === "active"
-      ? "bg-primary/15 text-primary"
+      ? "bg-[#A6DB5A]/15 text-[#A6DB5A] ring-1 ring-[#A6DB5A]/30"
       : status === "archived"
-      ? "bg-slate-500/15 text-slate-500"
-      : "bg-muted text-muted-foreground";
+      ? "bg-slate-600/30 text-slate-400 ring-1 ring-slate-500/30"
+      : "bg-slate-700/50 text-slate-300 ring-1 ring-slate-600/50";
   return (
     <span
       className={cn(
-        "text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded",
+        "text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded",
         tone,
       )}
     >
@@ -224,3 +253,42 @@ function StatusPill({ status }: { status: League["status"] }) {
     </span>
   );
 }
+
+/** Type-per-league accent used in the hero stripe + pill. */
+const TYPE_META: Record<LeagueType, {
+  stripe: string;
+  pillBg: string;
+  icon: typeof Trophy;
+  label: string;
+}> = {
+  singles: {
+    stripe: "bg-blue-500",
+    pillBg: "bg-blue-500/15 text-blue-300 ring-1 ring-blue-500/30",
+    icon: Zap,
+    label: "Singles",
+  },
+  doubles: {
+    stripe: "bg-emerald-500",
+    pillBg: "bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/30",
+    icon: Shuffle,
+    label: "Doubles",
+  },
+  team: {
+    stripe: "bg-[#A6DB5A]",
+    pillBg: "bg-[#A6DB5A]/15 text-[#A6DB5A] ring-1 ring-[#A6DB5A]/30",
+    icon: Trophy,
+    label: "Team",
+  },
+  flex: {
+    stripe: "bg-amber-500",
+    pillBg: "bg-amber-500/15 text-amber-300 ring-1 ring-amber-500/30",
+    icon: Sparkles,
+    label: "Flex",
+  },
+  ladder: {
+    stripe: "bg-violet-500",
+    pillBg: "bg-violet-500/15 text-violet-300 ring-1 ring-violet-500/30",
+    icon: Layers,
+    label: "Ladder",
+  },
+};

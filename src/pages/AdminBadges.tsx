@@ -1,15 +1,13 @@
 import { useEffect, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { isPlatformAdmin } from "@/lib/permissions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { ArrowLeft, Award, Plus, Trash2, Search } from "lucide-react";
-import logo from "@/assets/pulse-logo-premium.svg";
-import { ThemeToggle } from "@/components/ThemeToggle";
-import { Footer } from "@/components/Footer";
+import { Award, Plus, Trash2, Search } from "lucide-react";
+import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -210,44 +208,24 @@ const AdminBadges = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-muted-foreground">Loading...</p>
-      </div>
+      <AdminLayout title="Badge Management">
+        <div className="min-h-[40vh] flex items-center justify-center">
+          <p className="text-muted-foreground">Loading…</p>
+        </div>
+      </AdminLayout>
     );
   }
 
-  if (!isAdmin) {
-    return null;
-  }
+  if (!isAdmin) return null;
 
   return (
-    <div className="min-h-screen bg-background">
-      <nav className="border-b bg-secondary">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <Link to="/dashboard">
-            <img src={logo} alt="PULSE Logo" className="h-16 w-auto cursor-pointer hover:opacity-80 transition-opacity" />
-          </Link>
-          <div className="flex items-center gap-3">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => navigate("/admin")}
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Admin
-            </Button>
-            <ThemeToggle />
-          </div>
-        </div>
-      </nav>
-
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <Award className="w-8 h-8 text-primary" />
-            <h2 className="text-3xl font-bold">Badge Management</h2>
-          </div>
-          <p className="text-muted-foreground">Manually assign and remove badges from players</p>
+    <AdminLayout title="Badge Management">
+      <div className="container mx-auto px-4 py-6">
+        <div className="mb-6 flex items-center gap-2.5">
+          <Award className="w-5 h-5 text-primary" />
+          <p className="text-sm text-muted-foreground">
+            Manually assign and remove badges from players.
+          </p>
         </div>
 
         <div className="grid lg:grid-cols-2 gap-8">
@@ -466,9 +444,7 @@ const AdminBadges = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <Footer />
-    </div>
+    </AdminLayout>
   );
 };
 

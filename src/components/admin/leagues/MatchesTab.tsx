@@ -160,7 +160,7 @@ export function MatchesTab({ league }: { league: League }) {
           desc={sessions.length > 0 ? "Schedule the first match to seed a session." : undefined}
         />
       ) : (
-        <ul className="space-y-2">
+        <ul className="space-y-2.5">
           {matches.map((m) => {
             const teamA = teams.find((t) => t.id === m.team_a_id);
             const teamB = teams.find((t) => t.id === m.team_b_id);
@@ -168,42 +168,66 @@ export function MatchesTab({ league }: { league: League }) {
               .filter(Boolean) as string[];
             const scoreShown =
               m.team_a_score !== null && m.team_b_score !== null;
+            const aWon = scoreShown && (m.team_a_score ?? 0) > (m.team_b_score ?? 0);
+            const bWon = scoreShown && (m.team_b_score ?? 0) > (m.team_a_score ?? 0);
             return (
               <li key={m.id}>
                 <button
                   type="button"
                   onClick={() => setEditing(m)}
-                  className="w-full text-left rounded-lg border border-border/70 bg-card p-3 hover:bg-muted/50 hover:border-primary/40 transition-colors"
+                  className="group w-full text-left rounded-xl border border-border/70 bg-card hover:border-primary/40 hover:shadow-md transition-all overflow-hidden"
                 >
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <div className="text-sm font-medium truncate">
-                        {teamA?.name ?? "TBD"}
-                        <span className="text-muted-foreground mx-1.5">vs</span>
-                        {teamB?.name ?? "TBD"}
-                        {scoreShown && (
-                          <span className="ml-2 font-mono text-sm">
-                            {m.team_a_score}–{m.team_b_score}
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-2 flex-wrap">
-                        <span className={cn(
-                          "text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded",
-                          STATUS_TONE[m.status],
-                        )}>{m.status.replace("_", " ")}</span>
-                        {m.scheduled_time && (
-                          <span className="inline-flex items-center gap-1">
-                            <CalendarClock className="w-3 h-3" />
-                            {new Date(m.scheduled_time).toLocaleString()}
-                          </span>
-                        )}
-                        {m.court_number && <span>Court {m.court_number}</span>}
-                        {players.length > 0 && <span>{players.length}/4 players set</span>}
-                      </div>
+                  {/* Top meta strip */}
+                  <div className="flex items-center justify-between px-3 py-1.5 bg-muted/30 border-b border-border/50">
+                    <div className="flex items-center gap-2 flex-wrap text-[10px] text-muted-foreground">
+                      <span className={cn(
+                        "font-bold uppercase tracking-wider px-1.5 py-0.5 rounded",
+                        STATUS_TONE[m.status],
+                      )}>{m.status.replace("_", " ")}</span>
+                      {m.scheduled_time && (
+                        <span className="inline-flex items-center gap-1">
+                          <CalendarClock className="w-3 h-3" />
+                          {new Date(m.scheduled_time).toLocaleString(undefined, {
+                            month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
+                          })}
+                        </span>
+                      )}
+                      {m.court_number && <span>· Court {m.court_number}</span>}
                     </div>
-                    <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <ChevronRight className="w-3.5 h-3.5 text-muted-foreground group-hover:translate-x-0.5 group-hover:text-primary transition-all" />
                   </div>
+
+                  {/* Scoreboard row */}
+                  <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-4 py-3.5">
+                    <TeamCell name={teamA?.name ?? "TBD"} won={aWon} align="right" />
+                    <div className="flex items-center gap-2 font-black tabular-nums">
+                      {scoreShown ? (
+                        <>
+                          <span className={cn(
+                            "text-2xl leading-none",
+                            aWon ? "text-primary" : "text-muted-foreground",
+                          )}>{m.team_a_score}</span>
+                          <span className="text-muted-foreground text-sm font-bold">–</span>
+                          <span className={cn(
+                            "text-2xl leading-none",
+                            bWon ? "text-primary" : "text-muted-foreground",
+                          )}>{m.team_b_score}</span>
+                        </>
+                      ) : (
+                        <span className="text-xs uppercase tracking-wider text-muted-foreground font-bold">
+                          vs
+                        </span>
+                      )}
+                    </div>
+                    <TeamCell name={teamB?.name ?? "TBD"} won={bWon} align="left" />
+                  </div>
+
+                  {/* Footer meta */}
+                  {players.length > 0 && (
+                    <div className="px-4 pb-2 -mt-1 text-[10px] text-muted-foreground">
+                      {players.length}/4 individual player slots assigned
+                    </div>
+                  )}
                 </button>
               </li>
             );
@@ -222,6 +246,29 @@ export function MatchesTab({ league }: { league: League }) {
           />
         </Dialog>
       )}
+    </div>
+  );
+}
+
+/**
+ * Team name cell for the scoreboard-style match card. Winner text is
+ * bolder + primary-colored; loser is muted.
+ */
+function TeamCell({
+  name, won, align,
+}: {
+  name: string;
+  won: boolean;
+  align: "left" | "right";
+}) {
+  return (
+    <div className={cn("min-w-0", align === "right" ? "text-right" : "text-left")}>
+      <div className={cn(
+        "text-sm font-semibold truncate",
+        won && "text-primary font-bold",
+      )}>
+        {name}
+      </div>
     </div>
   );
 }
