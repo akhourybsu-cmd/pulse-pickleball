@@ -22,6 +22,7 @@ import { PerformanceModule } from "@/components/dashboard/PerformanceModule";
 // StatsByCourtCard removed from home — court-as-tracked-entity is being retired.
 import { UpcomingEventsPreview } from "@/components/dashboard/UpcomingEventsPreview";
 import { MyRoundRobinsCard } from "@/components/dashboard/MyRoundRobinsCard";
+import { MyLeaguesSection } from "@/components/dashboard/MyLeaguesSection";
 import { MyCommunitiesRail } from "@/components/dashboard/MyCommunitiesRail";
 import { MyFriendsRail } from "@/components/dashboard/MyFriendsRail";
 import { EnablePushBanner } from "@/components/dashboard/EnablePushBanner";
@@ -250,6 +251,12 @@ const Dashboard = () => {
               />
               <MyRoundRobinsCard userId={user?.id} />
             </div>
+
+            {/* My leagues — Phase 1 player-facing surface. Self-hides
+                when the user has no active memberships so we don't
+                advertise emptiness. Invite-based today. */}
+            <MyLeaguesSection />
+
             {/* My communities — quick-tap rail to any group the user is in */}
             <div
               className="opacity-0 animate-fade-up"
