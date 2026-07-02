@@ -24,10 +24,16 @@ export interface PlayerLeagueDetailData {
   division: LeagueDivision | null;
   /** Teams the player is on (usually 0 or 1 per season). */
   myTeams: LeagueTeam[];
+  /** Set of team IDs the player is on. */
+  myTeamIds: Set<string>;
   /** Every active teammate across every team the player is on. */
   teammates: Teammate[];
   /** All league_matches involving the player (via team or direct slot). */
   matches: LeagueMatch[];
+  /** All matches the player can view in this league — used for standings. */
+  allMatches: LeagueMatch[];
+  /** All teams in the league — used for standings + opponent names. */
+  allTeams: LeagueTeam[];
   /** Team-id → team row lookup, for match card rendering. */
   teamsById: Record<string, LeagueTeam>;
   loading: boolean;
@@ -41,7 +47,9 @@ export interface PlayerLeagueDetailData {
 export function useLeagueDetailForPlayer(leagueId: string | undefined): PlayerLeagueDetailData {
   const [data, setData] = useState<PlayerLeagueDetailData>({
     league: null, membership: null, season: null, division: null,
-    myTeams: [], teammates: [], matches: [], teamsById: {},
+    myTeams: [], myTeamIds: new Set<string>(),
+    teammates: [], matches: [], allMatches: [], allTeams: [],
+    teamsById: {},
     loading: true,
   });
 
@@ -69,7 +77,9 @@ export function useLeagueDetailForPlayer(leagueId: string | undefined): PlayerLe
         if (!cancelled) {
           setData({
             league: null, membership: null, season: null, division: null,
-            myTeams: [], teammates: [], matches: [], teamsById: {},
+            myTeams: [], myTeamIds: new Set<string>(),
+            teammates: [], matches: [], allMatches: [], allTeams: [],
+            teamsById: {},
             loading: false,
           });
         }
@@ -88,19 +98,44 @@ export function useLeagueDetailForPlayer(leagueId: string | undefined): PlayerLe
       const season = (seasonR.data ?? null) as unknown as LeagueSeason | null;
       const division = (divisionR.data ?? null) as unknown as LeagueDivision | null;
 
-      // 3. My teams — RLS narrows to only teams I'm on / captain.
+      // 3. All teams in the league. Phase 4 broadened league_teams RLS
+      //    so any active member can see every team in a league they can
+      //    view — required for standings + opponent name lookup.
       const { data: teamsRaw } = await supabase
         .from("league_teams" as never).select("*").eq("league_id", leagueId);
-      const myTeams = (teamsRaw ?? []) as unknown as LeagueTeam[];
-      const myTeamIds = myTeams.map((t) => t.id);
+      const allTeams = (teamsRaw ?? []) as unknown as LeagueTeam[];
 
-      // 4. Team members for those teams — after this migration, RLS
-      //    returns everyone active on my teams (not just me).
+      // Which of those am I actually on? Query league_team_members
+      // scoped to the current user + the league's teams. RLS returns
+      // only rows where user_id = auth.uid() OR I'm on the team, so
+      // filtering by user_id here is defensive + explicit.
+      const teamIdsInLeague = allTeams.map((t) => t.id);
+      let myTeamIds = new Set<string>();
+      if (teamIdsInLeague.length > 0) {
+        const { data: myMemRows } = await supabase
+          .from("league_team_members" as never)
+          .select("team_id")
+          .eq("user_id", user.id)
+          .eq("status", "active")
+          .in("team_id", teamIdsInLeague);
+        myTeamIds = new Set(
+          ((myMemRows ?? []) as { team_id: string }[]).map((r) => r.team_id),
+        );
+      }
+      // Captains also count as "on the team" even without a member row.
+      allTeams.forEach((t) => {
+        if (t.captain_user_id === user.id) myTeamIds.add(t.id);
+      });
+      const myTeams = allTeams.filter((t) => myTeamIds.has(t.id));
+
+      // 4. Team members for those teams — Phase 3 RLS returns everyone
+      //    active on teams I'm on (not just me).
       let teammates: Teammate[] = [];
-      if (myTeamIds.length > 0) {
+      const myTeamIdArray = Array.from(myTeamIds);
+      if (myTeamIdArray.length > 0) {
         const { data: tmRows } = await supabase
           .from("league_team_members" as never).select("*")
-          .in("team_id", myTeamIds).eq("status", "active");
+          .in("team_id", myTeamIdArray).eq("status", "active");
         const tmList = (tmRows ?? []) as unknown as LeagueTeamMember[];
 
         const userIds = Array.from(new Set(tmList.map((t) => t.user_id)));
@@ -144,11 +179,10 @@ export function useLeagueDetailForPlayer(leagueId: string | undefined): PlayerLe
         .from("league_matches" as never).select("*")
         .eq("league_id", leagueId).order("scheduled_time", { ascending: true, nullsFirst: false });
       const matchList = (allMatches ?? []) as unknown as LeagueMatch[];
-      const teamIdSet = new Set(myTeamIds);
       const mine = matchList.filter((m) => {
         const inTeam =
-          (m.team_a_id && teamIdSet.has(m.team_a_id)) ||
-          (m.team_b_id && teamIdSet.has(m.team_b_id));
+          (m.team_a_id && myTeamIds.has(m.team_a_id)) ||
+          (m.team_b_id && myTeamIds.has(m.team_b_id));
         const inSlot =
           m.player_a_id === user.id ||
           m.player_b_id === user.id ||
@@ -157,19 +191,17 @@ export function useLeagueDetailForPlayer(leagueId: string | undefined): PlayerLe
         return inTeam || inSlot;
       });
 
-      // 6. Team lookup for match rendering — include teams referenced
-      //    by any of my matches, even if I'm not on the opposing team.
-      //    Opposing teams show as "Team A", "Team B" via a separate
-      //    fetch. Skip on this pass — the admin_only-adjacent teams
-      //    aren't visible under player RLS anyway. The card will show
-      //    "Opponent" when we can't resolve the name.
+      // 6. Team lookup for match rendering. Now that RLS returns every
+      //    team in the league, we can resolve opposing team names too.
       const teamsById: Record<string, LeagueTeam> = {};
-      myTeams.forEach((t) => { teamsById[t.id] = t; });
+      allTeams.forEach((t) => { teamsById[t.id] = t; });
 
       if (!cancelled) {
         setData({
           league, membership, season, division,
           myTeams, teammates, matches: mine, teamsById,
+          // Full league dataset — needed for the standings section.
+          allTeams, allMatches: matchList, myTeamIds,
           loading: false,
         });
       }

@@ -5,8 +5,11 @@ import {
   CalendarDays, Users, UsersRound, CalendarClock, Crown,
   Swords,
 } from "lucide-react";
+import { useMemo } from "react";
 import type { LeagueType, LeagueMatchStatus } from "@/lib/leagues/types";
 import { useLeagueDetailForPlayer } from "@/hooks/useLeagueDetailForPlayer";
+import { computeTeamStandings } from "@/lib/leagues/standings";
+import { StandingsTable } from "@/components/leagues/StandingsTable";
 import { cn } from "@/lib/utils";
 
 const TYPE_META: Record<LeagueType, { stripe: string; pill: string; icon: typeof Trophy; label: string }> = {
@@ -52,9 +55,19 @@ export default function PlayerLeagueDetail() {
   const navigate = useNavigate();
   const detail = useLeagueDetailForPlayer(leagueId);
   const {
-    league, membership, season, division, myTeams,
-    teammates, matches, teamsById, loading,
+    league, membership, season, division, myTeams, myTeamIds,
+    teammates, matches, allMatches, allTeams, teamsById, loading,
   } = detail;
+
+  // Standings scoped to my current season + division. Falls back to
+  // whole-league if I don't have a season/division set yet.
+  const standings = useMemo(
+    () => computeTeamStandings(allMatches, allTeams, {
+      seasonId: season?.id ?? undefined,
+      divisionId: division?.id ?? undefined,
+    }),
+    [allMatches, allTeams, season?.id, division?.id],
+  );
 
   if (loading) {
     return (
@@ -247,6 +260,28 @@ export default function PlayerLeagueDetail() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Standings — only render if there's anything to show */}
+      {standings.length > 0 && (
+        <div className="rounded-xl border border-border/70 bg-card p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <Trophy className="w-3.5 h-3.5" />
+              Standings
+              {division && (
+                <span className="text-muted-foreground/70 normal-case font-medium">
+                  · {division.name}
+                </span>
+              )}
+            </h2>
+          </div>
+          <StandingsTable
+            rows={standings}
+            highlightTeamIds={myTeamIds}
+            emptyMessage="No completed matches yet."
+          />
         </div>
       )}
 
