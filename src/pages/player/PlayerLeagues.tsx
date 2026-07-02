@@ -5,6 +5,7 @@ import {
   Shuffle, Zap, Sparkles, Layers, KeyRound,
 } from "lucide-react";
 import { useMyLeagues } from "@/hooks/useMyLeagues";
+import { useBrowseableLeagues } from "@/hooks/useBrowseableLeagues";
 import type { LeagueType } from "@/lib/leagues/types";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,7 @@ const TYPE_META: Record<LeagueType, { stripe: string; icon: typeof Trophy; label
 export default function PlayerLeagues() {
   const navigate = useNavigate();
   const { rows, loading, error } = useMyLeagues();
+  const { leagues: browseable, loading: browseLoading } = useBrowseableLeagues();
   const [joinOpen, setJoinOpen] = useState(false);
 
   return (
@@ -132,6 +134,82 @@ export default function PlayerLeagues() {
             );
           })}
         </ul>
+      )}
+
+      {/* ---------- Discover ---------- */}
+      {/* Self-hides when there's nothing public to join yet — no point
+          showing "Discover 0 leagues" until admins flip visibility on
+          real leagues. Loading state also hides so the section only
+          appears once we know it has content. */}
+      {!browseLoading && browseable.length > 0 && (
+        <section className="space-y-3 pt-2">
+          <div className="flex items-center gap-2 border-t border-border/60 pt-4">
+            <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center">
+              <Sparkles className="w-3.5 h-3.5 text-muted-foreground" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-sm font-bold uppercase tracking-wider">
+                Discover
+              </h2>
+              <p className="text-[11px] text-muted-foreground">
+                Public leagues you can join with an invite code
+              </p>
+            </div>
+          </div>
+
+          <ul className="space-y-2.5">
+            {browseable.map((league) => {
+              const meta = TYPE_META[league.league_type];
+              const Icon = meta.icon;
+              return (
+                <li key={league.id}>
+                  <button
+                    type="button"
+                    onClick={() => setJoinOpen(true)}
+                    className="group w-full text-left rounded-xl border border-border/70 bg-card/50 hover:border-primary/40 hover:bg-card hover:shadow-md transition-all overflow-hidden"
+                  >
+                    <div className="flex items-stretch">
+                      <div className={cn("w-1.5 shrink-0 opacity-70", meta.stripe)} aria-hidden />
+                      <div className="flex-1 min-w-0 p-3.5">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-semibold text-base truncate">
+                                {league.name}
+                              </span>
+                              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
+                                <Icon className="w-3 h-3" />
+                                {meta.label}
+                              </span>
+                            </div>
+                            {league.description && (
+                              <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                                {league.description}
+                              </p>
+                            )}
+                            <div className="text-[11px] text-muted-foreground mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                              {league.location && (
+                                <span className="inline-flex items-center gap-1">
+                                  <MapPin className="w-3 h-3" />
+                                  {league.location}
+                                </span>
+                              )}
+                              <span className="inline-flex items-center gap-1 text-primary/80 font-medium">
+                                <KeyRound className="w-3 h-3" />
+                                Join with code
+                              </span>
+                            </div>
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 mt-1 group-hover:translate-x-0.5 group-hover:text-primary transition-all" />
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
       )}
 
       <JoinByCodeDialog open={joinOpen} onOpenChange={setJoinOpen} />
