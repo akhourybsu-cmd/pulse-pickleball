@@ -11,13 +11,14 @@ import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Users, ChevronRight } from "lucide-react";
+import { Plus, Users, ChevronRight, UsersRound } from "lucide-react";
 import type {
   League, LeagueSeason, LeagueDivision, LeagueTeam, LeagueMember,
 } from "@/lib/leagues/types";
 import { logLeagueAction } from "@/lib/leagues/audit";
 import { resolvePlayerName } from "@/lib/matchDisplay";
 import { TeamRosterDialog } from "./TeamRosterDialog";
+import { EmptyState, TabSkeleton } from "./_shared";
 
 interface PlayerRow { id: string; display_name: string | null; full_name: string | null }
 
@@ -98,12 +99,14 @@ export function TeamsTab({ league }: { league: League }) {
     }
   };
 
-  if (loading) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  if (loading) return <TabSkeleton lines={3} />;
   if (seasons.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-        Create a season first.
-      </div>
+      <EmptyState
+        icon={<UsersRound className="w-5 h-5" />}
+        title="Create a season first"
+        desc="Teams live inside a season."
+      />
     );
   }
 
@@ -131,9 +134,12 @@ export function TeamsTab({ league }: { league: League }) {
       </div>
 
       {teams.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-          No teams yet.
-        </div>
+        <EmptyState
+          icon={<UsersRound className="w-5 h-5" />}
+          title="No teams yet"
+          desc="Group members into teams for scheduling and standings."
+          action={{ label: "New team", onClick: () => setCreateOpen(true) }}
+        />
       ) : (
         <ul className="space-y-2">
           {teams.map((t) => {

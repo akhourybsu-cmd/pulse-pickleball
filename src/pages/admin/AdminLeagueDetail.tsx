@@ -7,6 +7,7 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import type { League } from "@/lib/leagues/types";
+import { CalendarDays, Users, UsersRound, CalendarClock } from "lucide-react";
 import { OverviewTab } from "@/components/admin/leagues/OverviewTab";
 import { SeasonsTab } from "@/components/admin/leagues/SeasonsTab";
 import { DivisionsTab } from "@/components/admin/leagues/DivisionsTab";
@@ -17,11 +18,19 @@ import { MatchesTab } from "@/components/admin/leagues/MatchesTab";
 import { AuditLogTab } from "@/components/admin/leagues/AuditLogTab";
 import { cn } from "@/lib/utils";
 
+interface Counts {
+  seasons: number;
+  members: number;
+  teams: number;
+  sessions: number;
+}
+
 export default function AdminLeagueDetail() {
   const { leagueId } = useParams<{ leagueId: string }>();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [league, setLeague] = useState<League | null>(null);
+  const [counts, setCounts] = useState<Counts | null>(null);
 
   useEffect(() => {
     const init = async () => {
@@ -55,6 +64,21 @@ export default function AdminLeagueDetail() {
       return;
     }
     setLeague(data as unknown as League);
+
+    // Fire-and-forget counts. Uses Supabase `count: 'exact', head: true`
+    // so we don't ship any rows over the wire.
+    const [seasonsQ, membersQ, teamsQ, sessionsQ] = await Promise.all([
+      supabase.from("league_seasons"  as never).select("id", { count: "exact", head: true }).eq("league_id", leagueId),
+      supabase.from("league_members"  as never).select("id", { count: "exact", head: true }).eq("league_id", leagueId).eq("status", "active"),
+      supabase.from("league_teams"    as never).select("id", { count: "exact", head: true }).eq("league_id", leagueId).eq("status", "active"),
+      supabase.from("league_sessions" as never).select("id", { count: "exact", head: true }).eq("league_id", leagueId),
+    ]);
+    setCounts({
+      seasons: seasonsQ.count ?? 0,
+      members: membersQ.count ?? 0,
+      teams: teamsQ.count ?? 0,
+      sessions: sessionsQ.count ?? 0,
+    });
     setLoading(false);
   };
 
@@ -109,6 +133,16 @@ export default function AdminLeagueDetail() {
               )}
             </div>
           </div>
+
+          {/* Summary strip */}
+          {counts && (
+            <div className="grid grid-cols-4 gap-2 mt-3 pt-3 border-t border-border/60">
+              <SummaryStat icon={<CalendarDays className="w-3.5 h-3.5" />} label="Seasons"  value={counts.seasons} />
+              <SummaryStat icon={<Users className="w-3.5 h-3.5" />}        label="Members"  value={counts.members} />
+              <SummaryStat icon={<UsersRound className="w-3.5 h-3.5" />}   label="Teams"    value={counts.teams} />
+              <SummaryStat icon={<CalendarClock className="w-3.5 h-3.5" />} label="Sessions" value={counts.sessions} />
+            </div>
+          )}
         </div>
 
         {/* Tabs */}
@@ -151,6 +185,24 @@ export default function AdminLeagueDetail() {
         </Tabs>
       </div>
     </AdminLayout>
+  );
+}
+
+function SummaryStat({
+  icon, label, value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: number;
+}) {
+  return (
+    <div className="flex flex-col items-start">
+      <div className="flex items-center gap-1 text-muted-foreground">
+        {icon}
+        <span className="text-[10px] uppercase tracking-wider font-semibold">{label}</span>
+      </div>
+      <div className="text-lg font-bold tabular-nums mt-0.5 leading-none">{value}</div>
+    </div>
   );
 }
 

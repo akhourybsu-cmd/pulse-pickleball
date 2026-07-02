@@ -11,12 +11,15 @@ import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Calendar as CalendarIcon } from "lucide-react";
+import {
+  Plus, Calendar as CalendarIcon, ChevronRight, CalendarClock,
+} from "lucide-react";
 import type {
   League, LeagueSeason, LeagueDivision, LeagueSession, SessionStatus,
 } from "@/lib/leagues/types";
 import { logLeagueAction } from "@/lib/leagues/audit";
 import { cn } from "@/lib/utils";
+import { EmptyState, TabSkeleton } from "./_shared";
 
 export function SessionsTab({ league }: { league: League }) {
   const [seasons, setSeasons] = useState<LeagueSeason[]>([]);
@@ -25,6 +28,7 @@ export function SessionsTab({ league }: { league: League }) {
   const [sessions, setSessions] = useState<LeagueSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
+  const [editing, setEditing] = useState<LeagueSession | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -55,12 +59,14 @@ export function SessionsTab({ league }: { league: League }) {
     setSessions((sess ?? []) as unknown as LeagueSession[]);
   };
 
-  if (loading) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  if (loading) return <TabSkeleton lines={3} />;
   if (seasons.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-        Create a season first — sessions belong to a season.
-      </div>
+      <EmptyState
+        icon={<CalendarClock className="w-5 h-5" />}
+        title="Create a season first"
+        desc="Sessions live inside a season."
+      />
     );
   }
 
@@ -79,7 +85,8 @@ export function SessionsTab({ league }: { league: League }) {
           </DialogTrigger>
           {seasonId && (
             <SessionEditor
-              league={league} seasonId={seasonId} divisions={divisions}
+              mode="create"
+              league={league} seasonId={seasonId} divisions={divisions} initial={null}
               onDone={async () => { setCreateOpen(false); await reload(); }}
             />
           )}
@@ -87,37 +94,57 @@ export function SessionsTab({ league }: { league: League }) {
       </div>
 
       {sessions.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
-          No sessions scheduled.
-        </div>
+        <EmptyState
+          icon={<CalendarIcon className="w-5 h-5" />}
+          title="No sessions scheduled"
+          desc="Add the first session to lay out your league calendar."
+        />
       ) : (
         <ul className="space-y-2">
           {sessions.map((s) => {
             const division = divisions.find((d) => d.id === s.division_id);
             return (
-              <li key={s.id} className="rounded-lg border border-border/70 bg-card p-3">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-medium">{s.name}</span>
-                      <SessionStatusBadge status={s.status} />
+              <li key={s.id}>
+                <button
+                  type="button"
+                  onClick={() => setEditing(s)}
+                  className="w-full text-left rounded-lg border border-border/70 bg-card p-3 hover:bg-muted/50 hover:border-primary/40 transition-colors"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium">{s.name}</span>
+                        <SessionStatusBadge status={s.status} />
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1 flex items-center gap-2 flex-wrap">
+                        <CalendarIcon className="w-3 h-3" />
+                        <span>{s.scheduled_date ?? "No date"}</span>
+                        {s.start_time && <span>{s.start_time}{s.end_time ? `–${s.end_time}` : ""}</span>}
+                        {s.court_count && <span>{s.court_count} courts</span>}
+                        {division && <span>{division.name}</span>}
+                      </div>
+                      {s.location && (
+                        <div className="text-xs text-muted-foreground mt-0.5">{s.location}</div>
+                      )}
                     </div>
-                    <div className="text-xs text-muted-foreground mt-1 flex items-center gap-2 flex-wrap">
-                      <CalendarIcon className="w-3 h-3" />
-                      <span>{s.scheduled_date ?? "No date"}</span>
-                      {s.start_time && <span>{s.start_time}{s.end_time ? `–${s.end_time}` : ""}</span>}
-                      {s.court_count && <span>{s.court_count} courts</span>}
-                      {division && <span>{division.name}</span>}
-                    </div>
-                    {s.location && (
-                      <div className="text-xs text-muted-foreground mt-0.5">{s.location}</div>
-                    )}
+                    <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
                   </div>
-                </div>
+                </button>
               </li>
             );
           })}
         </ul>
+      )}
+
+      {editing && (
+        <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
+          <SessionEditor
+            mode="edit"
+            league={league} seasonId={seasonId as string}
+            divisions={divisions} initial={editing}
+            onDone={async () => { setEditing(null); await reload(); }}
+          />
+        </Dialog>
       )}
     </div>
   );
@@ -138,21 +165,23 @@ function SessionStatusBadge({ status }: { status: SessionStatus }) {
 }
 
 function SessionEditor({
-  league, seasonId, divisions, onDone,
+  mode, league, seasonId, divisions, initial, onDone,
 }: {
+  mode: "create" | "edit";
   league: League;
   seasonId: string;
   divisions: LeagueDivision[];
+  initial: LeagueSession | null;
   onDone: () => Promise<void>;
 }) {
-  const [name, setName] = useState("");
-  const [scheduledDate, setScheduledDate] = useState("");
-  const [startTime, setStartTime] = useState("");
-  const [endTime, setEndTime] = useState("");
-  const [courtCount, setCourtCount] = useState("");
-  const [location, setLocation] = useState(league.location ?? "");
-  const [divisionId, setDivisionId] = useState<string | "none">("none");
-  const [status, setStatus] = useState<SessionStatus>("draft");
+  const [name, setName] = useState(initial?.name ?? "");
+  const [scheduledDate, setScheduledDate] = useState(initial?.scheduled_date ?? "");
+  const [startTime, setStartTime] = useState(initial?.start_time ?? "");
+  const [endTime, setEndTime] = useState(initial?.end_time ?? "");
+  const [courtCount, setCourtCount] = useState(initial?.court_count?.toString() ?? "");
+  const [location, setLocation] = useState(initial?.location ?? league.location ?? "");
+  const [divisionId, setDivisionId] = useState<string | "none">(initial?.division_id ?? "none");
+  const [status, setStatus] = useState<SessionStatus>(initial?.status ?? "draft");
   const [saving, setSaving] = useState(false);
 
   const submit = async () => {
@@ -170,15 +199,20 @@ function SessionEditor({
       location: location.trim() || null,
       status,
     };
-    const { data, error } = await supabase
-      .from("league_sessions" as never).insert(payload as never).select().single();
+    const q = mode === "create"
+      ? supabase.from("league_sessions" as never).insert(payload as never).select().single()
+      : supabase.from("league_sessions" as never).update(payload as never).eq("id", initial!.id).select().single();
+    const { data, error } = await q;
     if (error || !data) { toast.error(error?.message ?? "Save failed"); setSaving(false); return; }
+    const saved = data as unknown as LeagueSession;
     await logLeagueAction({
       leagueId: league.id, seasonId,
-      action: "session.created", entityType: "session",
-      entityId: (data as unknown as LeagueSession).id, newValue: payload,
+      action: mode === "create" ? "session.created" : "session.updated",
+      entityType: "session", entityId: saved.id,
+      oldValue: initial ? { name: initial.name, status: initial.status } : null,
+      newValue: payload,
     });
-    toast.success("Session created");
+    toast.success(mode === "create" ? "Session created" : "Session updated");
     setSaving(false);
     await onDone();
   };
@@ -186,7 +220,7 @@ function SessionEditor({
   return (
     <DialogContent className="sm:max-w-md">
       <DialogHeader>
-        <DialogTitle>New session</DialogTitle>
+        <DialogTitle>{mode === "create" ? "New session" : "Edit session"}</DialogTitle>
       </DialogHeader>
       <div className="space-y-3">
         <div className="space-y-1.5">
@@ -242,7 +276,7 @@ function SessionEditor({
       </div>
       <DialogFooter>
         <Button onClick={submit} disabled={saving} className="w-full">
-          {saving ? "Creating…" : "Create session"}
+          {saving ? "Saving…" : mode === "create" ? "Create session" : "Save changes"}
         </Button>
       </DialogFooter>
     </DialogContent>
