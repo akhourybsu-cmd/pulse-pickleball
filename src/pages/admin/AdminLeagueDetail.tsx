@@ -17,6 +17,7 @@ import { MembersTab } from "@/components/admin/leagues/MembersTab";
 import { TeamsTab } from "@/components/admin/leagues/TeamsTab";
 import { SessionsTab } from "@/components/admin/leagues/SessionsTab";
 import { MatchesTab } from "@/components/admin/leagues/MatchesTab";
+import { StandingsTab } from "@/components/admin/leagues/StandingsTab";
 import { AuditLogTab } from "@/components/admin/leagues/AuditLogTab";
 import { cn } from "@/lib/utils";
 
@@ -195,6 +196,7 @@ export default function AdminLeagueDetail() {
             <TabsTrigger value="teams">Teams</TabsTrigger>
             <TabsTrigger value="sessions">Sessions</TabsTrigger>
             <TabsTrigger value="matches">Matches</TabsTrigger>
+            <TabsTrigger value="standings">Standings</TabsTrigger>
             <TabsTrigger value="audit">Audit Log</TabsTrigger>
           </TabsList>
 
@@ -218,6 +220,9 @@ export default function AdminLeagueDetail() {
           </TabsContent>
           <TabsContent value="matches" className="pt-4">
             <MatchesTab league={league} dataVersion={dataVersion} onMutated={onDataMutated} />
+          </TabsContent>
+          <TabsContent value="standings" className="pt-4">
+            <StandingsTab league={league} dataVersion={dataVersion} onMutated={onDataMutated} />
           </TabsContent>
           <TabsContent value="audit" className="pt-4">
             <AuditLogTab league={league} dataVersion={dataVersion} />
