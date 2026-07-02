@@ -148,6 +148,8 @@ const BlockedUsers = lazy(() => import("./pages/BlockedUsers"));
 
 // Player pages
 const PlayerDashboard = lazy(() => import("./pages/player/PlayerDashboard"));
+const PlayerLeagues = lazy(() => import("./pages/player/PlayerLeagues"));
+const PlayerLeagueDetail = lazy(() => import("./pages/player/PlayerLeagueDetail"));
 const PlayerProfile = lazy(() => import("./pages/player/PlayerProfile"));
 const MyRoundRobinsPage = lazy(() => import("./pages/player/MyRoundRobinsPage"));
 const PlayHub = lazy(() => import("./pages/play/PlayHub"));
@@ -402,6 +404,11 @@ const AppContent = () => {
                 hub link that used to live on the dashboard. Past + active
                 events in one place. */}
             <Route path="round-robins" element={<MyRoundRobinsPage />} />
+            {/* Phase 1 player-facing leagues: read-only "my leagues"
+                view. Deeper features (match schedule, standings) land
+                as later phases. RLS keeps admin_only leagues invisible. */}
+            <Route path="leagues" element={<PlayerLeagues />} />
+            <Route path="leagues/:leagueId" element={<PlayerLeagueDetail />} />
             <Route path="guests" element={<MyGuests />} />
             {/* Legacy aliases - kept functional, redirected from old paths */}
             <Route path="find" element={<RedirectWithParams to="/player/play" />} />
