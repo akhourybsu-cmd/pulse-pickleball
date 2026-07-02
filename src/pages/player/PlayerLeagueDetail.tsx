@@ -10,6 +10,7 @@ import type { LeagueType, LeagueMatchStatus } from "@/lib/leagues/types";
 import { useLeagueDetailForPlayer } from "@/hooks/useLeagueDetailForPlayer";
 import { computeTeamStandings } from "@/lib/leagues/standings";
 import { StandingsTable } from "@/components/leagues/StandingsTable";
+import { LeagueMatchActions } from "@/components/leagues/LeagueMatchActions";
 import { cn } from "@/lib/utils";
 
 const TYPE_META: Record<LeagueType, { stripe: string; pill: string; icon: typeof Trophy; label: string }> = {
@@ -57,6 +58,7 @@ export default function PlayerLeagueDetail() {
   const {
     league, membership, season, division, myTeams, myTeamIds,
     teammates, matches, allMatches, allTeams, teamsById, loading,
+    currentUserId, refresh,
   } = detail;
 
   // Standings scoped to my current season + division. Falls back to
@@ -299,7 +301,13 @@ export default function PlayerLeagueDetail() {
         ) : (
           <ul className="space-y-2">
             {upcoming.map((m) => (
-              <MatchRow key={m.id} match={m} teamsById={teamsById} />
+              <MatchRow
+                key={m.id}
+                match={m}
+                teamsById={teamsById}
+                currentUserId={currentUserId}
+                onChanged={refresh}
+              />
             ))}
           </ul>
         )}
@@ -314,7 +322,13 @@ export default function PlayerLeagueDetail() {
           </h2>
           <ul className="space-y-2">
             {past.map((m) => (
-              <MatchRow key={m.id} match={m} teamsById={teamsById} />
+              <MatchRow
+                key={m.id}
+                match={m}
+                teamsById={teamsById}
+                currentUserId={currentUserId}
+                onChanged={refresh}
+              />
             ))}
           </ul>
         </div>
@@ -344,10 +358,12 @@ function InfoRow({
 }
 
 function MatchRow({
-  match, teamsById,
+  match, teamsById, currentUserId, onChanged,
 }: {
   match: import("@/lib/leagues/types").LeagueMatch;
   teamsById: Record<string, import("@/lib/leagues/types").LeagueTeam>;
+  currentUserId: string | null;
+  onChanged: () => void;
 }) {
   const teamA = match.team_a_id ? teamsById[match.team_a_id] : null;
   const teamB = match.team_b_id ? teamsById[match.team_b_id] : null;
@@ -409,6 +425,21 @@ function MatchRow({
           {teamB?.name ?? (match.team_b_id ? "Opponent" : "TBD")}
         </div>
       </div>
+
+      {/* Score entry / verify / dispute actions. Every match on the
+          player league page is one the player participates in — the
+          hook pre-filters, so isParticipant is always true here. */}
+      {currentUserId && (
+        <div className="px-3 pb-3 pt-1 border-t border-border/30 bg-muted/10">
+          <LeagueMatchActions
+            match={match}
+            teamsById={teamsById}
+            currentUserId={currentUserId}
+            isParticipant
+            onChanged={onChanged}
+          />
+        </div>
+      )}
     </li>
   );
 }

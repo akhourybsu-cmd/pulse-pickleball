@@ -155,6 +155,11 @@ export interface LeagueMatch {
   rating_status: LeagueMatchRatingStatus;
   team_a_score: number | null;
   team_b_score: number | null;
+  /** UUIDs of participants who have confirmed the score. */
+  verified_by: string[];
+  score_submitted_by: string | null;
+  score_submitted_at: string | null;
+  dispute_reason: string | null;
   created_at: string;
   updated_at: string;
 }
