@@ -9,6 +9,11 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { UserPlus, UserX, Crown } from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import type {
   League, LeagueTeam, LeagueTeamMember, LeagueMember, TeamMemberRole,
 } from "@/lib/leagues/types";
@@ -41,6 +46,7 @@ export function TeamRosterDialog({
   const [roster, setRoster] = useState<LeagueTeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState<{ member: LeagueTeamMember; name: string } | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -213,7 +219,7 @@ export function TeamRosterDialog({
                           variant="ghost" size="sm"
                           className="h-8 px-2 text-muted-foreground hover:text-destructive"
                           disabled={busy}
-                          onClick={() => patch(m, { status: "removed" }, "team_member.removed")}
+                          onClick={() => setConfirmRemove({ member: m, name })}
                           aria-label="Remove from team"
                         >
                           <UserX className="w-4 h-4" />
@@ -300,6 +306,38 @@ export function TeamRosterDialog({
           </div>
         )}
       </DialogContent>
+
+      {/* Remove confirmation. Roster removal is soft (status = removed)
+          but still worth a confirm — accidental clicks on a full-roster
+          view happen. */}
+      <AlertDialog
+        open={!!confirmRemove}
+        onOpenChange={(o) => !o && setConfirmRemove(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove from team?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmRemove?.name ?? "This player"} will be removed from
+              {" "}{team.name}. Soft delete — restore any time from the
+              Removed section.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (!confirmRemove) return;
+                const target = confirmRemove.member;
+                setConfirmRemove(null);
+                await patch(target, { status: "removed" }, "team_member.removed");
+              }}
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

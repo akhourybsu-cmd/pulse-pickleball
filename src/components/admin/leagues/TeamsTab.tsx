@@ -18,11 +18,11 @@ import type {
 import { logLeagueAction } from "@/lib/leagues/audit";
 import { resolvePlayerName } from "@/lib/matchDisplay";
 import { TeamRosterDialog } from "./TeamRosterDialog";
-import { EmptyState, TabSkeleton } from "./_shared";
+import { EmptyState, TabSkeleton, LeagueTabProps } from "./_shared";
 
 interface PlayerRow { id: string; display_name: string | null; full_name: string | null }
 
-export function TeamsTab({ league }: { league: League }) {
+export function TeamsTab({ league, dataVersion, onMutated }: LeagueTabProps) {
   const [seasons, setSeasons] = useState<LeagueSeason[]>([]);
   const [seasonId, setSeasonId] = useState<string | "">("");
   const [divisions, setDivisions] = useState<LeagueDivision[]>([]);
@@ -46,13 +46,13 @@ export function TeamsTab({ league }: { league: League }) {
       setLoading(false);
     })();
     // eslint-disable-next-line
-  }, [league.id]);
+  }, [league.id, dataVersion]);
 
   useEffect(() => {
     if (!seasonId) return;
     void reload();
     // eslint-disable-next-line
-  }, [seasonId]);
+  }, [seasonId, dataVersion]);
 
   const reload = async () => {
     const [{ data: divs }, { data: t }, { data: mems }] = await Promise.all([
@@ -127,7 +127,7 @@ export function TeamsTab({ league }: { league: League }) {
             <TeamEditor
               league={league} seasonId={seasonId}
               divisions={divisions} members={members} profilesById={profilesById}
-              onDone={async () => { setCreateOpen(false); await reload(); }}
+              onDone={async () => { setCreateOpen(false); await reload(); onMutated(); }}
             />
           )}
         </Dialog>
@@ -186,7 +186,7 @@ export function TeamsTab({ league }: { league: League }) {
           team={rosterFor}
           eligibleMembers={members}
           profilesById={profilesById}
-          onChanged={reload}
+          onChanged={async () => { await reload(); onMutated(); }}
         />
       )}
     </div>

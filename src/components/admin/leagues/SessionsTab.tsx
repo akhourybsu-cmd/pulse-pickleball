@@ -19,9 +19,9 @@ import type {
 } from "@/lib/leagues/types";
 import { logLeagueAction } from "@/lib/leagues/audit";
 import { cn } from "@/lib/utils";
-import { EmptyState, TabSkeleton } from "./_shared";
+import { EmptyState, TabSkeleton, LeagueTabProps } from "./_shared";
 
-export function SessionsTab({ league }: { league: League }) {
+export function SessionsTab({ league, dataVersion, onMutated }: LeagueTabProps) {
   const [seasons, setSeasons] = useState<LeagueSeason[]>([]);
   const [seasonId, setSeasonId] = useState<string | "">("");
   const [divisions, setDivisions] = useState<LeagueDivision[]>([]);
@@ -41,13 +41,13 @@ export function SessionsTab({ league }: { league: League }) {
       setLoading(false);
     })();
     // eslint-disable-next-line
-  }, [league.id]);
+  }, [league.id, dataVersion]);
 
   useEffect(() => {
     if (!seasonId) return;
     void reload();
     // eslint-disable-next-line
-  }, [seasonId]);
+  }, [seasonId, dataVersion]);
 
   const reload = async () => {
     const [{ data: divs }, { data: sess }] = await Promise.all([
@@ -87,7 +87,7 @@ export function SessionsTab({ league }: { league: League }) {
             <SessionEditor
               mode="create"
               league={league} seasonId={seasonId} divisions={divisions} initial={null}
-              onDone={async () => { setCreateOpen(false); await reload(); }}
+              onDone={async () => { setCreateOpen(false); await reload(); onMutated(); }}
             />
           )}
         </Dialog>
@@ -142,7 +142,7 @@ export function SessionsTab({ league }: { league: League }) {
             mode="edit"
             league={league} seasonId={seasonId as string}
             divisions={divisions} initial={editing}
-            onDone={async () => { setEditing(null); await reload(); }}
+            onDone={async () => { setEditing(null); await reload(); onMutated(); }}
           />
         </Dialog>
       )}

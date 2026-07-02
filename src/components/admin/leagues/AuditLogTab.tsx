@@ -7,7 +7,17 @@ import { Shield } from "lucide-react";
 import type { League, LeagueAuditEntry } from "@/lib/leagues/types";
 import { EmptyState, TabSkeleton } from "./_shared";
 
-export function AuditLogTab({ league }: { league: League }) {
+/**
+ * Read-only tab. Takes dataVersion so it refetches after mutations in
+ * sibling tabs — that's how the audit log stays fresh without leaving
+ * the page.
+ */
+export function AuditLogTab({
+  league, dataVersion,
+}: {
+  league: League;
+  dataVersion: number;
+}) {
   const [entries, setEntries] = useState<LeagueAuditEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [actorNames, setActorNames] = useState<Record<string, string>>({});
@@ -34,7 +44,7 @@ export function AuditLogTab({ league }: { league: League }) {
       }
       setLoading(false);
     })();
-  }, [league.id]);
+  }, [league.id, dataVersion]);
 
   // Discover the entity prefixes present in this log so the filter
   // dropdown reflects reality (only show groups that have entries).

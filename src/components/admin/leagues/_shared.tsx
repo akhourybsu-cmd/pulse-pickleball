@@ -4,6 +4,20 @@
  */
 import { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
+import type { League } from "@/lib/leagues/types";
+
+/**
+ * Props every league tab receives from AdminLeagueDetail. The tab MUST:
+ *   • include `dataVersion` in the dependency array of any reload effect
+ *     so it re-fetches when sibling tabs mutate.
+ *   • call `onMutated()` after any successful mutation so sibling tabs
+ *     + hero counts refresh.
+ */
+export interface LeagueTabProps {
+  league: League;
+  dataVersion: number;
+  onMutated: () => void;
+}
 
 export function EmptyState({
   icon, title, desc, action,

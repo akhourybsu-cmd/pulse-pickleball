@@ -33,6 +33,12 @@ export default function AdminLeagueDetail() {
   const [loading, setLoading] = useState(true);
   const [league, setLeague] = useState<League | null>(null);
   const [counts, setCounts] = useState<Counts | null>(null);
+  // Bumped on any mutation from any tab. Every tab subscribes to it so
+  // creating a season in SeasonsTab immediately refreshes the season
+  // dropdown in Divisions/Members/Teams/Sessions/Matches without a
+  // manual reload. Also refetches hero counts.
+  const [dataVersion, setDataVersion] = useState(0);
+  const bumpDataVersion = () => setDataVersion((v) => v + 1);
 
   useEffect(() => {
     const init = async () => {
@@ -66,9 +72,14 @@ export default function AdminLeagueDetail() {
       return;
     }
     setLeague(data as unknown as League);
+    await refetchCounts();
+    setLoading(false);
+  };
 
-    // Fire-and-forget counts. Uses Supabase `count: 'exact', head: true`
-    // so we don't ship any rows over the wire.
+  // Counts-only refetch. Does NOT flip loading, so it can run silently
+  // on any child-tab mutation without collapsing tab state.
+  const refetchCounts = async () => {
+    if (!leagueId) return;
     const [seasonsQ, membersQ, teamsQ, sessionsQ] = await Promise.all([
       supabase.from("league_seasons"  as never).select("id", { count: "exact", head: true }).eq("league_id", leagueId),
       supabase.from("league_members"  as never).select("id", { count: "exact", head: true }).eq("league_id", leagueId).eq("status", "active"),
@@ -81,7 +92,13 @@ export default function AdminLeagueDetail() {
       teams: teamsQ.count ?? 0,
       sessions: sessionsQ.count ?? 0,
     });
-    setLoading(false);
+  };
+
+  // Every child mutation calls this. We bump the version signal (so
+  // sibling tabs re-run their own reload) AND refetch hero counts.
+  const onDataMutated = () => {
+    bumpDataVersion();
+    void refetchCounts();
   };
 
   if (loading || !league) {
@@ -182,28 +199,28 @@ export default function AdminLeagueDetail() {
           </TabsList>
 
           <TabsContent value="overview" className="pt-4">
-            <OverviewTab league={league} onRefresh={refresh} />
+            <OverviewTab league={league} onRefresh={refresh} onMutated={onDataMutated} />
           </TabsContent>
           <TabsContent value="seasons" className="pt-4">
-            <SeasonsTab league={league} />
+            <SeasonsTab league={league} dataVersion={dataVersion} onMutated={onDataMutated} />
           </TabsContent>
           <TabsContent value="divisions" className="pt-4">
-            <DivisionsTab league={league} />
+            <DivisionsTab league={league} dataVersion={dataVersion} onMutated={onDataMutated} />
           </TabsContent>
           <TabsContent value="members" className="pt-4">
-            <MembersTab league={league} />
+            <MembersTab league={league} dataVersion={dataVersion} onMutated={onDataMutated} />
           </TabsContent>
           <TabsContent value="teams" className="pt-4">
-            <TeamsTab league={league} />
+            <TeamsTab league={league} dataVersion={dataVersion} onMutated={onDataMutated} />
           </TabsContent>
           <TabsContent value="sessions" className="pt-4">
-            <SessionsTab league={league} />
+            <SessionsTab league={league} dataVersion={dataVersion} onMutated={onDataMutated} />
           </TabsContent>
           <TabsContent value="matches" className="pt-4">
-            <MatchesTab league={league} />
+            <MatchesTab league={league} dataVersion={dataVersion} onMutated={onDataMutated} />
           </TabsContent>
           <TabsContent value="audit" className="pt-4">
-            <AuditLogTab league={league} />
+            <AuditLogTab league={league} dataVersion={dataVersion} />
           </TabsContent>
         </Tabs>
       </div>

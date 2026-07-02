@@ -11,8 +11,13 @@ import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Search, UserX, Users } from "lucide-react";
-import { EmptyState, TabSkeleton } from "./_shared";
+import { Plus, Search, UserX, Users, RotateCcw } from "lucide-react";
+import { EmptyState, TabSkeleton, LeagueTabProps } from "./_shared";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import type {
   League, LeagueSeason, LeagueDivision, LeagueMember, MemberRole,
   MemberStatus,
@@ -29,7 +34,7 @@ interface PlayerRow {
   email?: string | null;
 }
 
-export function MembersTab({ league }: { league: League }) {
+export function MembersTab({ league, dataVersion, onMutated }: LeagueTabProps) {
   const [seasons, setSeasons] = useState<LeagueSeason[]>([]);
   const [seasonId, setSeasonId] = useState<string | "">("");
   const [divisions, setDivisions] = useState<LeagueDivision[]>([]);
@@ -38,6 +43,7 @@ export function MembersTab({ league }: { league: League }) {
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
 
+  // Season list — subscribes to dataVersion so new seasons show up here.
   useEffect(() => {
     (async () => {
       const { data } = await supabase
@@ -49,13 +55,13 @@ export function MembersTab({ league }: { league: League }) {
       setLoading(false);
     })();
     // eslint-disable-next-line
-  }, [league.id]);
+  }, [league.id, dataVersion]);
 
   useEffect(() => {
     if (!seasonId) return;
     void reload();
     // eslint-disable-next-line
-  }, [seasonId]);
+  }, [seasonId, dataVersion]);
 
   const reload = async () => {
     const [{ data: divs }, { data: mems }] = await Promise.all([
@@ -112,7 +118,7 @@ export function MembersTab({ league }: { league: League }) {
               seasonId={seasonId}
               divisions={divisions}
               existingUserIds={new Set(members.map((m) => m.user_id))}
-              onDone={async () => { setAddOpen(false); await reload(); }}
+              onDone={async () => { setAddOpen(false); await reload(); onMutated(); }}
             />
           )}
         </Dialog>
@@ -145,8 +151,9 @@ export function MembersTab({ league }: { league: League }) {
                 <MemberInlineActions
                   league={league}
                   member={m}
+                  memberName={name}
                   divisions={divisions}
-                  onChanged={reload}
+                  onChanged={async () => { await reload(); onMutated(); }}
                 />
               </li>
             );
@@ -158,14 +165,17 @@ export function MembersTab({ league }: { league: League }) {
 }
 
 function MemberInlineActions({
-  league, member, divisions, onChanged,
+  league, member, memberName, divisions, onChanged,
 }: {
   league: League;
   member: LeagueMember;
+  memberName: string;
   divisions: LeagueDivision[];
   onChanged: () => Promise<void>;
 }) {
   const [busy, setBusy] = useState(false);
+  const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false);
+  const isRemoved = member.status === "removed";
 
   const patch = async (fields: Partial<LeagueMember>, action: string) => {
     setBusy(true);
@@ -207,19 +217,52 @@ function MemberInlineActions({
           ))}
         </SelectContent>
       </Select>
-      <Button
-        variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive"
-        disabled={busy}
-        onClick={() =>
-          patch(
-            { status: member.status === "removed" ? "active" : "removed" },
-            member.status === "removed" ? "member.restored" : "member.removed",
-          )
-        }
-        aria-label={member.status === "removed" ? "Restore member" : "Remove member"}
-      >
-        <UserX className="w-4 h-4" />
-      </Button>
+
+      {/* Restore is benign — direct action. Remove needs a confirm. */}
+      {isRemoved ? (
+        <Button
+          variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground"
+          disabled={busy}
+          onClick={() => patch({ status: "active" }, "member.restored")}
+          aria-label="Restore member"
+        >
+          <RotateCcw className="w-4 h-4" />
+        </Button>
+      ) : (
+        <>
+          <Button
+            variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive"
+            disabled={busy}
+            onClick={() => setConfirmRemoveOpen(true)}
+            aria-label="Remove member"
+          >
+            <UserX className="w-4 h-4" />
+          </Button>
+          <AlertDialog open={confirmRemoveOpen} onOpenChange={setConfirmRemoveOpen}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Remove this member from the season?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {memberName} will be marked removed. This is a soft delete —
+                  you can restore them later. Their existing team assignments
+                  will remain unless you also remove them from those teams.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={async () => {
+                    setConfirmRemoveOpen(false);
+                    await patch({ status: "removed" }, "member.removed");
+                  }}
+                >
+                  Remove
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </>
+      )}
     </div>
   );
 }
