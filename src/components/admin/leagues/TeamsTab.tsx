@@ -11,12 +11,13 @@ import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus } from "lucide-react";
+import { Plus, Users, ChevronRight } from "lucide-react";
 import type {
   League, LeagueSeason, LeagueDivision, LeagueTeam, LeagueMember,
 } from "@/lib/leagues/types";
 import { logLeagueAction } from "@/lib/leagues/audit";
 import { resolvePlayerName } from "@/lib/matchDisplay";
+import { TeamRosterDialog } from "./TeamRosterDialog";
 
 interface PlayerRow { id: string; display_name: string | null; full_name: string | null }
 
@@ -26,9 +27,12 @@ export function TeamsTab({ league }: { league: League }) {
   const [divisions, setDivisions] = useState<LeagueDivision[]>([]);
   const [teams, setTeams] = useState<LeagueTeam[]>([]);
   const [members, setMembers] = useState<LeagueMember[]>([]);
+  /** count of active roster rows per team_id (for the badge on the team card) */
+  const [rosterCounts, setRosterCounts] = useState<Record<string, number>>({});
   const [profilesById, setProfilesById] = useState<Record<string, PlayerRow>>({});
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
+  const [rosterFor, setRosterFor] = useState<LeagueTeam | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -58,10 +62,29 @@ export function TeamsTab({ league }: { league: League }) {
         .eq("season_id", seasonId).eq("status", "active"),
     ]);
     setDivisions((divs ?? []) as unknown as LeagueDivision[]);
-    setTeams((t ?? []) as unknown as LeagueTeam[]);
+    const teamList = (t ?? []) as unknown as LeagueTeam[];
+    setTeams(teamList);
     const memList = (mems ?? []) as unknown as LeagueMember[];
     setMembers(memList);
-    const captainIds = ((t ?? []) as unknown as LeagueTeam[])
+
+    // Active roster counts — one grouped select, avoids N queries.
+    if (teamList.length) {
+      const { data: rows } = await supabase
+        .from("league_team_members" as never)
+        .select("team_id")
+        .in("team_id", teamList.map((tm) => tm.id))
+        .eq("status", "active");
+      const counts: Record<string, number> = {};
+      (rows ?? []).forEach((r) => {
+        const tid = (r as { team_id: string }).team_id;
+        counts[tid] = (counts[tid] ?? 0) + 1;
+      });
+      setRosterCounts(counts);
+    } else {
+      setRosterCounts({});
+    }
+
+    const captainIds = teamList
       .map((tm) => tm.captain_user_id).filter(Boolean) as string[];
     const userIds = Array.from(new Set([...captainIds, ...memList.map((m) => m.user_id)]));
     if (userIds.length) {
@@ -116,22 +139,49 @@ export function TeamsTab({ league }: { league: League }) {
           {teams.map((t) => {
             const captain = t.captain_user_id ? profilesById[t.captain_user_id] : null;
             const division = divisions.find((d) => d.id === t.division_id);
+            const rosterCount = rosterCounts[t.id] ?? 0;
             return (
-              <li key={t.id} className="rounded-lg border border-border/70 bg-card p-3">
-                <div className="flex items-center justify-between">
-                  <div className="min-w-0">
-                    <div className="font-medium">{t.name}</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">
-                      {captain ? `Captain: ${resolvePlayerName(captain)}` : "No captain assigned"}
-                      {division && ` · ${division.name}`}
-                      {t.status === "archived" && " · archived"}
+              <li key={t.id}>
+                <button
+                  type="button"
+                  onClick={() => setRosterFor(t)}
+                  className="w-full text-left rounded-lg border border-border/70 bg-card p-3 hover:bg-muted/50 hover:border-primary/40 transition-colors"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium truncate">{t.name}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5">
+                        <span className="inline-flex items-center gap-1">
+                          <Users className="w-3 h-3" />
+                          {rosterCount} player{rosterCount === 1 ? "" : "s"}
+                        </span>
+                        <span>·</span>
+                        <span>
+                          {captain ? `Captain: ${resolvePlayerName(captain)}` : "No captain"}
+                        </span>
+                        {division && (<><span>·</span><span>{division.name}</span></>)}
+                        {t.status === "archived" && (<><span>·</span><span>archived</span></>)}
+                      </div>
                     </div>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
                   </div>
-                </div>
+                </button>
               </li>
             );
           })}
         </ul>
+      )}
+
+      {rosterFor && (
+        <TeamRosterDialog
+          open={!!rosterFor}
+          onOpenChange={(o) => !o && setRosterFor(null)}
+          league={league}
+          team={rosterFor}
+          eligibleMembers={members}
+          profilesById={profilesById}
+          onChanged={reload}
+        />
       )}
     </div>
   );
@@ -165,11 +215,29 @@ function TeamEditor({
     const { data, error } = await supabase
       .from("league_teams" as never).insert(payload as never).select().single();
     if (error || !data) { toast.error(error?.message ?? "Save failed"); setSaving(false); return; }
+    const team = data as unknown as LeagueTeam;
     await logLeagueAction({
       leagueId: league.id, seasonId,
       action: "team.created", entityType: "team",
-      entityId: (data as unknown as LeagueTeam).id, newValue: payload,
+      entityId: team.id, newValue: payload,
     });
+
+    // If a captain was picked, seed them as an active team member so the
+    // roster isn't empty on day one and role/captain stay consistent.
+    if (captainId !== "none") {
+      const rosterPayload = {
+        team_id: team.id,
+        user_id: captainId,
+        role: "captain" as const,
+      };
+      await supabase.from("league_team_members" as never).insert(rosterPayload as never);
+      await logLeagueAction({
+        leagueId: league.id, seasonId,
+        action: "team_member.added", entityType: "team_member",
+        entityId: null, newValue: rosterPayload,
+      });
+    }
+
     toast.success("Team created");
     setSaving(false);
     await onDone();
@@ -210,11 +278,11 @@ function TeamEditor({
               ))}
             </SelectContent>
           </Select>
+          <p className="text-[11px] text-muted-foreground">
+            Chosen captain is auto-added to the roster. Add more players
+            from the team card.
+          </p>
         </div>
-        <p className="text-[11px] text-muted-foreground">
-          Team roster (adding/removing players) will be part of the next batch.
-          For now, teams hold a name + captain + division.
-        </p>
       </div>
       <DialogFooter>
         <Button onClick={submit} disabled={saving} className="w-full">
