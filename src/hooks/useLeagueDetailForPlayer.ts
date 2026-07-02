@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type {
   League, LeagueMember, LeagueSeason, LeagueDivision, LeagueTeam,
@@ -36,7 +36,11 @@ export interface PlayerLeagueDetailData {
   allTeams: LeagueTeam[];
   /** Team-id → team row lookup, for match card rendering. */
   teamsById: Record<string, LeagueTeam>;
+  /** Current user's auth id — surfaced so match action components don't re-query. */
+  currentUserId: string | null;
   loading: boolean;
+  /** Bump to force a full re-fetch. */
+  refresh: () => void;
 }
 
 /**
@@ -45,12 +49,16 @@ export interface PlayerLeagueDetailData {
  * for "matches involving me".
  */
 export function useLeagueDetailForPlayer(leagueId: string | undefined): PlayerLeagueDetailData {
+  const [tick, setTick] = useState(0);
+  const refresh = useCallback(() => setTick((t) => t + 1), []);
   const [data, setData] = useState<PlayerLeagueDetailData>({
     league: null, membership: null, season: null, division: null,
     myTeams: [], myTeamIds: new Set<string>(),
     teammates: [], matches: [], allMatches: [], allTeams: [],
     teamsById: {},
+    currentUserId: null,
     loading: true,
+    refresh,
   });
 
   useEffect(() => {
@@ -80,7 +88,9 @@ export function useLeagueDetailForPlayer(leagueId: string | undefined): PlayerLe
             myTeams: [], myTeamIds: new Set<string>(),
             teammates: [], matches: [], allMatches: [], allTeams: [],
             teamsById: {},
+            currentUserId: user.id,
             loading: false,
+            refresh,
           });
         }
         return;
@@ -202,13 +212,16 @@ export function useLeagueDetailForPlayer(leagueId: string | undefined): PlayerLe
           myTeams, teammates, matches: mine, teamsById,
           // Full league dataset — needed for the standings section.
           allTeams, allMatches: matchList, myTeamIds,
+          currentUserId: user.id,
           loading: false,
+          refresh,
         });
       }
     })();
 
     return () => { cancelled = true; };
-  }, [leagueId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leagueId, tick]);
 
   return data;
 }
