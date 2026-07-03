@@ -5,10 +5,11 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { UserPlus, UserX, Crown } from "lucide-react";
+import { UserPlus, UserX, Crown, Search, Users } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
@@ -19,6 +20,7 @@ import type {
 } from "@/lib/leagues/types";
 import { logLeagueAction } from "@/lib/leagues/audit";
 import { resolvePlayerName } from "@/lib/matchDisplay";
+import { cn } from "@/lib/utils";
 
 interface PlayerRow {
   id: string;
@@ -26,6 +28,48 @@ interface PlayerRow {
   full_name: string | null;
   first_name?: string | null;
   last_name?: string | null;
+  avatar_url?: string | null;
+}
+
+/**
+ * Two-letter fallback for the roster avatar chip when the player has
+ * no uploaded avatar. Prefers display_name → first+last → id prefix.
+ */
+function initialsOf(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "··";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+function AvatarChip({
+  url, name, size = "sm", captain,
+}: {
+  url?: string | null;
+  name: string;
+  size?: "sm" | "md";
+  captain?: boolean;
+}) {
+  const dim = size === "md" ? "h-9 w-9 text-xs" : "h-8 w-8 text-[11px]";
+  return (
+    <div className="relative shrink-0">
+      <div className={cn(
+        "rounded-full ring-1 ring-border bg-muted/60 flex items-center justify-center overflow-hidden font-semibold text-muted-foreground",
+        dim,
+      )}>
+        {url ? (
+          <img src={url} alt="" className="h-full w-full object-cover" />
+        ) : (
+          <span>{initialsOf(name)}</span>
+        )}
+      </div>
+      {captain && (
+        <span className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-amber-500 ring-2 ring-background flex items-center justify-center">
+          <Crown className="h-2.5 w-2.5 text-white" />
+        </span>
+      )}
+    </div>
+  );
 }
 
 interface Props {
@@ -47,6 +91,7 @@ export function TeamRosterDialog({
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState<{ member: LeagueTeamMember; name: string } | null>(null);
+  const [addQuery, setAddQuery] = useState("");
 
   const load = async () => {
     setLoading(true);
@@ -75,6 +120,16 @@ export function TeamRosterDialog({
     () => eligibleMembers.filter((m) => !rosterUserIds.has(m.user_id)),
     [eligibleMembers, rosterUserIds],
   );
+
+  const filteredAddable = useMemo(() => {
+    const q = addQuery.trim().toLowerCase();
+    if (!q) return addable;
+    return addable.filter((m) => {
+      const p = profilesById[m.user_id];
+      const name = p ? resolvePlayerName(p) : m.user_id;
+      return name.toLowerCase().includes(q);
+    });
+  }, [addable, addQuery, profilesById]);
 
   const addMember = async (userId: string) => {
     setBusy(true);
@@ -150,27 +205,48 @@ export function TeamRosterDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <span className="truncate">{team.name} · roster</span>
-          </DialogTitle>
+      <DialogContent className="sm:max-w-lg p-0 overflow-hidden gap-0">
+        {/* Amber accent — teams tone throughout the league system */}
+        <div className="h-1.5 w-full bg-amber-500" aria-hidden />
+
+        <DialogHeader className="p-5 pb-3 space-y-0">
+          <div className="flex items-start gap-3">
+            <div
+              className="h-10 w-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0"
+              aria-hidden
+            >
+              <Users className="w-5 h-5" />
+            </div>
+            <div className="min-w-0 flex-1 pt-0.5">
+              <DialogTitle className="text-lg font-bold tracking-tight leading-tight truncate">
+                {team.name}
+              </DialogTitle>
+              <p className="text-xs text-muted-foreground mt-1">
+                {active.length} active player{active.length === 1 ? "" : "s"}
+                {" · "}
+                {team.captain_user_id ? "captain set" : "no captain"}
+              </p>
+            </div>
+          </div>
         </DialogHeader>
 
         {loading ? (
-          <p className="text-sm text-muted-foreground py-6 text-center">Loading…</p>
+          <p className="text-sm text-muted-foreground py-10 text-center">Loading…</p>
         ) : (
-          <div className="space-y-4">
+          <div className="px-5 pb-5 pt-1 space-y-5 max-h-[70vh] overflow-y-auto">
             {/* Active roster */}
-            <section>
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Active ({active.length})
-                </h3>
+            <section className="space-y-2.5">
+              <div className="flex items-baseline gap-2 border-b border-border/40 pb-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                  Active roster
+                </span>
+                <span className="text-[10px] text-muted-foreground/70">
+                  {active.length}
+                </span>
               </div>
               {active.length === 0 ? (
                 <div className="rounded-lg border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
-                  No players on the roster yet.
+                  No players on the roster yet — add some below.
                 </div>
               ) : (
                 <ul className="space-y-1.5">
@@ -181,21 +257,23 @@ export function TeamRosterDialog({
                     return (
                       <li
                         key={m.id}
-                        className="flex items-center gap-2 rounded-lg border border-border/70 bg-card px-3 py-2"
+                        className="flex items-center gap-2.5 rounded-lg border border-border/70 bg-card px-3 py-2 hover:border-amber-500/40 transition-colors"
                       >
-                        <div className="min-w-0 flex-1 flex items-center gap-2">
-                          <span className="text-sm truncate">{name}</span>
-                          {isCaptain && (
-                            <Crown className="w-3.5 h-3.5 text-amber-500 shrink-0" aria-label="Captain" />
-                          )}
-                        </div>
+                        <AvatarChip
+                          url={p?.avatar_url}
+                          name={name}
+                          captain={isCaptain}
+                        />
+                        <span className="text-sm font-medium truncate flex-1">
+                          {name}
+                        </span>
                         <Select
                           value={m.role}
                           onValueChange={(v) =>
                             patch(m, { role: v as TeamMemberRole }, "team_member.role_changed")
                           }
                         >
-                          <SelectTrigger className="h-8 w-[110px] text-xs">
+                          <SelectTrigger className="h-8 w-[112px] text-xs">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -207,10 +285,11 @@ export function TeamRosterDialog({
                         {!isCaptain && (
                           <Button
                             variant="ghost" size="sm"
-                            className="h-8 px-2"
+                            className="h-8 px-2 hover:text-amber-500"
                             disabled={busy}
                             onClick={() => promoteCaptain(m.user_id)}
                             aria-label="Set as team captain"
+                            title="Make captain"
                           >
                             <Crown className="w-4 h-4" />
                           </Button>
@@ -232,10 +311,15 @@ export function TeamRosterDialog({
             </section>
 
             {/* Add from league members */}
-            <section>
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-                Add from league members
-              </h3>
+            <section className="space-y-2.5">
+              <div className="flex items-baseline gap-2 border-b border-border/40 pb-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                  Add from league members
+                </span>
+                <span className="text-[10px] text-muted-foreground/70">
+                  {addable.length} available
+                </span>
+              </div>
               {addable.length === 0 ? (
                 <div className="rounded-lg border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
                   {eligibleMembers.length === 0
@@ -243,51 +327,71 @@ export function TeamRosterDialog({
                     : "Everyone eligible is already on the roster."}
                 </div>
               ) : (
-                <ul className="space-y-1.5 max-h-48 overflow-y-auto">
-                  {addable.map((m) => {
-                    const p = profilesById[m.user_id];
-                    const name = p ? resolvePlayerName(p) : m.user_id.slice(0, 8);
-                    return (
-                      <li
-                        key={m.id}
-                        className="flex items-center gap-2 rounded-lg border border-border/70 bg-card px-3 py-2"
-                      >
-                        <span className="text-sm truncate flex-1">{name}</span>
-                        <Button
-                          size="sm" variant="outline" className="h-8"
-                          disabled={busy}
-                          onClick={() => addMember(m.user_id)}
+                <>
+                  {addable.length > 5 && (
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                      <Input
+                        placeholder="Search members…"
+                        value={addQuery}
+                        onChange={(e) => setAddQuery(e.target.value)}
+                        className="pl-8 h-9 text-sm"
+                      />
+                    </div>
+                  )}
+                  <ul className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+                    {filteredAddable.map((m) => {
+                      const p = profilesById[m.user_id];
+                      const name = p ? resolvePlayerName(p) : m.user_id.slice(0, 8);
+                      return (
+                        <li
+                          key={m.id}
+                          className="flex items-center gap-2.5 rounded-lg border border-border/70 bg-card px-3 py-2 hover:border-amber-500/40 transition-colors"
                         >
-                          <UserPlus className="w-3.5 h-3.5 mr-1" />
-                          Add
-                        </Button>
+                          <AvatarChip url={p?.avatar_url} name={name} />
+                          <span className="text-sm truncate flex-1">{name}</span>
+                          <Button
+                            size="sm" variant="outline" className="h-8 shrink-0"
+                            disabled={busy}
+                            onClick={() => addMember(m.user_id)}
+                          >
+                            <UserPlus className="w-3.5 h-3.5 mr-1" />
+                            Add
+                          </Button>
+                        </li>
+                      );
+                    })}
+                    {filteredAddable.length === 0 && (
+                      <li className="rounded-lg border border-dashed border-border p-3 text-center text-[11px] text-muted-foreground">
+                        No matches — clear the search or add the player to the league first.
                       </li>
-                    );
-                  })}
-                </ul>
+                    )}
+                  </ul>
+                </>
               )}
-              <p className="text-[11px] text-muted-foreground mt-2">
-                Only active league members appear here. Add players to the
-                league on the Members tab first if the person is missing.
+              <p className="text-[11px] text-muted-foreground">
+                Only active league members appear here. Missing someone?
+                Add them on the Members tab first.
               </p>
             </section>
 
             {/* Removed history */}
             {removed.length > 0 && (
               <section>
-                <details>
-                  <summary className="text-xs font-semibold uppercase tracking-wider text-muted-foreground cursor-pointer">
-                    Removed ({removed.length})
+                <details className="group">
+                  <summary className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground cursor-pointer flex items-center gap-1.5 pb-1.5 border-b border-border/40 hover:text-foreground transition-colors">
+                    <span>Removed history · {removed.length}</span>
                   </summary>
-                  <ul className="space-y-1.5 mt-2">
+                  <ul className="space-y-1.5 mt-2.5">
                     {removed.map((m) => {
                       const p = profilesById[m.user_id];
                       const name = p ? resolvePlayerName(p) : m.user_id.slice(0, 8);
                       return (
                         <li
                           key={m.id}
-                          className="flex items-center gap-2 rounded-lg border border-border/50 bg-muted/30 px-3 py-2 opacity-70"
+                          className="flex items-center gap-2.5 rounded-lg border border-border/50 bg-muted/30 px-3 py-2 opacity-70"
                         >
+                          <AvatarChip url={p?.avatar_url} name={name} />
                           <span className="text-sm truncate flex-1">{name}</span>
                           <Button
                             variant="ghost" size="sm" className="h-7 text-xs"

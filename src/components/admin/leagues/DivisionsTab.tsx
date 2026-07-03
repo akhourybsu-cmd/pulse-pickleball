@@ -3,19 +3,20 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
-  DialogTrigger,
+  Dialog, DialogTrigger,
 } from "@/components/ui/dialog";
 import { Plus, ArrowUp, Layers } from "lucide-react";
 import type { League, LeagueSeason, LeagueDivision } from "@/lib/leagues/types";
 import { logLeagueAction } from "@/lib/leagues/audit";
-import { EmptyState, TabSkeleton, LeagueTabProps } from "./_shared";
+import {
+  EmptyState, TabSkeleton, LeagueTabProps,
+  FormShell, FormSection, FormRow, FIELD_H,
+} from "./_shared";
 
 export function DivisionsTab({ league, dataVersion, onMutated }: LeagueTabProps) {
   const [seasons, setSeasons] = useState<LeagueSeason[]>([]);
@@ -202,48 +203,62 @@ function DivisionEditor({
   };
 
   return (
-    <DialogContent className="sm:max-w-md">
-      <DialogHeader>
-        <DialogTitle>{isNew ? "New division" : "Edit division"}</DialogTitle>
-      </DialogHeader>
-      <div className="space-y-3">
-        <div className="space-y-1.5">
-          <Label>Name</Label>
-          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="3.5+ Doubles" />
-        </div>
+    <FormShell
+      icon={<Layers className="w-5 h-5" />}
+      tone="blue"
+      title={isNew ? "New division" : "Edit division"}
+      subtitle={isNew
+        ? "Divisions split members by skill range. Members can move between them at any time."
+        : `Editing ${initial!.name}`}
+      primaryLabel={isNew ? "Create division" : "Save changes"}
+      primaryLoading={saving}
+      primaryDisabled={!name.trim()}
+      onPrimary={submit}
+    >
+      <FormSection label="Basics">
+        <FormRow label="Division name" required>
+          <Input
+            value={name} onChange={(e) => setName(e.target.value)}
+            placeholder="3.5+ Doubles" className={FIELD_H}
+          />
+        </FormRow>
+        <FormRow label="Description">
+          <Textarea rows={2} value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Optional flavor for players — house rules, format notes…" />
+        </FormRow>
+      </FormSection>
+
+      <FormSection label="Skill range" hint="PULSE scale · 2.0 – 5.5">
         <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <Label>Skill min</Label>
+          <FormRow label="Minimum">
             <Input type="number" step="0.1" min="2" max="6"
-              value={skillMin} onChange={(e) => setSkillMin(e.target.value)} placeholder="3.0" />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Skill max</Label>
+              value={skillMin} onChange={(e) => setSkillMin(e.target.value)}
+              placeholder="3.0" className={FIELD_H} />
+          </FormRow>
+          <FormRow label="Maximum">
             <Input type="number" step="0.1" min="2" max="6"
-              value={skillMax} onChange={(e) => setSkillMax(e.target.value)} placeholder="4.0" />
-          </div>
+              value={skillMax} onChange={(e) => setSkillMax(e.target.value)}
+              placeholder="4.0" className={FIELD_H} />
+          </FormRow>
         </div>
-        <div className="space-y-1.5">
-          <Label>Description</Label>
-          <Textarea rows={2} value={description} onChange={(e) => setDescription(e.target.value)} />
-        </div>
-        <div className="space-y-1.5">
-          <Label>Status</Label>
+      </FormSection>
+
+      <FormSection label="Visibility">
+        <FormRow
+          label="Status"
+          hint="Archived divisions stay in past standings but drop off the active roster."
+        >
           <Select value={status} onValueChange={(v) => setStatus(v as LeagueDivision["status"])}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger className={FIELD_H}><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="active">Active</SelectItem>
               <SelectItem value="archived">Archived</SelectItem>
             </SelectContent>
           </Select>
-        </div>
-      </div>
-      <DialogFooter>
-        <Button onClick={submit} disabled={saving} className="w-full">
-          {saving ? "Saving…" : isNew ? "Create division" : "Save changes"}
-        </Button>
-      </DialogFooter>
-    </DialogContent>
+        </FormRow>
+      </FormSection>
+    </FormShell>
   );
 }
 
