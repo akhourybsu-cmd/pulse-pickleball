@@ -22,7 +22,9 @@ import {
   Shield,
   CalendarDays,
   ListOrdered,
+  Trophy,
 } from 'lucide-react';
+import { useLeagueEntitlement } from '@/hooks/useLeagueEntitlement';
 import { cn } from '@/lib/utils';
 import { PlayerPageHeader } from '@/components/layout/PlayerPageHeader';
 import { SectionHeader } from '@/components/layout/SectionHeader';
@@ -56,6 +58,18 @@ const ACTIVITY_LINKS: HubLink[] = [
     description: 'Upcoming and past registrations',
   },
 ];
+
+/**
+ * Leagues row is composed at render time so the entitlement hook
+ * can gate it. If the player isn't entitled we don't want a dead
+ * link to /player/leagues in the Activity group.
+ */
+const LEAGUES_LINK: HubLink = {
+  to: '/player/leagues',
+  icon: Trophy,
+  label: 'Leagues',
+  description: 'Standings, schedule, and teammates',
+};
 
 const COMMUNITY_LINKS: HubLink[] = [
   {
@@ -120,6 +134,10 @@ export default function PlayerProfile() {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const { entitled: leagueEntitled } = useLeagueEntitlement();
+  const activityLinks = leagueEntitled
+    ? [...ACTIVITY_LINKS, LEAGUES_LINK]
+    : ACTIVITY_LINKS;
 
   useEffect(() => {
     let cancelled = false;
@@ -278,10 +296,10 @@ export default function PlayerProfile() {
           </Button>
         </div>
 
-        {/* Activity group */}
+        {/* Activity group — Leagues row appears when entitled. */}
         <div>
           <SectionHeader label="Activity" />
-          {renderLinkGroup(ACTIVITY_LINKS, 180)}
+          {renderLinkGroup(activityLinks, 180)}
         </div>
 
         {/* Community group */}

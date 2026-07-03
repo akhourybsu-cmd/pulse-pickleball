@@ -391,6 +391,10 @@ const Dashboard = () => {
             <MyRoundRobinsCard userId={user?.id} />
           </div>
 
+          {/* My leagues — Phase 1 player-facing surface. Same
+              self-hide-when-empty behavior as the desktop grid. */}
+          <MyLeaguesSection />
+
           {/* My communities — quick-tap rail */}
           <div
             className="opacity-0 animate-fade-up"
