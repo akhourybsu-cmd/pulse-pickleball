@@ -58,6 +58,10 @@ export interface LeagueTeaser {
   league_type: LeagueType;
   visibility: LeagueVisibility;
   guests_allowed: boolean;
+  /** False when every active season has passed its registration_deadline. */
+  registration_open: boolean;
+  /** Earliest upcoming registration deadline among active seasons. */
+  registration_closes_at: string | null;
 }
 
 export interface LeagueSeason {
