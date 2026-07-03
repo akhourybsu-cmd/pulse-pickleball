@@ -3,8 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { KeyRound, Copy, Trash2, Check } from "lucide-react";
+import { KeyRound, Copy, Trash2, Check, Share2, QrCode, Link2 } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import type { League } from "@/lib/leagues/types";
 import { logLeagueAction } from "@/lib/leagues/audit";
 
@@ -27,7 +27,9 @@ export function InviteCodeCard({
 }) {
   const [draft, setDraft] = useState(league.invite_code ?? "");
   const [saving, setSaving] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [qrOpen, setQrOpen] = useState(false);
 
   const currentCode = league.invite_code ?? null;
   const isAdminOnly = league.visibility === "admin_only";
@@ -74,10 +76,48 @@ export function InviteCodeCard({
     if (!currentCode) return;
     try {
       await navigator.clipboard.writeText(currentCode);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
+      setCopiedCode(true);
+      setTimeout(() => setCopiedCode(false), 1500);
     } catch {
       toast.error("Couldn't copy to clipboard");
+    }
+  };
+
+  // The share link deep-links into /player/leagues with the code as a
+  // query param. PlayerLeagues.tsx auto-opens the JoinByCodeDialog with
+  // it prefilled. Uses window.location.origin so it works in dev + prod.
+  const shareUrl = currentCode
+    ? `${window.location.origin}/player/leagues?join=${encodeURIComponent(currentCode)}`
+    : null;
+
+  const copyLink = async () => {
+    if (!shareUrl) return;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 1500);
+      toast.success("Share link copied");
+    } catch {
+      toast.error("Couldn't copy link");
+    }
+  };
+
+  const nativeShare = async () => {
+    if (!shareUrl || !currentCode) return;
+    // Prefer the OS share sheet on mobile; fall back to copy on desktop.
+    const nav = navigator as Navigator & { share?: (data: ShareData) => Promise<void> };
+    if (nav.share) {
+      try {
+        await nav.share({
+          title: `Join ${league.name}`,
+          text: `Join ${league.name} on PULSE (code: ${currentCode})`,
+          url: shareUrl,
+        });
+      } catch {
+        // User dismissed the sheet — no toast, silent.
+      }
+    } else {
+      void copyLink();
     }
   };
 
@@ -105,7 +145,7 @@ export function InviteCodeCard({
         </div>
         {currentCode && !dirty && (
           <Button variant="outline" size="sm" onClick={copy} className="h-10 shrink-0">
-            {copied ? (
+            {copiedCode ? (
               <><Check className="w-4 h-4 mr-1.5 text-emerald-500" />Copied</>
             ) : (
               <><Copy className="w-4 h-4 mr-1.5" />Copy</>
@@ -135,6 +175,65 @@ export function InviteCodeCard({
           Heads up — this league's visibility is <strong>admin_only</strong>, so the
           code won't work for players. Change visibility to <em>private</em> or{" "}
           <em>public_future</em> once you're ready to open joins.
+        </div>
+      )}
+
+      {/* Share row — appears once the code is saved (not while editing). */}
+      {currentCode && !dirty && shareUrl && (
+        <div className="space-y-2 pt-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button
+              size="sm"
+              onClick={nativeShare}
+              className="h-9 shadow-[0_2px_8px_-2px_hsl(var(--primary)/0.4)] active:scale-[0.98] transition-transform"
+            >
+              <Share2 className="w-4 h-4 mr-1.5" />
+              Share invite
+            </Button>
+            <Button
+              variant="outline" size="sm"
+              onClick={copyLink} className="h-9"
+            >
+              {copiedLink ? (
+                <><Check className="w-4 h-4 mr-1.5 text-emerald-500" />Link copied</>
+              ) : (
+                <><Link2 className="w-4 h-4 mr-1.5" />Copy link</>
+              )}
+            </Button>
+            <Button
+              variant={qrOpen ? "default" : "outline"}
+              size="sm"
+              onClick={() => setQrOpen((v) => !v)}
+              className="h-9"
+            >
+              <QrCode className="w-4 h-4 mr-1.5" />
+              {qrOpen ? "Hide QR" : "Show QR"}
+            </Button>
+          </div>
+
+          {/* Truncated preview of the link so admin knows what they're sharing */}
+          <div className="text-[11px] font-mono text-muted-foreground truncate">
+            {shareUrl}
+          </div>
+
+          {qrOpen && (
+            <div className="flex flex-col items-center gap-2 rounded-xl border border-border/60 bg-white p-4 mt-1">
+              <QRCodeSVG
+                value={shareUrl}
+                size={180}
+                level="M"
+                includeMargin={false}
+                bgColor="#ffffff"
+                fgColor="#0B171F"
+              />
+              <div className="text-[11px] text-slate-600 font-medium">
+                Scan to open the join screen
+              </div>
+              <div className="text-[10px] font-mono uppercase tracking-widest text-slate-500">
+                {currentCode}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

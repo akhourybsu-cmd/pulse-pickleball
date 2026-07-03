@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   ListChecks, CalendarDays, Trophy, ChevronRight, MapPin,
   Shuffle, Zap, Sparkles, Layers, KeyRound,
@@ -24,6 +24,23 @@ export default function PlayerLeagues() {
   const { rows, loading, error } = useMyLeagues();
   const { leagues: browseable, loading: browseLoading } = useBrowseableLeagues();
   const [joinOpen, setJoinOpen] = useState(false);
+  const [prefillCode, setPrefillCode] = useState<string | undefined>(undefined);
+
+  // Deep-link support: /player/leagues?join=SPRING26
+  // Auto-open the dialog with the code pre-filled + auto-looked-up.
+  // Strip the param after we've read it so a page refresh doesn't
+  // keep re-opening the dialog.
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    const code = searchParams.get("join");
+    if (!code) return;
+    setPrefillCode(code);
+    setJoinOpen(true);
+    const next = new URLSearchParams(searchParams);
+    next.delete("join");
+    setSearchParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-2xl space-y-4">
@@ -212,7 +229,14 @@ export default function PlayerLeagues() {
         </section>
       )}
 
-      <JoinByCodeDialog open={joinOpen} onOpenChange={setJoinOpen} />
+      <JoinByCodeDialog
+        open={joinOpen}
+        onOpenChange={(o) => {
+          setJoinOpen(o);
+          if (!o) setPrefillCode(undefined);
+        }}
+        initialCode={prefillCode}
+      />
     </div>
   );
 }
