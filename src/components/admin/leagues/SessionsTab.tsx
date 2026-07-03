@@ -3,13 +3,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
-  DialogTrigger,
+  Dialog, DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Plus, Calendar as CalendarIcon, ChevronRight, CalendarClock,
@@ -19,7 +17,10 @@ import type {
 } from "@/lib/leagues/types";
 import { logLeagueAction } from "@/lib/leagues/audit";
 import { cn } from "@/lib/utils";
-import { EmptyState, TabSkeleton, LeagueTabProps } from "./_shared";
+import {
+  EmptyState, TabSkeleton, LeagueTabProps,
+  FormShell, FormSection, FormRow, FIELD_H,
+} from "./_shared";
 
 export function SessionsTab({ league, dataVersion, onMutated }: LeagueTabProps) {
   const [seasons, setSeasons] = useState<LeagueSeason[]>([]);
@@ -218,67 +219,81 @@ function SessionEditor({
   };
 
   return (
-    <DialogContent className="sm:max-w-md">
-      <DialogHeader>
-        <DialogTitle>{mode === "create" ? "New session" : "Edit session"}</DialogTitle>
-      </DialogHeader>
-      <div className="space-y-3">
-        <div className="space-y-1.5">
-          <Label>Name</Label>
-          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Week 1" />
-        </div>
-        <div className="space-y-1.5">
-          <Label>Date</Label>
-          <Input type="date" value={scheduledDate} onChange={(e) => setScheduledDate(e.target.value)} />
-        </div>
+    <FormShell
+      icon={<CalendarClock className="w-5 h-5" />}
+      tone="violet"
+      title={mode === "create" ? "New session" : "Edit session"}
+      subtitle={mode === "create"
+        ? "One night of play. Publishing surfaces it to enrolled players."
+        : `Editing ${initial!.name}`}
+      primaryLabel={mode === "create" ? "Create session" : "Save changes"}
+      primaryLoading={saving}
+      primaryDisabled={!name.trim()}
+      onPrimary={submit}
+    >
+      <FormSection label="Basics">
+        <FormRow label="Session name" required>
+          <Input value={name} onChange={(e) => setName(e.target.value)}
+            placeholder="Week 1" className={FIELD_H} />
+        </FormRow>
+        <FormRow label="Status">
+          <Select value={status} onValueChange={(v) => setStatus(v as SessionStatus)}>
+            <SelectTrigger className={FIELD_H}><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="draft">Draft (hidden from players)</SelectItem>
+              <SelectItem value="published">Published</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
+              <SelectItem value="canceled">Canceled</SelectItem>
+            </SelectContent>
+          </Select>
+        </FormRow>
+      </FormSection>
+
+      <FormSection label="Schedule">
+        <FormRow label="Date">
+          <Input type="date" value={scheduledDate}
+            onChange={(e) => setScheduledDate(e.target.value)}
+            className={FIELD_H} />
+        </FormRow>
         <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <Label>Start</Label>
-            <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>End</Label>
-            <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
-          </div>
+          <FormRow label="Start time">
+            <Input type="time" value={startTime}
+              onChange={(e) => setStartTime(e.target.value)}
+              className={FIELD_H} />
+          </FormRow>
+          <FormRow label="End time">
+            <Input type="time" value={endTime}
+              onChange={(e) => setEndTime(e.target.value)}
+              className={FIELD_H} />
+          </FormRow>
         </div>
+      </FormSection>
+
+      <FormSection label="Venue & division">
         <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <Label>Courts</Label>
-            <Input type="number" min="1" value={courtCount} onChange={(e) => setCourtCount(e.target.value)} placeholder="4" />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Status</Label>
-            <Select value={status} onValueChange={(v) => setStatus(v as SessionStatus)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="draft">Draft</SelectItem>
-                <SelectItem value="published">Published</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-                <SelectItem value="canceled">Canceled</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <FormRow label="Courts">
+            <Input type="number" min="1" value={courtCount}
+              onChange={(e) => setCourtCount(e.target.value)}
+              placeholder="4" className={FIELD_H} />
+          </FormRow>
+          <FormRow label="Location">
+            <Input value={location} onChange={(e) => setLocation(e.target.value)}
+              className={FIELD_H} placeholder="Optional" />
+          </FormRow>
         </div>
-        <div className="space-y-1.5">
-          <Label>Location</Label>
-          <Input value={location} onChange={(e) => setLocation(e.target.value)} />
-        </div>
-        <div className="space-y-1.5">
-          <Label>Division (optional)</Label>
+        <FormRow
+          label="Division"
+          hint="Leave open to schedule across all divisions."
+        >
           <Select value={divisionId} onValueChange={setDivisionId}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger className={FIELD_H}><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="none">All divisions</SelectItem>
               {divisions.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
             </SelectContent>
           </Select>
-        </div>
-      </div>
-      <DialogFooter>
-        <Button onClick={submit} disabled={saving} className="w-full">
-          {saving ? "Saving…" : mode === "create" ? "Create session" : "Save changes"}
-        </Button>
-      </DialogFooter>
-    </DialogContent>
+        </FormRow>
+      </FormSection>
+    </FormShell>
   );
 }

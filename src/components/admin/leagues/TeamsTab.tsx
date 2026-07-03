@@ -3,22 +3,23 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
-  DialogTrigger,
+  Dialog, DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Users, ChevronRight, UsersRound } from "lucide-react";
+import { Plus, Users, ChevronRight, UsersRound, Shield } from "lucide-react";
 import type {
   League, LeagueSeason, LeagueDivision, LeagueTeam, LeagueMember,
 } from "@/lib/leagues/types";
 import { logLeagueAction } from "@/lib/leagues/audit";
 import { resolvePlayerName } from "@/lib/matchDisplay";
 import { TeamRosterDialog } from "./TeamRosterDialog";
-import { EmptyState, TabSkeleton, LeagueTabProps } from "./_shared";
+import {
+  EmptyState, TabSkeleton, LeagueTabProps,
+  FormShell, FormSection, FormRow, FIELD_H,
+} from "./_shared";
 
 interface PlayerRow { id: string; display_name: string | null; full_name: string | null }
 
@@ -250,29 +251,48 @@ function TeamEditor({
   };
 
   return (
-    <DialogContent className="sm:max-w-md">
-      <DialogHeader>
-        <DialogTitle>New team</DialogTitle>
-      </DialogHeader>
-      <div className="space-y-3">
-        <div className="space-y-1.5">
-          <Label>Team name</Label>
-          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Team A" />
-        </div>
-        <div className="space-y-1.5">
-          <Label>Division</Label>
+    <FormShell
+      icon={<Shield className="w-5 h-5" />}
+      tone="amber"
+      title="New team"
+      subtitle="Group active members for scheduling and standings. Add more players from the team card after."
+      primaryLabel="Create team"
+      primaryLoading={saving}
+      primaryDisabled={!name.trim()}
+      onPrimary={submit}
+    >
+      <FormSection label="Identity">
+        <FormRow label="Team name" required>
+          <Input
+            value={name} onChange={(e) => setName(e.target.value)}
+            placeholder="Team A" className={FIELD_H}
+          />
+        </FormRow>
+        <FormRow
+          label="Division"
+          hint={divisions.length === 0
+            ? "No divisions yet — you can assign this later."
+            : undefined}
+        >
           <Select value={divisionId} onValueChange={setDivisionId}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger className={FIELD_H}><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="none">No division</SelectItem>
               {divisions.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
             </SelectContent>
           </Select>
-        </div>
-        <div className="space-y-1.5">
-          <Label>Captain (from league members)</Label>
+        </FormRow>
+      </FormSection>
+
+      <FormSection label="Leadership">
+        <FormRow
+          label="Captain"
+          hint={members.length === 0
+            ? "No active league members yet — add them on the Members tab first."
+            : "Auto-added to the roster with the captain role."}
+        >
           <Select value={captainId} onValueChange={setCaptainId}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger className={FIELD_H}><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="none">No captain</SelectItem>
               {members.map((m) => (
@@ -284,17 +304,8 @@ function TeamEditor({
               ))}
             </SelectContent>
           </Select>
-          <p className="text-[11px] text-muted-foreground">
-            Chosen captain is auto-added to the roster. Add more players
-            from the team card.
-          </p>
-        </div>
-      </div>
-      <DialogFooter>
-        <Button onClick={submit} disabled={saving} className="w-full">
-          {saving ? "Creating…" : "Create team"}
-        </Button>
-      </DialogFooter>
-    </DialogContent>
+        </FormRow>
+      </FormSection>
+    </FormShell>
   );
 }

@@ -7,10 +7,8 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
-  DialogTrigger,
+  Dialog, DialogTrigger,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -24,6 +22,7 @@ import type {
   League, LeagueType, LeagueStatus,
 } from "@/lib/leagues/types";
 import { cn } from "@/lib/utils";
+import { FormShell, FormSection, FormRow, FIELD_H } from "@/components/admin/leagues/_shared";
 
 const STATUS_TONE: Record<LeagueStatus, string> = {
   draft:    "bg-slate-500/10 text-slate-500 ring-1 ring-slate-500/20",
@@ -350,22 +349,27 @@ function CreateLeagueDialog({ onCreated }: { onCreated: () => void | Promise<voi
   };
 
   return (
-    <DialogContent className="sm:max-w-md">
-      <DialogHeader>
-        <DialogTitle>Create league</DialogTitle>
-      </DialogHeader>
-      <div className="space-y-3">
-        <div className="space-y-1.5">
-          <Label htmlFor="league-name">Name *</Label>
+    <FormShell
+      icon={<Trophy className="w-5 h-5" />}
+      tone="gold"
+      title="Create league"
+      subtitle="Draft-only until you flip visibility. Seasons, divisions, and members all live inside."
+      primaryLabel="Create league"
+      primaryLoading={saving}
+      primaryDisabled={!name.trim()}
+      onPrimary={submit}
+    >
+      <FormSection label="Basics">
+        <FormRow label="Name" htmlFor="league-name" required>
           <Input
             id="league-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Fall Doubles 2026"
+            className={FIELD_H}
           />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="league-desc">Description</Label>
+        </FormRow>
+        <FormRow label="Description" htmlFor="league-desc">
           <Textarea
             id="league-desc"
             rows={2}
@@ -373,20 +377,25 @@ function CreateLeagueDialog({ onCreated }: { onCreated: () => void | Promise<voi
             onChange={(e) => setDescription(e.target.value)}
             placeholder="What is this league for?"
           />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="league-location">Location</Label>
+        </FormRow>
+        <FormRow label="Location" htmlFor="league-location">
           <Input
             id="league-location"
             value={location}
             onChange={(e) => setLocation(e.target.value)}
             placeholder="Venue or general location"
+            className={FIELD_H}
           />
-        </div>
-        <div className="space-y-1.5">
-          <Label>League type</Label>
+        </FormRow>
+      </FormSection>
+
+      <FormSection label="Format">
+        <FormRow
+          label="League type"
+          hint="Defaults to admin-only visibility and not rating-eligible. Both editable after creation."
+        >
           <Select value={type} onValueChange={(v) => setType(v as LeagueType)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger className={FIELD_H}><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="singles">Singles</SelectItem>
               <SelectItem value="doubles">Doubles</SelectItem>
@@ -395,17 +404,8 @@ function CreateLeagueDialog({ onCreated }: { onCreated: () => void | Promise<voi
               <SelectItem value="ladder">Ladder</SelectItem>
             </SelectContent>
           </Select>
-        </div>
-        <p className="text-[11px] text-muted-foreground leading-relaxed">
-          Defaults to draft, admin-only visibility, not rating-eligible.
-          You can flip those on the league page once it's created.
-        </p>
-      </div>
-      <DialogFooter>
-        <Button onClick={submit} disabled={saving} className="w-full">
-          {saving ? "Creating…" : "Create league"}
-        </Button>
-      </DialogFooter>
-    </DialogContent>
+        </FormRow>
+      </FormSection>
+    </FormShell>
   );
 }

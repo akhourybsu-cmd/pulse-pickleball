@@ -3,20 +3,20 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
-  DialogTrigger,
+  Dialog, DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Calendar as CalendarIcon } from "lucide-react";
+import { Plus, Calendar as CalendarIcon, CalendarDays } from "lucide-react";
 import type { League, LeagueSeason, SeasonStatus } from "@/lib/leagues/types";
 import { logLeagueAction } from "@/lib/leagues/audit";
 import { cn } from "@/lib/utils";
-import { EmptyState, TabSkeleton, LeagueTabProps } from "./_shared";
+import {
+  EmptyState, TabSkeleton, LeagueTabProps,
+  FormShell, FormSection, FormRow, FIELD_H,
+} from "./_shared";
 
 export function SeasonsTab({ league, dataVersion, onMutated }: LeagueTabProps) {
   const [seasons, setSeasons] = useState<LeagueSeason[]>([]);
@@ -166,33 +166,28 @@ function SeasonEditor({
   };
 
   return (
-    <DialogContent className="sm:max-w-md">
-      <DialogHeader>
-        <DialogTitle>{isNew ? "New season" : "Edit season"}</DialogTitle>
-      </DialogHeader>
-      <div className="space-y-3">
-        <div className="space-y-1.5">
-          <Label>Name</Label>
-          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Spring 2027" />
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <Label>Start</Label>
-            <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>End</Label>
-            <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-          </div>
-        </div>
-        <div className="space-y-1.5">
-          <Label>Registration deadline</Label>
-          <Input type="date" value={regDeadline} onChange={(e) => setRegDeadline(e.target.value)} />
-        </div>
-        <div className="space-y-1.5">
-          <Label>Status</Label>
+    <FormShell
+      icon={<CalendarDays className="w-5 h-5" />}
+      tone="primary"
+      title={isNew ? "New season" : "Edit season"}
+      subtitle={isNew
+        ? "A season is the container for divisions, teams, sessions, and standings."
+        : `Editing ${initial!.name}`}
+      primaryLabel={isNew ? "Create season" : "Save changes"}
+      primaryLoading={saving}
+      primaryDisabled={!name.trim()}
+      onPrimary={submit}
+    >
+      <FormSection label="Basics">
+        <FormRow label="Season name" required>
+          <Input
+            value={name} onChange={(e) => setName(e.target.value)}
+            placeholder="Spring 2027" className={FIELD_H}
+          />
+        </FormRow>
+        <FormRow label="Status">
           <Select value={status} onValueChange={(v) => setStatus(v as SeasonStatus)}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger className={FIELD_H}><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="draft">Draft</SelectItem>
               <SelectItem value="active">Active</SelectItem>
@@ -200,13 +195,31 @@ function SeasonEditor({
               <SelectItem value="archived">Archived</SelectItem>
             </SelectContent>
           </Select>
+        </FormRow>
+      </FormSection>
+
+      <FormSection label="Schedule" hint="Optional">
+        <div className="grid grid-cols-2 gap-3">
+          <FormRow label="Start date">
+            <Input type="date" value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className={FIELD_H} />
+          </FormRow>
+          <FormRow label="End date">
+            <Input type="date" value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className={FIELD_H} />
+          </FormRow>
         </div>
-      </div>
-      <DialogFooter>
-        <Button onClick={submit} disabled={saving} className="w-full">
-          {saving ? "Saving…" : isNew ? "Create season" : "Save changes"}
-        </Button>
-      </DialogFooter>
-    </DialogContent>
+        <FormRow
+          label="Registration deadline"
+          hint="After this date new joins are rejected. Existing members stay."
+        >
+          <Input type="date" value={regDeadline}
+            onChange={(e) => setRegDeadline(e.target.value)}
+            className={FIELD_H} />
+        </FormRow>
+      </FormSection>
+    </FormShell>
   );
 }
