@@ -8,7 +8,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { KeyRound, Info } from "lucide-react";
+import { KeyRound, Info, CalendarClock, XCircle } from "lucide-react";
 import type { LeagueTeaser } from "@/lib/leagues/types";
 
 /**
@@ -135,8 +135,14 @@ export function JoinByCodeDialog({
         ) : (
           <div className="space-y-3">
             {/* Teaser preview — confirm before commit */}
-            <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
-              <div className="text-[10px] uppercase tracking-wider font-bold text-primary">
+            <div className={`rounded-xl border p-4 ${
+              teaser.registration_open
+                ? "border-primary/30 bg-primary/5"
+                : "border-muted bg-muted/40 opacity-90"
+            }`}>
+              <div className={`text-[10px] uppercase tracking-wider font-bold ${
+                teaser.registration_open ? "text-primary" : "text-muted-foreground"
+              }`}>
                 {teaser.league_type}
               </div>
               <div className="mt-1 text-lg font-bold">{teaser.name}</div>
@@ -151,10 +157,36 @@ export function JoinByCodeDialog({
                 </p>
               )}
             </div>
-            <p className="text-xs text-muted-foreground">
-              You'll join as an active member. The organizer can update your
-              division or team later.
-            </p>
+
+            {teaser.registration_open ? (
+              <>
+                {teaser.registration_closes_at && (
+                  <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                    <CalendarClock className="w-3.5 h-3.5" />
+                    Registration closes {new Date(teaser.registration_closes_at)
+                      .toLocaleDateString(undefined, {
+                        month: "short", day: "numeric", year: "numeric",
+                      })}
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  You'll join as an active member. The organizer can update your
+                  division or team later.
+                </p>
+              </>
+            ) : (
+              <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive flex items-start gap-2">
+                <XCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                <div>
+                  <div className="font-semibold">Registration closed</div>
+                  <div className="text-xs mt-0.5 opacity-90">
+                    The registration deadline has passed. Reach out to the
+                    organizer if you think this is a mistake.
+                  </div>
+                </div>
+              </div>
+            )}
+
             <DialogFooter className="gap-2 sm:gap-2">
               <Button
                 variant="ghost"
@@ -162,11 +194,13 @@ export function JoinByCodeDialog({
                 disabled={joining}
                 className="flex-1"
               >
-                Not this one
+                {teaser.registration_open ? "Not this one" : "Back"}
               </Button>
-              <Button onClick={join} disabled={joining} className="flex-1">
-                {joining ? "Joining…" : "Join league"}
-              </Button>
+              {teaser.registration_open && (
+                <Button onClick={join} disabled={joining} className="flex-1">
+                  {joining ? "Joining…" : "Join league"}
+                </Button>
+              )}
             </DialogFooter>
           </div>
         )}
