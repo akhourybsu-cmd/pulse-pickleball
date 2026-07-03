@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -23,33 +23,41 @@ import type { LeagueTeaser } from "@/lib/leagues/types";
  * clear error when the code doesn't match anything.
  */
 export function JoinByCodeDialog({
-  open, onOpenChange, onJoined,
+  open, onOpenChange, onJoined, initialCode,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** Called with the league id after a successful join, so the caller can navigate. */
   onJoined?: (leagueId: string) => void;
+  /**
+   * Optional code to prefill on open. When provided, the dialog auto-runs
+   * the lookup so the teaser appears immediately — used by the ?join=CODE
+   * deep-link flow.
+   */
+  initialCode?: string;
 }) {
   const navigate = useNavigate();
   const [code, setCode] = useState("");
   const [teaser, setTeaser] = useState<LeagueTeaser | null>(null);
   const [looking, setLooking] = useState(false);
   const [joining, setJoining] = useState(false);
+  const autoLookupRef = useRef<string | null>(null);
 
-  const reset = () => {
+  const reset = useCallback(() => {
     setCode("");
     setTeaser(null);
     setLooking(false);
     setJoining(false);
-  };
+    autoLookupRef.current = null;
+  }, []);
 
   const handleOpenChange = (o: boolean) => {
     if (!o) reset();
     onOpenChange(o);
   };
 
-  const lookup = async () => {
-    const trimmed = code.trim();
+  const lookup = useCallback(async (rawCode: string) => {
+    const trimmed = rawCode.trim();
     if (!trimmed) {
       toast.error("Enter a code");
       return;
@@ -70,7 +78,18 @@ export function JoinByCodeDialog({
     }
     setTeaser(rows[0]);
     setLooking(false);
-  };
+  }, []);
+
+  // Deep-link + share-link flow: when opened with a prefilled code,
+  // seed the input AND auto-run the lookup so the teaser shows up
+  // right away. Guarded so we don't re-run if the parent re-renders.
+  useEffect(() => {
+    if (!open || !initialCode) return;
+    if (autoLookupRef.current === initialCode) return;
+    autoLookupRef.current = initialCode;
+    setCode(initialCode);
+    void lookup(initialCode);
+  }, [open, initialCode, lookup]);
 
   const join = async () => {
     if (!teaser) return;
@@ -113,7 +132,7 @@ export function JoinByCodeDialog({
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !looking) {
                     e.preventDefault();
-                    void lookup();
+                    void lookup(code);
                   }
                 }}
               />
@@ -124,9 +143,9 @@ export function JoinByCodeDialog({
             </div>
             <DialogFooter>
               <Button
-                onClick={lookup}
+                onClick={() => void lookup(code)}
                 disabled={looking || !code.trim()}
-                className="w-full"
+                className="w-full h-12"
               >
                 {looking ? "Looking up…" : "Find league"}
               </Button>
@@ -197,7 +216,10 @@ export function JoinByCodeDialog({
                 {teaser.registration_open ? "Not this one" : "Back"}
               </Button>
               {teaser.registration_open && (
-                <Button onClick={join} disabled={joining} className="flex-1">
+                <Button
+                  onClick={join} disabled={joining}
+                  className="flex-1 h-12 font-semibold shadow-[0_2px_8px_-2px_hsl(var(--primary)/0.4)] active:scale-[0.98] transition-transform"
+                >
                   {joining ? "Joining…" : "Join league"}
                 </Button>
               )}

@@ -110,13 +110,17 @@ export function DivisionsTab({ league, dataVersion, onMutated }: LeagueTabProps)
           {divisions.map((d) => (
             <li key={d.id} className="rounded-lg border border-border/70 bg-card p-3 flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <div className="font-medium">{d.name}</div>
-                <div className="text-xs text-muted-foreground mt-0.5">
-                  Skill {d.skill_min?.toFixed(1) ?? "—"} – {d.skill_max?.toFixed(1) ?? "—"}
-                  {d.status === "archived" && " · archived"}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-medium">{d.name}</span>
+                  {d.status === "archived" && (
+                    <span className="text-[10px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded bg-slate-500/15 text-slate-500">
+                      Archived
+                    </span>
+                  )}
                 </div>
+                <SkillRangeBar min={d.skill_min} max={d.skill_max} />
                 {d.description && (
-                  <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{d.description}</div>
+                  <div className="text-xs text-muted-foreground mt-2 line-clamp-2">{d.description}</div>
                 )}
               </div>
               <Button variant="ghost" size="sm" onClick={() => setEditing(d)}>Edit</Button>
@@ -240,5 +244,49 @@ function DivisionEditor({
         </Button>
       </DialogFooter>
     </DialogContent>
+  );
+}
+
+/**
+ * Small skill-range visualizer. The bar spans 2.0–5.5 (PULSE clamp
+ * range); the highlighted segment represents this division's slice.
+ * When one endpoint is missing, we still render the label + fall back
+ * to bare text — a partial range doesn't get a bar because "3.0 – ∞"
+ * looks weird.
+ */
+function SkillRangeBar({
+  min, max,
+}: { min: number | null; max: number | null }) {
+  const bothSet = min !== null && max !== null;
+
+  if (!bothSet) {
+    return (
+      <div className="text-xs text-muted-foreground mt-1">
+        Skill {min?.toFixed(1) ?? "—"} – {max?.toFixed(1) ?? "—"}
+      </div>
+    );
+  }
+
+  // Scale to the PULSE clamp window (2.0 → 5.5).
+  const LO = 2.0;
+  const HI = 5.5;
+  const pctFrom = Math.max(0, Math.min(1, (min - LO) / (HI - LO))) * 100;
+  const pctTo   = Math.max(0, Math.min(1, (max - LO) / (HI - LO))) * 100;
+  const width   = Math.max(4, pctTo - pctFrom); // never render invisibly thin
+
+  return (
+    <div className="mt-1.5">
+      <div className="relative h-1.5 rounded-full bg-muted overflow-hidden">
+        <div
+          className="absolute h-full rounded-full bg-primary/70"
+          style={{ left: `${pctFrom}%`, width: `${width}%` }}
+        />
+      </div>
+      <div className="text-[10px] font-mono text-muted-foreground mt-1 flex justify-between">
+        <span className="font-bold text-foreground">{min.toFixed(1)}</span>
+        <span className="opacity-70">skill</span>
+        <span className="font-bold text-foreground">{max.toFixed(1)}</span>
+      </div>
+    </div>
   );
 }

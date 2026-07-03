@@ -32,6 +32,7 @@ interface PlayerRow {
   first_name?: string | null;
   last_name?: string | null;
   email?: string | null;
+  avatar_url?: string | null;
 }
 
 export function MembersTab({ league, dataVersion, onMutated }: LeagueTabProps) {
@@ -42,6 +43,7 @@ export function MembersTab({ league, dataVersion, onMutated }: LeagueTabProps) {
   const [profilesById, setProfilesById] = useState<Record<string, PlayerRow>>({});
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
+  const [query, setQuery] = useState("");
 
   // Season list — subscribes to dataVersion so new seasons show up here.
   useEffect(() => {
@@ -76,7 +78,7 @@ export function MembersTab({ league, dataVersion, onMutated }: LeagueTabProps) {
       const ids = Array.from(new Set(memList.map((m) => m.user_id)));
       const { data: profs } = await supabase
         .from("profiles_public" as never)
-        .select("id, display_name, full_name, first_name, last_name")
+        .select("id, display_name, full_name, first_name, last_name, avatar_url")
         .in("id", ids);
       const map: Record<string, PlayerRow> = {};
       (profs ?? []).forEach((p) => { map[(p as PlayerRow).id] = p as PlayerRow; });
@@ -96,6 +98,17 @@ export function MembersTab({ league, dataVersion, onMutated }: LeagueTabProps) {
       />
     );
   }
+
+  // Filter members by the search query (name substring). Case-insensitive.
+  const q = query.trim().toLowerCase();
+  const filteredMembers = q
+    ? members.filter((m) => {
+        const p = profilesById[m.user_id];
+        if (!p) return false;
+        const name = resolvePlayerName(p).toLowerCase();
+        return name.includes(q);
+      })
+    : members;
 
   return (
     <div className="space-y-3">
@@ -124,6 +137,20 @@ export function MembersTab({ league, dataVersion, onMutated }: LeagueTabProps) {
         </Dialog>
       </div>
 
+      {/* Search bar — visible whenever there's more than a handful of
+          members. Below that it's just noise. */}
+      {members.length > 4 && (
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder={`Search ${members.length} member${members.length === 1 ? "" : "s"}…`}
+            className="pl-9 h-10"
+          />
+        </div>
+      )}
+
       {members.length === 0 ? (
         <EmptyState
           icon={<Users className="w-5 h-5" />}
@@ -131,14 +158,35 @@ export function MembersTab({ league, dataVersion, onMutated }: LeagueTabProps) {
           desc="Search for existing players and add them as league members."
           action={{ label: "Add member", onClick: () => setAddOpen(true) }}
         />
+      ) : filteredMembers.length === 0 ? (
+        <EmptyState
+          icon={<Search className="w-5 h-5" />}
+          title="No matches"
+          desc={`No members match "${query}".`}
+        />
       ) : (
         <ul className="space-y-2">
-          {members.map((m) => {
+          {filteredMembers.map((m) => {
             const p = profilesById[m.user_id];
             const name = p ? resolvePlayerName(p) : "Loading…";
             const division = divisions.find((d) => d.id === m.division_id);
+            const initials = name
+              .split(/\s+/).filter(Boolean).slice(0, 2)
+              .map((s) => s[0]).join("").toUpperCase() || "?";
             return (
               <li key={m.id} className="rounded-lg border border-border/70 bg-card p-3 flex items-center gap-3">
+                {/* Avatar chip — pulls from profile.avatar_url when
+                    available, initials otherwise. Small enough to not
+                    dominate the row. */}
+                <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center shrink-0 overflow-hidden ring-1 ring-border">
+                  {p?.avatar_url ? (
+                    <img src={p.avatar_url} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <span className="text-[11px] font-bold text-muted-foreground">
+                      {initials}
+                    </span>
+                  )}
+                </div>
                 <div className="min-w-0 flex-1">
                   <div className="font-medium truncate">{name}</div>
                   <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap mt-0.5">
@@ -290,7 +338,7 @@ function AddMemberDialog({
     const t = setTimeout(async () => {
       const { data } = await supabase
         .from("profiles_public" as never)
-        .select("id, display_name, full_name, first_name, last_name")
+        .select("id, display_name, full_name, first_name, last_name, avatar_url")
         .or(`display_name.ilike.%${q}%,full_name.ilike.%${q}%,first_name.ilike.%${q}%,last_name.ilike.%${q}%`)
         .limit(20);
       setResults((data ?? []) as unknown as PlayerRow[]);
