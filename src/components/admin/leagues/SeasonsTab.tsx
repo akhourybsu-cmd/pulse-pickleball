@@ -9,7 +9,7 @@ import {
 import {
   Dialog, DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Calendar as CalendarIcon, CalendarDays } from "lucide-react";
+import { Plus, Calendar as CalendarIcon, CalendarDays, RefreshCw } from "lucide-react";
 import type { League, LeagueSeason, SeasonStatus } from "@/lib/leagues/types";
 import { logLeagueAction } from "@/lib/leagues/audit";
 import { cn } from "@/lib/utils";
@@ -23,6 +23,42 @@ export function SeasonsTab({ league, dataVersion, onMutated }: LeagueTabProps) {
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<LeagueSeason | null>(null);
+  const [syncing, setSyncing] = useState(false);
+
+  // Show the "Sync statuses" button only when at least one season is
+  // eligible for auto-advancement today. Keeps the toolbar quiet when
+  // there's nothing to do. Uses the local today string so no clock
+  // skew between browser and DB matters — the RPC also re-checks.
+  const today = new Date().toISOString().slice(0, 10);
+  const syncable = seasons.some((s) => {
+    if (s.status === "draft" && s.start_date && s.start_date <= today &&
+        (!s.end_date || s.end_date >= today)) return true;
+    if (s.status === "active" && s.end_date && s.end_date < today) return true;
+    return false;
+  });
+
+  const syncStatuses = async () => {
+    setSyncing(true);
+    const { data, error } = await supabase.rpc(
+      "sync_league_season_statuses" as never,
+      { p_league_id: league.id } as never,
+    );
+    setSyncing(false);
+    if (error) { toast.error(error.message); return; }
+    const result = (data ?? {}) as { activated?: number; completed?: number };
+    const activated = result.activated ?? 0;
+    const completed = result.completed ?? 0;
+    if (activated === 0 && completed === 0) {
+      toast.info("Everything is already in sync");
+    } else {
+      const parts: string[] = [];
+      if (activated > 0) parts.push(`${activated} activated`);
+      if (completed > 0) parts.push(`${completed} completed`);
+      toast.success(`Seasons synced — ${parts.join(", ")}`);
+    }
+    await refresh();
+    onMutated();
+  };
 
   // dataVersion in deps → sibling-tab mutations trigger a refetch.
   useEffect(() => { void refresh(); /* eslint-disable-next-line */ }, [league.id, dataVersion]);
@@ -41,20 +77,32 @@ export function SeasonsTab({ league, dataVersion, onMutated }: LeagueTabProps) {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <p className="text-sm text-muted-foreground">
           {loading ? "Loading…" : `${seasons.length} season${seasons.length === 1 ? "" : "s"}`}
         </p>
-        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm"><Plus className="w-4 h-4 mr-1" />New season</Button>
-          </DialogTrigger>
-          <SeasonEditor
-            league={league}
-            initial={null}
-            onDone={async () => { setCreateOpen(false); await refresh(); onMutated(); }}
-          />
-        </Dialog>
+        <div className="flex items-center gap-2">
+          {syncable && (
+            <Button
+              size="sm" variant="outline" onClick={syncStatuses}
+              disabled={syncing} className="h-8"
+              title="Advance any season past its start/end date"
+            >
+              <RefreshCw className={cn("w-3.5 h-3.5 mr-1.5", syncing && "animate-spin")} />
+              Sync statuses
+            </Button>
+          )}
+          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm"><Plus className="w-4 h-4 mr-1" />New season</Button>
+            </DialogTrigger>
+            <SeasonEditor
+              league={league}
+              initial={null}
+              onDone={async () => { setCreateOpen(false); await refresh(); onMutated(); }}
+            />
+          </Dialog>
+        </div>
       </div>
 
       {loading ? (
