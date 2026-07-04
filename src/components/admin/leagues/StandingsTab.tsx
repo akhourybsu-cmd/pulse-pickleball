@@ -95,8 +95,8 @@ export function StandingsTab({ league, dataVersion }: LeagueTabProps) {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Wins from verified + score-submitted matches. Sorted by wins,
-        then point differential, then win %.
+        Wins from verified, score-submitted, and forfeit matches. Sort:
+        wins → head-to-head (pairwise ties) → point differential → win %.
       </p>
 
       <StandingsTable
