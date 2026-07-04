@@ -23,27 +23,35 @@ export interface UpcomingLeagueMatch {
  * One-round-trip fetch of the caller's next N upcoming league matches
  * across every league. Backs the Dashboard "Up next in leagues" card.
  * Server-side filters admin_only leagues + past times.
+ *
+ * Error is propagated (not silently swallowed) so the wrapping
+ * section can hide-on-empty vs. show-a-real-message when the RPC
+ * actually failed. The console.error keeps the failure visible in
+ * dev without crashing the Dashboard.
  */
 export function useMyUpcomingLeagueMatches(limit = 3) {
   const [rows, setRows] = useState<UpcomingLeagueMatch[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const { data, error } = await supabase
+      const { data, error: rpcErr } = await supabase
         .rpc("get_my_upcoming_league_matches" as never, { p_limit: limit } as never);
-      if (!cancelled) {
-        if (error) {
-          setRows([]);
-        } else {
-          setRows((data ?? []) as unknown as UpcomingLeagueMatch[]);
-        }
-        setLoading(false);
+      if (cancelled) return;
+      if (rpcErr) {
+        console.error("get_my_upcoming_league_matches failed", rpcErr);
+        setError(rpcErr.message);
+        setRows([]);
+      } else {
+        setError(null);
+        setRows((data ?? []) as unknown as UpcomingLeagueMatch[]);
       }
+      setLoading(false);
     })();
     return () => { cancelled = true; };
   }, [limit]);
 
-  return { rows, loading };
+  return { rows, loading, error };
 }

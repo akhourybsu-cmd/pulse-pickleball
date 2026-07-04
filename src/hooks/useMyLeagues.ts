@@ -39,7 +39,8 @@ interface RpcRow {
   league_league_type: League["league_type"];
   league_rating_eligible: boolean;
   league_guests_allowed: boolean;
-  league_invite_code: string | null;
+  // invite_code intentionally NOT read on the player side — the RPC
+  // no longer returns it. See 20260703310000 migration.
   league_created_at: string;
   league_updated_at: string;
 
@@ -91,7 +92,9 @@ function mapRow(r: RpcRow): MyLeagueRow {
       league_type: r.league_league_type,
       rating_eligible: r.league_rating_eligible,
       guests_allowed: r.league_guests_allowed,
-      invite_code: r.league_invite_code,
+      // invite_code is admin-owned metadata — not returned by the RPC
+      // for player callers. Set to null to preserve the League shape.
+      invite_code: null,
       created_at: r.league_created_at,
       updated_at: r.league_updated_at,
     },
