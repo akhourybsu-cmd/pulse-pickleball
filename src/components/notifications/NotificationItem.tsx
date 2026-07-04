@@ -79,6 +79,15 @@ const typeIcons: Record<string, React.ElementType> = {
   schedule_change: Calendar,
   venue_change: MapPin,
 
+  // League Play — separate from open-play matches. Deep-link to
+  // /player/leagues/:id which drops the player straight into their
+  // league detail view.
+  league_score_submitted: Target,
+  league_match_verified: Trophy,
+  league_match_disputed: AlertTriangle,
+  league_dispute_resolved: CheckCircle,
+  league_match_forfeited: Flag,
+
   // Tournament-specific notification icons removed during the player-only
   // beta. Tournament types still in the DB schema fall through to the
   // generic Bell icon via the typeIcons[...] || Bell fallback below.
