@@ -11,7 +11,11 @@ import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Search, UserX, Users, RotateCcw } from "lucide-react";
+import {
+  Plus, Search, UserX, Users, RotateCcw, ClipboardList, Mail, CheckCircle2,
+  XCircle, RotateCw, AlertCircle,
+} from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import { EmptyState, TabSkeleton, LeagueTabProps } from "./_shared";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -43,6 +47,7 @@ export function MembersTab({ league, dataVersion, onMutated }: LeagueTabProps) {
   const [profilesById, setProfilesById] = useState<Record<string, PlayerRow>>({});
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
+  const [bulkOpen, setBulkOpen] = useState(false);
   const [query, setQuery] = useState("");
 
   // Season list — subscribes to dataVersion so new seasons show up here.
@@ -132,6 +137,21 @@ export function MembersTab({ league, dataVersion, onMutated }: LeagueTabProps) {
               divisions={divisions}
               existingUserIds={new Set(members.map((m) => m.user_id))}
               onDone={async () => { setAddOpen(false); await reload(); onMutated(); }}
+            />
+          )}
+        </Dialog>
+        <Dialog open={bulkOpen} onOpenChange={setBulkOpen}>
+          <DialogTrigger asChild>
+            <Button size="sm" variant="outline" title="Paste an email list">
+              <ClipboardList className="w-4 h-4 mr-1" />Bulk
+            </Button>
+          </DialogTrigger>
+          {seasonId && (
+            <BulkAddMembersDialog
+              league={league}
+              seasonId={seasonId}
+              divisions={divisions}
+              onDone={async () => { setBulkOpen(false); await reload(); onMutated(); }}
             />
           )}
         </Dialog>
@@ -454,5 +474,284 @@ function AddMemberDialog({
         </Button>
       </DialogFooter>
     </DialogContent>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Bulk-add dialog                                                    */
+/* ------------------------------------------------------------------ */
+
+interface ResolvedRow {
+  email: string;
+  user_id: string;
+  name: string;
+  outcome: "added" | "already_active" | "reactivated";
+}
+
+interface DryRunReport {
+  resolved: ResolvedRow[];
+  unmatched: string[];
+  added_count: number;
+  reactivated_count: number;
+  already_active_count: number;
+  dry_run: boolean;
+}
+
+/**
+ * Two-phase bulk import. Paste emails, run a server-side dry-run to
+ * resolve everything, review the preview, then commit. The commit is
+ * idempotent (removed memberships get reactivated; active ones are
+ * left alone), so re-running is cheap.
+ */
+function BulkAddMembersDialog({
+  league, seasonId, divisions, onDone,
+}: {
+  league: League;
+  seasonId: string;
+  divisions: LeagueDivision[];
+  onDone: () => Promise<void>;
+}) {
+  const [raw, setRaw] = useState("");
+  const [divisionId, setDivisionId] = useState<string | "none">("none");
+  const [busy, setBusy] = useState(false);
+  const [preview, setPreview] = useState<DryRunReport | null>(null);
+
+  // Split the paste into a clean unique lowercased list — handles both
+  // newlines and commas, ignores blanks, dedupes.
+  const emails = useMemo(() => {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    raw.split(/[\n,;]/).forEach((chunk) => {
+      const e = chunk.trim();
+      if (!e) return;
+      const key = e.toLowerCase();
+      if (seen.has(key)) return;
+      seen.add(key);
+      out.push(e);
+    });
+    return out;
+  }, [raw]);
+
+  const runDryRun = async () => {
+    if (emails.length === 0) { toast.error("Paste some emails first"); return; }
+    setBusy(true);
+    const { data, error } = await supabase.rpc(
+      "bulk_add_league_members" as never,
+      {
+        p_league_id: league.id,
+        p_season_id: seasonId,
+        p_division_id: divisionId === "none" ? null : divisionId,
+        p_emails: emails,
+        p_dry_run: true,
+      } as never,
+    );
+    setBusy(false);
+    if (error) { toast.error(error.message); return; }
+    setPreview(data as unknown as DryRunReport);
+  };
+
+  const commit = async () => {
+    if (!preview) return;
+    setBusy(true);
+    const { data, error } = await supabase.rpc(
+      "bulk_add_league_members" as never,
+      {
+        p_league_id: league.id,
+        p_season_id: seasonId,
+        p_division_id: divisionId === "none" ? null : divisionId,
+        p_emails: emails,
+        p_dry_run: false,
+      } as never,
+    );
+    setBusy(false);
+    if (error) { toast.error(error.message); return; }
+    const report = data as unknown as DryRunReport;
+    const parts: string[] = [];
+    if (report.added_count) parts.push(`${report.added_count} added`);
+    if (report.reactivated_count) parts.push(`${report.reactivated_count} reactivated`);
+    if (report.already_active_count) parts.push(`${report.already_active_count} already members`);
+    toast.success(parts.length ? parts.join(" · ") : "Nothing changed");
+    setPreview(null);
+    setRaw("");
+    await onDone();
+  };
+
+  const reset = () => setPreview(null);
+
+  const groupOutcome = (o: ResolvedRow["outcome"]) =>
+    preview?.resolved.filter((r) => r.outcome === o) ?? [];
+
+  return (
+    <DialogContent className="sm:max-w-lg">
+      <DialogHeader>
+        <DialogTitle className="flex items-center gap-2">
+          <ClipboardList className="w-4 h-4" />
+          Bulk add members
+        </DialogTitle>
+      </DialogHeader>
+
+      {/* Phase 1 — paste + preview */}
+      {!preview ? (
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs">Emails</Label>
+            <Textarea
+              value={raw}
+              onChange={(e) => setRaw(e.target.value)}
+              placeholder={"one per line, or comma-separated\ne.g. alice@example.com\n     bob@example.com"}
+              rows={6}
+              className="font-mono text-sm"
+            />
+            <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+              <Mail className="w-3 h-3" />
+              Case-insensitive. Matches must be existing PULSE accounts.
+            </p>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Division (optional)</Label>
+            <Select value={divisionId} onValueChange={setDivisionId}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No division</SelectItem>
+                {divisions.map((d) => (
+                  <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {emails.length > 0 && (
+            <div className="text-[11px] text-muted-foreground">
+              {emails.length} unique email{emails.length === 1 ? "" : "s"} ready to check
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              onClick={runDryRun}
+              disabled={busy || emails.length === 0}
+              className="w-full"
+            >
+              {busy ? "Checking…" : `Preview ${emails.length > 0 ? emails.length : ""} match${emails.length === 1 ? "" : "es"}`}
+            </Button>
+          </DialogFooter>
+        </div>
+      ) : (
+        // Phase 2 — review + commit
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <StatCard label="Add" count={preview.added_count} tone="primary" icon={CheckCircle2} />
+            <StatCard label="Reactivate" count={preview.reactivated_count} tone="amber" icon={RotateCw} />
+            <StatCard label="Already in" count={preview.already_active_count} tone="muted" icon={Users} />
+            <StatCard label="Unmatched" count={preview.unmatched.length} tone="destructive" icon={AlertCircle} />
+          </div>
+
+          <div className="max-h-64 overflow-y-auto space-y-2 rounded-lg border border-border/60 bg-muted/20 p-2">
+            <GroupSection
+              title="Will be added" tone="text-primary"
+              icon={CheckCircle2}
+              rows={groupOutcome("added")}
+            />
+            <GroupSection
+              title="Will be reactivated" tone="text-amber-600"
+              icon={RotateCw}
+              rows={groupOutcome("reactivated")}
+            />
+            <GroupSection
+              title="Already active" tone="text-muted-foreground"
+              icon={Users}
+              rows={groupOutcome("already_active")}
+            />
+            {preview.unmatched.length > 0 && (
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-wider text-destructive mb-1 flex items-center gap-1">
+                  <XCircle className="w-3 h-3" />
+                  Not found ({preview.unmatched.length})
+                </div>
+                <ul className="text-xs font-mono space-y-0.5 pl-1">
+                  {preview.unmatched.map((e) => (
+                    <li key={e} className="text-muted-foreground line-through">
+                      {e}
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-[10px] text-muted-foreground mt-1 pl-1">
+                  No PULSE account matches these. Ask them to sign up first.
+                </p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button variant="ghost" onClick={reset} disabled={busy}>
+              Back
+            </Button>
+            <Button
+              onClick={commit}
+              disabled={busy || (preview.added_count + preview.reactivated_count === 0)}
+              className="flex-1"
+            >
+              {busy
+                ? "Committing…"
+                : `Add ${preview.added_count + preview.reactivated_count} member${preview.added_count + preview.reactivated_count === 1 ? "" : "s"}`}
+            </Button>
+          </DialogFooter>
+        </div>
+      )}
+    </DialogContent>
+  );
+}
+
+function StatCard({
+  label, count, tone, icon: Icon,
+}: {
+  label: string;
+  count: number;
+  tone: "primary" | "amber" | "muted" | "destructive";
+  icon: typeof CheckCircle2;
+}) {
+  const toneCls = {
+    primary:     "bg-primary/10 text-primary",
+    amber:       "bg-amber-500/10 text-amber-600",
+    muted:       "bg-muted text-muted-foreground",
+    destructive: "bg-destructive/10 text-destructive",
+  }[tone];
+  return (
+    <div className={`rounded-lg p-2 flex items-center gap-2 ${toneCls}`}>
+      <Icon className="w-3.5 h-3.5 shrink-0" />
+      <div className="min-w-0">
+        <div className="text-lg font-bold leading-none tabular-nums">{count}</div>
+        <div className="text-[9px] uppercase tracking-wider font-bold opacity-80">
+          {label}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GroupSection({
+  title, tone, icon: Icon, rows,
+}: {
+  title: string;
+  tone: string;
+  icon: typeof CheckCircle2;
+  rows: ResolvedRow[];
+}) {
+  if (rows.length === 0) return null;
+  return (
+    <div>
+      <div className={`text-[10px] font-bold uppercase tracking-wider mb-1 flex items-center gap-1 ${tone}`}>
+        <Icon className="w-3 h-3" />
+        {title} ({rows.length})
+      </div>
+      <ul className="text-xs space-y-0.5 pl-1">
+        {rows.map((r) => (
+          <li key={r.email} className="flex items-baseline gap-1.5">
+            <span className="font-medium truncate">{r.name}</span>
+            <span className="text-[10px] font-mono text-muted-foreground truncate">
+              {r.email}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
