@@ -10,6 +10,8 @@ import type { LeagueType } from "@/lib/leagues/types";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { JoinByCodeDialog } from "@/components/leagues/JoinByCodeDialog";
+import { CreateLeagueDialog } from "@/components/leagues/CreateLeagueDialog";
+import { Plus } from "lucide-react";
 
 const TYPE_META: Record<LeagueType, { stripe: string; icon: typeof Trophy; label: string }> = {
   singles:  { stripe: "bg-blue-500",    icon: Zap,      label: "Singles"  },
@@ -24,6 +26,7 @@ export default function PlayerLeagues() {
   const { rows, loading, error } = useMyLeagues();
   const { leagues: browseable, loading: browseLoading } = useBrowseableLeagues();
   const [joinOpen, setJoinOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
   const [prefillCode, setPrefillCode] = useState<string | undefined>(undefined);
 
   // Deep-link support: /player/leagues?join=SPRING26
@@ -54,14 +57,22 @@ export default function PlayerLeagues() {
             Leagues you're actively part of
           </p>
         </div>
-        <Button
-          size="sm" variant="outline"
-          onClick={() => setJoinOpen(true)}
-          className="shrink-0"
-        >
-          <KeyRound className="w-4 h-4 mr-1.5" />
-          Join with code
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button
+            size="sm" variant="outline"
+            onClick={() => setJoinOpen(true)}
+          >
+            <KeyRound className="w-4 h-4 mr-1.5" />
+            Join
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => setCreateOpen(true)}
+          >
+            <Plus className="w-4 h-4 mr-1.5" />
+            Create
+          </Button>
+        </div>
       </div>
 
       {loading ? (
@@ -80,17 +91,19 @@ export default function PlayerLeagues() {
           </div>
           <p className="text-sm font-semibold">No leagues yet</p>
           <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
-            Got an invite code from an organizer? Enter it below to join.
-            Otherwise, your leagues will appear here once an admin adds you.
+            Start your own league — your first one's free — or join an
+            existing one with an invite code.
           </p>
-          <Button
-            size="sm"
-            onClick={() => setJoinOpen(true)}
-            className="mt-4"
-          >
-            <KeyRound className="w-4 h-4 mr-1.5" />
-            Enter invite code
-          </Button>
+          <div className="mt-4 flex flex-col sm:flex-row gap-2 justify-center">
+            <Button size="sm" onClick={() => setCreateOpen(true)}>
+              <Plus className="w-4 h-4 mr-1.5" />
+              Create a league
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setJoinOpen(true)}>
+              <KeyRound className="w-4 h-4 mr-1.5" />
+              Enter invite code
+            </Button>
+          </div>
         </div>
       ) : (
         <ul className="space-y-2.5">
@@ -236,6 +249,10 @@ export default function PlayerLeagues() {
           if (!o) setPrefillCode(undefined);
         }}
         initialCode={prefillCode}
+      />
+      <CreateLeagueDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
       />
     </div>
   );
