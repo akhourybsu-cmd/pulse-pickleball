@@ -3,8 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { KeyRound, Copy, Trash2, Check, Share2, QrCode, Link2 } from "lucide-react";
+import { KeyRound, Copy, Trash2, Check, Share2, QrCode, Link2, Printer } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
+import { Link } from "react-router-dom";
 import type { League } from "@/lib/leagues/types";
 import { logLeagueAction } from "@/lib/leagues/audit";
 
@@ -208,6 +209,18 @@ export function InviteCodeCard({
             >
               <QrCode className="w-4 h-4 mr-1.5" />
               {qrOpen ? "Hide QR" : "Show QR"}
+            </Button>
+            {/* Print poster — new-tab so the print flow doesn't lose
+                the admin's place in the League Overview tab. */}
+            <Button asChild variant="outline" size="sm" className="h-9">
+              <Link
+                to={`/admin/leagues/${league.id}/poster`}
+                target="_blank"
+                rel="noopener"
+              >
+                <Printer className="w-4 h-4 mr-1.5" />
+                Print poster
+              </Link>
             </Button>
           </div>
 

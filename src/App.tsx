@@ -103,6 +103,7 @@ const AdminMatches = lazy(() => import("./pages/AdminMatches"));
 const AdminMarketing = lazy(() => import("./pages/AdminMarketing"));
 const AdminLeagues = lazy(() => import("./pages/admin/AdminLeagues"));
 const AdminLeagueDetail = lazy(() => import("./pages/admin/AdminLeagueDetail"));
+const LeaguePoster = lazy(() => import("./pages/admin/LeaguePoster"));
 const Changelog = lazy(() => import("./pages/Changelog"));
 const Events = lazy(() => import("./pages/Events"));
 const NewEvent = lazy(() => import("./pages/NewEvent"));
@@ -518,6 +519,7 @@ const AppContent = () => {
           <Route path="/admin/matches" element={<AdminGuard><AdminMatches /></AdminGuard>} />
           <Route path="/admin/leagues" element={<AdminGuard><AdminLeagues /></AdminGuard>} />
           <Route path="/admin/leagues/:leagueId" element={<AdminGuard><AdminLeagueDetail /></AdminGuard>} />
+          <Route path="/admin/leagues/:leagueId/poster" element={<AdminGuard><LeaguePoster /></AdminGuard>} />
           <Route path="/admin/marketing" element={<AdminGuard><AdminMarketing /></AdminGuard>} />
           <Route path="/admin/audit-log" element={<AdminGuard><AdminAuditLog /></AdminGuard>} />
           <Route path="/admin/test-accounts" element={<AdminGuard><AdminTestAccounts /></AdminGuard>} />

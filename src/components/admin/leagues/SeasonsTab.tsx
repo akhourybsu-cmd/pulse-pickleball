@@ -14,7 +14,7 @@ import {
   Users, Swords, CheckCircle2, AlertTriangle, Clock, Flag,
 } from "lucide-react";
 import type {
-  League, LeagueSeason, SeasonStatus, LeagueMatch, LeagueMember,
+  League, LeagueSeason, SeasonStatus,
 } from "@/lib/leagues/types";
 import { logLeagueAction } from "@/lib/leagues/audit";
 import { cn } from "@/lib/utils";
@@ -86,41 +86,45 @@ export function SeasonsTab({ league, dataVersion, onMutated }: LeagueTabProps) {
   const refresh = async () => {
     setLoading(true);
 
-    // Fetch seasons + all matches + active members in parallel. Group
-    // client-side so we don't need a specialized RPC — RLS lets an
-    // admin see every row for a league they administer.
-    const [seasonsRes, matchesRes, membersRes] = await Promise.all([
+    // Seasons list + server-side aggregates in parallel. The RPC does
+    // all match/member grouping in Postgres so we don't ship every
+    // row to the client — matters once a season has 100+ matches.
+    const [seasonsRes, aggRes] = await Promise.all([
       supabase.from("league_seasons" as never).select("*")
         .eq("league_id", league.id)
         .order("created_at", { ascending: false }),
-      supabase.from("league_matches" as never).select("*")
-        .eq("league_id", league.id),
-      supabase.from("league_members" as never).select("*")
-        .eq("league_id", league.id).eq("status", "active"),
+      supabase.rpc("get_league_season_aggregates" as never, {
+        p_league_id: league.id,
+      } as never),
     ]);
     if (seasonsRes.error) toast.error(seasonsRes.error.message);
     const list = (seasonsRes.data ?? []) as unknown as LeagueSeason[];
     setSeasons(list);
 
-    const matches = (matchesRes.data ?? []) as unknown as LeagueMatch[];
-    const members = (membersRes.data ?? []) as unknown as LeagueMember[];
     const nextStats: Record<string, SeasonStats> = {};
     list.forEach((s) => { nextStats[s.id] = { ...EMPTY_STATS }; });
 
-    for (const m of matches) {
-      const row = nextStats[m.season_id];
-      if (!row) continue;
-      row.matches += 1;
-      if (m.status === "verified") row.verified += 1;
-      else if (m.status === "score_submitted") row.awaitingConfirm += 1;
-      else if (m.status === "disputed") row.disputed += 1;
-      else if (m.status === "forfeit") row.forfeits += 1;
-      else if (m.status === "scheduled" || m.status === "in_progress") row.pending += 1;
+    interface AggRow {
+      season_id: string;
+      matches: number;
+      verified: number;
+      awaiting_confirm: number;
+      pending: number;
+      disputed: number;
+      forfeits: number;
+      members: number;
     }
-    for (const mem of members) {
-      if (!mem.season_id) continue;
-      const row = nextStats[mem.season_id];
-      if (row) row.members += 1;
+    const rows = (aggRes.data ?? []) as unknown as AggRow[];
+    for (const r of rows) {
+      const row = nextStats[r.season_id];
+      if (!row) continue;
+      row.matches = r.matches;
+      row.verified = r.verified;
+      row.awaitingConfirm = r.awaiting_confirm;
+      row.pending = r.pending;
+      row.disputed = r.disputed;
+      row.forfeits = r.forfeits;
+      row.members = r.members;
     }
 
     setStats(nextStats);
