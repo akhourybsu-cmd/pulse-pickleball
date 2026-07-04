@@ -9,8 +9,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Check, X, Pencil, ShieldAlert, Info,
+  Check, X, Pencil, ShieldAlert, Info, Flag,
 } from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import type { LeagueMatch, LeagueTeam } from "@/lib/leagues/types";
 
 /**
@@ -38,6 +43,21 @@ export function LeagueMatchActions({
 }) {
   const [scoreOpen, setScoreOpen] = useState(false);
   const [disputeOpen, setDisputeOpen] = useState(false);
+  const [forfeitOpen, setForfeitOpen] = useState(false);
+
+  // Captains can concede on behalf of their team. We derive this from
+  // the teamsById map the parent already loaded, so no extra query.
+  const teamA = match.team_a_id ? teamsById[match.team_a_id] : null;
+  const teamB = match.team_b_id ? teamsById[match.team_b_id] : null;
+  const isCaptain =
+    (teamA?.captain_user_id === currentUserId) ||
+    (teamB?.captain_user_id === currentUserId);
+  const canForfeit =
+    isParticipant && isCaptain &&
+    !!match.team_a_id && !!match.team_b_id &&
+    match.status !== "verified" &&
+    match.status !== "forfeit" &&
+    match.status !== "canceled";
 
   // Read-only bystanders: we don't render actions but we DO render
   // a small verified/disputed pill so the state is visible.
@@ -73,8 +93,17 @@ export function LeagueMatchActions({
     );
   }
 
-  if (match.status === "canceled" || match.status === "forfeit") {
-    return null;
+  if (match.status === "canceled") return null;
+  if (match.status === "forfeit") {
+    const winnerName = match.forfeit_winner_team_id
+      ? teamsById[match.forfeit_winner_team_id]?.name ?? null
+      : null;
+    return (
+      <div className="text-[11px] font-semibold text-amber-600 inline-flex items-center gap-1">
+        <Flag className="w-3.5 h-3.5" />
+        Forfeit{winnerName ? ` — ${winnerName} wins` : ""}
+      </div>
+    );
   }
 
   return (
@@ -129,6 +158,19 @@ export function LeagueMatchActions({
           : "Enter score"}
       </Button>
 
+      {/* Captain-only concede — hidden from regular teammates so a
+          frustrated player can't hand the match to the other side. */}
+      {canForfeit && (
+        <Button
+          size="sm" variant="ghost"
+          className="h-8 text-xs text-muted-foreground hover:text-amber-600"
+          onClick={() => setForfeitOpen(true)}
+        >
+          <Flag className="w-3.5 h-3.5 mr-1" />
+          Concede
+        </Button>
+      )}
+
       <SubmitScoreDialog
         open={scoreOpen}
         onOpenChange={setScoreOpen}
@@ -142,6 +184,15 @@ export function LeagueMatchActions({
         matchId={match.id}
         onDisputed={onChanged}
       />
+      {canForfeit && (
+        <CaptainConcedeDialog
+          open={forfeitOpen}
+          onOpenChange={setForfeitOpen}
+          match={match}
+          teamsById={teamsById}
+          onDone={onChanged}
+        />
+      )}
     </div>
   );
 }
@@ -314,6 +365,69 @@ function DisputeDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/**
+ * Captain-driven forfeit. Calls forfeit_league_match without a
+ * p_winner_team_id — the RPC auto-derives the opposing team as the
+ * winner when the caller is the captain of one side.
+ */
+function CaptainConcedeDialog({
+  open, onOpenChange, match, teamsById, onDone,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  match: LeagueMatch;
+  teamsById: Record<string, LeagueTeam>;
+  onDone: () => void | Promise<void>;
+}) {
+  const [saving, setSaving] = useState(false);
+  // Show the OTHER team's name — captains concede TO them.
+  const opponentName = (() => {
+    const a = match.team_a_id ? teamsById[match.team_a_id] : null;
+    const b = match.team_b_id ? teamsById[match.team_b_id] : null;
+    return a && b ? `${a.name} vs ${b.name}` : "this match";
+  })();
+
+  const submit = async () => {
+    setSaving(true);
+    const { error } = await supabase.rpc(
+      "forfeit_league_match" as never,
+      { p_match_id: match.id } as never,
+    );
+    setSaving(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Match conceded — an admin can undo this if needed");
+    onOpenChange(false);
+    await onDone();
+  };
+
+  return (
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2">
+            <Flag className="w-4 h-4 text-amber-600" />
+            Concede this match?
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            You're conceding <span className="font-semibold">{opponentName}</span> as
+            captain. The other team is credited the win in standings.
+            Any submitted scores are cleared. An admin can undo this.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={saving}>Nevermind</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={submit} disabled={saving}
+            className="bg-amber-600 hover:bg-amber-700"
+          >
+            {saving ? "Conceding…" : "Yes, concede"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
 

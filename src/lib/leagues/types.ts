@@ -164,6 +164,12 @@ export interface LeagueMatch {
   score_submitted_by: string | null;
   score_submitted_at: string | null;
   dispute_reason: string | null;
+  /**
+   * When status = 'forfeit', which team is credited the win. Must equal
+   * team_a_id or team_b_id. NULL for any non-forfeit match. See the
+   * 20260703230000 migration.
+   */
+  forfeit_winner_team_id: string | null;
   created_at: string;
   updated_at: string;
 }

@@ -12,7 +12,16 @@ import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Info, CalendarClock, ChevronRight, Swords } from "lucide-react";
+import {
+  Plus, Info, CalendarClock, ChevronRight, Swords, ShieldAlert,
+  Gavel, Flag, Check,
+} from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Textarea } from "@/components/ui/textarea";
 import type {
   League, LeagueSeason, LeagueSession, LeagueTeam, LeagueMatch,
   LeagueMatchStatus, LeagueMember,
@@ -153,6 +162,32 @@ export function MatchesTab({ league, dataVersion, onMutated }: LeagueTabProps) {
         </p>
       )}
 
+      {/* Disputed matches need admin attention. Bright red-tinted banner
+          + a jump link that scrolls to the first disputed row. */}
+      {matches.filter((m) => m.status === "disputed").length > 0 && (
+        <button
+          type="button"
+          onClick={() => {
+            const first = matches.find((m) => m.status === "disputed");
+            if (first) setEditing(first);
+          }}
+          className="w-full flex items-center gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-left hover:bg-destructive/10 transition-colors"
+        >
+          <div className="h-9 w-9 rounded-lg bg-destructive/15 flex items-center justify-center shrink-0">
+            <ShieldAlert className="w-4 h-4 text-destructive" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-semibold text-destructive">
+              {matches.filter((m) => m.status === "disputed").length} disputed match{matches.filter((m) => m.status === "disputed").length === 1 ? "" : "es"} need review
+            </div>
+            <div className="text-[11px] text-destructive/80 mt-0.5">
+              Tap to open the first one and resolve
+            </div>
+          </div>
+          <ChevronRight className="w-4 h-4 text-destructive shrink-0" />
+        </button>
+      )}
+
       {matches.length === 0 ? (
         <EmptyState
           icon={<Swords className="w-5 h-5" />}
@@ -288,6 +323,8 @@ function MatchEditor({
   initial: LeagueMatch | null;
   onDone: () => Promise<void>;
 }) {
+  const [resolveOpen, setResolveOpen] = useState(false);
+  const [forfeitOpen, setForfeitOpen] = useState(false);
   const [sessionId, setSessionId] = useState(initial?.session_id ?? sessions[0]?.id ?? "");
   const [courtNumber, setCourtNumber] = useState(initial?.court_number?.toString() ?? "");
   const [scheduledTime, setScheduledTime] = useState(
@@ -494,12 +531,259 @@ function MatchEditor({
           <span>Scores are for admin display only. No rating impact.</span>
         </div>
       </div>
-      <DialogFooter>
+      <DialogFooter className="flex-col gap-2 sm:gap-2">
         <Button onClick={submit} disabled={saving} className="w-full">
           {saving ? "Saving…" : mode === "create" ? "Schedule match" : "Save changes"}
         </Button>
+        {/* Admin-only escape hatches, only meaningful when editing an
+            existing match. Split from the primary save so an accidental
+            tap can't nuke a match. */}
+        {mode === "edit" && initial && (
+          <div className="flex items-center gap-2 pt-1 w-full">
+            {(initial.status === "disputed" || initial.status === "score_submitted") && (
+              <Button
+                type="button" variant="outline" size="sm"
+                onClick={() => setResolveOpen(true)}
+                className="flex-1 h-10 border-destructive/40 text-destructive hover:bg-destructive/5"
+              >
+                <Gavel className="w-3.5 h-3.5 mr-1.5" />
+                Resolve dispute
+              </Button>
+            )}
+            {(initial.status === "scheduled"
+              || initial.status === "in_progress"
+              || initial.status === "score_submitted"
+              || initial.status === "disputed") && (
+              <Button
+                type="button" variant="outline" size="sm"
+                onClick={() => setForfeitOpen(true)}
+                className="flex-1 h-10 text-muted-foreground hover:text-foreground"
+              >
+                <Flag className="w-3.5 h-3.5 mr-1.5" />
+                Mark forfeit
+              </Button>
+            )}
+          </div>
+        )}
       </DialogFooter>
+
+      {mode === "edit" && initial && (
+        <>
+          <ResolveDisputeDialog
+            open={resolveOpen}
+            onOpenChange={setResolveOpen}
+            match={initial}
+            teams={teams}
+            onDone={async () => { setResolveOpen(false); await onDone(); }}
+          />
+          <ForfeitMatchDialog
+            open={forfeitOpen}
+            onOpenChange={setForfeitOpen}
+            match={initial}
+            teams={teams}
+            onDone={async () => { setForfeitOpen(false); await onDone(); }}
+          />
+        </>
+      )}
     </DialogContent>
+  );
+}
+
+/* ---------- admin action dialogs ---------- */
+
+/**
+ * Admin-only. Overrides the disputed match with a canonical score and
+ * flips status directly to 'verified' via the resolve_league_match_dispute
+ * RPC. Shows the player-submitted dispute reason as read-only context.
+ */
+function ResolveDisputeDialog({
+  open, onOpenChange, match, teams, onDone,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  match: LeagueMatch;
+  teams: LeagueTeam[];
+  onDone: () => void | Promise<void>;
+}) {
+  const [aScore, setAScore] = useState(
+    match.team_a_score !== null ? String(match.team_a_score) : "",
+  );
+  const [bScore, setBScore] = useState(
+    match.team_b_score !== null ? String(match.team_b_score) : "",
+  );
+  const [note, setNote] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const teamAName = teams.find((t) => t.id === match.team_a_id)?.name ?? "Team A";
+  const teamBName = teams.find((t) => t.id === match.team_b_id)?.name ?? "Team B";
+
+  const submit = async () => {
+    const a = Number(aScore);
+    const b = Number(bScore);
+    if (!Number.isInteger(a) || !Number.isInteger(b) || a < 0 || b < 0) {
+      toast.error("Enter non-negative whole numbers"); return;
+    }
+    if (a === b) { toast.error("Scores can't be tied"); return; }
+    setSaving(true);
+    const { error } = await supabase.rpc(
+      "resolve_league_match_dispute" as never,
+      {
+        p_match_id: match.id,
+        p_team_a_score: a,
+        p_team_b_score: b,
+        p_note: note.trim() || null,
+      } as never,
+    );
+    setSaving(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Dispute resolved — match is now verified");
+    await onDone();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Gavel className="w-4 h-4 text-destructive" />
+            Resolve dispute
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          {match.dispute_reason && (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-xs">
+              <div className="font-semibold text-destructive mb-1 inline-flex items-center gap-1">
+                <ShieldAlert className="w-3 h-3" /> Player reason
+              </div>
+              <div className="italic text-destructive/90">
+                "{match.dispute_reason}"
+              </div>
+            </div>
+          )}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">{teamAName}</Label>
+              <Input type="number" min={0} value={aScore}
+                onChange={(e) => setAScore(e.target.value)}
+                className="h-12 text-center text-lg font-bold tabular-nums" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">{teamBName}</Label>
+              <Input type="number" min={0} value={bScore}
+                onChange={(e) => setBScore(e.target.value)}
+                className="h-12 text-center text-lg font-bold tabular-nums" />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Resolution note (optional)</Label>
+            <Textarea rows={2} value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Kept for the audit log — e.g., 'confirmed via kiosk photo'" />
+          </div>
+        </div>
+        <DialogFooter className="gap-2 sm:gap-2">
+          <Button variant="ghost" className="flex-1"
+            onClick={() => onOpenChange(false)} disabled={saving}>
+            Cancel
+          </Button>
+          <Button onClick={submit} disabled={saving} className="flex-1">
+            <Check className="w-4 h-4 mr-1.5" />
+            {saving ? "Resolving…" : "Verify these scores"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/**
+ * Admin-only from this surface — captains use the player-side action
+ * we'll wire in LeagueMatchActions. Records which team gets the win
+ * via forfeit_winner_team_id.
+ */
+function ForfeitMatchDialog({
+  open, onOpenChange, match, teams, onDone,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  match: LeagueMatch;
+  teams: LeagueTeam[];
+  onDone: () => void | Promise<void>;
+}) {
+  const [winnerId, setWinnerId] = useState<string>(match.team_a_id ?? "");
+  const [reason, setReason] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const teamAName = teams.find((t) => t.id === match.team_a_id)?.name ?? "Team A";
+  const teamBName = teams.find((t) => t.id === match.team_b_id)?.name ?? "Team B";
+
+  const submit = async () => {
+    if (!match.team_a_id || !match.team_b_id) {
+      toast.error("Both teams must be set before recording a forfeit"); return;
+    }
+    if (!winnerId) { toast.error("Pick the winning team"); return; }
+    setSaving(true);
+    const { error } = await supabase.rpc(
+      "forfeit_league_match" as never,
+      {
+        p_match_id: match.id,
+        p_winner_team_id: winnerId,
+        p_reason: reason.trim() || null,
+      } as never,
+    );
+    setSaving(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Match recorded as forfeit");
+    await onDone();
+  };
+
+  return (
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2">
+            <Flag className="w-4 h-4 text-amber-600" />
+            Mark match as forfeit
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            The winning team gets a W in standings. Any submitted scores
+            are cleared — the forfeit is the source of truth. This can
+            be undone by editing the raw row.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <div className="space-y-3 py-2">
+          <div className="space-y-1.5">
+            <Label className="text-xs">Winning team</Label>
+            <Select value={winnerId} onValueChange={setWinnerId}>
+              <SelectTrigger><SelectValue placeholder="Pick a team" /></SelectTrigger>
+              <SelectContent>
+                {match.team_a_id && (
+                  <SelectItem value={match.team_a_id}>{teamAName}</SelectItem>
+                )}
+                {match.team_b_id && (
+                  <SelectItem value={match.team_b_id}>{teamBName}</SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Reason (optional)</Label>
+            <Textarea rows={2} value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="e.g., 'no-show', 'season withdrawal', 'medical'" />
+          </div>
+        </div>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={saving}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={submit} disabled={saving}
+            className="bg-amber-600 hover:bg-amber-700"
+          >
+            {saving ? "Saving…" : "Record forfeit"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
 
