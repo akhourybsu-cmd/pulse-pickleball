@@ -2480,6 +2480,7 @@ export type Database = {
           created_at: string
           dispute_reason: string | null
           division_id: string | null
+          forfeit_winner_team_id: string | null
           id: string
           league_id: string
           linked_match_id: string | null
@@ -2506,6 +2507,7 @@ export type Database = {
           created_at?: string
           dispute_reason?: string | null
           division_id?: string | null
+          forfeit_winner_team_id?: string | null
           id?: string
           league_id: string
           linked_match_id?: string | null
@@ -2532,6 +2534,7 @@ export type Database = {
           created_at?: string
           dispute_reason?: string | null
           division_id?: string | null
+          forfeit_winner_team_id?: string | null
           id?: string
           league_id?: string
           linked_match_id?: string | null
@@ -2559,6 +2562,13 @@ export type Database = {
             columns: ["division_id"]
             isOneToOne: false
             referencedRelation: "league_divisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_matches_forfeit_winner_team_id_fkey"
+            columns: ["forfeit_winner_team_id"]
+            isOneToOne: false
+            referencedRelation: "league_teams"
             referencedColumns: ["id"]
           },
           {
@@ -7242,6 +7252,16 @@ export type Database = {
         Args: { p_session_id: string }
         Returns: undefined
       }
+      bulk_add_league_members: {
+        Args: {
+          p_division_id?: string
+          p_dry_run?: boolean
+          p_emails?: string[]
+          p_league_id: string
+          p_season_id?: string
+        }
+        Returns: Json
+      }
       calculate_pulse_rating_change: {
         Args: {
           p_match_type?: string
@@ -7384,6 +7404,14 @@ export type Database = {
           visibility: string
         }[]
       }
+      forfeit_league_match: {
+        Args: {
+          p_match_id: string
+          p_reason?: string
+          p_winner_team_id?: string
+        }
+        Returns: undefined
+      }
       freeze_week_ratings: {
         Args: { target_week_start: string }
         Returns: undefined
@@ -7409,6 +7437,85 @@ export type Database = {
         Returns: {
           contact_name: string
           contact_phone: string
+        }[]
+      }
+      get_league_season_aggregates: {
+        Args: { p_league_id: string }
+        Returns: {
+          awaiting_confirm: number
+          disputed: number
+          forfeits: number
+          matches: number
+          members: number
+          pending: number
+          season_id: string
+          verified: number
+        }[]
+      }
+      get_my_leagues_with_context: {
+        Args: never
+        Returns: {
+          division_created_at: string
+          division_description: string
+          division_id: string
+          division_league_id: string
+          division_name: string
+          division_season_id: string
+          division_skill_max: number
+          division_skill_min: number
+          division_status: string
+          division_updated_at: string
+          league_community_id: string
+          league_created_at: string
+          league_created_by: string
+          league_description: string
+          league_guests_allowed: boolean
+          league_id: string
+          league_league_type: string
+          league_location: string
+          league_name: string
+          league_rating_eligible: boolean
+          league_status: string
+          league_updated_at: string
+          league_visibility: string
+          membership_created_at: string
+          membership_division_id: string
+          membership_id: string
+          membership_joined_at: string
+          membership_league_id: string
+          membership_role: string
+          membership_season_id: string
+          membership_status: string
+          membership_updated_at: string
+          membership_user_id: string
+          season_created_at: string
+          season_end_date: string
+          season_id: string
+          season_league_id: string
+          season_name: string
+          season_registration_deadline: string
+          season_start_date: string
+          season_status: string
+          season_updated_at: string
+        }[]
+      }
+      get_my_upcoming_league_matches: {
+        Args: { p_limit?: number }
+        Returns: {
+          court_number: number
+          league_id: string
+          league_name: string
+          league_type: string
+          location: string
+          match_id: string
+          scheduled_time: string
+          season_id: string
+          season_name: string
+          status: string
+          team_a_id: string
+          team_a_name: string
+          team_b_id: string
+          team_b_name: string
         }[]
       }
       get_or_create_dm_conversation: {
@@ -7516,6 +7623,12 @@ export type Database = {
           registration_status: string
         }[]
       }
+      league_match_participant_user_ids: {
+        Args: { p_exclude_user?: string; p_match_id: string }
+        Returns: {
+          user_id: string
+        }[]
+      }
       log_admin_action: {
         Args: {
           p_action: string
@@ -7617,6 +7730,15 @@ export type Database = {
         Args: { p_group_id: string; p_ttl_hours?: number }
         Returns: Json
       }
+      resolve_league_match_dispute: {
+        Args: {
+          p_match_id: string
+          p_note?: string
+          p_team_a_score: number
+          p_team_b_score: number
+        }
+        Returns: undefined
+      }
       search_connectable_users: {
         Args: { _query: string }
         Returns: {
@@ -7666,6 +7788,10 @@ export type Database = {
           reason: string
           weight: number
         }[]
+      }
+      sync_league_season_statuses: {
+        Args: { p_league_id: string }
+        Returns: Json
       }
       user_created_match: {
         Args: { match_id_param: string; user_id_param: string }
