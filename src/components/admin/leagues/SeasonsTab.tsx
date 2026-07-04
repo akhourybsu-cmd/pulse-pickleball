@@ -9,8 +9,13 @@ import {
 import {
   Dialog, DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Calendar as CalendarIcon, CalendarDays, RefreshCw } from "lucide-react";
-import type { League, LeagueSeason, SeasonStatus } from "@/lib/leagues/types";
+import {
+  Plus, Calendar as CalendarIcon, CalendarDays, RefreshCw,
+  Users, Swords, CheckCircle2, AlertTriangle, Clock, Flag,
+} from "lucide-react";
+import type {
+  League, LeagueSeason, SeasonStatus, LeagueMatch, LeagueMember,
+} from "@/lib/leagues/types";
 import { logLeagueAction } from "@/lib/leagues/audit";
 import { cn } from "@/lib/utils";
 import {
@@ -18,8 +23,23 @@ import {
   FormShell, FormSection, FormRow, FIELD_H,
 } from "./_shared";
 
+interface SeasonStats {
+  matches: number;
+  verified: number;
+  pending: number;      // scheduled + in_progress
+  awaitingConfirm: number; // score_submitted
+  disputed: number;
+  forfeits: number;
+  members: number;
+}
+const EMPTY_STATS: SeasonStats = {
+  matches: 0, verified: 0, pending: 0,
+  awaitingConfirm: 0, disputed: 0, forfeits: 0, members: 0,
+};
+
 export function SeasonsTab({ league, dataVersion, onMutated }: LeagueTabProps) {
   const [seasons, setSeasons] = useState<LeagueSeason[]>([]);
+  const [stats, setStats] = useState<Record<string, SeasonStats>>({});
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<LeagueSeason | null>(null);
@@ -65,13 +85,45 @@ export function SeasonsTab({ league, dataVersion, onMutated }: LeagueTabProps) {
 
   const refresh = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("league_seasons" as never)
-      .select("*")
-      .eq("league_id", league.id)
-      .order("created_at", { ascending: false });
-    if (error) toast.error(error.message);
-    setSeasons((data ?? []) as unknown as LeagueSeason[]);
+
+    // Fetch seasons + all matches + active members in parallel. Group
+    // client-side so we don't need a specialized RPC — RLS lets an
+    // admin see every row for a league they administer.
+    const [seasonsRes, matchesRes, membersRes] = await Promise.all([
+      supabase.from("league_seasons" as never).select("*")
+        .eq("league_id", league.id)
+        .order("created_at", { ascending: false }),
+      supabase.from("league_matches" as never).select("*")
+        .eq("league_id", league.id),
+      supabase.from("league_members" as never).select("*")
+        .eq("league_id", league.id).eq("status", "active"),
+    ]);
+    if (seasonsRes.error) toast.error(seasonsRes.error.message);
+    const list = (seasonsRes.data ?? []) as unknown as LeagueSeason[];
+    setSeasons(list);
+
+    const matches = (matchesRes.data ?? []) as unknown as LeagueMatch[];
+    const members = (membersRes.data ?? []) as unknown as LeagueMember[];
+    const nextStats: Record<string, SeasonStats> = {};
+    list.forEach((s) => { nextStats[s.id] = { ...EMPTY_STATS }; });
+
+    for (const m of matches) {
+      const row = nextStats[m.season_id];
+      if (!row) continue;
+      row.matches += 1;
+      if (m.status === "verified") row.verified += 1;
+      else if (m.status === "score_submitted") row.awaitingConfirm += 1;
+      else if (m.status === "disputed") row.disputed += 1;
+      else if (m.status === "forfeit") row.forfeits += 1;
+      else if (m.status === "scheduled" || m.status === "in_progress") row.pending += 1;
+    }
+    for (const mem of members) {
+      if (!mem.season_id) continue;
+      const row = nextStats[mem.season_id];
+      if (row) row.members += 1;
+    }
+
+    setStats(nextStats);
     setLoading(false);
   };
 
@@ -117,31 +169,41 @@ export function SeasonsTab({ league, dataVersion, onMutated }: LeagueTabProps) {
       ) : null}
 
       <ul className="space-y-2">
-        {seasons.map((s) => (
-          <li
-            key={s.id}
-            className="rounded-lg border border-border/70 bg-card p-3 flex items-start justify-between gap-3"
-          >
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-medium">{s.name}</span>
-                <StatusBadge status={s.status} />
+        {seasons.map((s) => {
+          const st = stats[s.id] ?? EMPTY_STATS;
+          // Only surface analytics for seasons that actually have data.
+          // Draft with 0 rows across the board = pure clutter.
+          const showAnalytics = st.matches > 0 || st.members > 0;
+          return (
+            <li
+              key={s.id}
+              className="rounded-lg border border-border/70 bg-card p-3 space-y-2.5"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-medium">{s.name}</span>
+                    <StatusBadge status={s.status} />
+                  </div>
+                  {(s.start_date || s.end_date) && (
+                    <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1.5">
+                      <CalendarIcon className="w-3 h-3" />
+                      {s.start_date ?? "?"} → {s.end_date ?? "?"}
+                    </div>
+                  )}
+                  {s.registration_deadline && (
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      Registration by {s.registration_deadline}
+                    </div>
+                  )}
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => setEditing(s)}>Edit</Button>
               </div>
-              {(s.start_date || s.end_date) && (
-                <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1.5">
-                  <CalendarIcon className="w-3 h-3" />
-                  {s.start_date ?? "?"} → {s.end_date ?? "?"}
-                </div>
-              )}
-              {s.registration_deadline && (
-                <div className="text-xs text-muted-foreground mt-0.5">
-                  Registration by {s.registration_deadline}
-                </div>
-              )}
-            </div>
-            <Button variant="ghost" size="sm" onClick={() => setEditing(s)}>Edit</Button>
-          </li>
-        ))}
+
+              {showAnalytics && <SeasonAnalyticsRow stats={st} />}
+            </li>
+          );
+        })}
       </ul>
 
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
@@ -269,5 +331,121 @@ function SeasonEditor({
         </FormRow>
       </FormSection>
     </FormShell>
+  );
+}
+
+/**
+ * Inline stat rail for a season card. Shows:
+ *  • Members count
+ *  • Match totals broken down by state (verified / awaitingConfirm /
+ *    pending / disputed / forfeit)
+ *  • A verification progress bar when at least one match exists.
+ *
+ * Draft seasons with zero matches AND zero members render nothing —
+ * the caller checks that before mounting us.
+ */
+function SeasonAnalyticsRow({ stats }: { stats: SeasonStats }) {
+  // Verification rate is bounded by the scoreable universe: matches
+  // that have entered the score-flow pipeline OR ended in a forfeit.
+  // Pure "scheduled" matches shouldn't count against completion since
+  // they haven't been played yet.
+  const scoreable = stats.verified + stats.awaitingConfirm
+                  + stats.disputed + stats.forfeits;
+  const done = stats.verified + stats.forfeits;
+  const pct = scoreable > 0 ? Math.round((done / scoreable) * 100) : 0;
+
+  return (
+    <div className="pt-2.5 border-t border-border/40 space-y-2">
+      {/* Stat row — icon + count chips. Uses the same tonal language
+          as the rest of the League admin: verified=emerald,
+          pending=muted, awaitingConfirm=amber, disputed=destructive,
+          forfeit=amber-tinted, members=primary. */}
+      <div className="flex items-center gap-1.5 flex-wrap">
+        {stats.members > 0 && (
+          <StatChip icon={Users} tone="primary" count={stats.members} label="members" />
+        )}
+        {stats.matches > 0 && (
+          <StatChip icon={Swords} tone="muted" count={stats.matches} label="matches" />
+        )}
+        {stats.verified > 0 && (
+          <StatChip icon={CheckCircle2} tone="emerald" count={stats.verified} label="verified" />
+        )}
+        {stats.awaitingConfirm > 0 && (
+          <StatChip icon={Clock} tone="amber" count={stats.awaitingConfirm} label="to confirm" />
+        )}
+        {stats.pending > 0 && (
+          <StatChip icon={Clock} tone="muted" count={stats.pending} label="pending" />
+        )}
+        {stats.disputed > 0 && (
+          <StatChip icon={AlertTriangle} tone="destructive" count={stats.disputed} label="disputed" />
+        )}
+        {stats.forfeits > 0 && (
+          <StatChip icon={Flag} tone="amber" count={stats.forfeits} label="forfeit" />
+        )}
+      </div>
+
+      {/* Verification progress bar — only when there's scoreable
+          matches. Explains at-a-glance how close the season is to
+          fully-verified. */}
+      {scoreable > 0 && (
+        <div className="space-y-0.5">
+          <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+            <span className="font-semibold uppercase tracking-wider">
+              Verification
+            </span>
+            <span className="tabular-nums">
+              {done} / {scoreable} · {pct}%
+            </span>
+          </div>
+          <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+            <div
+              className={cn(
+                "h-full rounded-full transition-all",
+                pct === 100 ? "bg-emerald-500" :
+                stats.disputed > 0 ? "bg-destructive/70" :
+                "bg-primary",
+              )}
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Compact stat chip used across the analytics rail. `label` renders
+ * on wider viewports; on mobile the icon + count carries the meaning
+ * (with a title attribute for accessibility).
+ */
+function StatChip({
+  icon: Icon, tone, count, label,
+}: {
+  icon: typeof Users;
+  tone: "primary" | "muted" | "emerald" | "amber" | "destructive";
+  count: number;
+  label: string;
+}) {
+  const toneCls = {
+    primary:     "bg-primary/10 text-primary",
+    muted:       "bg-muted text-muted-foreground",
+    emerald:     "bg-emerald-500/10 text-emerald-600",
+    amber:       "bg-amber-500/10 text-amber-600",
+    destructive: "bg-destructive/10 text-destructive",
+  }[tone];
+
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-semibold tabular-nums",
+        toneCls,
+      )}
+      title={`${count} ${label}`}
+    >
+      <Icon className="w-3 h-3" />
+      {count}
+      <span className="hidden sm:inline opacity-70 font-normal">{label}</span>
+    </span>
   );
 }
