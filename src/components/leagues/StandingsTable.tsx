@@ -1,4 +1,4 @@
-import { Trophy } from "lucide-react";
+import { Trophy, Flag } from "lucide-react";
 import type { StandingRow } from "@/lib/leagues/standings";
 import { cn } from "@/lib/utils";
 
@@ -60,12 +60,23 @@ export function StandingsTable({
               </div>
               <div
                 className={cn(
-                  "truncate font-medium",
+                  "min-w-0 flex items-center gap-1.5",
                   highlighted && "text-primary font-bold",
                 )}
                 title={row.teamName}
               >
-                {row.teamName}
+                <span className={cn("truncate font-medium",
+                  highlighted && "font-bold",
+                )}>{row.teamName}</span>
+                {(row.forfeitWins > 0 || row.forfeitLosses > 0) && (
+                  <span
+                    className="inline-flex items-center gap-0.5 text-[10px] text-amber-600 shrink-0"
+                    title={`${row.forfeitWins} forfeit win${row.forfeitWins === 1 ? "" : "s"}, ${row.forfeitLosses} forfeit loss${row.forfeitLosses === 1 ? "" : "es"}`}
+                  >
+                    <Flag className="w-3 h-3" />
+                    {row.forfeitWins + row.forfeitLosses}
+                  </span>
+                )}
               </div>
               <div className="text-right font-bold">{row.wins}</div>
               <div className="text-right text-muted-foreground">{row.losses}</div>
