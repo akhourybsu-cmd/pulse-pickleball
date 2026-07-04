@@ -517,9 +517,13 @@ const AppContent = () => {
           <Route path="/admin/players" element={<AdminGuard><AdminPlayers /></AdminGuard>} />
           <Route path="/admin/badges" element={<AdminGuard><AdminBadges /></AdminGuard>} />
           <Route path="/admin/matches" element={<AdminGuard><AdminMatches /></AdminGuard>} />
+          {/* /admin/leagues (list) remains platform-admin only — it
+              shows EVERY league on the platform. The detail + poster
+              routes are open to any authenticated user; RLS enforces
+              that non-owner non-admins see empty data. */}
           <Route path="/admin/leagues" element={<AdminGuard><AdminLeagues /></AdminGuard>} />
-          <Route path="/admin/leagues/:leagueId" element={<AdminGuard><AdminLeagueDetail /></AdminGuard>} />
-          <Route path="/admin/leagues/:leagueId/poster" element={<AdminGuard><LeaguePoster /></AdminGuard>} />
+          <Route path="/admin/leagues/:leagueId" element={<AuthGuard><AdminLeagueDetail /></AuthGuard>} />
+          <Route path="/admin/leagues/:leagueId/poster" element={<AuthGuard><LeaguePoster /></AuthGuard>} />
           <Route path="/admin/marketing" element={<AdminGuard><AdminMarketing /></AdminGuard>} />
           <Route path="/admin/audit-log" element={<AdminGuard><AdminAuditLog /></AdminGuard>} />
           <Route path="/admin/test-accounts" element={<AdminGuard><AdminTestAccounts /></AdminGuard>} />
