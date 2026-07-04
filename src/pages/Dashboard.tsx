@@ -23,6 +23,7 @@ import { PerformanceModule } from "@/components/dashboard/PerformanceModule";
 import { UpcomingEventsPreview } from "@/components/dashboard/UpcomingEventsPreview";
 import { MyRoundRobinsCard } from "@/components/dashboard/MyRoundRobinsCard";
 import { MyLeaguesSection } from "@/components/dashboard/MyLeaguesSection";
+import { UpNextLeagueMatchesSection } from "@/components/dashboard/UpNextLeagueMatchesSection";
 import { MyCommunitiesRail } from "@/components/dashboard/MyCommunitiesRail";
 import { MyFriendsRail } from "@/components/dashboard/MyFriendsRail";
 import { EnablePushBanner } from "@/components/dashboard/EnablePushBanner";
@@ -256,6 +257,7 @@ const Dashboard = () => {
                 when the user has no active memberships so we don't
                 advertise emptiness. Invite-based today. */}
             <MyLeaguesSection />
+            <UpNextLeagueMatchesSection />
 
             {/* My communities — quick-tap rail to any group the user is in */}
             <div
@@ -394,6 +396,7 @@ const Dashboard = () => {
           {/* My leagues — Phase 1 player-facing surface. Same
               self-hide-when-empty behavior as the desktop grid. */}
           <MyLeaguesSection />
+          <UpNextLeagueMatchesSection />
 
           {/* My communities — quick-tap rail */}
           <div
