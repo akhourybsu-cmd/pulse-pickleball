@@ -1,5 +1,5 @@
 import { Trophy, Flag } from "lucide-react";
-import type { StandingRow } from "@/lib/leagues/standings";
+import type { StandingRow, FormResult } from "@/lib/leagues/standings";
 import { cn } from "@/lib/utils";
 
 /**
@@ -29,7 +29,7 @@ export function StandingsTable({
   return (
     <div className="rounded-xl border border-border/70 bg-card overflow-hidden">
       {/* Header row */}
-      <div className="grid grid-cols-[2rem_1fr_2.5rem_2.5rem_2.5rem_3rem] sm:grid-cols-[2.5rem_1fr_3rem_3rem_3rem_3.5rem_3.5rem] items-center gap-2 sm:gap-3 px-3 py-2 bg-muted/40 border-b border-border/50 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+      <div className="grid grid-cols-[2rem_1fr_2.5rem_2.5rem_3rem_3rem] sm:grid-cols-[2.5rem_1fr_3rem_3rem_3rem_3.5rem_3.5rem_5.5rem] items-center gap-2 sm:gap-3 px-3 py-2 bg-muted/40 border-b border-border/50 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
         <div className="text-center">#</div>
         <div>Team</div>
         <div className="text-right">W</div>
@@ -40,6 +40,7 @@ export function StandingsTable({
           <span className="hidden sm:inline">Diff</span>
         </div>
         <div className="text-right">Win%</div>
+        <div className="text-right hidden sm:block">Form</div>
       </div>
 
       {/* Rows */}
@@ -51,7 +52,7 @@ export function StandingsTable({
             <li
               key={row.teamId}
               className={cn(
-                "grid grid-cols-[2rem_1fr_2.5rem_2.5rem_2.5rem_3rem] sm:grid-cols-[2.5rem_1fr_3rem_3rem_3rem_3.5rem_3.5rem] items-center gap-2 sm:gap-3 px-3 py-2.5 border-b border-border/40 last:border-b-0 tabular-nums text-sm",
+                "grid grid-cols-[2rem_1fr_2.5rem_2.5rem_3rem_3rem] sm:grid-cols-[2.5rem_1fr_3rem_3rem_3rem_3.5rem_3.5rem_5.5rem] items-center gap-2 sm:gap-3 px-3 py-2.5 border-b border-border/40 last:border-b-0 tabular-nums text-sm",
                 highlighted && "bg-primary/5",
               )}
             >
@@ -97,11 +98,54 @@ export function StandingsTable({
               <div className="text-right text-xs text-muted-foreground">
                 {(row.winPct * 100).toFixed(0)}%
               </div>
+              <div className="hidden sm:flex items-center justify-end gap-0.5">
+                <FormChips form={row.recentForm} />
+              </div>
             </li>
           );
         })}
       </ul>
     </div>
+  );
+}
+
+/**
+ * Last-N form chips. Empty pips fill from the right so a team with
+ * only 2 results renders 3 empty + 2 filled — the trailing edge is
+ * "most recent". Uses per-outcome tone: W = emerald, L = destructive,
+ * FW = amber, FL = amber (dim), — no result → muted skeleton pip.
+ */
+function FormChips({ form }: { form: FormResult[] }) {
+  const CAP = 5;
+  const padded: (FormResult | null)[] = [
+    ...Array<FormResult | null>(Math.max(0, CAP - form.length)).fill(null),
+    ...form,
+  ];
+  return (
+    <>
+      {padded.map((r, i) => (
+        <span
+          key={i}
+          className={cn(
+            "inline-flex items-center justify-center h-4 w-4 rounded text-[9px] font-bold leading-none",
+            r === "W"  && "bg-emerald-500/20 text-emerald-600",
+            r === "L"  && "bg-destructive/15 text-destructive",
+            r === "FW" && "bg-amber-500/20 text-amber-600",
+            r === "FL" && "bg-amber-500/10 text-amber-500/70",
+            r === null && "bg-muted/60 text-muted-foreground/40",
+          )}
+          title={
+            r === "W"  ? "Win" :
+            r === "L"  ? "Loss" :
+            r === "FW" ? "Won by forfeit" :
+            r === "FL" ? "Lost by forfeit" :
+            "No result yet"
+          }
+        >
+          {r === null ? "·" : r === "FW" ? "F" : r === "FL" ? "F" : r}
+        </span>
+      ))}
+    </>
   );
 }
 

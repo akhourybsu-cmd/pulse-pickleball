@@ -1,5 +1,12 @@
 import type { LeagueMatch, LeagueTeam } from "./types";
 
+/**
+ * Per-match outcome from a team's perspective, ordered oldest → newest
+ * inside recentForm. F prefixes indicate forfeit-derived outcomes so
+ * the UI can render them with a distinct tone.
+ */
+export type FormResult = "W" | "L" | "FW" | "FL";
+
 export interface StandingRow {
   teamId: string;
   teamName: string;
@@ -14,8 +21,16 @@ export interface StandingRow {
   pointsAgainst: number;
   /** pointsFor − pointsAgainst. Forfeits contribute 0 to both sides. */
   pointDiff: number;
+  /** pointDiff / gamesPlayed, rounded to 1dp. 0 when gamesPlayed = 0. */
+  avgPointDiff: number;
   /** wins / gamesPlayed, or 0 when gamesPlayed = 0. */
   winPct: number;
+  /**
+   * Most recent up to 5 results in oldest→newest order. Used by the
+   * StandingsTable's Form column. Empty when the team has no eligible
+   * matches yet.
+   */
+  recentForm: FormResult[];
 }
 
 interface StandingsOpts {
@@ -93,14 +108,29 @@ export function computeTeamStandings(
       wins: 0, losses: 0,
       forfeitWins: 0, forfeitLosses: 0,
       gamesPlayed: 0,
-      pointsFor: 0, pointsAgainst: 0, pointDiff: 0, winPct: 0,
+      pointsFor: 0, pointsAgainst: 0, pointDiff: 0,
+      avgPointDiff: 0, winPct: 0,
+      recentForm: [],
     };
     stats.set(teamId, row);
     return row;
   };
   const finalize = (row: StandingRow) => {
     row.pointDiff = row.pointsFor - row.pointsAgainst;
+    row.avgPointDiff = row.gamesPlayed > 0
+      ? Math.round((row.pointDiff / row.gamesPlayed) * 10) / 10
+      : 0;
     row.winPct = row.gamesPlayed > 0 ? row.wins / row.gamesPlayed : 0;
+  };
+
+  // Timeline of every eligible outcome per team, keyed by team id.
+  // Each entry: { result, when }. We use updated_at as the finalization
+  // timestamp — verified/forfeit both stamp it — and take the trailing 5.
+  const timeline = new Map<string, Array<{ result: FormResult; when: string }>>();
+  const pushOutcome = (teamId: string, result: FormResult, when: string) => {
+    const list = timeline.get(teamId) ?? [];
+    list.push({ result, when });
+    timeline.set(teamId, list);
   };
 
   // Track pairwise wins for the head-to-head tiebreaker. Key = winner
@@ -129,8 +159,15 @@ export function computeTeamStandings(
     rowA.pointsAgainst += bScore;
     rowB.pointsFor += bScore;
     rowB.pointsAgainst += aScore;
-    if (aWon) { rowA.wins += 1; rowB.losses += 1; recordH2H(a.id, b.id); }
-    else      { rowB.wins += 1; rowA.losses += 1; recordH2H(b.id, a.id); }
+    if (aWon) {
+      rowA.wins += 1; rowB.losses += 1; recordH2H(a.id, b.id);
+      pushOutcome(a.id, "W", m.updated_at);
+      pushOutcome(b.id, "L", m.updated_at);
+    } else {
+      rowB.wins += 1; rowA.losses += 1; recordH2H(b.id, a.id);
+      pushOutcome(b.id, "W", m.updated_at);
+      pushOutcome(a.id, "L", m.updated_at);
+    }
   }
 
   // ---- Forfeits --------------------------------------------------------
@@ -154,7 +191,17 @@ export function computeTeamStandings(
     rowL.forfeitLosses += 1;
     // Points intentionally not touched — see doc.
     recordH2H(winner.id, loser.id);
+    pushOutcome(winner.id, "FW", m.updated_at);
+    pushOutcome(loser.id, "FL", m.updated_at);
   }
+
+  // Trim each team's timeline to the trailing 5 outcomes (oldest→newest)
+  // so the Form column shows the most recent stretch.
+  timeline.forEach((events, teamId) => {
+    events.sort((a, b) => a.when.localeCompare(b.when));
+    const row = stats.get(teamId);
+    if (row) row.recentForm = events.slice(-5).map((e) => e.result);
+  });
 
   // Finalize before sort so pointDiff/winPct reflect the accumulated
   // totals.
