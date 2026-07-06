@@ -2874,6 +2874,60 @@ export type Database = {
           },
         ]
       }
+      league_slot_purchases: {
+        Row: {
+          amount_cents: number | null
+          created_at: string
+          currency: string | null
+          fulfilled_at: string | null
+          id: string
+          slots_granted: number
+          status: string
+          stripe_customer_id: string | null
+          stripe_session_id: string
+          user_id: string
+        }
+        Insert: {
+          amount_cents?: number | null
+          created_at?: string
+          currency?: string | null
+          fulfilled_at?: string | null
+          id?: string
+          slots_granted?: number
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_session_id: string
+          user_id: string
+        }
+        Update: {
+          amount_cents?: number | null
+          created_at?: string
+          currency?: string | null
+          fulfilled_at?: string | null
+          id?: string
+          slots_granted?: number
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_session_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_slot_purchases_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_slot_purchases_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       league_team_members: {
         Row: {
           created_at: string
@@ -3859,6 +3913,7 @@ export type Database = {
       profiles: {
         Row: {
           accessibility_needs: string | null
+          additional_league_slots: number
           avatar_url: string | null
           avg_opponent_rating: number | null
           biometric_enabled: boolean | null
@@ -3913,6 +3968,7 @@ export type Database = {
         }
         Insert: {
           accessibility_needs?: string | null
+          additional_league_slots?: number
           avatar_url?: string | null
           avg_opponent_rating?: number | null
           biometric_enabled?: boolean | null
@@ -3967,6 +4023,7 @@ export type Database = {
         }
         Update: {
           accessibility_needs?: string | null
+          additional_league_slots?: number
           avatar_url?: string | null
           avg_opponent_rating?: number | null
           biometric_enabled?: boolean | null
@@ -7312,6 +7369,15 @@ export type Database = {
       cleanup_rpc_rate_limit_log: { Args: never; Returns: undefined }
       clear_all_match_history: { Args: never; Returns: undefined }
       clear_all_match_history_authenticated: { Args: never; Returns: undefined }
+      create_league: {
+        Args: {
+          p_description?: string
+          p_league_type?: string
+          p_location?: string
+          p_name: string
+        }
+        Returns: string
+      }
       create_notification: {
         Args: {
           p_actor_id?: string
@@ -7437,6 +7503,15 @@ export type Database = {
         Returns: {
           contact_name: string
           contact_phone: string
+        }[]
+      }
+      get_league_creation_capacity: {
+        Args: { p_user_id?: string }
+        Returns: {
+          is_admin: boolean
+          max_leagues: number
+          owned: number
+          remaining: number
         }[]
       }
       get_league_season_aggregates: {
@@ -7579,6 +7654,10 @@ export type Database = {
         Args: { _user_id: string; _venue_id: string }
         Returns: boolean
       }
+      increment_league_slots: {
+        Args: { p_delta: number; p_user_id: string }
+        Returns: number
+      }
       insert_mfa_code: {
         Args: {
           p_code: string
@@ -7607,6 +7686,10 @@ export type Database = {
       }
       is_group_member: {
         Args: { _group_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_league_admin: {
+        Args: { p_league_id: string; p_user_id?: string }
         Returns: boolean
       }
       is_valid_push_dispatch_secret: {
