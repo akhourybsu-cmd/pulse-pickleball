@@ -1,3 +1,4 @@
+import { motion } from "framer-motion";
 import { Trophy, Flag } from "lucide-react";
 import type { StandingRow, FormResult } from "@/lib/leagues/standings";
 import { cn } from "@/lib/utils";
@@ -49,8 +50,11 @@ export function StandingsTable({
           const highlighted = highlightTeamIds?.has(row.teamId);
           const rank = i + 1;
           return (
-            <li
+            <motion.li
               key={row.teamId}
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.24, delay: i * 0.03, ease: "easeOut" }}
               className={cn(
                 "grid grid-cols-[2rem_1fr_2.5rem_2.5rem_3rem_3rem] sm:grid-cols-[2.5rem_1fr_3rem_3rem_3rem_3.5rem_3.5rem_5.5rem] items-center gap-2 sm:gap-3 px-3 py-2.5 border-b border-border/40 last:border-b-0 tabular-nums text-sm",
                 highlighted && "bg-primary/5",
@@ -101,7 +105,7 @@ export function StandingsTable({
               <div className="hidden sm:flex items-center justify-end gap-0.5">
                 <FormChips form={row.recentForm} />
               </div>
-            </li>
+            </motion.li>
           );
         })}
       </ul>
