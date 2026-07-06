@@ -1,27 +1,22 @@
 import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   ListChecks, CalendarDays, Trophy, ChevronRight, MapPin,
-  Shuffle, Zap, Sparkles, Layers, KeyRound,
+  KeyRound, Plus,
 } from "lucide-react";
 import { useMyLeagues } from "@/hooks/useMyLeagues";
 import { useBrowseableLeagues } from "@/hooks/useBrowseableLeagues";
-import type { LeagueType } from "@/lib/leagues/types";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { JoinByCodeDialog } from "@/components/leagues/JoinByCodeDialog";
 import { CreateLeagueDialog } from "@/components/leagues/CreateLeagueDialog";
-import { Plus } from "lucide-react";
+import { LEAGUE_TYPE_META } from "@/lib/leagues/typeMeta";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-const TYPE_META: Record<LeagueType, { stripe: string; icon: typeof Trophy; label: string }> = {
-  singles:  { stripe: "bg-blue-500",    icon: Zap,      label: "Singles"  },
-  doubles:  { stripe: "bg-emerald-500", icon: Shuffle,  label: "Doubles"  },
-  team:     { stripe: "bg-primary",     icon: Trophy,   label: "Team"     },
-  flex:     { stripe: "bg-amber-500",   icon: Sparkles, label: "Flex"     },
-  ladder:   { stripe: "bg-violet-500",  icon: Layers,   label: "Ladder"   },
-};
+// Shared meta module — one source of truth for label/icon/tones.
+const TYPE_META = LEAGUE_TYPE_META;
 
 export default function PlayerLeagues() {
   const navigate = useNavigate();
@@ -83,33 +78,56 @@ export default function PlayerLeagues() {
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-2xl space-y-4">
-      <div className="flex items-center gap-2.5">
-        <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
-          <ListChecks className="w-4 h-4 text-primary" />
+      {/* Premium hero — dark gradient with the PULSE gold eyebrow.
+          Sets the tone the rest of the surface plays off. */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3, ease: "easeOut" }}
+        className="relative overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-br from-[#0B171F] via-[#142029] to-[#1a2d38] p-5 sm:p-6"
+      >
+        <div
+          aria-hidden
+          className="absolute inset-0 opacity-[0.04] pointer-events-none"
+          style={{
+            backgroundImage:
+              "repeating-linear-gradient(45deg, transparent 0, transparent 12px, currentColor 12px, currentColor 13px)",
+            color: "#A6DB5A",
+          }}
+        />
+        <div className="relative flex items-start justify-between gap-4 flex-wrap">
+          <div className="min-w-0 flex-1">
+            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-[#A6DB5A]/15 text-[#A6DB5A] text-[10px] font-bold uppercase tracking-wider ring-1 ring-[#A6DB5A]/30">
+              <Trophy className="w-3 h-3" />
+              League Play
+            </div>
+            <h1 className="mt-3 text-2xl sm:text-3xl font-black text-white tracking-tight leading-tight">
+              My Leagues
+            </h1>
+            <p className="text-slate-400 text-sm mt-1.5 max-w-md">
+              Leagues you own, play in, or captain — all in one place.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              size="sm" variant="outline"
+              onClick={() => setJoinOpen(true)}
+              className="bg-slate-900/60 border-slate-700 text-slate-100 hover:bg-slate-800 hover:text-white"
+            >
+              <KeyRound className="w-4 h-4 mr-1.5" />
+              Join
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => setCreateOpen(true)}
+              className="bg-[#A6DB5A] text-[#0B171F] hover:bg-[#A6DB5A]/90 font-semibold shadow-[0_2px_8px_-2px_rgba(166,219,90,0.5)]"
+            >
+              <Plus className="w-4 h-4 mr-1.5" />
+              Create
+            </Button>
+          </div>
         </div>
-        <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-bold leading-tight">My Leagues</h1>
-          <p className="text-xs text-muted-foreground">
-            Leagues you're actively part of
-          </p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <Button
-            size="sm" variant="outline"
-            onClick={() => setJoinOpen(true)}
-          >
-            <KeyRound className="w-4 h-4 mr-1.5" />
-            Join
-          </Button>
-          <Button
-            size="sm"
-            onClick={() => setCreateOpen(true)}
-          >
-            <Plus className="w-4 h-4 mr-1.5" />
-            Create
-          </Button>
-        </div>
-      </div>
+      </motion.div>
 
       {loading ? (
         <div className="space-y-2 animate-pulse">
@@ -143,15 +161,20 @@ export default function PlayerLeagues() {
         </div>
       ) : (
         <ul className="space-y-2.5">
-          {rows.map(({ league, membership, season, division }) => {
+          {rows.map(({ league, membership, season, division }, i) => {
             const meta = TYPE_META[league.league_type];
             const Icon = meta.icon;
             return (
-              <li key={membership.id}>
+              <motion.li
+                key={membership.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.22, delay: i * 0.04, ease: "easeOut" }}
+              >
                 <button
                   type="button"
                   onClick={() => navigate(`/player/leagues/${league.id}`)}
-                  className="group w-full text-left rounded-xl border border-border/70 bg-card hover:border-primary/40 hover:shadow-md transition-all overflow-hidden"
+                  className="group w-full text-left rounded-xl border border-border/70 bg-card hover:border-primary/40 hover:shadow-md hover:-translate-y-0.5 active:scale-[0.99] transition-all overflow-hidden"
                 >
                   <div className="flex items-stretch">
                     <div className={cn("w-1.5 shrink-0", meta.stripe)} aria-hidden />
@@ -196,7 +219,7 @@ export default function PlayerLeagues() {
                     </div>
                   </div>
                 </button>
-              </li>
+              </motion.li>
             );
           })}
         </ul>

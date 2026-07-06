@@ -9,6 +9,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ModeProvider } from "@/contexts/ModeContext";
 import { useAuthPersistence } from "@/hooks/useAuthPersistence";
 import { PlayerShell } from "@/components/layout/PlayerShell";
+import { CommunityTransitionOutlet } from "@/components/community/CommunityTransitionOutlet";
 import { AuthGuard, VenueGuard, AdminGuard } from "@/components/guards";
 import { VenueShell } from "@/components/layout/VenueShell";
 import { supabase } from "@/integrations/supabase/client";
@@ -427,7 +428,6 @@ const AppContent = () => {
             <Route path="bookings" element={<Navigate to="/player/dashboard" replace />} />
             <Route path="my-bookings" element={<Navigate to="/player/dashboard" replace />} />
             <Route path="my-events" element={<MyEvents />} />
-            <Route path="community" element={<Community />} />
             <Route path="friends" element={<Friends />} />
             {/* community/join/:code is mounted as a top-level route below
                 (outside this AuthGuard wrapper) so anon users can land
@@ -437,8 +437,16 @@ const AppContent = () => {
                 shows Sign in / Sign up CTAs and stashes the redirect.
                 Pre-fix the auth gate fired before the preview could
                 render, defeating the purpose of an invite link. */}
-            <Route path="community/group/:groupId" element={<GroupDetail />} />
-            <Route path="community/group/:groupId/manage" element={<GroupManage />} />
+            {/* Community routes share a directional slide transition
+                (native-app feel: deeper slides in from the right, back
+                slides out to the right). Wrapping them under a
+                pathless parent keeps PlayerShell above the transition
+                so the header + bottom nav don't remount. */}
+            <Route element={<CommunityTransitionOutlet />}>
+              <Route path="community" element={<Community />} />
+              <Route path="community/group/:groupId" element={<GroupDetail />} />
+              <Route path="community/group/:groupId/manage" element={<GroupManage />} />
+            </Route>
             <Route path="messages" element={<DirectMessages />} />
             <Route path="messages/:conversationId" element={<DirectMessageChat />} />
             <Route path="profile/edit" element={<EditProfile />} />
