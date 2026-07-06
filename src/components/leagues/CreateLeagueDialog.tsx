@@ -92,7 +92,9 @@ export function CreateLeagueDialog({
 
     toast.success("League created — start scaffolding your season");
     handleClose(false);
-    navigate(`/admin/leagues/${data as unknown as string}`);
+    // Route to the player-side manage surface — the creator is a
+    // regular user, not necessarily a platform admin.
+    navigate(`/player/leagues/${data as unknown as string}/manage`);
   };
 
   return (

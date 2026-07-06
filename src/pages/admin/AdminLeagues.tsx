@@ -225,7 +225,7 @@ export default function AdminLeagues() {
                 <li key={league.id}>
                   <button
                     type="button"
-                    onClick={() => navigate(`/admin/leagues/${league.id}`)}
+                    onClick={() => navigate(`/player/leagues/${league.id}/manage`)}
                     className="group w-full text-left rounded-xl border border-border/70 bg-card hover:border-primary/40 hover:shadow-md transition-all overflow-hidden"
                   >
                     <div className="flex items-stretch">

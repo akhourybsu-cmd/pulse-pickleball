@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import {
   ArrowLeft, MapPin, Trophy, Shuffle, Zap, Sparkles, Layers,
   CalendarDays, Users, UsersRound, CalendarClock, Crown,
-  Swords,
+  Swords, Settings,
 } from "lucide-react";
 import { useMemo } from "react";
 import type { LeagueType, LeagueMatchStatus } from "@/lib/leagues/types";
@@ -128,13 +128,28 @@ export default function PlayerLeagueDetail() {
 
   return (
     <div className="container mx-auto px-4 py-5 max-w-3xl space-y-4">
-      <Button
-        variant="ghost" size="sm" onClick={() => navigate("/player/leagues")}
-        className="-ml-2 h-8"
-      >
-        <ArrowLeft className="w-4 h-4 mr-1.5" />
-        My leagues
-      </Button>
+      <div className="flex items-center justify-between gap-2">
+        <Button
+          variant="ghost" size="sm" onClick={() => navigate("/player/leagues")}
+          className="-ml-2 h-8"
+        >
+          <ArrowLeft className="w-4 h-4 mr-1.5" />
+          My leagues
+        </Button>
+        {/* Manage CTA — appears only for the league owner. RLS also
+            enforces this server-side; the client check just hides the
+            button when it wouldn't do anything. */}
+        {currentUserId && league.created_by === currentUserId && (
+          <Button
+            size="sm" variant="outline"
+            onClick={() => navigate(`/player/leagues/${league.id}/manage`)}
+            className="h-8"
+          >
+            <Settings className="w-4 h-4 mr-1.5" />
+            Manage
+          </Button>
+        )}
+      </div>
 
       {/* Sporty hero */}
       <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-br from-[#0B171F] via-[#142029] to-[#1a2d38]">

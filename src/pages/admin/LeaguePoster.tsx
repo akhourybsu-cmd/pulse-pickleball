@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -22,8 +22,16 @@ import type { League } from "@/lib/leagues/types";
 export default function LeaguePoster() {
   const { leagueId } = useParams<{ leagueId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [league, setLeague] = useState<League | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Back button routes to the same context we came from.
+  const isPlayerContext = location.pathname.startsWith("/player/");
+  const backToLeague = leagueId
+    ? (isPlayerContext ? `/player/leagues/${leagueId}/manage` : `/admin/leagues/${leagueId}`)
+    : (isPlayerContext ? "/player/leagues" : "/admin/leagues");
+  const backToList = isPlayerContext ? "/player/leagues" : "/admin/leagues";
 
   useEffect(() => {
     if (!leagueId) return;
@@ -50,7 +58,7 @@ export default function LeaguePoster() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-3">
         <p className="text-sm text-muted-foreground">League not found.</p>
-        <Button variant="outline" onClick={() => navigate("/admin/leagues")}>
+        <Button variant="outline" onClick={() => navigate(backToList)}>
           <ArrowLeft className="w-4 h-4 mr-1.5" /> Back to leagues
         </Button>
       </div>
@@ -64,7 +72,7 @@ export default function LeaguePoster() {
         </p>
         <Button
           variant="outline"
-          onClick={() => navigate(`/admin/leagues/${league.id}`)}
+          onClick={() => navigate(backToLeague)}
         >
           <ArrowLeft className="w-4 h-4 mr-1.5" /> Back to league
         </Button>
@@ -83,7 +91,7 @@ export default function LeaguePoster() {
           <Button
             variant="ghost" size="sm"
             className="text-slate-200 hover:text-white hover:bg-slate-800"
-            onClick={() => navigate(`/admin/leagues/${league.id}`)}
+            onClick={() => navigate(backToLeague)}
           >
             <ArrowLeft className="w-4 h-4 mr-1.5" /> Back
           </Button>
