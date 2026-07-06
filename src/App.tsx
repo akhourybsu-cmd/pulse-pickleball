@@ -410,6 +410,10 @@ const AppContent = () => {
                 as later phases. RLS keeps admin_only leagues invisible. */}
             <Route path="leagues" element={<PlayerLeagues />} />
             <Route path="leagues/:leagueId" element={<PlayerLeagueDetail />} />
+            {/* League owner surface — same component as /admin/leagues/:id
+                but rendered inside PlayerShell chrome via URL detection. */}
+            <Route path="leagues/:leagueId/manage" element={<AdminLeagueDetail />} />
+            <Route path="leagues/:leagueId/poster" element={<LeaguePoster />} />
             <Route path="guests" element={<MyGuests />} />
             {/* Legacy aliases - kept functional, redirected from old paths */}
             <Route path="find" element={<RedirectWithParams to="/player/play" />} />

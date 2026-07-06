@@ -1,7 +1,6 @@
-import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useEffect, useState, ReactNode } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { isPlatformAdmin } from "@/lib/permissions";
 import { toast } from "sonner";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -31,9 +30,17 @@ interface Counts {
 export default function AdminLeagueDetail() {
   const { leagueId } = useParams<{ leagueId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  // The same component now backs BOTH /admin/leagues/:id (platform
+  // admin surface with sidebar chrome) AND /player/leagues/:id/manage
+  // (self-serve owner surface, no admin chrome). Detect by URL prefix
+  // so we can wrap the render conditionally.
+  const isPlayerContext = location.pathname.startsWith("/player/");
+  const backHref = isPlayerContext ? "/player/leagues" : "/admin/leagues";
   const [loading, setLoading] = useState(true);
   const [league, setLeague] = useState<League | null>(null);
   const [counts, setCounts] = useState<Counts | null>(null);
+  const [accessDenied, setAccessDenied] = useState(false);
   // Bumped on any mutation from any tab. Every tab subscribes to it so
   // creating a season in SeasonsTab immediately refreshes the season
   // dropdown in Divisions/Members/Teams/Sessions/Matches without a
@@ -44,13 +51,14 @@ export default function AdminLeagueDetail() {
   useEffect(() => {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user || !(await isPlatformAdmin(user.id))) {
-        toast.error("Admin privileges required");
-        navigate("/player/dashboard");
+      if (!user) {
+        // Should never happen — AuthGuard/AdminGuard wrap this route.
+        // Bounce to home as a safety net.
+        navigate("/");
         return;
       }
       if (!leagueId) {
-        navigate("/admin/leagues");
+        navigate(backHref);
         return;
       }
       await refresh();
@@ -62,17 +70,26 @@ export default function AdminLeagueDetail() {
   const refresh = async () => {
     if (!leagueId) return;
     setLoading(true);
+    // No client-side admin gate — RLS decides. The row comes back only
+    // when the caller is the league owner OR a platform admin (via
+    // is_league_admin policy). An empty result means "not your league".
     const { data, error } = await supabase
       .from("leagues" as never)
       .select("*")
       .eq("id", leagueId)
       .maybeSingle();
-    if (error || !data) {
-      toast.error("League not found");
-      navigate("/admin/leagues");
+    if (error) {
+      toast.error(error.message);
+      setLoading(false);
+      return;
+    }
+    if (!data) {
+      setAccessDenied(true);
+      setLoading(false);
       return;
     }
     setLeague(data as unknown as League);
+    setAccessDenied(false);
     await refetchCounts();
     setLoading(false);
   };
@@ -102,21 +119,48 @@ export default function AdminLeagueDetail() {
     void refetchCounts();
   };
 
-  if (loading || !league) {
-    return (
-      <AdminLayout title="League">
-        <div className="container mx-auto px-4 py-10 text-center text-muted-foreground text-sm">
-          Loading…
+  // Shell wrapper — AdminLayout only inside /admin/*, else render
+  // bare (PlayerShell above provides the surrounding chrome).
+  const shell = (children: ReactNode, title = "League") =>
+    isPlayerContext
+      ? <>{children}</>
+      : <AdminLayout title={title}>{children}</AdminLayout>;
+
+  if (loading) {
+    return shell(
+      <div className="container mx-auto px-4 py-10 text-center text-muted-foreground text-sm">
+        Loading…
+      </div>
+    );
+  }
+
+  if (accessDenied || !league) {
+    return shell(
+      <div className="container mx-auto px-4 py-10 max-w-md text-center space-y-3">
+        <div className="mx-auto h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+          <Trophy className="w-5 h-5 text-muted-foreground" />
         </div>
-      </AdminLayout>
+        <p className="text-sm font-semibold">You don't have access</p>
+        <p className="text-xs text-muted-foreground">
+          This league is private, or you're not the owner or a member yet.
+        </p>
+        <button
+          type="button"
+          onClick={() => navigate(backHref)}
+          className="text-xs text-primary hover:underline"
+        >
+          ← Back to My Leagues
+        </button>
+      </div>,
+      "Access denied"
     );
   }
 
   const typeAccent = TYPE_META[league.league_type];
   const TypeIcon = typeAccent.icon;
 
-  return (
-    <AdminLayout title={league.name}>
+  return shell(
+    <>
       <div className="container mx-auto px-4 py-5 max-w-5xl space-y-5">
         {/* Sporty hero — dark gradient stadium vibe */}
         <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-br from-[#0B171F] via-[#142029] to-[#1a2d38]">
@@ -229,7 +273,8 @@ export default function AdminLeagueDetail() {
           </TabsContent>
         </Tabs>
       </div>
-    </AdminLayout>
+    </>,
+    league.name
   );
 }
 
