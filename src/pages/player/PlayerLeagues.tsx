@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button";
 import { JoinByCodeDialog } from "@/components/leagues/JoinByCodeDialog";
 import { CreateLeagueDialog } from "@/components/leagues/CreateLeagueDialog";
 import { Plus } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const TYPE_META: Record<LeagueType, { stripe: string; icon: typeof Trophy; label: string }> = {
   singles:  { stripe: "bg-blue-500",    icon: Zap,      label: "Singles"  },
@@ -42,6 +44,40 @@ export default function PlayerLeagues() {
     const next = new URLSearchParams(searchParams);
     next.delete("join");
     setSearchParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // League-slot purchase redirect handler.
+  // Stripe returns to /player/leagues?league_slot=success&session_id=cs_...
+  // We call verify-league-slot-purchase to idempotently grant the slot,
+  // then strip the params so a refresh doesn't re-fire.
+  useEffect(() => {
+    const status = searchParams.get("league_slot");
+    if (!status) return;
+    const sessionId = searchParams.get("session_id");
+    (async () => {
+      if (status === "canceled") {
+        toast.info("Purchase canceled — no charge made.");
+      } else if (status === "success" && sessionId) {
+        const { data, error } = await supabase.functions.invoke(
+          "verify-league-slot-purchase",
+          { body: { session_id: sessionId } },
+        );
+        if (error) {
+          toast.error(error.message ?? "Couldn't verify purchase");
+        } else {
+          const alreadyFulfilled = (data as { alreadyFulfilled?: boolean } | null)?.alreadyFulfilled;
+          toast.success(alreadyFulfilled
+            ? "Slot already granted — you're good to go."
+            : "Slot unlocked! You can create another league now.");
+        }
+      }
+      // Strip either flavor of param so refresh doesn't re-fire.
+      const next = new URLSearchParams(searchParams);
+      next.delete("league_slot");
+      next.delete("session_id");
+      setSearchParams(next, { replace: true });
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
