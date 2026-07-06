@@ -1,13 +1,14 @@
 import { useEffect, useState, ReactNode } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { AdminLayout } from "@/components/admin/AdminLayout";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import type { League, LeagueType } from "@/lib/leagues/types";
+import type { League } from "@/lib/leagues/types";
+import { LEAGUE_TYPE_META } from "@/lib/leagues/typeMeta";
 import {
   CalendarDays, Users, UsersRound, CalendarClock,
-  Trophy, MapPin, Shuffle, Layers, Sparkles, Zap,
+  Trophy, MapPin,
 } from "lucide-react";
 import { OverviewTab } from "@/components/admin/leagues/OverviewTab";
 import { SeasonsTab } from "@/components/admin/leagues/SeasonsTab";
@@ -18,6 +19,9 @@ import { SessionsTab } from "@/components/admin/leagues/SessionsTab";
 import { MatchesTab } from "@/components/admin/leagues/MatchesTab";
 import { StandingsTab } from "@/components/admin/leagues/StandingsTab";
 import { AuditLogTab } from "@/components/admin/leagues/AuditLogTab";
+import {
+  LeagueManageNav, type ManageTab, MANAGE_TABS,
+} from "@/components/admin/leagues/LeagueManageNav";
 import { cn } from "@/lib/utils";
 
 interface Counts {
@@ -47,6 +51,7 @@ export default function AdminLeagueDetail() {
   // manual reload. Also refetches hero counts.
   const [dataVersion, setDataVersion] = useState(0);
   const bumpDataVersion = () => setDataVersion((v) => v + 1);
+  const [activeTab, setActiveTab] = useState<ManageTab>("overview");
 
   useEffect(() => {
     const init = async () => {
@@ -159,11 +164,18 @@ export default function AdminLeagueDetail() {
   const typeAccent = TYPE_META[league.league_type];
   const TypeIcon = typeAccent.icon;
 
+  const activeTabDef = MANAGE_TABS.find((t) => t.key === activeTab);
+
   return shell(
     <>
-      <div className="container mx-auto px-4 py-5 max-w-5xl space-y-5">
+      <div className="container mx-auto px-4 py-5 max-w-6xl space-y-5">
         {/* Sporty hero — dark gradient stadium vibe */}
-        <div className="relative overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-br from-[#0B171F] via-[#142029] to-[#1a2d38]">
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
+          className="relative overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-br from-[#0B171F] via-[#142029] to-[#1a2d38]"
+        >
           {/* Type-accent side stripe */}
           <div className={cn("absolute top-0 bottom-0 left-0 w-1.5", typeAccent.stripe)} aria-hidden />
           {/* Decorative diagonal stripes */}
@@ -179,7 +191,7 @@ export default function AdminLeagueDetail() {
             <div className="flex items-center gap-2 flex-wrap">
               <span className={cn(
                 "inline-flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider",
-                typeAccent.pillBg,
+                typeAccent.pill,
               )}>
                 <TypeIcon className="w-3 h-3" />
                 {typeAccent.label}
@@ -228,50 +240,67 @@ export default function AdminLeagueDetail() {
               </div>
             )}
           </div>
+        </motion.div>
+
+        {/* Two-column layout — nav rail on desktop, strip on mobile.
+            The rail keeps activeTab state, the pane below animates
+            when the caller switches. */}
+        <div className="flex gap-6">
+          <LeagueManageNav active={activeTab} onChange={setActiveTab} />
+
+          <div className="flex-1 min-w-0 space-y-3">
+            {/* Section header — visible label above the pane so the
+                mobile strip's active state is echoed here. */}
+            {activeTabDef && (
+              <div className="hidden lg:flex items-baseline gap-2 pb-1">
+                <h2 className="text-sm font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                  {activeTabDef.label}
+                </h2>
+                <span className="text-[11px] text-muted-foreground/70">
+                  · {activeTabDef.hint}
+                </span>
+              </div>
+            )}
+
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={activeTab}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.18, ease: "easeOut" }}
+              >
+                {activeTab === "overview" && (
+                  <OverviewTab league={league} onRefresh={refresh} onMutated={onDataMutated} />
+                )}
+                {activeTab === "seasons" && (
+                  <SeasonsTab league={league} dataVersion={dataVersion} onMutated={onDataMutated} />
+                )}
+                {activeTab === "divisions" && (
+                  <DivisionsTab league={league} dataVersion={dataVersion} onMutated={onDataMutated} />
+                )}
+                {activeTab === "members" && (
+                  <MembersTab league={league} dataVersion={dataVersion} onMutated={onDataMutated} />
+                )}
+                {activeTab === "teams" && (
+                  <TeamsTab league={league} dataVersion={dataVersion} onMutated={onDataMutated} />
+                )}
+                {activeTab === "sessions" && (
+                  <SessionsTab league={league} dataVersion={dataVersion} onMutated={onDataMutated} />
+                )}
+                {activeTab === "matches" && (
+                  <MatchesTab league={league} dataVersion={dataVersion} onMutated={onDataMutated} />
+                )}
+                {activeTab === "standings" && (
+                  <StandingsTab league={league} dataVersion={dataVersion} onMutated={onDataMutated} />
+                )}
+                {activeTab === "audit" && (
+                  <AuditLogTab league={league} dataVersion={dataVersion} />
+                )}
+              </motion.div>
+            </AnimatePresence>
+          </div>
         </div>
-
-        {/* Tabs */}
-        <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="w-full flex-wrap h-auto justify-start gap-1">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="seasons">Seasons</TabsTrigger>
-            <TabsTrigger value="divisions">Divisions</TabsTrigger>
-            <TabsTrigger value="members">Members</TabsTrigger>
-            <TabsTrigger value="teams">Teams</TabsTrigger>
-            <TabsTrigger value="sessions">Sessions</TabsTrigger>
-            <TabsTrigger value="matches">Matches</TabsTrigger>
-            <TabsTrigger value="standings">Standings</TabsTrigger>
-            <TabsTrigger value="audit">Audit Log</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="overview" className="pt-4">
-            <OverviewTab league={league} onRefresh={refresh} onMutated={onDataMutated} />
-          </TabsContent>
-          <TabsContent value="seasons" className="pt-4">
-            <SeasonsTab league={league} dataVersion={dataVersion} onMutated={onDataMutated} />
-          </TabsContent>
-          <TabsContent value="divisions" className="pt-4">
-            <DivisionsTab league={league} dataVersion={dataVersion} onMutated={onDataMutated} />
-          </TabsContent>
-          <TabsContent value="members" className="pt-4">
-            <MembersTab league={league} dataVersion={dataVersion} onMutated={onDataMutated} />
-          </TabsContent>
-          <TabsContent value="teams" className="pt-4">
-            <TeamsTab league={league} dataVersion={dataVersion} onMutated={onDataMutated} />
-          </TabsContent>
-          <TabsContent value="sessions" className="pt-4">
-            <SessionsTab league={league} dataVersion={dataVersion} onMutated={onDataMutated} />
-          </TabsContent>
-          <TabsContent value="matches" className="pt-4">
-            <MatchesTab league={league} dataVersion={dataVersion} onMutated={onDataMutated} />
-          </TabsContent>
-          <TabsContent value="standings" className="pt-4">
-            <StandingsTab league={league} dataVersion={dataVersion} onMutated={onDataMutated} />
-          </TabsContent>
-          <TabsContent value="audit" className="pt-4">
-            <AuditLogTab league={league} dataVersion={dataVersion} />
-          </TabsContent>
-        </Tabs>
       </div>
     </>,
     league.name
@@ -321,41 +350,5 @@ function StatusPill({ status }: { status: League["status"] }) {
   );
 }
 
-/** Type-per-league accent used in the hero stripe + pill. */
-const TYPE_META: Record<LeagueType, {
-  stripe: string;
-  pillBg: string;
-  icon: typeof Trophy;
-  label: string;
-}> = {
-  singles: {
-    stripe: "bg-blue-500",
-    pillBg: "bg-blue-500/15 text-blue-300 ring-1 ring-blue-500/30",
-    icon: Zap,
-    label: "Singles",
-  },
-  doubles: {
-    stripe: "bg-emerald-500",
-    pillBg: "bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/30",
-    icon: Shuffle,
-    label: "Doubles",
-  },
-  team: {
-    stripe: "bg-[#A6DB5A]",
-    pillBg: "bg-[#A6DB5A]/15 text-[#A6DB5A] ring-1 ring-[#A6DB5A]/30",
-    icon: Trophy,
-    label: "Team",
-  },
-  flex: {
-    stripe: "bg-amber-500",
-    pillBg: "bg-amber-500/15 text-amber-300 ring-1 ring-amber-500/30",
-    icon: Sparkles,
-    label: "Flex",
-  },
-  ladder: {
-    stripe: "bg-violet-500",
-    pillBg: "bg-violet-500/15 text-violet-300 ring-1 ring-violet-500/30",
-    icon: Layers,
-    label: "Ladder",
-  },
-};
+/** Type-per-league accent — sourced from the shared meta module. */
+const TYPE_META = LEAGUE_TYPE_META;
