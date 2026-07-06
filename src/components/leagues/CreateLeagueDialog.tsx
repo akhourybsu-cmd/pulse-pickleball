@@ -12,8 +12,9 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Trophy, Sparkles, Lock } from "lucide-react";
+import { Trophy, Sparkles, Lock, ExternalLink } from "lucide-react";
 import type { LeagueType } from "@/lib/leagues/types";
+import { useLeagueCreationCapacity } from "@/hooks/useLeagueCreationCapacity";
 
 /**
  * Self-serve league creation. Any authenticated user can create their
@@ -31,12 +32,27 @@ export function CreateLeagueDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const navigate = useNavigate();
+  const { capacity } = useLeagueCreationCapacity();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [location, setLocation] = useState("");
   const [leagueType, setLeagueType] = useState<LeagueType>("doubles");
   const [saving, setSaving] = useState(false);
   const [quotaExceeded, setQuotaExceeded] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+
+  const openCheckout = async () => {
+    setCheckoutLoading(true);
+    const { data, error } = await supabase.functions.invoke(
+      "create-league-checkout", { body: {} },
+    );
+    setCheckoutLoading(false);
+    if (error) { toast.error(error.message ?? "Couldn't open checkout"); return; }
+    const url = (data as { url?: string } | null)?.url;
+    if (!url) { toast.error("Checkout URL missing"); return; }
+    // Full-page redirect — Stripe checkout is a hosted page.
+    window.location.href = url;
+  };
 
   const reset = () => {
     setName(""); setDescription(""); setLocation("");
@@ -102,25 +118,31 @@ export function CreateLeagueDialog({
                   and early access to upcoming league features.
                 </span>
               </div>
+              {capacity && (
+                <div className="rounded-md bg-muted/40 p-2.5 text-[11px] text-muted-foreground flex items-baseline justify-between">
+                  <span>You currently own</span>
+                  <span className="font-mono font-semibold tabular-nums">
+                    {capacity.owned} of {capacity.maxLeagues} allowed
+                  </span>
+                </div>
+              )}
               <p className="text-[11px] text-muted-foreground">
-                Checkout is coming soon. Ping us at{" "}
-                <a href="mailto:hi@pulsepickleball.com" className="underline">
-                  hi@pulsepickleball.com
-                </a>{" "}
-                to be first in line.
+                Paid via Stripe. One-time charge per additional slot.
               </p>
             </div>
             <DialogFooter>
-              <Button variant="ghost" onClick={() => handleClose(false)} className="flex-1">
+              <Button variant="ghost" onClick={() => handleClose(false)} className="flex-1"
+                disabled={checkoutLoading}>
                 Not now
               </Button>
               <Button
-                onClick={() => handleClose(false)}
+                onClick={openCheckout}
                 className="flex-1"
-                disabled
-                title="Subscription checkout ships in a follow-up"
+                disabled={checkoutLoading}
               >
-                Upgrade (soon)
+                {checkoutLoading ? "Opening…" : (
+                  <>Buy another slot <ExternalLink className="w-3.5 h-3.5 ml-1.5" /></>
+                )}
               </Button>
             </DialogFooter>
           </>
