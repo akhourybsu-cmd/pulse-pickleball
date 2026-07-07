@@ -1,7 +1,10 @@
+import { useEffect, useState } from "react";
 import { Calendar, Trophy, Users, MapPin, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
+import { RoundRobinEventDetailDialog } from "@/components/round-robin/RoundRobinEventDetailDialog";
 import type { GroupPost } from "@/hooks/useGroupPosts";
 
 interface RoundRobinPostCardProps {
@@ -10,11 +13,30 @@ interface RoundRobinPostCardProps {
 
 export function RoundRobinPostCard({ rr }: RoundRobinPostCardProps) {
   const navigate = useNavigate();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
+  }, []);
+
   const isFull = rr.max_players != null && rr.player_count >= rr.max_players;
   const isClosed = rr.status === "completed" || rr.status === "live";
+  // Only events with open registration + a deadline support self-join via the
+  // dialog. Immediate-mode RRs posted to a group are informational: send the
+  // user straight to the event page.
+  const supportsSelfJoin =
+    !isClosed &&
+    (rr as any).registration_mode === "open_registration" &&
+    !!(rr as any).registration_deadline &&
+    new Date((rr as any).registration_deadline) > new Date();
 
-  const handleJoin = () => {
-    navigate(`/round-robin/${rr.id}`);
+  const handleClick = () => {
+    if (supportsSelfJoin) {
+      setDialogOpen(true);
+    } else {
+      navigate(`/round-robin/${rr.id}`);
+    }
   };
 
   return (
@@ -58,12 +80,27 @@ export function RoundRobinPostCard({ rr }: RoundRobinPostCardProps) {
       <Button
         size="sm"
         className="w-full mt-3 h-8 gap-1"
-        onClick={handleJoin}
-        disabled={isClosed || isFull}
+        onClick={handleClick}
+        disabled={isClosed}
       >
-        {isClosed ? "View Event" : isFull ? "Event Full" : "Join Round Robin"}
-        {!isClosed && !isFull && <ChevronRight className="h-3.5 w-3.5" />}
+        {isClosed
+          ? "View Event"
+          : supportsSelfJoin
+          ? isFull
+            ? "Join Waitlist"
+            : "Join Round Robin"
+          : "View Event"}
+        {!isClosed && <ChevronRight className="h-3.5 w-3.5" />}
       </Button>
+
+      {supportsSelfJoin && (
+        <RoundRobinEventDetailDialog
+          eventId={rr.id}
+          isOpen={dialogOpen}
+          onClose={() => setDialogOpen(false)}
+          userId={userId}
+        />
+      )}
     </div>
   );
 }
