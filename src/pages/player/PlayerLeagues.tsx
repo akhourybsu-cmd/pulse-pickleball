@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   ListChecks, CalendarDays, Trophy, ChevronRight, MapPin,
-  KeyRound, Plus,
+  KeyRound, Plus, Sparkles,
 } from "lucide-react";
 import { useMyLeagues } from "@/hooks/useMyLeagues";
 import { useBrowseableLeagues } from "@/hooks/useBrowseableLeagues";
