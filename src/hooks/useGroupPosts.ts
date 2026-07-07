@@ -126,7 +126,7 @@ async function fetchGroupPosts(groupId: string): Promise<GroupPost[]> {
     rrIds.length
       ? supabase
           .from('round_robin_events')
-          .select('id, name, date, start_time, num_courts, max_players, status, invite_code, registration_mode')
+          .select('id, name, date, start_time, num_courts, max_players, status, invite_code, registration_mode, registration_deadline')
           .in('id', rrIds)
       : Promise.resolve({ data: [] as Array<any> }),
     rrIds.length
