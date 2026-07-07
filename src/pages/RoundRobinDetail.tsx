@@ -55,7 +55,8 @@ import { cn } from "@/lib/utils";
 import logo from "@/assets/pulse-logo-premium.svg";
 import { suggestRounds } from "@/lib/roundRobinFairness";
 import { isPlatformAdmin } from "@/lib/permissions";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { resolvePlayerInitials } from "@/lib/matchDisplay";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
@@ -135,10 +136,10 @@ interface ScheduleMatch {
   a2_guest_id: string | null;
   b1_guest_id: string | null;
   b2_guest_id: string | null;
-  a1_profile?: { display_name?: string | null; full_name?: string | null } | null;
-  a2_profile?: { display_name?: string | null; full_name?: string | null } | null;
-  b1_profile?: { display_name?: string | null; full_name?: string | null } | null;
-  b2_profile?: { display_name?: string | null; full_name?: string | null } | null;
+  a1_profile?: { display_name?: string | null; full_name?: string | null; avatar_url?: string | null } | null;
+  a2_profile?: { display_name?: string | null; full_name?: string | null; avatar_url?: string | null } | null;
+  b1_profile?: { display_name?: string | null; full_name?: string | null; avatar_url?: string | null } | null;
+  b2_profile?: { display_name?: string | null; full_name?: string | null; avatar_url?: string | null } | null;
   a1_guest?: { display_name?: string | null } | null;
   a2_guest?: { display_name?: string | null } | null;
   b1_guest?: { display_name?: string | null } | null;
@@ -165,6 +166,31 @@ interface MatchScore {
     team1_score: number;
     team2_score: number;
   };
+}
+
+/**
+ * Small side-by-side avatar pair for a team on the schedule card.
+ * Registered players show their uploaded avatar; anyone without one
+ * (guests, no-photo players) falls back to initials. Kept compact
+ * (h-6 w-6) so it doesn't crowd the dense court cards.
+ */
+function SeatAvatars({
+  seats,
+}: {
+  seats: { name: string; avatarUrl: string | null }[];
+}) {
+  return (
+    <div className="flex -space-x-1.5 shrink-0" aria-hidden>
+      {seats.map((s, i) => (
+        <Avatar key={i} className="h-6 w-6 ring-2 ring-card">
+          {s.avatarUrl && <AvatarImage src={s.avatarUrl} alt="" />}
+          <AvatarFallback className="text-[9px] font-semibold bg-muted">
+            {resolvePlayerInitials(s.name)}
+          </AvatarFallback>
+        </Avatar>
+      ))}
+    </div>
+  );
 }
 
 export default function RoundRobinDetail() {
@@ -320,10 +346,10 @@ export default function RoundRobinDetail() {
         .from("round_robin_schedule")
         .select(`
           *,
-          a1_profile:profiles_public!round_robin_schedule_a1_player_id_fkey(display_name, full_name),
-          a2_profile:profiles_public!round_robin_schedule_a2_player_id_fkey(display_name, full_name),
-          b1_profile:profiles_public!round_robin_schedule_b1_player_id_fkey(display_name, full_name),
-          b2_profile:profiles_public!round_robin_schedule_b2_player_id_fkey(display_name, full_name),
+          a1_profile:profiles_public!round_robin_schedule_a1_player_id_fkey(display_name, full_name, avatar_url),
+          a2_profile:profiles_public!round_robin_schedule_a2_player_id_fkey(display_name, full_name, avatar_url),
+          b1_profile:profiles_public!round_robin_schedule_b1_player_id_fkey(display_name, full_name, avatar_url),
+          b2_profile:profiles_public!round_robin_schedule_b2_player_id_fkey(display_name, full_name, avatar_url),
           a1_guest:guest_players!round_robin_schedule_a1_guest_id_fkey(display_name),
           a2_guest:guest_players!round_robin_schedule_a2_guest_id_fkey(display_name),
           b1_guest:guest_players!round_robin_schedule_b1_guest_id_fkey(display_name),
@@ -523,6 +549,22 @@ export default function RoundRobinDetail() {
   const getSeatName = (match: any, seat: 'a1' | 'a2' | 'b1' | 'b2') => {
     const id = match?.[`${seat}_player_id`] ?? match?.[`${seat}_guest_id`] ?? null;
     return getPlayerName(id, match);
+  };
+
+  // Resolve a seat's avatar URL. Registered players carry an avatar via
+  // the joined profile; guests have none (initials fallback handles it).
+  // Falls back to the players array by player_id when the schedule join
+  // didn't include the profile (edge cases / stale rows).
+  const getSeatAvatar = (match: any, seat: 'a1' | 'a2' | 'b1' | 'b2'): string | null => {
+    const joined = match?.[`${seat}_profile`]?.avatar_url;
+    if (joined) return joined;
+    const pid = match?.[`${seat}_player_id`] ?? null;
+    if (pid) {
+      const p = players.find((pl) => pl.player_id === pid);
+      const url = (p?.profiles as { avatar_url?: string | null } | null)?.avatar_url;
+      if (url) return url;
+    }
+    return null;
   };
 
   const getRoundMatches = (roundNo: number) => {
@@ -2057,8 +2099,12 @@ export default function RoundRobinDetail() {
                                           ? 'bg-primary/15 border border-primary/30' 
                                           : 'bg-muted/50'
                                       }`}>
-                                        <div className={`text-sm truncate flex-1 flex items-center gap-1.5 ${team1Won ? 'font-semibold' : ''}`}>
+                                        <div className={`text-sm truncate flex-1 flex items-center gap-2 ${team1Won ? 'font-semibold' : ''}`}>
                                           {team1Won && <Trophy className="h-3.5 w-3.5 text-primary flex-shrink-0" />}
+                                          <SeatAvatars seats={[
+                                            { name: getSeatName(match, 'a1'), avatarUrl: getSeatAvatar(match, 'a1') },
+                                            { name: getSeatName(match, 'a2'), avatarUrl: getSeatAvatar(match, 'a2') },
+                                          ]} />
                                           <span className="truncate">{getSeatName(match, 'a1')} / {getSeatName(match, 'a2')}</span>
                                         </div>
                                         {match.team1_score !== null ? (
@@ -2084,8 +2130,12 @@ export default function RoundRobinDetail() {
                                           ? 'bg-primary/15 border border-primary/30' 
                                           : 'bg-muted/50'
                                       }`}>
-                                        <div className={`text-sm truncate flex-1 flex items-center gap-1.5 ${team2Won ? 'font-semibold' : ''}`}>
+                                        <div className={`text-sm truncate flex-1 flex items-center gap-2 ${team2Won ? 'font-semibold' : ''}`}>
                                           {team2Won && <Trophy className="h-3.5 w-3.5 text-primary flex-shrink-0" />}
+                                          <SeatAvatars seats={[
+                                            { name: getSeatName(match, 'b1'), avatarUrl: getSeatAvatar(match, 'b1') },
+                                            { name: getSeatName(match, 'b2'), avatarUrl: getSeatAvatar(match, 'b2') },
+                                          ]} />
                                           <span className="truncate">{getSeatName(match, 'b1')} / {getSeatName(match, 'b2')}</span>
                                         </div>
                                         {match.team2_score !== null ? (
