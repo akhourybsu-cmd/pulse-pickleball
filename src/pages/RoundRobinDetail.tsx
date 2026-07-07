@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { RRLeftSidebar, RRRightSidebar } from "@/components/roundrobin/RoundRobinManageSidebars";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -1744,7 +1745,35 @@ export default function RoundRobinDetail() {
             </div>
           )}
 
-      <main className="container max-w-[1280px] mx-auto px-4 pt-3 pb-6">
+      <main className="container max-w-[1280px] lg:max-w-[1536px] mx-auto px-4 pt-3 pb-6">
+        {/* Desktop management console: 3-column grid at lg+.
+            On mobile the grid classes are inert (block), the sidebars
+            are display:none, and the center column renders exactly the
+            existing single-column flow — mobile is unchanged. */}
+        <div className="lg:grid lg:grid-cols-[300px_minmax(0,1fr)_320px] lg:gap-6 lg:items-start">
+          {/* LEFT — setup progress, quick actions, status (desktop only) */}
+          {isOrganizer && (
+            <aside className="hidden lg:block">
+              <RRLeftSidebar
+                playerCount={players.length}
+                hasSchedule={hasSchedule}
+                status={event.status}
+                format={event.format}
+                date={event.date}
+                startTime={event.start_time}
+                location={event.location}
+                ratingEligible={event.rating_eligible}
+                allowGuests={event.allow_guests}
+                onAddPlayers={() => setPlayerManagementOpen(true)}
+                onGenerateSchedule={handleGenerateSchedule}
+                onEditEvent={handleToggleEditMode}
+                onGoToPlayers={() => setActiveTab('players')}
+              />
+            </aside>
+          )}
+
+          {/* CENTER — primary working area (existing flow, untouched) */}
+          <div className="min-w-0">
         {isOrganizer && isEditMode && (
           <div className="mb-6">
             <EditModeBanner
@@ -1769,7 +1798,7 @@ export default function RoundRobinDetail() {
             this. The hero answers "what IS this event?", this banner
             answers "what should I do right now?" */}
         {isOrganizer && (
-          <div className="mb-4 max-w-2xl mx-auto">
+          <div className="mb-4 max-w-2xl lg:max-w-none mx-auto">
             <WhatsNextBanner
               status={event.status}
               voided={event.voided}
@@ -2343,6 +2372,29 @@ export default function RoundRobinDetail() {
           </TabsContent>
         </Tabs>
         </div>
+          </div>{/* /center column */}
+
+          {/* RIGHT — roster summary, next steps, event details (desktop only) */}
+          {isOrganizer && (
+            <aside className="hidden lg:block">
+              <RRRightSidebar
+                playerCount={players.length}
+                hasSchedule={hasSchedule}
+                status={event.status}
+                format={event.format}
+                date={event.date}
+                startTime={event.start_time}
+                location={event.location}
+                ratingEligible={event.rating_eligible}
+                allowGuests={event.allow_guests}
+                onAddPlayers={() => setPlayerManagementOpen(true)}
+                onGenerateSchedule={handleGenerateSchedule}
+                onEditEvent={handleToggleEditMode}
+                onGoToPlayers={() => setActiveTab('players')}
+              />
+            </aside>
+          )}
+        </div>{/* /desktop grid */}
       </main>
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
