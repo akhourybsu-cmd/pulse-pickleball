@@ -29,6 +29,7 @@ export interface GroupPost {
     status: string;
     invite_code: string | null;
     registration_mode: string | null;
+    registration_deadline: string | null;
     player_count: number;
   } | null;
   profile?: {
