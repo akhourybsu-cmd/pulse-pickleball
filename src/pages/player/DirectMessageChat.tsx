@@ -26,10 +26,37 @@ import { supabase } from '@/integrations/supabase/client';
 import { reportUser, useBlockedUsers } from '@/hooks/useMessagingSafety';
 import { cn } from '@/lib/utils';
 
+// Render http(s) URLs in message text as tappable links — invite links
+// shared in DMs were dead plain text otherwise. Text-only splitting
+// (no HTML injection); everything that isn't a URL passes through as a
+// plain string.
+const URL_RE = /(https?:\/\/[^\s<>"']+)/g;
+
+function linkifyContent(content: string) {
+  const parts = content.split(URL_RE);
+  if (parts.length === 1) return content;
+  return parts.map((part, i) =>
+    /^https?:\/\//.test(part) ? (
+      <a
+        key={i}
+        href={part}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="underline underline-offset-2 break-all"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {part}
+      </a>
+    ) : (
+      part
+    )
+  );
+}
+
 export default function DirectMessageChat() {
   const { conversationId } = useParams<{ conversationId: string }>();
   const navigate = useNavigate();
-  const { messages, loading, participant, sendMessage, retryMessage } = useConversation(conversationId || null);
+  const { messages, loading, participant, notFound, sendMessage, retryMessage } = useConversation(conversationId || null);
   const { block } = useBlockedUsers();
   const [newMessage, setNewMessage] = useState('');
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -204,6 +231,23 @@ export default function DirectMessageChat() {
     );
   }
 
+  // Invalid conversation id, or one this user isn't a participant of
+  // (RLS returns zero rows for both). Previously this rendered an
+  // empty chat headed "Player" with no indication anything was wrong.
+  if (notFound) {
+    return (
+      <div className="px-4 py-12 text-center">
+        <h2 className="text-lg font-medium">Conversation not found</h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          This conversation doesn't exist or you no longer have access to it.
+        </p>
+        <Button onClick={() => navigate('/player/messages')} variant="outline" size="sm" className="mt-4">
+          Back to Messages
+        </Button>
+      </div>
+    );
+  }
+
   const sendDisabled = !!restricted || !!leftAt;
   const restrictedBanner = leftAt
     ? 'You are no longer in this conversation.'
@@ -325,7 +369,7 @@ export default function DirectMessageChat() {
                     message._status === 'sending' && 'opacity-70',
                     message._status === 'failed' && 'bg-destructive/15 text-destructive-foreground/90',
                   )}>
-                    <p className="break-words">{message.content}</p>
+                    <p className="break-words">{linkifyContent(message.content)}</p>
                     {!grouped && (
                       <p className={cn(
                         'text-[10px] mt-1 flex items-center gap-1',

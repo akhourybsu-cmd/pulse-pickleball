@@ -105,12 +105,18 @@ export function useDirectMessages() {
         for (const p of profiles || []) profileMap.set(p.id, p);
       }
 
-      // 5. All messages for those conversations (recent first); reduce client-side
+      // 5. Recent messages for those conversations (recent first);
+      // reduce client-side. Bounded — an unbounded fetch pulls every
+      // message the user has ever exchanged just to derive previews.
+      // 500 covers the last message per conversation and keeps unread
+      // badges accurate for any realistic backlog (worst case a badge
+      // under-counts on a 500+ message backlog, which reads as "lots").
       const { data: allMessages, error: msgErr } = await supabase
         .from('direct_messages')
         .select('id, conversation_id, sender_id, content, created_at')
         .in('conversation_id', convoIds)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(500);
       if (msgErr) throw msgErr;
 
       const lastByConvo = new Map<string, DirectMessage>();
@@ -125,6 +131,29 @@ export function useDirectMessages() {
           if (!lastRead || new Date(m.created_at) > new Date(lastRead)) {
             unreadByConvo.set(m.conversation_id, (unreadByConvo.get(m.conversation_id) || 0) + 1);
           }
+        }
+      }
+
+      // Conversations whose last message fell outside the 500-row
+      // window (quiet threads next to a very chatty one) still need a
+      // preview — fetch just their latest message individually. Unread
+      // badges for these can undercount only when 500+ newer messages
+      // exist elsewhere, which already reads as "lots unread".
+      const staleConvoIds = convoIds.filter((id) => !lastByConvo.has(id));
+      if (staleConvoIds.length > 0) {
+        const staleLasts = await Promise.all(
+          staleConvoIds.map((id) =>
+            supabase
+              .from('direct_messages')
+              .select('id, conversation_id, sender_id, content, created_at')
+              .eq('conversation_id', id)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle()
+          )
+        );
+        for (const { data: m } of staleLasts) {
+          if (m) lastByConvo.set(m.conversation_id, m as DirectMessage);
         }
       }
 
@@ -267,6 +296,12 @@ export function useConversation(conversationId: string | null) {
   const [messages, setMessages] = useState<DirectMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [participant, setParticipant] = useState<ConversationParticipant | null>(null);
+  // True when the conversation has no other participant visible to this
+  // user — an invalid id, or a conversation they're not part of (RLS
+  // returns zero rows for both cases). Without this the page rendered
+  // an empty chat with "Player" as the header, indistinguishable from
+  // a real conversation.
+  const [notFound, setNotFound] = useState(false);
   const channelRef = useRef<RealtimeChannel | null>(null);
 
   const fetchMessages = useCallback(async () => {
@@ -304,6 +339,9 @@ export function useConversation(conversationId: string | null) {
           avatar_url: profile?.avatar_url ?? null,
           current_rating: profile?.current_rating ?? null,
         });
+        setNotFound(false);
+      } else {
+        setNotFound(true);
       }
 
       await supabase
@@ -311,8 +349,11 @@ export function useConversation(conversationId: string | null) {
         .update({ last_read_at: new Date().toISOString() })
         .eq('conversation_id', conversationId)
         .eq('user_id', user.id);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching messages:', error);
+      // Malformed id in the URL (not a uuid) errors before the
+      // participant check runs — treat it as not-found, not a chat.
+      if (error?.code === '22P02') setNotFound(true);
     } finally {
       setLoading(false);
     }
@@ -466,6 +507,7 @@ export function useConversation(conversationId: string | null) {
     messages,
     loading,
     participant,
+    notFound,
     sendMessage,
     retryMessage,
     channelRef,

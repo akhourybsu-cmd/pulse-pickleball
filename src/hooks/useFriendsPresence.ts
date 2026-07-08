@@ -16,7 +16,9 @@ export function useFriendsPresence(friendIds: string[]) {
     let mounted = true;
 
     const initPresence = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      // Local cached session — no server round-trip on presence init.
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
       if (!user || !mounted) return;
 
       // Use a global friends presence channel
