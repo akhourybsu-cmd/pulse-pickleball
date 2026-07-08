@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -210,6 +210,7 @@ export default function RoundRobinDetail() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [schedule, setSchedule] = useState<ScheduleMatch[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
+  const ratingRecalcCheckedRef = useRef(false);
   const [isOrganizer, setIsOrganizer] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isParticipant, setIsParticipant] = useState(false);
@@ -237,8 +238,10 @@ export default function RoundRobinDetail() {
     fetchEventDetails();
     fetchAuditHistory();
     
+    // Event-scoped channel name — a shared name collides if two detail
+    // views are ever mounted (or remount mid-teardown on fast nav).
     const channel = supabase
-      .channel('round-robin-changes')
+      .channel(`round-robin-changes-${id}`)
       .on(
         'postgres_changes',
         {
@@ -313,52 +316,57 @@ export default function RoundRobinDetail() {
       }
       setUserId(user.id);
 
-      // Check if user is admin (centralized helper from src/lib/permissions)
-      setIsAdmin(await isPlatformAdmin(user.id));
+      // The four reads below are independent — event, players, schedule,
+      // and the admin check only need `id`/`user.id`. Running them
+      // serially added three full round-trips of latency to every load
+      // AND every post-mutation refetch.
+      const [adminFlag, eventResult, playersResult, scheduleResult] = await Promise.all([
+        isPlatformAdmin(user.id),
+        supabase
+          .from("round_robin_events")
+          .select("*")
+          .eq("id", id)
+          .single(),
+        supabase
+          .from("round_robin_players")
+          .select("*, profiles:profiles_public!round_robin_players_player_id_fkey(*), guest_players:guest_players!round_robin_players_guest_player_id_fkey(id, display_name, linked_user_id, email)")
+          .eq("event_id", id),
+        supabase
+          .from("round_robin_schedule")
+          .select(`
+            *,
+            a1_profile:profiles_public!round_robin_schedule_a1_player_id_fkey(display_name, full_name, avatar_url),
+            a2_profile:profiles_public!round_robin_schedule_a2_player_id_fkey(display_name, full_name, avatar_url),
+            b1_profile:profiles_public!round_robin_schedule_b1_player_id_fkey(display_name, full_name, avatar_url),
+            b2_profile:profiles_public!round_robin_schedule_b2_player_id_fkey(display_name, full_name, avatar_url),
+            a1_guest:guest_players!round_robin_schedule_a1_guest_id_fkey(display_name),
+            a2_guest:guest_players!round_robin_schedule_a2_guest_id_fkey(display_name),
+            b1_guest:guest_players!round_robin_schedule_b1_guest_id_fkey(display_name),
+            b2_guest:guest_players!round_robin_schedule_b2_guest_id_fkey(display_name)
+          `)
+          .eq("event_id", id)
+          .order("round_no")
+          .order("court_no"),
+      ]);
 
-      const { data: eventData, error: eventError } = await supabase
-        .from("round_robin_events")
-        .select("*")
-        .eq("id", id)
-        .single();
+      setIsAdmin(adminFlag);
 
+      const { data: eventData, error: eventError } = eventResult;
       if (eventError) throw eventError;
       setEvent(eventData);
       setIsOrganizer(eventData.organizer_id === user.id);
 
-      const { data: playersData, error: playersError } = await supabase
-        .from("round_robin_players")
-        .select("*, profiles:profiles_public!round_robin_players_player_id_fkey(*), guest_players:guest_players!round_robin_players_guest_player_id_fkey(id, display_name, linked_user_id, email)")
-        .eq("event_id", id);
-
-
+      const { data: playersData, error: playersError } = playersResult;
       if (playersError) throw playersError;
       setPlayers(playersData || []);
-      
+
       // Check if user is a participant
       const userIsParticipant = playersData?.some(
         (p: Player) => p.player_id === user.id
       );
       setIsParticipant(userIsParticipant || false);
 
-
-      const { data: scheduleData, error: scheduleError } = await supabase
-        .from("round_robin_schedule")
-        .select(`
-          *,
-          a1_profile:profiles_public!round_robin_schedule_a1_player_id_fkey(display_name, full_name, avatar_url),
-          a2_profile:profiles_public!round_robin_schedule_a2_player_id_fkey(display_name, full_name, avatar_url),
-          b1_profile:profiles_public!round_robin_schedule_b1_player_id_fkey(display_name, full_name, avatar_url),
-          b2_profile:profiles_public!round_robin_schedule_b2_player_id_fkey(display_name, full_name, avatar_url),
-          a1_guest:guest_players!round_robin_schedule_a1_guest_id_fkey(display_name),
-          a2_guest:guest_players!round_robin_schedule_a2_guest_id_fkey(display_name),
-          b1_guest:guest_players!round_robin_schedule_b1_guest_id_fkey(display_name),
-          b2_guest:guest_players!round_robin_schedule_b2_guest_id_fkey(display_name)
-        `)
-        .eq("event_id", id)
-        .order("round_no")
-        .order("court_no");
-
+      const { data: scheduleData, error: scheduleError } = scheduleResult;
       if (scheduleError) throw scheduleError;
       setSchedule(scheduleData || []);
 
@@ -378,6 +386,11 @@ export default function RoundRobinDetail() {
   useEffect(() => {
     const checkAndRecalculateRatings = async () => {
       if (!event || event.status !== 'completed' || !event.rating_eligible) return;
+      // Once per mount — this effect re-fires on every schedule refetch,
+      // and each firing cost a match_participants query (plus a possible
+      // full recalculate_all_ratings). One check per page view is enough.
+      if (ratingRecalcCheckedRef.current) return;
+      ratingRecalcCheckedRef.current = true;
       
       // Check if there are any matches with match_id but no rating_after
       const matchesWithIds = schedule.filter(m => m.match_id && !m.is_bye);
@@ -922,17 +935,6 @@ export default function RoundRobinDetail() {
 
 
     try {
-      // Only delete unscored matches from the specified round onward
-      const { error: deleteError } = await supabase
-        .from("round_robin_schedule")
-        .delete()
-        .eq("event_id", event.id)
-        .gte("round_no", fromRound)
-        .is("team1_score", null)
-        .is("team2_score", null);
-
-      if (deleteError) throw deleteError;
-
       // Auto-derive the round count from the host's games-per-player target
       // and the new active roster size. Never shrink below already-played rounds.
       const gamesPerPlayer = event.games_per_player || 3;
@@ -951,8 +953,14 @@ export default function RoundRobinDetail() {
         .limit(1);
       const completedRoundsCount = (scoredRows?.[0]?.round_no as number | undefined) || 0;
 
+      // Never regenerate a round that already has scores — the edge
+      // function deletes everything >= regenerate_from_round, and losing
+      // a scored row also severs its match_id link into match history
+      // (breaking later void/complete). Anchor past the last scored round.
+      const safeFromRound = Math.max(fromRound, completedRoundsCount + 1);
+
       const previousRounds = event.num_rounds;
-      const targetRounds = Math.max(desiredRounds, completedRoundsCount, fromRound - 1, 1);
+      const targetRounds = Math.max(desiredRounds, completedRoundsCount, safeFromRound - 1, 1);
       const roundsChanged = targetRounds !== previousRounds;
 
       if (roundsChanged) {
@@ -979,7 +987,11 @@ export default function RoundRobinDetail() {
         }
       }
 
-      // Regenerate schedule
+      // Regenerate schedule. regenerate_from_round is load-bearing:
+      // without it the edge function takes its full-regeneration branch
+      // and deletes EVERY schedule row for the event — scored matches
+      // included. With it, rounds below safeFromRound are preserved and
+      // carried into the generator's fairness stats.
       const { error: generateError } = await supabase.functions.invoke("generate-round-robin-schedule", {
         body: {
           event_id: event.id,
@@ -990,6 +1002,7 @@ export default function RoundRobinDetail() {
           num_courts: event.num_courts,
           num_rounds: targetRounds,
           games_per_player: gamesPerPlayer,
+          regenerate_from_round: safeFromRound,
         },
       });
 
@@ -1178,20 +1191,27 @@ export default function RoundRobinDetail() {
           s.team2_score === null
         );
         
-        for (const match of roundMatches) {
-          const updates: any = {};
-          if (match.a1_player_id === originalPlayerId) updates.a1_player_id = newPlayerId;
-          if (match.a2_player_id === originalPlayerId) updates.a2_player_id = newPlayerId;
-          if (match.b1_player_id === originalPlayerId) updates.b1_player_id = newPlayerId;
-          if (match.b2_player_id === originalPlayerId) updates.b2_player_id = newPlayerId;
+        // Each row is a distinct schedule id, so the updates are
+        // independent — run them in parallel instead of one round-trip
+        // per match, and surface the first failure.
+        const seatUpdates = roundMatches
+          .map((match) => {
+            const updates: any = {};
+            if (match.a1_player_id === originalPlayerId) updates.a1_player_id = newPlayerId;
+            if (match.a2_player_id === originalPlayerId) updates.a2_player_id = newPlayerId;
+            if (match.b1_player_id === originalPlayerId) updates.b1_player_id = newPlayerId;
+            if (match.b2_player_id === originalPlayerId) updates.b2_player_id = newPlayerId;
+            return { id: match.id, updates };
+          })
+          .filter((u) => Object.keys(u.updates).length > 0);
 
-          if (Object.keys(updates).length > 0) {
-            await supabase
-              .from("round_robin_schedule")
-              .update(updates)
-              .eq("id", match.id);
-          }
-        }
+        const results = await Promise.all(
+          seatUpdates.map((u) =>
+            supabase.from("round_robin_schedule").update(u.updates).eq("id", u.id)
+          )
+        );
+        const failed = results.find((r) => r.error);
+        if (failed?.error) throw failed.error;
 
         await supabase.from("round_robin_audit").insert({
           event_id: event.id,
