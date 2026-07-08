@@ -41,7 +41,7 @@ const displayName = (p: { display_name: string | null; full_name: string | null 
   p.display_name || p.full_name || 'Community member';
 
 export function ConnectSheet({ open, onOpenChange }: ConnectSheetProps) {
-  const { sendFriendRequest, getFriendshipStatus, currentUserId } = useFriends();
+  const { sendFriendRequest, acceptRequest, pendingRequests, getFriendshipStatus, currentUserId } = useFriends();
   const [myHandle, setMyHandle] = useState<string | null>(null);
   const [sendingTo, setSendingTo] = useState<string | null>(null);
 
@@ -59,6 +59,18 @@ export function ConnectSheet({ open, onOpenChange }: ConnectSheetProps) {
   const handleAdd = async (userId: string) => {
     setSendingTo(userId);
     await sendFriendRequest(userId);
+    setSendingTo(null);
+  };
+
+  // Accept an incoming request from search/suggestions. acceptRequest
+  // takes the friendship id, not the user id — resolve it from the
+  // pending list. (Previously this button re-sent a friend request,
+  // which no-oped with "already pending".)
+  const handleAccept = async (userId: string) => {
+    const request = pendingRequests.find((r) => r.user_id === userId);
+    if (!request) return;
+    setSendingTo(userId);
+    await acceptRequest(request.id);
     setSendingTo(null);
   };
 
@@ -80,8 +92,8 @@ export function ConnectSheet({ open, onOpenChange }: ConnectSheetProps) {
     }
     if (status === 'pending_received') {
       return (
-        <Button variant="secondary" size="sm" className="h-8 shrink-0" onClick={() => handleAdd(userId)}>
-          Accept
+        <Button variant="secondary" size="sm" className="h-8 shrink-0" onClick={() => handleAccept(userId)} disabled={sendingTo === userId}>
+          {sendingTo === userId ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Accept'}
         </Button>
       );
     }

@@ -168,39 +168,25 @@ export function useFriends() {
 
   const sendFriendRequest = useCallback(async (friendId: string) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const user = session?.user;
-      if (!user) throw new Error('Not authenticated');
-
-      // Check if friendship already exists in either direction
-      const { data: existing } = await supabase
-        .from('friendships')
-        .select('id, status')
-        .or(`and(user_id.eq.${user.id},friend_id.eq.${friendId}),and(user_id.eq.${friendId},friend_id.eq.${user.id})`)
-        .maybeSingle();
-
-      if (existing) {
-        if (existing.status === 'blocked') {
-          toast.error('Unable to send friend request');
-          return false;
-        }
-        if (existing.status === 'pending') {
-          toast.info('Friend request already pending');
-          return false;
-        }
-        if (existing.status === 'accepted') {
-          toast.info('Already friends');
-          return false;
-        }
-      }
-
-      const { error } = await supabase
-        .from('friendships')
-        .insert({ user_id: user.id, friend_id: friendId, status: 'pending' });
+      // The server RPC serializes concurrent A→B / B→A sends under an
+      // advisory lock — the previous client-side SELECT-then-INSERT
+      // raced, leaving both users stuck on "pending sent". It returns
+      // the resulting status: 'pending' (sent or already pending) or
+      // 'accepted' (the other side had a pending request — instant
+      // friends).
+      // (supabase as any): send_friend_request is not in the generated
+      // types yet — same pattern as the user_blocks table below.
+      const { data: status, error } = await (supabase as any).rpc('send_friend_request', {
+        p_friend_id: friendId,
+      });
 
       if (error) throw error;
 
-      toast.success('Friend request sent!');
+      if (status === 'accepted') {
+        toast.success("You're now friends!");
+      } else {
+        toast.success('Friend request sent!');
+      }
       await fetchFriends();
       return true;
     } catch (error) {
