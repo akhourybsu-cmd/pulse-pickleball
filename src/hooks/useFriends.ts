@@ -39,7 +39,10 @@ export function useFriends() {
 
   const fetchFriends = useCallback(async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      // getSession() reads the cached local session instead of a server
+      // round-trip — RLS is the real auth boundary for every query below.
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
       if (!user) return;
 
       setCurrentUserId(user.id);
@@ -165,7 +168,8 @@ export function useFriends() {
 
   const sendFriendRequest = useCallback(async (friendId: string) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
       if (!user) throw new Error('Not authenticated');
 
       // Check if friendship already exists in either direction
@@ -265,7 +269,8 @@ export function useFriends() {
 
   const blockUser = useCallback(async (userId: string) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
       if (!user) throw new Error('Not authenticated');
 
       // Insert into user_blocks (canonical block source of truth).

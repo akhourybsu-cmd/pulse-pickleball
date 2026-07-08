@@ -36,6 +36,9 @@ export default function Friends() {
   // Now the tap opens a confirm dialog that names the person and the
   // consequence.
   const [removeTarget, setRemoveTarget] = useState<{ friendshipId: string; name: string } | null>(null);
+  // Friendship ids with an accept/decline in flight — a rapid double-tap
+  // on the same request otherwise fires two overlapping mutations.
+  const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
   const {
     friends,
     pendingRequests,
@@ -47,6 +50,23 @@ export default function Friends() {
     sendFriendRequest,
   } = useFriends();
   const { suggestions, loading: suggestionsLoading, refetch: refetchSuggestions, dismissSuggestion } = useFriendSuggestions();
+
+  const handleRequestAction = async (
+    friendshipId: string,
+    action: (id: string) => Promise<boolean>,
+  ) => {
+    if (processingIds.has(friendshipId)) return;
+    setProcessingIds(prev => new Set(prev).add(friendshipId));
+    try {
+      await action(friendshipId);
+    } finally {
+      setProcessingIds(prev => {
+        const next = new Set(prev);
+        next.delete(friendshipId);
+        return next;
+      });
+    }
+  };
 
   const openDM = async (userId: string) => {
     try {
@@ -210,10 +230,10 @@ export default function Friends() {
                       </div>
                       <div className="text-xs text-muted-foreground">Wants to be friends</div>
                     </div>
-                    <Button size="icon" className="h-9 w-9 rounded-full" onClick={() => acceptRequest(r.id)} aria-label="Accept">
+                    <Button size="icon" className="h-9 w-9 rounded-full" disabled={processingIds.has(r.id)} onClick={() => handleRequestAction(r.id, acceptRequest)} aria-label="Accept">
                       <Check className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full" onClick={() => declineRequest(r.id)} aria-label="Decline">
+                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full" disabled={processingIds.has(r.id)} onClick={() => handleRequestAction(r.id, declineRequest)} aria-label="Decline">
                       <X className="h-4 w-4" />
                     </Button>
                   </div>
@@ -240,7 +260,7 @@ export default function Friends() {
                       </div>
                       <div className="text-xs text-muted-foreground">Request sent</div>
                     </div>
-                    <Button variant="ghost" size="sm" onClick={() => declineRequest(r.id)}>
+                    <Button variant="ghost" size="sm" disabled={processingIds.has(r.id)} onClick={() => handleRequestAction(r.id, declineRequest)}>
                       Cancel
                     </Button>
                   </div>

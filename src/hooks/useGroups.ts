@@ -115,18 +115,20 @@ export function useGroups() {
           },
         }));
 
-      // Calculate unread counts for each group
-      for (const group of groups) {
-        if (group.membership?.last_read_at) {
+      // Calculate unread counts in parallel — the sequential loop was an
+      // N+1 that added one round-trip of latency per joined group.
+      await Promise.all(
+        groups.map(async (group) => {
+          if (!group.membership?.last_read_at) return;
           const { count } = await supabase
             .from('group_posts')
             .select('*', { count: 'exact', head: true })
             .eq('group_id', group.id)
             .gt('created_at', group.membership.last_read_at);
-          
+
           group.unread_count = count || 0;
-        }
-      }
+        })
+      );
 
       // Sort by custom order first, then by unread, then by activity
       groups.sort((a, b) => {
@@ -400,12 +402,18 @@ export function useGroups() {
         display_order: index,
       }));
 
-      for (const update of updates) {
-        await supabase
-          .from('group_members')
-          .update({ display_order: update.display_order })
-          .eq('id', update.id);
-      }
+      // Each row targets a distinct membership id, so the updates are
+      // independent — run them in parallel instead of serially.
+      const results = await Promise.all(
+        updates.map((update) =>
+          supabase
+            .from('group_members')
+            .update({ display_order: update.display_order })
+            .eq('id', update.id)
+        )
+      );
+      const failed = results.find((r) => r.error);
+      if (failed?.error) throw failed.error;
     } catch (error) {
       console.error('Error updating group order:', error);
       // Revert on error

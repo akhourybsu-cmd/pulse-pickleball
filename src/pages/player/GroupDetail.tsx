@@ -51,6 +51,9 @@ export default function GroupDetail() {
   const [notifSettingsOpen, setNotifSettingsOpen] = useState(false);
   
   
+  // Join-gate state for non-members landing on a public group URL
+  const [joining, setJoining] = useState(false);
+
   // Modal states
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
   const [quickPostOpen, setQuickPostOpen] = useState(false);
@@ -128,13 +131,14 @@ export default function GroupDetail() {
       };
       setGroup(groupWithVenue);
 
-      // Fetch membership
+      // Fetch membership — maybeSingle(): non-members legitimately have
+      // zero rows here and .single() treats that as an error.
       const { data: membershipData } = await supabase
         .from('group_members')
         .select('*')
         .eq('group_id', groupId)
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       setMembership(membershipData);
 
@@ -155,6 +159,38 @@ export default function GroupDetail() {
       navigate('/player/community');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Join directly from the gate (public groups only). Mirrors
+  // useGroups.joinPublicGroup: respects request_to_join and treats a
+  // 23505 race (already inserted from another tab) as success.
+  const handleJoinFromGate = async () => {
+    if (!groupId || !currentUserId || !group || joining) return;
+    setJoining(true);
+    try {
+      const status = group.join_method === 'request_to_join' ? 'pending' : 'active';
+      const { error } = await supabase
+        .from('group_members')
+        .insert({ group_id: groupId, user_id: currentUserId, role: 'member', status });
+
+      if (error && error.code !== '23505') throw error;
+
+      if (status === 'pending') {
+        toast({ title: 'Request Sent', description: 'Your join request has been sent to the group admins' });
+      } else {
+        toast({ title: 'Joined!', description: `Welcome to ${group.name}!` });
+      }
+      await fetchGroupData();
+    } catch (error: any) {
+      console.error('Error joining group:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to join group',
+        variant: 'destructive',
+      });
+    } finally {
+      setJoining(false);
     }
   };
 
@@ -217,6 +253,55 @@ export default function GroupDetail() {
         <Button onClick={() => navigate('/player/community')} variant="outline" size="sm" className="mt-4">
           Back to Community
         </Button>
+      </div>
+    );
+  }
+
+  // Non-member gate. RLS already blocks non-member reads of posts/chat
+  // server-side, but without this gate a non-member deep-linking to a
+  // public group saw the full tab UI with empty, broken-looking content
+  // and no way to join. Pending members see their request status.
+  if (!membership || membership.status !== 'active') {
+    const isPendingRequest = membership?.status === 'pending';
+    return (
+      <div className="px-4 py-10 max-w-md mx-auto">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="-ml-2 mb-6 text-muted-foreground"
+          onClick={() => navigate('/player/community')}
+        >
+          <ArrowLeft className="h-4 w-4 mr-1.5" />
+          Community
+        </Button>
+        <div className="rounded-2xl border border-border/60 bg-card p-6 text-center space-y-3">
+          <div className="mx-auto h-14 w-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
+            <Users className="h-7 w-7" />
+          </div>
+          <div>
+            <h1 className="text-lg font-semibold">{group.name}</h1>
+            <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>
+          </div>
+          {group.description && (
+            <p className="text-sm text-muted-foreground leading-relaxed">{group.description}</p>
+          )}
+          {isPendingRequest ? (
+            <p className="text-sm font-medium text-muted-foreground pt-1">
+              Your join request is pending approval.
+            </p>
+          ) : group.visibility === 'public' ? (
+            <Button className="w-full mt-2" onClick={handleJoinFromGate} disabled={joining}>
+              <UserPlus className="h-4 w-4 mr-2" />
+              {joining
+                ? 'Joining…'
+                : group.join_method === 'request_to_join' ? 'Request to Join' : 'Join Group'}
+            </Button>
+          ) : (
+            <p className="text-sm text-muted-foreground pt-1">
+              This group is invite-only. Ask a member for an invite link to join.
+            </p>
+          )}
+        </div>
       </div>
     );
   }
