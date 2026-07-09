@@ -259,7 +259,11 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
         playerName:
           p.profiles?.display_name ||
           p.profiles?.full_name ||
-          (p.is_guest ? `${p.guest_display_name || "Guest"} (Guest)` : "Someone"),
+          (p.is_guest
+            ? (p.guest_linked_user_id
+                ? (p.guest_display_name || "Guest")
+                : `${p.guest_display_name || "Guest"} (Guest)`)
+            : "Someone"),
         wins: 0,
         losses: 0,
         pointsFor: 0,
