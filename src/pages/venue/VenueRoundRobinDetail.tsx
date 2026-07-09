@@ -176,7 +176,7 @@ export default function VenueRoundRobinDetail() {
       const guestLinked = !!p.guest_players?.linked_user_id;
       const name = p.profiles
         ? p.profiles.display_name || p.profiles.full_name
-        : guestLinked ? guestName : `${guestName} (Guest)`;
+        : guestLinked ? guestName : `${guestName} (G)`;
       stats[key] = {
         player_id: key,
         player_name: name,
@@ -720,7 +720,7 @@ export default function VenueRoundRobinDetail() {
                         transition={{ delay: idx * 0.03 }}
                         className="p-4 bg-muted/50 rounded-xl border border-border/50 hover:border-primary/30 hover:shadow-sm transition-all"
                       >
-                        <p className="font-medium truncate">{p.profiles?.display_name || p.profiles?.full_name || p.guest_players?.display_name || p.guest_name || 'Guest'}{!p.profiles && !p.guest_players?.linked_user_id ? ' (Guest)' : ''}</p>
+                        <p className="font-medium truncate">{p.profiles?.display_name || p.profiles?.full_name || p.guest_players?.display_name || p.guest_name || 'Guest'}{!p.profiles && !p.guest_players?.linked_user_id ? ' (G)' : ''}</p>
                       </motion.div>
                     ))}
                   </div>

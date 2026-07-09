@@ -274,7 +274,7 @@ const MatchHistory = () => {
           team2_score: p.matches.team2_score,
           my_team: myTeam,
           // resolveParticipantName handles both real profiles and
-          // guests (with "(Guest)" suffix), so guest rows now surface
+          // guests (with "(G)" suffix), so guest rows now surface
           // by their display_name instead of being labelled "Removed
           // player" which was the visible bug.
           partner_name: resolveParticipantName(teammates?.[0] as any),
@@ -444,7 +444,7 @@ const MatchHistory = () => {
           team2_score: p.matches.team2_score,
           my_team: myTeam,
           // resolveParticipantName handles both real profiles and
-          // guests (with "(Guest)" suffix), so guest rows now surface
+          // guests (with "(G)" suffix), so guest rows now surface
           // by their display_name instead of being labelled "Removed
           // player" which was the visible bug.
           partner_name: resolveParticipantName(teammates?.[0] as any),

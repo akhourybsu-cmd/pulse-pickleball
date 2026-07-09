@@ -262,7 +262,7 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
           (p.is_guest
             ? (p.guest_linked_user_id
                 ? (p.guest_display_name || "Guest")
-                : `${p.guest_display_name || "Guest"} (Guest)`)
+                : `${p.guest_display_name || "Guest"} (G)`)
             : "Someone"),
         wins: 0,
         losses: 0,
@@ -330,7 +330,7 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
       return player.profiles.display_name || player.profiles.full_name || "Someone";
     }
     const name = player.guest_display_name || "Guest";
-    return player.guest_linked_user_id ? name : `${name} (Guest)`;
+    return player.guest_linked_user_id ? name : `${name} (G)`;
   };
 
   /** Resolve a seat's name regardless of whether it's a registered player or a guest. */

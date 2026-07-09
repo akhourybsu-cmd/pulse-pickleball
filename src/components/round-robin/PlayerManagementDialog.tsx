@@ -254,7 +254,7 @@ export function PlayerManagementDialog({
                           {initials}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="text-sm text-foreground truncate">{name}{resolved.isGuest && !resolved.isLinkedGuest ? ' (Guest)' : ''}</span>
+                      <span className="text-sm text-foreground truncate">{name}{resolved.isGuest && !resolved.isLinkedGuest ? ' (G)' : ''}</span>
                     </div>
                   );
                 })}
@@ -282,7 +282,7 @@ export function PlayerManagementDialog({
                             {initials}
                           </AvatarFallback>
                         </Avatar>
-                        <span className="text-sm text-muted-foreground truncate">{name}{resolved.isGuest && !resolved.isLinkedGuest ? ' (Guest)' : ''}</span>
+                        <span className="text-sm text-muted-foreground truncate">{name}{resolved.isGuest && !resolved.isLinkedGuest ? ' (G)' : ''}</span>
                       </div>
                     );
                   })}
@@ -382,7 +382,7 @@ export function PlayerManagementDialog({
                     const resolved = resolveRRParticipant(p as any);
                     return (
                       <SelectItem key={p.id} value={p.id}>
-                        {resolved.name}{resolved.isGuest && !resolved.isLinkedGuest ? ' (Guest)' : ''}
+                        {resolved.name}{resolved.isGuest && !resolved.isLinkedGuest ? ' (G)' : ''}
                       </SelectItem>
                     );
                   })}

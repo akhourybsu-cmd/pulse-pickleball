@@ -58,7 +58,7 @@ export function resolvePlayerName(profile: MinimalProfile | null | undefined): s
  *
  * Fallback order:
  *   1. Real profile (via player_id) — resolved through resolvePlayerName
- *   2. Guest's display_name with " (Guest)" suffix — matches how
+ *   2. Guest's display_name with " (G)" suffix — matches how
  *      RoundRobinKiosk + RoundRobinDetail tag guests so the reader
  *      knows the row isn't a claimed profile
  *   3. "Removed player" when both joins came back null (deleted user
@@ -76,7 +76,7 @@ export function resolveParticipantName(participant: ParticipantLike | null | und
   }
   const guestName = participant.guest?.display_name?.trim();
   if (guestName) {
-    return participant.guest?.linked_user_id ? guestName : `${guestName} (Guest)`;
+    return participant.guest?.linked_user_id ? guestName : `${guestName} (G)`;
   }
   return "Removed player";
 }

@@ -271,7 +271,7 @@ export default function RoundRobinKiosk() {
         return match.b2_profile.display_name || match.b2_profile.full_name;
       }
       const guestLabel = (g?: { display_name?: string | null; linked_user_id?: string | null } | null) =>
-        g?.display_name ? (g.linked_user_id ? g.display_name : `${g.display_name} (Guest)`) : null;
+        g?.display_name ? (g.linked_user_id ? g.display_name : `${g.display_name} (G)`) : null;
       if (match.a1_guest_id === playerId && match.a1_guest?.display_name) {
         return guestLabel(match.a1_guest)!;
       }
