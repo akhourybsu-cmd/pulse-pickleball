@@ -606,13 +606,15 @@ export default function RoundRobinDetail() {
     playersData.forEach((p) => {
       const key = p.player_id || (p as any).guest_player_id;
       if (!key) return;
+      const guestRow = (p as any).guest_players as { display_name?: string | null; linked_user_id?: string | null } | undefined;
       const guestName =
-        (p as any).guest_players?.display_name ||
+        guestRow?.display_name ||
         (p as any).guest_name ||
         "Guest";
+      const guestLinked = !!guestRow?.linked_user_id;
       const name = p.profiles
         ? p.profiles.display_name || p.profiles.full_name
-        : `${guestName} (Guest)`;
+        : guestLinked ? guestName : `${guestName} (Guest)`;
       stats[key] = {
         player_id: key,
         player_name: name,
