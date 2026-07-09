@@ -2257,7 +2257,7 @@ export default function RoundRobinDetail() {
                         const displayName =
                           player.profiles?.display_name ||
                           player.profiles?.full_name ||
-                          (guestName ? `${guestName} (Guest)` : "Guest");
+                          (guestName ? (guest?.linked_user_id ? guestName : `${guestName} (Guest)`) : "Guest");
                         return (
                         <div key={player.id} className="flex items-center justify-between p-3 border rounded-lg">
                           <div className="font-medium">
