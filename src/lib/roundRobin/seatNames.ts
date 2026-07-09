@@ -20,6 +20,7 @@ interface ProfileLike {
 
 interface GuestLike {
   display_name?: string | null;
+  linked_user_id?: string | null;
 }
 
 export interface SeatBearingMatch {
