@@ -75,7 +75,9 @@ export function resolveParticipantName(participant: ParticipantLike | null | und
     return resolvePlayerName(participant.profiles);
   }
   const guestName = participant.guest?.display_name?.trim();
-  if (guestName) return `${guestName} (Guest)`;
+  if (guestName) {
+    return participant.guest?.linked_user_id ? guestName : `${guestName} (Guest)`;
+  }
   return "Removed player";
 }
 
