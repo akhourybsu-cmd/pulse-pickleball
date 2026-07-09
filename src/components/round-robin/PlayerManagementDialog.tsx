@@ -56,7 +56,16 @@ interface PlayerManagementDialogProps {
   genderFilter?: "male" | "female";
   onAddPlayer: (input: { playerId: string | null; guestPlayerId?: string | null; guestName?: string }) => Promise<void>;
   onMarkInactive: (playerEventId: string) => Promise<void>;
-  onSubstitute: (originalPlayerId: string, newPlayerId: string, scope: 'global' | number) => Promise<void>;
+  /**
+   * Substitute one roster member for another. The original is identified by
+   * its round_robin_players row id (so guests work — they have no player_id),
+   * and the replacement can be a registered player OR a guest.
+   */
+  onSubstitute: (
+    originalRosterId: string,
+    replacement: { playerId: string | null; guestPlayerId: string | null; guestName?: string },
+    scope: 'global' | number,
+  ) => Promise<void>;
 }
 
 type ActionMode = 'add' | 'remove' | 'substitute' | null;
@@ -117,12 +126,20 @@ export function PlayerManagementDialog({
   };
 
   const handleSubstitute = async () => {
-    if (!substituteOriginal || !substituteNew) return;
+    if (!substituteOriginal || !substituteNewPick) return;
     setLoading(true);
     try {
-      await onSubstitute(substituteOriginal, substituteNew, substituteScope);
+      const replacement = {
+        playerId: substituteNewPick.isGuest ? null : substituteNewPick.id,
+        guestPlayerId: substituteNewPick.isGuest ? substituteNewPick.id : null,
+        guestName: substituteNewPick.isGuest
+          ? (substituteNewPick.display_name || substituteNewPick.full_name)
+          : undefined,
+      };
+      await onSubstitute(substituteOriginal, replacement, substituteScope);
       setSubstituteOriginal("");
       setSubstituteNew("");
+      setSubstituteNewPick(null);
       setSubstituteScope('global');
       setMode(null);
     } finally {
@@ -402,16 +419,18 @@ export function PlayerManagementDialog({
 
             <div className="space-y-2">
               <Label>Original Player (to replace)</Label>
+              {/* Keyed by round_robin_players.id (not player_id) so guests —
+                  which have no player_id — are selectable here too. */}
               <Select value={substituteOriginal} onValueChange={setSubstituteOriginal}>
                 <SelectTrigger>
                   <SelectValue placeholder="Choose player to replace..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {activePlayers.filter(p => !!p.player_id).map(p => {
+                  {activePlayers.map(p => {
                     const resolved = resolveRRParticipant(p as any);
                     return (
-                      <SelectItem key={p.id} value={p.player_id as string}>
-                        {resolved.name}
+                      <SelectItem key={p.id} value={p.id}>
+                        {resolved.name}{resolved.isGuest && !resolved.isLinkedGuest ? ' (G)' : ''}
                       </SelectItem>
                     );
                   })}
@@ -419,7 +438,7 @@ export function PlayerManagementDialog({
               </Select>
               {substituteOriginal && (
                 <div className="text-sm text-muted-foreground mt-1">
-                  Selected: <strong>{resolveRRParticipant((activePlayers.find(p => p.player_id === substituteOriginal) ?? {}) as any).name}</strong>
+                  Selected: <strong>{resolveRRParticipant((activePlayers.find(p => p.id === substituteOriginal) ?? {}) as any).name}</strong>
                 </div>
               )}
             </div>
@@ -428,7 +447,7 @@ export function PlayerManagementDialog({
               <Label>New Player (substitute)</Label>
               <PlayerPickerSheet
                 mode="single"
-                allowGuest={false}
+                allowGuest
                 selectedPlayers={substituteNewPick ? [substituteNewPick] : []}
                 onPlayersChange={(arr) => {
                   const p = arr[0] ?? null;
@@ -439,7 +458,6 @@ export function PlayerManagementDialog({
                 genderFilter={genderFilter}
                 groupId={groupId}
                 excludePlayerIds={[
-                  ...(substituteOriginal ? [substituteOriginal] : []),
                   ...players.map(p => p.player_id).filter(Boolean) as string[],
                   ...players.map(p => p.guest_player_id).filter(Boolean) as string[],
                 ]}
@@ -538,7 +556,7 @@ export function PlayerManagementDialog({
           {mode === 'substitute' && (
             <Button
               onClick={handleSubstitute}
-              disabled={!substituteOriginal || !substituteNew || loading}
+              disabled={!substituteOriginal || !substituteNewPick || loading}
               className="gap-1.5"
             >
               <Users className="h-4 w-4" />

@@ -759,28 +759,42 @@ export default function VenueRoundRobinDetail() {
           await supabase.from("round_robin_players").update({ active: false }).eq("id", playerEventId);
           fetchEventDetails();
         }}
-        onSubstitute={async (originalPlayerId: string, newPlayerId: string, scope: 'global' | number) => {
-          if (scope === 'global') {
-            await supabase.from("round_robin_schedule")
-              .update({ a1_player_id: newPlayerId })
-              .eq("event_id", event.id)
-              .eq("a1_player_id", originalPlayerId)
-              .gte("round_no", event.current_round || 1);
-            await supabase.from("round_robin_schedule")
-              .update({ a2_player_id: newPlayerId })
-              .eq("event_id", event.id)
-              .eq("a2_player_id", originalPlayerId)
-              .gte("round_no", event.current_round || 1);
-            await supabase.from("round_robin_schedule")
-              .update({ b1_player_id: newPlayerId })
-              .eq("event_id", event.id)
-              .eq("b1_player_id", originalPlayerId)
-              .gte("round_no", event.current_round || 1);
-            await supabase.from("round_robin_schedule")
-              .update({ b2_player_id: newPlayerId })
-              .eq("event_id", event.id)
-              .eq("b2_player_id", originalPlayerId)
-              .gte("round_no", event.current_round || 1);
+        onSubstitute={async (originalRosterId, replacement, scope) => {
+          // Guest-aware in-place seat swap. Resolve the original's player/
+          // guest id from the roster row, then patch each seat that holds
+          // them — setting the replacement's player_id OR guest_id (the DB
+          // XOR keeps exactly one populated per seat).
+          const original = players.find((p) => p.id === originalRosterId);
+          if (!original) return;
+          const origPid = original.player_id;
+          const origGid = original.guest_player_id;
+          const fromRound = scope === 'global' ? (event.current_round || 1) : (scope as number);
+          const toRound = scope === 'global' ? undefined : (scope as number);
+          const seats = ['a1', 'a2', 'b1', 'b2'] as const;
+
+          const targets = schedule.filter((s: any) =>
+            s.round_no >= fromRound &&
+            (toRound === undefined || s.round_no === toRound) &&
+            !s.is_bye &&
+            s.team1_score === null &&
+            s.team2_score === null
+          );
+
+          for (const match of targets) {
+            const m = match as any;
+            const updates: any = {};
+            for (const seat of seats) {
+              const holdsOriginal =
+                (origPid && m[`${seat}_player_id`] === origPid) ||
+                (origGid && m[`${seat}_guest_id`] === origGid);
+              if (holdsOriginal) {
+                updates[`${seat}_player_id`] = replacement.playerId ?? null;
+                updates[`${seat}_guest_id`] = replacement.guestPlayerId ?? null;
+              }
+            }
+            if (Object.keys(updates).length > 0) {
+              await supabase.from("round_robin_schedule").update(updates).eq("id", m.id);
+            }
           }
           fetchEventDetails();
         }}

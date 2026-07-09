@@ -1120,54 +1120,66 @@ export default function RoundRobinDetail() {
   };
 
   const handleSubstitute = async (
-    originalPlayerId: string,
-    newPlayerId: string,
+    originalRosterId: string,
+    replacement: { playerId: string | null; guestPlayerId: string | null; guestName?: string },
     scope: 'global' | number
   ) => {
     if (!event || !userId) return;
 
+    // The original is identified by its roster row id, so this works for a
+    // guest (no player_id) exactly as it does for a registered player.
+    const original = players.find(p => p.id === originalRosterId);
+    if (!original) return;
+
     try {
       if (scope === 'global') {
-        // Global substitution: add new player (or reactivate if they exist), regenerate schedule
-        const existingPlayer = players.find(p => p.player_id === newPlayerId);
-        const wasInactive = existingPlayer && !existingPlayer.active;
-        
-        if (existingPlayer) {
-          // Player already exists, reactivate them
-          await supabase
-            .from("round_robin_players")
-            .update({ active: true })
-            .eq("id", existingPlayer.id);
+        // Ensure the replacement is on the roster: reactivate an existing
+        // row (matched by player_id OR guest_player_id) or insert a new one.
+        const existing = players.find(p =>
+          (replacement.playerId && p.player_id === replacement.playerId) ||
+          (replacement.guestPlayerId && p.guest_player_id === replacement.guestPlayerId)
+        );
+        const wasInactive = !!existing && !existing.active;
+
+        if (existing) {
+          if (!existing.active) {
+            await supabase
+              .from("round_robin_players")
+              .update({ active: true })
+              .eq("id", existing.id);
+          }
         } else {
-          // New player, insert them as active
-          await supabase.from("round_robin_players").insert({
+          const { error: insErr } = await supabase.from("round_robin_players").insert({
             event_id: event.id,
-            player_id: newPlayerId,
+            player_id: replacement.playerId,
+            guest_player_id: replacement.guestPlayerId ?? null,
+            guest_name: replacement.guestName ?? null,
             active: true,
-          });
+          } as never);
+          if (insErr) throw insErr;
         }
 
-        // Mark the old player as inactive
-        const oldPlayer = players.find(p => p.player_id === originalPlayerId);
-        if (oldPlayer) {
-          await supabase
-            .from("round_robin_players")
-            .update({ active: false })
-            .eq("id", oldPlayer.id);
-        }
+        // Deactivate the original by roster row id (player or guest).
+        await supabase
+          .from("round_robin_players")
+          .update({ active: false })
+          .eq("id", originalRosterId);
 
         await supabase.from("round_robin_audit").insert({
           event_id: event.id,
           editor_id: userId,
           change_type: "player_substitute",
           changes: {
-            original_player_id: originalPlayerId,
-            new_player_id: newPlayerId,
+            original_roster_id: originalRosterId,
+            original_player_id: original.player_id,
+            original_guest_id: original.guest_player_id,
+            new_player_id: replacement.playerId,
+            new_guest_id: replacement.guestPlayerId,
             scope: 'global',
             was_reactivated: wasInactive,
           },
-          reason: wasInactive 
-            ? "Player reactivated and substituted globally" 
+          reason: wasInactive
+            ? "Player reactivated and substituted globally"
             : "Global player substitution",
         });
 
@@ -1185,24 +1197,34 @@ export default function RoundRobinDetail() {
             : "Player substituted and schedule regenerated") + roundsSuffix
         );
       } else {
-        // Single round substitution: update specific unstarted matches
-        const roundMatches = schedule.filter(s => 
-          s.round_no === scope && 
-          !s.is_bye && 
-          s.team1_score === null && 
+        // Single-round substitution: patch the original's seat in each
+        // unscored match of that round. Guest-aware — a seat holds EITHER a
+        // player_id OR a guest_id (DB XOR constraint), so we always set both
+        // columns (one to the replacement id, the other to null).
+        const origPid = original.player_id;
+        const origGid = original.guest_player_id;
+        const seats = ['a1', 'a2', 'b1', 'b2'] as const;
+
+        const roundMatches = schedule.filter(s =>
+          s.round_no === scope &&
+          !s.is_bye &&
+          s.team1_score === null &&
           s.team2_score === null
         );
-        
-        // Each row is a distinct schedule id, so the updates are
-        // independent — run them in parallel instead of one round-trip
-        // per match, and surface the first failure.
+
         const seatUpdates = roundMatches
           .map((match) => {
+            const m = match as any;
             const updates: any = {};
-            if (match.a1_player_id === originalPlayerId) updates.a1_player_id = newPlayerId;
-            if (match.a2_player_id === originalPlayerId) updates.a2_player_id = newPlayerId;
-            if (match.b1_player_id === originalPlayerId) updates.b1_player_id = newPlayerId;
-            if (match.b2_player_id === originalPlayerId) updates.b2_player_id = newPlayerId;
+            for (const seat of seats) {
+              const holdsOriginal =
+                (origPid && m[`${seat}_player_id`] === origPid) ||
+                (origGid && m[`${seat}_guest_id`] === origGid);
+              if (holdsOriginal) {
+                updates[`${seat}_player_id`] = replacement.playerId ?? null;
+                updates[`${seat}_guest_id`] = replacement.guestPlayerId ?? null;
+              }
+            }
             return { id: match.id, updates };
           })
           .filter((u) => Object.keys(u.updates).length > 0);
@@ -1220,9 +1242,12 @@ export default function RoundRobinDetail() {
           editor_id: userId,
           change_type: "player_substitute",
           changes: {
-            original_player_id: originalPlayerId,
-            new_player_id: newPlayerId,
-            scope: scope,
+            original_roster_id: originalRosterId,
+            original_player_id: origPid,
+            original_guest_id: origGid,
+            new_player_id: replacement.playerId,
+            new_guest_id: replacement.guestPlayerId,
+            scope,
           },
           reason: `Player substitution for Round ${scope}`,
         });
