@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Home, Trophy, Users, User, Plus, MessageSquare } from 'lucide-react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { NotificationBell } from '@/components/NotificationBell';
@@ -110,6 +111,27 @@ export function PlayerShell() {
     const prefetch = prefetchMap[to];
     if (prefetch) prefetch();
   }, []);
+
+  // ---- Page-transition wiring ---------------------------------------
+  // A gentle enter animation as content swaps between routes. The header,
+  // FAB, and bottom nav live OUTSIDE the animated wrapper below, so they
+  // stay perfectly stable while only the page body fades in.
+  const reduceMotion = useReducedMotion();
+  const isCommunityRoute = location.pathname.startsWith('/player/community');
+  // The Community subtree owns its own directional slide
+  // (CommunityTransitionOutlet). Give it ONE constant key so this wrapper
+  // never remounts as you move list ↔ group ↔ manage — otherwise the two
+  // systems would fight. It still fades once when you enter/leave the
+  // subtree. Every other route keys by pathname so each navigation replays
+  // the enter animation.
+  const contentTransitionKey = isCommunityRoute ? 'community-subtree' : location.pathname;
+  // Immersive pages (match wizard, DM chat) carry their own fixed bottom
+  // bars. A transform on an ancestor re-anchors position:fixed children, so
+  // those get an opacity-only fade — standard pages (no fixed descendants)
+  // get the slightly richer opacity + lift.
+  const enterInitial = isImmersiveRoute ? { opacity: 0 } : { opacity: 0, y: 8 };
+  const enterAnimate = isImmersiveRoute ? { opacity: 1 } : { opacity: 1, y: 0 };
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Top Header — single source of top chrome across all player tabs.
@@ -181,7 +203,18 @@ export function PlayerShell() {
 
       {/* Main Content */}
       <main className={isImmersiveRoute ? "flex-1" : "flex-1 pb-24 md:pb-20"}>
-        <Outlet />
+        {reduceMotion ? (
+          <Outlet />
+        ) : (
+          <motion.div
+            key={contentTransitionKey}
+            initial={enterInitial}
+            animate={enterAnimate}
+            transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <Outlet />
+          </motion.div>
+        )}
       </main>
 
       {/* Record Match FAB — only surfaced on the player tabs where logging
