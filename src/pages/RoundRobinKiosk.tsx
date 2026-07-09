@@ -84,10 +84,10 @@ interface ScheduleMatch {
   a2_profile?: { display_name: string | null; full_name: string } | null;
   b1_profile?: { display_name: string | null; full_name: string } | null;
   b2_profile?: { display_name: string | null; full_name: string } | null;
-  a1_guest?: { display_name: string | null } | null;
-  a2_guest?: { display_name: string | null } | null;
-  b1_guest?: { display_name: string | null } | null;
-  b2_guest?: { display_name: string | null } | null;
+  a1_guest?: { display_name: string | null; linked_user_id?: string | null } | null;
+  a2_guest?: { display_name: string | null; linked_user_id?: string | null } | null;
+  b1_guest?: { display_name: string | null; linked_user_id?: string | null } | null;
+  b2_guest?: { display_name: string | null; linked_user_id?: string | null } | null;
 }
 
 interface StandingsRow {
@@ -270,17 +270,19 @@ export default function RoundRobinKiosk() {
       if (match.b2_player_id === playerId && match.b2_profile) {
         return match.b2_profile.display_name || match.b2_profile.full_name;
       }
+      const guestLabel = (g?: { display_name?: string | null; linked_user_id?: string | null } | null) =>
+        g?.display_name ? (g.linked_user_id ? g.display_name : `${g.display_name} (Guest)`) : null;
       if (match.a1_guest_id === playerId && match.a1_guest?.display_name) {
-        return `${match.a1_guest.display_name} (Guest)`;
+        return guestLabel(match.a1_guest)!;
       }
       if (match.a2_guest_id === playerId && match.a2_guest?.display_name) {
-        return `${match.a2_guest.display_name} (Guest)`;
+        return guestLabel(match.a2_guest)!;
       }
       if (match.b1_guest_id === playerId && match.b1_guest?.display_name) {
-        return `${match.b1_guest.display_name} (Guest)`;
+        return guestLabel(match.b1_guest)!;
       }
       if (match.b2_guest_id === playerId && match.b2_guest?.display_name) {
-        return `${match.b2_guest.display_name} (Guest)`;
+        return guestLabel(match.b2_guest)!;
       }
     }
     return "Unknown";
@@ -364,13 +366,13 @@ export default function RoundRobinKiosk() {
       const { data: guests } = allGuestIds.size > 0
         ? await supabase
             .from("guest_players")
-            .select("id, display_name")
+            .select("id, display_name, linked_user_id")
             .in("id", Array.from(allGuestIds))
         : { data: [] };
 
       const profileMap = new Map<string, any>((profiles || []).map((p: any) => [p.id, p]));
       const guestMap = new Map<string, any>(
-        (guests || []).map((g: any) => [g.id, { id: g.id, display_name: g.display_name }]),
+        (guests || []).map((g: any) => [g.id, { id: g.id, display_name: g.display_name, linked_user_id: g.linked_user_id }]),
       );
 
       // Backwards-compat for downstream code that previously merged guests

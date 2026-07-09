@@ -90,7 +90,7 @@ const PendingMatches = () => {
             guest_player_id,
             team,
             profiles:profiles_public!match_participants_player_id_fkey(id, display_name, full_name, first_name, last_name, avatar_url),
-            guest:guest_players!match_participants_guest_player_id_fkey(display_name)
+            guest:guest_players!match_participants_guest_player_id_fkey(display_name, linked_user_id)
           `)
           .eq("match_id", p.match_id);
 

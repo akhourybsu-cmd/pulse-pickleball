@@ -51,6 +51,7 @@ interface Player {
   registration_status: string;
   is_guest?: boolean;
   guest_display_name?: string | null;
+  guest_linked_user_id?: string | null;
   profiles: {
     id: string;
     full_name: string | null;
@@ -162,11 +163,11 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
       }
 
       // Batch fetch guests
-      let guestsById = new Map<string, { id: string; display_name: string | null }>();
+      let guestsById = new Map<string, { id: string; display_name: string | null; linked_user_id: string | null }>();
       if (guestIdSet.size > 0) {
         const { data: guestsData } = await supabase
           .from("guest_players")
-          .select("id, display_name")
+          .select("id, display_name, linked_user_id")
           .in("id", Array.from(guestIdSet));
         guestsById = new Map((guestsData || []).map((g: any) => [g.id, g]));
       }
@@ -176,6 +177,7 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
         .filter((p: any) => p.active !== false)
         .map((p: any) => {
           const isGuest = !!p.guest_player_id;
+          const guestRow = isGuest ? guestsById.get(p.guest_player_id) : null;
           const lookupId = p.player_id || p.guest_player_id;
           return {
             id: p.id,
@@ -183,8 +185,9 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
             registration_status: p.registration_status,
             is_guest: isGuest,
             guest_display_name: isGuest
-              ? guestsById.get(p.guest_player_id)?.display_name || p.guest_name || "Guest"
+              ? guestRow?.display_name || p.guest_name || "Guest"
               : null,
+            guest_linked_user_id: guestRow?.linked_user_id ?? null,
             profiles: isGuest ? null : profilesById.get(p.player_id) ?? null,
           };
         });
@@ -200,6 +203,7 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
           registration_status: "",
           is_guest: !profile && !!guest,
           guest_display_name: guest?.display_name ?? null,
+          guest_linked_user_id: guest?.linked_user_id ?? null,
           profiles: profile ?? null,
         };
       });
@@ -232,6 +236,7 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
           registration_status: reg?.registration_status ?? "",
           is_guest: !profile && !!guest,
           guest_display_name: guest?.display_name ?? (reg as any)?.guest_name ?? null,
+          guest_linked_user_id: guest?.linked_user_id ?? null,
           profiles: profile ?? null,
         };
       });
@@ -254,7 +259,11 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
         playerName:
           p.profiles?.display_name ||
           p.profiles?.full_name ||
-          (p.is_guest ? `${p.guest_display_name || "Guest"} (Guest)` : "Someone"),
+          (p.is_guest
+            ? (p.guest_linked_user_id
+                ? (p.guest_display_name || "Guest")
+                : `${p.guest_display_name || "Guest"} (Guest)`)
+            : "Someone"),
         wins: 0,
         losses: 0,
         pointsFor: 0,
@@ -320,7 +329,8 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
     if (player.profiles) {
       return player.profiles.display_name || player.profiles.full_name || "Someone";
     }
-    return `${player.guest_display_name || "Guest"} (Guest)`;
+    const name = player.guest_display_name || "Guest";
+    return player.guest_linked_user_id ? name : `${name} (Guest)`;
   };
 
   /** Resolve a seat's name regardless of whether it's a registered player or a guest. */

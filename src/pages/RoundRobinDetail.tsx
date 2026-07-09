@@ -140,10 +140,10 @@ interface ScheduleMatch {
   a2_profile?: { display_name?: string | null; full_name?: string | null; avatar_url?: string | null } | null;
   b1_profile?: { display_name?: string | null; full_name?: string | null; avatar_url?: string | null } | null;
   b2_profile?: { display_name?: string | null; full_name?: string | null; avatar_url?: string | null } | null;
-  a1_guest?: { display_name?: string | null } | null;
-  a2_guest?: { display_name?: string | null } | null;
-  b1_guest?: { display_name?: string | null } | null;
-  b2_guest?: { display_name?: string | null } | null;
+  a1_guest?: { display_name?: string | null; linked_user_id?: string | null } | null;
+  a2_guest?: { display_name?: string | null; linked_user_id?: string | null } | null;
+  b1_guest?: { display_name?: string | null; linked_user_id?: string | null } | null;
+  b2_guest?: { display_name?: string | null; linked_user_id?: string | null } | null;
   is_bye: boolean;
   team1_score: number | null;
   team2_score: number | null;
@@ -339,10 +339,10 @@ export default function RoundRobinDetail() {
             a2_profile:profiles_public!round_robin_schedule_a2_player_id_fkey(display_name, full_name, avatar_url),
             b1_profile:profiles_public!round_robin_schedule_b1_player_id_fkey(display_name, full_name, avatar_url),
             b2_profile:profiles_public!round_robin_schedule_b2_player_id_fkey(display_name, full_name, avatar_url),
-            a1_guest:guest_players!round_robin_schedule_a1_guest_id_fkey(display_name),
-            a2_guest:guest_players!round_robin_schedule_a2_guest_id_fkey(display_name),
-            b1_guest:guest_players!round_robin_schedule_b1_guest_id_fkey(display_name),
-            b2_guest:guest_players!round_robin_schedule_b2_guest_id_fkey(display_name)
+            a1_guest:guest_players!round_robin_schedule_a1_guest_id_fkey(display_name, linked_user_id),
+            a2_guest:guest_players!round_robin_schedule_a2_guest_id_fkey(display_name, linked_user_id),
+            b1_guest:guest_players!round_robin_schedule_b1_guest_id_fkey(display_name, linked_user_id),
+            b2_guest:guest_players!round_robin_schedule_b2_guest_id_fkey(display_name, linked_user_id)
           `)
           .eq("event_id", id)
           .order("round_no")
@@ -536,7 +536,7 @@ export default function RoundRobinDetail() {
         if (profile?.display_name || profile?.full_name) {
           return profile.display_name || profile.full_name;
         }
-        if (guest?.display_name) return `${guest.display_name} (Guest)`;
+        if (guest?.display_name) return (guest as { linked_user_id?: string | null }).linked_user_id ? guest.display_name : `${guest.display_name} (Guest)`;
       }
     }
 
@@ -548,7 +548,7 @@ export default function RoundRobinDetail() {
       return player.profiles.display_name || player.profiles.full_name;
     }
     if (player?.guest_players?.display_name) {
-      return `${player.guest_players.display_name} (Guest)`;
+      return player.guest_players.linked_user_id ? player.guest_players.display_name : `${player.guest_players.display_name} (Guest)`;
     }
     if (player?.guest_name) {
       return `${player.guest_name} (Guest)`;
@@ -606,13 +606,15 @@ export default function RoundRobinDetail() {
     playersData.forEach((p) => {
       const key = p.player_id || (p as any).guest_player_id;
       if (!key) return;
+      const guestRow = (p as any).guest_players as { display_name?: string | null; linked_user_id?: string | null } | undefined;
       const guestName =
-        (p as any).guest_players?.display_name ||
+        guestRow?.display_name ||
         (p as any).guest_name ||
         "Guest";
+      const guestLinked = !!guestRow?.linked_user_id;
       const name = p.profiles
         ? p.profiles.display_name || p.profiles.full_name
-        : `${guestName} (Guest)`;
+        : guestLinked ? guestName : `${guestName} (Guest)`;
       stats[key] = {
         player_id: key,
         player_name: name,
@@ -2255,7 +2257,7 @@ export default function RoundRobinDetail() {
                         const displayName =
                           player.profiles?.display_name ||
                           player.profiles?.full_name ||
-                          (guestName ? `${guestName} (Guest)` : "Guest");
+                          (guestName ? (guest?.linked_user_id ? guestName : `${guestName} (Guest)`) : "Guest");
                         return (
                         <div key={player.id} className="flex items-center justify-between p-3 border rounded-lg">
                           <div className="font-medium">

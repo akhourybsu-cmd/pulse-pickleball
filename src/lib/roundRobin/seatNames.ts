@@ -20,6 +20,7 @@ interface ProfileLike {
 
 interface GuestLike {
   display_name?: string | null;
+  linked_user_id?: string | null;
 }
 
 export interface SeatBearingMatch {
@@ -62,7 +63,11 @@ export function getSeatName(
 
   if (profile?.display_name) return profile.display_name;
   if (profile?.full_name) return profile.full_name;
-  if (guest?.display_name) return `${guest.display_name} (Guest)`;
+  if (guest?.display_name) {
+    return guest.linked_user_id
+      ? guest.display_name
+      : `${guest.display_name} (Guest)`;
+  }
 
   if (playerId && options?.nameMap?.has(playerId)) return options.nameMap.get(playerId)!;
   if (guestId && options?.nameMap?.has(guestId)) return `${options.nameMap.get(guestId)!} (Guest)`;
