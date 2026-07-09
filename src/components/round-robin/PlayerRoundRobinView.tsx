@@ -51,6 +51,7 @@ interface Player {
   registration_status: string;
   is_guest?: boolean;
   guest_display_name?: string | null;
+  guest_linked_user_id?: string | null;
   profiles: {
     id: string;
     full_name: string | null;
