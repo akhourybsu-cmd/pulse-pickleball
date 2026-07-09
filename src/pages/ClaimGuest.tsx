@@ -166,7 +166,10 @@ export default function ClaimGuest() {
     <div className="min-h-screen bg-background flex flex-col">
       <div className="bg-secondary border-b border-secondary-foreground/10">
         <div className="max-w-md mx-auto px-4 h-[64px] flex items-center justify-center">
-          <Logo />
+          {/* Sized + tinted like the PlayerShell header — an unconstrained
+              Logo renders at full container width (~170px tall), overflowing
+              this 64px bar and bleeding over the card below. */}
+          <Logo className="h-[52px] w-auto text-secondary-foreground" />
         </div>
       </div>
 
