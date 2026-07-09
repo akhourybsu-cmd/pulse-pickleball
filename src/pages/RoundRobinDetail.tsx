@@ -2088,7 +2088,14 @@ export default function RoundRobinDetail() {
                         </div>
 
                         
-                        <div className="grid gap-4 md:grid-cols-2">
+                        {/* grid-cols-1 is load-bearing on mobile: without an
+                            explicit track the implicit column sizes to its
+                            content (min-content), so a long doubles pairing
+                            blows the card ~20px past the carousel slide and
+                            gets clipped. minmax(0,1fr) (what grid-cols-1
+                            compiles to) pins the track to the container so the
+                            name truncation below can actually kick in. */}
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                           {courtMatches.map((match, idx) => {
                             const isCompleted = match.team1_score !== null && match.team2_score !== null;
                             const team1Won = isCompleted && match.team1_score! > match.team2_score!;
@@ -2121,7 +2128,7 @@ export default function RoundRobinDetail() {
                                           ? 'bg-primary/15 border border-primary/30' 
                                           : 'bg-muted/50'
                                       }`}>
-                                        <div className={`text-sm truncate flex-1 flex items-center gap-2 ${team1Won ? 'font-semibold' : ''}`}>
+                                        <div className={`text-sm truncate flex-1 min-w-0 flex items-center gap-2 ${team1Won ? 'font-semibold' : ''}`}>
                                           {team1Won && <Trophy className="h-3.5 w-3.5 text-primary flex-shrink-0" />}
                                           <SeatAvatars seats={[
                                             { name: getSeatName(match, 'a1'), avatarUrl: getSeatAvatar(match, 'a1') },
@@ -2152,7 +2159,7 @@ export default function RoundRobinDetail() {
                                           ? 'bg-primary/15 border border-primary/30' 
                                           : 'bg-muted/50'
                                       }`}>
-                                        <div className={`text-sm truncate flex-1 flex items-center gap-2 ${team2Won ? 'font-semibold' : ''}`}>
+                                        <div className={`text-sm truncate flex-1 min-w-0 flex items-center gap-2 ${team2Won ? 'font-semibold' : ''}`}>
                                           {team2Won && <Trophy className="h-3.5 w-3.5 text-primary flex-shrink-0" />}
                                           <SeatAvatars seats={[
                                             { name: getSeatName(match, 'b1'), avatarUrl: getSeatAvatar(match, 'b1') },

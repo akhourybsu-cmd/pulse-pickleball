@@ -640,8 +640,8 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
                                         <span className="font-medium text-foreground">{seatName(match, 'a1')}</span> — BYE
                                       </div>
                                     ) : (
-                                      <div className="flex-1 grid grid-cols-[1fr_auto_1fr] gap-4 items-center">
-                                        <div className={`text-sm ${teamAWon ? "font-semibold text-primary" : ""}`}>
+                                      <div className="flex-1 min-w-0 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] gap-3 items-center">
+                                        <div className={`text-sm truncate ${teamAWon ? "font-semibold text-primary" : ""}`}>
                                           {seatName(match, 'a1')} / {seatName(match, 'a2')}
                                         </div>
                                         <div className="text-center">
@@ -659,7 +659,7 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
                                             <span className="text-muted-foreground text-sm">vs</span>
                                           )}
                                         </div>
-                                        <div className={`text-sm text-right ${teamBWon ? "font-semibold text-primary" : ""}`}>
+                                        <div className={`text-sm text-right truncate ${teamBWon ? "font-semibold text-primary" : ""}`}>
                                           {seatName(match, 'b1')} / {seatName(match, 'b2')}
                                         </div>
                                       </div>
