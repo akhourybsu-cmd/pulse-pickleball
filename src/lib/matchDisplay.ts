@@ -16,6 +16,7 @@ export interface MinimalProfile {
 
 export interface MinimalGuest {
   display_name?: string | null;
+  linked_user_id?: string | null;
 }
 
 /**
