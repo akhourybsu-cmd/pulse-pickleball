@@ -270,17 +270,19 @@ export default function RoundRobinKiosk() {
       if (match.b2_player_id === playerId && match.b2_profile) {
         return match.b2_profile.display_name || match.b2_profile.full_name;
       }
+      const guestLabel = (g?: { display_name?: string | null; linked_user_id?: string | null } | null) =>
+        g?.display_name ? (g.linked_user_id ? g.display_name : `${g.display_name} (Guest)`) : null;
       if (match.a1_guest_id === playerId && match.a1_guest?.display_name) {
-        return `${match.a1_guest.display_name} (Guest)`;
+        return guestLabel(match.a1_guest)!;
       }
       if (match.a2_guest_id === playerId && match.a2_guest?.display_name) {
-        return `${match.a2_guest.display_name} (Guest)`;
+        return guestLabel(match.a2_guest)!;
       }
       if (match.b1_guest_id === playerId && match.b1_guest?.display_name) {
-        return `${match.b1_guest.display_name} (Guest)`;
+        return guestLabel(match.b1_guest)!;
       }
       if (match.b2_guest_id === playerId && match.b2_guest?.display_name) {
-        return `${match.b2_guest.display_name} (Guest)`;
+        return guestLabel(match.b2_guest)!;
       }
     }
     return "Unknown";
