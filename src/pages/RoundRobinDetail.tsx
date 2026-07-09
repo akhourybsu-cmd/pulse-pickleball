@@ -536,7 +536,7 @@ export default function RoundRobinDetail() {
         if (profile?.display_name || profile?.full_name) {
           return profile.display_name || profile.full_name;
         }
-        if (guest?.display_name) return `${guest.display_name} (Guest)`;
+        if (guest?.display_name) return (guest as { linked_user_id?: string | null }).linked_user_id ? guest.display_name : `${guest.display_name} (Guest)`;
       }
     }
 
