@@ -7822,6 +7822,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      resolved_profile_name: { Args: { p_user_id: string }; Returns: string }
       search_connectable_users: {
         Args: { _query: string }
         Returns: {
