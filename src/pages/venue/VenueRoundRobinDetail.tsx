@@ -173,9 +173,10 @@ export default function VenueRoundRobinDetail() {
       const key = p.player_id || p.guest_player_id;
       if (!key) return;
       const guestName = p.guest_players?.display_name || p.guest_name || "Guest";
+      const guestLinked = !!p.guest_players?.linked_user_id;
       const name = p.profiles
         ? p.profiles.display_name || p.profiles.full_name
-        : `${guestName} (Guest)`;
+        : guestLinked ? guestName : `${guestName} (Guest)`;
       stats[key] = {
         player_id: key,
         player_name: name,
