@@ -548,7 +548,7 @@ export default function RoundRobinDetail() {
       return player.profiles.display_name || player.profiles.full_name;
     }
     if (player?.guest_players?.display_name) {
-      return `${player.guest_players.display_name} (Guest)`;
+      return player.guest_players.linked_user_id ? player.guest_players.display_name : `${player.guest_players.display_name} (Guest)`;
     }
     if (player?.guest_name) {
       return `${player.guest_name} (Guest)`;
