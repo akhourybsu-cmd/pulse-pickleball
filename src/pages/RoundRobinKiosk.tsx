@@ -366,13 +366,13 @@ export default function RoundRobinKiosk() {
       const { data: guests } = allGuestIds.size > 0
         ? await supabase
             .from("guest_players")
-            .select("id, display_name")
+            .select("id, display_name, linked_user_id")
             .in("id", Array.from(allGuestIds))
         : { data: [] };
 
       const profileMap = new Map<string, any>((profiles || []).map((p: any) => [p.id, p]));
       const guestMap = new Map<string, any>(
-        (guests || []).map((g: any) => [g.id, { id: g.id, display_name: g.display_name }]),
+        (guests || []).map((g: any) => [g.id, { id: g.id, display_name: g.display_name, linked_user_id: g.linked_user_id }]),
       );
 
       // Backwards-compat for downstream code that previously merged guests
