@@ -329,7 +329,8 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
     if (player.profiles) {
       return player.profiles.display_name || player.profiles.full_name || "Someone";
     }
-    return `${player.guest_display_name || "Guest"} (Guest)`;
+    const name = player.guest_display_name || "Guest";
+    return player.guest_linked_user_id ? name : `${name} (Guest)`;
   };
 
   /** Resolve a seat's name regardless of whether it's a registered player or a guest. */
