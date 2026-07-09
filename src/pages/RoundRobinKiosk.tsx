@@ -84,10 +84,10 @@ interface ScheduleMatch {
   a2_profile?: { display_name: string | null; full_name: string } | null;
   b1_profile?: { display_name: string | null; full_name: string } | null;
   b2_profile?: { display_name: string | null; full_name: string } | null;
-  a1_guest?: { display_name: string | null } | null;
-  a2_guest?: { display_name: string | null } | null;
-  b1_guest?: { display_name: string | null } | null;
-  b2_guest?: { display_name: string | null } | null;
+  a1_guest?: { display_name: string | null; linked_user_id?: string | null } | null;
+  a2_guest?: { display_name: string | null; linked_user_id?: string | null } | null;
+  b1_guest?: { display_name: string | null; linked_user_id?: string | null } | null;
+  b2_guest?: { display_name: string | null; linked_user_id?: string | null } | null;
 }
 
 interface StandingsRow {
