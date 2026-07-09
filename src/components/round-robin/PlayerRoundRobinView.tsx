@@ -236,6 +236,7 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
           registration_status: reg?.registration_status ?? "",
           is_guest: !profile && !!guest,
           guest_display_name: guest?.display_name ?? (reg as any)?.guest_name ?? null,
+          guest_linked_user_id: guest?.linked_user_id ?? null,
           profiles: profile ?? null,
         };
       });
