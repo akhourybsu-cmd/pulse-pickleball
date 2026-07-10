@@ -188,12 +188,20 @@ All colors MUST be HSL.
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
+    /* Stop Android/iOS from auto-inflating text (which reads as a zoom). */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
   }
 
   body {
     @apply bg-background text-foreground font-sans;
     font-feature-settings: "ss01", "cv11", "calt";
     letter-spacing: -0.005em;
+    /* Native-app feel: kill the double-tap-to-zoom gesture + tap delay, and
+       suppress the rubber-band / pull-to-refresh overscroll. Scroll
+       containers set their own touch-action, so this doesn't break scrolling. */
+    touch-action: manipulation;
+    overscroll-behavior-y: none;
   }
 
   /* Display treatment for headings — Sora, tight tracking, balanced wrapping */

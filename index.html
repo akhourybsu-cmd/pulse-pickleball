@@ -8,7 +8,11 @@
     <link rel="icon" href="/pulse-favicon.svg" type="image/svg+xml" />
     <!-- Legacy .ico fallback for browsers without SVG favicon support. -->
     <link rel="alternate icon" href="/favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Native-app feel: lock zoom (pinch + double-tap + iOS focus-zoom) and
+         extend under the notch. maximum-scale/user-scalable are honored in
+         installed PWA (standalone) mode across iOS + Android. viewport-fit=cover
+         activates the env(safe-area-inset-*) padding the shell already uses. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <!-- Theme color matches the PlayerShell top chrome (ink) so the
          mobile browser address bar blends with the app header. -->
     <meta name="theme-color" content="#1B1D21" />
