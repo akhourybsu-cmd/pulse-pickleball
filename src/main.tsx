@@ -3,6 +3,11 @@ import { createRoot } from "react-dom/client";
 import { HelmetProvider } from "react-helmet-async";
 import App from "./App.tsx";
 import "./index.css";
+import { preventPinchZoom } from "./lib/preventZoom";
+
+// Native-app feel: block browser pinch-zoom gestures (viewport meta covers
+// touch pinch/focus-zoom; this covers desktop trackpad + Safari gestures).
+preventPinchZoom();
 
 // Register service worker for PWA
 const isPreviewHost =
