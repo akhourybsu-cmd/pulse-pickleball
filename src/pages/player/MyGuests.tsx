@@ -316,6 +316,69 @@ export default function MyGuests() {
           </div>
         </Card>
 
+        {/* Pending claims — organizer must approve before the guest → player link completes. */}
+        {pendingClaims.length > 0 && (
+          <Card className="p-4 space-y-3 border-primary/40 bg-primary/5">
+            <div>
+              <h2 className="text-sm font-semibold">
+                Pending claims ({pendingClaims.length})
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                These players signed up and are asking to take over their guest
+                profile. Approve to link their PULSE account so match history
+                merges over.
+              </p>
+            </div>
+            <div className="space-y-2">
+              {pendingClaims.map((c) => (
+                <div
+                  key={c.invite_id}
+                  className="flex items-center gap-3 rounded-md border bg-background p-3"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">
+                      {c.claimant_name}
+                      {c.claimant_email && (
+                        <span className="text-muted-foreground font-normal">
+                          {" "}· {c.claimant_email}
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      wants to claim{" "}
+                      <span className="font-medium text-foreground">
+                        {c.guest_name}
+                      </span>
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => rejectClaim(c.invite_id)}
+                    disabled={approvingId === c.invite_id}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => approveClaim(c.invite_id)}
+                    disabled={approvingId === c.invite_id}
+                  >
+                    {approvingId === c.invite_id ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <>
+                        <Check className="h-3.5 w-3.5 mr-1" /> Approve
+                      </>
+                    )}
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
+
+
         {/* Merge toolbar */}
         {guests.length >= 2 && (
           <div className="flex items-center justify-between gap-2">
