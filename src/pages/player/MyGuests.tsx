@@ -84,6 +84,90 @@ export default function MyGuests() {
     },
   });
 
+  // Pending guest claims awaiting the current user's (creator's) approval.
+  // Without this UI, someone who signs up via a claim invite (with no
+  // matching invited_email) gets stuck in "awaiting_approval" forever and
+  // the guest → player merge never completes.
+  const { data: pendingClaims = [], isLoading: pendingLoading } = useQuery({
+    queryKey: ["pending-guest-claims", userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data: invites, error } = await supabase
+        .from("guest_claim_invites")
+        .select("id, guest_player_id, accepted_by_user_id, created_at")
+        .eq("created_by", userId!)
+        .eq("status", "awaiting_approval");
+      if (error) throw error;
+      const rows = invites ?? [];
+      if (rows.length === 0) return [] as Array<{
+        invite_id: string;
+        guest_player_id: string;
+        guest_name: string;
+        claimant_id: string;
+        claimant_name: string;
+        claimant_email: string | null;
+      }>;
+      const guestIds = Array.from(new Set(rows.map((r) => r.guest_player_id)));
+      const userIds = Array.from(
+        new Set(rows.map((r) => r.accepted_by_user_id).filter(Boolean) as string[]),
+      );
+      const [{ data: gs }, { data: ps }] = await Promise.all([
+        supabase.from("guest_players").select("id, display_name").in("id", guestIds),
+        userIds.length
+          ? supabase
+              .from("profiles")
+              .select("id, display_name, full_name, email")
+              .in("id", userIds)
+          : Promise.resolve({ data: [] as any[] } as any),
+      ]);
+      const gMap = new Map((gs ?? []).map((g: any) => [g.id, g.display_name]));
+      const pMap = new Map((ps ?? []).map((p: any) => [p.id, p]));
+      return rows
+        .filter((r) => r.accepted_by_user_id)
+        .map((r) => {
+          const p = pMap.get(r.accepted_by_user_id!) as any;
+          return {
+            invite_id: r.id,
+            guest_player_id: r.guest_player_id,
+            guest_name: (gMap.get(r.guest_player_id) as string) ?? "Guest",
+            claimant_id: r.accepted_by_user_id!,
+            claimant_name: p?.display_name || p?.full_name || "New player",
+            claimant_email: p?.email ?? null,
+          };
+        });
+    },
+  });
+
+  const [approvingId, setApprovingId] = useState<string | null>(null);
+  const approveClaim = async (inviteId: string) => {
+    setApprovingId(inviteId);
+    const { data, error } = await supabase.rpc("approve_guest_claim", {
+      _invite_id: inviteId,
+    });
+    setApprovingId(null);
+    const res = (data ?? {}) as { ok?: boolean; error?: string };
+    if (error || !res.ok) {
+      toast.error(error?.message || res.error || "Could not approve claim.");
+      return;
+    }
+    toast.success("Claim approved — guest is now linked.");
+    qc.invalidateQueries({ queryKey: ["pending-guest-claims", userId] });
+    qc.invalidateQueries({ queryKey: ["my-guest-players", userId] });
+  };
+
+  const rejectClaim = async (inviteId: string) => {
+    if (!confirm("Reject this claim? The invite link becomes unusable.")) return;
+    const { error } = await supabase
+      .from("guest_claim_invites")
+      .update({ status: "revoked" })
+      .eq("id", inviteId);
+    if (error) {
+      toast.error("Could not reject.");
+      return;
+    }
+    qc.invalidateQueries({ queryKey: ["pending-guest-claims", userId] });
+  };
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return guests;
