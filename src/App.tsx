@@ -412,9 +412,11 @@ const AppContent = () => {
             <Route path="leagues" element={<PlayerLeagues />} />
             <Route path="leagues/:leagueId" element={<PlayerLeagueDetail />} />
             {/* League owner surface — same component as /admin/leagues/:id
-                but rendered inside PlayerShell chrome via URL detection. */}
+                but rendered inside PlayerShell chrome via URL detection.
+                NOTE: the /poster variant is mounted OUTSIDE PlayerShell
+                (see top-level route below) so print stylesheets don't
+                capture the sticky header + bottom nav. */}
             <Route path="leagues/:leagueId/manage" element={<AdminLeagueDetail />} />
-            <Route path="leagues/:leagueId/poster" element={<LeaguePoster />} />
             <Route path="guests" element={<MyGuests />} />
             {/* Legacy aliases - kept functional, redirected from old paths */}
             <Route path="find" element={<RedirectWithParams to="/player/play" />} />
