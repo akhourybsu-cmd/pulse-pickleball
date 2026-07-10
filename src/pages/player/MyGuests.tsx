@@ -153,9 +153,13 @@ export default function MyGuests() {
   const confirmMerge = async () => {
     if (!mergeConfirm) return;
     setMerging(true);
+    // Param names must match the SQL function signature exactly
+    // (merge_guest_players(_keep_id, _remove_id)) — PostgREST resolves
+    // functions by named arguments, so the previous p_-prefixed names
+    // made every merge fail with "function not found".
     const { error } = await supabase.rpc("merge_guest_players", {
-      p_keep_id: mergeConfirm.keep.id,
-      p_remove_id: mergeConfirm.remove.id,
+      _keep_id: mergeConfirm.keep.id,
+      _remove_id: mergeConfirm.remove.id,
     } as never);
     setMerging(false);
     if (error) {
