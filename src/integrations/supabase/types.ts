@@ -7299,6 +7299,10 @@ export type Database = {
       }
     }
     Functions: {
+      apply_guest_link: {
+        Args: { _guest_id: string; _user_id: string }
+        Returns: undefined
+      }
       apply_match_rating_incremental: {
         Args: { p_match_id: string }
         Returns: undefined
