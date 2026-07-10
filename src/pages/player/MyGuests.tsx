@@ -23,6 +23,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Check } from "lucide-react";
 import {
   Loader2,
   UserPlus,
@@ -82,6 +83,90 @@ export default function MyGuests() {
       return (data ?? []) as Guest[];
     },
   });
+
+  // Pending guest claims awaiting the current user's (creator's) approval.
+  // Without this UI, someone who signs up via a claim invite (with no
+  // matching invited_email) gets stuck in "awaiting_approval" forever and
+  // the guest → player merge never completes.
+  const { data: pendingClaims = [], isLoading: pendingLoading } = useQuery({
+    queryKey: ["pending-guest-claims", userId],
+    enabled: !!userId,
+    queryFn: async () => {
+      const { data: invites, error } = await supabase
+        .from("guest_claim_invites")
+        .select("id, guest_player_id, accepted_by_user_id, created_at")
+        .eq("created_by", userId!)
+        .eq("status", "awaiting_approval");
+      if (error) throw error;
+      const rows = invites ?? [];
+      if (rows.length === 0) return [] as Array<{
+        invite_id: string;
+        guest_player_id: string;
+        guest_name: string;
+        claimant_id: string;
+        claimant_name: string;
+        claimant_email: string | null;
+      }>;
+      const guestIds = Array.from(new Set(rows.map((r) => r.guest_player_id)));
+      const userIds = Array.from(
+        new Set(rows.map((r) => r.accepted_by_user_id).filter(Boolean) as string[]),
+      );
+      const [{ data: gs }, { data: ps }] = await Promise.all([
+        supabase.from("guest_players").select("id, display_name").in("id", guestIds),
+        userIds.length
+          ? supabase
+              .from("profiles")
+              .select("id, display_name, full_name, email")
+              .in("id", userIds)
+          : Promise.resolve({ data: [] as any[] } as any),
+      ]);
+      const gMap = new Map((gs ?? []).map((g: any) => [g.id, g.display_name]));
+      const pMap = new Map((ps ?? []).map((p: any) => [p.id, p]));
+      return rows
+        .filter((r) => r.accepted_by_user_id)
+        .map((r) => {
+          const p = pMap.get(r.accepted_by_user_id!) as any;
+          return {
+            invite_id: r.id,
+            guest_player_id: r.guest_player_id,
+            guest_name: (gMap.get(r.guest_player_id) as string) ?? "Guest",
+            claimant_id: r.accepted_by_user_id!,
+            claimant_name: p?.display_name || p?.full_name || "New player",
+            claimant_email: p?.email ?? null,
+          };
+        });
+    },
+  });
+
+  const [approvingId, setApprovingId] = useState<string | null>(null);
+  const approveClaim = async (inviteId: string) => {
+    setApprovingId(inviteId);
+    const { data, error } = await supabase.rpc("approve_guest_claim", {
+      _invite_id: inviteId,
+    });
+    setApprovingId(null);
+    const res = (data ?? {}) as { ok?: boolean; error?: string };
+    if (error || !res.ok) {
+      toast.error(error?.message || res.error || "Could not approve claim.");
+      return;
+    }
+    toast.success("Claim approved — guest is now linked.");
+    qc.invalidateQueries({ queryKey: ["pending-guest-claims", userId] });
+    qc.invalidateQueries({ queryKey: ["my-guest-players", userId] });
+  };
+
+  const rejectClaim = async (inviteId: string) => {
+    if (!confirm("Reject this claim? The invite link becomes unusable.")) return;
+    const { error } = await supabase
+      .from("guest_claim_invites")
+      .update({ status: "revoked" })
+      .eq("id", inviteId);
+    if (error) {
+      toast.error("Could not reject.");
+      return;
+    }
+    qc.invalidateQueries({ queryKey: ["pending-guest-claims", userId] });
+  };
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -230,6 +315,69 @@ export default function MyGuests() {
             />
           </div>
         </Card>
+
+        {/* Pending claims — organizer must approve before the guest → player link completes. */}
+        {pendingClaims.length > 0 && (
+          <Card className="p-4 space-y-3 border-primary/40 bg-primary/5">
+            <div>
+              <h2 className="text-sm font-semibold">
+                Pending claims ({pendingClaims.length})
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                These players signed up and are asking to take over their guest
+                profile. Approve to link their PULSE account so match history
+                merges over.
+              </p>
+            </div>
+            <div className="space-y-2">
+              {pendingClaims.map((c) => (
+                <div
+                  key={c.invite_id}
+                  className="flex items-center gap-3 rounded-md border bg-background p-3"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">
+                      {c.claimant_name}
+                      {c.claimant_email && (
+                        <span className="text-muted-foreground font-normal">
+                          {" "}· {c.claimant_email}
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      wants to claim{" "}
+                      <span className="font-medium text-foreground">
+                        {c.guest_name}
+                      </span>
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => rejectClaim(c.invite_id)}
+                    disabled={approvingId === c.invite_id}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => approveClaim(c.invite_id)}
+                    disabled={approvingId === c.invite_id}
+                  >
+                    {approvingId === c.invite_id ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <>
+                        <Check className="h-3.5 w-3.5 mr-1" /> Approve
+                      </>
+                    )}
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
+
 
         {/* Merge toolbar */}
         {guests.length >= 2 && (
