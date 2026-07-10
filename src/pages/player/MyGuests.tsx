@@ -23,6 +23,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Check } from "lucide-react";
 import {
   Loader2,
   UserPlus,
