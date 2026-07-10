@@ -220,7 +220,10 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
         ...match,
         team_a_score: match.team1_score,
         team_b_score: match.team2_score,
-        completed: !!match.team1_score && !!match.team2_score,
+        // Null-check, not truthiness — a 0 score is falsy, so `!!score`
+        // marked every shutout (11-0) as not-completed and dropped it
+        // from standings.
+        completed: match.team1_score !== null && match.team2_score !== null,
       }));
 
       setSchedule(mappedSchedule);
@@ -252,10 +255,15 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
   const calculateStandings = (matches: ScheduleMatch[], playersList: Player[]) => {
     const stats: Record<string, StandingsRow> = {};
 
-    // Initialize stats for all players
+    // Initialize stats for all players. Guests have no player_id — key them
+    // by guest_player_id instead, matching how the schedule seats attribute
+    // results (player_id ?? guest_id below). Keying everyone by player_id
+    // collapsed all guests into one stats[null] row with zero credit.
     playersList.forEach((p) => {
-      stats[p.player_id] = {
-        playerId: p.player_id,
+      const key = p.player_id || (p as any).guest_player_id;
+      if (!key) return;
+      stats[key] = {
+        playerId: key,
         playerName:
           p.profiles?.display_name ||
           p.profiles?.full_name ||

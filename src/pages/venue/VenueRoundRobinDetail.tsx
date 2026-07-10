@@ -747,12 +747,25 @@ export default function VenueRoundRobinDetail() {
         groupId={event.group_id}
         genderFilter={event.format === "male" ? "male" : event.format === "female" ? "female" : undefined}
         onAddPlayer={async ({ playerId, guestPlayerId, guestName }) => {
-          await supabase.from("round_robin_players").insert({
-            event_id: event.id,
-            player_id: playerId,
-            guest_player_id: guestPlayerId ?? null,
-            guest_name: guestName ?? null,
-          } as never);
+          // Reactivate an existing inactive roster row (removed /
+          // substituted-out member coming back) — a blind insert would hit
+          // the partial unique index on (event_id, player_id/guest_id).
+          const existing = players.find((p) =>
+            (playerId && p.player_id === playerId) ||
+            (guestPlayerId && (p as any).guest_player_id === guestPlayerId)
+          );
+          if (existing) {
+            if (!existing.active) {
+              await supabase.from("round_robin_players").update({ active: true }).eq("id", existing.id);
+            }
+          } else {
+            await supabase.from("round_robin_players").insert({
+              event_id: event.id,
+              player_id: playerId,
+              guest_player_id: guestPlayerId ?? null,
+              guest_name: guestName ?? null,
+            } as never);
+          }
           fetchEventDetails();
         }}
         onMarkInactive={async (playerEventId: string) => {

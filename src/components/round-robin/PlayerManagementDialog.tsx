@@ -327,8 +327,11 @@ export function PlayerManagementDialog({
                 genderFilter={genderFilter}
                 groupId={groupId}
                 excludePlayerIds={[
-                  ...players.map(p => p.player_id).filter(Boolean) as string[],
-                  ...players.map(p => p.guest_player_id).filter(Boolean) as string[],
+                  // Active members only — an inactive row means they dropped
+                  // out (removed/substituted) and re-adding them REACTIVATES
+                  // that row, so they must stay pickable here.
+                  ...players.filter(p => p.active).map(p => p.player_id).filter(Boolean) as string[],
+                  ...players.filter(p => p.active).map(p => p.guest_player_id).filter(Boolean) as string[],
                 ]}
                 trigger={
                   <button
@@ -458,8 +461,10 @@ export function PlayerManagementDialog({
                 genderFilter={genderFilter}
                 groupId={groupId}
                 excludePlayerIds={[
-                  ...players.map(p => p.player_id).filter(Boolean) as string[],
-                  ...players.map(p => p.guest_player_id).filter(Boolean) as string[],
+                  // Active only — substituting a dropout back IN is a valid
+                  // move (handleSubstitute reactivates their roster row).
+                  ...players.filter(p => p.active).map(p => p.player_id).filter(Boolean) as string[],
+                  ...players.filter(p => p.active).map(p => p.guest_player_id).filter(Boolean) as string[],
                 ]}
                 trigger={
                   <button
