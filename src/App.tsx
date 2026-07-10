@@ -412,9 +412,11 @@ const AppContent = () => {
             <Route path="leagues" element={<PlayerLeagues />} />
             <Route path="leagues/:leagueId" element={<PlayerLeagueDetail />} />
             {/* League owner surface — same component as /admin/leagues/:id
-                but rendered inside PlayerShell chrome via URL detection. */}
+                but rendered inside PlayerShell chrome via URL detection.
+                NOTE: the /poster variant is mounted OUTSIDE PlayerShell
+                (see top-level route below) so print stylesheets don't
+                capture the sticky header + bottom nav. */}
             <Route path="leagues/:leagueId/manage" element={<AdminLeagueDetail />} />
-            <Route path="leagues/:leagueId/poster" element={<LeaguePoster />} />
             <Route path="guests" element={<MyGuests />} />
             {/* Legacy aliases - kept functional, redirected from old paths */}
             <Route path="find" element={<RedirectWithParams to="/player/play" />} />
@@ -536,6 +538,10 @@ const AppContent = () => {
           <Route path="/admin/leagues" element={<AdminGuard><AdminLeagues /></AdminGuard>} />
           <Route path="/admin/leagues/:leagueId" element={<AuthGuard><AdminLeagueDetail /></AuthGuard>} />
           <Route path="/admin/leagues/:leagueId/poster" element={<AuthGuard><LeaguePoster /></AuthGuard>} />
+          {/* Player-context poster route — mounted OUTSIDE PlayerShell so
+              the sticky header + bottom nav don't overlap the poster on
+              screen or bleed into the printed sheet. */}
+          <Route path="/player/leagues/:leagueId/poster" element={<AuthGuard><LeaguePoster /></AuthGuard>} />
           <Route path="/admin/marketing" element={<AdminGuard><AdminMarketing /></AdminGuard>} />
           <Route path="/admin/audit-log" element={<AdminGuard><AdminAuditLog /></AdminGuard>} />
           <Route path="/admin/test-accounts" element={<AdminGuard><AdminTestAccounts /></AdminGuard>} />
