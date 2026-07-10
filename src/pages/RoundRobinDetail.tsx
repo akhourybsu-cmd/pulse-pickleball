@@ -1025,24 +1025,51 @@ export default function RoundRobinDetail() {
     if (!event || !userId) return;
 
     try {
-      // Add player (or guest placeholder) to event
-      const { error: insertError } = await supabase
-        .from("round_robin_players")
-        .insert({
-          event_id: event.id,
-          player_id: playerId,
-          guest_player_id: guestPlayerId ?? null,
-          guest_name: guestName ?? null,
-        } as never);
+      // A previously removed / substituted-out member keeps an inactive
+      // roster row (and the partial unique indexes on (event_id, player_id)
+      // / (event_id, guest_player_id) still cover it), so adding them back
+      // must REACTIVATE that row — a blind insert hits 23505 and the add
+      // silently fails, which is exactly the "can't reliably replace a
+      // dropout" complaint.
+      const existing = players.find(p =>
+        (playerId && p.player_id === playerId) ||
+        (guestPlayerId && (p as any).guest_player_id === guestPlayerId)
+      );
 
-      if (insertError) throw insertError;
+      if (existing && existing.active) {
+        toast.info("They're already on the active roster");
+        return;
+      }
+
+      if (existing) {
+        const { error: reactivateError } = await supabase
+          .from("round_robin_players")
+          .update({ active: true })
+          .eq("id", existing.id);
+        if (reactivateError) throw reactivateError;
+      } else {
+        const { error: insertError } = await supabase
+          .from("round_robin_players")
+          .insert({
+            event_id: event.id,
+            player_id: playerId,
+            guest_player_id: guestPlayerId ?? null,
+            guest_name: guestName ?? null,
+          } as never);
+        if (insertError) throw insertError;
+      }
 
       // Audit entry
       await supabase.from("round_robin_audit").insert({
         event_id: event.id,
         editor_id: userId,
         change_type: "player_add",
-        changes: { player_id: playerId, guest_player_id: guestPlayerId ?? null, guest_name: guestName ?? null },
+        changes: {
+          player_id: playerId,
+          guest_player_id: guestPlayerId ?? null,
+          guest_name: guestName ?? null,
+          was_reactivated: !!existing,
+        },
         reason: guestName
           ? `Guest player added by organizer (${guestName})`
           : "Player added by organizer",
@@ -1079,21 +1106,27 @@ export default function RoundRobinDetail() {
     if (!player) return;
 
     try {
-      // Delete player record completely so they can rejoin
-      const { error: deleteError } = await supabase
+      // Soft-remove: deactivate instead of deleting the row. Deleting made
+      // anyone with scored matches vanish from standings (standings key off
+      // the roster), and left venue-side inactive rows inconsistent. An
+      // inactive row keeps them in DNF standings, drops them from every
+      // active list and future scheduling, and both Add Player and the
+      // self-serve join RPC reactivate it if they come back.
+      const { error: deactivateError } = await supabase
         .from("round_robin_players")
-        .delete()
+        .update({ active: false })
         .eq("id", playerEventId);
 
-      if (deleteError) throw deleteError;
+      if (deactivateError) throw deactivateError;
 
       // Audit entry with removal round for DNF tracking
       await supabase.from("round_robin_audit").insert({
         event_id: event.id,
         editor_id: userId,
         change_type: "player_removed",
-        changes: { 
+        changes: {
           player_id: player.player_id,
+          guest_player_id: (player as any).guest_player_id ?? null,
           removed_at_round: event.current_round || 1,
         },
         reason: "Player removed from roster (past scores preserved)",
@@ -1353,12 +1386,21 @@ export default function RoundRobinDetail() {
     if (!event || !userId) return;
 
     try {
-      const match = schedule.find(m => m.id === matchId);
+      const match = schedule.find(m => m.id === matchId) as any;
       if (!match) return;
 
-      const updates = team === 'A' 
-        ? { a1_player_id: match.a2_player_id, a2_player_id: match.a1_player_id }
-        : { b1_player_id: match.b2_player_id, b2_player_id: match.b1_player_id };
+      // A seat is a (player_id, guest_id) PAIR — exactly one is set. Swapping
+      // only the player columns strands a guest in place (or collides two
+      // occupants in one seat) whenever a team mixes a player and a guest.
+      const updates = team === 'A'
+        ? {
+            a1_player_id: match.a2_player_id, a1_guest_id: match.a2_guest_id,
+            a2_player_id: match.a1_player_id, a2_guest_id: match.a1_guest_id,
+          }
+        : {
+            b1_player_id: match.b2_player_id, b1_guest_id: match.b2_guest_id,
+            b2_player_id: match.b1_player_id, b2_guest_id: match.b1_guest_id,
+          };
 
       const { error } = await supabase
         .from("round_robin_schedule")
@@ -1375,9 +1417,9 @@ export default function RoundRobinDetail() {
           action: "swap_partners",
           match_id: matchId,
           team,
-          before: team === 'A' 
-            ? { a1: match.a1_player_id, a2: match.a2_player_id }
-            : { b1: match.b1_player_id, b2: match.b2_player_id },
+          before: team === 'A'
+            ? { a1: match.a1_player_id ?? match.a1_guest_id, a2: match.a2_player_id ?? match.a2_guest_id }
+            : { b1: match.b1_player_id ?? match.b1_guest_id, b2: match.b2_player_id ?? match.b2_guest_id },
           after: updates,
         },
         reason: `Swapped partners in Team ${team} for Round ${match.round_no}, Court ${match.court_no}`,
@@ -1396,24 +1438,27 @@ export default function RoundRobinDetail() {
     if (!event || !userId) return;
 
     try {
-      const match1 = schedule.find(m => m.id === match1Id);
-      const match2 = schedule.find(m => m.id === match2Id);
+      const match1 = schedule.find(m => m.id === match1Id) as any;
+      const match2 = schedule.find(m => m.id === match2Id) as any;
       if (!match1 || !match2) return;
 
-      // Swap Team B from match1 with Team A from match2
+      // Swap Team B from match1 with Team A from match2. Each seat moves as
+      // a (player_id, guest_id) pair — moving only the player column strands
+      // guest occupants (they'd stay in the old match AND block the new
+      // occupant's seat).
       await supabase
         .from("round_robin_schedule")
         .update({
-          b1_player_id: match2.a1_player_id,
-          b2_player_id: match2.a2_player_id,
+          b1_player_id: match2.a1_player_id, b1_guest_id: match2.a1_guest_id,
+          b2_player_id: match2.a2_player_id, b2_guest_id: match2.a2_guest_id,
         })
         .eq("id", match1Id);
 
       await supabase
         .from("round_robin_schedule")
         .update({
-          a1_player_id: match1.b1_player_id,
-          a2_player_id: match1.b2_player_id,
+          a1_player_id: match1.b1_player_id, a1_guest_id: match1.b1_guest_id,
+          a2_player_id: match1.b2_player_id, a2_guest_id: match1.b2_guest_id,
         })
         .eq("id", match2Id);
 
@@ -1425,6 +1470,8 @@ export default function RoundRobinDetail() {
           action: "swap_opponents",
           match1_id: match1Id,
           match2_id: match2Id,
+          moved_to_match1_b: [match2.a1_player_id ?? match2.a1_guest_id, match2.a2_player_id ?? match2.a2_guest_id],
+          moved_to_match2_a: [match1.b1_player_id ?? match1.b1_guest_id, match1.b2_player_id ?? match1.b2_guest_id],
         },
         reason: `Swapped opponents between Round ${match1.round_no} Court ${match1.court_no} and Court ${match2.court_no}`,
       });
