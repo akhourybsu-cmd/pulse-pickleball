@@ -7745,8 +7745,8 @@ export type Database = {
         }[]
       }
       merge_guest_players: {
-        Args: { p_keep_id: string; p_remove_id: string }
-        Returns: string
+        Args: { _keep_id: string; _remove_id: string }
+        Returns: Json
       }
       move_to_dlq: {
         Args: {
