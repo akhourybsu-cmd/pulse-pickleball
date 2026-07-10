@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { isPlatformAdmin } from "@/lib/permissions";
+import { resolveParticipantName } from "@/lib/matchDisplay";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -124,38 +125,39 @@ const AdminMatches = () => {
       return;
     }
 
-    // Get all participants for each match
-    const matchRows: MatchRow[] = await Promise.all(
-      (matchesData || []).map(async (match: any) => {
-        const { data: participants } = await supabase
-          .from("match_participants")
-          .select("player_id")
-          .eq("match_id", match.id);
+    // One batched, guest-aware participant fetch for every match. The
+    // previous version issued 2 queries PER MATCH and selected only
+    // player_id — guest participants (player_id NULL, guest_player_id
+    // set) resolved to zero profiles, so all-guest matches (round robins
+    // with guests) rendered "no players" on the directory cards.
+    const matchIds = (matchesData || []).map((m: any) => m.id);
+    const namesByMatch = new Map<string, string[]>();
+    if (matchIds.length > 0) {
+      const { data: allParticipants, error: participantsError } = await supabase
+        .from("match_participants")
+        .select(`
+          match_id,
+          player_id,
+          guest_player_id,
+          profiles:profiles_public!match_participants_player_id_fkey(display_name, full_name),
+          guest:guest_players!match_participants_guest_player_id_fkey(display_name, linked_user_id)
+        `)
+        .in("match_id", matchIds);
 
-        // Fetch player profiles separately to avoid join issues
-        const playerNames: string[] = [];
-        if (participants && participants.length > 0) {
-          const playerIds = participants.map(p => p.player_id);
-          const { data: profiles, error: profilesError } = await supabase
-            .from("profiles")
-            .select("id, display_name, full_name")
-            .in("id", playerIds);
-          
-          if (profilesError) {
-            console.error("Error fetching profiles for match", match.id, profilesError);
-          }
-          
-          if (profiles && profiles.length > 0) {
-            profiles.forEach(p => {
-              playerNames.push(p.display_name || p.full_name || "Unknown");
-            });
-            console.log(`Match ${match.id}: Found ${playerNames.length} players:`, playerNames);
-          } else {
-            console.warn("No profiles found for match", match.id, "playerIds:", playerIds);
-          }
-        } else {
-          console.warn("No participants found for match", match.id);
-        }
+      if (participantsError) {
+        console.error("Error fetching match participants:", participantsError);
+      }
+
+      for (const p of (allParticipants || []) as any[]) {
+        const name = resolveParticipantName(p);
+        const arr = namesByMatch.get(p.match_id) ?? [];
+        arr.push(name);
+        namesByMatch.set(p.match_id, arr);
+      }
+    }
+
+    const matchRows: MatchRow[] = (matchesData || []).map((match: any) => {
+        const playerNames = namesByMatch.get(match.id) ?? [];
 
         let courtName = "Unknown Location";
         if (match.other_location) {
@@ -184,8 +186,7 @@ const AdminMatches = () => {
           voided: match.voided || false,
           void_reason: match.void_reason,
         };
-      })
-    );
+      });
 
     setMatches(matchRows);
     setLoading(false);
