@@ -536,7 +536,7 @@ export default function RoundRobinDetail() {
         if (profile?.display_name || profile?.full_name) {
           return profile.display_name || profile.full_name;
         }
-        if (guest?.display_name) return (guest as { linked_user_id?: string | null }).linked_user_id ? guest.display_name : `${guest.display_name} (Guest)`;
+        if (guest?.display_name) return (guest as { linked_user_id?: string | null }).linked_user_id ? guest.display_name : `${guest.display_name} (G)`;
       }
     }
 
@@ -548,10 +548,10 @@ export default function RoundRobinDetail() {
       return player.profiles.display_name || player.profiles.full_name;
     }
     if (player?.guest_players?.display_name) {
-      return player.guest_players.linked_user_id ? player.guest_players.display_name : `${player.guest_players.display_name} (Guest)`;
+      return player.guest_players.linked_user_id ? player.guest_players.display_name : `${player.guest_players.display_name} (G)`;
     }
     if (player?.guest_name) {
-      return `${player.guest_name} (Guest)`;
+      return `${player.guest_name} (G)`;
     }
     return "Unknown Player";
   };
@@ -614,7 +614,7 @@ export default function RoundRobinDetail() {
       const guestLinked = !!guestRow?.linked_user_id;
       const name = p.profiles
         ? p.profiles.display_name || p.profiles.full_name
-        : guestLinked ? guestName : `${guestName} (Guest)`;
+        : guestLinked ? guestName : `${guestName} (G)`;
       stats[key] = {
         player_id: key,
         player_name: name,
@@ -2336,7 +2336,7 @@ export default function RoundRobinDetail() {
                         const displayName =
                           player.profiles?.display_name ||
                           player.profiles?.full_name ||
-                          (guestName ? (guest?.linked_user_id ? guestName : `${guestName} (Guest)`) : "Guest");
+                          (guestName ? (guest?.linked_user_id ? guestName : `${guestName} (G)`) : "Guest");
                         return (
                         <div key={player.id} className="flex items-center justify-between p-3 border rounded-lg">
                           <div className="font-medium">

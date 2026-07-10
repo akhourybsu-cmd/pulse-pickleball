@@ -66,11 +66,11 @@ export function getSeatName(
   if (guest?.display_name) {
     return guest.linked_user_id
       ? guest.display_name
-      : `${guest.display_name} (Guest)`;
+      : `${guest.display_name} (G)`;
   }
 
   if (playerId && options?.nameMap?.has(playerId)) return options.nameMap.get(playerId)!;
-  if (guestId && options?.nameMap?.has(guestId)) return `${options.nameMap.get(guestId)!} (Guest)`;
+  if (guestId && options?.nameMap?.has(guestId)) return `${options.nameMap.get(guestId)!} (G)`;
 
   if (!playerId && !guestId) return empty;
   return "Unknown Player";
