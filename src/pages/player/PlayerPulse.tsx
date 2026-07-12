@@ -213,6 +213,9 @@ export default function PlayerPulse() {
                       />
                       <XAxis
                         dataKey="index"
+                        type="number"
+                        domain={[1, "dataMax"]}
+                        allowDecimals={false}
                         tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
                         tickLine={false}
                         axisLine={false}
@@ -232,10 +235,9 @@ export default function PlayerPulse() {
                               const p = payload?.[0]?.payload;
                               return p ? relativeDate(p.date) : "";
                             }}
-                            formatter={(value) => [
-                              Number(value).toFixed(2),
-                              " PULSE",
-                            ]}
+                            formatter={(value) =>
+                              `${Number(value).toFixed(2)} PULSE`
+                            }
                           />
                         }
                       />
