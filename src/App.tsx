@@ -153,6 +153,7 @@ const PlayerDashboard = lazy(() => import("./pages/player/PlayerDashboard"));
 const PlayerLeagues = lazy(() => import("./pages/player/PlayerLeagues"));
 const PlayerLeagueDetail = lazy(() => import("./pages/player/PlayerLeagueDetail"));
 const PlayerProfile = lazy(() => import("./pages/player/PlayerProfile"));
+const PlayerPulse = lazy(() => import("./pages/player/PlayerPulse"));
 const MyRoundRobinsPage = lazy(() => import("./pages/player/MyRoundRobinsPage"));
 const PlayHub = lazy(() => import("./pages/play/PlayHub"));
 
@@ -402,6 +403,9 @@ const AppContent = () => {
             <Route path="matches/pending" element={<Navigate to="/player/matches?tab=pending" replace />} />
             <Route path="play" element={<PlayHub />} />
             <Route path="profile" element={<PlayerProfile />} />
+            {/* Player Pulse — interactive rating analytics. Opened by tapping
+                the PULSE rating pill on the dashboard/profile identity card. */}
+            <Route path="pulse" element={<PlayerPulse />} />
             {/* My Round Robins history — replaces the catch-all /round-robin
                 hub link that used to live on the dashboard. Past + active
                 events in one place. */}

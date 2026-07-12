@@ -92,8 +92,14 @@ export const PlayerIdentityCard = ({
               {name}
             </h2>
             
-            {/* Rating Pill — slightly larger + tabular nums + subtle border for premium feel */}
-            <div className="inline-flex items-center gap-1.5 bg-primary/10 border border-primary/20 text-primary rounded-full pl-2 pr-3 py-1 w-fit hover:bg-primary/15 transition-all cursor-default">
+            {/* Rating Pill — taps through to Player Pulse, the interactive
+                analytics screen that tells the story behind the number. */}
+            <button
+              type="button"
+              onClick={() => navigate("/player/pulse")}
+              aria-label="View your Player Pulse analytics"
+              className="inline-flex items-center gap-1.5 bg-primary/10 border border-primary/20 text-primary rounded-full pl-2 pr-3 py-1 w-fit hover:bg-primary/15 active:scale-[0.98] transition-all cursor-pointer"
+            >
               <Star className="h-3.5 w-3.5 fill-primary" />
               <span className="text-sm font-bold tabular-nums tracking-tight">
                 {hasRating ? currentRating.toFixed(2) : "—"}
@@ -101,7 +107,7 @@ export const PlayerIdentityCard = ({
               <span className="text-[11px] font-medium text-primary/80 uppercase tracking-wider">
                 {hasRating ? "PULSE" : "No Rating"}
               </span>
-            </div>
+            </button>
             
             {/* Location */}
             {location ? (
