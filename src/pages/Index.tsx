@@ -5,9 +5,9 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   HomepageNav,
   HeroSection,
-  QuickActionTiles,
-  HowItWorksSection,
   PlayerFeaturesSection,
+  FeatureSpotlights,
+  HowItWorksSection,
   SplitCTASection,
   HomepageFooter,
 } from "@/components/homepage";
@@ -76,10 +76,13 @@ const Index = () => {
       <main>
         {/* Player-only public composition. Venue / tournament surfaces are
             hidden during the player-focused beta — the routes still exist
-            for direct navigation, just no UI affordances surface them. */}
+            for direct navigation, just no UI affordances surface them.
+            Flow: hook (hero) → full toolkit (features) → depth on the two
+            flagship surfaces (spotlights) → onboarding (how it works) →
+            close (CTA). */}
         <HeroSection />
-        <QuickActionTiles />
         <PlayerFeaturesSection />
+        <FeatureSpotlights />
         <HowItWorksSection />
         <SplitCTASection />
       </main>
