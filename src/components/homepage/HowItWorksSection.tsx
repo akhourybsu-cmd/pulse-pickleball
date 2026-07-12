@@ -10,18 +10,18 @@ import { UserPlus, Gamepad2, TrendingUp } from "lucide-react";
 const playerSteps = [
   {
     icon: UserPlus,
-    title: "Create Profile",
-    description: "Sign up and set your initial skill level",
+    title: "Set your level",
+    description: "Sign up free and tell us where your game is today",
   },
   {
     icon: Gamepad2,
-    title: "Play & Record",
-    description: "Log matches with a single tap after you play",
+    title: "Hit the court",
+    description: "Log every match, round robin, and league in a tap",
   },
   {
     icon: TrendingUp,
-    title: "Level Up",
-    description: "Watch your PULSE rating evolve with every game",
+    title: "Watch it climb",
+    description: "Your PULSE rating recalibrates after every game",
   },
 ];
 
@@ -29,11 +29,11 @@ export const HowItWorksSection = () => {
   return (
     <section className="py-16 md:py-24 bg-muted/30">
       <div className="container mx-auto px-4">
-        <h2 className="text-2xl md:text-3xl font-bold font-display text-center mb-4">
-          How It Works
+        <h2 className="text-3xl md:text-4xl font-bold font-display text-center mb-4">
+          From first serve to season champ
         </h2>
-        <p className="text-muted-foreground text-center mb-12 max-w-md mx-auto">
-          Get started in three simple steps
+        <p className="text-lg text-muted-foreground text-center mb-12 max-w-md mx-auto">
+          Three steps to get on the court
         </p>
 
         <div className="max-w-4xl mx-auto">
