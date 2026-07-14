@@ -4310,6 +4310,7 @@ export type Database = {
           rating_type: Database["public"]["Enums"]["rating_type"]
           registration_deadline: string | null
           registration_mode: string | null
+          schedule_version: number
           start_time: string | null
           status: Database["public"]["Enums"]["round_robin_status"]
           updated_at: string
@@ -4344,6 +4345,7 @@ export type Database = {
           rating_type?: Database["public"]["Enums"]["rating_type"]
           registration_deadline?: string | null
           registration_mode?: string | null
+          schedule_version?: number
           start_time?: string | null
           status?: Database["public"]["Enums"]["round_robin_status"]
           updated_at?: string
@@ -4378,6 +4380,7 @@ export type Database = {
           rating_type?: Database["public"]["Enums"]["rating_type"]
           registration_deadline?: string | null
           registration_mode?: string | null
+          schedule_version?: number
           start_time?: string | null
           status?: Database["public"]["Enums"]["round_robin_status"]
           updated_at?: string
@@ -4408,6 +4411,7 @@ export type Database = {
         Row: {
           active: boolean
           bye_count: number
+          effective_round: number | null
           event_id: string
           guest_name: string | null
           guest_player_id: string | null
@@ -4415,10 +4419,18 @@ export type Database = {
           joined_at: string
           player_id: string | null
           registration_status: string | null
+          replaced_participant_id: string | null
+          replacement_participant_id: string | null
+          status: Database["public"]["Enums"]["rr_participant_status"]
+          updated_at: string
+          updated_by: string | null
+          withdrawal_reason: string | null
+          withdrawn_at: string | null
         }
         Insert: {
           active?: boolean
           bye_count?: number
+          effective_round?: number | null
           event_id: string
           guest_name?: string | null
           guest_player_id?: string | null
@@ -4426,10 +4438,18 @@ export type Database = {
           joined_at?: string
           player_id?: string | null
           registration_status?: string | null
+          replaced_participant_id?: string | null
+          replacement_participant_id?: string | null
+          status?: Database["public"]["Enums"]["rr_participant_status"]
+          updated_at?: string
+          updated_by?: string | null
+          withdrawal_reason?: string | null
+          withdrawn_at?: string | null
         }
         Update: {
           active?: boolean
           bye_count?: number
+          effective_round?: number | null
           event_id?: string
           guest_name?: string | null
           guest_player_id?: string | null
@@ -4437,6 +4457,13 @@ export type Database = {
           joined_at?: string
           player_id?: string | null
           registration_status?: string | null
+          replaced_participant_id?: string | null
+          replacement_participant_id?: string | null
+          status?: Database["public"]["Enums"]["rr_participant_status"]
+          updated_at?: string
+          updated_by?: string | null
+          withdrawal_reason?: string | null
+          withdrawn_at?: string | null
         }
         Relationships: [
           {
@@ -4467,6 +4494,20 @@ export type Database = {
             referencedRelation: "profiles_public"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "round_robin_players_replaced_participant_id_fkey"
+            columns: ["replaced_participant_id"]
+            isOneToOne: false
+            referencedRelation: "round_robin_players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "round_robin_players_replacement_participant_id_fkey"
+            columns: ["replacement_participant_id"]
+            isOneToOne: false
+            referencedRelation: "round_robin_players"
+            referencedColumns: ["id"]
+          },
         ]
       }
       round_robin_schedule: {
@@ -4475,6 +4516,9 @@ export type Database = {
           a1_player_id: string | null
           a2_guest_id: string | null
           a2_player_id: string | null
+          abandoned: boolean
+          abandoned_at: string | null
+          abandoned_reason: string | null
           b1_guest_id: string | null
           b1_player_id: string | null
           b2_guest_id: string | null
@@ -4484,7 +4528,9 @@ export type Database = {
           event_id: string
           id: string
           is_bye: boolean
+          locked_at: string | null
           match_id: string | null
+          original_schedule_id: string | null
           round_no: number
           team1_score: number | null
           team2_score: number | null
@@ -4494,6 +4540,9 @@ export type Database = {
           a1_player_id?: string | null
           a2_guest_id?: string | null
           a2_player_id?: string | null
+          abandoned?: boolean
+          abandoned_at?: string | null
+          abandoned_reason?: string | null
           b1_guest_id?: string | null
           b1_player_id?: string | null
           b2_guest_id?: string | null
@@ -4503,7 +4552,9 @@ export type Database = {
           event_id: string
           id?: string
           is_bye?: boolean
+          locked_at?: string | null
           match_id?: string | null
+          original_schedule_id?: string | null
           round_no: number
           team1_score?: number | null
           team2_score?: number | null
@@ -4513,6 +4564,9 @@ export type Database = {
           a1_player_id?: string | null
           a2_guest_id?: string | null
           a2_player_id?: string | null
+          abandoned?: boolean
+          abandoned_at?: string | null
+          abandoned_reason?: string | null
           b1_guest_id?: string | null
           b1_player_id?: string | null
           b2_guest_id?: string | null
@@ -4522,7 +4576,9 @@ export type Database = {
           event_id?: string
           id?: string
           is_bye?: boolean
+          locked_at?: string | null
           match_id?: string | null
+          original_schedule_id?: string | null
           round_no?: number
           team1_score?: number | null
           team2_score?: number | null
@@ -4624,6 +4680,13 @@ export type Database = {
             columns: ["match_id"]
             isOneToOne: false
             referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "round_robin_schedule_original_schedule_id_fkey"
+            columns: ["original_schedule_id"]
+            isOneToOne: false
+            referencedRelation: "round_robin_schedule"
             referencedColumns: ["id"]
           },
         ]
@@ -7964,6 +8027,12 @@ export type Database = {
       rating_type: "ladder" | "league" | "playoffs" | "casual"
       registration_status: "pending" | "confirmed" | "waitlisted" | "cancelled"
       round_robin_status: "draft" | "live" | "completed" | "voided"
+      rr_participant_status:
+        | "active"
+        | "withdrawn"
+        | "injured"
+        | "removed"
+        | "replaced"
       subscription_tier: "free" | "plus" | "pro" | "enterprise"
       tournament_status:
         | "draft"
@@ -8137,6 +8206,13 @@ export const Constants = {
       rating_type: ["ladder", "league", "playoffs", "casual"],
       registration_status: ["pending", "confirmed", "waitlisted", "cancelled"],
       round_robin_status: ["draft", "live", "completed", "voided"],
+      rr_participant_status: [
+        "active",
+        "withdrawn",
+        "injured",
+        "removed",
+        "replaced",
+      ],
       subscription_tier: ["free", "plus", "pro", "enterprise"],
       tournament_status: [
         "draft",
