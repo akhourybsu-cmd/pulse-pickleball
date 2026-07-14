@@ -23,3 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 .claude/
+
+# Slice 2a integration-test secrets (never commit)
+tests/rr_slice2a/.env.test

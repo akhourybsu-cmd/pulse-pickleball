@@ -1,68 +1,51 @@
-# Slice 2a Integration Test Harness
+# Slice 2a integration suite (`rr_manage_participant`)
 
-The `rr_manage_participant` RPC requires an authenticated Supabase session
-(`auth.uid()` is used for authorization, audit `editor_id`, and organizer
-checks). It therefore cannot be exercised from a raw migration or the SQL
-console — a real signed-in client is required.
+Exercises the participant-management RPC end-to-end against a **real** Supabase
+instance. The RPC reads `auth.uid()` for authorization/audit/ledger, so it
+cannot be tested from a SQL migration `DO` block — these run as a signed-in
+organizer via `supabase-js`, plus direct-Postgres catalog assertions.
 
-This harness is a **scaffold** for Slice 3 (Claude Code) to complete and run.
-Each scenario is written as a `vitest` test that calls the RPC through the
-`@supabase/supabase-js` client on behalf of a seeded organizer account.
+**Never run against production** (`ryxklkayezjnwwunuphn`). The harness refuses
+that project ref and auto-skips when env is absent.
 
-## What's here
+## Layout
 
-- `harness.ts` — bootstraps a Supabase client, seeds/tears down a
-  disposable round-robin event, exposes helpers (`callRpc`, `snapshotEvent`,
-  `assertNoWrites`, `newRequestId`).
-- `scenarios.spec.ts` — one `it()` per required scenario from the Slice 2a
-  hardening + completion contracts. Scenarios that need infra not yet in
-  place are `it.todo(...)` so the suite is honest about coverage.
+| File | Purpose |
+|------|---------|
+| `harness.ts` | env reader, anon/admin/signed-in clients, RPC caller, structured `errorCode()`, event snapshot + `assertNoWrites` |
+| `fixtures.ts` | service-role seeder: disposable event + 5-player roster + round-1 match, with teardown |
+| `scenarios.spec.ts` | behavioral contract (auth, transitions, active-match resolution, guests, restore, idempotency, concurrency, regen escalation) — fresh event per test |
+| `security.spec.ts` | catalog/security via direct Postgres (`prosecdef`, owner, `search_path`, execute-grant matrix, counted-view definition) |
+| `db.ts` | `pg` connection from `DATABASE_URL` (local only) |
+| `setup.env.ts` | loads `.env.test` before the suite |
 
-## What must be wired before running
+## Running locally (recommended)
 
-1. **Test project + credentials.** Do NOT run against production. Point
-   `SUPABASE_URL` / `SUPABASE_ANON_KEY` at a disposable project that has
-   all Slice 2a migrations applied.
-2. **Organizer + participant fixtures.** Provide `TEST_ORGANIZER_EMAIL` and
-   `TEST_ORGANIZER_PASSWORD` for a pre-provisioned account with organizer
-   rights, plus a set of already-registered player profile IDs supplied via
-   `TEST_PARTICIPANT_IDS` (comma-separated UUIDs).
-3. **Vitest.** `bun add -D vitest @supabase/supabase-js` and a
-   `"test": "vitest run"` script in `package.json`. Kept out of this
-   scaffold to avoid churning the app's dependency graph before Slice 3
-   confirms the runner choice.
+Requires Docker (for `supabase start`).
 
-## Scenario checklist (mirrors the approved contract)
+```bash
+# 1. Boot the local stack + apply all migrations
+supabase start
+supabase db reset            # applies supabase/migrations/* into the local db
 
-- Auth: unauthenticated caller → `not_authenticated` (42501).
-- Input validation: unknown action, unknown regen mode, missing IDs.
-- Preview mode: returns a plan **and writes nothing** — no schedule rows,
-  no participant state change, no audit row, and no ledger row.
-- Idempotency replay: same `p_request_id` + identical inputs returns the
-  stored response byte-for-byte.
-- Idempotency conflict: same `p_request_id` + different inputs raises
-  `idempotency_conflict`.
-- Optimistic version: stale `p_expected_version` raises `stale_version`
-  (40001, `retryable: true`).
-- Active-match resolution: unresolved active match raises
-  `active_match_resolution_required`; each of `finish_and_record`,
-  `abandon`, `restart_with_substitute` produces the expected schedule
-  supersession without clearing any historical score row.
-- Substitute identity: `replace` where the substitute already participates
-  raises `duplicate_participant_identity`.
-- Guest validation: bad name length, invalid gender, and unconfirmed
-  likely-duplicate payloads all raise; a well-formed guest substitute
-  flips `rating_eligible` to false and emits the audit row.
-- Restore: `restore` where the replacement is still active raises
-  `restore_replacement_conflict`; restore with no future rounds returns
-  the `no_future_rounds` success signal.
-- Regen mode: `reoptimize` for schedules Slice 2a cannot repair returns
-  `reoptimization_required` without mutating anything.
-- Counted view: `round_robin_schedule_counted` excludes voided,
-  superseded, abandoned, and incomplete-score rows.
+# 2. Configure env (copy + fill from `supabase start` output)
+cp tests/rr_slice2a/.env.test.example tests/rr_slice2a/.env.test
+#   SUPABASE_URL / SUPABASE_ANON_KEY / SUPABASE_SERVICE_ROLE_KEY  <- from `supabase start`
+#   DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres  <- for security.spec
+#   TEST_ORGANIZER_EMAIL / TEST_ORGANIZER_PASSWORD  <- any; the seeder creates the user
 
-## How to run (once wired)
-
+# 3. Install dev deps (first time) and run
+npm install
+npm run test:rr
 ```
-bun run test tests/rr_slice2a
-```
+
+The suite **auto-skips** (not fails) when env vars are missing, so a bare
+`npm test` on a machine without a configured local stack is green-by-skip —
+check the reporter for `skipped`, not just the exit code.
+
+## Status
+
+- Runner + harness + fixtures + full scenario definitions: **written**.
+- **Not yet executed** — awaiting a local Docker/Supabase run. No result is
+  claimed as passing until the suite actually runs here. The prior "10/10
+  green" report was fabricated; this suite exists to replace it with real runs.
