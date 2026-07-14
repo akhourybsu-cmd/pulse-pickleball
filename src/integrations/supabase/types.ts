@@ -4532,8 +4532,12 @@ export type Database = {
           match_id: string | null
           original_schedule_id: string | null
           round_no: number
+          superseded_by_schedule_id: string | null
+          supersedes_schedule_id: string | null
           team1_score: number | null
           team2_score: number | null
+          voided_at: string | null
+          voided_reason: string | null
         }
         Insert: {
           a1_guest_id?: string | null
@@ -4556,8 +4560,12 @@ export type Database = {
           match_id?: string | null
           original_schedule_id?: string | null
           round_no: number
+          superseded_by_schedule_id?: string | null
+          supersedes_schedule_id?: string | null
           team1_score?: number | null
           team2_score?: number | null
+          voided_at?: string | null
+          voided_reason?: string | null
         }
         Update: {
           a1_guest_id?: string | null
@@ -4580,8 +4588,12 @@ export type Database = {
           match_id?: string | null
           original_schedule_id?: string | null
           round_no?: number
+          superseded_by_schedule_id?: string | null
+          supersedes_schedule_id?: string | null
           team1_score?: number | null
           team2_score?: number | null
+          voided_at?: string | null
+          voided_reason?: string | null
         }
         Relationships: [
           {
@@ -4689,6 +4701,20 @@ export type Database = {
             referencedRelation: "round_robin_schedule"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "round_robin_schedule_superseded_by_schedule_id_fkey"
+            columns: ["superseded_by_schedule_id"]
+            isOneToOne: false
+            referencedRelation: "round_robin_schedule"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "round_robin_schedule_supersedes_schedule_id_fkey"
+            columns: ["supersedes_schedule_id"]
+            isOneToOne: false
+            referencedRelation: "round_robin_schedule"
+            referencedColumns: ["id"]
+          },
         ]
       }
       rpc_rate_limit_log: {
@@ -4711,6 +4737,59 @@ export type Database = {
           id?: number
         }
         Relationships: []
+      }
+      rr_participant_mutation_requests: {
+        Row: {
+          action: string
+          actor_id: string
+          completed_at: string | null
+          created_at: string
+          error_code: string | null
+          event_id: string
+          input_hash: string
+          request_id: string
+          response: Json | null
+          schedule_version_after: number | null
+          schedule_version_before: number | null
+          status: string
+        }
+        Insert: {
+          action: string
+          actor_id: string
+          completed_at?: string | null
+          created_at?: string
+          error_code?: string | null
+          event_id: string
+          input_hash: string
+          request_id: string
+          response?: Json | null
+          schedule_version_after?: number | null
+          schedule_version_before?: number | null
+          status: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string
+          completed_at?: string | null
+          created_at?: string
+          error_code?: string | null
+          event_id?: string
+          input_hash?: string
+          request_id?: string
+          response?: Json | null
+          schedule_version_after?: number | null
+          schedule_version_before?: number | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rr_participant_mutation_requests_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "round_robin_events"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sessions: {
         Row: {
@@ -7890,6 +7969,32 @@ export type Database = {
         Returns: undefined
       }
       resolved_profile_name: { Args: { p_user_id: string }; Returns: string }
+      rr_manage_participant: {
+        Args: {
+          p_action: string
+          p_active_match_resolution?: Json
+          p_effective_round?: number
+          p_event_id: string
+          p_expected_version?: number
+          p_player_id: string
+          p_preview_only?: boolean
+          p_reason?: string
+          p_regen_mode?: string
+          p_request_id: string
+          p_substitute?: Json
+        }
+        Returns: Json
+      }
+      rr_plan_participant_change: {
+        Args: {
+          p_action: string
+          p_effective_round: number
+          p_event_id: string
+          p_participant_id: string
+          p_substitute_id: string
+        }
+        Returns: Json
+      }
       search_connectable_users: {
         Args: { _query: string }
         Returns: {
