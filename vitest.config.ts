@@ -1,4 +1,5 @@
 import { defineConfig } from "vitest/config";
+import { fileURLToPath } from "node:url";
 
 /**
  * Vitest config for the Slice 2a round-robin integration suite.
@@ -13,6 +14,13 @@ import { defineConfig } from "vitest/config";
  * production. See tests/rr_slice2a/README.md.
  */
 export default defineConfig({
+  resolve: {
+    // Match the app's "@/*" -> "src/*" path alias (tsconfig paths) so tests
+    // can import application modules the same way app code does.
+    alias: {
+      "@": fileURLToPath(new URL("./src", import.meta.url)),
+    },
+  },
   test: {
     // Node environment — no jsdom; we talk to Postgres via supabase-js.
     environment: "node",

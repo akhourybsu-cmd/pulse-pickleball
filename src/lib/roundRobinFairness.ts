@@ -129,7 +129,11 @@ export function initializePlayerStats(
 
     // Update stats for each player
     players.forEach((playerId) => {
-      const stat = stats.get(playerId)!;
+      // Tolerate ids present in completed history but absent from the roster
+      // (e.g. a participant withdrawn/removed after playing earlier rounds).
+      // Previously this did `stats.get(id)!` and threw on any such id.
+      const stat = stats.get(playerId);
+      if (!stat) return;
       stat.gamesPlayed++;
       stat.lastPlayedRound = match.round_no;
 
