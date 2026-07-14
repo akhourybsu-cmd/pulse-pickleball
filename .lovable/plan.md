@@ -1,55 +1,88 @@
-## Problem
+# Round Robin Withdrawal & Substitution Hardening
 
-Two league migrations sit unapplied on the live database:
+This is a large, multi-phase engineering pass. Before I start writing code and migrations, I want to confirm scope, sequencing, and a few key policy decisions with you — because several phases require *product decisions* (not just engineering) that will lock in behavior across the whole system.
 
-- `20260703320000_league_ownership_and_self_serve.sql` — self-serve league ownership, `is_league_admin()` helper, refactored RLS policies on all league tables, and the `create_league()` RPC.
-- `20260703330000_league_paid_slots.sql` — `profiles.additional_league_slots` column, `league_slot_purchases` ledger table, `get_league_creation_capacity()` and `increment_league_slots()` RPCs, and the updated `create_league()` that honors purchased slots.
+## Scope of the audit
 
-Verified against `pg_proc` / `information_schema` on the live DB:
+I will trace and touch the following surfaces:
 
-- `create_league`, `get_league_creation_capacity`, `is_league_admin`, `increment_league_slots` — all missing.
-- `public.league_slot_purchases` table — missing.
-- `profiles.additional_league_slots` column — missing.
+- Tables: `round_robin_events`, `round_robin_players`, `round_robin_schedule`, `round_robin_audit`, `guest_players`, `guest_match_players`, `matches`, `match_participants`, `match_approvals`.
+- Scheduler / fairness: `src/lib/roundRobinScheduler.ts`, `src/lib/roundRobinFairness.ts`, `src/lib/roundRobin/*`.
+- UI: `PlayerManagementDialog`, `RegistrationManagement`, `ScheduleEditorDialog`, `HostControlsMenu`, `PlayerRoundRobinView`, kiosk pages, `VenueRoundRobinDetail`, `RoundRobinDetail`.
+- Hooks/state: `useVenueRoundRobins`, realtime subscriptions on schedule/players.
+- Rating eligibility, guest logic, stats/standings, event completion.
 
-Frontend/edge code that will fail today because of this:
+## Proposed work (grouped so we can ship in reviewable slices)
 
-- `src/components/leagues/CreateLeagueDialog.tsx` → `supabase.rpc("create_league")` → **users cannot create leagues at all**.
-- `src/hooks/useLeagueCreationCapacity.ts` → `get_league_creation_capacity` → paywall/quota card in dialog shows nothing.
-- `supabase/functions/verify-league-slot-purchase/index.ts` → touches `increment_league_slots` and `league_slot_purchases` → paid slot fulfillment crashes.
-- `src/pages/admin/AdminLeagueDetail.tsx` → depends on `is_league_admin`-based RLS so league creators can manage their own league without the platform-admin role.
+### Slice 1 — Data model & audit trail (migration)
+- Add participant status enum: `active | withdrawn | injured | removed | replaced`.
+- Add columns to `round_robin_players`: `status`, `withdrawn_at`, `withdrawal_reason`, `effective_round`, `replacement_participant_id`, `replaced_participant_id`, `updated_by`.
+- Add `schedule_version` to `round_robin_events` for optimistic concurrency.
+- Add match state columns if missing: `locked_at`, `abandoned`, `abandoned_reason`.
+- Extend `round_robin_audit` (or reuse) to record every status change with actor, reason, effective round/match, and diff of affected future matches.
+- Backfill: all existing players → `active`.
+- GRANTs + RLS updated to match.
 
-Same failure mode as last time (the 230000–310000 bundle): the file exists in the repo but Supabase never picked it up, so it needs to be re-issued under a fresh timestamp.
+### Slice 2 — Atomic server-side operation
+- Postgres function `rr_withdraw_or_replace_player(event_id, player_id, action, reason, substitute_id?, active_match_policy, expected_version)` that:
+  1. Locks the event row.
+  2. Verifies `schedule_version` matches (rejects stale organizer clients).
+  3. Updates participant status.
+  4. Applies active-match policy (see decision 1 below).
+  5. Rewrites only unlocked future schedule rows.
+  6. Inserts audit rows.
+  7. Bumps `schedule_version`.
+  8. Returns a structured diff (rounds changed, matches changed, rating-eligibility change).
+- All UI paths funnel through this RPC; no client-side multi-step mutations.
 
-Everything else about the league feature is already live and working: the 17 league RPCs listed in `pg_proc` cover join by code, score submission, verification, disputes, forfeits, notifications, upcoming-matches widget, season aggregates, bulk add, and the audit log.
+### Slice 3 — Fairness engine refactor
+- Extract a pure `scoreRemainingSchedule(state)` function driven by the priorities in your Phase 6 (games variance, bye variance, consecutive byes, partner/opponent repeats, court balance, disruption).
+- Regeneration reuses completed match history from `initializePlayerStats` and only proposes future rounds.
+- Preserve existing round count where feasible; expose when perfect fairness is impossible.
 
-## Plan
+### Slice 4 — Organizer UX (minimal, targeted)
+- Single "Manage player" sheet with actions: Withdraw / Mark injured / Remove / Replace with substitute.
+- Confirmation preview: completed matches count, active match presence, # future matches affected, rounds affected, rating-eligibility delta, substitute identity.
+- Post-action toast + audit entry visible in `AuditHistoryDialog`.
+- Double-submit guard, disabled while pending, refetch on realtime `schedule_version` bump.
+- No broad visual redesign.
 
-Ship one new bundled migration that concatenates the two unapplied files verbatim. Both are already idempotent (`CREATE OR REPLACE FUNCTION`, `IF NOT EXISTS`, `DROP POLICY IF EXISTS` before each `CREATE POLICY`), so re-running is safe even if part of them ever ran.
+### Slice 5 — Stats / standings / ratings
+- Standings query filters scheduled participation by `status`, but retains historical rows for withdrawn players who completed matches (with a "Withdrawn" badge).
+- Substitute rendered as separate leaderboard entry.
+- Rating eligibility recomputed on every status change; guest substitute flips event to ineligible with explicit confirmation.
+- Completed matches never mutated; retirement/forfeit only recorded when the organizer explicitly picks that active-match resolution.
 
-### Migration contents (in order)
+### Slice 6 — Tests
+- Unit: fairness scorer, participant state machine, substitute stats isolation, rating eligibility.
+- Integration: RPC atomicity, concurrent-organizer conflict via `schedule_version`, idempotency.
+- Invariants asserted: completed matches immutable, no withdrawn player in future matches, no duplicate court/round assignment, substitute inherits zero history.
 
-1. `is_league_admin(league_id, user_id)` SECURITY DEFINER helper + grant to `authenticated`.
-2. Drop `"Admins full access"` / `"League admins full access"` policies on the 9 league tables and re-create using `is_league_admin`. Leagues table's `WITH CHECK` also allows `created_by = auth.uid()` so INSERT works.
-3. Re-issue admin-gated RPCs so they accept league-scoped admins: `log_league_action`, `resolve_league_match_dispute`, `forfeit_league_match` (also accepts captains), `sync_league_season_statuses`, `bulk_add_league_members`, `get_league_season_aggregates`.
-4. `create_league(name, description, location, league_type)` self-serve entrypoint. Non-admins limited to `1 + additional_league_slots`; over-quota raises SQLSTATE 53300 with hint `league_quota_exceeded` so the client opens the paywall.
-5. `ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS additional_league_slots INT NOT NULL DEFAULT 0`.
-6. `CREATE TABLE IF NOT EXISTS public.league_slot_purchases` (id, user_id → profiles, stripe_session_id UNIQUE, stripe_customer_id, amount_cents, currency, slots_granted, status, timestamps) with:
-   - `GRANT SELECT, INSERT, UPDATE, DELETE ON ... TO authenticated`
-   - `GRANT ALL ... TO service_role`
-   - `ENABLE ROW LEVEL SECURITY`
-   - policy: users see own rows; admins full access. Writes gated to service role only via the edge function.
-7. `get_league_creation_capacity(user_id)` — returns `(owned, max_leagues, remaining, is_admin)`. Grant to `authenticated`.
-8. `increment_league_slots(user_id, delta)` — SECURITY DEFINER, REVOKE from PUBLIC, GRANT only to `service_role` (called by the Stripe verify edge function).
-9. Final `create_league()` re-definition that honors purchased slots (supersedes step 4's stub).
+### Slice 7 — Cleanup & report
+- Remove duplicated removal logic (there are currently at least two paths — `PlayerManagementDialog` and `RegistrationManagement`).
+- Deliver the Phase 12 report.
 
-### Verification after apply
+## Decisions I need from you before starting
 
-- `pg_proc` contains `create_league`, `get_league_creation_capacity`, `is_league_admin`, `increment_league_slots`.
-- `to_regclass('public.league_slot_purchases')` returns non-null.
-- `profiles.additional_league_slots` column exists.
-- Manual smoke via the Create League dialog: dialog renders capacity, submitting creates a draft/private league, second attempt as a non-admin raises the paywall (SQLSTATE 53300).
-- Join-by-code, score submit, and dashboard "Up next in leagues" continue to work (they already do — 17 league RPCs live).
+1. **Active-match policy menu.** For "player removed while their match is live," which of these should PULSE offer? (I'll only implement what you pick — no invented forfeit scores.)
+   - a) Finish & record as played (partner plays it out — only viable if 3 remain? usually not)
+   - b) Mark match abandoned / void (no result recorded)
+   - c) Restart match with substitute (original match archived as abandoned)
+   - d) Record retirement/forfeit — **only if you confirm the score rule** (e.g., 11-0 to opponents, or "no score, W/L only")
+   
+   My default recommendation: **b + c**, and **d only** if you give me the exact forfeit score rule.
 
-### Not in scope
+2. **Withdrawn player in standings.** Show them with completed results and a "Withdrawn" tag (my recommendation), or hide entirely from standings once withdrawn?
 
-No frontend changes. `src/integrations/supabase/types.ts` will regenerate automatically after the migration lands. No edits to `create_league_checkout` or `verify-league-slot-purchase` edge functions — they were already coded against these RPCs.
+3. **Guest substitute → rating eligibility.** Confirm current rule: any guest participant in *any* match makes the whole event rating-ineligible? Or only affects the substitute's own matches going forward?
+
+4. **Schedule regeneration aggressiveness.** When a player is removed, should the engine:
+   - a) Minimally patch (only swap the withdrawn player out of future matches, keep everything else) — least disruption, may hurt fairness.
+   - b) Fully re-optimize remaining rounds — best fairness, more churn for players who already saw their upcoming matches.
+   - c) Organizer chooses per action.
+   
+   My recommendation: **c**, defaulting to (a).
+
+5. **Restore withdrawn player.** Should reversal be supported (before event completion), or is withdrawal terminal?
+
+Once you answer these, I'll execute the slices in order, migration first, and report back after each slice so you can review before the next one lands. Estimated: 1 migration, ~1 RPC, ~8–12 file edits, ~6–10 new/updated tests.
