@@ -11,7 +11,9 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:rr": "vitest run tests/rr_slice2a"
+    "test:planner": "vitest run tests/rr_planner",
+    "test:rr": "vitest run tests/rr_slice2a/scenarios.spec.ts tests/rr_slice2a/security.spec.ts",
+    "test:rr:clean": "vitest run tests/rr_slice2a/cleanup.spec.ts"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.4",

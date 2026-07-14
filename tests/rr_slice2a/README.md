@@ -26,42 +26,56 @@ is unavailable on this machine — so the disposable **cloud** project is the
 primary path. (If Docker ever becomes available, the same env vars point at a
 local stack instead; see the bottom.)
 
+**Step 1 — create a throwaway project** at https://supabase.com/dashboard
+(free tier). Note its project ref, database password, anon key, and one admin
+key. It must NOT be production (`ryxklkayezjnwwunuphn`).
+
+**Step 2 — apply migrations with the safety sequence** (CLI, no Docker):
 ```bash
-# 1. Create a throwaway project at https://supabase.com/dashboard (free tier).
-#    Note its project ref, database password, anon key, service_role key.
-#    This must NOT be the production project (ryxklkayezjnwwunuphn).
+export RR_TEST_PROJECT_REF=<disposable-project-ref>
+supabase link --project-ref "$RR_TEST_PROJECT_REF"   # prompts for DB password
+supabase migration list                              # remote vs local history
+supabase db push --dry-run                            # what WOULD apply (no writes)
+```
+Before the real push, confirm and report: the linked ref, migrations already
+present remotely, migrations that would be applied, any history divergence, and
+that the ref is not production. Then:
+```bash
+supabase db push
+```
+Do NOT use `supabase migration repair` unless `migration list` shows a verified
+history mismatch — and only with a written explanation of why repair is correct.
 
-# 2. Apply the repo migrations to it (CLI, no Docker):
-supabase link --project-ref <throwaway-ref>     # prompts for the DB password
-supabase db push                                # applies supabase/migrations/*
+**Step 3 — configure env** (`cp .env.test.example .env.test`, then fill):
+set `RR_TEST_PROJECT_REF`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, exactly one of
+`SUPABASE_SERVICE_ROLE_KEY` / `SUPABASE_SECRET_KEY`, the organizer login, and
+optionally `DATABASE_URL`. Every endpoint must reference the same ref.
 
-# 3. Configure env:
-cp tests/rr_slice2a/.env.test.example tests/rr_slice2a/.env.test
-#   SUPABASE_URL=https://<throwaway-ref>.supabase.co
-#   SUPABASE_ANON_KEY / SUPABASE_SERVICE_ROLE_KEY   <- project API settings
-#   DATABASE_URL=postgresql://postgres:<db-password>@db.<throwaway-ref>.supabase.co:5432/postgres
-#   TEST_ORGANIZER_EMAIL / TEST_ORGANIZER_PASSWORD  <- any; the seeder creates the user
-
-# 4. Install dev deps (first time) and run. Fixtures self-seed per test.
-npm install
-npm run test:rr
+**Step 4 — run** (fixtures self-seed per test):
+```bash
+npm install          # first time
+npm run test:rr      # 23 behavioral + 5 catalog/security
 ```
 
-A hard guard (tests/rr_slice2a/setup.env.ts) throws if `SUPABASE_URL` contains
-the production ref, so the mutating suite can never target production. The
-suite also **auto-skips** (not fails) when env vars are missing — check the
-reporter for `skipped`, not just the exit code.
+The allowlist guard (`guard.ts`, invoked from `setup.env.ts`) runs before any
+fixture/auth/migration/test and refuses unless `RR_TEST_PROJECT_REF` is present,
+non-production, and matches `SUPABASE_URL`, `DATABASE_URL`, the CLI link, and is
+not the repo's declared project. The suite **auto-skips** when env is absent —
+check the reporter for `skipped`, not just the exit code.
 
-### Teardown / reset
-Fixtures tear down per test (afterEach deletes the seeded event + its rows).
-To wipe everything the suite created between full runs, reset the throwaway
-project's data: `supabase db reset --linked` (re-applies migrations on the
-remote), or simply delete the disposable project when done. Never run
-`db reset` against production.
+### Teardown (no routine remote reset)
+- Each test deletes its own fixture event (`afterEach`).
+- Belt-and-suspenders sweep for aborted runs: `npm run test:rr:clean`
+  (`RR_CLEANUP=1`) deletes only fixture-prefixed events + their child rows —
+  it never resets the database.
+- When testing is finished, **delete the disposable project** entirely.
+- `supabase db reset --linked` is destructive and is NOT part of routine
+  teardown. Use it only after manually confirming the ref is disposable and
+  with explicit authorization.
 
-### Local alternative (only if Docker becomes available)
-`supabase start` → `supabase db reset` → point the same env vars at
-`http://127.0.0.1:54321` and `postgresql://postgres:postgres@127.0.0.1:54322/postgres`.
+### Local alternative (only if Docker ever becomes available)
+Set `RR_TEST_PROJECT_REF=local`, `supabase start`, `supabase db reset`, and
+point env at `http://127.0.0.1:54321` + `postgresql://postgres:postgres@127.0.0.1:54322/postgres`.
 
 ## Status
 

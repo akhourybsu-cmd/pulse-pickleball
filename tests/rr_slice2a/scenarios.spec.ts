@@ -27,7 +27,7 @@ import {
 import { seedEvent, teardownEvent, type SeededEvent } from "./fixtures";
 
 const env = readEnv();
-const canSeed = !!env?.serviceRoleKey;
+const canSeed = !!env?.adminKey;
 // Full behavioral coverage needs seeding. Skip loudly rather than run partial.
 const d = env && canSeed ? describe : describe.skip;
 

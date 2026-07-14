@@ -20,7 +20,8 @@ import { randomUUID } from "node:crypto";
 export interface HarnessEnv {
   url: string;
   anonKey: string;
-  serviceRoleKey: string | null;
+  /** The single administrative key (service-role JWT or newer secret key). */
+  adminKey: string | null;
   organizerEmail: string;
   organizerPassword: string;
   /** Pre-seeded event id — when set, the seeder is skipped. */
@@ -28,26 +29,50 @@ export interface HarnessEnv {
   fixedParticipantIds: string[] | null;
 }
 
+/**
+ * Redact anything key-shaped from a string before it is surfaced in a report,
+ * error, or log. Covers Supabase legacy JWTs (eyJ…), the newer sb_secret_ /
+ * sb_publishable_ keys, and long opaque tokens.
+ */
+export function redact(input: string): string {
+  return (input ?? "")
+    .replace(/eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, "eyJ***REDACTED***")
+    .replace(/sb_(secret|publishable)_[A-Za-z0-9_-]+/g, "sb_$1_***REDACTED***")
+    .replace(/postgres(ql)?:\/\/[^@\s]+@/g, "postgres$1://***REDACTED***@")
+    .replace(/[A-Za-z0-9_-]{40,}/g, "***REDACTED***");
+}
+
 export function readEnv(): HarnessEnv | null {
   const {
     SUPABASE_URL,
     SUPABASE_ANON_KEY,
     SUPABASE_SERVICE_ROLE_KEY,
+    SUPABASE_SECRET_KEY,
     TEST_ORGANIZER_EMAIL,
     TEST_ORGANIZER_PASSWORD,
     TEST_EVENT_ID,
     TEST_PARTICIPANT_IDS,
   } = process.env;
 
+  // Exactly one administrative key. Support the legacy service-role JWT and the
+  // newer secret-key format; refuse if BOTH are set so there's no ambiguity
+  // about which privileged credential is in use.
+  if (SUPABASE_SERVICE_ROLE_KEY && SUPABASE_SECRET_KEY) {
+    throw new Error(
+      "Set only ONE admin key: SUPABASE_SERVICE_ROLE_KEY or SUPABASE_SECRET_KEY, not both.",
+    );
+  }
+  const adminKey = SUPABASE_SERVICE_ROLE_KEY ?? SUPABASE_SECRET_KEY ?? null;
+
   // Minimum needed to run at all: a target + anon key + an organizer login.
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !TEST_ORGANIZER_EMAIL || !TEST_ORGANIZER_PASSWORD) {
     return null;
   }
-  // Either a service role (to seed) OR an explicit pre-seeded event is required.
-  if (!SUPABASE_SERVICE_ROLE_KEY && !TEST_EVENT_ID) {
+  // Either an admin key (to seed) OR an explicit pre-seeded event is required.
+  if (!adminKey && !TEST_EVENT_ID) {
     return null;
   }
-  // Guardrail: refuse the known production project ref outright.
+  // Defense in depth (the setup.env.ts allowlist guard is the primary gate).
   if (SUPABASE_URL.includes("ryxklkayezjnwwunuphn")) {
     throw new Error("Refusing to run integration tests against the production project.");
   }
@@ -55,7 +80,7 @@ export function readEnv(): HarnessEnv | null {
   return {
     url: SUPABASE_URL,
     anonKey: SUPABASE_ANON_KEY,
-    serviceRoleKey: SUPABASE_SERVICE_ROLE_KEY ?? null,
+    adminKey,
     organizerEmail: TEST_ORGANIZER_EMAIL,
     organizerPassword: TEST_ORGANIZER_PASSWORD,
     fixedEventId: TEST_EVENT_ID ?? null,
@@ -74,8 +99,8 @@ export function anonClient(env: HarnessEnv): SupabaseClient {
 }
 
 export function adminClient(env: HarnessEnv): SupabaseClient {
-  if (!env.serviceRoleKey) throw new Error("service role key required for admin client");
-  return createClient(env.url, env.serviceRoleKey, {
+  if (!env.adminKey) throw new Error("admin key required for admin client");
+  return createClient(env.url, env.adminKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 }
