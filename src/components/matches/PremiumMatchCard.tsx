@@ -269,7 +269,7 @@ export function PremiumMatchCard(props: PremiumMatchCardProps) {
             <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               {hasOpponent2 ? "Opponents" : "Opponent"}
             </div>
-            <div className="text-xs text-foreground/80 truncate font-medium mt-0.5">
+            <div className="text-xs text-foreground/80 font-medium mt-0.5 break-words">
               {hasOpponent2
                 ? <>{opponent1Name} <span className="text-muted-foreground">·</span> {opponent2Name}</>
                 : opponent1Name}
