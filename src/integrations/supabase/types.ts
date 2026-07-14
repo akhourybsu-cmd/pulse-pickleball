@@ -4702,8 +4702,29 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "round_robin_schedule_original_schedule_id_fkey"
+            columns: ["original_schedule_id"]
+            isOneToOne: false
+            referencedRelation: "round_robin_schedule_counted"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "round_robin_schedule_superseded_by_schedule_id_fkey"
             columns: ["superseded_by_schedule_id"]
+            isOneToOne: false
+            referencedRelation: "round_robin_schedule"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "round_robin_schedule_superseded_by_schedule_id_fkey"
+            columns: ["superseded_by_schedule_id"]
+            isOneToOne: false
+            referencedRelation: "round_robin_schedule_counted"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "round_robin_schedule_supersedes_schedule_id_fkey"
+            columns: ["supersedes_schedule_id"]
             isOneToOne: false
             referencedRelation: "round_robin_schedule"
             referencedColumns: ["id"]
@@ -4712,7 +4733,7 @@ export type Database = {
             foreignKeyName: "round_robin_schedule_supersedes_schedule_id_fkey"
             columns: ["supersedes_schedule_id"]
             isOneToOne: false
-            referencedRelation: "round_robin_schedule"
+            referencedRelation: "round_robin_schedule_counted"
             referencedColumns: ["id"]
           },
         ]
@@ -7315,6 +7336,234 @@ export type Database = {
           wins?: number | null
         }
         Relationships: []
+      }
+      round_robin_schedule_counted: {
+        Row: {
+          a1_guest_id: string | null
+          a1_player_id: string | null
+          a2_guest_id: string | null
+          a2_player_id: string | null
+          abandoned: boolean | null
+          abandoned_at: string | null
+          abandoned_reason: string | null
+          b1_guest_id: string | null
+          b1_player_id: string | null
+          b2_guest_id: string | null
+          b2_player_id: string | null
+          court_no: number | null
+          created_at: string | null
+          event_id: string | null
+          id: string | null
+          is_bye: boolean | null
+          locked_at: string | null
+          match_id: string | null
+          original_schedule_id: string | null
+          round_no: number | null
+          superseded_by_schedule_id: string | null
+          supersedes_schedule_id: string | null
+          team1_score: number | null
+          team2_score: number | null
+          voided_at: string | null
+          voided_reason: string | null
+        }
+        Insert: {
+          a1_guest_id?: string | null
+          a1_player_id?: string | null
+          a2_guest_id?: string | null
+          a2_player_id?: string | null
+          abandoned?: boolean | null
+          abandoned_at?: string | null
+          abandoned_reason?: string | null
+          b1_guest_id?: string | null
+          b1_player_id?: string | null
+          b2_guest_id?: string | null
+          b2_player_id?: string | null
+          court_no?: number | null
+          created_at?: string | null
+          event_id?: string | null
+          id?: string | null
+          is_bye?: boolean | null
+          locked_at?: string | null
+          match_id?: string | null
+          original_schedule_id?: string | null
+          round_no?: number | null
+          superseded_by_schedule_id?: string | null
+          supersedes_schedule_id?: string | null
+          team1_score?: number | null
+          team2_score?: number | null
+          voided_at?: string | null
+          voided_reason?: string | null
+        }
+        Update: {
+          a1_guest_id?: string | null
+          a1_player_id?: string | null
+          a2_guest_id?: string | null
+          a2_player_id?: string | null
+          abandoned?: boolean | null
+          abandoned_at?: string | null
+          abandoned_reason?: string | null
+          b1_guest_id?: string | null
+          b1_player_id?: string | null
+          b2_guest_id?: string | null
+          b2_player_id?: string | null
+          court_no?: number | null
+          created_at?: string | null
+          event_id?: string | null
+          id?: string | null
+          is_bye?: boolean | null
+          locked_at?: string | null
+          match_id?: string | null
+          original_schedule_id?: string | null
+          round_no?: number | null
+          superseded_by_schedule_id?: string | null
+          supersedes_schedule_id?: string | null
+          team1_score?: number | null
+          team2_score?: number | null
+          voided_at?: string | null
+          voided_reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "round_robin_schedule_a1_guest_id_fkey"
+            columns: ["a1_guest_id"]
+            isOneToOne: false
+            referencedRelation: "guest_players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "round_robin_schedule_a1_player_id_fkey"
+            columns: ["a1_player_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "round_robin_schedule_a1_player_id_fkey"
+            columns: ["a1_player_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "round_robin_schedule_a2_guest_id_fkey"
+            columns: ["a2_guest_id"]
+            isOneToOne: false
+            referencedRelation: "guest_players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "round_robin_schedule_a2_player_id_fkey"
+            columns: ["a2_player_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "round_robin_schedule_a2_player_id_fkey"
+            columns: ["a2_player_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "round_robin_schedule_b1_guest_id_fkey"
+            columns: ["b1_guest_id"]
+            isOneToOne: false
+            referencedRelation: "guest_players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "round_robin_schedule_b1_player_id_fkey"
+            columns: ["b1_player_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "round_robin_schedule_b1_player_id_fkey"
+            columns: ["b1_player_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "round_robin_schedule_b2_guest_id_fkey"
+            columns: ["b2_guest_id"]
+            isOneToOne: false
+            referencedRelation: "guest_players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "round_robin_schedule_b2_player_id_fkey"
+            columns: ["b2_player_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "round_robin_schedule_b2_player_id_fkey"
+            columns: ["b2_player_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "round_robin_schedule_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "round_robin_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "round_robin_schedule_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "round_robin_schedule_original_schedule_id_fkey"
+            columns: ["original_schedule_id"]
+            isOneToOne: false
+            referencedRelation: "round_robin_schedule"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "round_robin_schedule_original_schedule_id_fkey"
+            columns: ["original_schedule_id"]
+            isOneToOne: false
+            referencedRelation: "round_robin_schedule_counted"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "round_robin_schedule_superseded_by_schedule_id_fkey"
+            columns: ["superseded_by_schedule_id"]
+            isOneToOne: false
+            referencedRelation: "round_robin_schedule"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "round_robin_schedule_superseded_by_schedule_id_fkey"
+            columns: ["superseded_by_schedule_id"]
+            isOneToOne: false
+            referencedRelation: "round_robin_schedule_counted"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "round_robin_schedule_supersedes_schedule_id_fkey"
+            columns: ["supersedes_schedule_id"]
+            isOneToOne: false
+            referencedRelation: "round_robin_schedule"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "round_robin_schedule_supersedes_schedule_id_fkey"
+            columns: ["supersedes_schedule_id"]
+            isOneToOne: false
+            referencedRelation: "round_robin_schedule_counted"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       v_browse_events: {
         Row: {
