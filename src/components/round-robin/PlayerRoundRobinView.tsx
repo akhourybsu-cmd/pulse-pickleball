@@ -284,8 +284,18 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
     matches.forEach((match) => {
       const teamAScore = match.team_a_score ?? match.team1_score ?? null;
       const teamBScore = match.team_b_score ?? match.team2_score ?? null;
-      
+
       if (!match.completed || teamAScore === null || teamBScore === null) return;
+
+      // Exclude non-authoritative rows so a voided/abandoned original and its
+      // successor don't both score (double-count). Mirrors
+      // public.round_robin_schedule_counted and the organizer standings guard.
+      const m = match as typeof match & {
+        voided_at?: string | null;
+        abandoned?: boolean | null;
+        superseded_by_schedule_id?: string | null;
+      };
+      if (m.voided_at || m.abandoned === true || m.superseded_by_schedule_id) return;
 
       const teamAPlayers = [
         match.a1_player_id ?? match.a1_guest_id,

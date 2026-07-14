@@ -627,7 +627,25 @@ export default function RoundRobinDetail() {
     });
 
     scheduleData.forEach((match) => {
-      if (!match.is_bye && match.team1_score !== null && match.team2_score !== null) {
+      // Only count matches that are still authoritative: not a bye, fully
+      // scored, and NOT voided / abandoned / superseded. Without these three
+      // exclusions a restart_with_substitute (which voids the original and
+      // adds a successor) or an abandoned match would double-count — the
+      // participant would get credit for both the dead row and its successor.
+      // Mirrors public.round_robin_schedule_counted.
+      const m = match as typeof match & {
+        voided_at?: string | null;
+        abandoned?: boolean | null;
+        superseded_by_schedule_id?: string | null;
+      };
+      const counts =
+        !m.is_bye &&
+        m.team1_score !== null &&
+        m.team2_score !== null &&
+        !m.voided_at &&
+        m.abandoned !== true &&
+        !m.superseded_by_schedule_id;
+      if (counts) {
         const team1Won = match.team1_score > match.team2_score;
 
         const teamAIds = [
