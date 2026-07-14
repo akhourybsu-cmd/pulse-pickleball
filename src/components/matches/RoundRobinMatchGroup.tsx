@@ -88,7 +88,7 @@ export function RoundRobinMatchGroup({
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-semibold truncate">{group.name}</span>
+              <span className="font-semibold break-words">{group.name}</span>
               <Badge variant="secondary" className="text-[10px] uppercase tracking-wide">
                 Round Robin
               </Badge>
