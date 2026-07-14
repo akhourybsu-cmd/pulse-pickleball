@@ -7973,7 +7973,6 @@ export type Database = {
         Args: {
           p_action: string
           p_active_match_resolution?: Json
-          p_effective_round?: number
           p_event_id: string
           p_expected_version?: number
           p_player_id: string
@@ -7988,7 +7987,6 @@ export type Database = {
       rr_plan_participant_change: {
         Args: {
           p_action: string
-          p_effective_round: number
           p_event_id: string
           p_participant_id: string
           p_substitute_id: string
