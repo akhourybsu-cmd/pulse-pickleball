@@ -53,6 +53,11 @@ import { PageHeader } from "@/components/PageHeader";
 import { z } from "zod";
 import { cn } from "@/lib/utils";
 import logo from "@/assets/pulse-logo-premium.svg";
+import {
+  callRrManageParticipant,
+  friendlyRpcError,
+  type RRManageParticipantError,
+} from "@/lib/roundRobin/manageParticipantRpc";
 import { suggestRounds } from "@/lib/roundRobinFairness";
 import { isPlatformAdmin } from "@/lib/permissions";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
