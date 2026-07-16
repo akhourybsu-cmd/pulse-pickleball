@@ -1150,68 +1150,72 @@ export default function RoundRobinDetail() {
 
     try {
       if (scope === 'global') {
-        // Ensure the replacement is on the roster: reactivate an existing
-        // row (matched by player_id OR guest_player_id) or insert a new one.
+        // Slice 2b: route global substitution through rr_manage_participant.
+        //
+        // The RPC requires the substitute to already be an ACTIVE roster row,
+        // so we do a small pre-step here (outside the RPC) to guarantee that:
+        //   - if the replacement is already on the roster, reactivate them
+        //     via a status update (the DB trigger keeps `active` in sync);
+        //   - otherwise insert a fresh row (defaults to status='active').
+        // Only THEN do we invoke the transactional replace, which mutates
+        // participant lifecycle state, plans the schedule repair, bumps
+        // schedule_version, and writes the audit row atomically.
         const existing = players.find(p =>
           (replacement.playerId && p.player_id === replacement.playerId) ||
           (replacement.guestPlayerId && p.guest_player_id === replacement.guestPlayerId)
         );
         const wasInactive = !!existing && !existing.active;
 
+        let substituteRosterId: string;
         if (existing) {
+          substituteRosterId = existing.id;
           if (!existing.active) {
-            await supabase
+            const { error: reErr } = await supabase
               .from("round_robin_players")
-              .update({ active: true })
+              .update({ status: 'active' as any })
               .eq("id", existing.id);
+            if (reErr) throw reErr;
           }
         } else {
-          const { error: insErr } = await supabase.from("round_robin_players").insert({
-            event_id: event.id,
-            player_id: replacement.playerId,
-            guest_player_id: replacement.guestPlayerId ?? null,
-            guest_name: replacement.guestName ?? null,
-            active: true,
-          } as never);
-          if (insErr) throw insErr;
+          const { data: inserted, error: insErr } = await supabase
+            .from("round_robin_players")
+            .insert({
+              event_id: event.id,
+              player_id: replacement.playerId,
+              guest_player_id: replacement.guestPlayerId ?? null,
+              guest_name: replacement.guestName ?? null,
+              active: true,
+            } as never)
+            .select("id")
+            .single();
+          if (insErr || !inserted) throw insErr;
+          substituteRosterId = (inserted as any).id;
         }
 
-        // Deactivate the original by roster row id (player or guest).
-        await supabase
-          .from("round_robin_players")
-          .update({ active: false })
-          .eq("id", originalRosterId);
-
-        await supabase.from("round_robin_audit").insert({
-          event_id: event.id,
-          editor_id: userId,
-          change_type: "player_substitute",
-          changes: {
-            original_roster_id: originalRosterId,
-            original_player_id: original.player_id,
-            original_guest_id: original.guest_player_id,
-            new_player_id: replacement.playerId,
-            new_guest_id: replacement.guestPlayerId,
-            scope: 'global',
-            was_reactivated: wasInactive,
-          },
-          reason: wasInactive
-            ? "Player reactivated and substituted globally"
-            : "Global player substitution",
-        });
-
-        // Regenerate schedule from current round for fair redistribution
-        const fromRound = event.current_round || 1;
-        const regenResult = await regenerateScheduleFromRound(fromRound);
+        try {
+          await callRrManageParticipant({
+            eventId: event.id,
+            playerId: originalRosterId,
+            action: "replace",
+            substituteParticipantId: substituteRosterId,
+            reason: wasInactive
+              ? "Player reactivated and substituted globally"
+              : "Global player substitution",
+            regenMode: "auto",
+          });
+        } catch (rpcErr: any) {
+          const err = rpcErr as RRManageParticipantError;
+          toast.error(friendlyRpcError(err));
+          console.error("rr_manage_participant replace failed", err);
+          await fetchEventDetails();
+          throw err;
+        }
 
         await fetchEventDetails();
-        const roundsSuffix = regenResult?.roundsChanged
-          ? ` · Schedule now ${regenResult.targetRounds} rounds to keep ${event.games_per_player || 3} games/player.`
-          : "";
         toast.success(
-          (wasInactive
-            ? "Player reactivated and schedule regenerated"
-            : "Player substituted and schedule regenerated") + roundsSuffix
+          wasInactive
+            ? "Player reactivated and substituted."
+            : "Player substituted."
         );
       } else {
         // Single-round substitution: patch the original's seat in each
