@@ -1105,50 +1105,29 @@ export default function RoundRobinDetail() {
     const player = players.find(p => p.id === playerEventId);
     if (!player) return;
 
+    // Slice 2b: route destructive roster mutations through the transactional
+    // rr_manage_participant RPC. It performs the participant status change,
+    // schedule repair plan, schedule_version bump, and audit entry inside a
+    // single transaction, with idempotency + optimistic concurrency guards.
     try {
-      // Soft-remove: deactivate instead of deleting the row. Deleting made
-      // anyone with scored matches vanish from standings (standings key off
-      // the roster), and left venue-side inactive rows inconsistent. An
-      // inactive row keeps them in DNF standings, drops them from every
-      // active list and future scheduling, and both Add Player and the
-      // self-serve join RPC reactivate it if they come back.
-      const { error: deactivateError } = await supabase
-        .from("round_robin_players")
-        .update({ active: false })
-        .eq("id", playerEventId);
-
-      if (deactivateError) throw deactivateError;
-
-      // Audit entry with removal round for DNF tracking
-      await supabase.from("round_robin_audit").insert({
-        event_id: event.id,
-        editor_id: userId,
-        change_type: "player_removed",
-        changes: {
-          player_id: player.player_id,
-          guest_player_id: (player as any).guest_player_id ?? null,
-          removed_at_round: event.current_round || 1,
-        },
+      await callRrManageParticipant({
+        eventId: event.id,
+        playerId: playerEventId,
+        action: "remove",
         reason: "Player removed from roster (past scores preserved)",
+        regenMode: "auto",
       });
 
-      // Refresh roster immediately so the removed player disappears even if regen short-circuits.
+      // The `active` boolean is kept in sync with `status` by a database
+      // trigger, so all existing readers reflect the change immediately.
       await fetchEventDetails();
-
-      // Regenerate from current round
-      const fromRound = event.current_round || 1;
-      const regenResult = await regenerateScheduleFromRound(fromRound).catch(() => null);
-
-      const roundsSuffix = regenResult?.roundsChanged
-        ? ` · Schedule now ${regenResult.targetRounds} rounds to keep ${event.games_per_player || 3} games/player.`
-        : "";
-
-      toast.success("Player removed - they can rejoin later" + roundsSuffix);
+      toast.success("Player removed — they can rejoin later.");
     } catch (error: any) {
-      toast.error("Failed to remove player");
-      console.error(error);
+      const err = error as RRManageParticipantError;
+      toast.error(friendlyRpcError(err));
+      console.error("rr_manage_participant remove failed", err);
       await fetchEventDetails();
-      throw error;
+      throw err;
     }
   };
 
