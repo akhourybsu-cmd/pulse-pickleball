@@ -27,7 +27,7 @@ import {
   type SeatId,
   regenerateRounds,
   seatsOf,
-} from "./scheduleCore";
+} from "./scheduleCore.ts";
 
 // --------------------------------------------------------------------------
 // Input model (built by Slice 2b from a DB snapshot).

@@ -278,6 +278,37 @@ describe("auto & reoptimize", () => {
     const b = scoreRemainingSchedule(eightFullState(), { action: "withdraw", participantId: "pp-A", regenMode: "reoptimize" });
     expect(a).toEqual(b);
   });
+
+  it("never rewrites a round that holds a scored match (repairs it locally instead)", () => {
+    rowSeq = 0;
+    // Round 2 is mixed: court 1 is already scored, court 2 is unplayed. It must
+    // NOT be DELETE+rebuilt, or the scored match would be lost and its players
+    // double-booked. Player I is on a bye and available for a local swap.
+    const state = baseState({
+      eventId: "evt-mixed",
+      currentRound: 1,
+      numCourts: 2,
+      participants: ["A", "B", "C", "D", "E", "F", "G", "H", "I"].map((l) => participant(l)),
+      schedule: [
+        row(2, 1, ["p:A", "p:B", "p:C", "p:D"], { team1Score: 11, team2Score: 6 }),
+        row(2, 2, ["p:E", "p:F", "p:G", "p:H"]),
+        row(2, 3, ["p:I", null, null, null]),
+      ],
+    });
+    const plan = scoreRemainingSchedule(state, { action: "withdraw", participantId: "pp-E", regenMode: "reoptimize" });
+    expect(plan.ok).toBe(true);
+    // No round was rewritten — round 2 is protected by its scored row.
+    expect(rewrites(plan.ops).length).toBe(0);
+    expect(swaps(plan.ops).length).toBeGreaterThan(0);
+
+    const projected = applyPlan(state, plan.ops);
+    assertNoDoubleBooking(projected);
+    // The scored match is untouched.
+    const scored = projected.find((m) => m.round_no === 2 && m.court_no === 1)!;
+    expect(new Set(seatsOf(scored))).toEqual(new Set(["p:A", "p:B", "p:C", "p:D"]));
+    // E was pulled out of the unplayed match.
+    expect(projected.some((m) => !m.is_bye && seatsOf(m).includes("p:E"))).toBe(false);
+  });
 });
 
 // --------------------------------------------------------------------------
