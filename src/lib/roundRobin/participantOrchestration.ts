@@ -113,6 +113,58 @@ export function manageParticipant(
   return invoke(input, false);
 }
 
+/**
+ * Known application-level error codes the apply RPC / planner can return. Any
+ * failure whose code is NOT in this set (a transport failure, or a PostgREST
+ * "function not found" because the Slice 2b migration/function isn't deployed
+ * yet) is treated as an infrastructure error the caller may safely retry via
+ * the legacy direct-RPC path.
+ */
+const APPLICATION_ERROR_CODES = new Set<string>([
+  "stale_version",
+  "not_authorized",
+  "not_authenticated",
+  "event_not_mutable",
+  "event_not_found",
+  "invalid_input",
+  "invalid_action",
+  "invalid_regen_mode",
+  "participant_not_found",
+  "invalid_state_transition",
+  "substitute_required",
+  "substitute_invalid",
+  "substitute_not_eligible",
+  "substitute_payload_conflict",
+  "guest_name_required",
+  "guest_name_too_long",
+  "guest_gender_invalid",
+  "duplicate_guest_requires_confirmation",
+  "duplicate_participant_identity",
+  "restore_replacement_conflict",
+  "active_match_resolution_required",
+  "invalid_active_match_resolution",
+  "final_score_required",
+  "multiple_active_matches",
+  "minimal_regen_not_possible",
+  "reoptimization_required",
+  "idempotency_conflict",
+  "request_in_progress",
+  "invalid_plan",
+  "plan_action_mismatch",
+  "planner_failed",
+]);
+
+/**
+ * True when a failed result reflects the orchestration layer being unavailable
+ * (edge function / migration not deployed, or a network error) rather than a
+ * legitimate rejection. Callers use this to decide whether to fall back to the
+ * legacy direct RPC so roster changes never break during rollout.
+ */
+export function isInfrastructureError(result: OrchestrationResult): boolean {
+  if (result.ok) return false;
+  return !result.code || !APPLICATION_ERROR_CODES.has(result.code);
+}
+
 /** Human-readable copy for the error codes the organizer UI surfaces. */
 export function friendlyParticipantError(result: OrchestrationResult): string {
   switch (result.code) {

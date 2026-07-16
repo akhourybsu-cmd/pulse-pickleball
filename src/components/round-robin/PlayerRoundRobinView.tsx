@@ -15,6 +15,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationBell } from "@/components/NotificationBell";
 import { motion } from "framer-motion";
 import { formatDateEST, formatTime12Hour } from "@/lib/utils";
+import { countsTowardScore } from "@/lib/roundRobin/standings";
 import {
   Table,
   TableBody,
@@ -284,8 +285,10 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
     matches.forEach((match) => {
       const teamAScore = match.team_a_score ?? match.team1_score ?? null;
       const teamBScore = match.team_b_score ?? match.team2_score ?? null;
-      
-      if (!match.completed || teamAScore === null || teamBScore === null) return;
+
+      // Slice 4: skip byes, unscored, voided, superseded, and abandoned rows.
+      if (!countsTowardScore(match)) return;
+      if (teamAScore === null || teamBScore === null) return;
 
       const teamAPlayers = [
         match.a1_player_id ?? match.a1_guest_id,
