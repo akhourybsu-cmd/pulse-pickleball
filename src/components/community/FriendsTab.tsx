@@ -1,11 +1,11 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Users, UserPlus, MessageCircle, Search, Check, X, Clock,
+  Users, UserPlus, MessageCircle, Check, X, Clock,
   MoreVertical, Sparkles,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Input } from '@/components/ui/input';
+import { SearchField } from '@/components/ui/search-field';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -85,15 +85,14 @@ export function FriendsTab() {
       <div className="px-4 sm:px-6 pt-4 pb-3 space-y-3">
         {/* Header: count + search */}
         <div className="flex items-center gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search your friends..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 h-9 bg-muted/40 border-border/30"
-            />
-          </div>
+          <SearchField
+            value={searchQuery}
+            onValueChange={setSearchQuery}
+            placeholder="Search your friends..."
+            className="h-9 bg-muted/40 border-border/30"
+            containerClassName="flex-1"
+            aria-label="Search your friends"
+          />
         </div>
 
         {/* Segmented control */}

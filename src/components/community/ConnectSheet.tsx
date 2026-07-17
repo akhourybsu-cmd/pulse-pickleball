@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { SearchField } from '@/components/ui/search-field';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useFriends } from '@/hooks/useFriends';
@@ -283,7 +283,7 @@ function MyCodePanel({
   const share = async () => {
     const text = `Add me on Pulse: @${handle}\n${inviteUrl}`;
     if (navigator.share) {
-      try { await navigator.share({ title: 'Add me on Pulse', text, url: inviteUrl }); } catch {}
+      try { await navigator.share({ title: 'Add me on Pulse', text, url: inviteUrl }); } catch { /* user cancelled the share sheet */ }
     } else {
       await navigator.clipboard.writeText(text);
       toast.success('Invite copied');
@@ -420,18 +420,20 @@ function ScopedSearchPanel({ actionButton }: { actionButton: (id: string) => JSX
     run();
   }, [debounced]);
 
+  // Spinner shows the instant the user types (before the debounce fires) so
+  // the field feels live, and clears the moment results settle.
+  const pending = query.trim().length >= 2 && (loading || query !== debounced);
+
   return (
     <div className="space-y-4">
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search by name or handle..."
-          className="pl-9"
-          autoFocus
-        />
-      </div>
+      <SearchField
+        value={query}
+        onValueChange={setQuery}
+        loading={pending}
+        placeholder="Search by name or handle..."
+        autoFocus
+        aria-label="Search for players by name or handle"
+      />
 
       <div className="rounded-lg border border-border/40 bg-muted/20 px-3 py-2 flex items-start gap-2">
         <Users className="h-3.5 w-3.5 mt-0.5 text-muted-foreground shrink-0" />
