@@ -1281,7 +1281,7 @@ export default function RoundRobinDetail() {
               action: "replace",
               substituteParticipantId: substituteRosterId,
               reason: replaceReason,
-              regenMode: "auto",
+              regenMode: "minimal",
             });
           } catch (rpcErr: any) {
             const err = rpcErr as RRManageParticipantError;
