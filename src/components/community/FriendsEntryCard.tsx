@@ -11,7 +11,9 @@ export function FriendsEntryCard() {
   const navigate = useNavigate();
   const { friends, pendingRequests, loading } = useFriends();
 
-  const go = () => navigate('/player/friends');
+  // Land on the requests tab when something is waiting, otherwise the list.
+  const go = () =>
+    navigate(pendingRequests.length > 0 ? '/player/friends?tab=requests' : '/player/friends');
 
   if (loading) {
     return (
