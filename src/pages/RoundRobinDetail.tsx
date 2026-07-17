@@ -1188,11 +1188,14 @@ export default function RoundRobinDetail() {
     scope: 'global' | number
   ) => {
     if (!event || !userId) return;
+    if (rrMutationInFlightRef.current) return;
+    rrMutationInFlightRef.current = true;
 
     // The original is identified by its roster row id, so this works for a
     // guest (no player_id) exactly as it does for a registered player.
     const original = players.find(p => p.id === originalRosterId);
-    if (!original) return;
+    if (!original) { rrMutationInFlightRef.current = false; return; }
+
 
     try {
       if (scope === 'global') {
