@@ -1112,11 +1112,15 @@ export default function RoundRobinDetail() {
     }
   };
 
+  const rrMutationInFlightRef = useRef(false);
+
   const handleMarkInactive = async (playerEventId: string) => {
     if (!event || !userId) return;
+    if (rrMutationInFlightRef.current) return;
+    rrMutationInFlightRef.current = true;
 
     const player = players.find(p => p.id === playerEventId);
-    if (!player) return;
+    if (!player) { rrMutationInFlightRef.current = false; return; }
 
     const reason = "Player removed from roster (past scores preserved)";
     const onSuccess = async () => {
@@ -1131,13 +1135,14 @@ export default function RoundRobinDetail() {
     // local-repair planner cannot. Returns true when handled (success or a
     // surfaced application error); false when the layer is unavailable (edge
     // function / migration not deployed) and we should fall back.
+    // Approved plan: default to "minimal" (conservative preserve_completed).
     const handledByOrchestration = async (): Promise<boolean> => {
       const res = await manageParticipant({
         eventId: event.id,
         participantId: playerEventId,
         action: "remove",
         reason,
-        regenMode: "auto",
+        regenMode: "minimal",
       });
       if (res.ok) {
         await onSuccess();
@@ -1151,26 +1156,31 @@ export default function RoundRobinDetail() {
       throw new Error(res.code ?? "remove_failed");
     };
 
-    if (await handledByOrchestration()) return;
-
-    // Fallback: direct transactional RPC (local-repair only).
     try {
-      await callRrManageParticipant({
-        eventId: event.id,
-        playerId: playerEventId,
-        action: "remove",
-        reason,
-        regenMode: "auto",
-      });
-      await onSuccess();
-    } catch (error: any) {
-      const err = error as RRManageParticipantError;
-      toast.error(friendlyRpcError(err));
-      console.error("rr_manage_participant remove failed", err);
-      await fetchEventDetails();
-      throw err;
+      if (await handledByOrchestration()) return;
+
+      // Fallback: direct transactional RPC (local-repair only).
+      try {
+        await callRrManageParticipant({
+          eventId: event.id,
+          playerId: playerEventId,
+          action: "remove",
+          reason,
+          regenMode: "minimal",
+        });
+        await onSuccess();
+      } catch (error: any) {
+        const err = error as RRManageParticipantError;
+        toast.error(friendlyRpcError(err));
+        console.error("rr_manage_participant remove failed", err);
+        await fetchEventDetails();
+        throw err;
+      }
+    } finally {
+      rrMutationInFlightRef.current = false;
     }
   };
+
 
   const handleSubstitute = async (
     originalRosterId: string,
