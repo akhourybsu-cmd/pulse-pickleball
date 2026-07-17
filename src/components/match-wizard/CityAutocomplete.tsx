@@ -17,6 +17,9 @@ export interface VerifiedCity {
   city: string;
   state: string;
   country: string;
+  /** Present for distance-based features; null for older geocoder responses. */
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 interface CityAutocompleteProps {

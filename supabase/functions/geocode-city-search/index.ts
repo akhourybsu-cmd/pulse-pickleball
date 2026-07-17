@@ -113,7 +113,7 @@ Deno.serve(async (req) => {
       headers: {
         'Authorization': `Bearer ${LOVABLE_API_KEY}`,
         'X-Connection-Api-Key': GOOGLE_MAPS_API_KEY,
-        'X-Goog-FieldMask': 'id,displayName,formattedAddress,addressComponents,types',
+        'X-Goog-FieldMask': 'id,displayName,formattedAddress,addressComponents,types,location',
       },
     });
     if (!resp.ok) {
@@ -141,12 +141,19 @@ Deno.serve(async (req) => {
       ? [city, region].filter(Boolean).join(', ')
       : [city, region, country].filter(Boolean).join(', ');
 
+    // Coordinates (added for distance-based friend discovery). Google returns
+    // { location: { latitude, longitude } }; null-safe for older responses.
+    const latitude = typeof place.location?.latitude === 'number' ? place.location.latitude : null;
+    const longitude = typeof place.location?.longitude === 'number' ? place.location.longitude : null;
+
     return new Response(JSON.stringify({
       placeId: place.id,
       name,
       city,
       state: region,
       country,
+      latitude,
+      longitude,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

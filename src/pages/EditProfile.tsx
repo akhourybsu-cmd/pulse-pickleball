@@ -12,6 +12,9 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { PlayerPageHeader } from "@/components/layout/PlayerPageHeader";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { CityAutocomplete } from "@/components/match-wizard/CityAutocomplete";
 
 import {
   ProfileIdentitySection,
@@ -31,7 +34,11 @@ interface ProfileData {
   avatar_url: string | null;
   town: string | null;
   state: string | null;
-  
+  location_name: string | null;
+  location_place_id: string | null;
+  location_lat: number | null;
+  location_lng: number | null;
+  discoverable_by_location: boolean;
   handedness: string | null;
   play_side: string | null;
   phone_number: string | null;
@@ -40,7 +47,7 @@ interface ProfileData {
   skill_level_self: string | null;
 }
 
-type SectionKey = "identity" | "location" | "tournament" | "playstyle";
+type SectionKey = "identity" | "location" | "discovery" | "tournament" | "playstyle";
 
 const focusToSection = (focus: string | null): SectionKey | null => {
   if (focus === "tournament") return "tournament";
@@ -74,7 +81,11 @@ const EditProfile = () => {
     avatar_url: null,
     town: null,
     state: null,
-    
+    location_name: null,
+    location_place_id: null,
+    location_lat: null,
+    location_lng: null,
+    discoverable_by_location: false,
     handedness: null,
     play_side: null,
     phone_number: null,
@@ -116,7 +127,13 @@ const EditProfile = () => {
         avatar_url: profileData.avatar_url,
         town: profileData.town,
         state: profileData.state,
-        
+        // Cast: these columns aren't in the generated types until regenerated
+        // after the location-discovery migration is deployed.
+        location_name: (profileData as Record<string, unknown>).location_name as string ?? null,
+        location_place_id: (profileData as Record<string, unknown>).location_place_id as string ?? null,
+        location_lat: (profileData as Record<string, unknown>).location_lat as number ?? null,
+        location_lng: (profileData as Record<string, unknown>).location_lng as number ?? null,
+        discoverable_by_location: (profileData as Record<string, unknown>).discoverable_by_location as boolean ?? false,
         handedness: profileData.handedness,
         play_side: profileData.play_side,
         phone_number: profileData.phone_number,
@@ -382,6 +399,88 @@ const EditProfile = () => {
                     saveSection("location", { town: formData.town, state: formData.state })
                   }
                 />
+              </div>
+
+              {/* Nearby discovery — opt-in and reciprocal. You only appear in
+                  other players' "Nearby" search when this is on, and you only
+                  see nearby players when you're discoverable yourself. */}
+              <div className="rounded-lg border border-border/40 bg-muted/20 p-3 space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">Let nearby players find me</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Appear in other players' <span className="font-medium">Nearby</span> search by
+                      distance. You'll only see nearby players while this is on.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={formData.discoverable_by_location}
+                    onCheckedChange={(v) => handleFormChange({ discoverable_by_location: v })}
+                    aria-label="Discoverable by nearby players"
+                  />
+                </div>
+
+                {formData.discoverable_by_location && (
+                  <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground">
+                      Home city (used only to compute distance)
+                    </Label>
+                    {formData.location_name ? (
+                      <div className="flex items-center justify-between gap-2 rounded-md border border-border/40 bg-background px-3 py-2">
+                        <span className="text-sm flex items-center gap-1.5 min-w-0">
+                          <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          <span className="truncate">{formData.location_name}</span>
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs shrink-0"
+                          onClick={() =>
+                            handleFormChange({
+                              location_name: null,
+                              location_place_id: null,
+                              location_lat: null,
+                              location_lng: null,
+                            })
+                          }
+                        >
+                          Change
+                        </Button>
+                      </div>
+                    ) : (
+                      <CityAutocomplete
+                        onSelect={(c) =>
+                          handleFormChange({
+                            location_name: c.name,
+                            location_place_id: c.placeId,
+                            location_lat: c.latitude ?? null,
+                            location_lng: c.longitude ?? null,
+                          })
+                        }
+                      />
+                    )}
+                    {!formData.location_lat && (
+                      <p className="text-xs text-amber-600 dark:text-amber-500">
+                        Pick a home city so nearby players can be matched by distance.
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex justify-end">
+                  <SectionSaveButton
+                    section="discovery"
+                    onClick={() =>
+                      saveSection("discovery", {
+                        location_name: formData.location_name,
+                        location_place_id: formData.location_place_id,
+                        location_lat: formData.location_lat,
+                        location_lng: formData.location_lng,
+                        discoverable_by_location: formData.discoverable_by_location,
+                      })
+                    }
+                  />
+                </div>
               </div>
             </AccordionContent>
           </AccordionItem>
