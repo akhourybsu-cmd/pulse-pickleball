@@ -36,6 +36,7 @@ import { getVenueLogoSrc, getVenueLogoFallback } from "@/lib/venueBranding";
 import { suggestRounds } from "@/lib/roundRobinFairness";
 import { useVenueTheme } from "@/components/layout/VenueShell";
 import { motion } from "framer-motion";
+import { countsTowardScore } from "@/lib/roundRobin/standings";
 
 interface Event {
   id: string;
@@ -185,7 +186,7 @@ export default function VenueRoundRobinDetail() {
     });
 
     scheduleData.forEach((match) => {
-      if (!match.is_bye && match.team1_score !== null && match.team2_score !== null) {
+      if (countsTowardScore(match)) {
         const team1Won = match.team1_score > match.team2_score;
         [match.a1_player_id, match.a2_player_id].forEach((pid) => {
           if (pid && stats[pid]) {

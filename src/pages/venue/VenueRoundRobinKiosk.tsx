@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useMode } from "@/contexts/ModeContext";
 import { getVenueLogoSrc, getVenueLogoFallback } from "@/lib/venueBranding";
+import { countsTowardScore } from "@/lib/roundRobin/standings";
 
 type KioskTheme = 'venue' | 'proBroadcast' | 'courtGreen' | 'oceanBlue';
 
@@ -168,7 +169,7 @@ export default function VenueRoundRobinKiosk() {
   const calculateStandings = (schedule: ScheduleMatch[]) => {
     const playerStats = new Map<string, StandingsRow>();
 
-    schedule.filter(m => !m.is_bye && m.team1_score !== null && m.team2_score !== null).forEach((match) => {
+    schedule.filter(countsTowardScore).forEach((match) => {
       const team1 = [match.a1_player_id, match.a2_player_id].filter((id): id is string => id !== null);
       const team2 = [match.b1_player_id, match.b2_player_id].filter((id): id is string => id !== null);
       const t1score = match.team1_score!;
