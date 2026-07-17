@@ -58,6 +58,12 @@ import {
   friendlyRpcError,
   type RRManageParticipantError,
 } from "@/lib/roundRobin/manageParticipantRpc";
+import {
+  manageParticipant,
+  friendlyParticipantError,
+  isInfrastructureError,
+} from "@/lib/roundRobin/participantOrchestration";
+import { countsTowardScore } from "@/lib/roundRobin/standings";
 import { suggestRounds } from "@/lib/roundRobinFairness";
 import { isPlatformAdmin } from "@/lib/permissions";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -632,7 +638,9 @@ export default function RoundRobinDetail() {
     });
 
     scheduleData.forEach((match) => {
-      if (!match.is_bye && match.team1_score !== null && match.team2_score !== null) {
+      // Slice 4: only canonical, played rows count — excludes voided,
+      // superseded, and abandoned matches produced by participant management.
+      if (countsTowardScore(match)) {
         const team1Won = match.team1_score > match.team2_score;
 
         const teamAIds = [
@@ -1110,23 +1118,51 @@ export default function RoundRobinDetail() {
     const player = players.find(p => p.id === playerEventId);
     if (!player) return;
 
-    // Slice 2b: route destructive roster mutations through the transactional
-    // rr_manage_participant RPC. It performs the participant status change,
-    // schedule repair plan, schedule_version bump, and audit entry inside a
-    // single transaction, with idempotency + optimistic concurrency guards.
+    const reason = "Player removed from roster (past scores preserved)";
+    const onSuccess = async () => {
+      // The `active` boolean is kept in sync with `status` by a DB trigger, so
+      // all existing readers reflect the change immediately.
+      await fetchEventDetails();
+      toast.success("Player removed — they can rejoin later.");
+    };
+
+    // Slice 4: prefer the Slice 2b orchestration layer (snapshot → Slice 3
+    // planner → transactional apply) so auto/reoptimize resolves cases the SQL
+    // local-repair planner cannot. Returns true when handled (success or a
+    // surfaced application error); false when the layer is unavailable (edge
+    // function / migration not deployed) and we should fall back.
+    const handledByOrchestration = async (): Promise<boolean> => {
+      const res = await manageParticipant({
+        eventId: event.id,
+        participantId: playerEventId,
+        action: "remove",
+        reason,
+        regenMode: "auto",
+      });
+      if (res.ok) {
+        await onSuccess();
+        return true;
+      }
+      if (isInfrastructureError(res)) return false;
+      // Genuine application error — surface it and throw so the dialog stays
+      // open for a retry (it only clears state after a resolved await).
+      toast.error(friendlyParticipantError(res));
+      await fetchEventDetails();
+      throw new Error(res.code ?? "remove_failed");
+    };
+
+    if (await handledByOrchestration()) return;
+
+    // Fallback: direct transactional RPC (local-repair only).
     try {
       await callRrManageParticipant({
         eventId: event.id,
         playerId: playerEventId,
         action: "remove",
-        reason: "Player removed from roster (past scores preserved)",
+        reason,
         regenMode: "auto",
       });
-
-      // The `active` boolean is kept in sync with `status` by a database
-      // trigger, so all existing readers reflect the change immediately.
-      await fetchEventDetails();
-      toast.success("Player removed — they can rejoin later.");
+      await onSuccess();
     } catch (error: any) {
       const err = error as RRManageParticipantError;
       toast.error(friendlyRpcError(err));
@@ -1192,31 +1228,57 @@ export default function RoundRobinDetail() {
           substituteRosterId = (inserted as any).id;
         }
 
-        try {
-          await callRrManageParticipant({
+        const replaceReason = wasInactive
+          ? "Player reactivated and substituted globally"
+          : "Global player substitution";
+        const successMsg = wasInactive
+          ? "Player reactivated and substituted."
+          : "Player substituted.";
+
+        // Slice 4: prefer the orchestration layer (enables auto/reoptimize);
+        // fall back to the direct RPC when it isn't deployed. Returns true when
+        // handled (success or surfaced application error).
+        const handledByOrchestration = async (): Promise<boolean> => {
+          const res = await manageParticipant({
             eventId: event.id,
-            playerId: originalRosterId,
+            participantId: originalRosterId,
             action: "replace",
-            substituteParticipantId: substituteRosterId,
-            reason: wasInactive
-              ? "Player reactivated and substituted globally"
-              : "Global player substitution",
+            substituteId: substituteRosterId,
+            reason: replaceReason,
             regenMode: "auto",
           });
-        } catch (rpcErr: any) {
-          const err = rpcErr as RRManageParticipantError;
-          toast.error(friendlyRpcError(err));
-          console.error("rr_manage_participant replace failed", err);
+          if (res.ok) {
+            await fetchEventDetails();
+            toast.success(successMsg);
+            return true;
+          }
+          if (isInfrastructureError(res)) return false;
+          toast.error(friendlyParticipantError(res));
           await fetchEventDetails();
-          throw err;
-        }
+          throw new Error(res.code ?? "replace_failed");
+        };
 
-        await fetchEventDetails();
-        toast.success(
-          wasInactive
-            ? "Player reactivated and substituted."
-            : "Player substituted."
-        );
+        if (!(await handledByOrchestration())) {
+          // Fallback: direct transactional RPC (local-repair only).
+          try {
+            await callRrManageParticipant({
+              eventId: event.id,
+              playerId: originalRosterId,
+              action: "replace",
+              substituteParticipantId: substituteRosterId,
+              reason: replaceReason,
+              regenMode: "auto",
+            });
+          } catch (rpcErr: any) {
+            const err = rpcErr as RRManageParticipantError;
+            toast.error(friendlyRpcError(err));
+            console.error("rr_manage_participant replace failed", err);
+            await fetchEventDetails();
+            throw err;
+          }
+          await fetchEventDetails();
+          toast.success(successMsg);
+        }
       } else {
         // Single-round substitution: patch the original's seat in each
         // unscored match of that round. Guest-aware — a seat holds EITHER a

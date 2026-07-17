@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Radio, Lock, Clock, Trophy, Palette } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { countsTowardScore } from "@/lib/roundRobin/standings";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -192,7 +193,7 @@ export default function RoundRobinKiosk() {
     const playerStats = new Map<string, StandingsRow>();
 
     schedule
-      .filter(m => !m.is_bye && m.team1_score !== null && m.team2_score !== null)
+      .filter(countsTowardScore)
       .forEach((match) => {
         const team1 = [
           match.a1_player_id ?? match.a1_guest_id,
