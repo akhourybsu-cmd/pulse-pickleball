@@ -1356,8 +1356,11 @@ export default function RoundRobinDetail() {
       toast.error("Failed to substitute player");
       console.error(error);
       throw error;
+    } finally {
+      rrMutationInFlightRef.current = false;
     }
   };
+
 
   const handleUpdateCourts = async (newCourts: number) => {
     if (!event || !userId) return;
