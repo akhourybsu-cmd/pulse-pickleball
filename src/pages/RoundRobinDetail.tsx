@@ -1258,7 +1258,8 @@ export default function RoundRobinDetail() {
             action: "replace",
             substituteId: substituteRosterId,
             reason: replaceReason,
-            regenMode: "auto",
+            regenMode: "minimal",
+
           });
           if (res.ok) {
             await fetchEventDetails();
