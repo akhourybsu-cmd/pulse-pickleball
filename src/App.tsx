@@ -83,8 +83,6 @@ const MyGuests = lazy(() => import("./pages/player/MyGuests"));
 const NewMatch = lazy(() => import("./pages/NewMatch"));
 const PendingMatches = lazy(() => import("./pages/PendingMatches"));
 const MatchHistory = lazy(() => import("./pages/MatchHistory"));
-const CourtBoard = lazy(() => import("./pages/CourtBoard"));
-const PostDetail = lazy(() => import("./pages/PostDetail"));
 const FAQ = lazy(() => import("./pages/FAQ"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const SessionQueue = lazy(() => import("./pages/SessionQueue"));
@@ -133,9 +131,6 @@ const TournamentPaymentSuccess = lazy(() => import("./pages/TournamentPaymentSuc
 const TournamentPaymentCancelled = lazy(() => import("./pages/TournamentPaymentCancelled"));
 const TournamentsLanding = lazy(() => import("./pages/TournamentsLanding"));
 const CreateVenueFast = lazy(() => import("./pages/venue/CreateVenueFast"));
-const Reservations = lazy(() => import("./pages/Reservations"));
-const MyCalendarRegistrations = lazy(() => import("./pages/MyCalendarRegistrations"));
-const PickleballCitiMemberships = lazy(() => import("./pages/PickleballCitiMemberships"));
 const DataExport = lazy(() => import("./pages/DataExport"));
 const AdminAuditLog = lazy(() => import("./pages/AdminAuditLog"));
 const AdminTestAccounts = lazy(() => import("./pages/AdminTestAccounts"));
@@ -156,8 +151,6 @@ const PlayHub = lazy(() => import("./pages/play/PlayHub"));
 
 const PlayerEvents = lazy(() => import("./pages/player/PlayerEvents"));
 const PlayerCoaching = lazy(() => import("./pages/player/PlayerCoaching"));
-const PlayerBookings = lazy(() => import("./pages/player/PlayerBookings"));
-const MyBookings = lazy(() => import("./pages/player/MyBookings"));
 const MyEvents = lazy(() => import("./pages/player/MyEvents"));
 const FindEvents = lazy(() => import("./pages/player/FindEvents"));
 const Community = lazy(() => import("./pages/player/Community"));
@@ -516,15 +509,7 @@ const AppContent = () => {
               because its target already carries a query string. */}
           <Route path="/match/new" element={<RedirectWithParams to="/player/matches/new" />} />
           <Route path="/match/pending" element={<Navigate to="/player/matches?tab=pending" replace />} />
-          <Route path="/match/history" element={<RedirectWithParams to="/player/matches" />} />
-          <Route path="/court/board" element={<CourtBoard />} />
-          <Route path="/pickleballciti" element={<Navigate to="/court/board/836003fb-fbd7-429c-8973-67ac6766a511" replace />} />
-          <Route path="/masonfield" element={<Navigate to="/court/board/4a5d9fb8-981b-42f1-9504-595cb8f22fca" replace />} />
-          <Route path="/tildastone" element={<Navigate to="/court/board/2bf21943-2efc-43fe-bab4-9bb7693d4674" replace />} />
-          <Route path="/naymca" element={<Navigate to="/court/board/51e71be8-2212-4d46-9f83-d7f2d2af3120" replace />} />
-          <Route path="/court/board/:courtId" element={<CourtBoard />} />
-          <Route path="/court/feed/:postId" element={<PostDetail />} />
-          <Route path="/faq" element={<FAQ />} />
+          <Route path="/match/history" element={<RedirectWithParams to="/player/matches" />} />          <Route path="/faq" element={<FAQ />} />
           <Route path="/session/queue" element={<SessionQueue />} />
           <Route path="/admin" element={<AdminGuard><AdminDashboard /></AdminGuard>} />
           <Route path="/archive" element={<AdminGuard><AdminArchive /></AdminGuard>} />
@@ -554,14 +539,9 @@ const AppContent = () => {
           <Route path="/match/ticket/:ticketId" element={<MatchTicket />} />
           <Route path="/qr-checkin" element={<QRCheckIn />} />
           <Route path="/kiosk" element={<Kiosk />} />
-          <Route path="/changelog" element={<Changelog />} />
-          <Route path="/reservations" element={<Reservations />} />
-          <Route path="/events/my-calendar-registrations" element={<MyCalendarRegistrations />} />
-          {/* NOTE: /events/browse is intentionally redirected to /play above
+          <Route path="/changelog" element={<Changelog />} />          {/* NOTE: /events/browse is intentionally redirected to /play above
               (the unified hub). The former <BrowseEvents /> route here was dead
-              (shadowed by that earlier redirect) and has been removed. */}
-          <Route path="/pickleball-citi-memberships" element={<PickleballCitiMemberships />} />
-          <Route path="/profile/data-export" element={<DataExport />} />
+              (shadowed by that earlier redirect) and has been removed. */}          <Route path="/profile/data-export" element={<DataExport />} />
           <Route path="/settings/notifications" element={<NotificationSettings />} />
           <Route path="/settings/blocked" element={<BlockedUsers />} />
           <Route path="/events" element={<Events />} />
@@ -592,9 +572,7 @@ const AppContent = () => {
           <Route path="/tournaments/:id/payment-success" element={<AdminGuard><TournamentPaymentSuccess /></AdminGuard>} />
           <Route path="/tournaments/:id/payment-cancelled" element={<AdminGuard><TournamentPaymentCancelled /></AdminGuard>} />
           <Route path="/tournament/:slug" element={<AdminGuard><TournamentLanding /></AdminGuard>} />
-          <Route path="/tournament/:eventId/register" element={<AdminGuard><TournamentRegister /></AdminGuard>} />
-          <Route path="/my-registrations" element={<MyCalendarRegistrations />} />
-          <Route path="/tournament/:eventId/live" element={<AdminGuard><TournamentLiveView /></AdminGuard>} />
+          <Route path="/tournament/:eventId/register" element={<AdminGuard><TournamentRegister /></AdminGuard>} />          <Route path="/tournament/:eventId/live" element={<AdminGuard><TournamentLiveView /></AdminGuard>} />
           <Route path="/tournament/:eventId/team/:teamId" element={<AdminGuard><TournamentTeamView /></AdminGuard>} />
           <Route path="/tournament/:eventId/match/:matchId/score" element={<AdminGuard><TournamentMatchScore /></AdminGuard>} />
           {/* Platform tournament admin — gated at the router level (security fix Phase 5) */}
