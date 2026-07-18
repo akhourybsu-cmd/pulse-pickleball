@@ -324,6 +324,55 @@ Deno.serve(async (req) => {
     }
 
     // ==========================================================
+    // 5b. Substitutes — a small bench the organizer can swap in
+    // ==========================================================
+    const SUB_COUNT = 4
+    const subNotes = [
+      'Weeknights only · texts fastest',
+      'Available most weeks · strong 3.5',
+      'Weekends preferred · consistent dinker',
+      'Short notice OK · big serve',
+    ]
+    for (let i = 0; i < SUB_COUNT; i++) {
+      const email = `leaguesimsub${i + 1}@pulsetest.local`
+      const nm = playerName(playerCount + i)
+      let uid: string | null = null
+      const { data: created, error: createErr } =
+        await admin.auth.admin.createUser({
+          email,
+          password: 'TestPassword123!',
+          email_confirm: true,
+          user_metadata: { full_name: nm.full, display_name: nm.full },
+        })
+      if (createErr) {
+        if (createErr.message.includes('already') || createErr.message.includes('registered')) {
+          let page = 1
+          while (!uid && page <= 20) {
+            const { data: list } = await admin.auth.admin.listUsers({ page, perPage: 200 })
+            const found = list?.users?.find((u) => u.email === email)
+            if (found) uid = found.id
+            if (!list || (list.users?.length ?? 0) < 200) break
+            page++
+          }
+        } else {
+          throw createErr
+        }
+      } else {
+        uid = created?.user?.id ?? null
+      }
+      if (!uid) continue
+      await admin.from('profiles').update({
+        full_name: nm.full, display_name: nm.full,
+        first_name: nm.first, last_name: nm.last, email,
+        current_rating: 3.0 + (i % 4) / 2,
+      }).eq('id', uid)
+      await admin.from('league_substitutes').insert({
+        league_id: leagueId, season_id: seasonId, division_id: divisionId,
+        user_id: uid, notes: subNotes[i % subNotes.length], status: 'active',
+      })
+    }
+
+    // ==========================================================
     // 6. Sessions — one per week
     // ==========================================================
     const todayIso = isoDate(new Date())

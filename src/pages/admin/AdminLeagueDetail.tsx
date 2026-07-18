@@ -15,6 +15,7 @@ import { SeasonsTab } from "@/components/admin/leagues/SeasonsTab";
 import { DivisionsTab } from "@/components/admin/leagues/DivisionsTab";
 import { MembersTab } from "@/components/admin/leagues/MembersTab";
 import { TeamsTab } from "@/components/admin/leagues/TeamsTab";
+import { SubstitutesTab } from "@/components/admin/leagues/SubstitutesTab";
 import { SessionsTab } from "@/components/admin/leagues/SessionsTab";
 import { MatchesTab } from "@/components/admin/leagues/MatchesTab";
 import { StandingsTab } from "@/components/admin/leagues/StandingsTab";
@@ -284,6 +285,9 @@ export default function AdminLeagueDetail() {
                 )}
                 {activeTab === "teams" && (
                   <TeamsTab league={league} dataVersion={dataVersion} onMutated={onDataMutated} />
+                )}
+                {activeTab === "subs" && (
+                  <SubstitutesTab league={league} dataVersion={dataVersion} onMutated={onDataMutated} />
                 )}
                 {activeTab === "sessions" && (
                   <SessionsTab league={league} dataVersion={dataVersion} onMutated={onDataMutated} />

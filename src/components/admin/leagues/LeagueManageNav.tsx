@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import {
   Trophy, CalendarDays, Layers, Users, UsersRound,
-  CalendarClock, Swords, Award, Shield,
+  CalendarClock, Swords, Award, Shield, LifeBuoy,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
  */
 export type ManageTab =
   | "overview" | "seasons" | "divisions"
-  | "members" | "teams"
+  | "members" | "teams" | "subs"
   | "sessions" | "matches"
   | "standings"
   | "audit";
@@ -35,6 +35,7 @@ export const MANAGE_TABS: TabDef[] = [
   { key: "divisions", label: "Divisions",  short: "Divs",     icon: Layers,        group: "Setup",   hint: "Skill tiers within a season" },
   { key: "members",   label: "Members",    short: "Members",  icon: Users,         group: "People",  hint: "Active players in this league" },
   { key: "teams",     label: "Teams",      short: "Teams",    icon: UsersRound,    group: "People",  hint: "Rosters + captains" },
+  { key: "subs",      label: "Subs",       short: "Subs",     icon: LifeBuoy,      group: "People",  hint: "Sub pool + swap into a week" },
   { key: "sessions",  label: "Sessions",   short: "Sessions", icon: CalendarClock, group: "Play",    hint: "Nights of scheduled play" },
   { key: "matches",   label: "Matches",    short: "Matches",  icon: Swords,        group: "Play",    hint: "Individual matchups" },
   { key: "standings", label: "Standings",  short: "Table",    icon: Award,         group: "Results", hint: "Wins, points, form" },
