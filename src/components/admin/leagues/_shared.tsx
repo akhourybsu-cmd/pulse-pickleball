@@ -33,20 +33,19 @@ export function EmptyState({
   action?: { label: string; onClick: () => void };
 }) {
   return (
-    <div className="rounded-xl border border-dashed border-border p-8 text-center">
+    <div className="rounded-2xl border border-dashed border-border/80 bg-muted/20 p-10 text-center">
       {icon && (
-        <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
+        <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/15 to-primary/5 text-primary ring-1 ring-primary/15">
           {icon}
         </div>
       )}
-      <p className="text-sm font-medium">{title}</p>
-      {desc && <p className="text-xs text-muted-foreground mt-1">{desc}</p>}
+      <p className="text-sm font-semibold">{title}</p>
+      {desc && <p className="text-xs text-muted-foreground mt-1 max-w-xs mx-auto leading-relaxed">{desc}</p>}
       {action && (
         <Button
           size="sm"
-          variant="outline"
           onClick={action.onClick}
-          className="mt-3"
+          className="mt-4"
         >
           {action.label}
         </Button>

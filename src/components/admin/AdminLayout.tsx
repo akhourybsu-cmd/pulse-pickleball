@@ -34,7 +34,7 @@ const NAV: AdminNavItem[] = [
 
   { href: "/admin/players",             label: "Players",          icon: Users,         group: "manage" },
   { href: "/admin/matches",             label: "Matches",          icon: FileText,      group: "manage" },
-  { href: "/admin/leagues",             label: "Leagues (admin)",  icon: ListChecks,    group: "manage" },
+  { href: "/player/leagues",            label: "Leagues",          icon: ListChecks,    group: "manage" },
   { href: "/admin/badges",              label: "Badges",           icon: Trophy,        group: "manage" },
   { href: "/pending-matches",           label: "Pending Matches",  icon: Trophy,        group: "manage" },
 

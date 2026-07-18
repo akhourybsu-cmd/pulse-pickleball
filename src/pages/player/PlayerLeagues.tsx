@@ -95,6 +95,15 @@ export default function PlayerLeagues() {
             color: "#A6DB5A",
           }}
         />
+        {/* Soft accent glow + oversized trophy watermark for depth */}
+        <div
+          aria-hidden
+          className="absolute -top-16 -right-10 h-56 w-56 rounded-full bg-[#A6DB5A]/20 blur-3xl pointer-events-none"
+        />
+        <Trophy
+          aria-hidden
+          className="absolute -right-4 -bottom-8 h-40 w-40 text-white/[0.03] rotate-12 pointer-events-none"
+        />
         <div className="relative flex items-start justify-between gap-4 flex-wrap">
           <div className="min-w-0 flex-1">
             <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-[#A6DB5A]/15 text-[#A6DB5A] text-[10px] font-bold uppercase tracking-wider ring-1 ring-[#A6DB5A]/30">
@@ -174,48 +183,49 @@ export default function PlayerLeagues() {
                 <button
                   type="button"
                   onClick={() => navigate(`/player/leagues/${league.id}`)}
-                  className="group w-full text-left rounded-xl border border-border/70 bg-card hover:border-primary/40 hover:shadow-md hover:-translate-y-0.5 active:scale-[0.99] transition-all overflow-hidden"
+                  className="group w-full text-left rounded-2xl border border-border/70 bg-card hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-0.5 active:scale-[0.99] transition-all overflow-hidden"
                 >
                   <div className="flex items-stretch">
-                    <div className={cn("w-1.5 shrink-0", meta.stripe)} aria-hidden />
-                    <div className="flex-1 min-w-0 p-3.5">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-bold text-base truncate">
-                              {league.name}
+                    <div className={cn("w-1.5 shrink-0 bg-gradient-to-b from-transparent via-current to-transparent opacity-80", meta.stripe)} aria-hidden />
+                    <div className="flex-1 min-w-0 p-3.5 flex items-center gap-3">
+                      {/* Type-accent icon chip — the visual anchor */}
+                      <div className={cn(
+                        "h-11 w-11 rounded-xl flex items-center justify-center shrink-0 ring-1 ring-inset ring-border/50 transition-transform group-hover:scale-105",
+                        meta.chip,
+                      )}>
+                        <Icon className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-base truncate">
+                            {league.name}
+                          </span>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                            {meta.label}
+                          </span>
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                          {season && (
+                            <span className="inline-flex items-center gap-1">
+                              <CalendarDays className="w-3 h-3" />
+                              {season.name}
                             </span>
-                            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
-                              <Icon className="w-3 h-3" />
-                              {meta.label}
+                          )}
+                          {division && (<><span>·</span><span>{division.name}</span></>)}
+                          {membership.role !== "player" && (
+                            <span className="uppercase tracking-wider text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded ring-1 ring-primary/20">
+                              {membership.role}
                             </span>
-                          </div>
-                          <div className="text-xs text-muted-foreground mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                            {season && (
-                              <span className="inline-flex items-center gap-1">
-                                <CalendarDays className="w-3 h-3" />
-                                {season.name}
-                              </span>
-                            )}
-                            {division && (<><span>·</span><span>{division.name}</span></>)}
-                            {membership.role !== "player" && (
-                              <>
-                                <span>·</span>
-                                <span className="uppercase tracking-wider text-[10px] font-bold text-primary">
-                                  {membership.role}
-                                </span>
-                              </>
-                            )}
-                          </div>
-                          {league.location && (
-                            <div className="text-[11px] text-muted-foreground mt-1 inline-flex items-center gap-1">
-                              <MapPin className="w-3 h-3" />
-                              {league.location}
-                            </div>
                           )}
                         </div>
-                        <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 mt-1 group-hover:translate-x-0.5 group-hover:text-primary transition-all" />
+                        {league.location && (
+                          <div className="text-[11px] text-muted-foreground mt-1 inline-flex items-center gap-1">
+                            <MapPin className="w-3 h-3" />
+                            {league.location}
+                          </div>
+                        )}
                       </div>
+                      <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 group-hover:translate-x-0.5 group-hover:text-primary transition-all" />
                     </div>
                   </div>
                 </button>
@@ -255,19 +265,24 @@ export default function PlayerLeagues() {
                   <button
                     type="button"
                     onClick={() => setJoinOpen(true)}
-                    className="group w-full text-left rounded-xl border border-border/70 bg-card/50 hover:border-primary/40 hover:bg-card hover:shadow-md transition-all overflow-hidden"
+                    className="group w-full text-left rounded-2xl border border-border/70 bg-card/50 hover:border-primary/40 hover:bg-card hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-0.5 transition-all overflow-hidden"
                   >
                     <div className="flex items-stretch">
-                      <div className={cn("w-1.5 shrink-0 opacity-70", meta.stripe)} aria-hidden />
-                      <div className="flex-1 min-w-0 p-3.5">
-                        <div className="flex items-start justify-between gap-3">
+                      <div className={cn("w-1.5 shrink-0 bg-gradient-to-b from-transparent via-current to-transparent opacity-60", meta.stripe)} aria-hidden />
+                      <div className="flex-1 min-w-0 p-3.5 flex items-start gap-3">
+                        <div className={cn(
+                          "h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ring-1 ring-inset ring-border/50",
+                          meta.chip,
+                        )}>
+                          <Icon className="w-[18px] h-[18px]" />
+                        </div>
+                        <div className="flex items-start justify-between gap-3 flex-1 min-w-0">
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2 flex-wrap">
                               <span className="font-semibold text-base truncate">
                                 {league.name}
                               </span>
-                              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
-                                <Icon className="w-3 h-3" />
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                                 {meta.label}
                               </span>
                             </div>

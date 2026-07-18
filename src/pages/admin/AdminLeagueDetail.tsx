@@ -15,6 +15,7 @@ import { SeasonsTab } from "@/components/admin/leagues/SeasonsTab";
 import { DivisionsTab } from "@/components/admin/leagues/DivisionsTab";
 import { MembersTab } from "@/components/admin/leagues/MembersTab";
 import { TeamsTab } from "@/components/admin/leagues/TeamsTab";
+import { SubstitutesTab } from "@/components/admin/leagues/SubstitutesTab";
 import { SessionsTab } from "@/components/admin/leagues/SessionsTab";
 import { MatchesTab } from "@/components/admin/leagues/MatchesTab";
 import { StandingsTab } from "@/components/admin/leagues/StandingsTab";
@@ -40,7 +41,8 @@ export default function AdminLeagueDetail() {
   // (self-serve owner surface, no admin chrome). Detect by URL prefix
   // so we can wrap the render conditionally.
   const isPlayerContext = location.pathname.startsWith("/player/");
-  const backHref = isPlayerContext ? "/player/leagues" : "/admin/leagues";
+  // Leagues are one public portal now; both contexts return to it.
+  const backHref = "/player/leagues";
   const [loading, setLoading] = useState(true);
   const [league, setLeague] = useState<League | null>(null);
   const [counts, setCounts] = useState<Counts | null>(null);
@@ -185,6 +187,7 @@ export default function AdminLeagueDetail() {
                  color: "#A6DB5A",
                }}
                aria-hidden />
+          <div aria-hidden className="absolute -top-24 -right-16 h-64 w-64 rounded-full bg-[#A6DB5A]/15 blur-3xl pointer-events-none" />
 
           <div className="relative p-5 sm:p-6">
             {/* Type + status row */}
@@ -284,6 +287,9 @@ export default function AdminLeagueDetail() {
                 )}
                 {activeTab === "teams" && (
                   <TeamsTab league={league} dataVersion={dataVersion} onMutated={onDataMutated} />
+                )}
+                {activeTab === "subs" && (
+                  <SubstitutesTab league={league} dataVersion={dataVersion} onMutated={onDataMutated} />
                 )}
                 {activeTab === "sessions" && (
                   <SessionsTab league={league} dataVersion={dataVersion} onMutated={onDataMutated} />

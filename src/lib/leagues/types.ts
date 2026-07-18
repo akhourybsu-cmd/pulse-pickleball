@@ -19,6 +19,7 @@ export type TeamStatus = "active" | "archived";
 export type TeamMemberRole = "player" | "captain" | "substitute";
 export type TeamMemberStatus = "active" | "removed";
 export type SessionStatus = "draft" | "published" | "completed" | "canceled";
+export type SubstituteStatus = "active" | "inactive";
 export type LeagueMatchStatus =
   | "scheduled"
   | "in_progress"
@@ -120,6 +121,18 @@ export interface LeagueTeamMember {
   user_id: string;
   role: TeamMemberRole;
   status: TeamMemberStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LeagueSubstitute {
+  id: string;
+  league_id: string;
+  season_id: string;
+  division_id: string | null;
+  user_id: string;
+  notes: string | null;
+  status: SubstituteStatus;
   created_at: string;
   updated_at: string;
 }
