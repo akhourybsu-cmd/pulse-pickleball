@@ -41,7 +41,8 @@ export default function AdminLeagueDetail() {
   // (self-serve owner surface, no admin chrome). Detect by URL prefix
   // so we can wrap the render conditionally.
   const isPlayerContext = location.pathname.startsWith("/player/");
-  const backHref = isPlayerContext ? "/player/leagues" : "/admin/leagues";
+  // Leagues are one public portal now; both contexts return to it.
+  const backHref = "/player/leagues";
   const [loading, setLoading] = useState(true);
   const [league, setLeague] = useState<League | null>(null);
   const [counts, setCounts] = useState<Counts | null>(null);

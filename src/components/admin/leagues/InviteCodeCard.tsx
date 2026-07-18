@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { KeyRound, Copy, Trash2, Check, Share2, QrCode, Link2, Printer } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-import { Link, useLocation } from "react-router-dom";
+import { Link } from "react-router-dom";
 import type { League } from "@/lib/leagues/types";
 import { logLeagueAction } from "@/lib/leagues/audit";
 
@@ -31,13 +31,9 @@ export function InviteCodeCard({
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
-  // Poster link needs the same URL prefix as the current context —
-  // /admin/leagues/... when a platform admin is viewing, /player/...
-  // when a league owner is on their manage surface.
-  const location = useLocation();
-  const posterHref = location.pathname.startsWith("/player/")
-    ? `/player/leagues/${league.id}/poster`
-    : `/admin/leagues/${league.id}/poster`;
+  // Leagues live in one public portal — the poster always lives under
+  // /player/leagues.
+  const posterHref = `/player/leagues/${league.id}/poster`;
 
   const currentCode = league.invite_code ?? null;
   const isAdminOnly = league.visibility === "admin_only";

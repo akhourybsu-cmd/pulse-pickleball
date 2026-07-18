@@ -163,8 +163,8 @@ const AdminDashboard = () => {
             />
             <ListTile
               icon={ListChecks}
-              title="Leagues (admin)"
-              onClick={() => navigate("/admin/leagues")}
+              title="Leagues"
+              onClick={() => navigate("/player/leagues")}
             />
             <ListTile
               icon={Trophy}

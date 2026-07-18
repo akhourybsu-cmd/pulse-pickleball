@@ -37,6 +37,21 @@ function RedirectWithParams({ to }: { to: string }) {
 }
 
 /**
+ * Redirect the retired /admin/leagues/:leagueId[/poster] routes into the
+ * single public league portal under /player/leagues. Interpolates the
+ * :leagueId param (RedirectWithParams only handles static targets) and
+ * preserves any query/hash.
+ */
+function LeagueAdminRedirect({ suffix = "/manage" }: { suffix?: string }) {
+  const { leagueId } = useParams();
+  const location = useLocation();
+  const base = leagueId
+    ? `/player/leagues/${leagueId}${suffix}`
+    : "/player/leagues";
+  return <Navigate to={`${base}${location.search}${location.hash}`} replace />;
+}
+
+/**
  * Send /venue/round-robins/:id traffic to the unified RoundRobinDetail page.
  * Adds `?ctx=venue` so the detail page's back-nav can return to the venue
  * console (instead of the public RoundRobinHub) for venue-context viewers.
@@ -98,7 +113,6 @@ const AdminPlayers = lazy(() => import("./pages/AdminPlayers"));
 const AdminBadges = lazy(() => import("./pages/AdminBadges"));
 const AdminMatches = lazy(() => import("./pages/AdminMatches"));
 const AdminMarketing = lazy(() => import("./pages/AdminMarketing"));
-const AdminLeagues = lazy(() => import("./pages/admin/AdminLeagues"));
 const AdminLeagueDetail = lazy(() => import("./pages/admin/AdminLeagueDetail"));
 const LeaguePoster = lazy(() => import("./pages/admin/LeaguePoster"));
 const Changelog = lazy(() => import("./pages/Changelog"));
@@ -518,13 +532,13 @@ const AppContent = () => {
           <Route path="/admin/players" element={<AdminGuard><AdminPlayers /></AdminGuard>} />
           <Route path="/admin/badges" element={<AdminGuard><AdminBadges /></AdminGuard>} />
           <Route path="/admin/matches" element={<AdminGuard><AdminMatches /></AdminGuard>} />
-          {/* /admin/leagues (list) remains platform-admin only — it
-              shows EVERY league on the platform. The detail + poster
-              routes are open to any authenticated user; RLS enforces
-              that non-owner non-admins see empty data. */}
-          <Route path="/admin/leagues" element={<AdminGuard><AdminLeagues /></AdminGuard>} />
-          <Route path="/admin/leagues/:leagueId" element={<AuthGuard><AdminLeagueDetail /></AuthGuard>} />
-          <Route path="/admin/leagues/:leagueId/poster" element={<AuthGuard><LeaguePoster /></AuthGuard>} />
+          {/* Leagues are now ONE public portal under /player/leagues —
+              no separate admin surface. These legacy /admin/leagues*
+              paths redirect there so old links/bookmarks keep working.
+              RLS still enforces that only owners/admins can manage. */}
+          <Route path="/admin/leagues" element={<Navigate to="/player/leagues" replace />} />
+          <Route path="/admin/leagues/:leagueId" element={<LeagueAdminRedirect suffix="/manage" />} />
+          <Route path="/admin/leagues/:leagueId/poster" element={<LeagueAdminRedirect suffix="/poster" />} />
           {/* Player-context poster route — mounted OUTSIDE PlayerShell so
               the sticky header + bottom nav don't overlap the poster on
               screen or bleed into the printed sheet. */}
