@@ -5,7 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { UserPlus, Copy, Check, AlertTriangle, ArrowLeft } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { UserPlus, Copy, Check, AlertTriangle, ArrowLeft, Trophy, ExternalLink } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import logo from "@/assets/pulse-logo-premium.svg";
 
@@ -13,6 +15,39 @@ export default function AdminTestAccounts() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+
+  // League simulation state
+  const [simLoading, setSimLoading] = useState(false);
+  const [simWeeks, setSimWeeks] = useState("8");
+  const [simPlayers, setSimPlayers] = useState("32");
+  const [simResult, setSimResult] = useState<
+    { manage_url: string; players: number; teams: number; weeks: number; matches: number } | null
+  >(null);
+
+  const handleSimulateLeague = async () => {
+    setSimLoading(true);
+    setSimResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("simulate-league", {
+        body: {
+          weeks: Number(simWeeks) || 8,
+          playerCount: Number(simPlayers) || 32,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setSimResult(data);
+      toast.success(
+        `League simulated: ${data.players} players, ${data.teams} teams, ${data.matches} matches`,
+      );
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to simulate league";
+      toast.error(message);
+      console.error(error);
+    } finally {
+      setSimLoading(false);
+    }
+  };
 
   const testAccounts = Array.from({ length: 8 }, (_, i) => ({
     email: `testaccount${i + 1}@pulsetest.local`,
@@ -35,7 +70,7 @@ export default function AdminTestAccounts() {
       } else {
         toast.success(`Successfully processed ${data.created.length} test accounts!`);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.error('Failed to create test accounts');
       console.error(error);
     } finally {
@@ -149,6 +184,87 @@ export default function AdminTestAccounts() {
             <Alert>
               <AlertDescription>
                 <strong>Note:</strong> All test accounts use the same password: TestPassword123!
+              </AlertDescription>
+            </Alert>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Trophy className="w-5 h-5 text-primary" />
+              Simulate a League
+            </CardTitle>
+            <CardDescription>
+              Builds a full doubles ladder league <strong>owned by you</strong> — test
+              players, teams, weekly sessions, and a round-robin schedule with past
+              weeks already scored. Open it from My Leagues → Manage to view, edit, and
+              adjust the schedule. Re-running replaces your previous simulated league.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="sim-players">Players (even, 8–40)</Label>
+                <Input
+                  id="sim-players"
+                  type="number"
+                  min={8}
+                  max={40}
+                  step={2}
+                  value={simPlayers}
+                  onChange={(e) => setSimPlayers(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="sim-weeks">Weeks (2–15)</Label>
+                <Input
+                  id="sim-weeks"
+                  type="number"
+                  min={2}
+                  max={15}
+                  value={simWeeks}
+                  onChange={(e) => setSimWeeks(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <Button
+              onClick={handleSimulateLeague}
+              disabled={simLoading}
+              className="w-full"
+            >
+              <Trophy className="mr-2 h-4 w-4" />
+              {simLoading ? "Simulating league…" : "Simulate league on my account"}
+            </Button>
+
+            {simResult && (
+              <Alert>
+                <AlertDescription className="space-y-2">
+                  <p>
+                    Created <strong>{simResult.players}</strong> players ·{" "}
+                    <strong>{simResult.teams}</strong> teams ·{" "}
+                    <strong>{simResult.weeks}</strong> weeks ·{" "}
+                    <strong>{simResult.matches}</strong> matches.
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate(simResult.manage_url)}
+                  >
+                    <ExternalLink className="mr-2 h-4 w-4" />
+                    Open league manager
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <Alert>
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                Test players use emails <code>leaguesim1…N@pulsetest.local</code> and
+                password <code>TestPassword123!</code>. League matches never touch PULSE
+                Ratings.
               </AlertDescription>
             </Alert>
           </CardContent>
