@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { JoinByCodeDialog } from "@/components/leagues/JoinByCodeDialog";
 import { CreateLeagueDialog } from "@/components/leagues/CreateLeagueDialog";
+import { LeaguesExplainer } from "@/components/leagues/LeaguesExplainer";
 import { LEAGUE_TYPE_META } from "@/lib/leagues/typeMeta";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -315,6 +316,10 @@ export default function PlayerLeagues() {
           </ul>
         </section>
       )}
+
+      {/* Plain-language explainer — auto-opens for first-timers, stays
+          collapsed (but handy) once you're in a league. */}
+      <LeaguesExplainer defaultOpen={!loading && rows.length === 0} />
 
       <JoinByCodeDialog
         open={joinOpen}

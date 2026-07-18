@@ -194,26 +194,28 @@ export function MembersTab({ league, dataVersion, onMutated }: LeagueTabProps) {
               .split(/\s+/).filter(Boolean).slice(0, 2)
               .map((s) => s[0]).join("").toUpperCase() || "?";
             return (
-              <li key={m.id} className="rounded-lg border border-border/70 bg-card p-3 flex items-center gap-3">
-                {/* Avatar chip — pulls from profile.avatar_url when
-                    available, initials otherwise. Small enough to not
-                    dominate the row. */}
-                <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center shrink-0 overflow-hidden ring-1 ring-border">
-                  {p?.avatar_url ? (
-                    <img src={p.avatar_url} alt="" className="h-full w-full object-cover" />
-                  ) : (
-                    <span className="text-[11px] font-bold text-muted-foreground">
-                      {initials}
-                    </span>
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="font-medium truncate">{name}</div>
-                  <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap mt-0.5">
-                    <span>{m.role}</span>
-                    <span>·</span>
-                    <span>{m.status}</span>
-                    {division && (<><span>·</span><span>{division.name}</span></>)}
+              <li key={m.id} className="rounded-lg border border-border/70 bg-card p-3 flex flex-col sm:flex-row sm:items-center gap-3">
+                <div className="flex items-center gap-3 min-w-0 sm:flex-1">
+                  {/* Avatar chip — pulls from profile.avatar_url when
+                      available, initials otherwise. Small enough to not
+                      dominate the row. */}
+                  <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center shrink-0 overflow-hidden ring-1 ring-border">
+                    {p?.avatar_url ? (
+                      <img src={p.avatar_url} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <span className="text-[11px] font-bold text-muted-foreground">
+                        {initials}
+                      </span>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="font-medium truncate">{name}</div>
+                    <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap mt-0.5">
+                      <span>{m.role}</span>
+                      <span>·</span>
+                      <span>{m.status}</span>
+                      {division && (<><span>·</span><span>{division.name}</span></>)}
+                    </div>
                   </div>
                 </div>
                 <MemberInlineActions
@@ -261,12 +263,12 @@ function MemberInlineActions({
   };
 
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-1 w-full sm:w-auto">
       <Select
         value={member.role}
         onValueChange={(v) => patch({ role: v as MemberRole }, "member.role_changed")}
       >
-        <SelectTrigger className="h-8 w-[110px] text-xs"><SelectValue /></SelectTrigger>
+        <SelectTrigger className="h-8 flex-1 sm:flex-none sm:w-[110px] text-xs"><SelectValue /></SelectTrigger>
         <SelectContent>
           <SelectItem value="player">Player</SelectItem>
           <SelectItem value="captain">Captain</SelectItem>
@@ -277,7 +279,7 @@ function MemberInlineActions({
         value={member.division_id ?? "none"}
         onValueChange={(v) => patch({ division_id: v === "none" ? null : v }, "member.division_changed")}
       >
-        <SelectTrigger className="h-8 w-[130px] text-xs"><SelectValue /></SelectTrigger>
+        <SelectTrigger className="h-8 flex-1 sm:flex-none sm:w-[130px] text-xs"><SelectValue /></SelectTrigger>
         <SelectContent>
           <SelectItem value="none">No division</SelectItem>
           {divisions.map((d) => (

@@ -201,39 +201,41 @@ export function SubstitutesTab({ league, dataVersion, onMutated }: LeagueTabProp
               <li
                 key={sub.id}
                 className={cn(
-                  "rounded-lg border border-border/70 bg-card p-3 flex items-center gap-3",
+                  "rounded-lg border border-border/70 bg-card p-3 flex flex-col sm:flex-row sm:items-center gap-3",
                   inactive && "opacity-60",
                 )}
               >
-                <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center shrink-0 overflow-hidden ring-1 ring-border">
-                  {p?.avatar_url ? (
-                    <img src={p.avatar_url} alt="" className="h-full w-full object-cover" />
-                  ) : (
-                    <span className="text-[11px] font-bold text-muted-foreground">{initials}</span>
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-medium truncate">{name}</span>
-                    {inactive && (
-                      <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-                        Inactive
-                      </span>
-                    )}
-                    {appearances > 0 && (
-                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-primary/10 text-primary">
-                        In {appearances} matchup{appearances === 1 ? "" : "s"}
-                      </span>
+                <div className="flex items-center gap-3 min-w-0 sm:flex-1">
+                  <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center shrink-0 overflow-hidden ring-1 ring-border">
+                    {p?.avatar_url ? (
+                      <img src={p.avatar_url} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <span className="text-[11px] font-bold text-muted-foreground">{initials}</span>
                     )}
                   </div>
-                  <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap mt-0.5">
-                    {division && <span>{division.name}</span>}
-                    {sub.notes && (
-                      <span className="inline-flex items-center gap-1 min-w-0">
-                        <StickyNote className="w-3 h-3 shrink-0" />
-                        <span className="truncate max-w-[220px]">{sub.notes}</span>
-                      </span>
-                    )}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-medium truncate">{name}</span>
+                      {inactive && (
+                        <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                          Inactive
+                        </span>
+                      )}
+                      {appearances > 0 && (
+                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+                          In {appearances} matchup{appearances === 1 ? "" : "s"}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap mt-0.5">
+                      {division && <span>{division.name}</span>}
+                      {sub.notes && (
+                        <span className="inline-flex items-center gap-1 min-w-0">
+                          <StickyNote className="w-3 h-3 shrink-0" />
+                          <span className="truncate max-w-[220px]">{sub.notes}</span>
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <SubInlineActions
@@ -333,11 +335,11 @@ function SubInlineActions({
   };
 
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-1 w-full sm:w-auto">
       <Button
         size="sm"
         variant="outline"
-        className="h-8"
+        className="h-8 flex-1 sm:flex-none"
         disabled={busy || inactive}
         onClick={onSwap}
         title={inactive ? "Activate this sub to swap them in" : "Swap into a match"}
