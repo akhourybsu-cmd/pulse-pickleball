@@ -12,6 +12,7 @@ import { useDirectMessages } from '@/hooks/useDirectMessages';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
 import { Logo } from '@/components/Logo';
+import { FriendsPresenceProvider } from '@/contexts/FriendsPresenceContext';
 // VenueModeBanner removed during the player-only beta. Component file
 // stays put for easy revival when the venue surface is re-enabled.
 
@@ -133,6 +134,7 @@ export function PlayerShell() {
   const enterAnimate = isImmersiveRoute ? { opacity: 1 } : { opacity: 1, y: 0 };
 
   return (
+    <FriendsPresenceProvider>
     <div className="min-h-screen bg-background flex flex-col">
       {/* Top Header — single source of top chrome across all player tabs.
           Previously hidden on /player/dashboard which rendered its own ProfileHero
@@ -344,5 +346,6 @@ export function PlayerShell() {
         </nav>
       )}
     </div>
+    </FriendsPresenceProvider>
   );
 }

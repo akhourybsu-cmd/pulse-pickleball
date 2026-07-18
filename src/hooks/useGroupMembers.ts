@@ -16,9 +16,6 @@ export interface GroupMemberWithProfile {
     full_name: string;
     avatar_url: string | null;
     current_rating: number | null;
-    /** Surfaced to fellow group members for tap-to-call/text from the roster.
-     *  Null when the member hasn't set one. */
-    phone_number: string | null;
   };
 }
 
@@ -49,14 +46,13 @@ async function fetchGroupMembers(groupId: string): Promise<{ members: GroupMembe
         ...m,
         status: m.status as 'active' | 'pending' | 'banned',
         profile: profile
-          ? { ...profile, phone_number: null }
+          ? profile
           : {
               id: m.user_id,
               display_name: null,
               full_name: 'Player',
               avatar_url: null,
               current_rating: null,
-              phone_number: null,
             },
       };
     });

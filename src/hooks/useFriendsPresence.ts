@@ -1,79 +1,28 @@
-import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { useCallback, useMemo } from 'react';
+import { useFriendsPresenceContext } from '@/contexts/FriendsPresenceContext';
 
-interface OnlineFriend {
-  user_id: string;
-  online_at: string;
-}
-
+/**
+ * Which of the given friends are currently online. Reads the single app-wide
+ * presence subscription (FriendsPresenceProvider, mounted in PlayerShell) and
+ * intersects it with `friendIds`, so a friend shows online whenever they have
+ * the app open — not only while they're on the Friends tab.
+ *
+ * Public API is unchanged from the previous self-subscribing version.
+ */
 export function useFriendsPresence(friendIds: string[]) {
-  const [onlineFriends, setOnlineFriends] = useState<Set<string>>(new Set());
-  const [isConnected, setIsConnected] = useState(false);
+  const { onlineUserIds, isConnected } = useFriendsPresenceContext();
 
-  useEffect(() => {
-    if (friendIds.length === 0) return;
+  const key = friendIds.join(',');
+  const onlineFriends = useMemo(() => {
+    const s = new Set<string>();
+    for (const id of friendIds) {
+      if (onlineUserIds.has(id)) s.add(id);
+    }
+    return s;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, onlineUserIds]);
 
-    let mounted = true;
-
-    const initPresence = async () => {
-      // Local cached session — no server round-trip on presence init.
-      const { data: { session } } = await supabase.auth.getSession();
-      const user = session?.user;
-      if (!user || !mounted) return;
-
-      // Use a global friends presence channel
-      const channel = supabase.channel('friends-presence', {
-        config: {
-          presence: {
-            key: user.id,
-          },
-        },
-      });
-
-      channel
-        .on('presence', { event: 'sync' }, () => {
-          if (!mounted) return;
-          const state = channel.presenceState();
-          const online = new Set<string>();
-          
-          Object.values(state).forEach((presences: any[]) => {
-            presences.forEach((presence) => {
-              if (friendIds.includes(presence.user_id)) {
-                online.add(presence.user_id);
-              }
-            });
-          });
-          
-          setOnlineFriends(online);
-        })
-        .subscribe(async (status) => {
-          if (status === 'SUBSCRIBED' && mounted) {
-            setIsConnected(true);
-            await channel.track({
-              user_id: user.id,
-              online_at: new Date().toISOString(),
-            });
-          }
-        });
-
-      return () => {
-        mounted = false;
-        setIsConnected(false);
-        supabase.removeChannel(channel);
-      };
-    };
-
-    const cleanup = initPresence();
-
-    return () => {
-      mounted = false;
-      cleanup?.then(fn => fn?.());
-    };
-  }, [friendIds.join(',')]);
-
-  const isOnline = useCallback((userId: string) => {
-    return onlineFriends.has(userId);
-  }, [onlineFriends]);
+  const isOnline = useCallback((userId: string) => onlineFriends.has(userId), [onlineFriends]);
 
   return {
     onlineFriends,
