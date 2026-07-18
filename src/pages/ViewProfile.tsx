@@ -74,6 +74,10 @@ interface RecentMatch {
 const ViewProfile = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [recentMatches, setRecentMatches] = useState<RecentMatch[]>([]);
+  // True when we loaded the player's full recent history via the RPC (works for
+  // any viewer). False means we fell back to the RLS-limited shared-matches
+  // query, so the list only reflects matches the viewer shared with them.
+  const [matchesComplete, setMatchesComplete] = useState(false);
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -118,74 +122,172 @@ const ViewProfile = () => {
         return;
       }
 
-      const { data: matchParticipants } = await supabase
-        .from("match_participants")
-        .select(`
-          match_id, team, rating_change,
-          matches!inner (
-            id, match_date, team1_score, team2_score,
-            created_at, status, source, verified_by,
-            other_location, courts (name)
-          )
-        `)
-        .eq("player_id", userId)
-        .eq("matches.status", "approved")
-        .order("created_at", { ascending: false, foreignTable: "matches" })
-        .limit(10);
+      // Normalized participant used by the shared mapper below.
+      type NormPart = {
+        player_id: string;
+        team: number;
+        profile: {
+          display_name?: string | null;
+          full_name?: string | null;
+          first_name?: string | null;
+          last_name?: string | null;
+          avatar_url?: string | null;
+        } | null;
+      };
+      const toRecentMatch = (m: {
+        id: string;
+        match_date: string;
+        team1_score: number;
+        team2_score: number;
+        status: string;
+        source: string | null;
+        verified_count: number;
+        court_name: string | null;
+        my_team: 1 | 2;
+        rating_change: number | null;
+        parts: NormPart[];
+      }): RecentMatch => {
+        const teammate = m.parts.find((p) => p.team === m.my_team && p.player_id !== userId);
+        const opps = m.parts.filter((p) => p.team !== m.my_team);
+        const won = didTeamWin(m.my_team, m.team1_score, m.team2_score);
+        return {
+          id: m.id,
+          match_date: m.match_date,
+          team1_score: m.team1_score,
+          team2_score: m.team2_score,
+          my_team: m.my_team,
+          won,
+          partner_name: resolvePlayerName(teammate?.profile),
+          partner_id: teammate?.player_id || "",
+          partner_avatar_url: teammate?.profile?.avatar_url || null,
+          opponent1_name: resolvePlayerName(opps[0]?.profile),
+          opponent1_id: opps[0]?.player_id || "",
+          opponent1_avatar_url: opps[0]?.profile?.avatar_url || null,
+          opponent2_name: opps[1] ? resolvePlayerName(opps[1].profile) : "",
+          opponent2_id: opps[1]?.player_id || "",
+          opponent2_avatar_url: opps[1]?.profile?.avatar_url || null,
+          rating_change: m.rating_change ?? null,
+          court_name: m.court_name || "Unknown Location",
+          source: m.source ?? null,
+          verified_count: m.verified_count,
+          total_players: m.parts.length || 4,
+          status: m.status,
+          result: won ? "W" : "L",
+          date: m.match_date,
+        };
+      };
 
-      if (matchParticipants && matchParticipants.length > 0) {
-        const matchIds = matchParticipants.map((mp: any) => mp.match_id);
-        const { data: allParts } = await supabase
+      // Preferred path: SECURITY DEFINER RPC returns the player's real recent
+      // matches to any viewer. Cast because it isn't in the generated types
+      // until they're regenerated post-deploy.
+      const { data: rpcRows, error: rpcError } = await (supabase.rpc as unknown as (
+        fn: string,
+        args: Record<string, unknown>,
+      ) => Promise<{ data: unknown; error: unknown }>)("get_player_recent_matches", {
+        _player_id: userId,
+        _limit: 10,
+      });
+
+      if (!rpcError && Array.isArray(rpcRows)) {
+        const rows = rpcRows as Array<{
+          match_id: string;
+          match_date: string;
+          team1_score: number;
+          team2_score: number;
+          status: string;
+          source: string | null;
+          verified_count: number;
+          court_name: string | null;
+          player_team: number;
+          rating_change: number | null;
+          participants: Array<{
+            player_id: string;
+            team: number;
+            display_name: string | null;
+            full_name: string | null;
+            first_name: string | null;
+            last_name: string | null;
+            avatar_url: string | null;
+          }> | null;
+        }>;
+        setMatchesComplete(true);
+        setRecentMatches(
+          rows.map((r) =>
+            toRecentMatch({
+              id: r.match_id,
+              match_date: r.match_date,
+              team1_score: r.team1_score,
+              team2_score: r.team2_score,
+              status: r.status,
+              source: r.source,
+              verified_count: r.verified_count,
+              court_name: r.court_name,
+              my_team: (r.player_team as 1 | 2) ?? 1,
+              rating_change: r.rating_change,
+              parts: (r.participants ?? []).map((p) => ({
+                player_id: p.player_id,
+                team: p.team,
+                profile: p,
+              })),
+            }),
+          ),
+        );
+      } else {
+        // Fallback (RPC not deployed): RLS-limited to matches the viewer shared
+        // with this player. Still correct for your own profile.
+        const { data: matchParticipants } = await supabase
           .from("match_participants")
           .select(`
-            match_id, player_id, team,
-            profiles (display_name, full_name, first_name, last_name, avatar_url)
+            match_id, team, rating_change,
+            matches!inner (
+              id, match_date, team1_score, team2_score,
+              created_at, status, source, verified_by,
+              other_location, courts (name)
+            )
           `)
-          .in("match_id", matchIds);
+          .eq("player_id", userId)
+          .eq("matches.status", "approved")
+          .order("created_at", { ascending: false, foreignTable: "matches" })
+          .limit(10);
 
-        const partsByMatch = (allParts || []).reduce((acc: Record<string, any[]>, p: any) => {
-          if (!acc[p.match_id]) acc[p.match_id] = [];
-          acc[p.match_id].push(p);
-          return acc;
-        }, {});
+        if (matchParticipants && matchParticipants.length > 0) {
+          const matchIds = matchParticipants.map((mp: any) => mp.match_id);
+          const { data: allParts } = await supabase
+            .from("match_participants")
+            .select(`
+              match_id, player_id, team,
+              profiles (display_name, full_name, first_name, last_name, avatar_url)
+            `)
+            .in("match_id", matchIds);
 
-        const formattedMatches: RecentMatch[] = matchParticipants.map((mp: any) => {
-          const match = mp.matches;
-          const myTeam = mp.team as 1 | 2;
-          const parts = partsByMatch[mp.match_id] || [];
-          const teammate = parts.find((p) => p.team === myTeam && p.player_id !== userId);
-          const opps = parts.filter((p) => p.team !== myTeam);
-          const won = didTeamWin(myTeam, match.team1_score, match.team2_score);
-          const verifiedBy: string[] = match.verified_by || [];
-          const courtName = match.other_location || match.courts?.name || "Unknown Location";
+          const partsByMatch = (allParts || []).reduce((acc: Record<string, any[]>, p: any) => {
+            if (!acc[p.match_id]) acc[p.match_id] = [];
+            acc[p.match_id].push(p);
+            return acc;
+          }, {});
 
-          return {
-            id: match.id,
-            match_date: match.match_date,
-            team1_score: match.team1_score,
-            team2_score: match.team2_score,
-            my_team: myTeam,
-            won,
-            partner_name: resolvePlayerName(teammate?.profiles),
-            partner_id: teammate?.player_id || "",
-            partner_avatar_url: teammate?.profiles?.avatar_url || null,
-            opponent1_name: resolvePlayerName(opps[0]?.profiles),
-            opponent1_id: opps[0]?.player_id || "",
-            opponent1_avatar_url: opps[0]?.profiles?.avatar_url || null,
-            opponent2_name: opps[1] ? resolvePlayerName(opps[1].profiles) : "",
-            opponent2_id: opps[1]?.player_id || "",
-            opponent2_avatar_url: opps[1]?.profiles?.avatar_url || null,
-            rating_change: mp.rating_change ?? null,
-            court_name: courtName,
-            source: match.source ?? null,
-            verified_count: verifiedBy.length,
-            total_players: parts.length || 4,
-            status: match.status,
-            result: won ? "W" : "L",
-            date: match.match_date,
-          };
-        });
-        setRecentMatches(formattedMatches);
+          setRecentMatches(
+            matchParticipants.map((mp: any) =>
+              toRecentMatch({
+                id: mp.matches.id,
+                match_date: mp.matches.match_date,
+                team1_score: mp.matches.team1_score,
+                team2_score: mp.matches.team2_score,
+                status: mp.matches.status,
+                source: mp.matches.source ?? null,
+                verified_count: (mp.matches.verified_by || []).length,
+                court_name: mp.matches.other_location || mp.matches.courts?.name || null,
+                my_team: mp.team as 1 | 2,
+                rating_change: mp.rating_change ?? null,
+                parts: (partsByMatch[mp.match_id] || []).map((p: any) => ({
+                  player_id: p.player_id,
+                  team: p.team,
+                  profile: p.profiles,
+                })),
+              }),
+            ),
+          );
+        }
       }
 
       setProfile(profileData as Profile);
@@ -463,13 +565,22 @@ const ViewProfile = () => {
           className="opacity-0 animate-fade-up"
           style={{ animationDelay: "300ms", animationFillMode: "forwards" }}
         >
-          <SectionHeader label="Recent matches" count={recentMatches.length} />
+          {/* When viewing someone else, RLS only returns matches the viewer
+              shared with them — so this is "matches together", not their full
+              history (which the stat grid above reflects via the public view).
+              Label it honestly so it doesn't contradict the visible count. */}
+          <SectionHeader
+            label={isSelf || matchesComplete ? "Recent matches" : "Matches together"}
+            count={recentMatches.length}
+          />
           {recentMatches.length === 0 ? (
             <div className="rounded-2xl border border-border/60 bg-card p-8 text-center">
               <div className="mx-auto h-10 w-10 rounded-full bg-muted flex items-center justify-center mb-3">
                 <Hash className="h-5 w-5 text-muted-foreground" />
               </div>
-              <p className="text-sm text-muted-foreground">No matches yet.</p>
+              <p className="text-sm text-muted-foreground">
+                {isSelf || matchesComplete ? "No matches yet." : "No matches with this player yet."}
+              </p>
             </div>
           ) : (
             <>

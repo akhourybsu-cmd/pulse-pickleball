@@ -306,7 +306,6 @@ export function GroupMembers({
       displayName: member.profile?.display_name || member.profile?.full_name || 'Community member',
       avatarUrl: member.profile?.avatar_url ?? null,
       rating: member.profile?.current_rating ?? null,
-      phoneNumber: member.profile?.phone_number ?? null,
     });
   }, []);
 

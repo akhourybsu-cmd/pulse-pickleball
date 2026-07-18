@@ -26,8 +26,7 @@ system. They render nowhere. Left where they are because some sit in folders
 shared with live code (e.g. `components/court/` also holds `WhosUpBoard` /
 `QueueBoxSystem`, which the still-live admin `SessionQueue` uses):
 
-- `src/pages/Dashboard.tsx` — the old dashboard (replaced by `PlayerDashboard`); sole user of the two below.
-- `src/components/court/SmartMatch.tsx`, `src/components/court/LFGNotifications.tsx` — link to `/court/board/:id`.
+- `src/components/court/SmartMatch.tsx`, `src/components/court/LFGNotifications.tsx` — the LFG "Discover play" cards; linked to `/court/board/:id`. Their only consumer was the dashboard's "Discover play" section, which has been removed, so they are now unused. (Note: `src/pages/Dashboard.tsx` is NOT dead — it is the live dashboard, re-exported by `PlayerDashboard`.)
 - `src/components/court/feed/CourtFeed.tsx`, `CommunityHub.tsx`, `PostCard.tsx` — old court social feed.
 - `src/components/reservations/CalendarView.tsx` — links to `/pickleballciti`.
 - `src/components/citi-events/JoinableCalendarEvents.tsx` — links to `/reservations`.

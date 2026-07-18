@@ -1,4 +1,4 @@
-import { Phone, MessageSquare, MessageCircle, User } from 'lucide-react';
+import { MessageCircle, User } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import {
   Sheet,
@@ -15,7 +15,6 @@ export interface MemberActionTarget {
   displayName: string;
   avatarUrl: string | null;
   rating: number | null;
-  phoneNumber: string | null;
 }
 
 interface MemberActionSheetProps {
@@ -27,17 +26,13 @@ interface MemberActionSheetProps {
 /**
  * Bottom sheet that pops up when a roster row is tapped.
  *
- * Four actions in TeamReach order of importance for a recreational
- * organizer:
- *   1. Call — opens dialer (tel: link). Hidden when phone is null.
- *   2. Text — opens SMS (sms: link). Hidden when phone is null.
- *   3. Message — opens in-app DM (handled by parent via onMessage).
- *   4. View profile — navigates to /profile/:userId.
+ * Two actions:
+ *   1. Message — opens in-app DM (handled by parent via onMessage).
+ *   2. View profile — navigates to /profile/:userId.
  *
- * Phone is only available because GroupMembers.fetch surfaces it for
- * fellow active members (RLS already gates the profiles select). When
- * phone is null the call/text rows render disabled with a helper
- * footnote so the user understands why.
+ * There is no Call/Text: phone numbers aren't exposed through the public
+ * profile view (privacy), so those actions could never work — we don't show
+ * dead affordances. In-app messaging is the contact path.
  */
 export function MemberActionSheet({ target, onClose, onMessage }: MemberActionSheetProps) {
   const navigate = useNavigate();
@@ -50,44 +45,21 @@ export function MemberActionSheet({ target, onClose, onMessage }: MemberActionSh
     .toUpperCase()
     .slice(0, 2);
 
-  const hasPhone = !!target?.phoneNumber;
-  // Normalize for tel/sms — strip everything except digits + leading +.
-  const dialNumber = target?.phoneNumber
-    ? target.phoneNumber.replace(/[^\d+]/g, '')
-    : '';
-
   const actions: {
     key: string;
     label: string;
     sub?: string;
-    icon: typeof Phone;
+    icon: typeof User;
     disabled?: boolean;
     onClick?: () => void;
-    href?: string;
     tone?: 'primary' | 'default';
   }[] = [
-    {
-      key: 'call',
-      label: 'Call',
-      sub: hasPhone ? target!.phoneNumber! : 'No phone on file',
-      icon: Phone,
-      disabled: !hasPhone,
-      href: hasPhone ? `tel:${dialNumber}` : undefined,
-      tone: 'primary',
-    },
-    {
-      key: 'text',
-      label: 'Text',
-      sub: hasPhone ? 'SMS' : 'No phone on file',
-      icon: MessageSquare,
-      disabled: !hasPhone,
-      href: hasPhone ? `sms:${dialNumber}` : undefined,
-    },
     {
       key: 'message',
       label: 'Message in PULSE',
       sub: 'Direct message',
       icon: MessageCircle,
+      tone: 'primary',
       onClick: () => {
         if (!target) return;
         onMessage(target.userId);
@@ -162,31 +134,12 @@ export function MemberActionSheet({ target, onClose, onMessage }: MemberActionSh
               </>
             );
 
-            // Use a real <a> for tel:/sms: so the OS handles them.
-            if (a.href && !a.disabled) {
-              return (
-                <a
-                  key={a.key}
-                  href={a.href}
-                  onClick={onClose}
-                  className="w-full flex items-center gap-3 px-2 py-2.5 rounded-lg hover:bg-muted/60 active:bg-muted transition-colors"
-                >
-                  {inner}
-                </a>
-              );
-            }
             return (
               <button
                 key={a.key}
                 type="button"
-                disabled={a.disabled}
                 onClick={a.onClick}
-                className={cn(
-                  'w-full flex items-center gap-3 px-2 py-2.5 rounded-lg transition-colors',
-                  a.disabled
-                    ? 'cursor-not-allowed'
-                    : 'hover:bg-muted/60 active:bg-muted',
-                )}
+                className="w-full flex items-center gap-3 px-2 py-2.5 rounded-lg transition-colors hover:bg-muted/60 active:bg-muted"
               >
                 {inner}
               </button>
