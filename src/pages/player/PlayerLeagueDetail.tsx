@@ -160,6 +160,7 @@ export default function PlayerLeagueDetail() {
                color: "#A6DB5A",
              }}
              aria-hidden />
+        <div aria-hidden className="absolute -top-20 -right-12 h-52 w-52 rounded-full bg-[#A6DB5A]/15 blur-3xl pointer-events-none" />
         <div className="relative p-5 sm:p-6">
           <div className="flex items-center gap-2 flex-wrap">
             <span className={cn(
@@ -197,7 +198,7 @@ export default function PlayerLeagueDetail() {
         <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
           Your spot in this league
         </h2>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-2.5 grid-cols-2 sm:grid-cols-4">
           <InfoRow icon={<CalendarDays className="w-4 h-4" />} label="Season"
                    value={season?.name ?? "Not assigned"} />
           <InfoRow icon={<Users className="w-4 h-4" />} label="Division"
@@ -360,13 +361,17 @@ function InfoRow({
   value: string;
 }) {
   return (
-    <div className="flex items-start gap-2.5">
-      <div className="mt-0.5 shrink-0 text-muted-foreground">{icon}</div>
+    <div className="rounded-xl border border-border/60 bg-background/50 p-3 flex items-start gap-2.5">
+      <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+        {icon}
+      </div>
       <div className="min-w-0 flex-1">
         <div className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground">
           {label}
         </div>
-        <div className="text-sm font-medium truncate">{value}</div>
+        <div className="text-sm font-semibold truncate capitalize" title={value}>
+          {value}
+        </div>
       </div>
     </div>
   );

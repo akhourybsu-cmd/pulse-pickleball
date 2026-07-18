@@ -187,6 +187,7 @@ export default function AdminLeagueDetail() {
                  color: "#A6DB5A",
                }}
                aria-hidden />
+          <div aria-hidden className="absolute -top-24 -right-16 h-64 w-64 rounded-full bg-[#A6DB5A]/15 blur-3xl pointer-events-none" />
 
           <div className="relative p-5 sm:p-6">
             {/* Type + status row */}
