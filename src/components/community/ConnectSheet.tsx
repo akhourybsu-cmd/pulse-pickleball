@@ -3,19 +3,21 @@ import { useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import {
   Search, UserPlus, Check, Clock, QrCode, Copy, Share2,
-  Sparkles, AtSign, Loader2, Users, X,
+  Sparkles, AtSign, Loader2, Users, X, MapPin, Navigation,
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { SearchField } from '@/components/ui/search-field';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useFriends } from '@/hooks/useFriends';
 import { useFriendSuggestions, type SuggestedFriend } from '@/hooks/useFriendSuggestions';
+import { useNearbyPlayers, type NearbyPlayer } from '@/hooks/useNearbyPlayers';
 import { useDebounce } from '@/hooks/useDebounce';
 import { toast } from 'sonner';
 
@@ -119,21 +121,27 @@ export function ConnectSheet({ open, onOpenChange }: ConnectSheetProps) {
             (outbound share is last since it inverts intent). */}
         <Tabs defaultValue="suggested" className="flex-1 flex flex-col min-h-0">
           <div className="px-4 pt-2">
-            <TabsList className="grid grid-cols-4 h-9 w-full">
-              <TabsTrigger value="suggested" className="text-xs gap-1">
-                <Sparkles className="h-3.5 w-3.5" />
+            {/* Stacked icon+label triggers so five tabs stay legible on a
+                narrow phone without truncating. */}
+            <TabsList className="grid grid-cols-5 h-auto w-full p-1">
+              <TabsTrigger value="suggested" className="flex-col gap-0.5 h-auto py-1.5 text-[10px] leading-none">
+                <Sparkles className="h-4 w-4" />
                 Suggested
               </TabsTrigger>
-              <TabsTrigger value="search" className="text-xs gap-1">
-                <Search className="h-3.5 w-3.5" />
+              <TabsTrigger value="nearby" className="flex-col gap-0.5 h-auto py-1.5 text-[10px] leading-none">
+                <MapPin className="h-4 w-4" />
+                Nearby
+              </TabsTrigger>
+              <TabsTrigger value="search" className="flex-col gap-0.5 h-auto py-1.5 text-[10px] leading-none">
+                <Search className="h-4 w-4" />
                 Search
               </TabsTrigger>
-              <TabsTrigger value="enter" className="text-xs gap-1">
-                <AtSign className="h-3.5 w-3.5" />
+              <TabsTrigger value="enter" className="flex-col gap-0.5 h-auto py-1.5 text-[10px] leading-none">
+                <AtSign className="h-4 w-4" />
                 Handle
               </TabsTrigger>
-              <TabsTrigger value="code" className="text-xs gap-1">
-                <QrCode className="h-3.5 w-3.5" />
+              <TabsTrigger value="code" className="flex-col gap-0.5 h-auto py-1.5 text-[10px] leading-none">
+                <QrCode className="h-4 w-4" />
                 My code
               </TabsTrigger>
             </TabsList>
@@ -142,6 +150,10 @@ export function ConnectSheet({ open, onOpenChange }: ConnectSheetProps) {
           <div className="flex-1 overflow-y-auto">
             <TabsContent value="suggested" className="m-0 p-4">
               <SuggestionsPanel actionButton={actionButton} />
+            </TabsContent>
+
+            <TabsContent value="nearby" className="m-0 p-4">
+              <NearbyPanel actionButton={actionButton} onClose={() => onOpenChange(false)} />
             </TabsContent>
 
             <TabsContent value="search" className="m-0 p-4">
@@ -256,6 +268,122 @@ function SuggestionRow({
   );
 }
 
+// ---------- Nearby ----------
+function NearbyPanel({
+  actionButton,
+  onClose,
+}: {
+  actionButton: (id: string) => JSX.Element;
+  onClose: () => void;
+}) {
+  // Only mounts when the Nearby tab is selected (Radix unmounts inactive tabs).
+  const { players, status } = useNearbyPlayers(true);
+
+  if (status === 'idle' || status === 'loading') {
+    return (
+      <div className="space-y-2">
+        {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-16 w-full rounded-xl" />)}
+      </div>
+    );
+  }
+
+  if (status === 'unavailable') {
+    return (
+      <NearbyEmpty
+        title="Nearby isn't available yet"
+        body="Location discovery hasn't been switched on for your app yet — check back soon."
+      />
+    );
+  }
+
+  if (status === 'not_enabled') {
+    return (
+      <div className="flex flex-col items-center text-center py-10">
+        <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+          <Navigation className="h-5 w-5 text-primary" />
+        </div>
+        <h3 className="text-base font-medium mb-1">Turn on nearby discovery</h3>
+        <p className="text-sm text-muted-foreground max-w-[280px] mb-4">
+          Set your home city and opt in — we'll show players near you. You only appear to others
+          who've opted in too.
+        </p>
+        <Button asChild onClick={onClose} className="rounded-full">
+          <Link to="/player/profile/edit?focus=location">
+            <MapPin className="h-4 w-4 mr-1.5" />
+            Set up in profile
+          </Link>
+        </Button>
+      </div>
+    );
+  }
+
+  if (players.length === 0) {
+    return (
+      <NearbyEmpty
+        title="No players near you yet"
+        body="As more players opt into nearby discovery, they'll show up here."
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs text-muted-foreground mb-2">
+        Opted-in players near your home city.
+      </p>
+      {players.map((p) => (
+        <NearbyRow key={p.id} player={p} action={actionButton(p.id)} />
+      ))}
+    </div>
+  );
+}
+
+function NearbyEmpty({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="flex flex-col items-center text-center py-12">
+      <div className="w-12 h-12 rounded-full bg-muted/50 flex items-center justify-center mb-4">
+        <MapPin className="h-5 w-5 text-muted-foreground/70" />
+      </div>
+      <h3 className="text-base font-medium mb-1">{title}</h3>
+      <p className="text-sm text-muted-foreground max-w-[280px]">{body}</p>
+    </div>
+  );
+}
+
+function NearbyRow({ player, action }: { player: NearbyPlayer; action: JSX.Element }) {
+  const navigate = useNavigate();
+  const miles = player.distance_km * 0.621371;
+  const distanceLabel = miles < 1 ? '<1 mi' : `${Math.round(miles)} mi`;
+  return (
+    <div className="flex items-center gap-2 p-3 rounded-xl bg-card border border-border/30">
+      <button onClick={() => navigate(`/profile/${player.id}`)} aria-label="View profile" className="shrink-0">
+        <Avatar className="h-10 w-10 ring-1 ring-border/40">
+          <AvatarImage src={player.avatar_url || undefined} />
+          <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+            {getInitials(displayName(player))}
+          </AvatarFallback>
+        </Avatar>
+      </button>
+      <button onClick={() => navigate(`/profile/${player.id}`)} className="flex-1 min-w-0 text-left">
+        <p className="font-medium text-sm truncate font-display">{displayName(player)}</p>
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <MapPin className="h-3 w-3 shrink-0" />
+          <span className="truncate">{player.location_name || 'Nearby'}</span>
+          <span className="opacity-50">·</span>
+          <span className="shrink-0">{distanceLabel}</span>
+          {player.current_rating != null && (
+            <>
+              <span className="opacity-50">·</span>
+              <span className="shrink-0">{player.current_rating.toFixed(2)}</span>
+            </>
+          )}
+        </div>
+      </button>
+      {action}
+    </div>
+  );
+}
+
 // ---------- My Code ----------
 function MyCodePanel({
   handle,
@@ -283,7 +411,7 @@ function MyCodePanel({
   const share = async () => {
     const text = `Add me on Pulse: @${handle}\n${inviteUrl}`;
     if (navigator.share) {
-      try { await navigator.share({ title: 'Add me on Pulse', text, url: inviteUrl }); } catch {}
+      try { await navigator.share({ title: 'Add me on Pulse', text, url: inviteUrl }); } catch { /* user cancelled the share sheet */ }
     } else {
       await navigator.clipboard.writeText(text);
       toast.success('Invite copied');
@@ -420,18 +548,20 @@ function ScopedSearchPanel({ actionButton }: { actionButton: (id: string) => JSX
     run();
   }, [debounced]);
 
+  // Spinner shows the instant the user types (before the debounce fires) so
+  // the field feels live, and clears the moment results settle.
+  const pending = query.trim().length >= 2 && (loading || query !== debounced);
+
   return (
     <div className="space-y-4">
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search by name or handle..."
-          className="pl-9"
-          autoFocus
-        />
-      </div>
+      <SearchField
+        value={query}
+        onValueChange={setQuery}
+        loading={pending}
+        placeholder="Search by name or handle..."
+        autoFocus
+        aria-label="Search for players by name or handle"
+      />
 
       <div className="rounded-lg border border-border/40 bg-muted/20 px-3 py-2 flex items-start gap-2">
         <Users className="h-3.5 w-3.5 mt-0.5 text-muted-foreground shrink-0" />

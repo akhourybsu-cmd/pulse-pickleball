@@ -1,8 +1,8 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, MessageCircle, Loader2 } from 'lucide-react';
+import { MessageCircle, Loader2 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Input } from '@/components/ui/input';
+import { SearchField } from '@/components/ui/search-field';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useFriends } from '@/hooks/useFriends';
 import { useDirectMessages } from '@/hooks/useDirectMessages';
@@ -48,16 +48,14 @@ export function MessageFriendPickerSheet({ open, onOpenChange }: Props) {
           <SheetTitle className="text-left">New message</SheetTitle>
         </SheetHeader>
         <div className="px-4 pb-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              autoFocus
-              placeholder="Search friends..."
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-              className="pl-9 h-10"
-            />
-          </div>
+          <SearchField
+            autoFocus
+            placeholder="Search friends..."
+            value={query}
+            onValueChange={setQuery}
+            className="h-10"
+            aria-label="Search your friends"
+          />
         </div>
         <div className="flex-1 overflow-y-auto px-2 pb-6">
           {loading ? (

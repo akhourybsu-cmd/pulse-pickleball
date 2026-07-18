@@ -1,10 +1,11 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useMemo } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, MessageCircle, UserMinus, Check, X, UserPlus, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { SearchField } from '@/components/ui/search-field';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   AlertDialog,
@@ -17,6 +18,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useFriends } from '@/hooks/useFriends';
+import { useFriendsPresence } from '@/hooks/useFriendsPresence';
 import { useFriendSuggestions } from '@/hooks/useFriendSuggestions';
 import { ConnectSheet } from '@/components/community/ConnectSheet';
 import { supabase } from '@/integrations/supabase/client';
@@ -27,9 +29,27 @@ import { cn } from '@/lib/utils';
 const initials = (name: string | null) =>
   (name || 'U').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
 
+const VALID_TABS = ['friends', 'requests', 'suggestions'] as const;
+type FriendsTabValue = (typeof VALID_TABS)[number];
+
 export default function Friends() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [connectOpen, setConnectOpen] = useState(false);
+  const [friendQuery, setFriendQuery] = useState('');
+
+  // Honor ?tab= deep links (e.g. MyFriendsRail -> ?tab=requests) and keep the
+  // URL in sync as the user switches tabs, so back/forward and shared links
+  // land on the right view.
+  const tabParam = searchParams.get('tab') as FriendsTabValue | null;
+  const activeTab: FriendsTabValue =
+    tabParam && VALID_TABS.includes(tabParam) ? tabParam : 'friends';
+  const setActiveTab = (value: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (value === 'friends') next.delete('tab');
+    else next.set('tab', value);
+    setSearchParams(next, { replace: true });
+  };
   // Friend-removal confirmation. Previously the X icon called
   // removeFriend() directly on click — a single-tap mistake (very
   // easy to fat-finger on mobile) nuked the friendship with no undo.
@@ -50,6 +70,40 @@ export default function Friends() {
     sendFriendRequest,
   } = useFriends();
   const { suggestions, loading: suggestionsLoading, refetch: refetchSuggestions, dismissSuggestion } = useFriendSuggestions();
+
+  // Live online presence for green dots + online-first ordering. Track every
+  // person shown on the page (friends, requests, suggestions) via the single
+  // global presence channel.
+  const presenceIds = useMemo(() => {
+    const ids = new Set<string>();
+    friends.forEach((f) => ids.add(f.profile.id));
+    pendingRequests.forEach((r) => ids.add(r.profile.id));
+    sentRequests.forEach((r) => ids.add(r.profile.id));
+    suggestions.forEach((s) => ids.add(s.id));
+    return Array.from(ids);
+  }, [friends, pendingRequests, sentRequests, suggestions]);
+  const { onlineFriends } = useFriendsPresence(presenceIds);
+
+  // Filter by the in-list search, then sort online-first, then alphabetical —
+  // so the people you can play with right now bubble to the top.
+  const visibleFriends = useMemo(() => {
+    const q = friendQuery.trim().toLowerCase();
+    const nameOf = (f: (typeof friends)[number]) =>
+      (f.profile.display_name || f.profile.full_name || 'Player');
+    return friends
+      .filter((f) => !q || nameOf(f).toLowerCase().includes(q))
+      .sort((a, b) => {
+        const aOn = onlineFriends.has(a.profile.id) ? 0 : 1;
+        const bOn = onlineFriends.has(b.profile.id) ? 0 : 1;
+        if (aOn !== bOn) return aOn - bOn;
+        return nameOf(a).localeCompare(nameOf(b));
+      });
+  }, [friends, friendQuery, onlineFriends]);
+
+  const onlineCount = useMemo(
+    () => friends.reduce((n, f) => n + (onlineFriends.has(f.profile.id) ? 1 : 0), 0),
+    [friends, onlineFriends],
+  );
 
   const handleRequestAction = async (
     friendshipId: string,
@@ -131,7 +185,7 @@ export default function Friends() {
       </div>
       <ConnectSheet open={connectOpen} onOpenChange={setConnectOpen} />
 
-      <Tabs defaultValue="friends" className="flex-1 flex flex-col">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
         <div className="px-4 sm:px-6 pt-3">
           <TabsList className="w-full h-11 bg-muted/40 p-1 rounded-xl grid grid-cols-3">
             <TabsTrigger value="friends" className="h-9 rounded-lg text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm">
@@ -156,8 +210,8 @@ export default function Friends() {
           {/* Friends list */}
           <TabsContent value="friends" className="m-0 px-4 sm:px-6 pt-4 pb-8 space-y-3">
             {loading ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map(i => <Skeleton key={i} className="h-16 w-full rounded-xl" />)}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-[68px] w-full rounded-xl" />)}
               </div>
             ) : friends.length === 0 ? (
               <EmptyState
@@ -166,46 +220,77 @@ export default function Friends() {
                 description="Find people you play with in Suggestions or invite them to a group."
               />
             ) : (
-              friends.map(f => (
-                <div key={f.id} className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border/40">
-                  <button onClick={() => navigate(`/profile/${f.profile.id}`)} aria-label="View profile">
-                    <Avatar className="h-11 w-11">
-                      <AvatarImage src={f.profile.avatar_url || undefined} />
-                      <AvatarFallback>{initials(f.profile.display_name || f.profile.full_name)}</AvatarFallback>
-                    </Avatar>
-                  </button>
-                  <button
-                    onClick={() => navigate(`/profile/${f.profile.id}`)}
-                    className="flex-1 min-w-0 text-left"
-                  >
-                    <div className="text-sm font-medium truncate">
-                      {f.profile.display_name || f.profile.full_name || 'Player'}
-                    </div>
-                    {f.profile.current_rating != null && (
-                      <div className="text-xs text-muted-foreground">
-                        Rating {f.profile.current_rating.toFixed(2)}
-                      </div>
-                    )}
-                  </button>
-                  <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => openDM(f.profile.id)} aria-label="Message">
-                    <MessageCircle className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-9 w-9 text-muted-foreground"
-                    onClick={() =>
-                      setRemoveTarget({
-                        friendshipId: f.id,
-                        name: f.profile.display_name || f.profile.full_name || 'this friend',
-                      })
-                    }
-                    aria-label="Remove friend"
-                  >
-                    <UserMinus className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))
+              <>
+                {/* Search + online summary — only once the list is long enough
+                    to warrant filtering. */}
+                {friends.length >= 6 && (
+                  <SearchField
+                    value={friendQuery}
+                    onValueChange={setFriendQuery}
+                    placeholder="Search your friends..."
+                    className="h-10 bg-muted/40 border-border/30"
+                    aria-label="Search your friends"
+                  />
+                )}
+                {onlineCount > 0 && (
+                  <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                    <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
+                    {onlineCount} online now
+                  </p>
+                )}
+
+                {visibleFriends.length === 0 ? (
+                  <EmptyState
+                    icon={<Users className="h-5 w-5 text-muted-foreground/70" />}
+                    title="No matches"
+                    description="No friends match that search."
+                  />
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {visibleFriends.map(f => {
+                      const isOnline = onlineFriends.has(f.profile.id);
+                      const name = f.profile.display_name || f.profile.full_name || 'Player';
+                      return (
+                        <div key={f.id} className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border/40">
+                          <button onClick={() => navigate(`/profile/${f.profile.id}`)} aria-label={`View ${name}'s profile`} className="shrink-0">
+                            <PresenceAvatar src={f.profile.avatar_url} name={name} online={isOnline} />
+                          </button>
+                          <button
+                            onClick={() => navigate(`/profile/${f.profile.id}`)}
+                            className="flex-1 min-w-0 text-left"
+                          >
+                            <div className="text-sm font-medium truncate">{name}</div>
+                            <div className="text-xs text-muted-foreground truncate">
+                              {isOnline
+                                ? 'Online now'
+                                : f.profile.current_rating != null
+                                  ? `Rating ${f.profile.current_rating.toFixed(2)}`
+                                  : 'Offline'}
+                            </div>
+                          </button>
+                          <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => openDM(f.profile.id)} aria-label={`Message ${name}`}>
+                            <MessageCircle className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-9 w-9 text-muted-foreground shrink-0"
+                            onClick={() =>
+                              setRemoveTarget({
+                                friendshipId: f.id,
+                                name,
+                              })
+                            }
+                            aria-label={`Remove ${name}`}
+                          >
+                            <UserMinus className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
             )}
           </TabsContent>
 
@@ -218,26 +303,34 @@ export default function Friends() {
               {pendingRequests.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No incoming requests.</p>
               ) : (
-                pendingRequests.map(r => (
-                  <div key={r.id} className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border/40">
-                    <Avatar className="h-11 w-11">
-                      <AvatarImage src={r.profile.avatar_url || undefined} />
-                      <AvatarFallback>{initials(r.profile.display_name || r.profile.full_name)}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium truncate">
-                        {r.profile.display_name || r.profile.full_name || 'Player'}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {pendingRequests.map(r => {
+                    const name = r.profile.display_name || r.profile.full_name || 'Player';
+                    return (
+                      <div key={r.id} className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border/40">
+                        <button onClick={() => navigate(`/profile/${r.profile.id}`)} aria-label={`View ${name}'s profile`} className="shrink-0">
+                          <PresenceAvatar
+                            src={r.profile.avatar_url}
+                            name={name}
+                            online={onlineFriends.has(r.profile.id)}
+                          />
+                        </button>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium truncate">{name}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {onlineFriends.has(r.profile.id) ? 'Online now' : 'Wants to be friends'}
+                          </div>
+                        </div>
+                        <Button size="icon" className="h-9 w-9 rounded-full shrink-0" disabled={processingIds.has(r.id)} onClick={() => handleRequestAction(r.id, acceptRequest)} aria-label={`Accept ${name}`}>
+                          <Check className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full shrink-0" disabled={processingIds.has(r.id)} onClick={() => handleRequestAction(r.id, declineRequest)} aria-label={`Decline ${name}`}>
+                          <X className="h-4 w-4" />
+                        </Button>
                       </div>
-                      <div className="text-xs text-muted-foreground">Wants to be friends</div>
-                    </div>
-                    <Button size="icon" className="h-9 w-9 rounded-full" disabled={processingIds.has(r.id)} onClick={() => handleRequestAction(r.id, acceptRequest)} aria-label="Accept">
-                      <Check className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full" disabled={processingIds.has(r.id)} onClick={() => handleRequestAction(r.id, declineRequest)} aria-label="Decline">
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))
+                    );
+                  })}
+                </div>
               )}
             </section>
 
@@ -248,23 +341,31 @@ export default function Friends() {
               {sentRequests.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No pending sent requests.</p>
               ) : (
-                sentRequests.map(r => (
-                  <div key={r.id} className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border/40">
-                    <Avatar className="h-11 w-11">
-                      <AvatarImage src={r.profile.avatar_url || undefined} />
-                      <AvatarFallback>{initials(r.profile.display_name || r.profile.full_name)}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium truncate">
-                        {r.profile.display_name || r.profile.full_name || 'Player'}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {sentRequests.map(r => {
+                    const name = r.profile.display_name || r.profile.full_name || 'Player';
+                    return (
+                      <div key={r.id} className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border/40">
+                        <button onClick={() => navigate(`/profile/${r.profile.id}`)} aria-label={`View ${name}'s profile`} className="shrink-0">
+                          <PresenceAvatar
+                            src={r.profile.avatar_url}
+                            name={name}
+                            online={onlineFriends.has(r.profile.id)}
+                          />
+                        </button>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium truncate">{name}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {onlineFriends.has(r.profile.id) ? 'Online now' : 'Request sent'}
+                          </div>
+                        </div>
+                        <Button variant="ghost" size="sm" className="shrink-0" disabled={processingIds.has(r.id)} onClick={() => handleRequestAction(r.id, declineRequest)}>
+                          Cancel
+                        </Button>
                       </div>
-                      <div className="text-xs text-muted-foreground">Request sent</div>
-                    </div>
-                    <Button variant="ghost" size="sm" disabled={processingIds.has(r.id)} onClick={() => handleRequestAction(r.id, declineRequest)}>
-                      Cancel
-                    </Button>
-                  </div>
-                ))
+                    );
+                  })}
+                </div>
               )}
             </section>
           </TabsContent>
@@ -282,45 +383,53 @@ export default function Friends() {
                 description="Play matches or join groups — we'll suggest people you might know."
               />
             ) : (
-              suggestions.map(s => (
-                <div key={s.id} className="flex items-center gap-2 p-3 rounded-xl bg-card border border-border/40">
-                  <Avatar className="h-11 w-11 ring-1 ring-border/40 shrink-0">
-                    <AvatarImage src={s.avatar_url || undefined} />
-                    <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                      {initials(s.display_name || s.full_name)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium truncate">
-                      {s.display_name || s.full_name || 'Player'}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {suggestions.map(s => {
+                  const name = s.display_name || s.full_name || 'Player';
+                  return (
+                    <div key={s.id} className="flex items-center gap-2 p-3 rounded-xl bg-card border border-border/40">
+                      <button onClick={() => navigate(`/profile/${s.id}`)} aria-label={`View ${name}'s profile`} className="shrink-0">
+                        <PresenceAvatar
+                          src={s.avatar_url}
+                          name={name}
+                          online={onlineFriends.has(s.id)}
+                          className="ring-1 ring-border/40"
+                          fallbackClassName="bg-primary/10 text-primary font-semibold"
+                        />
+                      </button>
+                      <button onClick={() => navigate(`/profile/${s.id}`)} className="flex-1 min-w-0 text-left">
+                        <div className="text-sm font-medium truncate">{name}</div>
+                        <div className="text-xs text-muted-foreground truncate">
+                          {onlineFriends.has(s.id) ? 'Online now' : s.reason}
+                        </div>
+                      </button>
+                      {/* Dismiss — quiet, secondary affordance. Sits to the
+                          left of the primary Add CTA so the eye lands on
+                          Add first; X is for "not interested". */}
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-9 w-9 text-muted-foreground/60 hover:text-muted-foreground shrink-0"
+                        onClick={() => dismissSuggestion(s.id)}
+                        aria-label={`Dismiss ${name}`}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="shrink-0"
+                        onClick={async () => {
+                          const ok = await sendFriendRequest(s.id);
+                          if (ok) refetchSuggestions();
+                        }}
+                      >
+                        <UserPlus className="h-4 w-4 mr-1.5" />
+                        Add
+                      </Button>
                     </div>
-                    <div className="text-xs text-muted-foreground truncate">{s.reason}</div>
-                  </div>
-                  {/* Dismiss — quiet, secondary affordance. Sits to the
-                      left of the primary Add CTA so the eye lands on
-                      Add first; X is for "not interested". */}
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-9 w-9 text-muted-foreground/60 hover:text-muted-foreground shrink-0"
-                    onClick={() => dismissSuggestion(s.id)}
-                    aria-label={`Dismiss ${s.display_name || s.full_name || 'this suggestion'}`}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    className="shrink-0"
-                    onClick={async () => {
-                      const ok = await sendFriendRequest(s.id);
-                      if (ok) refetchSuggestions();
-                    }}
-                  >
-                    <UserPlus className="h-4 w-4 mr-1.5" />
-                    Add
-                  </Button>
-                </div>
-              ))
+                  );
+                })}
+              </div>
             )}
           </TabsContent>
         </div>
@@ -355,6 +464,35 @@ export default function Friends() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+  );
+}
+
+function PresenceAvatar({
+  src,
+  name,
+  online,
+  className,
+  fallbackClassName,
+}: {
+  src: string | null;
+  name: string;
+  online: boolean;
+  className?: string;
+  fallbackClassName?: string;
+}) {
+  return (
+    <div className="relative">
+      <Avatar className={cn('h-11 w-11', className)}>
+        <AvatarImage src={src || undefined} />
+        <AvatarFallback className={fallbackClassName}>{initials(name)}</AvatarFallback>
+      </Avatar>
+      {online && (
+        <span
+          className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-card"
+          aria-label="Online"
+        />
+      )}
     </div>
   );
 }
