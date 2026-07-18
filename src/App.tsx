@@ -83,9 +83,7 @@ const MyGuests = lazy(() => import("./pages/player/MyGuests"));
 const NewMatch = lazy(() => import("./pages/NewMatch"));
 const PendingMatches = lazy(() => import("./pages/PendingMatches"));
 const MatchHistory = lazy(() => import("./pages/MatchHistory"));
-const CourtHistory = lazy(() => import("./pages/CourtHistory"));
 const CourtBoard = lazy(() => import("./pages/CourtBoard"));
-const CourtSettings = lazy(() => import("./pages/CourtSettings"));
 const PostDetail = lazy(() => import("./pages/PostDetail"));
 const FAQ = lazy(() => import("./pages/FAQ"));
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -519,7 +517,6 @@ const AppContent = () => {
           <Route path="/match/new" element={<RedirectWithParams to="/player/matches/new" />} />
           <Route path="/match/pending" element={<Navigate to="/player/matches?tab=pending" replace />} />
           <Route path="/match/history" element={<RedirectWithParams to="/player/matches" />} />
-          <Route path="/court/history" element={<CourtHistory />} />
           <Route path="/court/board" element={<CourtBoard />} />
           <Route path="/pickleballciti" element={<Navigate to="/court/board/836003fb-fbd7-429c-8973-67ac6766a511" replace />} />
           <Route path="/masonfield" element={<Navigate to="/court/board/4a5d9fb8-981b-42f1-9504-595cb8f22fca" replace />} />
@@ -527,7 +524,6 @@ const AppContent = () => {
           <Route path="/naymca" element={<Navigate to="/court/board/51e71be8-2212-4d46-9f83-d7f2d2af3120" replace />} />
           <Route path="/court/board/:courtId" element={<CourtBoard />} />
           <Route path="/court/feed/:postId" element={<PostDetail />} />
-          <Route path="/settings/courts" element={<CourtSettings />} />
           <Route path="/faq" element={<FAQ />} />
           <Route path="/session/queue" element={<SessionQueue />} />
           <Route path="/admin" element={<AdminGuard><AdminDashboard /></AdminGuard>} />
