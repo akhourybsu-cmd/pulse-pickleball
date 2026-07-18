@@ -6,8 +6,6 @@ import type { User } from "@supabase/supabase-js";
 
 import { Footer } from "@/components/Footer";
 import { OnboardingWelcome } from "@/components/onboarding";
-import { SmartMatch } from "@/components/court/SmartMatch";
-import { LFGNotifications } from "@/components/court/LFGNotifications";
 import { SectionHeader } from "@/components/layout/SectionHeader";
 
 // Dashboard Components — Phase 2 overhaul slim list.
@@ -335,17 +333,10 @@ const Dashboard = () => {
               <PerformanceModule userId={user?.id} />
               {/* StatsByCourtCard removed — see import comment */}
             </div>
-
-            {/* Discover play — player-to-player LFG features */}
-            <div
-              className="opacity-0 animate-fade-up space-y-3"
-              style={{ animationDelay: '300ms', animationFillMode: 'forwards' }}
-              data-tour="court-stats"
-            >
-              <SectionHeader label="Discover play" />
-              <SmartMatch userId={user?.id || null} />
-              <LFGNotifications />
-            </div>
+            {/* "Discover play" (SmartMatch + LFGNotifications) removed — it was
+                the court/LFG surface, retired with the court board. The header
+                rendered over nothing for players with no LFG data, and its
+                cards linked to the now-removed /court/board. */}
           </div>
 
           {/* Right Column — Activity (action items, sticky) */}
@@ -462,17 +453,8 @@ const Dashboard = () => {
             <PerformanceModule userId={user?.id} />
             {/* StatsByCourtCard removed — see import comment */}
           </div>
-
-          {/* Discover play */}
-          <div
-            className="opacity-0 animate-fade-up space-y-3"
-            style={{ animationDelay: '300ms', animationFillMode: 'forwards' }}
-            data-tour="court-stats"
-          >
-            <SectionHeader label="Discover play" />
-            <SmartMatch userId={user?.id || null} />
-            <LFGNotifications />
-          </div>
+          {/* "Discover play" (SmartMatch + LFGNotifications) removed — retired
+              court/LFG surface; see the desktop column note above. */}
         </div>
       </div>
 

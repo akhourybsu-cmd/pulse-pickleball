@@ -100,7 +100,7 @@ const MOMENTUM_META: Record<
 
 export default function PlayerPulse() {
   const navigate = useNavigate();
-  const { user } = useAuthState();
+  const { user, loading: authLoading } = useAuthState();
   const { data: pulse, isLoading } = usePlayerPulse(user?.id);
   const [range, setRange] = useState<PulseRange>("all");
 
@@ -153,7 +153,7 @@ export default function PlayerPulse() {
       </div>
 
       <div className="container mx-auto max-w-3xl px-4 py-5 space-y-5">
-        {isLoading ? (
+        {authLoading || isLoading ? (
           <PulseSkeleton />
         ) : !pulse || pulse.matchCount === 0 ? (
           <EmptyState onRecord={() => navigate("/player/matches/new")} />

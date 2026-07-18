@@ -463,13 +463,22 @@ const ViewProfile = () => {
           className="opacity-0 animate-fade-up"
           style={{ animationDelay: "300ms", animationFillMode: "forwards" }}
         >
-          <SectionHeader label="Recent matches" count={recentMatches.length} />
+          {/* When viewing someone else, RLS only returns matches the viewer
+              shared with them — so this is "matches together", not their full
+              history (which the stat grid above reflects via the public view).
+              Label it honestly so it doesn't contradict the visible count. */}
+          <SectionHeader
+            label={isSelf ? "Recent matches" : "Matches together"}
+            count={recentMatches.length}
+          />
           {recentMatches.length === 0 ? (
             <div className="rounded-2xl border border-border/60 bg-card p-8 text-center">
               <div className="mx-auto h-10 w-10 rounded-full bg-muted flex items-center justify-center mb-3">
                 <Hash className="h-5 w-5 text-muted-foreground" />
               </div>
-              <p className="text-sm text-muted-foreground">No matches yet.</p>
+              <p className="text-sm text-muted-foreground">
+                {isSelf ? "No matches yet." : "No matches with this player yet."}
+              </p>
             </div>
           ) : (
             <>
