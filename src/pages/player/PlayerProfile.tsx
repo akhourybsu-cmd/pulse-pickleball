@@ -17,6 +17,7 @@ import {
   ChevronRight,
   Pencil,
   Share2,
+  UserPlus,
   HelpCircle,
   RefreshCw,
   Shield,
@@ -56,6 +57,12 @@ const ACTIVITY_LINKS: HubLink[] = [
     icon: Calendar,
     label: 'My Events',
     description: 'Upcoming and past registrations',
+  },
+  {
+    to: '/player/guests',
+    icon: UserPlus,
+    label: 'My Guests',
+    description: 'Guest players you add to matches and events',
   },
 ];
 

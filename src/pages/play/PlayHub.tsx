@@ -5,6 +5,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { PlayerPageHeader } from '@/components/layout/PlayerPageHeader';
 import { JoinByInviteCodeDialog } from '@/components/round-robin/JoinByInviteCodeDialog';
+import { UpcomingPlaySection } from '@/components/play/UpcomingPlaySection';
 
 const FindEvents = lazy(() => import('@/pages/player/FindEvents'));
 
@@ -36,12 +37,17 @@ export default function PlayHub() {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [autoPreview, setAutoPreview] = useState(false);
+  // Snapshot the invite code before we strip it from the URL — otherwise
+  // inviteParam is null on the next render and the dialog auto-preview never
+  // fires with an empty initialCode.
+  const [inviteCode, setInviteCode] = useState('');
 
   // Deep-link consumer — open the dialog automatically when the URL
   // carries ?invite=…. We strip the param from the URL after consumption
   // so a refresh doesn't re-trigger the dialog.
   useEffect(() => {
     if (inviteParam) {
+      setInviteCode(inviteParam);
       setAutoPreview(true);
       setDialogOpen(true);
       // Clean the search param so the dialog is dismissible without
@@ -57,8 +63,8 @@ export default function PlayHub() {
     <div className="min-h-screen bg-background">
       <PlayerPageHeader
         icon={Compass}
-        title="Find Play"
-        subtitle="Round robins, open play, clinics, and other events near you."
+        title="Play"
+        subtitle="Your upcoming round robins and events — plus more to join nearby."
         background="gradient"
         action={
           <Button
@@ -77,6 +83,15 @@ export default function PlayHub() {
         }
       />
 
+      {/* Lead with what the player already has coming up... */}
+      <UpcomingPlaySection />
+
+      {/* ...then the discovery feed to find more to join. */}
+      <div className="px-4 sm:px-6 pt-5 pb-1 max-w-3xl mx-auto">
+        <h2 className="text-sm font-semibold tracking-tight font-display text-muted-foreground">
+          Discover more nearby
+        </h2>
+      </div>
       <Suspense fallback={<TabSkeleton />}>
         <FindEvents hideHeader />
       </Suspense>
@@ -87,7 +102,7 @@ export default function PlayHub() {
           setDialogOpen(open);
           if (!open) setAutoPreview(false);
         }}
-        initialCode={inviteParam || ''}
+        initialCode={inviteCode}
         autoPreviewOnOpen={autoPreview}
       />
     </div>

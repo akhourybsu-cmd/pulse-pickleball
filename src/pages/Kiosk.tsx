@@ -68,7 +68,7 @@ export default function Kiosk() {
           description: "Please log in to access kiosk mode",
           variant: "destructive",
         });
-        navigate(`/session-queue?session=${sessionId}`);
+        navigate(`/session/queue?session=${sessionId}`);
         return;
       }
 
@@ -94,7 +94,7 @@ export default function Kiosk() {
           description: "Only the session organizer can access kiosk mode",
           variant: "destructive",
         });
-        navigate(`/session-queue?session=${sessionId}`);
+        navigate(`/session/queue?session=${sessionId}`);
         return;
       }
 

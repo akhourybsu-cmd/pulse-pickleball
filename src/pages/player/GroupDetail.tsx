@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, Settings, Users, MessageSquare, MessageCircle, Calendar, 
-  FolderOpen, Plus, Share2, MoreVertical, MoreHorizontal, Building2, UserPlus, Bell
+  FolderOpen, Plus, Share2, MoreVertical, MoreHorizontal, UserPlus, Bell
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -420,12 +420,6 @@ export default function GroupDetail() {
                   <FolderOpen className="h-4 w-4 mr-2" />
                   Files
                 </DropdownMenuItem>
-                {isVenueGroup && group.venue?.slug && (
-                  <DropdownMenuItem onClick={() => navigate(`/v/${group.venue!.slug}`)}>
-                    <Building2 className="h-4 w-4 mr-2" />
-                    Visit Venue
-                  </DropdownMenuItem>
-                )}
                 {isAdmin && (
                   <DropdownMenuItem onClick={() => navigate(`/player/community/group/${groupId}/manage`)}>
                     <Settings className="h-4 w-4 mr-2" />
@@ -618,15 +612,6 @@ export default function GroupDetail() {
                       >
                         <Share2 className="h-4 w-4 text-muted-foreground" />
                         <span className="text-sm">Share invite link</span>
-                      </button>
-                    )}
-                    {isVenueGroup && group.venue?.slug && (
-                      <button
-                        onClick={() => navigate(`/v/${group.venue!.slug}`)}
-                        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/40 transition-colors"
-                      >
-                        <Building2 className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">Visit venue page</span>
                       </button>
                     )}
                     {isAdmin && (
