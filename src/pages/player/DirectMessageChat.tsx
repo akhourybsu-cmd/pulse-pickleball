@@ -261,7 +261,7 @@ export default function DirectMessageChat() {
         </Button>
 
         <button
-          onClick={() => participant?.id && navigate(`/player/profile?userId=${participant.id}`)}
+          onClick={() => participant?.id && navigate(`/profile/${participant.id}`)}
           className="flex items-center gap-3 flex-1 min-w-0"
         >
           <Avatar className="h-8 w-8">

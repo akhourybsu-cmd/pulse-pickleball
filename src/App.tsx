@@ -137,7 +137,6 @@ const TournamentsLanding = lazy(() => import("./pages/TournamentsLanding"));
 const CreateVenueFast = lazy(() => import("./pages/venue/CreateVenueFast"));
 const Reservations = lazy(() => import("./pages/Reservations"));
 const MyCalendarRegistrations = lazy(() => import("./pages/MyCalendarRegistrations"));
-const BrowseEvents = lazy(() => import("./pages/BrowseEvents"));
 const PickleballCitiMemberships = lazy(() => import("./pages/PickleballCitiMemberships"));
 const DataExport = lazy(() => import("./pages/DataExport"));
 const AdminAuditLog = lazy(() => import("./pages/AdminAuditLog"));
@@ -514,9 +513,12 @@ const AppContent = () => {
           <Route path="/profile/:userId" element={<ViewProfile />} />
           <Route path="/player/profile/:userId" element={<ViewProfile />} />
           {/* Match routes: legacy /match/* paths now redirect into the player shell */}
-          <Route path="/match/new" element={<Navigate to="/player/matches/new" replace />} />
+          {/* RedirectWithParams preserves ?onboarding=true and the #matchId hash
+              that plain <Navigate> would drop. /match/pending keeps <Navigate>
+              because its target already carries a query string. */}
+          <Route path="/match/new" element={<RedirectWithParams to="/player/matches/new" />} />
           <Route path="/match/pending" element={<Navigate to="/player/matches?tab=pending" replace />} />
-          <Route path="/match/history" element={<Navigate to="/player/matches" replace />} />
+          <Route path="/match/history" element={<RedirectWithParams to="/player/matches" />} />
           <Route path="/court/history" element={<CourtHistory />} />
           <Route path="/court/board" element={<CourtBoard />} />
           <Route path="/pickleballciti" element={<Navigate to="/court/board/836003fb-fbd7-429c-8973-67ac6766a511" replace />} />
@@ -559,7 +561,9 @@ const AppContent = () => {
           <Route path="/changelog" element={<Changelog />} />
           <Route path="/reservations" element={<Reservations />} />
           <Route path="/events/my-calendar-registrations" element={<MyCalendarRegistrations />} />
-          <Route path="/events/browse" element={<BrowseEvents />} />
+          {/* NOTE: /events/browse is intentionally redirected to /play above
+              (the unified hub). The former <BrowseEvents /> route here was dead
+              (shadowed by that earlier redirect) and has been removed. */}
           <Route path="/pickleball-citi-memberships" element={<PickleballCitiMemberships />} />
           <Route path="/profile/data-export" element={<DataExport />} />
           <Route path="/settings/notifications" element={<NotificationSettings />} />

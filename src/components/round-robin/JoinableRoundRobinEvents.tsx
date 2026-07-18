@@ -219,7 +219,7 @@ export function JoinableRoundRobinEvents({ courtLocation, userId }: JoinableRoun
         <Button
           variant="outline"
           size="sm"
-          onClick={() => navigate("/browse-events")}
+          onClick={() => navigate("/events/browse")}
           className="gap-2"
         >
           View Events

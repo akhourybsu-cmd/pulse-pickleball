@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Plus, QrCode, Users, Search, ChevronRight } from 'lucide-react';
+import { Plus, QrCode, Users, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -15,7 +14,6 @@ import { FriendsEntryCard } from '@/components/community/FriendsEntryCard';
 import { useGroups } from '@/hooks/useGroups';
 
 export default function Community() {
-  const navigate = useNavigate();
   const { myGroups, publicGroups, loading, createGroup, joinGroupByCode, joinPublicGroup, updateGroupOrder } = useGroups();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [joinDialogOpen, setJoinDialogOpen] = useState(false);
@@ -164,16 +162,7 @@ export default function Community() {
 
             {/* Recent Activity */}
             <section className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold tracking-tight font-display">Recent Activity</h2>
-                <button
-                  onClick={() => navigate('/settings/notifications')}
-                  className="flex items-center gap-1 text-sm font-medium text-primary"
-                >
-                  View all
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-              </div>
+              <h2 className="text-lg font-semibold tracking-tight font-display">Recent Activity</h2>
               <CommunityActivityFeed />
             </section>
           </TabsContent>

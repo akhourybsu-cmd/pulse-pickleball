@@ -290,7 +290,7 @@ export default function MyCalendarRegistrations() {
               </p>
               <div className="flex justify-center gap-3 mt-4">
                 <Button
-                  onClick={() => window.location.href = "/browse-events"}
+                  onClick={() => window.location.href = "/events/browse"}
                 >
                   Browse Events
                 </Button>

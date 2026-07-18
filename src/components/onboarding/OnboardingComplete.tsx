@@ -30,7 +30,7 @@ export const OnboardingComplete = ({ onComplete }: OnboardingCompleteProps) => {
       icon: BarChart3,
       title: "View Your Stats",
       description: "Match history, court performance",
-      action: () => navigate('/history'),
+      action: () => navigate('/player/matches'),
       actionLabel: "View",
     },
   ];
