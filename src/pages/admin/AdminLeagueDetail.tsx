@@ -235,7 +235,7 @@ export default function AdminLeagueDetail() {
 
             {/* Summary stats — the "scoreboard" */}
             {counts && (
-              <div className="mt-5 grid grid-cols-4 gap-3 pt-4 border-t border-slate-800">
+              <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 border-t border-slate-800">
                 <HeroStat icon={<CalendarDays className="w-3.5 h-3.5" />} label="Seasons"  value={counts.seasons} />
                 <HeroStat icon={<Users className="w-3.5 h-3.5" />}        label="Members"  value={counts.members} />
                 <HeroStat icon={<UsersRound className="w-3.5 h-3.5" />}   label="Teams"    value={counts.teams} />

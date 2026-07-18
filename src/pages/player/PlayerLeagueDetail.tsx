@@ -8,6 +8,7 @@ import {
 import { useMemo } from "react";
 import type { LeagueType, LeagueMatchStatus } from "@/lib/leagues/types";
 import { useLeagueDetailForPlayer } from "@/hooks/useLeagueDetailForPlayer";
+import { LEAGUE_TYPE_META } from "@/lib/leagues/typeMeta";
 import { computeTeamStandings } from "@/lib/leagues/standings";
 import { StandingsTable } from "@/components/leagues/StandingsTable";
 import { LeagueMatchActions } from "@/components/leagues/LeagueMatchActions";
@@ -179,6 +180,11 @@ export default function PlayerLeagueDetail() {
           <h1 className="mt-3 text-2xl sm:text-3xl font-black text-white tracking-tight leading-tight">
             {league.name}
           </h1>
+          {/* Format explainer — makes the league type meaningful at a glance */}
+          <p className="text-[11px] text-slate-400 mt-1.5 inline-flex items-center gap-1.5">
+            <Icon className="w-3 h-3 shrink-0" />
+            {meta.label} · {LEAGUE_TYPE_META[league.league_type].tagline}
+          </p>
           {league.description && (
             <p className="text-slate-400 text-sm mt-2 max-w-2xl">
               {league.description}
