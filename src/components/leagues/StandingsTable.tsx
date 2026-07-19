@@ -13,10 +13,13 @@ export function StandingsTable({
   rows,
   highlightTeamIds,
   emptyMessage = "No results yet.",
+  nameHeader = "Team",
 }: {
   rows: StandingRow[];
   highlightTeamIds?: Set<string>;
   emptyMessage?: string;
+  /** Column header for the name column — "Player" for individual leagues. */
+  nameHeader?: string;
 }) {
   if (rows.length === 0) {
     return (
@@ -32,7 +35,7 @@ export function StandingsTable({
       {/* Header row */}
       <div className="grid grid-cols-[2rem_1fr_2.5rem_2.5rem_3rem_3rem] sm:grid-cols-[2.5rem_1fr_3rem_3rem_3rem_3.5rem_3.5rem_5.5rem] items-center gap-2 sm:gap-3 px-3 py-2 bg-muted/40 border-b border-border/50 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
         <div className="text-center">#</div>
-        <div>Team</div>
+        <div>{nameHeader}</div>
         <div className="text-right">W</div>
         <div className="text-right">L</div>
         <div className="text-right hidden sm:block">GP</div>

@@ -2,7 +2,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
   ArrowLeft, MapPin, Trophy, Shuffle, Zap, Sparkles, Layers,
-  CalendarDays, Users, UsersRound, CalendarClock, Crown,
+  CalendarDays, Users, CalendarClock,
   Swords, Settings,
 } from "lucide-react";
 import { useMemo } from "react";
@@ -11,7 +11,7 @@ import { useLeagueDetailForPlayer } from "@/hooks/useLeagueDetailForPlayer";
 import { LEAGUE_TYPE_META } from "@/lib/leagues/typeMeta";
 import { sideName } from "@/lib/leagues/matchSides";
 import { resolvePlayerName } from "@/lib/matchDisplay";
-import { computeTeamStandings } from "@/lib/leagues/standings";
+import { computePlayerStandings } from "@/lib/leagues/standings";
 import { StandingsTable } from "@/components/leagues/StandingsTable";
 import { LeagueMatchActions } from "@/components/leagues/LeagueMatchActions";
 import { cn } from "@/lib/utils";
@@ -59,20 +59,21 @@ export default function PlayerLeagueDetail() {
   const navigate = useNavigate();
   const detail = useLeagueDetailForPlayer(leagueId);
   const {
-    league, membership, season, division, myTeams, myTeamIds,
-    teammates, matches, allMatches, allTeams, teamsById, playersById, loading,
+    league, membership, season, division,
+    matches, allMatches, teamsById, playersById, loading,
     currentUserId, refresh,
   } = detail;
 
-  // Standings scoped to my current season + division. Falls back to
-  // whole-league if I don't have a season/division set yet.
+  // Individual standings scoped to my current season + division.
   const standings = useMemo(
-    () => computeTeamStandings(allMatches, allTeams, {
-      seasonId: season?.id ?? undefined,
-      divisionId: division?.id ?? undefined,
-    }),
-    [allMatches, allTeams, season?.id, division?.id],
+    () => computePlayerStandings(
+      allMatches,
+      (id) => (playersById[id] ? resolvePlayerName(playersById[id]) : "Player"),
+      { seasonId: season?.id ?? undefined, divisionId: division?.id ?? undefined },
+    ),
+    [allMatches, playersById, season?.id, division?.id],
   );
+  const myRow = standings.find((r) => r.teamId === currentUserId);
 
   if (loading) {
     return (
@@ -120,14 +121,6 @@ export default function PlayerLeagueDetail() {
       const tb = b.scheduled_time ? new Date(b.scheduled_time).getTime() : 0;
       return tb - ta;
     });
-
-  // Group teammates by team_id — a player can be on more than one team.
-  const teammatesByTeam = new Map<string, typeof teammates>();
-  teammates.forEach((t) => {
-    const arr = teammatesByTeam.get(t.team_id) ?? [];
-    arr.push(t);
-    teammatesByTeam.set(t.team_id, arr);
-  });
 
   return (
     <div className="container mx-auto px-4 py-5 max-w-3xl space-y-4">
@@ -213,81 +206,10 @@ export default function PlayerLeagueDetail() {
                    value={division?.name ?? "Not assigned"} />
           <InfoRow icon={<Trophy className="w-4 h-4" />} label="Role"
                    value={membership?.role ?? "player"} />
-          <InfoRow icon={<UsersRound className="w-4 h-4" />} label="Teams"
-                   value={myTeams.length === 0
-                     ? "Not on a team yet"
-                     : myTeams.map((t) => t.name).join(", ")} />
+          <InfoRow icon={<Swords className="w-4 h-4" />} label="Record"
+                   value={myRow ? `${myRow.wins}–${myRow.losses}` : "0–0"} />
         </div>
       </div>
-
-      {/* Teammates — one section per team the player is on */}
-      {myTeams.length > 0 && (
-        <div className="rounded-xl border border-border/70 bg-card p-4 space-y-4">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-            <UsersRound className="w-3.5 h-3.5" />
-            Team roster
-          </h2>
-          {myTeams.map((team) => {
-            const roster = teammatesByTeam.get(team.id) ?? [];
-            return (
-              <div key={team.id} className="space-y-2">
-                {myTeams.length > 1 && (
-                  <div className="text-sm font-semibold">{team.name}</div>
-                )}
-                {roster.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">
-                    Just you on the roster so far.
-                  </p>
-                ) : (
-                  <ul className="grid gap-2 sm:grid-cols-2">
-                    {roster
-                      // Show captain first, then me, then others alphabetically.
-                      .sort((a, b) => {
-                        if (a.is_captain !== b.is_captain) return a.is_captain ? -1 : 1;
-                        if (a.is_me !== b.is_me) return a.is_me ? -1 : 1;
-                        return a.display_name.localeCompare(b.display_name);
-                      })
-                      .map((tm) => (
-                        <li
-                          key={tm.team_member_id}
-                          className={cn(
-                            "flex items-center gap-2.5 rounded-lg border border-border/70 bg-background/50 px-3 py-2",
-                            tm.is_me && "border-primary/40 bg-primary/5",
-                          )}
-                        >
-                          <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0 overflow-hidden">
-                            {tm.avatar_url ? (
-                              <img src={tm.avatar_url} alt="" className="h-full w-full object-cover" />
-                            ) : (
-                              <span className="text-[10px] font-bold text-muted-foreground">
-                                {tm.display_name.split(/\s+/).slice(0, 2).map((p) => p[0]).join("").toUpperCase() || "?"}
-                              </span>
-                            )}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-1.5 min-w-0">
-                              <span className="text-sm font-medium truncate">
-                                {tm.is_me ? "You" : tm.display_name}
-                              </span>
-                              {tm.is_captain && (
-                                <Crown className="w-3.5 h-3.5 text-amber-500 shrink-0" aria-label="Captain" />
-                              )}
-                            </div>
-                            {tm.role !== "player" && (
-                              <div className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground">
-                                {tm.role}
-                              </div>
-                            )}
-                          </div>
-                        </li>
-                      ))}
-                  </ul>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
 
       {/* Standings — only render if there's anything to show */}
       {standings.length > 0 && (
@@ -305,7 +227,8 @@ export default function PlayerLeagueDetail() {
           </div>
           <StandingsTable
             rows={standings}
-            highlightTeamIds={myTeamIds}
+            nameHeader="Player"
+            highlightTeamIds={currentUserId ? new Set([currentUserId]) : undefined}
             emptyMessage="No completed matches yet."
           />
         </div>

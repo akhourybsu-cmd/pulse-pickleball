@@ -6,19 +6,28 @@ import {
 } from "@/components/ui/select";
 import { Trophy } from "lucide-react";
 import type {
-  LeagueSeason, LeagueDivision, LeagueTeam, LeagueMatch,
+  LeagueSeason, LeagueDivision, LeagueMatch,
 } from "@/lib/leagues/types";
-import { computeTeamStandings } from "@/lib/leagues/standings";
+import { computePlayerStandings } from "@/lib/leagues/standings";
+import { resolvePlayerName } from "@/lib/matchDisplay";
 import { StandingsTable } from "@/components/leagues/StandingsTable";
 import { EmptyState, TabSkeleton, LeagueTabProps, SeasonSelect } from "./_shared";
+
+interface ProfileRow {
+  id: string;
+  display_name: string | null;
+  full_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+}
 
 export function StandingsTab({ league, dataVersion }: LeagueTabProps) {
   const [seasons, setSeasons] = useState<LeagueSeason[]>([]);
   const [seasonId, setSeasonId] = useState<string | "">("");
   const [divisions, setDivisions] = useState<LeagueDivision[]>([]);
   const [divisionId, setDivisionId] = useState<string | "all">("all");
-  const [teams, setTeams] = useState<LeagueTeam[]>([]);
   const [matches, setMatches] = useState<LeagueMatch[]>([]);
+  const [namesById, setNamesById] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
 
   // Season list — subscribes to dataVersion so new seasons appear.
@@ -35,32 +44,48 @@ export function StandingsTab({ league, dataVersion }: LeagueTabProps) {
     // eslint-disable-next-line
   }, [league.id, dataVersion]);
 
-  // Reload teams + divisions + matches whenever season changes.
+  // Reload divisions + matches whenever season changes, then resolve the
+  // names of every player who appears in a match slot.
   useEffect(() => {
     if (!seasonId) return;
     (async () => {
-      const [{ data: divs }, { data: t }, { data: m }] = await Promise.all([
+      const [{ data: divs }, { data: m }] = await Promise.all([
         supabase.from("league_divisions" as never).select("*").eq("season_id", seasonId),
-        supabase.from("league_teams" as never).select("*").eq("season_id", seasonId),
         supabase.from("league_matches" as never).select("*")
           .eq("league_id", league.id).eq("season_id", seasonId),
       ]);
       if (divs) setDivisions(divs as unknown as LeagueDivision[]);
-      if (t) setTeams(t as unknown as LeagueTeam[]);
-      if (m) setMatches(m as unknown as LeagueMatch[]);
+      const matchList = (m ?? []) as unknown as LeagueMatch[];
+      setMatches(matchList);
+
+      const ids = Array.from(new Set(
+        matchList
+          .flatMap((x) => [x.player_a_id, x.player_b_id, x.player_c_id, x.player_d_id])
+          .filter(Boolean) as string[],
+      ));
+      if (ids.length) {
+        const { data: profs } = await supabase
+          .from("profiles_public" as never)
+          .select("id, display_name, full_name, first_name, last_name")
+          .in("id", ids);
+        const map: Record<string, string> = {};
+        (profs ?? []).forEach((p) => {
+          const r = p as ProfileRow;
+          map[r.id] = resolvePlayerName(r);
+        });
+        setNamesById(map);
+      } else {
+        setNamesById({});
+      }
     })().catch((e) => toast.error(e.message));
   }, [seasonId, dataVersion, league.id]);
 
   const rows = useMemo(() => {
-    const filteredTeams = divisionId === "all"
-      ? teams
-      : teams.filter((t) => t.division_id === divisionId);
-    return computeTeamStandings(matches, filteredTeams, {
+    return computePlayerStandings(matches, (id) => namesById[id] ?? "Player", {
       seasonId: seasonId || undefined,
-      // divisionId=null means "unassigned"; only pass explicit selections
       divisionId: divisionId === "all" ? undefined : divisionId,
     });
-  }, [matches, teams, seasonId, divisionId]);
+  }, [matches, namesById, seasonId, divisionId]);
 
   if (loading) return <TabSkeleton lines={4} />;
 
@@ -90,12 +115,13 @@ export function StandingsTab({ league, dataVersion }: LeagueTabProps) {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Wins from verified, score-submitted, and forfeit matches. Sort:
+        Individual standings from verified &amp; submitted scores. Sort:
         wins → head-to-head (pairwise ties) → point differential → win %.
       </p>
 
       <StandingsTable
         rows={rows}
+        nameHeader="Player"
         emptyMessage="No completed matches in this season yet."
       />
     </div>

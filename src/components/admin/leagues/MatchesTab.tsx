@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -327,13 +326,6 @@ function MatchEditor({
   const [scheduledTime, setScheduledTime] = useState(
     initial?.scheduled_time ? toLocalInput(initial.scheduled_time) : "",
   );
-  const [teamAId, setTeamAId] = useState<string | "none">(initial?.team_a_id ?? "none");
-  const [teamBId, setTeamBId] = useState<string | "none">(initial?.team_b_id ?? "none");
-  // Individual players are the default; teams are opt-in. Start "on" only
-  // if this match already carries teams.
-  const [useTeams, setUseTeams] = useState<boolean>(
-    !!(initial?.team_a_id || initial?.team_b_id),
-  );
   const [playerAId, setPlayerAId] = useState<string | "none">(initial?.player_a_id ?? "none");
   const [playerBId, setPlayerBId] = useState<string | "none">(initial?.player_b_id ?? "none");
   const [playerCId, setPlayerCId] = useState<string | "none">(initial?.player_c_id ?? "none");
@@ -345,9 +337,6 @@ function MatchEditor({
 
   const submit = async () => {
     if (!sessionId) { toast.error("Session required"); return; }
-    if (useTeams && teamAId !== "none" && teamAId === teamBId) {
-      toast.error("Team A and Team B must differ"); return;
-    }
     setSaving(true);
 
     const session = sessions.find((s) => s.id === sessionId);
@@ -364,8 +353,8 @@ function MatchEditor({
       session_id: sessionId,
       court_number: courtNumber ? Number(courtNumber) : null,
       scheduled_time: scheduledTime ? new Date(scheduledTime).toISOString() : null,
-      team_a_id: useTeams && teamAId !== "none" ? teamAId : null,
-      team_b_id: useTeams && teamBId !== "none" ? teamBId : null,
+      team_a_id: null,
+      team_b_id: null,
       player_a_id: playerAId === "none" ? null : playerAId,
       player_b_id: playerBId === "none" ? null : playerBId,
       player_c_id: playerCId === "none" ? null : playerCId,
@@ -416,16 +405,8 @@ function MatchEditor({
     if (profilesById[id]) return resolvePlayerName(profilesById[id]);
     return playerPool.find((p) => p.id === id)?.label ?? null;
   };
-  const sideAName = sideName(
-    useTeams && teamAId !== "none" ? teams.find((t) => t.id === teamAId)?.name : null,
-    [nameOf(playerAId), nameOf(playerBId)],
-    "Side A",
-  );
-  const sideBName = sideName(
-    useTeams && teamBId !== "none" ? teams.find((t) => t.id === teamBId)?.name : null,
-    [nameOf(playerCId), nameOf(playerDId)],
-    "Side B",
-  );
+  const sideAName = sideName(null, [nameOf(playerAId), nameOf(playerBId)], "Side A");
+  const sideBName = sideName(null, [nameOf(playerCId), nameOf(playerDId)], "Side B");
   const showAdminActions = mode === "edit" && initial && (
     initial.status === "disputed" || initial.status === "score_submitted"
     || initial.status === "scheduled" || initial.status === "in_progress"
@@ -470,42 +451,7 @@ function MatchEditor({
         </FormSection>
 
         <FormSection label="Matchup">
-          {/* Individual players are the default line-up. Flip this on only
-              if you run this league with named teams. */}
-          <label className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-muted/20 p-2.5">
-            <div className="min-w-0">
-              <div className="text-xs font-semibold">Use team names</div>
-              <div className="text-[11px] text-muted-foreground">
-                Off — the matchup shows individual player names
-              </div>
-            </div>
-            <Switch checked={useTeams} onCheckedChange={setUseTeams} />
-          </label>
-
-          {useTeams && (
-            <div className="grid grid-cols-2 gap-3">
-              <FormRow label="Team A">
-                <Select value={teamAId} onValueChange={setTeamAId}>
-                  <SelectTrigger className={FIELD_H}><SelectValue placeholder="Pick team" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">No team</SelectItem>
-                    {teams.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </FormRow>
-              <FormRow label="Team B">
-                <Select value={teamBId} onValueChange={setTeamBId}>
-                  <SelectTrigger className={FIELD_H}><SelectValue placeholder="Pick team" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">No team</SelectItem>
-                    {teams.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </FormRow>
-            </div>
-          )}
-
-          {/* Player line-ups — the default input */}
+          {/* Player line-ups — league play is individual-based */}
           <div className="grid grid-cols-2 gap-3">
             {([
               { label: "Side A", slots: [
