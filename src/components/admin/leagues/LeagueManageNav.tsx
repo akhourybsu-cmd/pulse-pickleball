@@ -19,7 +19,7 @@ import { cn } from "@/lib/utils";
 export type ManageTab =
   | "overview" | "seasons" | "divisions"
   | "members" | "teams" | "subs"
-  | "sessions" | "matches"
+  | "ladder" | "sessions" | "matches"
   | "standings"
   | "audit";
 
@@ -40,6 +40,7 @@ export const MANAGE_TABS: TabDef[] = [
   { key: "divisions", label: "Divisions",  short: "Divs",     icon: Layers,        group: "Setup",   hint: "Skill tiers within a season" },
   { key: "members",   label: "Players",    short: "Players",  icon: Users,         group: "People",  hint: "Everyone in this league" },
   { key: "subs",      label: "Subs",       short: "Subs",     icon: LifeBuoy,      group: "People",  hint: "Sub pool + swap into a week" },
+  { key: "ladder",    label: "Ladder",     short: "Ladder",   icon: Layers,        group: "Play",    hint: "Individual doubles ladder" },
   { key: "sessions",  label: "Sessions",   short: "Sessions", icon: CalendarClock, group: "Play",    hint: "Nights of scheduled play" },
   { key: "matches",   label: "Matches",    short: "Matches",  icon: Swords,        group: "Play",    hint: "Individual matchups" },
   { key: "standings", label: "Standings",  short: "Table",    icon: Award,         group: "Results", hint: "Wins, points, form" },
