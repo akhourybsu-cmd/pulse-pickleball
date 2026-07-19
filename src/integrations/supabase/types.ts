@@ -2928,6 +2928,78 @@ export type Database = {
           },
         ]
       }
+      league_substitutes: {
+        Row: {
+          created_at: string
+          division_id: string | null
+          id: string
+          league_id: string
+          notes: string | null
+          season_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          division_id?: string | null
+          id?: string
+          league_id: string
+          notes?: string | null
+          season_id: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          division_id?: string | null
+          id?: string
+          league_id?: string
+          notes?: string | null
+          season_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_substitutes_division_id_fkey"
+            columns: ["division_id"]
+            isOneToOne: false
+            referencedRelation: "league_divisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_substitutes_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_substitutes_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "league_seasons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_substitutes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_substitutes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       league_team_members: {
         Row: {
           created_at: string
@@ -8341,6 +8413,15 @@ export type Database = {
           reason: string
           weight: number
         }[]
+      }
+      swap_league_match_player: {
+        Args: {
+          p_match_id: string
+          p_new_player_id: string
+          p_note?: string
+          p_slot: string
+        }
+        Returns: undefined
       }
       sync_league_season_statuses: {
         Args: { p_league_id: string }
