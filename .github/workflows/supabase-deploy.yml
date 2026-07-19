@@ -1,0 +1,76 @@
+name: Deploy Supabase
+
+# Applies database migrations (and, optionally, edge functions) to your
+# Supabase project automatically — no more approving each migration by
+# hand. It runs when migration/function files change on `main`, and can
+# also be triggered manually from the Actions tab.
+#
+# ─────────────────────────────────────────────────────────────────────
+# ONE-TIME SETUP (nothing here runs until you do this):
+#
+#   1. Repo → Settings → Secrets and variables → Actions → New secret,
+#      add all three:
+#        • SUPABASE_ACCESS_TOKEN   (supabase.com/dashboard/account/tokens)
+#        • SUPABASE_DB_PASSWORD    (Supabase → Project Settings → Database)
+#        • SUPABASE_PROJECT_REF    (your VITE_SUPABASE_PROJECT_ID)
+#
+#   2. Same screen → Variables tab → New variable:
+#        • AUTO_DB_PUSH = true
+#      (This flag is the on-switch. Until it's `true`, the job is skipped
+#      instead of failing, so the workflow can sit here harmlessly.)
+#
+# Requires access to the Supabase dashboard for this project to obtain
+# the token + DB password. If the project is fully managed by Lovable
+# Cloud and you can't reach that dashboard, CI can't authenticate either.
+# ─────────────────────────────────────────────────────────────────────
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/migrations/**"
+      - "supabase/functions/**"
+      - "supabase/config.toml"
+  workflow_dispatch:
+    inputs:
+      deploy_functions:
+        description: "Also deploy edge functions"
+        type: boolean
+        default: true
+
+concurrency:
+  group: supabase-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Push migrations
+    # On-switch: set repo variable AUTO_DB_PUSH=true to enable. Skipped
+    # (grey, not red) until then so it never spams failed checks.
+    if: ${{ vars.AUTO_DB_PUSH == 'true' }}
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Link project
+        run: supabase link --project-ref "$PROJECT_REF" --password "$SUPABASE_DB_PASSWORD"
+
+      - name: Push migrations
+        run: supabase db push --password "$SUPABASE_DB_PASSWORD"
+
+      # Deploys every function under supabase/functions. Safe to remove
+      # this step if you only want database migrations automated. On a
+      # manual run you can also untick "Also deploy edge functions".
+      - name: Deploy edge functions
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.deploy_functions }}
+        run: supabase functions deploy --project-ref "$PROJECT_REF"
