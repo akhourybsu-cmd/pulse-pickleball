@@ -4,13 +4,53 @@
  */
 import { ReactNode, useId } from "react";
 import { motion } from "framer-motion";
+import { CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import type { League } from "@/lib/leagues/types";
+
+/**
+ * Sporty season picker used at the top of every management tab. Reads
+ * like a "SEASON ·  Fall 2026" control with a calendar chip instead of a
+ * bare dropdown, so the tab tops feel like a league app, not a form.
+ */
+export function SeasonSelect({
+  seasons, value, onChange, className,
+}: {
+  seasons: Array<{ id: string; name: string }>;
+  value: string;
+  onChange: (v: string) => void;
+  className?: string;
+}) {
+  return (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger className={cn("h-11 rounded-lg bg-card", className)}>
+        <span className="inline-flex items-center gap-2 min-w-0 flex-1">
+          <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-primary/10 text-primary shrink-0">
+            <CalendarDays className="w-3.5 h-3.5" />
+          </span>
+          <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground shrink-0">
+            Season
+          </span>
+          <span className="text-border shrink-0">·</span>
+          <span className="min-w-0 truncate font-semibold"><SelectValue /></span>
+        </span>
+      </SelectTrigger>
+      <SelectContent>
+        {seasons.map((s) => (
+          <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
 
 /**
  * Props every league tab receives from AdminLeagueDetail. The tab MUST:

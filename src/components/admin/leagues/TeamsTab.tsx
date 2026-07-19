@@ -18,7 +18,7 @@ import { resolvePlayerName } from "@/lib/matchDisplay";
 import { TeamRosterDialog } from "./TeamRosterDialog";
 import {
   EmptyState, TabSkeleton, LeagueTabProps,
-  FormShell, FormSection, FormRow, FIELD_H,
+  FormShell, FormSection, FormRow, FIELD_H, SeasonSelect,
 } from "./_shared";
 
 interface PlayerRow { id: string; display_name: string | null; full_name: string | null }
@@ -120,12 +120,7 @@ export function TeamsTab({ league, dataVersion, onMutated }: LeagueTabProps) {
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <Select value={seasonId} onValueChange={setSeasonId}>
-          <SelectTrigger className="flex-1"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {seasons.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <SeasonSelect seasons={seasons} value={seasonId} onChange={setSeasonId} className="flex-1" />
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild>
             <Button size="sm"><Plus className="w-4 h-4 mr-1" />New team</Button>

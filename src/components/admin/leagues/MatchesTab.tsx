@@ -31,7 +31,7 @@ import { resolvePlayerName } from "@/lib/matchDisplay";
 import { cn } from "@/lib/utils";
 import {
   EmptyState, TabSkeleton, LeagueTabProps,
-  FormShell, FormSection, FormRow, FIELD_H,
+  FormShell, FormSection, FormRow, FIELD_H, SeasonSelect,
 } from "./_shared";
 
 interface PlayerRow {
@@ -136,12 +136,7 @@ export function MatchesTab({ league, dataVersion, onMutated }: LeagueTabProps) {
       </div>
 
       <div className="flex items-center gap-2">
-        <Select value={seasonId} onValueChange={setSeasonId}>
-          <SelectTrigger className="flex-1"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {seasons.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <SeasonSelect seasons={seasons} value={seasonId} onChange={setSeasonId} className="flex-1" />
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild>
             <Button size="sm" disabled={sessions.length === 0}>

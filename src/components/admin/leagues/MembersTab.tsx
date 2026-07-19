@@ -19,7 +19,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import {
   EmptyState, TabSkeleton, LeagueTabProps,
-  FormShell, FormSection, FormRow, FIELD_H, SegmentedControl,
+  FormShell, FormSection, FormRow, FIELD_H, SegmentedControl, SeasonSelect,
 } from "./_shared";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -122,14 +122,7 @@ export function MembersTab({ league, dataVersion, onMutated }: LeagueTabProps) {
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <Select value={seasonId} onValueChange={setSeasonId}>
-          <SelectTrigger className="flex-1"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {seasons.map((s) => (
-              <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <SeasonSelect seasons={seasons} value={seasonId} onChange={setSeasonId} className="flex-1" />
         <Dialog open={addOpen} onOpenChange={setAddOpen}>
           <DialogTrigger asChild>
             <Button size="sm"><Plus className="w-4 h-4 mr-1" />Add member</Button>
