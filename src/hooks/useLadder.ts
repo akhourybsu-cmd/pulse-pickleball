@@ -80,6 +80,8 @@ export interface LadderData {
   games: LadderGame[];
   currentOrder: string[];
   lastMovements: LadderMovementRow[];
+  lastFinalBatch: LadderBatch | null;
+  lastFinalGroups: LadderGroup[];
   history: LadderBatch[];
   refresh: () => void;
 }
@@ -94,7 +96,8 @@ export function useLadder(
   const [data, setData] = useState<LadderData>({
     loading: true, settings: null, memberIds: [], nameOf: (id) => id.slice(0, 8),
     started: false, activeBatch: null, groups: [], games: [],
-    currentOrder: [], lastMovements: [], history: [], refresh,
+    currentOrder: [], lastMovements: [], lastFinalBatch: null,
+    lastFinalGroups: [], history: [], refresh,
   });
 
   useEffect(() => {
@@ -160,22 +163,29 @@ export function useLadder(
         }
       }
 
-      // Movements from the most recently finalized batch.
+      // Movements + groups from the most recently finalized batch (for
+      // the "why each player finished" breakdown).
       let lastMovements: LadderMovementRow[] = [];
+      let lastFinalGroups: LadderGroup[] = [];
       const lastFinal = [...history].sort(
         (a, b) => b.week_number - a.week_number || b.batch_number - a.batch_number,
-      )[0];
+      )[0] ?? null;
       if (lastFinal) {
-        const { data: mv } = await supabase.from("ladder_movements" as never)
-          .select("*").eq("batch_id", lastFinal.id);
+        const [{ data: mv }, { data: fg }] = await Promise.all([
+          supabase.from("ladder_movements" as never).select("*").eq("batch_id", lastFinal.id),
+          supabase.from("ladder_batch_groups" as never).select("*")
+            .eq("batch_id", lastFinal.id).order("group_index", { ascending: true }),
+        ]);
         lastMovements = (mv ?? []) as unknown as LadderMovementRow[];
+        lastFinalGroups = (fg ?? []) as unknown as LadderGroup[];
       }
 
       if (!cancelled) {
         setData({
           loading: false, settings, memberIds, nameOf,
           started: batches.length > 0, activeBatch, groups, games,
-          currentOrder, lastMovements, history, refresh,
+          currentOrder, lastMovements, lastFinalBatch: lastFinal,
+          lastFinalGroups, history, refresh,
         });
       }
     })().catch(() => { if (!cancelled) setData((d) => ({ ...d, loading: false })); });
