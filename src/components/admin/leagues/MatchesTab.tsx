@@ -29,7 +29,10 @@ import type {
 import { logLeagueAction } from "@/lib/leagues/audit";
 import { resolvePlayerName } from "@/lib/matchDisplay";
 import { cn } from "@/lib/utils";
-import { EmptyState, TabSkeleton, LeagueTabProps } from "./_shared";
+import {
+  EmptyState, TabSkeleton, LeagueTabProps,
+  FormShell, FormSection, FormRow, FIELD_H,
+} from "./_shared";
 
 interface PlayerRow {
   id: string;
@@ -407,17 +410,32 @@ function MatchEditor({
     label: profilesById[m.user_id] ? resolvePlayerName(profilesById[m.user_id]) : m.user_id.slice(0, 8),
   }));
 
+  const teamAName = teamAId !== "none"
+    ? (teams.find((t) => t.id === teamAId)?.name ?? "Team A") : "Team A";
+  const teamBName = teamBId !== "none"
+    ? (teams.find((t) => t.id === teamBId)?.name ?? "Team B") : "Team B";
+  const showAdminActions = mode === "edit" && initial && (
+    initial.status === "disputed" || initial.status === "score_submitted"
+    || initial.status === "scheduled" || initial.status === "in_progress"
+  );
+
   return (
-    <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
-      <DialogHeader>
-        <DialogTitle>{mode === "create" ? "New league match" : "Edit league match"}</DialogTitle>
-      </DialogHeader>
-      <div className="space-y-3">
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <Label>Session</Label>
+    <>
+      <FormShell
+        icon={<Swords className="w-5 h-5" />}
+        tone="primary"
+        size="lg"
+        kicker={mode === "create" ? "New matchup" : "Matchup"}
+        title={mode === "create" ? "Schedule a match" : "Edit match"}
+        subtitle="Scores feed standings only — league play never touches PULSE Ratings."
+        primaryLabel={mode === "create" ? "Schedule match" : "Save changes"}
+        primaryLoading={saving}
+        onPrimary={submit}
+      >
+        <FormSection label="When & where">
+          <FormRow label="Session">
             <Select value={sessionId} onValueChange={setSessionId}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger className={FIELD_H}><SelectValue /></SelectTrigger>
               <SelectContent>
                 {sessions.map((s) => (
                   <SelectItem key={s.id} value={s.id}>
@@ -426,63 +444,86 @@ function MatchEditor({
                 ))}
               </SelectContent>
             </Select>
+          </FormRow>
+          <div className="grid grid-cols-2 gap-3">
+            <FormRow label="Court #">
+              <Input type="number" min="1" value={courtNumber}
+                onChange={(e) => setCourtNumber(e.target.value)} className={FIELD_H} />
+            </FormRow>
+            <FormRow label="Scheduled at">
+              <Input type="datetime-local" value={scheduledTime}
+                onChange={(e) => setScheduledTime(e.target.value)} className={FIELD_H} />
+            </FormRow>
           </div>
-          <div className="space-y-1.5">
-            <Label>Status</Label>
-            <Select value={status} onValueChange={(v) => setStatus(v as LeagueMatchStatus)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="scheduled">Scheduled</SelectItem>
-                <SelectItem value="in_progress">In progress</SelectItem>
-                <SelectItem value="score_submitted">Score submitted</SelectItem>
-                <SelectItem value="verified">Verified</SelectItem>
-                <SelectItem value="disputed">Disputed</SelectItem>
-                <SelectItem value="canceled">Canceled</SelectItem>
-                <SelectItem value="forfeit">Forfeit</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+        </FormSection>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <Label>Court #</Label>
-            <Input type="number" min="1" value={courtNumber} onChange={(e) => setCourtNumber(e.target.value)} />
+        <FormSection label="Matchup">
+          <div className="grid grid-cols-2 gap-3">
+            <FormRow label="Team A">
+              <Select value={teamAId} onValueChange={setTeamAId}>
+                <SelectTrigger className={FIELD_H}><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">TBD</SelectItem>
+                  {teams.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </FormRow>
+            <FormRow label="Team B">
+              <Select value={teamBId} onValueChange={setTeamBId}>
+                <SelectTrigger className={FIELD_H}><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">TBD</SelectItem>
+                  {teams.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </FormRow>
           </div>
-          <div className="space-y-1.5">
-            <Label>Scheduled at</Label>
-            <Input type="datetime-local" value={scheduledTime}
-              onChange={(e) => setScheduledTime(e.target.value)} />
-          </div>
-        </div>
 
-        {/* Teams */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <Label>Team A</Label>
-            <Select value={teamAId} onValueChange={setTeamAId}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">TBD</SelectItem>
-                {teams.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
+          {/* Broadcast-style scoreboard score entry */}
+          <div className="rounded-xl border border-border/60 bg-gradient-to-br from-muted/50 to-muted/10 p-3">
+            <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-3">
+              <div className="text-center min-w-0">
+                <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground truncate mb-1">
+                  {teamAName}
+                </div>
+                <Input type="number" min="0" inputMode="numeric" value={teamAScore}
+                  onChange={(e) => setTeamAScore(e.target.value)} placeholder="—"
+                  className="h-14 text-center text-3xl font-black tabular-nums" />
+              </div>
+              <div className="text-2xl font-black text-muted-foreground pb-4">–</div>
+              <div className="text-center min-w-0">
+                <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground truncate mb-1">
+                  {teamBName}
+                </div>
+                <Input type="number" min="0" inputMode="numeric" value={teamBScore}
+                  onChange={(e) => setTeamBScore(e.target.value)} placeholder="—"
+                  className="h-14 text-center text-3xl font-black tabular-nums" />
+              </div>
+            </div>
+            <p className="text-[10px] text-center text-muted-foreground mt-2">
+              Leave blank until the match is played.
+            </p>
           </div>
-          <div className="space-y-1.5">
-            <Label>Team B</Label>
-            <Select value={teamBId} onValueChange={setTeamBId}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">TBD</SelectItem>
-                {teams.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+        </FormSection>
+
+        <FormSection label="Status">
+          <Select value={status} onValueChange={(v) => setStatus(v as LeagueMatchStatus)}>
+            <SelectTrigger className={FIELD_H}><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="scheduled">Scheduled</SelectItem>
+              <SelectItem value="in_progress">In progress</SelectItem>
+              <SelectItem value="score_submitted">Score submitted</SelectItem>
+              <SelectItem value="verified">Verified</SelectItem>
+              <SelectItem value="disputed">Disputed</SelectItem>
+              <SelectItem value="canceled">Canceled</SelectItem>
+              <SelectItem value="forfeit">Forfeit</SelectItem>
+            </SelectContent>
+          </Select>
+        </FormSection>
 
         {/* Individual player slots (optional) */}
-        <details className="rounded-lg border border-border/70 bg-muted/30 p-3">
-          <summary className="text-xs font-semibold cursor-pointer">
+        <details className="rounded-xl border border-border/60 bg-muted/20 p-3">
+          <summary className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground cursor-pointer">
             Individual player slots (optional)
           </summary>
           <div className="mt-3 grid grid-cols-2 gap-3">
@@ -493,7 +534,9 @@ function MatchEditor({
               { label: "Player D", val: playerDId, set: setPlayerDId },
             ].map((slot) => (
               <div key={slot.label} className="space-y-1.5">
-                <Label className="text-xs">{slot.label}</Label>
+                <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                  {slot.label}
+                </Label>
                 <Select value={slot.val} onValueChange={slot.set}>
                   <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -507,53 +550,25 @@ function MatchEditor({
             ))}
           </div>
           <p className="text-[11px] text-muted-foreground mt-2">
-            Only active league members appear here. These slots never
-            feed the rating engine.
+            Only active league members appear here.
           </p>
         </details>
 
-        {/* Scores */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <Label>Team A score</Label>
-            <Input type="number" min="0" value={teamAScore}
-              onChange={(e) => setTeamAScore(e.target.value)} placeholder="—" />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Team B score</Label>
-            <Input type="number" min="0" value={teamBScore}
-              onChange={(e) => setTeamBScore(e.target.value)} placeholder="—" />
-          </div>
-        </div>
-
-        <div className="rounded-md border border-blue-500/20 bg-blue-500/5 p-2 text-[11px] text-blue-700 dark:text-blue-300 flex items-start gap-1.5">
-          <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-          <span>Scores are for admin display only. No rating impact.</span>
-        </div>
-      </div>
-      <DialogFooter className="flex-col gap-2 sm:gap-2">
-        <Button onClick={submit} disabled={saving} className="w-full">
-          {saving ? "Saving…" : mode === "create" ? "Schedule match" : "Save changes"}
-        </Button>
-        {/* Admin-only escape hatches, only meaningful when editing an
-            existing match. Split from the primary save so an accidental
+        {/* Admin escape hatches — kept out of the footer so an accidental
             tap can't nuke a match. */}
-        {mode === "edit" && initial && (
-          <div className="flex items-center gap-2 pt-1 w-full">
-            {(initial.status === "disputed" || initial.status === "score_submitted") && (
-              <Button
-                type="button" variant="outline" size="sm"
-                onClick={() => setResolveOpen(true)}
-                className="flex-1 h-10 border-destructive/40 text-destructive hover:bg-destructive/5"
-              >
-                <Gavel className="w-3.5 h-3.5 mr-1.5" />
-                Resolve dispute
-              </Button>
-            )}
-            {(initial.status === "scheduled"
-              || initial.status === "in_progress"
-              || initial.status === "score_submitted"
-              || initial.status === "disputed") && (
+        {showAdminActions && initial && (
+          <FormSection label="Admin actions">
+            <div className="flex items-center gap-2">
+              {(initial.status === "disputed" || initial.status === "score_submitted") && (
+                <Button
+                  type="button" variant="outline" size="sm"
+                  onClick={() => setResolveOpen(true)}
+                  className="flex-1 h-10 border-destructive/40 text-destructive hover:bg-destructive/5"
+                >
+                  <Gavel className="w-3.5 h-3.5 mr-1.5" />
+                  Resolve dispute
+                </Button>
+              )}
               <Button
                 type="button" variant="outline" size="sm"
                 onClick={() => setForfeitOpen(true)}
@@ -562,10 +577,10 @@ function MatchEditor({
                 <Flag className="w-3.5 h-3.5 mr-1.5" />
                 Mark forfeit
               </Button>
-            )}
-          </div>
+            </div>
+          </FormSection>
         )}
-      </DialogFooter>
+      </FormShell>
 
       {mode === "edit" && initial && (
         <>
@@ -585,7 +600,7 @@ function MatchEditor({
           />
         </>
       )}
-    </DialogContent>
+    </>
   );
 }
 
@@ -642,56 +657,61 @@ function ResolveDisputeDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Gavel className="w-4 h-4 text-destructive" />
-            Resolve dispute
-          </DialogTitle>
-        </DialogHeader>
-        <div className="space-y-3">
-          {match.dispute_reason && (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-xs">
-              <div className="font-semibold text-destructive mb-1 inline-flex items-center gap-1">
-                <ShieldAlert className="w-3 h-3" /> Player reason
-              </div>
-              <div className="italic text-destructive/90">
-                "{match.dispute_reason}"
-              </div>
-            </div>
-          )}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs">{teamAName}</Label>
-              <Input type="number" min={0} value={aScore}
-                onChange={(e) => setAScore(e.target.value)}
-                className="h-12 text-center text-lg font-bold tabular-nums" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">{teamBName}</Label>
-              <Input type="number" min={0} value={bScore}
-                onChange={(e) => setBScore(e.target.value)}
-                className="h-12 text-center text-lg font-bold tabular-nums" />
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs">Resolution note (optional)</Label>
-            <Textarea rows={2} value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="Kept for the audit log — e.g., 'confirmed via kiosk photo'" />
-          </div>
-        </div>
-        <DialogFooter className="gap-2 sm:gap-2">
-          <Button variant="ghost" className="flex-1"
+      <FormShell
+        icon={<Gavel className="w-5 h-5" />}
+        tone="amber"
+        kicker="Dispute"
+        title="Resolve dispute"
+        subtitle="Set the official score — this verifies the match."
+        primaryLabel="Verify score"
+        primaryLoading={saving}
+        onPrimary={submit}
+        secondary={
+          <Button variant="ghost" className="h-12"
             onClick={() => onOpenChange(false)} disabled={saving}>
             Cancel
           </Button>
-          <Button onClick={submit} disabled={saving} className="flex-1">
-            <Check className="w-4 h-4 mr-1.5" />
-            {saving ? "Resolving…" : "Verify these scores"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
+        }
+      >
+        {match.dispute_reason && (
+          <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-xs">
+            <div className="font-semibold text-destructive mb-1 inline-flex items-center gap-1">
+              <ShieldAlert className="w-3 h-3" /> Player reason
+            </div>
+            <div className="italic text-destructive/90">
+              "{match.dispute_reason}"
+            </div>
+          </div>
+        )}
+        <FormSection label="Final score">
+          <div className="rounded-xl border border-border/60 bg-gradient-to-br from-muted/50 to-muted/10 p-3">
+            <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-3">
+              <div className="text-center min-w-0">
+                <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground truncate mb-1">
+                  {teamAName}
+                </div>
+                <Input type="number" min={0} inputMode="numeric" value={aScore}
+                  onChange={(e) => setAScore(e.target.value)}
+                  className="h-14 text-center text-3xl font-black tabular-nums" />
+              </div>
+              <div className="text-2xl font-black text-muted-foreground pb-4">–</div>
+              <div className="text-center min-w-0">
+                <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground truncate mb-1">
+                  {teamBName}
+                </div>
+                <Input type="number" min={0} inputMode="numeric" value={bScore}
+                  onChange={(e) => setBScore(e.target.value)}
+                  className="h-14 text-center text-3xl font-black tabular-nums" />
+              </div>
+            </div>
+          </div>
+        </FormSection>
+        <FormRow label="Resolution note (optional)" hint="Kept in the audit log.">
+          <Textarea rows={2} value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="e.g., 'confirmed via kiosk photo'" />
+        </FormRow>
+      </FormShell>
     </Dialog>
   );
 }
