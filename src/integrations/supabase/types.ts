@@ -8036,6 +8036,22 @@ export type Database = {
         Args: { match_id_param: string; player_id_param: string }
         Returns: string
       }
+      get_player_recent_matches: {
+        Args: { _limit?: number; _player_id: string }
+        Returns: {
+          court_name: string
+          match_date: string
+          match_id: string
+          participants: Json
+          player_team: number
+          rating_change: number
+          source: string
+          status: string
+          team1_score: number
+          team2_score: number
+          verified_count: number
+        }[]
+      }
       get_profile_email: { Args: { profile_id: string }; Returns: string }
       get_user_venues: {
         Args: { _user_id: string }
