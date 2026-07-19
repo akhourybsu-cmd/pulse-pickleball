@@ -4,12 +4,14 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Layers, Trophy, ArrowUp, ArrowDown, Minus, Info, Play, CheckCircle2,
+  Layers, Trophy, ArrowUp, ArrowDown, Minus, Info, Play, Pause, CheckCircle2,
   ChevronUp, ChevronDown,
 } from "lucide-react";
 import type { League, LeagueSeason } from "@/lib/leagues/types";
 import { gamesPerPlayer } from "@/lib/leagues/ladder";
-import { useLadder, type LadderGame, type LadderGroup } from "@/hooks/useLadder";
+import {
+  useLadder, type LadderGame, type LadderGroup, type LadderMovementRow,
+} from "@/hooks/useLadder";
 import { cn } from "@/lib/utils";
 import {
   EmptyState, TabSkeleton, LeagueTabProps, FormSection, FormRow, FIELD_H,
@@ -301,6 +303,20 @@ function LadderManage({
 }) {
   const { activeBatch, groups, games, settings } = ladder;
   const [finalizing, setFinalizing] = useState(false);
+  const [pauseBusy, setPauseBusy] = useState(false);
+  const paused = settings?.status === "paused";
+
+  const togglePause = async () => {
+    if (!settings) return;
+    setPauseBusy(true);
+    const { error } = await supabase.from("ladder_settings" as never)
+      .update({ status: paused ? "active" : "paused" } as never)
+      .eq("season_id", settings.season_id);
+    setPauseBusy(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success(paused ? "Progression resumed" : "Progression paused");
+    onChanged();
+  };
 
   const gamesByGroup = useMemo(() => {
     const map = new Map<string, LadderGame[]>();
@@ -383,13 +399,30 @@ function LadderManage({
         />
       ))}
 
-      {activeBatch && (
-        <Button onClick={finalize} disabled={finalizing || !batchComplete}
-          className="w-full h-12 font-bold uppercase tracking-wide">
-          <CheckCircle2 className="w-4 h-4 mr-1.5" />
-          {finalizing ? "Finalizing…" : batchComplete ? "Finalize batch" : `Finalize (${totalGames - scoredGames} game${totalGames - scoredGames === 1 ? "" : "s"} left)`}
-        </Button>
+      {paused && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-700 dark:text-amber-300 flex gap-2">
+          <Pause className="w-4 h-4 shrink-0 mt-0.5" />
+          <span>Progression is paused — finalizing is disabled until you resume.</span>
+        </div>
       )}
+
+      {activeBatch && (
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={togglePause} disabled={pauseBusy}
+            className="h-12 shrink-0">
+            {paused ? <Play className="w-4 h-4 mr-1.5" /> : <Pause className="w-4 h-4 mr-1.5" />}
+            {paused ? "Resume" : "Pause"}
+          </Button>
+          <Button onClick={finalize} disabled={finalizing || !batchComplete || paused}
+            className="flex-1 h-12 font-bold uppercase tracking-wide">
+            <CheckCircle2 className="w-4 h-4 mr-1.5" />
+            {finalizing ? "Finalizing…" : batchComplete ? "Finalize batch" : `Finalize (${totalGames - scoredGames} left)`}
+          </Button>
+        </div>
+      )}
+
+      {/* Why each player finished where — last batch breakdown */}
+      <LastBatchResults ladder={ladder} />
 
       {/* Current ladder + last movement */}
       <CurrentLadder ladder={ladder} />
@@ -527,6 +560,69 @@ function CurrentLadder({ ladder }: { ladder: ReturnType<typeof useLadder> }) {
           );
         })}
       </ol>
+    </div>
+  );
+}
+
+function LastBatchResults({ ladder }: { ladder: ReturnType<typeof useLadder> }) {
+  const { lastFinalBatch, lastFinalGroups, lastMovements, nameOf } = ladder;
+  const byGroup = useMemo(() => {
+    const m = new Map<string, LadderMovementRow[]>();
+    lastMovements.forEach((mv) => {
+      const arr = m.get(mv.group_id) ?? [];
+      arr.push(mv);
+      m.set(mv.group_id, arr);
+    });
+    return m;
+  }, [lastMovements]);
+
+  if (!lastFinalBatch || lastMovements.length === 0) return null;
+
+  return (
+    <div className="rounded-xl border border-border/70 bg-card p-4 space-y-3">
+      <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+        Last batch results · Week {lastFinalBatch.week_number} · Batch {lastFinalBatch.batch_number}
+      </h3>
+      {lastFinalGroups.map((g) => {
+        const rows = (byGroup.get(g.id) ?? [])
+          .slice().sort((a, b) => a.finish_position - b.finish_position);
+        if (rows.length === 0) return null;
+        return (
+          <div key={g.id} className="rounded-lg border border-border/60 overflow-hidden">
+            <div className="px-3 py-1.5 bg-muted/40 text-xs font-bold">
+              Court {g.court_number ?? g.group_index + 1}
+            </div>
+            <ul className="divide-y divide-border/40">
+              {rows.map((r) => {
+                const diff = r.points_for - r.points_against;
+                return (
+                  <li key={r.player_id} className="flex items-center gap-2 px-3 py-1.5 text-sm">
+                    <span className="w-5 text-center font-black tabular-nums text-muted-foreground">
+                      {r.finish_position}
+                    </span>
+                    <span className="flex-1 truncate font-medium">{nameOf(r.player_id)}</span>
+                    <span className="tabular-nums text-xs text-muted-foreground">
+                      {r.wins}–{r.losses}
+                    </span>
+                    <span className={cn(
+                      "tabular-nums text-xs w-10 text-right font-mono",
+                      diff > 0 && "text-emerald-600", diff < 0 && "text-destructive",
+                      diff === 0 && "text-muted-foreground",
+                    )}>
+                      {diff > 0 ? "+" : ""}{diff}
+                    </span>
+                    {r.direction === "up" && <ArrowUp className="w-3.5 h-3.5 text-emerald-500" />}
+                    {r.direction === "down" && <ArrowDown className="w-3.5 h-3.5 text-destructive" />}
+                    {r.direction === "stay" && (
+                      <Minus className="w-3.5 h-3.5 text-muted-foreground/50" />
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        );
+      })}
     </div>
   );
 }
