@@ -8224,6 +8224,8 @@ export type Database = {
           p_active_match_resolution?: Json
           p_event_id: string
           p_expected_version?: number
+          p_plan?: Json
+          p_plan_hash?: string
           p_player_id: string
           p_preview_only?: boolean
           p_reason?: string
