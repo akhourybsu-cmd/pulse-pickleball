@@ -5,6 +5,15 @@ import type {
   LeagueTeamMember, LeagueMatch,
 } from "@/lib/leagues/types";
 
+interface ProfileLite {
+  id: string;
+  display_name: string | null;
+  full_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  avatar_url: string | null;
+}
+
 interface Teammate {
   team_member_id: string;
   team_id: string;
@@ -36,6 +45,8 @@ export interface PlayerLeagueDetailData {
   allTeams: LeagueTeam[];
   /** Team-id → team row lookup, for match card rendering. */
   teamsById: Record<string, LeagueTeam>;
+  /** Player-id → public profile, so match sides render as names. */
+  playersById: Record<string, ProfileLite>;
   /** Current user's auth id — surfaced so match action components don't re-query. */
   currentUserId: string | null;
   loading: boolean;
@@ -56,6 +67,7 @@ export function useLeagueDetailForPlayer(leagueId: string | undefined): PlayerLe
     myTeams: [], myTeamIds: new Set<string>(),
     teammates: [], matches: [], allMatches: [], allTeams: [],
     teamsById: {},
+    playersById: {},
     currentUserId: null,
     loading: true,
     refresh,
@@ -88,6 +100,7 @@ export function useLeagueDetailForPlayer(leagueId: string | undefined): PlayerLe
             myTeams: [], myTeamIds: new Set<string>(),
             teammates: [], matches: [], allMatches: [], allTeams: [],
             teamsById: {},
+            playersById: {},
             currentUserId: user.id,
             loading: false,
             refresh,
@@ -206,10 +219,29 @@ export function useLeagueDetailForPlayer(leagueId: string | undefined): PlayerLe
       const teamsById: Record<string, LeagueTeam> = {};
       allTeams.forEach((t) => { teamsById[t.id] = t; });
 
+      // 7. Names for every player slotted into a match, so sides render
+      //    as people (mine + opponents) instead of "TBD"/"Opponent".
+      const slotIds = Array.from(new Set(
+        matchList
+          .flatMap((m) => [m.player_a_id, m.player_b_id, m.player_c_id, m.player_d_id])
+          .filter(Boolean) as string[],
+      ));
+      const playersById: Record<string, ProfileLite> = {};
+      if (slotIds.length) {
+        const { data: slotProfs } = await supabase
+          .from("profiles_public" as never)
+          .select("id, display_name, full_name, first_name, last_name, avatar_url")
+          .in("id", slotIds);
+        (slotProfs ?? []).forEach((p) => {
+          const r = p as ProfileLite;
+          playersById[r.id] = r;
+        });
+      }
+
       if (!cancelled) {
         setData({
           league, membership, season, division,
-          myTeams, teammates, matches: mine, teamsById,
+          myTeams, teammates, matches: mine, teamsById, playersById,
           // Full league dataset — needed for the standings section.
           allTeams, allMatches: matchList, myTeamIds,
           currentUserId: user.id,

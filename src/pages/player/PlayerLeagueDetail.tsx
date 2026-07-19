@@ -9,6 +9,8 @@ import { useMemo } from "react";
 import type { LeagueType, LeagueMatchStatus } from "@/lib/leagues/types";
 import { useLeagueDetailForPlayer } from "@/hooks/useLeagueDetailForPlayer";
 import { LEAGUE_TYPE_META } from "@/lib/leagues/typeMeta";
+import { sideName } from "@/lib/leagues/matchSides";
+import { resolvePlayerName } from "@/lib/matchDisplay";
 import { computeTeamStandings } from "@/lib/leagues/standings";
 import { StandingsTable } from "@/components/leagues/StandingsTable";
 import { LeagueMatchActions } from "@/components/leagues/LeagueMatchActions";
@@ -58,7 +60,7 @@ export default function PlayerLeagueDetail() {
   const detail = useLeagueDetailForPlayer(leagueId);
   const {
     league, membership, season, division, myTeams, myTeamIds,
-    teammates, matches, allMatches, allTeams, teamsById, loading,
+    teammates, matches, allMatches, allTeams, teamsById, playersById, loading,
     currentUserId, refresh,
   } = detail;
 
@@ -327,6 +329,7 @@ export default function PlayerLeagueDetail() {
                 key={m.id}
                 match={m}
                 teamsById={teamsById}
+                playersById={playersById}
                 currentUserId={currentUserId}
                 onChanged={refresh}
               />
@@ -348,6 +351,7 @@ export default function PlayerLeagueDetail() {
                 key={m.id}
                 match={m}
                 teamsById={teamsById}
+                playersById={playersById}
                 currentUserId={currentUserId}
                 onChanged={refresh}
               />
@@ -384,15 +388,20 @@ function InfoRow({
 }
 
 function MatchRow({
-  match, teamsById, currentUserId, onChanged,
+  match, teamsById, playersById, currentUserId, onChanged,
 }: {
   match: import("@/lib/leagues/types").LeagueMatch;
   teamsById: Record<string, import("@/lib/leagues/types").LeagueTeam>;
+  playersById: Record<string, { display_name: string | null; full_name: string | null; first_name: string | null; last_name: string | null }>;
   currentUserId: string | null;
   onChanged: () => void;
 }) {
   const teamA = match.team_a_id ? teamsById[match.team_a_id] : null;
   const teamB = match.team_b_id ? teamsById[match.team_b_id] : null;
+  const nameOf = (id: string | null): string | null =>
+    id ? (playersById[id] ? resolvePlayerName(playersById[id]) : null) : null;
+  const aName = sideName(teamA?.name ?? null, [nameOf(match.player_a_id), nameOf(match.player_b_id)]);
+  const bName = sideName(teamB?.name ?? null, [nameOf(match.player_c_id), nameOf(match.player_d_id)]);
   const scoreShown =
     match.team_a_score !== null && match.team_b_score !== null;
   const aWon = scoreShown && (match.team_a_score ?? 0) > (match.team_b_score ?? 0);
@@ -423,7 +432,7 @@ function MatchRow({
           "text-sm truncate text-right",
           aWon ? "font-bold text-primary" : "font-medium",
         )}>
-          {teamA?.name ?? (match.team_a_id ? "Opponent" : "TBD")}
+          {aName}
         </div>
         <div className="flex items-center gap-2 font-black tabular-nums">
           {scoreShown ? (
@@ -448,7 +457,7 @@ function MatchRow({
           "text-sm truncate text-left",
           bWon ? "font-bold text-primary" : "font-medium",
         )}>
-          {teamB?.name ?? (match.team_b_id ? "Opponent" : "TBD")}
+          {bName}
         </div>
       </div>
 
