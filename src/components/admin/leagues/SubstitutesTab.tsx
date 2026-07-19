@@ -29,7 +29,7 @@ import { resolvePlayerName } from "@/lib/matchDisplay";
 import { cn } from "@/lib/utils";
 import {
   EmptyState, TabSkeleton, LeagueTabProps,
-  FormShell, FormSection, FormRow, FIELD_H,
+  FormShell, FormSection, FormRow, FIELD_H, SegmentedControl,
 } from "./_shared";
 
 interface PlayerRow {
@@ -479,6 +479,7 @@ function SubEditorDialog({
     <FormShell
       icon={<LifeBuoy className="w-5 h-5" />}
       tone="emerald"
+      kicker={mode === "create" ? "New sub" : "Substitute"}
       title={mode === "create" ? "Add substitute" : "Edit substitute"}
       subtitle={mode === "create"
         ? "Add a fill-in player to the bench for this season."
@@ -538,14 +539,15 @@ function SubEditorDialog({
             </SelectContent>
           </Select>
         </FormRow>
-        <FormRow label="Status">
-          <Select value={status} onValueChange={(v) => setStatus(v as SubstituteStatus)}>
-            <SelectTrigger className={FIELD_H}><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="active">Active (available)</SelectItem>
-              <SelectItem value="inactive">Inactive (benched)</SelectItem>
-            </SelectContent>
-          </Select>
+        <FormRow label="Status" hint="Inactive subs stay on the bench but can't be swapped in.">
+          <SegmentedControl
+            value={status}
+            onChange={(v) => setStatus(v as SubstituteStatus)}
+            options={[
+              { value: "active",   label: "Active" },
+              { value: "inactive", label: "Benched" },
+            ]}
+          />
         </FormRow>
         <FormRow label="Notes" htmlFor="sub-notes" hint="Availability, contact preference, skill notes…">
           <Textarea

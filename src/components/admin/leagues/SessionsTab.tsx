@@ -19,7 +19,7 @@ import { logLeagueAction } from "@/lib/leagues/audit";
 import { cn } from "@/lib/utils";
 import {
   EmptyState, TabSkeleton, LeagueTabProps,
-  FormShell, FormSection, FormRow, FIELD_H,
+  FormShell, FormSection, FormRow, FIELD_H, ChoiceGrid,
 } from "./_shared";
 
 export function SessionsTab({ league, dataVersion, onMutated }: LeagueTabProps) {
@@ -222,6 +222,7 @@ function SessionEditor({
     <FormShell
       icon={<CalendarClock className="w-5 h-5" />}
       tone="violet"
+      kicker={mode === "create" ? "New session" : "Session"}
       title={mode === "create" ? "New session" : "Edit session"}
       subtitle={mode === "create"
         ? "One night of play. Publishing surfaces it to enrolled players."
@@ -237,15 +238,16 @@ function SessionEditor({
             placeholder="Week 1" className={FIELD_H} />
         </FormRow>
         <FormRow label="Status">
-          <Select value={status} onValueChange={(v) => setStatus(v as SessionStatus)}>
-            <SelectTrigger className={FIELD_H}><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="draft">Draft (hidden from players)</SelectItem>
-              <SelectItem value="published">Published</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
-              <SelectItem value="canceled">Canceled</SelectItem>
-            </SelectContent>
-          </Select>
+          <ChoiceGrid
+            value={status}
+            onChange={(v) => setStatus(v as SessionStatus)}
+            options={[
+              { value: "draft",     label: "Draft",     desc: "Hidden from players" },
+              { value: "published", label: "Published", desc: "Visible to enrolled players" },
+              { value: "completed", label: "Completed", desc: "Night is done" },
+              { value: "canceled",  label: "Canceled",  desc: "Called off" },
+            ]}
+          />
         </FormRow>
       </FormSection>
 

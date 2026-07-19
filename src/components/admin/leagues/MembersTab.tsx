@@ -16,7 +16,11 @@ import {
   XCircle, RotateCw, AlertCircle,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
-import { EmptyState, TabSkeleton, LeagueTabProps } from "./_shared";
+import { cn } from "@/lib/utils";
+import {
+  EmptyState, TabSkeleton, LeagueTabProps,
+  FormShell, FormSection, FormRow, FIELD_H, SegmentedControl,
+} from "./_shared";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
@@ -401,66 +405,84 @@ function AddMemberDialog({
     await onDone();
   };
 
+  const pickedRow = results.find((r) => r.id === pickedId);
+  const pickedName = pickedRow ? resolvePlayerName(pickedRow) : "";
+
   return (
-    <DialogContent className="sm:max-w-md">
-      <DialogHeader>
-        <DialogTitle>Add league member</DialogTitle>
-      </DialogHeader>
-      <div className="space-y-3">
-        <div className="space-y-1.5">
-          <Label>Search players</Label>
+    <FormShell
+      icon={<Users className="w-5 h-5" />}
+      tone="primary"
+      kicker="New member"
+      title="Add to the roster"
+      subtitle="Search your players and sign them to this season."
+      primaryLabel="Add member"
+      primaryLoading={saving}
+      primaryDisabled={!pickedId}
+      onPrimary={submit}
+    >
+      <FormSection label="Player">
+        <FormRow label="Search players" htmlFor="mem-search">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
+              id="mem-search"
               value={query} onChange={(e) => setQuery(e.target.value)}
-              placeholder="Name…" className="pl-9"
+              placeholder="Name…" className={cn(FIELD_H, "pl-9")}
             />
           </div>
-          {filteredResults.length > 0 && (
-            <div className="max-h-48 overflow-y-auto rounded-lg border border-border">
-              {filteredResults.map((r) => (
-                <button
-                  key={r.id}
-                  type="button"
-                  onClick={() => setPickedId(r.id)}
-                  className={`w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors ${pickedId === r.id ? "bg-primary/10 text-primary" : ""}`}
-                >
-                  {resolvePlayerName(r)}
-                </button>
-              ))}
-            </div>
-          )}
-          {query && filteredResults.length === 0 && (
-            <p className="text-xs text-muted-foreground">No matches (already-added players are filtered out).</p>
-          )}
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <Label>Role</Label>
-            <Select value={role} onValueChange={(v) => setRole(v as MemberRole)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="player">Player</SelectItem>
-                <SelectItem value="captain">Captain</SelectItem>
-                <SelectItem value="manager">Manager</SelectItem>
-              </SelectContent>
-            </Select>
+        </FormRow>
+        {filteredResults.length > 0 && (
+          <div className="max-h-44 overflow-y-auto rounded-lg border border-border divide-y divide-border/60">
+            {filteredResults.map((r) => (
+              <button
+                key={r.id}
+                type="button"
+                onClick={() => setPickedId(r.id)}
+                className={cn(
+                  "w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors",
+                  pickedId === r.id && "bg-primary/10 text-primary font-semibold",
+                )}
+              >
+                {resolvePlayerName(r)}
+              </button>
+            ))}
           </div>
-          <div className="space-y-1.5">
-            <Label>Status</Label>
-            <Select value={status} onValueChange={(v) => setStatus(v as MemberStatus)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-        <div className="space-y-1.5">
-          <Label>Division</Label>
+        )}
+        {query && filteredResults.length === 0 && (
+          <p className="text-xs text-muted-foreground">
+            No matches (already-added players are filtered out).
+          </p>
+        )}
+        {pickedId && pickedName && (
+          <p className="text-xs text-primary font-medium">Signed: {pickedName}</p>
+        )}
+      </FormSection>
+
+      <FormSection label="Assignment">
+        <FormRow label="Role">
+          <SegmentedControl
+            value={role}
+            onChange={(v) => setRole(v as MemberRole)}
+            options={[
+              { value: "player",  label: "Player" },
+              { value: "captain", label: "Captain" },
+              { value: "manager", label: "Manager" },
+            ]}
+          />
+        </FormRow>
+        <FormRow label="Status">
+          <SegmentedControl
+            value={status}
+            onChange={(v) => setStatus(v as MemberStatus)}
+            options={[
+              { value: "active",  label: "Active" },
+              { value: "pending", label: "Pending" },
+            ]}
+          />
+        </FormRow>
+        <FormRow label="Division">
           <Select value={divisionId} onValueChange={setDivisionId}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger className={FIELD_H}><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="none">No division</SelectItem>
               {divisions.map((d) => (
@@ -468,14 +490,9 @@ function AddMemberDialog({
               ))}
             </SelectContent>
           </Select>
-        </div>
-      </div>
-      <DialogFooter>
-        <Button onClick={submit} disabled={saving || !pickedId} className="w-full">
-          {saving ? "Adding…" : "Add member"}
-        </Button>
-      </DialogFooter>
-    </DialogContent>
+        </FormRow>
+      </FormSection>
+    </FormShell>
   );
 }
 

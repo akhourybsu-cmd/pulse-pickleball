@@ -283,6 +283,7 @@ function SeasonEditor({
     <FormShell
       icon={<CalendarDays className="w-5 h-5" />}
       tone="primary"
+      kicker={isNew ? "New season" : "Season"}
       title={isNew ? "New season" : "Edit season"}
       subtitle={isNew
         ? "A season is the container for divisions, teams, sessions, and standings."

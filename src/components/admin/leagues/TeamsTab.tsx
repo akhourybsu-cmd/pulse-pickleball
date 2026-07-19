@@ -254,6 +254,7 @@ function TeamEditor({
     <FormShell
       icon={<Shield className="w-5 h-5" />}
       tone="amber"
+      kicker="New team"
       title="New team"
       subtitle="Group active members for scheduling and standings. Add more players from the team card after."
       primaryLabel="Create team"
