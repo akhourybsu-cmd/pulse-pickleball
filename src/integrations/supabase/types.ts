@@ -2928,6 +2928,78 @@ export type Database = {
           },
         ]
       }
+      league_substitutes: {
+        Row: {
+          created_at: string
+          division_id: string | null
+          id: string
+          league_id: string
+          notes: string | null
+          season_id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          division_id?: string | null
+          id?: string
+          league_id: string
+          notes?: string | null
+          season_id: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          division_id?: string | null
+          id?: string
+          league_id?: string
+          notes?: string | null
+          season_id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_substitutes_division_id_fkey"
+            columns: ["division_id"]
+            isOneToOne: false
+            referencedRelation: "league_divisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_substitutes_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_substitutes_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "league_seasons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_substitutes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_substitutes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       league_team_members: {
         Row: {
           created_at: string
@@ -3920,6 +3992,7 @@ export type Database = {
           created_at: string | null
           current_rating: number | null
           date_of_birth: string | null
+          discoverable_by_location: boolean
           display_name: string | null
           dupr_rating: number | null
           email: string
@@ -3935,7 +4008,12 @@ export type Database = {
           is_test_account: boolean | null
           last_name: string | null
           last_rating_update: string | null
+          location_lat: number | null
+          location_lng: number | null
+          location_name: string | null
+          location_place_id: string | null
           location_public: boolean | null
+          location_updated_at: string | null
           losses: number | null
           mfa_method: string | null
           notify_badges_email: boolean | null
@@ -3975,6 +4053,7 @@ export type Database = {
           created_at?: string | null
           current_rating?: number | null
           date_of_birth?: string | null
+          discoverable_by_location?: boolean
           display_name?: string | null
           dupr_rating?: number | null
           email: string
@@ -3990,7 +4069,12 @@ export type Database = {
           is_test_account?: boolean | null
           last_name?: string | null
           last_rating_update?: string | null
+          location_lat?: number | null
+          location_lng?: number | null
+          location_name?: string | null
+          location_place_id?: string | null
           location_public?: boolean | null
+          location_updated_at?: string | null
           losses?: number | null
           mfa_method?: string | null
           notify_badges_email?: boolean | null
@@ -4030,6 +4114,7 @@ export type Database = {
           created_at?: string | null
           current_rating?: number | null
           date_of_birth?: string | null
+          discoverable_by_location?: boolean
           display_name?: string | null
           dupr_rating?: number | null
           email?: string
@@ -4045,7 +4130,12 @@ export type Database = {
           is_test_account?: boolean | null
           last_name?: string | null
           last_rating_update?: string | null
+          location_lat?: number | null
+          location_lng?: number | null
+          location_name?: string | null
+          location_place_id?: string | null
           location_public?: boolean | null
+          location_updated_at?: string | null
           losses?: number | null
           mfa_method?: string | null
           notify_badges_email?: boolean | null
@@ -7797,6 +7887,20 @@ export type Database = {
         Args: { p_event_id: string }
         Returns: undefined
       }
+      discover_players_nearby: {
+        Args: { _limit?: number; _radius_km?: number }
+        Returns: {
+          avatar_url: string
+          current_rating: number
+          display_name: string
+          distance_km: number
+          full_name: string
+          handle: string
+          id: string
+          location_name: string
+          reason: string
+        }[]
+      }
       dismiss_friend_suggestion: {
         Args: { target_user_id: string }
         Returns: undefined
@@ -8003,6 +8107,22 @@ export type Database = {
       get_partner_id: {
         Args: { match_id_param: string; player_id_param: string }
         Returns: string
+      }
+      get_player_recent_matches: {
+        Args: { _limit?: number; _player_id: string }
+        Returns: {
+          court_name: string
+          match_date: string
+          match_id: string
+          participants: Json
+          player_team: number
+          rating_change: number
+          source: string
+          status: string
+          team1_score: number
+          team2_score: number
+          verified_count: number
+        }[]
       }
       get_profile_email: { Args: { profile_id: string }; Returns: string }
       get_user_venues: {
@@ -8224,6 +8344,8 @@ export type Database = {
           p_active_match_resolution?: Json
           p_event_id: string
           p_expected_version?: number
+          p_plan?: Json
+          p_plan_hash?: string
           p_player_id: string
           p_preview_only?: boolean
           p_reason?: string
@@ -8291,6 +8413,15 @@ export type Database = {
           reason: string
           weight: number
         }[]
+      }
+      swap_league_match_player: {
+        Args: {
+          p_match_id: string
+          p_new_player_id: string
+          p_note?: string
+          p_slot: string
+        }
+        Returns: undefined
       }
       sync_league_season_statuses: {
         Args: { p_league_id: string }
