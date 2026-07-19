@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import {
-  Trophy, CalendarDays, Layers, Users, UsersRound,
+  Trophy, CalendarDays, Layers, Users,
   CalendarClock, Swords, Award, Shield, LifeBuoy,
   Check, ChevronsUpDown,
   type LucideIcon,
@@ -38,8 +38,7 @@ export const MANAGE_TABS: TabDef[] = [
   { key: "overview",  label: "Overview",   short: "Info",     icon: Trophy,        group: "Setup",   hint: "Details, visibility, invite code" },
   { key: "seasons",   label: "Seasons",    short: "Seasons",  icon: CalendarDays,  group: "Setup",   hint: "Semesters or session runs" },
   { key: "divisions", label: "Divisions",  short: "Divs",     icon: Layers,        group: "Setup",   hint: "Skill tiers within a season" },
-  { key: "members",   label: "Members",    short: "Members",  icon: Users,         group: "People",  hint: "Active players in this league" },
-  { key: "teams",     label: "Teams",      short: "Teams",    icon: UsersRound,    group: "People",  hint: "Rosters + captains" },
+  { key: "members",   label: "Players",    short: "Players",  icon: Users,         group: "People",  hint: "Everyone in this league" },
   { key: "subs",      label: "Subs",       short: "Subs",     icon: LifeBuoy,      group: "People",  hint: "Sub pool + swap into a week" },
   { key: "sessions",  label: "Sessions",   short: "Sessions", icon: CalendarClock, group: "Play",    hint: "Nights of scheduled play" },
   { key: "matches",   label: "Matches",    short: "Matches",  icon: Swords,        group: "Play",    hint: "Individual matchups" },

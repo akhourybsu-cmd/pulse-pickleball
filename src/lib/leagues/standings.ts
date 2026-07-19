@@ -1,6 +1,130 @@
 import type { LeagueMatch, LeagueTeam } from "./types";
 
 /**
+ * Per-PLAYER standings for individual-based leagues. Mirrors
+ * computeTeamStandings, but attributes each match outcome to the
+ * individual players on each side:
+ *   Side A = player_a_id, player_b_id   (1 for singles, 2 for doubles)
+ *   Side B = player_c_id, player_d_id
+ *
+ * Only score-based results count (verified / score_submitted, both side
+ * scores set, not tied, at least one player per side). Team forfeits are
+ * ignored here since forfeit_winner_team_id is a team id, not a player —
+ * individual leagues record results by score.
+ *
+ * Rows reuse StandingRow with teamId = playerId and teamName = the
+ * player's display name, so the existing StandingsTable renders them
+ * unchanged.
+ */
+export function computePlayerStandings(
+  matches: LeagueMatch[],
+  nameOf: (playerId: string) => string,
+  opts: StandingsOpts = {},
+): StandingRow[] {
+  const inScope = (m: LeagueMatch): boolean => {
+    if (opts.seasonId && m.season_id !== opts.seasonId) return false;
+    if (opts.divisionId !== undefined && m.division_id !== opts.divisionId) return false;
+    return true;
+  };
+
+  const eligible = matches.filter((m) => {
+    if (!inScope(m)) return false;
+    if (m.team_a_score == null || m.team_b_score == null) return false;
+    if (m.team_a_score === m.team_b_score) return false;
+    if (m.status !== "verified" && m.status !== "score_submitted") return false;
+    const sideA = [m.player_a_id, m.player_b_id].filter(Boolean) as string[];
+    const sideB = [m.player_c_id, m.player_d_id].filter(Boolean) as string[];
+    return sideA.length > 0 && sideB.length > 0;
+  });
+
+  const stats = new Map<string, StandingRow>();
+  const ensure = (playerId: string): StandingRow => {
+    const existing = stats.get(playerId);
+    if (existing) return existing;
+    const row: StandingRow = {
+      teamId: playerId, teamName: nameOf(playerId),
+      wins: 0, losses: 0, forfeitWins: 0, forfeitLosses: 0,
+      gamesPlayed: 0, pointsFor: 0, pointsAgainst: 0, pointDiff: 0,
+      avgPointDiff: 0, winPct: 0, recentForm: [],
+    };
+    stats.set(playerId, row);
+    return row;
+  };
+
+  const timeline = new Map<string, Array<{ result: FormResult; when: string }>>();
+  const pushOutcome = (playerId: string, result: FormResult, when: string) => {
+    const list = timeline.get(playerId) ?? [];
+    list.push({ result, when });
+    timeline.set(playerId, list);
+  };
+
+  const h2h = new Map<string, Map<string, number>>();
+  const recordH2H = (winnerId: string, loserId: string) => {
+    const inner = h2h.get(winnerId) ?? new Map();
+    inner.set(loserId, (inner.get(loserId) ?? 0) + 1);
+    h2h.set(winnerId, inner);
+  };
+
+  for (const m of eligible) {
+    const sideA = [m.player_a_id, m.player_b_id].filter(Boolean) as string[];
+    const sideB = [m.player_c_id, m.player_d_id].filter(Boolean) as string[];
+    const aScore = m.team_a_score!;
+    const bScore = m.team_b_score!;
+    const aWon = aScore > bScore;
+    const winners = aWon ? sideA : sideB;
+    const losers = aWon ? sideB : sideA;
+    const winScore = aWon ? aScore : bScore;
+    const loseScore = aWon ? bScore : aScore;
+
+    for (const pid of sideA) {
+      const row = ensure(pid);
+      row.gamesPlayed += 1;
+      row.pointsFor += aScore;
+      row.pointsAgainst += bScore;
+      pushOutcome(pid, aWon ? "W" : "L", m.updated_at);
+    }
+    for (const pid of sideB) {
+      const row = ensure(pid);
+      row.gamesPlayed += 1;
+      row.pointsFor += bScore;
+      row.pointsAgainst += aScore;
+      pushOutcome(pid, aWon ? "L" : "W", m.updated_at);
+    }
+    winners.forEach((w) => { ensure(w).wins += 1; });
+    losers.forEach((l) => { ensure(l).losses += 1; });
+    // Head-to-head across every winner/loser pairing.
+    winners.forEach((w) => losers.forEach((l) => recordH2H(w, l)));
+    void winScore; void loseScore;
+  }
+
+  timeline.forEach((events, playerId) => {
+    events.sort((a, b) => a.when.localeCompare(b.when));
+    const row = stats.get(playerId);
+    if (row) row.recentForm = events.slice(-5).map((e) => e.result);
+  });
+
+  stats.forEach((row) => {
+    row.pointDiff = row.pointsFor - row.pointsAgainst;
+    row.avgPointDiff = row.gamesPlayed > 0
+      ? Math.round((row.pointDiff / row.gamesPlayed) * 10) / 10 : 0;
+    row.winPct = row.gamesPlayed > 0 ? row.wins / row.gamesPlayed : 0;
+  });
+
+  return Array.from(stats.values()).sort((a, b) => {
+    if (a.wins !== b.wins) return b.wins - a.wins;
+    const peers = Array.from(stats.values()).filter((r) => r.wins === a.wins);
+    if (peers.length === 2) {
+      const aBeatB = h2h.get(a.teamId)?.get(b.teamId) ?? 0;
+      const bBeatA = h2h.get(b.teamId)?.get(a.teamId) ?? 0;
+      if (aBeatB !== bBeatA) return aBeatB > bBeatA ? -1 : 1;
+    }
+    if (a.pointDiff !== b.pointDiff) return b.pointDiff - a.pointDiff;
+    if (a.winPct !== b.winPct) return b.winPct - a.winPct;
+    return a.teamName.localeCompare(b.teamName);
+  });
+}
+
+/**
  * Per-match outcome from a team's perspective, ordered oldest → newest
  * inside recentForm. F prefixes indicate forfeit-derived outcomes so
  * the UI can render them with a distinct tone.

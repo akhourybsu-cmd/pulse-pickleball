@@ -293,34 +293,12 @@ Deno.serve(async (req) => {
     if (memErr) throw memErr
 
     // ==========================================================
-    // 5. Teams (doubles pairs) + team members
+    // 5. Player pairs — this league is INDIVIDUAL-based, so these are
+    //    just doubles line-ups for the schedule, not DB teams.
     // ==========================================================
-    const teamIds: string[] = []
-    const teamRosters: Array<[string, string]> = []
+    const pairs: Array<[string, string]> = []
     for (let t = 0; t < teamCount; t++) {
-      const p1 = playerIds[t * 2]
-      const p2 = playerIds[t * 2 + 1]
-      const n1 = playerName(t * 2)
-      const n2 = playerName(t * 2 + 1)
-      const { data: team, error: teamErr } = await admin
-        .from('league_teams')
-        .insert({
-          league_id: leagueId, season_id: seasonId, division_id: divisionId,
-          name: `${n1.first} & ${n2.first}`,
-          captain_user_id: p1,
-          status: 'active',
-        })
-        .select('id')
-        .single()
-      if (teamErr || !team) throw teamErr ?? new Error('Team insert failed')
-      teamIds.push(team.id as string)
-      teamRosters.push([p1, p2])
-
-      const { error: tmErr } = await admin.from('league_team_members').insert([
-        { team_id: team.id, user_id: p1, role: 'captain', status: 'active' },
-        { team_id: team.id, user_id: p2, role: 'player', status: 'active' },
-      ])
-      if (tmErr) throw tmErr
+      pairs.push([playerIds[t * 2], playerIds[t * 2 + 1]])
     }
 
     // ==========================================================
@@ -410,22 +388,21 @@ Deno.serve(async (req) => {
     for (let w = 0; w < weeks; w++) {
       const dateIso = sessionDates[w]
       const isPast = dateIso < todayIso
-      const pairs = rounds[w]
-      pairs.forEach(([ai, bi], idx) => {
-        const teamA = teamIds[ai]
-        const teamB = teamIds[bi]
-        const [a1, a2] = teamRosters[ai]
-        const [b1, b2] = teamRosters[bi]
+      const roundPairs = rounds[w]
+      roundPairs.forEach(([ai, bi], idx) => {
+        const [a1, a2] = pairs[ai]
+        const [b1, b2] = pairs[bi]
         const court = idx + 1
         const when = new Date(`${dateIso}T18:00:00Z`)
         when.setUTCMinutes(when.getUTCMinutes() + (idx % 4) * 30)
 
+        // Individual-based: no teams — each side is two named players.
         const base: Record<string, unknown> = {
           league_id: leagueId, season_id: seasonId, division_id: divisionId,
           session_id: sessionIds[w],
           court_number: court,
           scheduled_time: when.toISOString(),
-          team_a_id: teamA, team_b_id: teamB,
+          team_a_id: null, team_b_id: null,
           player_a_id: a1, player_b_id: a2,
           player_c_id: b1, player_d_id: b2,
           rating_status: 'not_connected',
