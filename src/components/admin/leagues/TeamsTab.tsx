@@ -9,7 +9,7 @@ import {
 import {
   Dialog, DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Users, ChevronRight, UsersRound, Shield } from "lucide-react";
+import { Plus, Users, ChevronRight, UsersRound, Shield, Crown } from "lucide-react";
 import type {
   League, LeagueSeason, LeagueDivision, LeagueTeam, LeagueMember,
 } from "@/lib/leagues/types";
@@ -22,6 +22,12 @@ import {
 } from "./_shared";
 
 interface PlayerRow { id: string; display_name: string | null; full_name: string | null }
+
+/** Team crest initials — first letters of the first two words, uppercased. */
+function teamInitials(name: string): string {
+  return name.split(/\s+/).filter(Boolean).slice(0, 2)
+    .map((w) => w[0]).join("").toUpperCase() || "T";
+}
 
 export function TeamsTab({ league, dataVersion, onMutated }: LeagueTabProps) {
   const [seasons, setSeasons] = useState<LeagueSeason[]>([]);
@@ -152,25 +158,44 @@ export function TeamsTab({ league, dataVersion, onMutated }: LeagueTabProps) {
                 <button
                   type="button"
                   onClick={() => setRosterFor(t)}
-                  className="w-full text-left rounded-lg border border-border/70 bg-card p-3 hover:bg-muted/50 hover:border-primary/40 transition-colors"
+                  className="group w-full text-left rounded-xl border border-border/70 bg-card hover:border-primary/40 hover:shadow-md transition-all overflow-hidden"
                 >
-                  <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 p-3">
+                    {/* Team crest */}
+                    <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-500/5 ring-1 ring-inset ring-amber-500/25 flex items-center justify-center shrink-0">
+                      <span className="text-sm font-black text-amber-600 dark:text-amber-500">
+                        {teamInitials(t.name)}
+                      </span>
+                    </div>
                     <div className="min-w-0 flex-1">
-                      <div className="font-medium truncate">{t.name}</div>
-                      <div className="text-xs text-muted-foreground mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5">
-                        <span className="inline-flex items-center gap-1">
-                          <Users className="w-3 h-3" />
-                          {rosterCount} player{rosterCount === 1 ? "" : "s"}
-                        </span>
-                        <span>·</span>
-                        <span>
-                          {captain ? `Captain: ${resolvePlayerName(captain)}` : "No captain"}
-                        </span>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold truncate">{t.name}</span>
+                        {t.status === "archived" && (
+                          <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                            Archived
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                        {captain ? (
+                          <span className="inline-flex items-center gap-1">
+                            <Crown className="w-3 h-3 text-amber-500" />
+                            {resolvePlayerName(captain)}
+                          </span>
+                        ) : (
+                          <span>No captain</span>
+                        )}
                         {division && (<><span>·</span><span>{division.name}</span></>)}
-                        {t.status === "archived" && (<><span>·</span><span>archived</span></>)}
                       </div>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+                    {/* Roster stat */}
+                    <div className="text-center shrink-0 px-1.5">
+                      <div className="text-lg font-black tabular-nums leading-none">{rosterCount}</div>
+                      <div className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+                        player{rosterCount === 1 ? "" : "s"}
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 group-hover:translate-x-0.5 group-hover:text-primary transition-all" />
                   </div>
                 </button>
               </li>

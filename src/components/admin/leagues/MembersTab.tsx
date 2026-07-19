@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   Plus, Search, UserX, Users, RotateCcw, ClipboardList, Mail, CheckCircle2,
-  XCircle, RotateCw, AlertCircle,
+  XCircle, RotateCw, AlertCircle, Crown,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -214,11 +214,27 @@ export function MembersTab({ league, dataVersion, onMutated }: LeagueTabProps) {
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="font-medium truncate">{name}</div>
-                    <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap mt-0.5">
-                      <span>{m.role}</span>
-                      <span>·</span>
-                      <span>{m.status}</span>
-                      {division && (<><span>·</span><span>{division.name}</span></>)}
+                    <div className="text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap mt-1">
+                      <span className={cn(
+                        "inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded",
+                        m.role === "player"
+                          ? "bg-muted text-muted-foreground"
+                          : "bg-primary/10 text-primary ring-1 ring-primary/20",
+                      )}>
+                        {m.role === "captain" && <Crown className="w-2.5 h-2.5" />}
+                        {m.role}
+                      </span>
+                      {m.status !== "active" && (
+                        <span className={cn(
+                          "text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded",
+                          m.status === "removed"
+                            ? "bg-destructive/10 text-destructive"
+                            : "bg-amber-500/10 text-amber-600",
+                        )}>
+                          {m.status}
+                        </span>
+                      )}
+                      {division && <span className="text-muted-foreground">{division.name}</span>}
                     </div>
                   </div>
                 </div>

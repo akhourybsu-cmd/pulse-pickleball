@@ -10,7 +10,7 @@ import {
   Dialog, DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  Plus, Calendar as CalendarIcon, ChevronRight, CalendarClock,
+  Plus, Calendar as CalendarIcon, ChevronRight, CalendarClock, Clock,
 } from "lucide-react";
 import type {
   League, LeagueSeason, LeagueDivision, LeagueSession, SessionStatus,
@@ -21,6 +21,21 @@ import {
   EmptyState, TabSkeleton, LeagueTabProps,
   FormShell, FormSection, FormRow, FIELD_H, ChoiceGrid,
 } from "./_shared";
+
+/** "YYYY-MM-DD" → { month:"Jul", day:"19" } for the gameday date tile. */
+function fmtDateTile(dateStr: string | null): { month: string; day: string } | null {
+  if (!dateStr) return null;
+  const d = new Date(`${dateStr}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return null;
+  return {
+    month: d.toLocaleDateString(undefined, { month: "short" }),
+    day: String(d.getDate()),
+  };
+}
+/** "18:00:00" → "18:00". */
+function fmtTime(t: string | null): string {
+  return t ? t.slice(0, 5) : "";
+}
 
 export function SessionsTab({ league, dataVersion, onMutated }: LeagueTabProps) {
   const [seasons, setSeasons] = useState<LeagueSeason[]>([]);
@@ -104,31 +119,48 @@ export function SessionsTab({ league, dataVersion, onMutated }: LeagueTabProps) 
         <ul className="space-y-2">
           {sessions.map((s) => {
             const division = divisions.find((d) => d.id === s.division_id);
+            const tile = fmtDateTile(s.scheduled_date);
             return (
               <li key={s.id}>
                 <button
                   type="button"
                   onClick={() => setEditing(s)}
-                  className="w-full text-left rounded-lg border border-border/70 bg-card p-3 hover:bg-muted/50 hover:border-primary/40 transition-colors"
+                  className="group w-full text-left rounded-xl border border-border/70 bg-card hover:border-primary/40 hover:shadow-md transition-all overflow-hidden"
                 >
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-medium">{s.name}</span>
-                        <SessionStatusBadge status={s.status} />
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-1 flex items-center gap-2 flex-wrap">
-                        <CalendarIcon className="w-3 h-3" />
-                        <span>{s.scheduled_date ?? "No date"}</span>
-                        {s.start_time && <span>{s.start_time}{s.end_time ? `–${s.end_time}` : ""}</span>}
-                        {s.court_count && <span>{s.court_count} courts</span>}
-                        {division && <span>{division.name}</span>}
-                      </div>
-                      {s.location && (
-                        <div className="text-xs text-muted-foreground mt-0.5">{s.location}</div>
+                  <div className="flex items-stretch">
+                    {/* Gameday date tile */}
+                    <div className="flex flex-col items-center justify-center w-16 shrink-0 border-r border-border/50 bg-gradient-to-br from-violet-500/10 to-transparent py-2">
+                      {tile ? (
+                        <>
+                          <span className="text-[10px] font-black uppercase tracking-wider text-violet-500">
+                            {tile.month}
+                          </span>
+                          <span className="text-2xl font-black tabular-nums leading-none">
+                            {tile.day}
+                          </span>
+                        </>
+                      ) : (
+                        <CalendarIcon className="w-5 h-5 text-muted-foreground" />
                       )}
                     </div>
-                    <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <div className="flex-1 min-w-0 p-3">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold truncate">{s.name}</span>
+                        <SessionStatusBadge status={s.status} />
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1 flex items-center gap-x-2 gap-y-0.5 flex-wrap">
+                        {s.start_time && (
+                          <span className="inline-flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {fmtTime(s.start_time)}{s.end_time ? `–${fmtTime(s.end_time)}` : ""}
+                          </span>
+                        )}
+                        {s.court_count && <span>{s.court_count} court{s.court_count === 1 ? "" : "s"}</span>}
+                        {division && <span>{division.name}</span>}
+                        {s.location && <span className="truncate">{s.location}</span>}
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 self-center mr-3 group-hover:translate-x-0.5 group-hover:text-primary transition-all" />
                   </div>
                 </button>
               </li>
