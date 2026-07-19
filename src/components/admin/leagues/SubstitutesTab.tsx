@@ -29,7 +29,7 @@ import { resolvePlayerName } from "@/lib/matchDisplay";
 import { cn } from "@/lib/utils";
 import {
   EmptyState, TabSkeleton, LeagueTabProps,
-  FormShell, FormSection, FormRow, FIELD_H,
+  FormShell, FormSection, FormRow, FIELD_H, SegmentedControl, SeasonSelect,
 } from "./_shared";
 
 interface PlayerRow {
@@ -146,12 +146,7 @@ export function SubstitutesTab({ league, dataVersion, onMutated }: LeagueTabProp
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <Select value={seasonId} onValueChange={setSeasonId}>
-          <SelectTrigger className="flex-1"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {seasons.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <SeasonSelect seasons={seasons} value={seasonId} onChange={setSeasonId} className="flex-1" />
         <Dialog open={addOpen} onOpenChange={setAddOpen}>
           <DialogTrigger asChild>
             <Button size="sm"><Plus className="w-4 h-4 mr-1" />Add sub</Button>
@@ -479,6 +474,7 @@ function SubEditorDialog({
     <FormShell
       icon={<LifeBuoy className="w-5 h-5" />}
       tone="emerald"
+      kicker={mode === "create" ? "New sub" : "Substitute"}
       title={mode === "create" ? "Add substitute" : "Edit substitute"}
       subtitle={mode === "create"
         ? "Add a fill-in player to the bench for this season."
@@ -538,14 +534,15 @@ function SubEditorDialog({
             </SelectContent>
           </Select>
         </FormRow>
-        <FormRow label="Status">
-          <Select value={status} onValueChange={(v) => setStatus(v as SubstituteStatus)}>
-            <SelectTrigger className={FIELD_H}><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="active">Active (available)</SelectItem>
-              <SelectItem value="inactive">Inactive (benched)</SelectItem>
-            </SelectContent>
-          </Select>
+        <FormRow label="Status" hint="Inactive subs stay on the bench but can't be swapped in.">
+          <SegmentedControl
+            value={status}
+            onChange={(v) => setStatus(v as SubstituteStatus)}
+            options={[
+              { value: "active",   label: "Active" },
+              { value: "inactive", label: "Benched" },
+            ]}
+          />
         </FormRow>
         <FormRow label="Notes" htmlFor="sub-notes" hint="Availability, contact preference, skill notes…">
           <Textarea
@@ -630,111 +627,100 @@ function SubSwapDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Repeat className="w-4 h-4 text-primary" />
-            Swap {subName} into a week
-          </DialogTitle>
-        </DialogHeader>
-
-        <div className="space-y-3">
-          {/* Week */}
-          <div className="space-y-1.5">
-            <Label>Week</Label>
-            <Select value={sessionId} onValueChange={setSessionId}>
-              <SelectTrigger><SelectValue placeholder="Pick a week" /></SelectTrigger>
-              <SelectContent>
-                {sessions.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.name}{s.scheduled_date ? ` · ${s.scheduled_date}` : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {sessions.length === 0 && (
-              <p className="text-xs text-muted-foreground">
-                No sessions in this season yet — create them on the Sessions tab.
-              </p>
-            )}
-          </div>
-
-          {/* Match */}
-          <div className="space-y-1.5">
-            <Label>Match</Label>
-            <Select value={matchId} onValueChange={setMatchId} disabled={!sessionId}>
-              <SelectTrigger>
-                <SelectValue placeholder={sessionMatches.length ? "Pick a match" : "No matches this week"} />
-              </SelectTrigger>
-              <SelectContent>
-                {sessionMatches.map((m) => (
-                  <SelectItem key={m.id} value={m.id}>
-                    {teamName(m.team_a_id)} vs {teamName(m.team_b_id)}
-                    {m.court_number ? ` · Court ${m.court_number}` : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Slot — who's coming out */}
-          {match && (
-            <div className="space-y-1.5">
-              <Label>Replace which player?</Label>
-              <div className="space-y-1.5">
-                {SLOTS.map((s) => {
-                  const occ = slotOccupant(s.key);
-                  const isSelf = occ === sub.user_id;
-                  return (
-                    <button
-                      key={s.key}
-                      type="button"
-                      disabled={isSelf}
-                      onClick={() => setSlot(s.key)}
-                      className={cn(
-                        "w-full text-left rounded-lg border px-3 py-2 flex items-center justify-between gap-2 transition-colors",
-                        slot === s.key
-                          ? "border-primary bg-primary/10"
-                          : "border-border/70 hover:bg-muted/50",
-                        isSelf && "opacity-50 cursor-not-allowed",
-                      )}
-                    >
-                      <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                        Team {s.team} · Slot {s.key.toUpperCase()}
-                      </span>
-                      <span className="text-sm font-medium truncate">
-                        {isSelf ? "Already this sub" : occupantName(occ)}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-              <p className="text-[11px] text-muted-foreground">
-                Slots A/B are {teamName(match.team_a_id)}; C/D are {teamName(match.team_b_id)}.
-              </p>
-            </div>
-          )}
-
-          {/* Optional note */}
-          <div className="space-y-1.5">
-            <Label>Note (optional)</Label>
-            <Textarea
-              rows={2} value={note} onChange={(e) => setNote(e.target.value)}
-              placeholder="Kept in the audit log — e.g. 'filling in for Marcus, out sick'"
-            />
-          </div>
-        </div>
-
-        <DialogFooter className="gap-2 sm:gap-2">
-          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>
+      <FormShell
+        icon={<Repeat className="w-5 h-5" />}
+        tone="emerald"
+        kicker="Substitute"
+        title={`Swap in ${subName}`}
+        subtitle="Drop this sub into a match for a given week."
+        primaryLabel="Swap in"
+        primaryLoading={saving}
+        primaryDisabled={!match || !slot}
+        onPrimary={submit}
+        secondary={
+          <Button variant="ghost" className="h-12"
+            onClick={() => onOpenChange(false)} disabled={saving}>
             Cancel
           </Button>
-          <Button onClick={submit} disabled={saving || !match || !slot} className="flex-1">
-            <Repeat className="w-4 h-4 mr-1.5" />
-            {saving ? "Swapping…" : "Swap in"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
+        }
+      >
+        <FormRow label="Week">
+          <Select value={sessionId} onValueChange={setSessionId}>
+            <SelectTrigger className={FIELD_H}><SelectValue placeholder="Pick a week" /></SelectTrigger>
+            <SelectContent>
+              {sessions.map((s) => (
+                <SelectItem key={s.id} value={s.id}>
+                  {s.name}{s.scheduled_date ? ` · ${s.scheduled_date}` : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {sessions.length === 0 && (
+            <p className="text-xs text-muted-foreground mt-1.5">
+              No sessions in this season yet — create them on the Sessions tab.
+            </p>
+          )}
+        </FormRow>
+
+        <FormRow label="Match">
+          <Select value={matchId} onValueChange={setMatchId} disabled={!sessionId}>
+            <SelectTrigger className={FIELD_H}>
+              <SelectValue placeholder={sessionMatches.length ? "Pick a match" : "No matches this week"} />
+            </SelectTrigger>
+            <SelectContent>
+              {sessionMatches.map((m) => (
+                <SelectItem key={m.id} value={m.id}>
+                  {teamName(m.team_a_id)} vs {teamName(m.team_b_id)}
+                  {m.court_number ? ` · Court ${m.court_number}` : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FormRow>
+
+        {match && (
+          <FormRow
+            label="Replace which player?"
+            hint={`Slots A/B are ${teamName(match.team_a_id)}; C/D are ${teamName(match.team_b_id)}.`}
+          >
+            <div className="space-y-1.5">
+              {SLOTS.map((s) => {
+                const occ = slotOccupant(s.key);
+                const isSelf = occ === sub.user_id;
+                return (
+                  <button
+                    key={s.key}
+                    type="button"
+                    disabled={isSelf}
+                    onClick={() => setSlot(s.key)}
+                    className={cn(
+                      "w-full text-left rounded-lg border px-3 py-2.5 flex items-center justify-between gap-2 transition-colors",
+                      slot === s.key
+                        ? "border-primary bg-primary/10 ring-1 ring-primary/25"
+                        : "border-border/70 hover:bg-muted/50",
+                      isSelf && "opacity-50 cursor-not-allowed",
+                    )}
+                  >
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                      Team {s.team} · Slot {s.key.toUpperCase()}
+                    </span>
+                    <span className="text-sm font-semibold truncate">
+                      {isSelf ? "Already this sub" : occupantName(occ)}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </FormRow>
+        )}
+
+        <FormRow label="Note (optional)" hint="Kept in the audit log.">
+          <Textarea
+            rows={2} value={note} onChange={(e) => setNote(e.target.value)}
+            placeholder="e.g. 'filling in for Marcus, out sick'"
+          />
+        </FormRow>
+      </FormShell>
     </Dialog>
   );
 }

@@ -10,7 +10,7 @@ import type {
 } from "@/lib/leagues/types";
 import { computeTeamStandings } from "@/lib/leagues/standings";
 import { StandingsTable } from "@/components/leagues/StandingsTable";
-import { EmptyState, TabSkeleton, LeagueTabProps } from "./_shared";
+import { EmptyState, TabSkeleton, LeagueTabProps, SeasonSelect } from "./_shared";
 
 export function StandingsTab({ league, dataVersion }: LeagueTabProps) {
   const [seasons, setSeasons] = useState<LeagueSeason[]>([]);
@@ -77,12 +77,7 @@ export function StandingsTab({ league, dataVersion }: LeagueTabProps) {
   return (
     <div className="space-y-3">
       <div className="flex gap-2 items-center flex-wrap">
-        <Select value={seasonId} onValueChange={setSeasonId}>
-          <SelectTrigger className="flex-1 min-w-[140px]"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {seasons.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <SeasonSelect seasons={seasons} value={seasonId} onChange={setSeasonId} className="flex-1 min-w-[140px]" />
         <Select value={divisionId} onValueChange={setDivisionId}>
           <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
           <SelectContent>

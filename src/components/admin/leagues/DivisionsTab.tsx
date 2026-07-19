@@ -206,6 +206,7 @@ function DivisionEditor({
     <FormShell
       icon={<Layers className="w-5 h-5" />}
       tone="blue"
+      kicker={isNew ? "New division" : "Division"}
       title={isNew ? "New division" : "Edit division"}
       subtitle={isNew
         ? "Divisions split members by skill range. Members can move between them at any time."

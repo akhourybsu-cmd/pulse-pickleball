@@ -19,7 +19,9 @@ import type {
 } from "@/lib/leagues/types";
 import { logLeagueAction } from "@/lib/leagues/audit";
 import { InviteCodeCard } from "./InviteCodeCard";
-import { FormSection, FormRow, FIELD_H } from "./_shared";
+import {
+  FormSection, FormRow, FIELD_H, ChoiceGrid, SegmentedControl,
+} from "./_shared";
 import { cn } from "@/lib/utils";
 
 export function OverviewTab({
@@ -150,28 +152,31 @@ export function OverviewTab({
         </FormSection>
 
         <FormSection label="Format">
-          <div className="grid gap-3 md:grid-cols-3">
-            <FormRow label="League type">
-              <Select value={type} onValueChange={(v) => setType(v as LeagueType)}>
-                <SelectTrigger className={FIELD_H}><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="singles">Singles</SelectItem>
-                  <SelectItem value="doubles">Doubles</SelectItem>
-                  <SelectItem value="team">Team</SelectItem>
-                  <SelectItem value="flex">Flex</SelectItem>
-                  <SelectItem value="ladder">Ladder</SelectItem>
-                </SelectContent>
-              </Select>
-            </FormRow>
+          <FormRow label="League type">
+            <ChoiceGrid
+              columns={3}
+              value={type}
+              onChange={(v) => setType(v as LeagueType)}
+              options={[
+                { value: "singles", label: "Singles" },
+                { value: "doubles", label: "Doubles" },
+                { value: "team",    label: "Team" },
+                { value: "flex",    label: "Flex" },
+                { value: "ladder",  label: "Ladder" },
+              ]}
+            />
+          </FormRow>
+          <div className="grid gap-3 md:grid-cols-2">
             <FormRow label="Status">
-              <Select value={status} onValueChange={(v) => setStatus(v as LeagueStatus)}>
-                <SelectTrigger className={FIELD_H}><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="archived">Archived</SelectItem>
-                </SelectContent>
-              </Select>
+              <SegmentedControl
+                value={status}
+                onChange={(v) => setStatus(v as LeagueStatus)}
+                options={[
+                  { value: "draft",    label: "Draft" },
+                  { value: "active",   label: "Active" },
+                  { value: "archived", label: "Archived" },
+                ]}
+              />
             </FormRow>
             <FormRow label="Visibility">
               <Select value={visibility} onValueChange={(v) => setVisibility(v as LeagueVisibility)}>
@@ -206,7 +211,7 @@ export function OverviewTab({
           <Button
             onClick={save} disabled={!dirty || saving}
             className={cn(
-              "h-11 font-semibold px-6",
+              "h-11 font-bold uppercase tracking-wide px-6",
               dirty && "shadow-[0_2px_8px_-2px_hsl(var(--primary)/0.4)]",
             )}
           >

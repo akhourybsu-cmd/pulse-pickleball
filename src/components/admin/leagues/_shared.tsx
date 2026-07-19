@@ -2,14 +2,55 @@
  * Shared primitives used across the League Management tabs.
  * Extract so every tab looks and behaves the same.
  */
-import { ReactNode } from "react";
+import { ReactNode, useId } from "react";
+import { motion } from "framer-motion";
+import { CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import type { League } from "@/lib/leagues/types";
+
+/**
+ * Sporty season picker used at the top of every management tab. Reads
+ * like a "SEASON ·  Fall 2026" control with a calendar chip instead of a
+ * bare dropdown, so the tab tops feel like a league app, not a form.
+ */
+export function SeasonSelect({
+  seasons, value, onChange, className,
+}: {
+  seasons: Array<{ id: string; name: string }>;
+  value: string;
+  onChange: (v: string) => void;
+  className?: string;
+}) {
+  return (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger className={cn("h-11 rounded-lg bg-card", className)}>
+        <span className="inline-flex items-center gap-2 min-w-0 flex-1">
+          <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-primary/10 text-primary shrink-0">
+            <CalendarDays className="w-3.5 h-3.5" />
+          </span>
+          <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground shrink-0">
+            Season
+          </span>
+          <span className="text-border shrink-0">·</span>
+          <span className="min-w-0 truncate font-semibold"><SelectValue /></span>
+        </span>
+      </SelectTrigger>
+      <SelectContent>
+        {seasons.map((s) => (
+          <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
 
 /**
  * Props every league tab receives from AdminLeagueDetail. The tab MUST:
@@ -78,13 +119,19 @@ export function TabSkeleton({ lines = 3 }: { lines?: number }) {
 
 export type FormTone = "primary" | "blue" | "amber" | "violet" | "gold" | "emerald";
 
-const TONE_STYLES: Record<FormTone, { bar: string; chip: string; text: string }> = {
-  primary: { bar: "bg-primary",       chip: "bg-primary/10",       text: "text-primary" },
-  blue:    { bar: "bg-blue-500",      chip: "bg-blue-500/10",      text: "text-blue-500" },
-  amber:   { bar: "bg-amber-500",     chip: "bg-amber-500/10",     text: "text-amber-500" },
-  violet:  { bar: "bg-violet-500",    chip: "bg-violet-500/10",    text: "text-violet-500" },
-  gold:    { bar: "bg-[#A6DB5A]",     chip: "bg-[#A6DB5A]/10",     text: "text-[#A6DB5A]" },
-  emerald: { bar: "bg-emerald-500",   chip: "bg-emerald-500/10",   text: "text-emerald-500" },
+/**
+ * Per-entity accent. `chip`/`kicker` render on the DARK banner header,
+ * so they use lighter tints; `glow` is the blurred bloom behind the
+ * icon. Season = primary, division = blue, team = amber, session =
+ * violet, league = gold, subs = emerald.
+ */
+const TONE_STYLES: Record<FormTone, { bar: string; chip: string; kicker: string; glow: string }> = {
+  primary: { bar: "bg-primary",     chip: "bg-primary/15 text-primary",       kicker: "text-primary",       glow: "bg-primary/25" },
+  blue:    { bar: "bg-blue-500",    chip: "bg-blue-500/15 text-blue-300",     kicker: "text-blue-300",      glow: "bg-blue-500/25" },
+  amber:   { bar: "bg-amber-500",   chip: "bg-amber-500/15 text-amber-300",   kicker: "text-amber-300",     glow: "bg-amber-500/25" },
+  violet:  { bar: "bg-violet-500",  chip: "bg-violet-500/15 text-violet-300", kicker: "text-violet-300",    glow: "bg-violet-500/25" },
+  gold:    { bar: "bg-[#A6DB5A]",   chip: "bg-[#A6DB5A]/15 text-[#A6DB5A]",    kicker: "text-[#A6DB5A]",     glow: "bg-[#A6DB5A]/25" },
+  emerald: { bar: "bg-emerald-500", chip: "bg-emerald-500/15 text-emerald-300", kicker: "text-emerald-300", glow: "bg-emerald-500/25" },
 };
 
 /**
@@ -103,12 +150,14 @@ const TONE_STYLES: Record<FormTone, { bar: string; chip: string; text: string }>
  *   └──────────────────────┘
  */
 export function FormShell({
-  icon, title, subtitle, tone = "primary", size = "md",
+  icon, kicker, title, subtitle, tone = "primary", size = "md",
   primaryLabel, primaryDisabled, primaryLoading, onPrimary,
   secondary,
   children,
 }: {
   icon: ReactNode;
+  /** Small uppercase eyebrow above the title, e.g. "SEASON" or "MATCHUP". */
+  kicker?: string;
   title: string;
   subtitle?: string;
   tone?: FormTone;
@@ -129,34 +178,54 @@ export function FormShell({
         size === "lg" ? "sm:max-w-lg" : "sm:max-w-md",
       )}
     >
-      {/* Accent stripe */}
-      <div className={cn("h-1.5 w-full", t.bar)} aria-hidden />
+      {/* Stadium banner header — dark broadcast panel with an accent
+          side-rail, diagonal court texture, and a glow behind the icon.
+          Gives every league menu a "team sheet" feel instead of a plain
+          form. */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-[#0B171F] via-[#142029] to-[#1a2d38]">
+        <div className={cn("absolute top-0 bottom-0 left-0 w-1.5", t.bar)} aria-hidden />
+        <div
+          aria-hidden
+          className="absolute inset-0 opacity-[0.05] pointer-events-none"
+          style={{
+            backgroundImage:
+              "repeating-linear-gradient(45deg, transparent 0, transparent 10px, currentColor 10px, currentColor 11px)",
+            color: "#A6DB5A",
+          }}
+        />
+        <div aria-hidden className={cn("absolute -top-14 -right-10 h-40 w-40 rounded-full blur-3xl pointer-events-none", t.glow)} />
 
-      <DialogHeader className="p-5 pb-3 space-y-0">
-        <div className="flex items-start gap-3">
-          <div
-            className={cn(
-              "h-10 w-10 rounded-xl flex items-center justify-center shrink-0",
-              t.chip, t.text,
-            )}
-            aria-hidden
-          >
-            {icon}
+        <DialogHeader className="relative p-5 pb-4 space-y-0 text-left">
+          <div className="flex items-start gap-3">
+            <div
+              className={cn(
+                "h-11 w-11 rounded-xl flex items-center justify-center shrink-0 ring-1 ring-white/10",
+                t.chip,
+              )}
+              aria-hidden
+            >
+              {icon}
+            </div>
+            <div className="min-w-0 flex-1 pt-0.5">
+              {kicker && (
+                <div className={cn("text-[10px] font-black uppercase tracking-[0.2em] mb-0.5", t.kicker)}>
+                  {kicker}
+                </div>
+              )}
+              <DialogTitle className="text-lg font-black tracking-tight leading-tight text-white">
+                {title}
+              </DialogTitle>
+              {subtitle && (
+                <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                  {subtitle}
+                </p>
+              )}
+            </div>
           </div>
-          <div className="min-w-0 flex-1 pt-0.5">
-            <DialogTitle className="text-lg font-bold tracking-tight leading-tight">
-              {title}
-            </DialogTitle>
-            {subtitle && (
-              <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                {subtitle}
-              </p>
-            )}
-          </div>
-        </div>
-      </DialogHeader>
+        </DialogHeader>
+      </div>
 
-      <div className="px-5 pb-4 pt-1 space-y-4 max-h-[70vh] overflow-y-auto">
+      <div className="px-5 pb-4 pt-4 space-y-4 max-h-[65vh] overflow-y-auto">
         {children}
       </div>
 
@@ -166,7 +235,7 @@ export function FormShell({
           onClick={() => void onPrimary()}
           disabled={primaryDisabled || primaryLoading}
           className={cn(
-            "h-12 font-semibold shadow-[0_2px_8px_-2px_hsl(var(--primary)/0.35)]",
+            "h-12 font-bold uppercase tracking-wide text-[13px] shadow-[0_2px_8px_-2px_hsl(var(--primary)/0.35)]",
             "active:scale-[0.98] transition-transform",
             secondary ? "flex-1" : "w-full",
           )}
@@ -192,13 +261,19 @@ export function FormSection({
 }) {
   return (
     <section className="space-y-2.5">
-      <div className="flex items-baseline gap-2 border-b border-border/40 pb-1.5">
-        <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+      {/* Chalk-line section header — accent tick + uppercase label +
+          a fading rule, like a stat sheet heading. */}
+      <div className="flex items-center gap-2">
+        <span className="h-3.5 w-1 rounded-full bg-primary shrink-0" aria-hidden />
+        <span className="text-[11px] font-black uppercase tracking-[0.16em] text-foreground/75 shrink-0">
           {label}
         </span>
         {hint && (
-          <span className="text-[10px] text-muted-foreground/70">{hint}</span>
+          <span className="text-[10px] text-muted-foreground/70 normal-case font-normal truncate">
+            {hint}
+          </span>
         )}
+        <span className="flex-1 h-px bg-gradient-to-r from-border/70 to-transparent" aria-hidden />
       </div>
       <div className="space-y-3">{children}</div>
     </section>
@@ -223,7 +298,7 @@ export function FormRow({
     <div className="space-y-1.5">
       <Label
         htmlFor={htmlFor}
-        className="text-xs font-semibold text-foreground/80"
+        className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground"
       >
         {label}
         {required && (
@@ -245,4 +320,124 @@ export function FormRow({
  * a consistent touch-target on mobile. Import + apply to `<Input>`,
  * `<SelectTrigger>`, `<Textarea>`.
  */
-export const FIELD_H = "h-11";
+export const FIELD_H = "h-11 rounded-lg";
+
+/* ------------------------------------------------------------------ */
+/*  Sporty choice controls — replace plain dropdowns for small enum
+ *  sets so league menus read like "pick a game mode", not a form.
+ * ------------------------------------------------------------------ */
+
+interface ChoiceOption<T extends string> {
+  value: T;
+  label: string;
+  /** Optional one-liner shown under the label in ChoiceGrid. */
+  desc?: string;
+  icon?: ReactNode;
+}
+
+/**
+ * Segmented toggle for 2-3 mutually exclusive options. The active
+ * segment slides via a shared layout animation. Great for on/off-style
+ * choices (Active / Inactive, Player / Captain / Manager).
+ */
+export function SegmentedControl<T extends string>({
+  value, onChange, options, ariaLabel,
+}: {
+  value: T;
+  onChange: (v: T) => void;
+  options: ChoiceOption<T>[];
+  ariaLabel?: string;
+}) {
+  const id = useId();
+  return (
+    <div
+      role="radiogroup"
+      aria-label={ariaLabel}
+      className="flex w-full rounded-xl bg-muted/60 p-1 gap-1 ring-1 ring-inset ring-border/50"
+    >
+      {options.map((o) => {
+        const active = o.value === value;
+        return (
+          <button
+            key={o.value}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            onClick={() => onChange(o.value)}
+            className={cn(
+              "relative flex-1 rounded-lg px-2 py-2 text-[11px] font-bold uppercase tracking-wide transition-colors",
+              active ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {active && (
+              <motion.span
+                layoutId={`seg-${id}`}
+                className="absolute inset-0 rounded-lg bg-primary shadow-[0_2px_8px_-2px_hsl(var(--primary)/0.5)]"
+                transition={{ type: "spring", stiffness: 500, damping: 40 }}
+                aria-hidden
+              />
+            )}
+            <span className="relative z-10 inline-flex items-center justify-center gap-1.5">
+              {o.icon}{o.label}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * Tap-to-select tile grid for enum choices that benefit from a short
+ * description (session status, member role). Feels like choosing a
+ * mode on a sports app rather than opening a dropdown.
+ */
+export function ChoiceGrid<T extends string>({
+  value, onChange, options, columns = 2,
+}: {
+  value: T;
+  onChange: (v: T) => void;
+  options: ChoiceOption<T>[];
+  columns?: 2 | 3;
+}) {
+  return (
+    <div className={cn("grid gap-2", columns === 3 ? "grid-cols-3" : "grid-cols-2")}>
+      {options.map((o) => {
+        const active = o.value === value;
+        return (
+          <button
+            key={o.value}
+            type="button"
+            aria-pressed={active}
+            onClick={() => onChange(o.value)}
+            className={cn(
+              "rounded-xl border p-2.5 text-left transition-all active:scale-[0.98]",
+              active
+                ? "border-primary/50 bg-primary/10 ring-1 ring-primary/25 shadow-[0_2px_10px_-4px_hsl(var(--primary)/0.35)]"
+                : "border-border/60 bg-card hover:border-border hover:bg-muted/40",
+            )}
+          >
+            <div className="flex items-center gap-2">
+              {o.icon && (
+                <span className={cn("shrink-0", active ? "text-primary" : "text-muted-foreground")}>
+                  {o.icon}
+                </span>
+              )}
+              <span className={cn(
+                "text-xs font-bold uppercase tracking-wide leading-tight",
+                active ? "text-primary" : "text-foreground",
+              )}>
+                {o.label}
+              </span>
+            </div>
+            {o.desc && (
+              <p className="text-[10px] text-muted-foreground mt-1 leading-snug">
+                {o.desc}
+              </p>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
