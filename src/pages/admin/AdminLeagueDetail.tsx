@@ -248,7 +248,7 @@ export default function AdminLeagueDetail() {
         {/* Two-column layout — nav rail on desktop, strip on mobile.
             The rail keeps activeTab state, the pane below animates
             when the caller switches. */}
-        <div className="flex gap-6">
+        <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
           <LeagueManageNav active={activeTab} onChange={setActiveTab} />
 
           <div className="flex-1 min-w-0 space-y-3">
