@@ -153,8 +153,50 @@ export function useMyLeagues() {
         return;
       }
       const list = ((data ?? []) as unknown as RpcRow[]).map(mapRow);
+
+      // Also surface leagues the caller OWNS but has no membership row
+      // for. The RPC only returns active memberships, so a freshly
+      // created league (owner not yet enrolled) or an admin_only league
+      // would otherwise vanish from "My Leagues" — reading as "it didn't
+      // persist." RLS lets an owner select their own league regardless,
+      // so we merge those in with a synthetic manager membership. This
+      // keeps the portal correct even before the auto-enroll migration
+      // is deployed; once it is, the dedupe below prevents doubles.
+      const { data: { user } } = await supabase.auth.getUser();
+      let merged = list;
+      if (user) {
+        const { data: ownedRaw } = await supabase
+          .from("leagues" as never)
+          .select("*")
+          .eq("created_by", user.id);
+        const owned = (ownedRaw ?? []) as unknown as League[];
+        const have = new Set(list.map((r) => r.league.id));
+        const synthetic: MyLeagueRow[] = owned
+          .filter((l) => !have.has(l.id))
+          .map((l) => ({
+            league: l,
+            membership: {
+              id: `owner:${l.id}`,
+              league_id: l.id,
+              season_id: null,
+              division_id: null,
+              user_id: user.id,
+              role: "manager",
+              status: "active",
+              joined_at: l.created_at,
+              created_at: l.created_at,
+              updated_at: l.updated_at,
+            },
+            season: null,
+            division: null,
+          }));
+        merged = [...list, ...synthetic].sort((a, b) =>
+          a.league.name.localeCompare(b.league.name),
+        );
+      }
+
       if (!cancelled) {
-        setRows(list);
+        setRows(merged);
         setLoading(false);
       }
     })();

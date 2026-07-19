@@ -1,9 +1,14 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
 import {
   Trophy, CalendarDays, Layers, Users, UsersRound,
   CalendarClock, Swords, Award, Shield, LifeBuoy,
+  Check, ChevronsUpDown,
   type LucideIcon,
 } from "lucide-react";
+import {
+  Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger,
+} from "@/components/ui/drawer";
 import { cn } from "@/lib/utils";
 
 /**
@@ -129,39 +134,93 @@ export function LeagueManageNav({
         </div>
       </aside>
 
-      {/* ------------------ Mobile strip ------------------ */}
-      <div className="lg:hidden -mx-4 px-4 overflow-x-auto scroll-smooth snap-x">
-        <div className="inline-flex gap-1.5 min-w-full pb-2">
-          {MANAGE_TABS.map((t) => {
-            const Icon = t.icon;
-            const isActive = active === t.key;
-            return (
-              <button
-                key={t.key}
-                type="button"
-                onClick={() => onChange(t.key)}
-                className={cn(
-                  "relative snap-start shrink-0 rounded-full px-3.5 py-1.5 text-xs font-semibold inline-flex items-center gap-1.5 transition-colors",
-                  isActive
-                    ? "text-primary-foreground"
-                    : "bg-muted/60 text-foreground/70 hover:bg-muted",
-                )}
-              >
-                {isActive && (
-                  <motion.span
-                    layoutId="league-nav-pill"
-                    className="absolute inset-0 rounded-full bg-primary shadow-[0_2px_8px_-2px_hsl(var(--primary)/0.5)]"
-                    transition={{ type: "spring", stiffness: 500, damping: 40 }}
-                    aria-hidden
-                  />
-                )}
-                <Icon className="w-3.5 h-3.5 relative" />
-                <span className="relative">{t.short}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      {/* ------------------ Mobile section picker ------------------ */}
+      {/* A bottom drawer replaces the old cramped 10-item scroll strip:
+          one full-width control shows the current section, and tapping
+          opens a grouped, thumb-friendly list of every section. */}
+      <MobileSectionPicker active={active} onChange={onChange} />
     </>
+  );
+}
+
+function MobileSectionPicker({
+  active, onChange,
+}: {
+  active: ManageTab;
+  onChange: (t: ManageTab) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const activeDef = MANAGE_TABS.find((t) => t.key === active) ?? MANAGE_TABS[0];
+  const ActiveIcon = activeDef.icon;
+
+  return (
+    <div className="lg:hidden">
+      <Drawer open={open} onOpenChange={setOpen}>
+        <DrawerTrigger asChild>
+          <button
+            type="button"
+            className="w-full flex items-center gap-3 rounded-xl border border-border/70 bg-card px-3.5 py-3 text-left active:scale-[0.99] transition-transform"
+          >
+            <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+              <ActiveIcon className="w-[18px] h-[18px]" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                Section
+              </div>
+              <div className="text-sm font-bold truncate leading-tight">
+                {activeDef.label}
+              </div>
+            </div>
+            <ChevronsUpDown className="w-4 h-4 text-muted-foreground shrink-0" />
+          </button>
+        </DrawerTrigger>
+        <DrawerContent>
+          <DrawerHeader className="text-left pb-2">
+            <DrawerTitle>Jump to section</DrawerTitle>
+          </DrawerHeader>
+          <div className="px-4 pb-8 space-y-4 max-h-[65vh] overflow-y-auto">
+            {GROUPS.map((group) => {
+              const items = MANAGE_TABS.filter((t) => t.group === group);
+              if (items.length === 0) return null;
+              return (
+                <div key={group} className="space-y-1">
+                  <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground px-1">
+                    {group}
+                  </div>
+                  {items.map((t) => {
+                    const Icon = t.icon;
+                    const isActive = active === t.key;
+                    return (
+                      <button
+                        key={t.key}
+                        type="button"
+                        onClick={() => { onChange(t.key); setOpen(false); }}
+                        className={cn(
+                          "w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors",
+                          isActive
+                            ? "bg-primary/10 text-primary ring-1 ring-primary/25"
+                            : "hover:bg-muted/60 active:bg-muted",
+                        )}
+                      >
+                        <Icon className={cn(
+                          "w-4 h-4 shrink-0",
+                          isActive ? "text-primary" : "text-muted-foreground",
+                        )} />
+                        <div className="min-w-0 flex-1">
+                          <div className="text-sm font-semibold leading-tight">{t.label}</div>
+                          <div className="text-[11px] text-muted-foreground truncate">{t.hint}</div>
+                        </div>
+                        {isActive && <Check className="w-4 h-4 text-primary shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        </DrawerContent>
+      </Drawer>
+    </div>
   );
 }
