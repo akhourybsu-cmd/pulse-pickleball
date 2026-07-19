@@ -3920,6 +3920,7 @@ export type Database = {
           created_at: string | null
           current_rating: number | null
           date_of_birth: string | null
+          discoverable_by_location: boolean
           display_name: string | null
           dupr_rating: number | null
           email: string
@@ -3935,7 +3936,12 @@ export type Database = {
           is_test_account: boolean | null
           last_name: string | null
           last_rating_update: string | null
+          location_lat: number | null
+          location_lng: number | null
+          location_name: string | null
+          location_place_id: string | null
           location_public: boolean | null
+          location_updated_at: string | null
           losses: number | null
           mfa_method: string | null
           notify_badges_email: boolean | null
@@ -3975,6 +3981,7 @@ export type Database = {
           created_at?: string | null
           current_rating?: number | null
           date_of_birth?: string | null
+          discoverable_by_location?: boolean
           display_name?: string | null
           dupr_rating?: number | null
           email: string
@@ -3990,7 +3997,12 @@ export type Database = {
           is_test_account?: boolean | null
           last_name?: string | null
           last_rating_update?: string | null
+          location_lat?: number | null
+          location_lng?: number | null
+          location_name?: string | null
+          location_place_id?: string | null
           location_public?: boolean | null
+          location_updated_at?: string | null
           losses?: number | null
           mfa_method?: string | null
           notify_badges_email?: boolean | null
@@ -4030,6 +4042,7 @@ export type Database = {
           created_at?: string | null
           current_rating?: number | null
           date_of_birth?: string | null
+          discoverable_by_location?: boolean
           display_name?: string | null
           dupr_rating?: number | null
           email?: string
@@ -4045,7 +4058,12 @@ export type Database = {
           is_test_account?: boolean | null
           last_name?: string | null
           last_rating_update?: string | null
+          location_lat?: number | null
+          location_lng?: number | null
+          location_name?: string | null
+          location_place_id?: string | null
           location_public?: boolean | null
+          location_updated_at?: string | null
           losses?: number | null
           mfa_method?: string | null
           notify_badges_email?: boolean | null
@@ -7796,6 +7814,20 @@ export type Database = {
       delete_round_robin_event: {
         Args: { p_event_id: string }
         Returns: undefined
+      }
+      discover_players_nearby: {
+        Args: { _limit?: number; _radius_km?: number }
+        Returns: {
+          avatar_url: string
+          current_rating: number
+          display_name: string
+          distance_km: number
+          full_name: string
+          handle: string
+          id: string
+          location_name: string
+          reason: string
+        }[]
       }
       dismiss_friend_suggestion: {
         Args: { target_user_id: string }
