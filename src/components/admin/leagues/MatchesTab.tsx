@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -28,6 +29,7 @@ import type {
 } from "@/lib/leagues/types";
 import { logLeagueAction } from "@/lib/leagues/audit";
 import { resolvePlayerName } from "@/lib/matchDisplay";
+import { sideName } from "@/lib/leagues/matchSides";
 import { cn } from "@/lib/utils";
 import {
   EmptyState, TabSkeleton, LeagueTabProps,
@@ -197,8 +199,12 @@ export function MatchesTab({ league, dataVersion, onMutated }: LeagueTabProps) {
           {matches.map((m) => {
             const teamA = teams.find((t) => t.id === m.team_a_id);
             const teamB = teams.find((t) => t.id === m.team_b_id);
-            const players = [m.player_a_id, m.player_b_id, m.player_c_id, m.player_d_id]
-              .filter(Boolean) as string[];
+            const nameOf = (id: string | null): string | null =>
+              id ? (profilesById[id] ? resolvePlayerName(profilesById[id]) : null) : null;
+            // Prefer team name; fall back to the individual player names so
+            // matchups read as people, not "TBD".
+            const aName = sideName(teamA?.name ?? null, [nameOf(m.player_a_id), nameOf(m.player_b_id)]);
+            const bName = sideName(teamB?.name ?? null, [nameOf(m.player_c_id), nameOf(m.player_d_id)]);
             const scoreShown =
               m.team_a_score !== null && m.team_b_score !== null;
             const aWon = scoreShown && (m.team_a_score ?? 0) > (m.team_b_score ?? 0);
@@ -232,7 +238,7 @@ export function MatchesTab({ league, dataVersion, onMutated }: LeagueTabProps) {
 
                   {/* Scoreboard row */}
                   <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-4 py-3.5">
-                    <TeamCell name={teamA?.name ?? "TBD"} won={aWon} align="right" />
+                    <TeamCell name={aName} won={aWon} align="right" />
                     <div className="flex items-center gap-2 font-black tabular-nums">
                       {scoreShown ? (
                         <>
@@ -252,15 +258,8 @@ export function MatchesTab({ league, dataVersion, onMutated }: LeagueTabProps) {
                         </span>
                       )}
                     </div>
-                    <TeamCell name={teamB?.name ?? "TBD"} won={bWon} align="left" />
+                    <TeamCell name={bName} won={bWon} align="left" />
                   </div>
-
-                  {/* Footer meta */}
-                  {players.length > 0 && (
-                    <div className="px-4 pb-2 -mt-1 text-[10px] text-muted-foreground">
-                      {players.length}/4 individual player slots assigned
-                    </div>
-                  )}
                 </button>
               </li>
             );
@@ -330,6 +329,11 @@ function MatchEditor({
   );
   const [teamAId, setTeamAId] = useState<string | "none">(initial?.team_a_id ?? "none");
   const [teamBId, setTeamBId] = useState<string | "none">(initial?.team_b_id ?? "none");
+  // Individual players are the default; teams are opt-in. Start "on" only
+  // if this match already carries teams.
+  const [useTeams, setUseTeams] = useState<boolean>(
+    !!(initial?.team_a_id || initial?.team_b_id),
+  );
   const [playerAId, setPlayerAId] = useState<string | "none">(initial?.player_a_id ?? "none");
   const [playerBId, setPlayerBId] = useState<string | "none">(initial?.player_b_id ?? "none");
   const [playerCId, setPlayerCId] = useState<string | "none">(initial?.player_c_id ?? "none");
@@ -341,7 +345,7 @@ function MatchEditor({
 
   const submit = async () => {
     if (!sessionId) { toast.error("Session required"); return; }
-    if (teamAId !== "none" && teamAId === teamBId) {
+    if (useTeams && teamAId !== "none" && teamAId === teamBId) {
       toast.error("Team A and Team B must differ"); return;
     }
     setSaving(true);
@@ -360,8 +364,8 @@ function MatchEditor({
       session_id: sessionId,
       court_number: courtNumber ? Number(courtNumber) : null,
       scheduled_time: scheduledTime ? new Date(scheduledTime).toISOString() : null,
-      team_a_id: teamAId === "none" ? null : teamAId,
-      team_b_id: teamBId === "none" ? null : teamBId,
+      team_a_id: useTeams && teamAId !== "none" ? teamAId : null,
+      team_b_id: useTeams && teamBId !== "none" ? teamBId : null,
       player_a_id: playerAId === "none" ? null : playerAId,
       player_b_id: playerBId === "none" ? null : playerBId,
       player_c_id: playerCId === "none" ? null : playerCId,
@@ -405,10 +409,23 @@ function MatchEditor({
     label: profilesById[m.user_id] ? resolvePlayerName(profilesById[m.user_id]) : m.user_id.slice(0, 8),
   }));
 
-  const teamAName = teamAId !== "none"
-    ? (teams.find((t) => t.id === teamAId)?.name ?? "Team A") : "Team A";
-  const teamBName = teamBId !== "none"
-    ? (teams.find((t) => t.id === teamBId)?.name ?? "Team B") : "Team B";
+  // Live side names for the scoreboard: team name when teams are on,
+  // otherwise the picked player names, otherwise a "Side A/B" placeholder.
+  const nameOf = (id: string | "none"): string | null => {
+    if (!id || id === "none") return null;
+    if (profilesById[id]) return resolvePlayerName(profilesById[id]);
+    return playerPool.find((p) => p.id === id)?.label ?? null;
+  };
+  const sideAName = sideName(
+    useTeams && teamAId !== "none" ? teams.find((t) => t.id === teamAId)?.name : null,
+    [nameOf(playerAId), nameOf(playerBId)],
+    "Side A",
+  );
+  const sideBName = sideName(
+    useTeams && teamBId !== "none" ? teams.find((t) => t.id === teamBId)?.name : null,
+    [nameOf(playerCId), nameOf(playerDId)],
+    "Side B",
+  );
   const showAdminActions = mode === "edit" && initial && (
     initial.status === "disputed" || initial.status === "score_submitted"
     || initial.status === "scheduled" || initial.status === "in_progress"
@@ -453,33 +470,82 @@ function MatchEditor({
         </FormSection>
 
         <FormSection label="Matchup">
+          {/* Individual players are the default line-up. Flip this on only
+              if you run this league with named teams. */}
+          <label className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-muted/20 p-2.5">
+            <div className="min-w-0">
+              <div className="text-xs font-semibold">Use team names</div>
+              <div className="text-[11px] text-muted-foreground">
+                Off — the matchup shows individual player names
+              </div>
+            </div>
+            <Switch checked={useTeams} onCheckedChange={setUseTeams} />
+          </label>
+
+          {useTeams && (
+            <div className="grid grid-cols-2 gap-3">
+              <FormRow label="Team A">
+                <Select value={teamAId} onValueChange={setTeamAId}>
+                  <SelectTrigger className={FIELD_H}><SelectValue placeholder="Pick team" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No team</SelectItem>
+                    {teams.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </FormRow>
+              <FormRow label="Team B">
+                <Select value={teamBId} onValueChange={setTeamBId}>
+                  <SelectTrigger className={FIELD_H}><SelectValue placeholder="Pick team" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No team</SelectItem>
+                    {teams.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </FormRow>
+            </div>
+          )}
+
+          {/* Player line-ups — the default input */}
           <div className="grid grid-cols-2 gap-3">
-            <FormRow label="Team A">
-              <Select value={teamAId} onValueChange={setTeamAId}>
-                <SelectTrigger className={FIELD_H}><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">TBD</SelectItem>
-                  {teams.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </FormRow>
-            <FormRow label="Team B">
-              <Select value={teamBId} onValueChange={setTeamBId}>
-                <SelectTrigger className={FIELD_H}><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">TBD</SelectItem>
-                  {teams.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </FormRow>
+            {([
+              { label: "Side A", slots: [
+                { val: playerAId, set: setPlayerAId },
+                { val: playerBId, set: setPlayerBId },
+              ] },
+              { label: "Side B", slots: [
+                { val: playerCId, set: setPlayerCId },
+                { val: playerDId, set: setPlayerDId },
+              ] },
+            ] as const).map((side) => (
+              <div key={side.label} className="rounded-lg border border-border/60 bg-card p-2.5 space-y-2">
+                <div className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+                  {side.label}
+                </div>
+                {side.slots.map((slot, i) => (
+                  <Select key={i} value={slot.val} onValueChange={slot.set}>
+                    <SelectTrigger className="h-9"><SelectValue placeholder="Add player" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Empty</SelectItem>
+                      {playerPool.map((p) => (
+                        <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ))}
+              </div>
+            ))}
           </div>
+          <p className="text-[11px] text-muted-foreground">
+            One player per side for singles, two for doubles. Only active
+            league members appear.
+          </p>
 
           {/* Broadcast-style scoreboard score entry */}
           <div className="rounded-xl border border-border/60 bg-gradient-to-br from-muted/50 to-muted/10 p-3">
             <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-3">
               <div className="text-center min-w-0">
                 <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground truncate mb-1">
-                  {teamAName}
+                  {sideAName}
                 </div>
                 <Input type="number" min="0" inputMode="numeric" value={teamAScore}
                   onChange={(e) => setTeamAScore(e.target.value)} placeholder="—"
@@ -488,7 +554,7 @@ function MatchEditor({
               <div className="text-2xl font-black text-muted-foreground pb-4">–</div>
               <div className="text-center min-w-0">
                 <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground truncate mb-1">
-                  {teamBName}
+                  {sideBName}
                 </div>
                 <Input type="number" min="0" inputMode="numeric" value={teamBScore}
                   onChange={(e) => setTeamBScore(e.target.value)} placeholder="—"
@@ -515,39 +581,6 @@ function MatchEditor({
             </SelectContent>
           </Select>
         </FormSection>
-
-        {/* Individual player slots (optional) */}
-        <details className="rounded-xl border border-border/60 bg-muted/20 p-3">
-          <summary className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground cursor-pointer">
-            Individual player slots (optional)
-          </summary>
-          <div className="mt-3 grid grid-cols-2 gap-3">
-            {[
-              { label: "Player A", val: playerAId, set: setPlayerAId },
-              { label: "Player B", val: playerBId, set: setPlayerBId },
-              { label: "Player C", val: playerCId, set: setPlayerCId },
-              { label: "Player D", val: playerDId, set: setPlayerDId },
-            ].map((slot) => (
-              <div key={slot.label} className="space-y-1.5">
-                <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                  {slot.label}
-                </Label>
-                <Select value={slot.val} onValueChange={slot.set}>
-                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Unset</SelectItem>
-                    {playerPool.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            ))}
-          </div>
-          <p className="text-[11px] text-muted-foreground mt-2">
-            Only active league members appear here.
-          </p>
-        </details>
 
         {/* Admin escape hatches — kept out of the footer so an accidental
             tap can't nuke a match. */}
