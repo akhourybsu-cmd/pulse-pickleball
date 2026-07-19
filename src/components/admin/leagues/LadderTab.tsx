@@ -5,8 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Layers, Trophy, ArrowUp, ArrowDown, Minus, Info, Play, Pause, CheckCircle2,
-  ChevronUp, ChevronDown,
+  ChevronUp, ChevronDown, RotateCcw,
 } from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import type { League, LeagueSeason } from "@/lib/leagues/types";
 import { gamesPerPlayer } from "@/lib/leagues/ladder";
 import {
@@ -422,7 +426,7 @@ function LadderManage({
       )}
 
       {/* Why each player finished where — last batch breakdown */}
-      <LastBatchResults ladder={ladder} />
+      <LastBatchResults ladder={ladder} onChanged={onChanged} />
 
       {/* Current ladder + last movement */}
       <CurrentLadder ladder={ladder} />
@@ -564,8 +568,18 @@ function CurrentLadder({ ladder }: { ladder: ReturnType<typeof useLadder> }) {
   );
 }
 
-function LastBatchResults({ ladder }: { ladder: ReturnType<typeof useLadder> }) {
+function LastBatchResults({
+  ladder, onChanged,
+}: {
+  ladder: ReturnType<typeof useLadder>;
+  onChanged: () => void;
+}) {
   const { lastFinalBatch, lastFinalGroups, lastMovements, nameOf } = ladder;
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [forceOpen, setForceOpen] = useState(false);
+  const [forceCount, setForceCount] = useState(0);
+  const [busy, setBusy] = useState(false);
+
   const byGroup = useMemo(() => {
     const m = new Map<string, LadderMovementRow[]>();
     lastMovements.forEach((mv) => {
@@ -576,13 +590,101 @@ function LastBatchResults({ ladder }: { ladder: ReturnType<typeof useLadder> }) 
     return m;
   }, [lastMovements]);
 
+  const reopen = async (force: boolean) => {
+    if (!lastFinalBatch) return;
+    setBusy(true);
+    const { data, error } = await (supabase.rpc as unknown as (
+      fn: string, args: Record<string, unknown>,
+    ) => Promise<{ data: unknown; error: { message: string; hint?: string } | null }>)(
+      "ladder_reopen_batch",
+      { p_batch_id: lastFinalBatch.id, p_force: force },
+    );
+    setBusy(false);
+    if (error) {
+      if (error.hint === "downstream_has_results") {
+        // Extract the count from the message for the confirm copy.
+        const n = Number(error.message.match(/\d+/)?.[0] ?? 0);
+        setForceCount(n);
+        setConfirmOpen(false);
+        setForceOpen(true);
+        return;
+      }
+      toast.error(error.message);
+      return;
+    }
+    const removed = (data as { downstream_batches_removed?: number })?.downstream_batches_removed ?? 0;
+    toast.success(
+      removed > 0
+        ? `Batch reopened — ${removed} downstream batch(es) cleared for regeneration`
+        : "Batch reopened for correction",
+    );
+    setConfirmOpen(false);
+    setForceOpen(false);
+    onChanged();
+  };
+
   if (!lastFinalBatch || lastMovements.length === 0) return null;
 
   return (
     <div className="rounded-xl border border-border/70 bg-card p-4 space-y-3">
-      <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-        Last batch results · Week {lastFinalBatch.week_number} · Batch {lastFinalBatch.batch_number}
-      </h3>
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+          Last batch results · Week {lastFinalBatch.week_number} · Batch {lastFinalBatch.batch_number}
+        </h3>
+        <Button
+          size="sm" variant="ghost"
+          className="h-7 text-muted-foreground hover:text-foreground"
+          onClick={() => setConfirmOpen(true)}
+        >
+          <RotateCcw className="w-3.5 h-3.5 mr-1.5" /> Reopen
+        </Button>
+      </div>
+
+      {/* Confirm: reopen the last finalized batch */}
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reopen this batch to fix a score?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This un-finalizes Week {lastFinalBatch.week_number}, Batch{" "}
+              {lastFinalBatch.batch_number} so you can correct a score, and clears
+              any batches generated after it (they were based on the old ladder).
+              You'll re-finalize to regenerate them.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={(e) => { e.preventDefault(); reopen(false); }} disabled={busy}>
+              {busy ? "Reopening…" : "Reopen batch"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Force confirm: downstream already has played games */}
+      <AlertDialog open={forceOpen} onOpenChange={setForceOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Discard {forceCount} already-played game(s)?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Batches generated after this one already have {forceCount} game(s)
+              with entered scores. Reopening will permanently discard those
+              results so the schedule can be regenerated from the correction.
+              This can't be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={busy}>Keep them</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); reopen(true); }}
+              disabled={busy}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {busy ? "Reopening…" : `Discard & reopen`}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       {lastFinalGroups.map((g) => {
         const rows = (byGroup.get(g.id) ?? [])
           .slice().sort((a, b) => a.finish_position - b.finish_position);
