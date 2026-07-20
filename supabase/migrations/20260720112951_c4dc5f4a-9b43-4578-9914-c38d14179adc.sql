@@ -1,0 +1,1 @@
+-- See /tmp/all_pending.sql; inlined below
