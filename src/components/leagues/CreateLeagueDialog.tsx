@@ -14,9 +14,51 @@ import {
   Trophy, Sparkles, Lock, ExternalLink, ArrowLeft, ArrowRight, Check,
 } from "lucide-react";
 import type { LeagueType } from "@/lib/leagues/types";
-import { LEAGUE_TYPES, LEAGUE_TYPE_META } from "@/lib/leagues/typeMeta";
+import { LEAGUE_TYPE_META } from "@/lib/leagues/typeMeta";
 import { useLeagueCreationCapacity } from "@/hooks/useLeagueCreationCapacity";
 import { cn } from "@/lib/utils";
+
+/**
+ * Curated create options, in display order. Ladder is the marquee setup;
+ * "Basic League" is a plain manual league (organizer runs the schedule).
+ * More formats (singles, team, flex) exist as league types but aren't
+ * surfaced here yet — we're focusing the create flow on the ladder.
+ */
+type CreateKey = "ladder" | "basic";
+interface CreateOption {
+  key: CreateKey;
+  /** Underlying league_type persisted for this option. */
+  leagueType: LeagueType;
+  title: string;
+  tagline: string;
+  description: string;
+  example: string;
+  marquee?: boolean;
+}
+const CREATE_OPTIONS: CreateOption[] = [
+  {
+    key: "ladder",
+    leagueType: "ladder",
+    marquee: true,
+    title: "Individual Doubles Ladder",
+    tagline: "Automated · rotating partners",
+    description:
+      "Players are ranked individually and split into groups of four each week. "
+      + "Everyone rotates partners across three games, then the ladder automatically "
+      + "moves winners up a court and losers down.",
+    example: "Best for a weekly club ladder night",
+  },
+  {
+    key: "basic",
+    leagueType: "doubles",
+    title: "Basic League",
+    tagline: "Manual · you run it",
+    description:
+      "A simple league with no automation. You set up the seasons, sessions, and "
+      + "matchups and enter scores yourself — full manual control.",
+    example: "Best for casual round-robin or social nights",
+  },
+];
 
 /**
  * Two-step self-serve league creation.
@@ -40,7 +82,9 @@ export function CreateLeagueDialog({
   const navigate = useNavigate();
   const { capacity } = useLeagueCreationCapacity();
   const [step, setStep] = useState<1 | 2>(1);
-  const [leagueType, setLeagueType] = useState<LeagueType>("doubles");
+  const [selectedKey, setSelectedKey] = useState<CreateKey>("ladder");
+  const selected = CREATE_OPTIONS.find((o) => o.key === selectedKey) ?? CREATE_OPTIONS[0];
+  const leagueType = selected.leagueType;
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [location, setLocation] = useState("");
@@ -62,7 +106,7 @@ export function CreateLeagueDialog({
 
   const reset = () => {
     setStep(1);
-    setLeagueType("doubles");
+    setSelectedKey("ladder");
     setName(""); setDescription(""); setLocation("");
     setSaving(false);
     setQuotaExceeded(false);
@@ -147,20 +191,23 @@ export function CreateLeagueDialog({
                     transition={{ duration: 0.22, ease: "easeOut" }}
                     className="space-y-2.5"
                   >
-                    {LEAGUE_TYPES.map((t, i) => (
+                    {CREATE_OPTIONS.map((opt, i) => (
                       <motion.div
-                        key={t}
+                        key={opt.key}
                         initial={{ opacity: 0, y: 8 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.2, delay: i * 0.04 }}
+                        transition={{ duration: 0.2, delay: i * 0.05 }}
                       >
-                        <LeagueTypeCard
-                          type={t}
-                          selected={leagueType === t}
-                          onSelect={() => setLeagueType(t)}
+                        <CreateOptionCard
+                          option={opt}
+                          selected={selectedKey === opt.key}
+                          onSelect={() => setSelectedKey(opt.key)}
                         />
                       </motion.div>
                     ))}
+                    <p className="text-[11px] text-center text-muted-foreground pt-1">
+                      More formats (singles, team, flex) coming soon.
+                    </p>
                   </motion.div>
                 ) : (
                   <motion.div
@@ -191,7 +238,10 @@ export function CreateLeagueDialog({
                           Format
                         </div>
                         <div className="text-sm font-semibold truncate">
-                          {selectedMeta.label} · {selectedMeta.tagline}
+                          {selected.title}
+                        </div>
+                        <div className="text-[11px] text-muted-foreground truncate">
+                          {selected.tagline}
                         </div>
                       </div>
                       <span className="text-[11px] text-muted-foreground group-hover:text-foreground">
@@ -206,7 +256,7 @@ export function CreateLeagueDialog({
                       <Input
                         id="new-league-name" value={name}
                         onChange={(e) => setName(e.target.value)}
-                        placeholder={`Fall ${selectedMeta.label} 2026`}
+                        placeholder={selectedKey === "ladder" ? "e.g. Tuesday Night Ladder" : "e.g. Fall Doubles League"}
                         className="h-11" autoFocus
                       />
                     </div>
@@ -279,25 +329,25 @@ export function CreateLeagueDialog({
 }
 
 /**
- * Tappable, keyboard-accessible card for one league type. Selected
- * state gets a primary ring + subtle scale bump. Icon chip uses the
- * type's tonal signature.
+ * Tappable, keyboard-accessible card for one create option. The marquee
+ * option (Ladder) gets a larger icon + a "Featured" badge. Icon chip +
+ * accent rail use the underlying league type's tonal signature.
  */
-function LeagueTypeCard({
-  type, selected, onSelect,
+function CreateOptionCard({
+  option, selected, onSelect,
 }: {
-  type: LeagueType;
+  option: CreateOption;
   selected: boolean;
   onSelect: () => void;
 }) {
-  const meta = LEAGUE_TYPE_META[type];
+  const meta = LEAGUE_TYPE_META[option.leagueType];
   const Icon = meta.icon;
   return (
     <button
       type="button"
       onClick={onSelect}
       className={cn(
-        "w-full text-left rounded-xl border p-3 flex gap-3 items-start relative overflow-hidden",
+        "w-full text-left rounded-xl border p-3.5 flex gap-3 items-start relative overflow-hidden",
         "transition-all active:scale-[0.995]",
         selected
           ? "border-primary/50 bg-primary/[0.04] ring-2 ring-primary/30 shadow-[0_2px_12px_-4px_hsl(var(--primary)/0.35)]"
@@ -305,27 +355,33 @@ function LeagueTypeCard({
       )}
       aria-pressed={selected}
     >
-      {/* Type-accent side rail (only when selected — keeps unselected
-          cards visually calm). */}
       {selected && (
         <div className={cn("absolute top-0 bottom-0 left-0 w-1", meta.stripe)} aria-hidden />
       )}
       <div className={cn(
-        "h-11 w-11 rounded-xl flex items-center justify-center shrink-0",
+        "rounded-xl flex items-center justify-center shrink-0",
+        option.marquee ? "h-12 w-12" : "h-11 w-11",
         meta.chip,
       )}>
-        <Icon className="w-5 h-5" />
+        <Icon className={option.marquee ? "w-6 h-6" : "w-5 h-5"} />
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm font-bold">{meta.label}</span>
-          <span className="text-[11px] text-muted-foreground">{meta.tagline}</span>
+          <span className={cn("font-bold", option.marquee ? "text-base" : "text-sm")}>
+            {option.title}
+          </span>
+          {option.marquee && (
+            <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-primary/15 text-primary ring-1 ring-primary/25">
+              Featured
+            </span>
+          )}
+          <span className="text-[11px] text-muted-foreground">{option.tagline}</span>
         </div>
         <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-          {meta.description}
+          {option.description}
         </p>
         <p className="text-[11px] text-muted-foreground/70 mt-1 italic">
-          {meta.example}
+          {option.example}
         </p>
       </div>
       {selected && (
