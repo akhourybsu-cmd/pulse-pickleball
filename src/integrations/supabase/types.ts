@@ -2352,6 +2352,344 @@ export type Database = {
           },
         ]
       }
+      ladder_batch_groups: {
+        Row: {
+          batch_id: string
+          court_number: number | null
+          created_at: string
+          group_index: number
+          id: string
+          player_ids: string[]
+          wave: number
+        }
+        Insert: {
+          batch_id: string
+          court_number?: number | null
+          created_at?: string
+          group_index: number
+          id?: string
+          player_ids: string[]
+          wave?: number
+        }
+        Update: {
+          batch_id?: string
+          court_number?: number | null
+          created_at?: string
+          group_index?: number
+          id?: string
+          player_ids?: string[]
+          wave?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ladder_batch_groups_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "ladder_batches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ladder_batches: {
+        Row: {
+          batch_number: number
+          court_waves: number
+          created_at: string
+          finalized_at: string | null
+          id: string
+          idempotency_key: string
+          league_id: string
+          result_snapshot_id: string | null
+          schedule_version: number
+          season_id: string
+          session_id: string | null
+          start_snapshot_id: string
+          status: string
+          updated_at: string
+          week_number: number
+        }
+        Insert: {
+          batch_number: number
+          court_waves?: number
+          created_at?: string
+          finalized_at?: string | null
+          id?: string
+          idempotency_key: string
+          league_id: string
+          result_snapshot_id?: string | null
+          schedule_version?: number
+          season_id: string
+          session_id?: string | null
+          start_snapshot_id: string
+          status?: string
+          updated_at?: string
+          week_number: number
+        }
+        Update: {
+          batch_number?: number
+          court_waves?: number
+          created_at?: string
+          finalized_at?: string | null
+          id?: string
+          idempotency_key?: string
+          league_id?: string
+          result_snapshot_id?: string | null
+          schedule_version?: number
+          season_id?: string
+          session_id?: string | null
+          start_snapshot_id?: string
+          status?: string
+          updated_at?: string
+          week_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ladder_batches_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ladder_batches_result_snapshot_id_fkey"
+            columns: ["result_snapshot_id"]
+            isOneToOne: false
+            referencedRelation: "ladder_snapshots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ladder_batches_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "league_seasons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ladder_batches_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "league_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ladder_batches_start_snapshot_id_fkey"
+            columns: ["start_snapshot_id"]
+            isOneToOne: false
+            referencedRelation: "ladder_snapshots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ladder_movements: {
+        Row: {
+          batch_id: string
+          capped: string | null
+          created_at: string
+          direction: string
+          finish_position: number
+          group_id: string
+          id: string
+          losses: number
+          player_id: string
+          points_against: number
+          points_for: number
+          start_position: number
+          wins: number
+        }
+        Insert: {
+          batch_id: string
+          capped?: string | null
+          created_at?: string
+          direction: string
+          finish_position: number
+          group_id: string
+          id?: string
+          losses?: number
+          player_id: string
+          points_against?: number
+          points_for?: number
+          start_position: number
+          wins?: number
+        }
+        Update: {
+          batch_id?: string
+          capped?: string | null
+          created_at?: string
+          direction?: string
+          finish_position?: number
+          group_id?: string
+          id?: string
+          losses?: number
+          player_id?: string
+          points_against?: number
+          points_for?: number
+          start_position?: number
+          wins?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ladder_movements_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "ladder_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ladder_movements_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "ladder_batch_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ladder_movements_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ladder_movements_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ladder_settings: {
+        Row: {
+          batches_per_week: number
+          court_count: number
+          created_at: string
+          id: string
+          initial_order_source: string
+          league_id: string
+          movement_rule: string
+          scoring_format: string
+          season_id: string
+          status: string
+          tiebreakers: Json
+          total_weeks: number | null
+          updated_at: string
+        }
+        Insert: {
+          batches_per_week?: number
+          court_count?: number
+          created_at?: string
+          id?: string
+          initial_order_source?: string
+          league_id: string
+          movement_rule?: string
+          scoring_format?: string
+          season_id: string
+          status?: string
+          tiebreakers?: Json
+          total_weeks?: number | null
+          updated_at?: string
+        }
+        Update: {
+          batches_per_week?: number
+          court_count?: number
+          created_at?: string
+          id?: string
+          initial_order_source?: string
+          league_id?: string
+          movement_rule?: string
+          scoring_format?: string
+          season_id?: string
+          status?: string
+          tiebreakers?: Json
+          total_weeks?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ladder_settings_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ladder_settings_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: true
+            referencedRelation: "league_seasons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ladder_snapshots: {
+        Row: {
+          batch_number: number
+          created_at: string
+          finalized_at: string | null
+          id: string
+          idempotency_key: string
+          kind: string
+          league_id: string
+          player_ids: string[]
+          reason: string | null
+          schedule_version: number
+          season_id: string
+          source_snapshot_id: string | null
+          week_number: number
+        }
+        Insert: {
+          batch_number: number
+          created_at?: string
+          finalized_at?: string | null
+          id?: string
+          idempotency_key: string
+          kind?: string
+          league_id: string
+          player_ids: string[]
+          reason?: string | null
+          schedule_version?: number
+          season_id: string
+          source_snapshot_id?: string | null
+          week_number: number
+        }
+        Update: {
+          batch_number?: number
+          created_at?: string
+          finalized_at?: string | null
+          id?: string
+          idempotency_key?: string
+          kind?: string
+          league_id?: string
+          player_ids?: string[]
+          reason?: string | null
+          schedule_version?: number
+          season_id?: string
+          source_snapshot_id?: string | null
+          week_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ladder_snapshots_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ladder_snapshots_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "league_seasons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ladder_snapshots_source_snapshot_id_fkey"
+            columns: ["source_snapshot_id"]
+            isOneToOne: false
+            referencedRelation: "ladder_snapshots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       league_audit_log: {
         Row: {
           action: string
@@ -2482,6 +2820,8 @@ export type Database = {
           division_id: string | null
           forfeit_winner_team_id: string | null
           id: string
+          ladder_batch_group_id: string | null
+          ladder_game_number: number | null
           league_id: string
           linked_match_id: string | null
           player_a_id: string | null
@@ -2509,6 +2849,8 @@ export type Database = {
           division_id?: string | null
           forfeit_winner_team_id?: string | null
           id?: string
+          ladder_batch_group_id?: string | null
+          ladder_game_number?: number | null
           league_id: string
           linked_match_id?: string | null
           player_a_id?: string | null
@@ -2536,6 +2878,8 @@ export type Database = {
           division_id?: string | null
           forfeit_winner_team_id?: string | null
           id?: string
+          ladder_batch_group_id?: string | null
+          ladder_game_number?: number | null
           league_id?: string
           linked_match_id?: string | null
           player_a_id?: string | null
@@ -2569,6 +2913,13 @@ export type Database = {
             columns: ["forfeit_winner_team_id"]
             isOneToOne: false
             referencedRelation: "league_teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_matches_ladder_batch_group_id_fkey"
+            columns: ["ladder_batch_group_id"]
+            isOneToOne: false
+            referencedRelation: "ladder_batch_groups"
             referencedColumns: ["id"]
           },
           {
@@ -8220,6 +8571,18 @@ export type Database = {
           message: string
           registration_status: string
         }[]
+      }
+      ladder_finalize_batch: {
+        Args: { p_batch_id: string; p_plan: Json }
+        Returns: Json
+      }
+      ladder_generate_first_batch: {
+        Args: { p_plan: Json; p_season_id: string }
+        Returns: Json
+      }
+      ladder_reopen_batch: {
+        Args: { p_batch_id: string; p_force?: boolean }
+        Returns: Json
       }
       league_match_participant_user_ids: {
         Args: { p_exclude_user?: string; p_match_id: string }
