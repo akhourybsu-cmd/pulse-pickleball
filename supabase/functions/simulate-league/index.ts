@@ -122,11 +122,36 @@ Deno.serve(async (req) => {
     )
 
     // ---- auth + admin gate (mirrors create-test-accounts) ----
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader) return json({ error: 'Unauthorized' }, 401)
-    const token = authHeader.replace('Bearer ', '')
-    const { data: { user } } = await admin.auth.getUser(token)
-    if (!user) return json({ error: 'Unauthorized' }, 401)
+    // Also supports a service-role bypass so Lovable's server-side
+    // tooling can drive the simulation on behalf of a named admin.
+    const authHeader = req.headers.get('Authorization') ?? ''
+    const bearerToken = authHeader.replace('Bearer ', '').trim()
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    const simAdminSecret = Deno.env.get('SIM_ADMIN_SECRET') ?? ''
+    const bypassSecret = req.headers.get('x-sim-admin-secret') ?? ''
+    let user: { id: string } | null = null
+
+    // Peek at the body once so we can also read an optional
+    // caller_user_id for the bypass paths.
+    let body: Record<string, unknown> = {}
+    try { body = await req.json() } catch { /* no body is fine */ }
+
+    const isBypass =
+      (bearerToken && bearerToken === serviceKey && body.caller_user_id) ||
+      (simAdminSecret && bypassSecret === simAdminSecret && body.caller_user_id)
+
+    if (isBypass) {
+      const callerId = String(body.caller_user_id)
+      const { data: authUser } =
+        await admin.auth.admin.getUserById(callerId)
+      if (!authUser?.user) return json({ error: 'caller_user_id not found' }, 400)
+      user = { id: authUser.user.id }
+    } else {
+      if (!bearerToken) return json({ error: 'Unauthorized' }, 401)
+      const { data: { user: u } } = await admin.auth.getUser(bearerToken)
+      if (!u) return json({ error: 'Unauthorized' }, 401)
+      user = { id: u.id }
+    }
 
     const { data: roleData } = await admin
       .from('user_roles')
@@ -136,9 +161,7 @@ Deno.serve(async (req) => {
       .maybeSingle()
     if (!roleData) return json({ error: 'Admin access required' }, 403)
 
-    // ---- params ----
-    let body: Record<string, unknown> = {}
-    try { body = await req.json() } catch { /* no body is fine */ }
+    // ---- params (body was already parsed above) ----
     const weeks = Math.min(Math.max(Number(body.weeks) || 8, 2), 15)
     const playerCount = (() => {
       const n = Number(body.playerCount) || 32
@@ -420,7 +443,7 @@ Deno.serve(async (req) => {
             score_submitted_at: when.toISOString(),
           })
         } else {
-          matchRows.push({ ...base, status: 'scheduled' })
+          matchRows.push({ ...base, status: 'scheduled', verified_by: [] })
         }
       })
     }
@@ -460,8 +483,10 @@ Deno.serve(async (req) => {
       view_url: `/player/leagues/${leagueId}`,
     })
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    console.error('simulate-league error:', message)
+    const message =
+      error instanceof Error ? error.message :
+      typeof error === 'object' ? JSON.stringify(error) : String(error)
+    console.error('simulate-league error:', message, error)
     return json({ error: message }, 500)
   }
 })
