@@ -2559,6 +2559,7 @@ export type Database = {
       }
       ladder_settings: {
         Row: {
+          auto_advance: boolean
           batches_per_week: number
           court_count: number
           created_at: string
@@ -2568,12 +2569,14 @@ export type Database = {
           movement_rule: string
           scoring_format: string
           season_id: string
+          self_report_scoring: boolean
           status: string
           tiebreakers: Json
           total_weeks: number | null
           updated_at: string
         }
         Insert: {
+          auto_advance?: boolean
           batches_per_week?: number
           court_count?: number
           created_at?: string
@@ -2583,12 +2586,14 @@ export type Database = {
           movement_rule?: string
           scoring_format?: string
           season_id: string
+          self_report_scoring?: boolean
           status?: string
           tiebreakers?: Json
           total_weeks?: number | null
           updated_at?: string
         }
         Update: {
+          auto_advance?: boolean
           batches_per_week?: number
           court_count?: number
           created_at?: string
@@ -2598,6 +2603,7 @@ export type Database = {
           movement_rule?: string
           scoring_format?: string
           season_id?: string
+          self_report_scoring?: boolean
           status?: string
           tiebreakers?: Json
           total_weeks?: number | null
