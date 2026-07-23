@@ -8,7 +8,7 @@ import type { League } from "@/lib/leagues/types";
 import { LEAGUE_TYPE_META } from "@/lib/leagues/typeMeta";
 import {
   CalendarDays, Users, UsersRound, CalendarClock,
-  Trophy, MapPin,
+  Trophy, MapPin, UserCircle2,
 } from "lucide-react";
 import { OverviewTab } from "@/components/admin/leagues/OverviewTab";
 import { SeasonsTab } from "@/components/admin/leagues/SeasonsTab";
