@@ -6,9 +6,11 @@ import {
 } from "@/components/ui/select";
 import { Trophy } from "lucide-react";
 import type {
-  LeagueSeason, LeagueDivision, LeagueMatch,
+  LeagueSeason, LeagueDivision, LeagueMatch, LeagueTeam,
 } from "@/lib/leagues/types";
-import { computePlayerStandings } from "@/lib/leagues/standings";
+import {
+  computePlayerStandings, computeTeamStandings,
+} from "@/lib/leagues/standings";
 import { resolvePlayerName } from "@/lib/matchDisplay";
 import { StandingsTable } from "@/components/leagues/StandingsTable";
 import { EmptyState, TabSkeleton, LeagueTabProps, SeasonSelect } from "./_shared";
