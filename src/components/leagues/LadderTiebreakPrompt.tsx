@@ -166,25 +166,30 @@ function TieCard({
       <div className="px-3 py-2 border-b border-border/50 text-xs font-bold">
         Court {tie.court_number ?? "—"}
       </div>
+      <MovementLegend boundaries={tie.boundaries} />
       <ol className="divide-y divide-border/40">
-        {order.map((pid, i) => (
-          <li key={pid} className="flex items-center gap-2 px-3 py-2">
-            <span className="text-xs font-black tabular-nums w-5 text-center text-muted-foreground">
-              {i + 1}
-            </span>
-            <span className="text-sm font-medium flex-1 truncate">{nameOf(pid)}</span>
-            <div className="flex items-center">
-              <Button variant="ghost" size="sm" className="h-7 w-7 p-0"
-                disabled={i === 0 || saving} onClick={() => move(i, -1)} aria-label="Move up">
-                <ChevronUp className="w-4 h-4" />
-              </Button>
-              <Button variant="ghost" size="sm" className="h-7 w-7 p-0"
-                disabled={i === order.length - 1 || saving} onClick={() => move(i, 1)} aria-label="Move down">
-                <ChevronDown className="w-4 h-4" />
-              </Button>
-            </div>
-          </li>
-        ))}
+        {order.map((pid, i) => {
+          const kind = movementFor(i, order.length, tie.boundaries);
+          return (
+            <li key={pid} className="flex items-center gap-2 px-3 py-2">
+              <span className="text-xs font-black tabular-nums w-5 text-center text-muted-foreground">
+                {i + 1}
+              </span>
+              <span className="text-sm font-medium flex-1 truncate">{nameOf(pid)}</span>
+              <MovementBadge kind={kind} />
+              <div className="flex items-center">
+                <Button variant="ghost" size="sm" className="h-7 w-7 p-0"
+                  disabled={i === 0 || saving} onClick={() => move(i, -1)} aria-label="Move up">
+                  <ChevronUp className="w-4 h-4" />
+                </Button>
+                <Button variant="ghost" size="sm" className="h-7 w-7 p-0"
+                  disabled={i === order.length - 1 || saving} onClick={() => move(i, 1)} aria-label="Move down">
+                  <ChevronDown className="w-4 h-4" />
+                </Button>
+              </div>
+            </li>
+          );
+        })}
       </ol>
       <div className="p-3">
         <Button onClick={submit} disabled={saving} className="w-full h-10 font-bold uppercase tracking-wide">
