@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import {
   Layers, Trophy, ArrowUp, ArrowDown, Minus, Info, Play, Pause, CheckCircle2,
-  ChevronUp, ChevronDown, RotateCcw, Zap,
+  ChevronUp, ChevronDown, RotateCcw, Zap, Swords,
 } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -331,6 +331,7 @@ function LadderManage({
   const [generating, setGenerating] = useState(false);
   const [pauseBusy, setPauseBusy] = useState(false);
   const [ties, setTies] = useState<TieInfo[] | null>(null);
+  const [pendingTies, setPendingTies] = useState<TieInfo[]>([]);
   const paused = settings?.status === "paused";
 
   const togglePause = async () => {
@@ -375,16 +376,83 @@ function LadderManage({
     // A tie that decides a move needs an organizer decision — open the prompt.
     if (resp?.error === "tiebreak_required" && resp.ties?.length) {
       setTies(resp.ties);
+      // Persist pending tiebreaks so the player-side prompt can surface them
+      // on tied courts. Idempotent — never clobbers rows players resolved.
+      if (settings) {
+        const rows = resp.ties
+          .map((t) => {
+            const g = groups[t.group_index];
+            if (!g) return null;
+            return {
+              league_id: league.id,
+              season_id: settings.season_id,
+              batch_id: activeBatch.id,
+              group_id: g.id,
+              court_number: t.court_number,
+              tied_player_ids: t.player_ids,
+              boundaries: t.boundaries,
+            };
+          })
+          .filter((r): r is NonNullable<typeof r> => r !== null);
+        if (rows.length > 0) {
+          await supabase.from("ladder_tiebreaks" as never).upsert(
+            rows as never,
+            { onConflict: "batch_id,group_id", ignoreDuplicates: true } as never,
+          );
+        }
+      }
+      setPendingTies(resp.ties);
       return;
     }
     if (error || resp?.error) {
       toast.error(resp?.message ?? error?.message ?? "Processing failed");
       return;
     }
+    // Success — mark any lingering unresolved tiebreak rows for this batch
+    // as resolved so both organizer and player prompts stand down.
+    await supabase.from("ladder_tiebreaks" as never)
+      .update({ resolved_at: new Date().toISOString() } as never)
+      .eq("batch_id", activeBatch.id).is("resolved_at", null);
     setTies(null);
+    setPendingTies([]);
     toast.success("Results processed — ladder updated. Generate the next stage when ready.");
     onChanged();
   };
+
+  // Load persisted unresolved tiebreaks for the active batch so the banner
+  // survives page reloads and shows up when auto-advance flagged the ties.
+  const activeBatchId = activeBatch?.id;
+  useEffect(() => {
+    if (!activeBatchId) { setPendingTies([]); return; }
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("ladder_tiebreaks" as never)
+        .select("group_id, court_number, tied_player_ids, boundaries, resolved_at")
+        .eq("batch_id", activeBatchId)
+        .is("resolved_at", null);
+      if (cancelled) return;
+      const rows = (data ?? []) as unknown as Array<{
+        group_id: string; court_number: number | null;
+        tied_player_ids: string[]; boundaries: ("promotion" | "relegation")[];
+      }>;
+      const infos: TieInfo[] = rows
+        .map((r) => {
+          const gi = groups.findIndex((g) => g.id === r.group_id);
+          if (gi < 0) return null;
+          return {
+            group_index: gi,
+            court_number: r.court_number ?? gi + 1,
+            boundaries: r.boundaries,
+            player_ids: r.tied_player_ids,
+          } satisfies TieInfo;
+        })
+        .filter((x): x is TieInfo => x !== null);
+      setPendingTies(infos);
+    })();
+    return () => { cancelled = true; };
+  }, [activeBatchId, groups]);
+
 
   const batchesPerWeek = settings?.batches_per_week ?? 1;
   const totalWeeks = settings?.total_weeks ?? null;
@@ -515,6 +583,27 @@ function LadderManage({
           <span>Progression is paused — processing and generation are disabled until you resume.</span>
         </div>
       )}
+
+      {pendingTies.length > 0 && !ties && (
+        <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-4 flex items-start gap-3">
+          <Swords className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-bold">Tiebreaker needed</div>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {pendingTies.length === 1 ? "One court" : `${pendingTies.length} courts`}{" "}
+              ended level on record and points — Courts{" "}
+              {pendingTies.map((t) => t.court_number).join(", ")}. Set the
+              finishing order to move the ladder on. Players on those courts
+              can also record it from their league page.
+            </p>
+          </div>
+          <Button size="sm" onClick={() => setTies(pendingTies)}
+            className="font-bold uppercase tracking-wide shrink-0">
+            Resolve
+          </Button>
+        </div>
+      )}
+
 
       {activeBatch && (
         <>
