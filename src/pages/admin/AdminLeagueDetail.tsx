@@ -318,12 +318,12 @@ function HeroStat({
   value: number;
 }) {
   return (
-    <div className="flex flex-col items-start px-4 py-4 first:pl-0">
+    <div className="flex flex-col items-start px-4 py-3 first:pl-0">
       <div className="flex items-center gap-1.5 text-[color:var(--lg-gold)]/85">
         {icon}
         <span className="text-[10px] uppercase tracking-[0.16em] font-bold">{label}</span>
       </div>
-      <div className="lg-num text-4xl sm:text-5xl mt-1 leading-none text-[color:var(--lg-text)]">
+      <div className="lg-num text-3xl sm:text-4xl mt-1 leading-none text-[color:var(--lg-text)]">
         {value}
       </div>
     </div>
