@@ -451,6 +451,8 @@ function MatchRow({
             teamsById={teamsById}
             currentUserId={currentUserId}
             isParticipant
+            sideALabel={aName}
+            sideBLabel={bName}
             onChanged={onChanged}
           />
         </div>

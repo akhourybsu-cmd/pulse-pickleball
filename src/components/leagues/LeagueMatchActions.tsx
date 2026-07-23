@@ -34,12 +34,17 @@ import type { LeagueMatch, LeagueTeam } from "@/lib/leagues/types";
  */
 export function LeagueMatchActions({
   match, teamsById, currentUserId, isParticipant, onChanged,
+  sideALabel, sideBLabel,
 }: {
   match: LeagueMatch;
   teamsById: Record<string, LeagueTeam>;
   currentUserId: string;
   isParticipant: boolean;
   onChanged: () => void | Promise<void>;
+  /** Individual-league side labels (e.g. ladder pairs). Fall back to team
+   *  names when not supplied. */
+  sideALabel?: string;
+  sideBLabel?: string;
 }) {
   const [scoreOpen, setScoreOpen] = useState(false);
   const [disputeOpen, setDisputeOpen] = useState(false);
@@ -176,6 +181,8 @@ export function LeagueMatchActions({
         onOpenChange={setScoreOpen}
         match={match}
         teamsById={teamsById}
+        sideALabel={sideALabel}
+        sideBLabel={sideBLabel}
         onSubmitted={onChanged}
       />
       <DisputeDialog
@@ -200,12 +207,14 @@ export function LeagueMatchActions({
 /* ---------- inner dialogs ---------- */
 
 function SubmitScoreDialog({
-  open, onOpenChange, match, teamsById, onSubmitted,
+  open, onOpenChange, match, teamsById, sideALabel, sideBLabel, onSubmitted,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   match: LeagueMatch;
   teamsById: Record<string, LeagueTeam>;
+  sideALabel?: string;
+  sideBLabel?: string;
   onSubmitted: () => void | Promise<void>;
 }) {
   const [aScore, setAScore] = useState<string>(
@@ -216,10 +225,11 @@ function SubmitScoreDialog({
   );
   const [saving, setSaving] = useState(false);
 
+  // Prefer explicit individual labels (ladder pairs); fall back to team names.
   const teamAName =
-    (match.team_a_id && teamsById[match.team_a_id]?.name) ?? "Team A";
+    sideALabel ?? (match.team_a_id && teamsById[match.team_a_id]?.name) ?? "Side A";
   const teamBName =
-    (match.team_b_id && teamsById[match.team_b_id]?.name) ?? "Team B";
+    sideBLabel ?? (match.team_b_id && teamsById[match.team_b_id]?.name) ?? "Side B";
 
   const parseScore = (s: string): number | null => {
     const trimmed = s.trim();
