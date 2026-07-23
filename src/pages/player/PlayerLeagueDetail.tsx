@@ -11,7 +11,7 @@ import { useLeagueDetailForPlayer } from "@/hooks/useLeagueDetailForPlayer";
 import { LEAGUE_TYPE_META } from "@/lib/leagues/typeMeta";
 import { sideName } from "@/lib/leagues/matchSides";
 import { resolvePlayerName } from "@/lib/matchDisplay";
-import { computePlayerStandings } from "@/lib/leagues/standings";
+import { computePlayerStandings, computeTeamStandings } from "@/lib/leagues/standings";
 import { StandingsTable } from "@/components/leagues/StandingsTable";
 import { LeagueMatchActions } from "@/components/leagues/LeagueMatchActions";
 import { cn } from "@/lib/utils";
@@ -60,20 +60,32 @@ export default function PlayerLeagueDetail() {
   const detail = useLeagueDetailForPlayer(leagueId);
   const {
     league, membership, season, division,
-    matches, allMatches, teamsById, playersById, loading,
+    matches, allMatches, allTeams, teamsById, playersById, teammates,
+    myTeams, loading,
     currentUserId, refresh,
   } = detail;
 
-  // Individual standings scoped to my current season + division.
-  const standings = useMemo(
-    () => computePlayerStandings(
+  const isTeamMode =
+    league?.league_type === "doubles" || league?.league_type === "team";
+
+  // Standings scoped to my current season + division. Team-format
+  // leagues get team standings; individual formats get per-player.
+  const standings = useMemo(() => {
+    const opts = { seasonId: season?.id ?? undefined, divisionId: division?.id ?? undefined };
+    if (isTeamMode) {
+      return computeTeamStandings(allMatches, allTeams, opts);
+    }
+    return computePlayerStandings(
       allMatches,
       (id) => (playersById[id] ? resolvePlayerName(playersById[id]) : "Player"),
-      { seasonId: season?.id ?? undefined, divisionId: division?.id ?? undefined },
-    ),
-    [allMatches, playersById, season?.id, division?.id],
-  );
-  const myRow = standings.find((r) => r.teamId === currentUserId);
+      opts,
+    );
+  }, [allMatches, allTeams, playersById, season?.id, division?.id, isTeamMode]);
+
+  const myTeamIdSet = useMemo(() => new Set(myTeams.map((t) => t.id)), [myTeams]);
+  const myRow = isTeamMode
+    ? standings.find((r) => myTeamIdSet.has(r.teamId))
+    : standings.find((r) => r.teamId === currentUserId);
 
   if (loading) {
     return (
@@ -227,12 +239,57 @@ export default function PlayerLeagueDetail() {
           </div>
           <StandingsTable
             rows={standings}
-            nameHeader="Player"
-            highlightTeamIds={currentUserId ? new Set([currentUserId]) : undefined}
+            nameHeader={isTeamMode ? "Team" : "Player"}
+            highlightTeamIds={
+              isTeamMode
+                ? (myTeamIdSet.size ? myTeamIdSet : undefined)
+                : (currentUserId ? new Set([currentUserId]) : undefined)
+            }
             emptyMessage="No completed matches yet."
           />
         </div>
       )}
+
+      {/* Teammates — team-format leagues only */}
+      {isTeamMode && teammates.length > 0 && (
+        <div className="rounded-xl border border-border/70 bg-card p-4">
+          <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-1.5">
+            <Users className="w-3.5 h-3.5" />
+            Your team{myTeams.length === 1 ? "" : "s"}
+            {myTeams.length === 1 && (
+              <span className="text-muted-foreground/70 normal-case font-medium">
+                · {myTeams[0].name}
+              </span>
+            )}
+          </h2>
+          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {teammates.map((tm) => (
+              <li
+                key={tm.team_member_id}
+                className={cn(
+                  "flex items-center gap-2 rounded-lg border border-border/60 bg-background/50 px-3 py-2",
+                  tm.is_me && "ring-1 ring-primary/40",
+                )}
+              >
+                <div className="h-8 w-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold shrink-0">
+                  {tm.display_name.slice(0, 1).toUpperCase()}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-semibold truncate">
+                    {tm.display_name}
+                    {tm.is_me && <span className="text-muted-foreground font-normal"> · you</span>}
+                  </div>
+                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                    {tm.is_captain ? "Captain" : tm.role}
+                    {myTeams.length > 1 && ` · ${tm.team_name}`}
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
 
       {/* Upcoming matches */}
       <div className="rounded-xl border border-border/70 bg-card p-4">

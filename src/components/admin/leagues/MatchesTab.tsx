@@ -319,6 +319,8 @@ function MatchEditor({
   initial: LeagueMatch | null;
   onDone: () => Promise<void>;
 }) {
+  const isTeamMode =
+    league.league_type === "doubles" || league.league_type === "team";
   const [resolveOpen, setResolveOpen] = useState(false);
   const [forfeitOpen, setForfeitOpen] = useState(false);
   const [sessionId, setSessionId] = useState(initial?.session_id ?? sessions[0]?.id ?? "");
@@ -326,6 +328,8 @@ function MatchEditor({
   const [scheduledTime, setScheduledTime] = useState(
     initial?.scheduled_time ? toLocalInput(initial.scheduled_time) : "",
   );
+  const [teamAId, setTeamAId] = useState<string | "none">(initial?.team_a_id ?? "none");
+  const [teamBId, setTeamBId] = useState<string | "none">(initial?.team_b_id ?? "none");
   const [playerAId, setPlayerAId] = useState<string | "none">(initial?.player_a_id ?? "none");
   const [playerBId, setPlayerBId] = useState<string | "none">(initial?.player_b_id ?? "none");
   const [playerCId, setPlayerCId] = useState<string | "none">(initial?.player_c_id ?? "none");
@@ -337,6 +341,9 @@ function MatchEditor({
 
   const submit = async () => {
     if (!sessionId) { toast.error("Session required"); return; }
+    if (isTeamMode && teamAId !== "none" && teamBId !== "none" && teamAId === teamBId) {
+      toast.error("Team A and Team B must be different"); return;
+    }
     setSaving(true);
 
     const session = sessions.find((s) => s.id === sessionId);
@@ -353,8 +360,8 @@ function MatchEditor({
       session_id: sessionId,
       court_number: courtNumber ? Number(courtNumber) : null,
       scheduled_time: scheduledTime ? new Date(scheduledTime).toISOString() : null,
-      team_a_id: null,
-      team_b_id: null,
+      team_a_id: isTeamMode && teamAId !== "none" ? teamAId : null,
+      team_b_id: isTeamMode && teamBId !== "none" ? teamBId : null,
       player_a_id: playerAId === "none" ? null : playerAId,
       player_b_id: playerBId === "none" ? null : playerBId,
       player_c_id: playerCId === "none" ? null : playerCId,
@@ -405,8 +412,10 @@ function MatchEditor({
     if (profilesById[id]) return resolvePlayerName(profilesById[id]);
     return playerPool.find((p) => p.id === id)?.label ?? null;
   };
-  const sideAName = sideName(null, [nameOf(playerAId), nameOf(playerBId)], "Side A");
-  const sideBName = sideName(null, [nameOf(playerCId), nameOf(playerDId)], "Side B");
+  const teamAName = teams.find((t) => t.id === teamAId)?.name ?? null;
+  const teamBName = teams.find((t) => t.id === teamBId)?.name ?? null;
+  const sideAName = sideName(isTeamMode ? teamAName : null, [nameOf(playerAId), nameOf(playerBId)], "Side A");
+  const sideBName = sideName(isTeamMode ? teamBName : null, [nameOf(playerCId), nameOf(playerDId)], "Side B");
   const showAdminActions = mode === "edit" && initial && (
     initial.status === "disputed" || initial.status === "score_submitted"
     || initial.status === "scheduled" || initial.status === "in_progress"
@@ -451,7 +460,30 @@ function MatchEditor({
         </FormSection>
 
         <FormSection label="Matchup">
-          {/* Player line-ups — league play is individual-based */}
+          {isTeamMode && (
+            <div className="grid grid-cols-2 gap-3">
+              {([
+                { label: "Team A", val: teamAId, set: setTeamAId },
+                { label: "Team B", val: teamBId, set: setTeamBId },
+              ] as const).map((side) => (
+                <div key={side.label} className="rounded-lg border border-border/60 bg-card p-2.5 space-y-2">
+                  <div className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+                    {side.label}
+                  </div>
+                  <Select value={side.val} onValueChange={side.set}>
+                    <SelectTrigger className="h-9"><SelectValue placeholder="Pick team" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Empty</SelectItem>
+                      {teams.map((t) => (
+                        <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ))}
+            </div>
+          )}
+          {/* Player line-ups — always available for per-match roster tracking */}
           <div className="grid grid-cols-2 gap-3">
             {([
               { label: "Side A", slots: [
@@ -482,9 +514,11 @@ function MatchEditor({
             ))}
           </div>
           <p className="text-[11px] text-muted-foreground">
-            One player per side for singles, two for doubles. Only active
-            league members appear.
+            {isTeamMode
+              ? "Pick the two teams. Player slots are optional and track who actually played."
+              : "One player per side for singles, two for doubles. Only active league members appear."}
           </p>
+
 
           {/* Broadcast-style scoreboard score entry */}
           <div className="rounded-xl border border-border/60 bg-gradient-to-br from-muted/50 to-muted/10 p-3">
