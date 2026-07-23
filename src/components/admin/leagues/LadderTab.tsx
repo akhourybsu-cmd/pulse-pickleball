@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import {
   Layers, Trophy, ArrowUp, ArrowDown, Minus, Info, Play, Pause, CheckCircle2,
-  ChevronUp, ChevronDown, RotateCcw,
+  ChevronUp, ChevronDown, RotateCcw, Zap,
 } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -99,6 +100,7 @@ function LadderSetup({
   const [weeks, setWeeks] = useState("8");
   const [scoring, setScoring] = useState("to_11_win_by_2");
   const [source, setSource] = useState<"manual" | "pulse_rating" | "random">("pulse_rating");
+  const [autoAdvance, setAutoAdvance] = useState(true);
   const [saving, setSaving] = useState(false);
 
   const save = async () => {
@@ -111,6 +113,7 @@ function LadderSetup({
       movement_rule: "one_up_one_down",
       scoring_format: scoring,
       initial_order_source: source,
+      auto_advance: autoAdvance,
       status: "setup",
     } as never);
     setSaving(false);
@@ -160,6 +163,21 @@ function LadderSetup({
             ]}
           />
         </FormRow>
+      </FormSection>
+
+      <FormSection label="Automation">
+        <label className="flex items-start justify-between gap-3 cursor-pointer">
+          <div>
+            <div className="text-sm font-semibold">Advance automatically</div>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              When every game in a batch is in — and there's no tie to settle —
+              process results and open the next batch of the week on their own,
+              so play continues even if you're not there. Starting a new week
+              always stays your call.
+            </p>
+          </div>
+          <Switch checked={autoAdvance} onCheckedChange={setAutoAdvance} className="mt-0.5" />
+        </label>
       </FormSection>
 
       <Button onClick={save} disabled={saving}
@@ -405,6 +423,46 @@ function LadderManage({
     onChanged();
   };
 
+  // Auto-advance: when a batch is complete and tie-free, move on without the
+  // organizer. Fires at most once per batch from this client; the edge
+  // function is idempotent and re-checks every guard server-side.
+  const autoAdvance = settings?.auto_advance ?? false;
+  const seasonId = settings?.season_id;
+  const advancedForRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!autoAdvance || paused || !seasonId) return;
+    if (!activeBatch || !batchComplete) return;
+    if (advancedForRef.current === activeBatch.id) return;
+    advancedForRef.current = activeBatch.id;
+    (async () => {
+      const { data } = await supabase.functions.invoke("ladder-advance", {
+        body: { season_id: seasonId },
+      });
+      const r = data as { advanced?: boolean; skipped?: string } | null;
+      if (r?.advanced) {
+        toast.success(
+          r["week_complete" as keyof typeof r]
+            ? "Week complete — generate the next week when you're ready"
+            : "Batch complete — ladder advanced automatically",
+        );
+        onChanged();
+      }
+      // tiebreak_required / incomplete: leave it for a human; the Process
+      // button + tiebreak dialog handle resolution.
+    })().catch(() => { advancedForRef.current = null; });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoAdvance, paused, seasonId, activeBatch?.id, batchComplete]);
+
+  const toggleAuto = async () => {
+    if (!settings) return;
+    const { error } = await supabase.from("ladder_settings" as never)
+      .update({ auto_advance: !autoAdvance } as never)
+      .eq("season_id", settings.season_id);
+    if (error) { toast.error(error.message); return; }
+    toast.success(autoAdvance ? "Auto-advance turned off" : "Auto-advance turned on");
+    onChanged();
+  };
+
   return (
     <div className="space-y-4">
       {/* Progress header */}
@@ -459,18 +517,32 @@ function LadderManage({
       )}
 
       {activeBatch && (
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={togglePause} disabled={pauseBusy}
-            className="h-12 shrink-0">
-            {paused ? <Play className="w-4 h-4 mr-1.5" /> : <Pause className="w-4 h-4 mr-1.5" />}
-            {paused ? "Resume" : "Pause"}
-          </Button>
-          <Button onClick={() => processResults()} disabled={processing || !batchComplete || paused}
-            className="flex-1 h-12 font-bold uppercase tracking-wide">
-            <CheckCircle2 className="w-4 h-4 mr-1.5" />
-            {processing ? "Processing…" : batchComplete ? "Process results" : `Process (${totalGames - scoredGames} left)`}
-          </Button>
-        </div>
+        <>
+          <label className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-background/50 px-3 py-2 cursor-pointer">
+            <div className="flex items-center gap-2 text-xs">
+              <Zap className={cn("w-3.5 h-3.5", autoAdvance ? "text-[#A6DB5A]" : "text-muted-foreground")} />
+              <span className="font-semibold">Auto-advance</span>
+              <span className="text-muted-foreground">
+                {autoAdvance
+                  ? "on — batches move on themselves once scores are in"
+                  : "off — you process and generate each batch"}
+              </span>
+            </div>
+            <Switch checked={autoAdvance} onCheckedChange={toggleAuto} />
+          </label>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={togglePause} disabled={pauseBusy}
+              className="h-12 shrink-0">
+              {paused ? <Play className="w-4 h-4 mr-1.5" /> : <Pause className="w-4 h-4 mr-1.5" />}
+              {paused ? "Resume" : "Pause"}
+            </Button>
+            <Button onClick={() => processResults()} disabled={processing || !batchComplete || paused}
+              className="flex-1 h-12 font-bold uppercase tracking-wide">
+              <CheckCircle2 className="w-4 h-4 mr-1.5" />
+              {processing ? "Processing…" : batchComplete ? "Process results" : `Process (${totalGames - scoredGames} left)`}
+            </Button>
+          </div>
+        </>
       )}
 
       {ties && (

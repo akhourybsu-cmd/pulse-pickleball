@@ -14,6 +14,7 @@ import { resolvePlayerName } from "@/lib/matchDisplay";
 import { computePlayerStandings, computeTeamStandings } from "@/lib/leagues/standings";
 import { StandingsTable } from "@/components/leagues/StandingsTable";
 import { LeagueMatchActions } from "@/components/leagues/LeagueMatchActions";
+import { LadderTiebreakPrompt } from "@/components/leagues/LadderTiebreakPrompt";
 import { cn } from "@/lib/utils";
 
 const TYPE_META: Record<LeagueType, { stripe: string; pill: string; icon: typeof Trophy; label: string }> = {
@@ -290,6 +291,14 @@ export default function PlayerLeagueDetail() {
         </div>
       )}
 
+      {/* Ladder tiebreak — surfaces only when this player's court is tied. */}
+      {league?.league_type === "ladder" && leagueId && (
+        <LadderTiebreakPrompt
+          leagueId={leagueId}
+          playersById={playersById}
+          onResolved={refresh}
+        />
+      )}
 
       {/* Upcoming matches */}
       <div className="rounded-xl border border-border/70 bg-card p-4">
@@ -311,6 +320,7 @@ export default function PlayerLeagueDetail() {
                 teamsById={teamsById}
                 playersById={playersById}
                 currentUserId={currentUserId}
+                isLadder={league?.league_type === "ladder"}
                 onChanged={refresh}
               />
             ))}
@@ -333,6 +343,7 @@ export default function PlayerLeagueDetail() {
                 teamsById={teamsById}
                 playersById={playersById}
                 currentUserId={currentUserId}
+                isLadder={league?.league_type === "ladder"}
                 onChanged={refresh}
               />
             ))}
@@ -368,12 +379,13 @@ function InfoRow({
 }
 
 function MatchRow({
-  match, teamsById, playersById, currentUserId, onChanged,
+  match, teamsById, playersById, currentUserId, isLadder, onChanged,
 }: {
   match: import("@/lib/leagues/types").LeagueMatch;
   teamsById: Record<string, import("@/lib/leagues/types").LeagueTeam>;
   playersById: Record<string, { display_name: string | null; full_name: string | null; first_name: string | null; last_name: string | null }>;
   currentUserId: string | null;
+  isLadder?: boolean;
   onChanged: () => void;
 }) {
   const teamA = match.team_a_id ? teamsById[match.team_a_id] : null;
@@ -451,6 +463,9 @@ function MatchRow({
             teamsById={teamsById}
             currentUserId={currentUserId}
             isParticipant
+            sideALabel={aName}
+            sideBLabel={bName}
+            ladderSeasonId={isLadder ? match.season_id : undefined}
             onChanged={onChanged}
           />
         </div>
