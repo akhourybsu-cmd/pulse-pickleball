@@ -306,7 +306,8 @@ function LadderManage({
   onChanged: () => void;
 }) {
   const { activeBatch, groups, games, settings } = ladder;
-  const [finalizing, setFinalizing] = useState(false);
+  const [processing, setProcessing] = useState(false);
+  const [generating, setGenerating] = useState(false);
   const [pauseBusy, setPauseBusy] = useState(false);
   const paused = settings?.status === "paused";
 
@@ -340,22 +341,57 @@ function LadderManage({
   ).length;
   const batchComplete = totalGames > 0 && scoredGames === totalGames;
 
-  const finalize = async () => {
+  const processResults = async () => {
     if (!activeBatch) return;
-    setFinalizing(true);
+    setProcessing(true);
     const { data, error } = await supabase.functions.invoke("ladder-finalize-batch", {
       body: { batch_id: activeBatch.id },
     });
-    setFinalizing(false);
+    setProcessing(false);
     if (error || (data as { error?: string })?.error) {
-      toast.error((data as { message?: string })?.message ?? error?.message ?? "Finalize failed");
+      toast.error((data as { message?: string })?.message ?? error?.message ?? "Processing failed");
       return;
     }
-    toast.success("Batch finalized — ladder updated");
+    toast.success("Results processed — ladder updated. Generate the next stage when ready.");
     onChanged();
   };
 
   const batchesPerWeek = settings?.batches_per_week ?? 1;
+  const totalWeeks = settings?.total_weeks ?? null;
+
+  // What the organizer can generate NEXT — computed from the last PROCESSED
+  // batch. Nothing is generated automatically; this only decides which
+  // explicit button to offer once the current stage is fully processed.
+  const nextStage = useMemo(() => {
+    const last = ladder.lastFinalBatch;
+    if (activeBatch || !last) return null;
+    const lastW = last.week_number, lastB = last.batch_number;
+    if (lastB < batchesPerWeek) {
+      return { kind: "batch" as const, week: lastW, batch: lastB + 1,
+        label: `Generate Batch ${lastB + 1}` };
+    }
+    if (totalWeeks == null || lastW < totalWeeks) {
+      return { kind: "week" as const, week: lastW + 1, batch: 1,
+        label: `Generate Week ${lastW + 1}` };
+    }
+    return { kind: "complete" as const, week: lastW, batch: lastB, label: "" };
+  }, [ladder.lastFinalBatch, activeBatch, batchesPerWeek, totalWeeks]);
+
+  const generateNext = async () => {
+    if (!settings) return;
+    setGenerating(true);
+    const { data, error } = await supabase.functions.invoke("ladder-generate-next", {
+      body: { season_id: settings.season_id },
+    });
+    setGenerating(false);
+    if (error || (data as { error?: string })?.error) {
+      toast.error((data as { message?: string })?.message ?? error?.message ?? "Generation failed");
+      return;
+    }
+    const kind = (data as { kind?: string })?.kind;
+    toast.success(kind === "week" ? "Next week generated" : "Next batch generated");
+    onChanged();
+  };
 
   return (
     <div className="space-y-4">
@@ -385,8 +421,8 @@ function LadderManage({
           </div>
           <p className="text-[11px] text-slate-400 mt-2">
             {batchComplete
-              ? "All games in — finalize to apply movement and generate the next batch."
-              : "Court assignments update after every game in this batch is finalized."}
+              ? "All games in — process results to apply movement. You'll then generate the next stage as a separate step."
+              : "Enter every game's final score, then process the results to move players up and down."}
           </p>
         </div>
       )}
@@ -406,7 +442,7 @@ function LadderManage({
       {paused && (
         <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-700 dark:text-amber-300 flex gap-2">
           <Pause className="w-4 h-4 shrink-0 mt-0.5" />
-          <span>Progression is paused — finalizing is disabled until you resume.</span>
+          <span>Progression is paused — processing and generation are disabled until you resume.</span>
         </div>
       )}
 
@@ -417,12 +453,23 @@ function LadderManage({
             {paused ? <Play className="w-4 h-4 mr-1.5" /> : <Pause className="w-4 h-4 mr-1.5" />}
             {paused ? "Resume" : "Pause"}
           </Button>
-          <Button onClick={finalize} disabled={finalizing || !batchComplete || paused}
+          <Button onClick={processResults} disabled={processing || !batchComplete || paused}
             className="flex-1 h-12 font-bold uppercase tracking-wide">
             <CheckCircle2 className="w-4 h-4 mr-1.5" />
-            {finalizing ? "Finalizing…" : batchComplete ? "Finalize batch" : `Finalize (${totalGames - scoredGames} left)`}
+            {processing ? "Processing…" : batchComplete ? "Process results" : `Process (${totalGames - scoredGames} left)`}
           </Button>
         </div>
+      )}
+
+      {/* Explicit next-stage generation — only after the current stage is
+          fully processed (no active batch). Never runs automatically. */}
+      {!activeBatch && nextStage && (
+        <GenerateNextPanel
+          nextStage={nextStage}
+          paused={paused}
+          generating={generating}
+          onGenerate={generateNext}
+        />
       )}
 
       {/* Why each player finished where — last batch breakdown */}
@@ -446,6 +493,63 @@ function LadderManage({
             ))}
           </ul>
         </div>
+      )}
+    </div>
+  );
+}
+
+function GenerateNextPanel({
+  nextStage, paused, generating, onGenerate,
+}: {
+  nextStage: { kind: "batch" | "week" | "complete"; week: number; batch: number; label: string };
+  paused: boolean;
+  generating: boolean;
+  onGenerate: () => void;
+}) {
+  if (nextStage.kind === "complete") {
+    return (
+      <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 text-center">
+        <Trophy className="w-6 h-6 mx-auto text-emerald-500 mb-1.5" />
+        <div className="text-sm font-bold">Ladder complete</div>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Every week has been played and processed. Final standings are the
+          current ladder below.
+        </p>
+      </div>
+    );
+  }
+
+  const isWeek = nextStage.kind === "week";
+  return (
+    <div className="rounded-xl border border-border/70 bg-gradient-to-br from-[#0B171F] to-[#142029] p-4 text-white">
+      <div className="text-[10px] font-black uppercase tracking-[0.2em] text-[#A6DB5A]">
+        {isWeek ? "Week complete" : "Batch processed"}
+      </div>
+      <div className="text-lg font-black mt-0.5">
+        {isWeek
+          ? `Ready to start Week ${nextStage.week}`
+          : `Ready for Batch ${nextStage.batch}`}
+      </div>
+      <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
+        {isWeek
+          ? "The week's final positions are locked in. Generating Week " +
+            `${nextStage.week} builds new foursomes from the current ladder — ` +
+            "no games are created until you do this."
+          : `The ladder has been updated. Generate Batch ${nextStage.batch} to ` +
+            "build the next round's foursomes from the current positions."}
+      </p>
+      <Button
+        onClick={onGenerate}
+        disabled={generating || paused}
+        className="mt-3 w-full h-12 font-bold uppercase tracking-wide bg-[#A6DB5A] text-[#0B171F] hover:bg-[#95c94f]"
+      >
+        <Play className="w-4 h-4 mr-1.5" />
+        {generating ? "Generating…" : nextStage.label}
+      </Button>
+      {paused && (
+        <p className="text-[11px] text-amber-300 mt-2">
+          Progression is paused — resume to generate the next stage.
+        </p>
       )}
     </div>
   );
@@ -646,10 +750,11 @@ function LastBatchResults({
           <AlertDialogHeader>
             <AlertDialogTitle>Reopen this batch to fix a score?</AlertDialogTitle>
             <AlertDialogDescription>
-              This un-finalizes Week {lastFinalBatch.week_number}, Batch{" "}
+              This reopens Week {lastFinalBatch.week_number}, Batch{" "}
               {lastFinalBatch.batch_number} so you can correct a score, and clears
-              any batches generated after it (they were based on the old ladder).
-              You'll re-finalize to regenerate them.
+              any stage generated after it (it was based on the old ladder).
+              You'll re-process the corrected batch, then generate the next stage
+              again.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
