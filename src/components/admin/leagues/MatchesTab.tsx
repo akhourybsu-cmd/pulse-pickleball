@@ -341,6 +341,9 @@ function MatchEditor({
 
   const submit = async () => {
     if (!sessionId) { toast.error("Session required"); return; }
+    if (isTeamMode && teamAId !== "none" && teamBId !== "none" && teamAId === teamBId) {
+      toast.error("Team A and Team B must be different"); return;
+    }
     setSaving(true);
 
     const session = sessions.find((s) => s.id === sessionId);
@@ -357,8 +360,8 @@ function MatchEditor({
       session_id: sessionId,
       court_number: courtNumber ? Number(courtNumber) : null,
       scheduled_time: scheduledTime ? new Date(scheduledTime).toISOString() : null,
-      team_a_id: null,
-      team_b_id: null,
+      team_a_id: isTeamMode && teamAId !== "none" ? teamAId : null,
+      team_b_id: isTeamMode && teamBId !== "none" ? teamBId : null,
       player_a_id: playerAId === "none" ? null : playerAId,
       player_b_id: playerBId === "none" ? null : playerBId,
       player_c_id: playerCId === "none" ? null : playerCId,
