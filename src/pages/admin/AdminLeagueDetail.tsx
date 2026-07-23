@@ -47,6 +47,7 @@ export default function AdminLeagueDetail() {
   const [loading, setLoading] = useState(true);
   const [league, setLeague] = useState<League | null>(null);
   const [counts, setCounts] = useState<Counts | null>(null);
+  const [managerName, setManagerName] = useState<string | null>(null);
   const [accessDenied, setAccessDenied] = useState(false);
   // Bumped on any mutation from any tab. Every tab subscribes to it so
   // creating a season in SeasonsTab immediately refreshes the season
