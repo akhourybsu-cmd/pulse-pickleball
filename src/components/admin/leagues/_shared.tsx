@@ -16,6 +16,188 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import type { League } from "@/lib/leagues/types";
 
+/* ------------------------------------------------------------------ */
+/*  LEAGUE-ADMIN VISUAL PRIMITIVES                                     */
+/*  Scoped to the `.league-admin` container in AdminLeagueDetail.      */
+/*  Use these on tab bodies so every panel shares the same shell.      */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Section header row that sits above every tab's workspace panel.
+ * Bebas title + Barlow hint + right-aligned action cluster.
+ */
+export function SectionHeader({
+  eyebrow, title, hint, actions, caption,
+}: {
+  eyebrow?: string;
+  title: string;
+  hint?: string;
+  caption?: ReactNode;
+  actions?: ReactNode;
+}) {
+  return (
+    <div className="mb-4">
+      <div className="flex items-end justify-between gap-3 flex-wrap">
+        <div className="min-w-0">
+          {eyebrow && (
+            <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-[color:var(--lg-gold)]/80 mb-0.5">
+              {eyebrow}
+            </div>
+          )}
+          <h2 className="font-display text-2xl sm:text-3xl leading-none text-[color:var(--lg-text)]">
+            {title.toUpperCase()}
+          </h2>
+          {hint && (
+            <p className="text-xs text-[color:var(--lg-text-dim)] mt-1.5 leading-relaxed max-w-2xl">
+              {hint}
+            </p>
+          )}
+        </div>
+        {actions && (
+          <div className="flex items-center gap-2 shrink-0">{actions}</div>
+        )}
+      </div>
+      {caption && (
+        <div className="mt-2 text-[11px] text-[color:var(--lg-text-dim)] font-medium">
+          {caption}
+        </div>
+      )}
+      <div className="mt-3 h-px bg-gradient-to-r from-[color:var(--lg-gold)]/40 via-[color:var(--lg-border)] to-transparent" />
+    </div>
+  );
+}
+
+/**
+ * "Scoreboard" numeric tile used in the hero KPI strip.
+ * Bebas numeral on top-line, uppercase label above.
+ */
+export function ScoreboardTile({
+  icon, label, value, accent,
+}: {
+  icon?: ReactNode;
+  label: string;
+  value: ReactNode;
+  accent?: boolean;
+}) {
+  return (
+    <div className={cn(
+      "flex flex-col items-start px-4 py-3 relative",
+      accent && "before:absolute before:left-0 before:right-0 before:bottom-0 before:h-0.5 before:bg-[color:var(--lg-gold)]"
+    )}>
+      <div className="flex items-center gap-1.5 text-[color:var(--lg-gold)]/80">
+        {icon}
+        <span className="text-[10px] uppercase tracking-[0.16em] font-bold">{label}</span>
+      </div>
+      <div className="lg-num text-4xl sm:text-5xl mt-1 leading-none text-[color:var(--lg-text)]">
+        {value}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Table shell — wraps a native <table> with the league admin's
+ * emerald surface, sticky header, and zebra rows.
+ */
+export function TableShell({
+  head, children, empty,
+}: {
+  head: ReactNode;
+  empty?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <div className="lg-card overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-[color:var(--lg-surface-2)] text-[10px] uppercase tracking-[0.14em] font-bold text-[color:var(--lg-gold)]/85">
+            <tr>{head}</tr>
+          </thead>
+          <tbody className="[&>tr]:border-t [&>tr]:border-[color:var(--lg-border)]/60 [&>tr:hover]:bg-[color:var(--lg-surface-2)]/60">
+            {children}
+          </tbody>
+        </table>
+      </div>
+      {empty}
+    </div>
+  );
+}
+
+export function Th({ children, className, right }: { children: ReactNode; className?: string; right?: boolean }) {
+  return (
+    <th className={cn("px-3 py-2.5 text-left font-bold", right && "text-right", className)}>
+      {children}
+    </th>
+  );
+}
+export function Td({ children, className, right, mono }: { children: ReactNode; className?: string; right?: boolean; mono?: boolean }) {
+  return (
+    <td className={cn(
+      "px-3 py-2.5 align-middle text-[color:var(--lg-text)]",
+      right && "text-right",
+      mono && "lg-num text-base",
+      className,
+    )}>
+      {children}
+    </td>
+  );
+}
+
+/**
+ * Uniform status/role chip. Tone drives fill + hairline.
+ */
+export type ChipTone = "emerald" | "gold" | "slate" | "danger" | "muted";
+const CHIP_TONES: Record<ChipTone, string> = {
+  emerald: "bg-[color:var(--lg-emerald)]/20 text-[color:var(--lg-emerald-bright)] ring-1 ring-[color:var(--lg-emerald)]/40",
+  gold:    "bg-[color:var(--lg-gold)]/15 text-[color:var(--lg-gold-bright)] ring-1 ring-[color:var(--lg-gold)]/40",
+  slate:   "bg-white/5 text-[color:var(--lg-text-dim)] ring-1 ring-white/10",
+  danger:  "bg-[color:var(--lg-danger)]/15 text-[color:var(--lg-danger)] ring-1 ring-[color:var(--lg-danger)]/40",
+  muted:   "bg-white/3 text-[color:var(--lg-text-dim)]/80 ring-1 ring-white/5",
+};
+export function StatusChip({
+  tone = "slate", children, icon,
+}: {
+  tone?: ChipTone;
+  children: ReactNode;
+  icon?: ReactNode;
+}) {
+  return (
+    <span className={cn(
+      "inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-[0.1em]",
+      CHIP_TONES[tone],
+    )}>
+      {icon}
+      {children}
+    </span>
+  );
+}
+
+/**
+ * Primary + secondary CTA in the league admin token scope.
+ * Not a full shadcn variant — deliberately minimal so it can live
+ * inside the scoped surface without fighting the app-wide primary.
+ */
+export function LgButton({
+  variant = "primary", size = "md", className, children, ...rest
+}: {
+  variant?: "primary" | "outline" | "ghost";
+  size?: "sm" | "md";
+} & React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  const base = "inline-flex items-center justify-center gap-1.5 rounded-md font-bold uppercase tracking-[0.08em] transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed";
+  const sizes = { sm: "h-8 px-3 text-[11px]", md: "h-9 px-4 text-xs" };
+  const variants = {
+    primary: "bg-[color:var(--lg-gold)] text-[#1a1408] hover:bg-[color:var(--lg-gold-bright)] shadow-[0_2px_10px_-2px_rgba(201,168,76,0.4)]",
+    outline: "bg-transparent text-[color:var(--lg-gold)] ring-1 ring-[color:var(--lg-gold)]/50 hover:bg-[color:var(--lg-gold)]/10",
+    ghost:   "bg-transparent text-[color:var(--lg-text-dim)] hover:text-[color:var(--lg-text)] hover:bg-white/5",
+  };
+  return (
+    <button className={cn(base, sizes[size], variants[variant], className)} {...rest}>
+      {children}
+    </button>
+  );
+}
+
+
 /**
  * Sporty season picker used at the top of every management tab. Reads
  * like a "SEASON ·  Fall 2026" control with a calendar chip instead of a
