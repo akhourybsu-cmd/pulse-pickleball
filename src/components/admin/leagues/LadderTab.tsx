@@ -489,11 +489,13 @@ function LadderManage({
     return { kind: "complete" as const, week: lastW, batch: lastB, label: "" };
   }, [ladder.lastFinalBatch, activeBatch, batchesPerWeek, totalWeeks]);
 
-  const generateNext = async () => {
+  const [weekPrompt, setWeekPrompt] = useState(false);
+
+  const runGenerate = async (session_id?: string) => {
     if (!settings) return;
     setGenerating(true);
     const { data, error } = await supabase.functions.invoke("ladder-generate-next", {
-      body: { season_id: settings.season_id },
+      body: { season_id: settings.season_id, session_id: session_id ?? null },
     });
     setGenerating(false);
     if (error || (data as { error?: string })?.error) {
@@ -503,6 +505,15 @@ function LadderManage({
     const kind = (data as { kind?: string })?.kind;
     toast.success(kind === "week" ? "Next week generated" : "Next batch generated");
     onChanged();
+  };
+
+  const generateNext = () => {
+    if (!nextStage) return;
+    // Starting a new week is only ever an explicit organizer action AND
+    // requires confirming the date/time up front — scores can't be entered
+    // before that moment (safeguard when self-report scoring is on).
+    if (nextStage.kind === "week") { setWeekPrompt(true); return; }
+    void runGenerate();
   };
 
   // Auto-advance: when a batch is complete and tie-free, move on without the
