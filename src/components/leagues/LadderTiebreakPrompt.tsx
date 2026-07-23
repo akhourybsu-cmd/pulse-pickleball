@@ -2,7 +2,58 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { ChevronUp, ChevronDown, Swords } from "lucide-react";
+import { ChevronUp, ChevronDown, Swords, ArrowUp, ArrowDown, Minus } from "lucide-react";
+
+/**
+ * Decides whether the player at `index` in the ordered list moves up, down,
+ * or stays based on the court's tie boundaries. Top of the list gets the
+ * promotion spot (if in play); bottom gets the relegation spot (if in play).
+ */
+function movementFor(
+  index: number, total: number, boundaries: string[],
+): "up" | "down" | "stay" {
+  const promo = boundaries.includes("promotion");
+  const relo = boundaries.includes("relegation");
+  if (index === 0 && promo) return "up";
+  if (index === total - 1 && relo) return "down";
+  return "stay";
+}
+
+function MovementBadge({ kind }: { kind: "up" | "down" | "stay" }) {
+  if (kind === "up") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/40 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide">
+        <ArrowUp className="w-3 h-3" strokeWidth={3} /> Up
+      </span>
+    );
+  }
+  if (kind === "down") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-red-500/15 text-red-700 dark:text-red-400 border border-red-500/40 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide">
+        <ArrowDown className="w-3 h-3" strokeWidth={3} /> Down
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-muted text-muted-foreground border border-border px-2 py-0.5 text-[10px] font-black uppercase tracking-wide">
+      <Minus className="w-3 h-3" strokeWidth={3} /> Stay
+    </span>
+  );
+}
+
+function MovementLegend({ boundaries }: { boundaries: string[] }) {
+  const promo = boundaries.includes("promotion");
+  const relo = boundaries.includes("relegation");
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 px-3 py-2 bg-muted/30 border-b border-border/50 text-[10px] text-muted-foreground">
+      <span className="font-bold uppercase tracking-wide">Finishing order:</span>
+      {promo && <><MovementBadge kind="up" /><span>top moves up a court</span></>}
+      {promo && relo && <span>·</span>}
+      {relo && <><MovementBadge kind="down" /><span>bottom moves down a court</span></>}
+      {!promo && !relo && <span>determines final placement</span>}
+    </div>
+  );
+}
 import { resolvePlayerName } from "@/lib/matchDisplay";
 
 /**
