@@ -140,7 +140,7 @@ Deno.serve(async (req) => {
           boundaries: n.boundaries,
           player_ids: n.tiedPlayerIds,
         })),
-      }, 409)
+      }, 200)
     }
 
     // ---- run the tested engine (with organizer resolutions) -----------
