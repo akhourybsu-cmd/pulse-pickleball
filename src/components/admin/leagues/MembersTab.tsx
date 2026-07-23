@@ -363,10 +363,17 @@ function AddMemberDialog({
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<PlayerRow[]>([]);
   const [pickedId, setPickedId] = useState<string | null>(null);
+  const [pickedRowOverride, setPickedRowOverride] = useState<PlayerRow | null>(null);
   const [role, setRole] = useState<MemberRole>("player");
   const [divisionId, setDivisionId] = useState<string | "none">("none");
   const [status, setStatus] = useState<MemberStatus>("active");
   const [saving, setSaving] = useState(false);
+  const [tab, setTab] = useState<"search" | "friends" | "community" | "guests">("search");
+  const [friends, setFriends] = useState<PlayerRow[]>([]);
+  const [community, setCommunity] = useState<PlayerRow[]>([]);
+  const [guests, setGuests] = useState<PlayerRow[]>([]);
+  const [sourcesLoading, setSourcesLoading] = useState(false);
+  const [sourceFilter, setSourceFilter] = useState("");
 
   useEffect(() => {
     if (!query.trim()) { setResults([]); return; }
@@ -382,10 +389,83 @@ function AddMemberDialog({
     return () => clearTimeout(t);
   }, [query]);
 
+  // Load the three non-search sources once when the dialog mounts.
+  useEffect(() => {
+    (async () => {
+      setSourcesLoading(true);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const uid = session?.user?.id;
+        if (!uid) return;
+
+        // Friends (accepted friendships either direction)
+        const { data: fships } = await supabase
+          .from("friendships")
+          .select("user_id, friend_id")
+          .eq("status", "accepted")
+          .or(`user_id.eq.${uid},friend_id.eq.${uid}`);
+        const friendIds = Array.from(new Set(
+          (fships ?? []).map((f: any) => f.user_id === uid ? f.friend_id : f.user_id),
+        ));
+
+        // Community members (groups current user belongs to)
+        const { data: myMems } = await supabase
+          .from("group_members")
+          .select("group_id")
+          .eq("user_id", uid)
+          .eq("status", "active");
+        const groupIds = (myMems ?? []).map((m: any) => m.group_id);
+        let communityIds: string[] = [];
+        if (groupIds.length) {
+          const { data: coMems } = await supabase
+            .from("group_members")
+            .select("user_id")
+            .in("group_id", groupIds)
+            .eq("status", "active");
+          communityIds = Array.from(new Set(
+            (coMems ?? []).map((m: any) => m.user_id).filter((id: string) => id !== uid),
+          ));
+        }
+
+        // Guests I added that have been linked to a real profile
+        const { data: gs } = await supabase
+          .from("guest_players")
+          .select("linked_user_id")
+          .eq("added_by_user_id", uid)
+          .not("linked_user_id", "is", null);
+        const guestIds = Array.from(new Set(
+          (gs ?? []).map((g: any) => g.linked_user_id).filter(Boolean),
+        ));
+
+        const allIds = Array.from(new Set([...friendIds, ...communityIds, ...guestIds]));
+        if (allIds.length === 0) return;
+        const { data: profs } = await supabase
+          .from("profiles_public" as never)
+          .select("id, display_name, full_name, first_name, last_name, avatar_url")
+          .in("id", allIds as string[]);
+        const map: Record<string, PlayerRow> = {};
+        (profs ?? []).forEach((p: any) => { map[p.id] = p as PlayerRow; });
+
+        setFriends(friendIds.map((id) => map[id]).filter(Boolean));
+        setCommunity(communityIds.map((id) => map[id]).filter(Boolean));
+        setGuests(guestIds.map((id) => map[id]).filter(Boolean));
+      } finally {
+        setSourcesLoading(false);
+      }
+    })();
+  }, []);
+
   const filteredResults = useMemo(
     () => results.filter((r) => !existingUserIds.has(r.id)),
     [results, existingUserIds],
   );
+
+  const applyFilter = (rows: PlayerRow[]) => {
+    const q = sourceFilter.trim().toLowerCase();
+    const base = rows.filter((r) => !existingUserIds.has(r.id));
+    if (!q) return base;
+    return base.filter((r) => resolvePlayerName(r).toLowerCase().includes(q));
+  };
 
   const submit = async () => {
     if (!pickedId) { toast.error("Pick a player"); return; }
@@ -415,8 +495,40 @@ function AddMemberDialog({
     await onDone();
   };
 
-  const pickedRow = results.find((r) => r.id === pickedId);
+  const pickedRow =
+    pickedRowOverride
+      ?? results.find((r) => r.id === pickedId)
+      ?? friends.find((r) => r.id === pickedId)
+      ?? community.find((r) => r.id === pickedId)
+      ?? guests.find((r) => r.id === pickedId)
+      ?? null;
   const pickedName = pickedRow ? resolvePlayerName(pickedRow) : "";
+
+  const renderList = (rows: PlayerRow[], emptyLabel: string) => {
+    if (sourcesLoading) {
+      return <p className="text-xs text-muted-foreground px-1">Loading…</p>;
+    }
+    if (rows.length === 0) {
+      return <p className="text-xs text-muted-foreground px-1">{emptyLabel}</p>;
+    }
+    return (
+      <div className="max-h-56 overflow-y-auto rounded-lg border border-border divide-y divide-border/60">
+        {rows.map((r) => (
+          <button
+            key={r.id}
+            type="button"
+            onClick={() => { setPickedId(r.id); setPickedRowOverride(r); }}
+            className={cn(
+              "w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors",
+              pickedId === r.id && "bg-primary/10 text-primary font-semibold",
+            )}
+          >
+            {resolvePlayerName(r)}
+          </button>
+        ))}
+      </div>
+    );
+  };
 
   return (
     <FormShell
@@ -424,49 +536,84 @@ function AddMemberDialog({
       tone="primary"
       kicker="New member"
       title="Add to the roster"
-      subtitle="Search your players and sign them to this season."
+      subtitle="Pull from your guests, community, or friends — or search everyone."
       primaryLabel="Add member"
       primaryLoading={saving}
       primaryDisabled={!pickedId}
       onPrimary={submit}
     >
       <FormSection label="Player">
-        <FormRow label="Search players" htmlFor="mem-search">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              id="mem-search"
-              value={query} onChange={(e) => setQuery(e.target.value)}
-              placeholder="Name…" className={cn(FIELD_H, "pl-9")}
-            />
-          </div>
-        </FormRow>
-        {filteredResults.length > 0 && (
-          <div className="max-h-44 overflow-y-auto rounded-lg border border-border divide-y divide-border/60">
-            {filteredResults.map((r) => (
-              <button
-                key={r.id}
-                type="button"
-                onClick={() => setPickedId(r.id)}
-                className={cn(
-                  "w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors",
-                  pickedId === r.id && "bg-primary/10 text-primary font-semibold",
-                )}
-              >
-                {resolvePlayerName(r)}
-              </button>
-            ))}
-          </div>
-        )}
-        {query && filteredResults.length === 0 && (
-          <p className="text-xs text-muted-foreground">
-            No matches (already-added players are filtered out).
-          </p>
-        )}
+        <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
+          <TabsList className="grid grid-cols-4 w-full">
+            <TabsTrigger value="search">Search</TabsTrigger>
+            <TabsTrigger value="friends">Friends</TabsTrigger>
+            <TabsTrigger value="community">Community</TabsTrigger>
+            <TabsTrigger value="guests">Guests</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="search" className="space-y-2 pt-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                id="mem-search"
+                value={query} onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search everyone by name…" className={cn(FIELD_H, "pl-9")}
+              />
+            </div>
+            {filteredResults.length > 0 && (
+              <div className="max-h-44 overflow-y-auto rounded-lg border border-border divide-y divide-border/60">
+                {filteredResults.map((r) => (
+                  <button
+                    key={r.id}
+                    type="button"
+                    onClick={() => { setPickedId(r.id); setPickedRowOverride(r); }}
+                    className={cn(
+                      "w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors",
+                      pickedId === r.id && "bg-primary/10 text-primary font-semibold",
+                    )}
+                  >
+                    {resolvePlayerName(r)}
+                  </button>
+                ))}
+              </div>
+            )}
+            {query && filteredResults.length === 0 && (
+              <p className="text-xs text-muted-foreground">
+                No matches (already-added players are filtered out).
+              </p>
+            )}
+          </TabsContent>
+
+          {(["friends", "community", "guests"] as const).map((key) => (
+            <TabsContent key={key} value={key} className="space-y-2 pt-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  value={sourceFilter} onChange={(e) => setSourceFilter(e.target.value)}
+                  placeholder="Filter this list…" className={cn(FIELD_H, "pl-9")}
+                />
+              </div>
+              {key === "friends" && renderList(
+                applyFilter(friends),
+                "No friends yet — add some from the Community tab.",
+              )}
+              {key === "community" && renderList(
+                applyFilter(community),
+                "No community members found. Join a group to see teammates here.",
+              )}
+              {key === "guests" && renderList(
+                applyFilter(guests),
+                "No claimed guests. Only guests linked to a real profile can join a league.",
+              )}
+            </TabsContent>
+          ))}
+        </Tabs>
+
         {pickedId && pickedName && (
           <p className="text-xs text-primary font-medium">Signed: {pickedName}</p>
         )}
       </FormSection>
+
 
       <FormSection label="Assignment">
         <FormRow label="Role">
