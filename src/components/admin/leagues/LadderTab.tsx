@@ -376,13 +376,45 @@ function LadderManage({
     // A tie that decides a move needs an organizer decision — open the prompt.
     if (resp?.error === "tiebreak_required" && resp.ties?.length) {
       setTies(resp.ties);
+      // Persist pending tiebreaks so the player-side prompt can surface them
+      // on tied courts. Idempotent — never clobbers rows players resolved.
+      if (settings) {
+        const rows = resp.ties
+          .map((t) => {
+            const g = groups[t.group_index];
+            if (!g) return null;
+            return {
+              league_id: league.id,
+              season_id: settings.season_id,
+              batch_id: activeBatch.id,
+              group_id: g.id,
+              court_number: t.court_number,
+              tied_player_ids: t.player_ids,
+              boundaries: t.boundaries,
+            };
+          })
+          .filter((r): r is NonNullable<typeof r> => r !== null);
+        if (rows.length > 0) {
+          await supabase.from("ladder_tiebreaks" as never).upsert(
+            rows as never,
+            { onConflict: "batch_id,group_id", ignoreDuplicates: true } as never,
+          );
+        }
+      }
+      setPendingTies(resp.ties);
       return;
     }
     if (error || resp?.error) {
       toast.error(resp?.message ?? error?.message ?? "Processing failed");
       return;
     }
+    // Success — mark any lingering unresolved tiebreak rows for this batch
+    // as resolved so both organizer and player prompts stand down.
+    await supabase.from("ladder_tiebreaks" as never)
+      .update({ resolved_at: new Date().toISOString() } as never)
+      .eq("batch_id", activeBatch.id).is("resolved_at", null);
     setTies(null);
+    setPendingTies([]);
     toast.success("Results processed — ladder updated. Generate the next stage when ready.");
     onChanged();
   };
