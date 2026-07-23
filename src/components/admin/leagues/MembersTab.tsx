@@ -285,7 +285,10 @@ function MemberInlineActions({
         <SelectTrigger className="h-8 flex-1 sm:flex-none sm:w-[110px] text-xs"><SelectValue /></SelectTrigger>
         <SelectContent>
           <SelectItem value="player">Player</SelectItem>
-          <SelectItem value="captain">Captain</SelectItem>
+          {/* Flex leagues have no teams, so captain has no meaning there. */}
+          {league.league_type !== "flex" && (
+            <SelectItem value="captain">Captain</SelectItem>
+          )}
           <SelectItem value="manager">Manager</SelectItem>
         </SelectContent>
       </Select>
