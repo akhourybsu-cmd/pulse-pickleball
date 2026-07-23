@@ -285,7 +285,10 @@ function MemberInlineActions({
         <SelectTrigger className="h-8 flex-1 sm:flex-none sm:w-[110px] text-xs"><SelectValue /></SelectTrigger>
         <SelectContent>
           <SelectItem value="player">Player</SelectItem>
-          <SelectItem value="captain">Captain</SelectItem>
+          {/* Flex leagues have no teams, so captain has no meaning there. */}
+          {league.league_type !== "flex" && (
+            <SelectItem value="captain">Captain</SelectItem>
+          )}
           <SelectItem value="manager">Manager</SelectItem>
         </SelectContent>
       </Select>
@@ -620,11 +623,18 @@ function AddMemberDialog({
           <SegmentedControl
             value={role}
             onChange={(v) => setRole(v as MemberRole)}
-            options={[
-              { value: "player",  label: "Player" },
-              { value: "captain", label: "Captain" },
-              { value: "manager", label: "Manager" },
-            ]}
+            options={
+              league.league_type === "flex"
+                ? [
+                    { value: "player",  label: "Player" },
+                    { value: "manager", label: "Manager" },
+                  ]
+                : [
+                    { value: "player",  label: "Player" },
+                    { value: "captain", label: "Captain" },
+                    { value: "manager", label: "Manager" },
+                  ]
+            }
           />
         </FormRow>
         <FormRow label="Status">

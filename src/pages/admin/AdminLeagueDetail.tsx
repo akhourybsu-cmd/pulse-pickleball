@@ -8,7 +8,7 @@ import type { League } from "@/lib/leagues/types";
 import { LEAGUE_TYPE_META } from "@/lib/leagues/typeMeta";
 import {
   CalendarDays, Users, UsersRound, CalendarClock,
-  Trophy, MapPin,
+  Trophy, MapPin, UserCircle2,
 } from "lucide-react";
 import { OverviewTab } from "@/components/admin/leagues/OverviewTab";
 import { SeasonsTab } from "@/components/admin/leagues/SeasonsTab";
@@ -47,6 +47,7 @@ export default function AdminLeagueDetail() {
   const [loading, setLoading] = useState(true);
   const [league, setLeague] = useState<League | null>(null);
   const [counts, setCounts] = useState<Counts | null>(null);
+  const [managerName, setManagerName] = useState<string | null>(null);
   const [accessDenied, setAccessDenied] = useState(false);
   // Bumped on any mutation from any tab. Every tab subscribes to it so
   // creating a season in SeasonsTab immediately refreshes the season
@@ -98,6 +99,26 @@ export default function AdminLeagueDetail() {
     }
     setLeague(data as unknown as League);
     setAccessDenied(false);
+    // Fetch manager (creator) display name for the hero banner. Non-fatal
+    // if it fails or the profile is not visible.
+    const createdBy = (data as unknown as League).created_by;
+    if (createdBy) {
+      const { data: prof } = await supabase
+        .from("profiles_public" as never)
+        .select("display_name, full_name, first_name, last_name")
+        .eq("id", createdBy)
+        .maybeSingle();
+      if (prof) {
+        const p = prof as { display_name?: string | null; full_name?: string | null; first_name?: string | null; last_name?: string | null };
+        const name = p.display_name
+          || p.full_name
+          || [p.first_name, p.last_name].filter(Boolean).join(" ")
+          || null;
+        setManagerName(name);
+      } else {
+        setManagerName(null);
+      }
+    }
     await refetchCounts();
     setLoading(false);
   };
@@ -221,12 +242,23 @@ export default function AdminLeagueDetail() {
               </p>
             )}
 
-            {league.location && (
-              <div className="text-xs text-[color:var(--lg-text-dim)] mt-2 inline-flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5" />
-                {league.location}
-              </div>
-            )}
+            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[color:var(--lg-text-dim)]">
+              {league.location && (
+                <span className="inline-flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5" />
+                  {league.location}
+                </span>
+              )}
+              {managerName && (
+                <span className="inline-flex items-center gap-1.5">
+                  <UserCircle2 className="w-3.5 h-3.5 text-[color:var(--lg-gold)]/80" />
+                  <span className="text-[10px] uppercase tracking-[0.14em] font-bold text-[color:var(--lg-gold)]/80">
+                    Manager
+                  </span>
+                  <span className="text-[color:var(--lg-text)]/90 font-medium">{managerName}</span>
+                </span>
+              )}
+            </div>
 
             {/* KPI scoreboard */}
             {counts && (
