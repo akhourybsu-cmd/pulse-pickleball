@@ -115,11 +115,11 @@ export function LeagueManageNav({
                         isActive ? "text-[color:var(--lg-gold)]" : "text-[color:var(--lg-text-dim)] group-hover:text-[color:var(--lg-text)]",
                       )} />
                       <div className="min-w-0 relative">
-                        <div className="text-[13px] font-bold leading-tight tracking-wide">
+                        <div className="text-[13px] font-semibold leading-tight tracking-normal">
                           {t.label}
                         </div>
                         <div className={cn(
-                          "text-[10px] leading-tight truncate",
+                          "text-[11px] leading-tight truncate font-normal",
                           isActive ? "text-[color:var(--lg-text)]/70" : "text-[color:var(--lg-text-dim)]/80",
                         )}>
                           {t.hint}
