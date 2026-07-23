@@ -654,7 +654,29 @@ function LadderManage({
                   : "off — you process and generate each batch"}
               </span>
             </div>
+          <label className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-background/50 px-3 py-2 cursor-pointer">
+            <div className="flex items-center gap-2 text-xs">
+              <Zap className={cn("w-3.5 h-3.5", autoAdvance ? "text-[#A6DB5A]" : "text-muted-foreground")} />
+              <span className="font-semibold">Auto-advance</span>
+              <span className="text-muted-foreground">
+                {autoAdvance
+                  ? "on — batches move on themselves once scores are in"
+                  : "off — you process and generate each batch"}
+              </span>
+            </div>
             <Switch checked={autoAdvance} onCheckedChange={toggleAuto} />
+          </label>
+          <label className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-background/50 px-3 py-2 cursor-pointer">
+            <div className="flex items-center gap-2 text-xs">
+              <CheckCircle2 className={cn("w-3.5 h-3.5", selfReport ? "text-[#A6DB5A]" : "text-muted-foreground")} />
+              <span className="font-semibold">Self-report scoring</span>
+              <span className="text-muted-foreground">
+                {selfReport
+                  ? "on — any player on the court can lock in the final score"
+                  : "off — a second player must verify each score"}
+              </span>
+            </div>
+            <Switch checked={selfReport} onCheckedChange={toggleSelfReport} />
           </label>
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={togglePause} disabled={pauseBusy}
