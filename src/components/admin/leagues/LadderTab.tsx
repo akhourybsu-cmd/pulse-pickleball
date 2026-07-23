@@ -331,6 +331,7 @@ function LadderManage({
   const [generating, setGenerating] = useState(false);
   const [pauseBusy, setPauseBusy] = useState(false);
   const [ties, setTies] = useState<TieInfo[] | null>(null);
+  const [pendingTies, setPendingTies] = useState<TieInfo[]>([]);
   const paused = settings?.status === "paused";
 
   const togglePause = async () => {
