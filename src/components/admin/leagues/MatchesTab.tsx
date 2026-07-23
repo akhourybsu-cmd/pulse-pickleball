@@ -319,6 +319,8 @@ function MatchEditor({
   initial: LeagueMatch | null;
   onDone: () => Promise<void>;
 }) {
+  const isTeamMode =
+    league.league_type === "doubles" || league.league_type === "team";
   const [resolveOpen, setResolveOpen] = useState(false);
   const [forfeitOpen, setForfeitOpen] = useState(false);
   const [sessionId, setSessionId] = useState(initial?.session_id ?? sessions[0]?.id ?? "");
@@ -326,6 +328,8 @@ function MatchEditor({
   const [scheduledTime, setScheduledTime] = useState(
     initial?.scheduled_time ? toLocalInput(initial.scheduled_time) : "",
   );
+  const [teamAId, setTeamAId] = useState<string | "none">(initial?.team_a_id ?? "none");
+  const [teamBId, setTeamBId] = useState<string | "none">(initial?.team_b_id ?? "none");
   const [playerAId, setPlayerAId] = useState<string | "none">(initial?.player_a_id ?? "none");
   const [playerBId, setPlayerBId] = useState<string | "none">(initial?.player_b_id ?? "none");
   const [playerCId, setPlayerCId] = useState<string | "none">(initial?.player_c_id ?? "none");
