@@ -242,12 +242,23 @@ export default function AdminLeagueDetail() {
               </p>
             )}
 
-            {league.location && (
-              <div className="text-xs text-[color:var(--lg-text-dim)] mt-2 inline-flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5" />
-                {league.location}
-              </div>
-            )}
+            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[color:var(--lg-text-dim)]">
+              {league.location && (
+                <span className="inline-flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5" />
+                  {league.location}
+                </span>
+              )}
+              {managerName && (
+                <span className="inline-flex items-center gap-1.5">
+                  <UserCircle2 className="w-3.5 h-3.5 text-[color:var(--lg-gold)]/80" />
+                  <span className="text-[10px] uppercase tracking-[0.14em] font-bold text-[color:var(--lg-gold)]/80">
+                    Manager
+                  </span>
+                  <span className="text-[color:var(--lg-text)]/90 font-medium">{managerName}</span>
+                </span>
+              )}
+            </div>
 
             {/* KPI scoreboard */}
             {counts && (
