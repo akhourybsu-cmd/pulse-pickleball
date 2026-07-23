@@ -11,6 +11,9 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 import type { League, LeagueSeason } from "@/lib/leagues/types";
 import { gamesPerPlayer } from "@/lib/leagues/ladder";
 import {
@@ -309,6 +312,7 @@ function LadderManage({
   const [processing, setProcessing] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [pauseBusy, setPauseBusy] = useState(false);
+  const [ties, setTies] = useState<TieInfo[] | null>(null);
   const paused = settings?.status === "paused";
 
   const togglePause = async () => {
@@ -341,17 +345,25 @@ function LadderManage({
   ).length;
   const batchComplete = totalGames > 0 && scoredGames === totalGames;
 
-  const processResults = async () => {
+  const processResults = async (tieResolutions?: Record<number, string[]>) => {
     if (!activeBatch) return;
     setProcessing(true);
     const { data, error } = await supabase.functions.invoke("ladder-finalize-batch", {
-      body: { batch_id: activeBatch.id },
+      body: { batch_id: activeBatch.id, tie_resolutions: tieResolutions },
     });
     setProcessing(false);
-    if (error || (data as { error?: string })?.error) {
-      toast.error((data as { message?: string })?.message ?? error?.message ?? "Processing failed");
+    const resp = data as
+      { error?: string; message?: string; ties?: TieInfo[] } | null;
+    // A tie that decides a move needs an organizer decision — open the prompt.
+    if (resp?.error === "tiebreak_required" && resp.ties?.length) {
+      setTies(resp.ties);
       return;
     }
+    if (error || resp?.error) {
+      toast.error(resp?.message ?? error?.message ?? "Processing failed");
+      return;
+    }
+    setTies(null);
     toast.success("Results processed — ladder updated. Generate the next stage when ready.");
     onChanged();
   };
@@ -453,12 +465,22 @@ function LadderManage({
             {paused ? <Play className="w-4 h-4 mr-1.5" /> : <Pause className="w-4 h-4 mr-1.5" />}
             {paused ? "Resume" : "Pause"}
           </Button>
-          <Button onClick={processResults} disabled={processing || !batchComplete || paused}
+          <Button onClick={() => processResults()} disabled={processing || !batchComplete || paused}
             className="flex-1 h-12 font-bold uppercase tracking-wide">
             <CheckCircle2 className="w-4 h-4 mr-1.5" />
             {processing ? "Processing…" : batchComplete ? "Process results" : `Process (${totalGames - scoredGames} left)`}
           </Button>
         </div>
+      )}
+
+      {ties && (
+        <TiebreakDialog
+          ties={ties}
+          nameOf={ladder.nameOf}
+          busy={processing}
+          onCancel={() => setTies(null)}
+          onResolve={(resolutions) => processResults(resolutions)}
+        />
       )}
 
       {/* Explicit next-stage generation — only after the current stage is
@@ -495,6 +517,106 @@ function LadderManage({
         </div>
       )}
     </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Tiebreak — organizer decides who advances when scores are even     */
+/* ------------------------------------------------------------------ */
+
+interface TieInfo {
+  group_index: number;
+  court_number: number;
+  boundaries: ("promotion" | "relegation")[];
+  player_ids: string[];
+}
+
+function TiebreakDialog({
+  ties, nameOf, busy, onCancel, onResolve,
+}: {
+  ties: TieInfo[];
+  nameOf: (id: string) => string;
+  busy: boolean;
+  onCancel: () => void;
+  onResolve: (resolutions: Record<number, string[]>) => void;
+}) {
+  // Per-court working order the organizer arranges (top = advances furthest).
+  const [orders, setOrders] = useState<Record<number, string[]>>(() =>
+    Object.fromEntries(ties.map((t) => [t.group_index, [...t.player_ids]])),
+  );
+
+  const move = (gi: number, i: number, dir: -1 | 1) => {
+    setOrders((prev) => {
+      const arr = [...(prev[gi] ?? [])];
+      const j = i + dir;
+      if (j < 0 || j >= arr.length) return prev;
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+      return { ...prev, [gi]: arr };
+    });
+  };
+
+  const label = (t: TieInfo) => {
+    const both = t.boundaries.length > 1;
+    if (both) return "tie affects both who moves up and who moves down";
+    return t.boundaries[0] === "promotion"
+      ? "tie for the court's top spot — the winner moves up"
+      : "tie for last — the loser moves down";
+  };
+
+  return (
+    <Dialog open onOpenChange={(o) => { if (!o) onCancel(); }}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Who advances?</DialogTitle>
+          <DialogDescription>
+            {ties.length === 1 ? "A court" : `${ties.length} courts`} ended level
+            on record and points. Play a tiebreaker (e.g. a skinny-singles game)
+            and set the finishing order below — top of the list finishes highest.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 max-h-[55vh] overflow-y-auto">
+          {ties.map((t) => (
+            <div key={t.group_index} className="rounded-lg border border-border/70">
+              <div className="px-3 py-2 bg-muted/40 border-b border-border/50">
+                <div className="text-sm font-bold">Court {t.court_number}</div>
+                <div className="text-[11px] text-muted-foreground">{label(t)}</div>
+              </div>
+              <ol className="divide-y divide-border/40">
+                {(orders[t.group_index] ?? []).map((pid, i) => (
+                  <li key={pid} className="flex items-center gap-2 px-3 py-2">
+                    <span className="text-xs font-black tabular-nums w-5 text-center text-muted-foreground">
+                      {i + 1}
+                    </span>
+                    <span className="text-sm font-medium flex-1 truncate">{nameOf(pid)}</span>
+                    <div className="flex items-center">
+                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0"
+                        disabled={i === 0 || busy}
+                        onClick={() => move(t.group_index, i, -1)} aria-label="Move up">
+                        <ChevronUp className="w-4 h-4" />
+                      </Button>
+                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0"
+                        disabled={i === (orders[t.group_index]?.length ?? 0) - 1 || busy}
+                        onClick={() => move(t.group_index, i, 1)} aria-label="Move down">
+                        <ChevronDown className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          ))}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onCancel} disabled={busy}>Cancel</Button>
+          <Button onClick={() => onResolve(orders)} disabled={busy}
+            className="font-bold uppercase tracking-wide">
+            {busy ? "Processing…" : "Confirm & process"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

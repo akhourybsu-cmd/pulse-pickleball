@@ -16,12 +16,19 @@
 // Runs as the CALLING USER (anon key + their JWT) so RLS + the RPC's
 // is_league_admin check apply — no service role, no privilege escalation.
 //
-// Body: { "batch_id": "<uuid>" }
+// Ties that decide who moves up/down can't always be settled by scores (in a
+// single 4-player batch every pair splits their head-to-head). When the engine
+// finds such a tie it is NOT resolved silently — this function returns
+// `tiebreak_required` with the tied players, and the organizer re-invokes with
+// `tie_resolutions` (e.g. the result of a skinny-singles game) to say who
+// advances.
+//
+// Body: { "batch_id": "<uuid>", "tie_resolutions"?: { "<groupIndex>": ["<playerId>", …] } }
 // =====================================================================
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import {
-  computeBatchOutcome,
+  computeBatchOutcome, detectTieBreaks,
   type LadderGameResult,
 } from '../_shared/leagues/ladder.ts'
 
@@ -50,8 +57,16 @@ Deno.serve(async (req) => {
         auth: { autoRefreshToken: false, persistSession: false } },
     )
 
-    const { batch_id } = await req.json()
+    const { batch_id, tie_resolutions } = await req.json()
     if (!batch_id) return json({ error: 'batch_id required' }, 400)
+
+    // Normalize organizer tiebreak resolutions to { [groupIndex:number]: id[] }.
+    const resolutions: Record<number, string[]> = {}
+    if (tie_resolutions && typeof tie_resolutions === 'object') {
+      for (const [k, v] of Object.entries(tie_resolutions as Record<string, unknown>)) {
+        if (Array.isArray(v)) resolutions[Number(k)] = v as string[]
+      }
+    }
 
     // ---- load batch, start snapshot, settings, groups, games ----------
     const { data: batch } = await supabase
@@ -105,8 +120,31 @@ Deno.serve(async (req) => {
 
     const order: string[] = startSnap.player_ids as string[]
 
-    // ---- run the tested engine ---------------------------------------
-    const outcome = computeBatchOutcome(order, gamesByGroup)
+    // ---- tiebreaks: any tie that decides a move needs organizer input --
+    const needs = detectTieBreaks(order, gamesByGroup)
+    const unresolved = needs.filter((n) => {
+      const provided = resolutions[n.groupIndex]
+      if (!provided) return true
+      // Every tied player must be named in the resolution for that group.
+      const set = new Set(provided)
+      return n.tiedPlayerIds.some((id) => !set.has(id))
+    })
+    if (unresolved.length > 0) {
+      return json({
+        error: 'tiebreak_required',
+        message: 'One or more courts ended in a tie that decides who moves up or down. Enter the tiebreaker result to continue.',
+        ties: unresolved.map((n) => ({
+          group_index: n.groupIndex,
+          court_number: (groups[n.groupIndex] as { court_number?: number | null })?.court_number
+            ?? n.groupIndex + 1,
+          boundaries: n.boundaries,
+          player_ids: n.tiedPlayerIds,
+        })),
+      }, 409)
+    }
+
+    // ---- run the tested engine (with organizer resolutions) -----------
+    const outcome = computeBatchOutcome(order, gamesByGroup, resolutions)
 
     // ---- movements plan (with the group id each player belonged to) ---
     const movements = outcome.rankedByGroup.flatMap((rows, gi) =>
