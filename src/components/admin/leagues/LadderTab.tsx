@@ -556,6 +556,18 @@ function LadderManage({
     onChanged();
   };
 
+  const selfReport = (settings as unknown as { self_report_scoring?: boolean } | null)
+    ?.self_report_scoring ?? false;
+  const toggleSelfReport = async () => {
+    if (!settings) return;
+    const { error } = await supabase.from("ladder_settings" as never)
+      .update({ self_report_scoring: !selfReport } as never)
+      .eq("season_id", settings.season_id);
+    if (error) { toast.error(error.message); return; }
+    toast.success(selfReport ? "Self-report scoring off" : "Self-report scoring on");
+    onChanged();
+  };
+
   return (
     <div className="space-y-4">
       {/* Progress header */}
