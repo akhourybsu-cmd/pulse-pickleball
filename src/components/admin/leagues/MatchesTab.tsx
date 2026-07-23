@@ -412,8 +412,10 @@ function MatchEditor({
     if (profilesById[id]) return resolvePlayerName(profilesById[id]);
     return playerPool.find((p) => p.id === id)?.label ?? null;
   };
-  const sideAName = sideName(null, [nameOf(playerAId), nameOf(playerBId)], "Side A");
-  const sideBName = sideName(null, [nameOf(playerCId), nameOf(playerDId)], "Side B");
+  const teamAName = teams.find((t) => t.id === teamAId)?.name ?? null;
+  const teamBName = teams.find((t) => t.id === teamBId)?.name ?? null;
+  const sideAName = sideName(isTeamMode ? teamAName : null, [nameOf(playerAId), nameOf(playerBId)], "Side A");
+  const sideBName = sideName(isTeamMode ? teamBName : null, [nameOf(playerCId), nameOf(playerDId)], "Side B");
   const showAdminActions = mode === "edit" && initial && (
     initial.status === "disputed" || initial.status === "score_submitted"
     || initial.status === "scheduled" || initial.status === "in_progress"
