@@ -11,7 +11,7 @@ import { useLeagueDetailForPlayer } from "@/hooks/useLeagueDetailForPlayer";
 import { LEAGUE_TYPE_META } from "@/lib/leagues/typeMeta";
 import { sideName } from "@/lib/leagues/matchSides";
 import { resolvePlayerName } from "@/lib/matchDisplay";
-import { computePlayerStandings } from "@/lib/leagues/standings";
+import { computePlayerStandings, computeTeamStandings } from "@/lib/leagues/standings";
 import { StandingsTable } from "@/components/leagues/StandingsTable";
 import { LeagueMatchActions } from "@/components/leagues/LeagueMatchActions";
 import { cn } from "@/lib/utils";
