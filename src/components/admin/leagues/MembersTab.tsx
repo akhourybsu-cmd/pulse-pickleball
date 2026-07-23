@@ -16,6 +16,7 @@ import {
   XCircle, RotateCw, AlertCircle, Crown,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import {
   EmptyState, TabSkeleton, LeagueTabProps,
