@@ -704,6 +704,36 @@ function LadderManage({
         />
       )}
 
+      {weekPrompt && nextStage?.kind === "week" && settings && (
+        <WeekSessionDialog
+          weekNumber={nextStage.week}
+          busy={generating}
+          onCancel={() => setWeekPrompt(false)}
+          onConfirm={async (details) => {
+            const { data, error } = await supabase
+              .from("league_sessions" as never)
+              .insert({
+                league_id: league.id,
+                season_id: settings.season_id,
+                name: `Week ${nextStage.week}`,
+                scheduled_date: details.scheduled_date,
+                start_time: details.start_time,
+                end_time: details.end_time || null,
+                location: details.location || null,
+                status: "published",
+              } as never)
+              .select("id")
+              .single();
+            if (error || !data) {
+              toast.error(error?.message ?? "Couldn't schedule the week");
+              return;
+            }
+            setWeekPrompt(false);
+            await runGenerate((data as { id: string }).id);
+          }}
+        />
+      )}
+
       {/* Why each player finished where — last batch breakdown */}
       <LastBatchResults ladder={ladder} onChanged={onChanged} />
 
