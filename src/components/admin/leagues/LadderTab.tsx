@@ -584,6 +584,27 @@ function LadderManage({
         </div>
       )}
 
+      {pendingTies.length > 0 && !ties && (
+        <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-4 flex items-start gap-3">
+          <Swords className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-bold">Tiebreaker needed</div>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {pendingTies.length === 1 ? "One court" : `${pendingTies.length} courts`}{" "}
+              ended level on record and points — Courts{" "}
+              {pendingTies.map((t) => t.court_number).join(", ")}. Set the
+              finishing order to move the ladder on. Players on those courts
+              can also record it from their league page.
+            </p>
+          </div>
+          <Button size="sm" onClick={() => setTies(pendingTies)}
+            className="font-bold uppercase tracking-wide shrink-0">
+            Resolve
+          </Button>
+        </div>
+      )}
+
+
       {activeBatch && (
         <>
           <label className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-background/50 px-3 py-2 cursor-pointer">
