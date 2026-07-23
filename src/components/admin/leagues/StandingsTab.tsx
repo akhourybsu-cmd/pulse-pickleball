@@ -24,11 +24,14 @@ interface ProfileRow {
 }
 
 export function StandingsTab({ league, dataVersion }: LeagueTabProps) {
+  const isTeamMode =
+    league.league_type === "doubles" || league.league_type === "team";
   const [seasons, setSeasons] = useState<LeagueSeason[]>([]);
   const [seasonId, setSeasonId] = useState<string | "">("");
   const [divisions, setDivisions] = useState<LeagueDivision[]>([]);
   const [divisionId, setDivisionId] = useState<string | "all">("all");
   const [matches, setMatches] = useState<LeagueMatch[]>([]);
+  const [teams, setTeams] = useState<LeagueTeam[]>([]);
   const [namesById, setNamesById] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
 
@@ -51,14 +54,16 @@ export function StandingsTab({ league, dataVersion }: LeagueTabProps) {
   useEffect(() => {
     if (!seasonId) return;
     (async () => {
-      const [{ data: divs }, { data: m }] = await Promise.all([
+      const [{ data: divs }, { data: m }, { data: t }] = await Promise.all([
         supabase.from("league_divisions" as never).select("*").eq("season_id", seasonId),
         supabase.from("league_matches" as never).select("*")
           .eq("league_id", league.id).eq("season_id", seasonId),
+        supabase.from("league_teams" as never).select("*").eq("season_id", seasonId),
       ]);
       if (divs) setDivisions(divs as unknown as LeagueDivision[]);
       const matchList = (m ?? []) as unknown as LeagueMatch[];
       setMatches(matchList);
+      setTeams((t ?? []) as unknown as LeagueTeam[]);
 
       const ids = Array.from(new Set(
         matchList
@@ -83,11 +88,15 @@ export function StandingsTab({ league, dataVersion }: LeagueTabProps) {
   }, [seasonId, dataVersion, league.id]);
 
   const rows = useMemo(() => {
-    return computePlayerStandings(matches, (id) => namesById[id] ?? "Player", {
+    const opts = {
       seasonId: seasonId || undefined,
       divisionId: divisionId === "all" ? undefined : divisionId,
-    });
-  }, [matches, namesById, seasonId, divisionId]);
+    };
+    if (isTeamMode) {
+      return computeTeamStandings(matches, teams, opts);
+    }
+    return computePlayerStandings(matches, (id) => namesById[id] ?? "Player", opts);
+  }, [matches, teams, namesById, seasonId, divisionId, isTeamMode]);
 
   if (loading) return <TabSkeleton lines={4} />;
 
@@ -117,13 +126,14 @@ export function StandingsTab({ league, dataVersion }: LeagueTabProps) {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Individual standings from verified &amp; submitted scores. Sort:
-        wins → head-to-head (pairwise ties) → point differential → win %.
+        {isTeamMode
+          ? "Team standings from verified & submitted scores. Sort: wins → head-to-head → point differential → win %."
+          : "Individual standings from verified & submitted scores. Sort: wins → head-to-head (pairwise ties) → point differential → win %."}
       </p>
 
       <StandingsTable
         rows={rows}
-        nameHeader="Player"
+        nameHeader={isTeamMode ? "Team" : "Player"}
         emptyMessage="No completed matches in this season yet."
       />
     </div>
