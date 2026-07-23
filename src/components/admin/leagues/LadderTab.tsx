@@ -961,6 +961,75 @@ function GenerateNextPanel({
   );
 }
 
+function WeekSessionDialog({
+  weekNumber, busy, onCancel, onConfirm,
+}: {
+  weekNumber: number;
+  busy: boolean;
+  onCancel: () => void;
+  onConfirm: (d: {
+    scheduled_date: string;
+    start_time: string;
+    end_time: string;
+    location: string;
+  }) => void | Promise<void>;
+}) {
+  const today = new Date().toISOString().slice(0, 10);
+  const [date, setDate] = useState(today);
+  const [start, setStart] = useState("18:00");
+  const [end, setEnd] = useState("");
+  const [loc, setLoc] = useState("");
+  const canSubmit = !!date && !!start && !busy;
+
+  return (
+    <Dialog open onOpenChange={(o) => { if (!o) onCancel(); }}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Schedule Week {weekNumber}</DialogTitle>
+          <DialogDescription>
+            Confirm when this week is played. Players can't enter scores
+            before this start time, so make sure it's right.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Date</div>
+            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={FIELD_H} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Start time</div>
+              <Input type="time" value={start} onChange={(e) => setStart(e.target.value)} className={FIELD_H} />
+            </div>
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">End time (optional)</div>
+              <Input type="time" value={end} onChange={(e) => setEnd(e.target.value)} className={FIELD_H} />
+            </div>
+          </div>
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Location (optional)</div>
+            <Input value={loc} onChange={(e) => setLoc(e.target.value)}
+              placeholder="e.g. Nickerson courts" className={FIELD_H} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onCancel} disabled={busy}>Cancel</Button>
+          <Button
+            disabled={!canSubmit}
+            onClick={() => onConfirm({
+              scheduled_date: date, start_time: start,
+              end_time: end, location: loc,
+            })}
+            className="font-bold uppercase tracking-wide"
+          >
+            {busy ? "Generating…" : `Generate Week ${weekNumber}`}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function CourtGroupCard({
   group, games, scoring, nameOf, onScored,
 }: {
