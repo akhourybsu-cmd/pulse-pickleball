@@ -8576,6 +8576,10 @@ export type Database = {
         Args: { p_batch_id: string; p_plan: Json }
         Returns: Json
       }
+      ladder_generate_batch: {
+        Args: { p_plan: Json; p_season_id: string; p_start_snapshot_id: string }
+        Returns: Json
+      }
       ladder_generate_first_batch: {
         Args: { p_plan: Json; p_season_id: string }
         Returns: Json
