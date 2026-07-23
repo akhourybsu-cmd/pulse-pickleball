@@ -60,6 +60,19 @@ Deno.serve(async (req) => {
     const batchesPerWeek = Math.max(1, settings.batches_per_week ?? 1)
     const courtCount = Math.max(1, settings.court_count ?? 1)
 
+    // Build one batch's group/game structure from an order — shared by the
+    // "generate next batch" paths below.
+    const buildGroups = (nextOrder: string[]) =>
+      groupIntoFours(nextOrder).map((grp, gi) => ({
+        group_index: gi,
+        court_number: (gi % courtCount) + 1,
+        wave: Math.floor(gi / courtCount) + 1,
+        player_ids: grp,
+        games: batchMatchups(grp).map((m) => ({
+          game_number: m.game, side_a: m.sideA, side_b: m.sideB,
+        })),
+      }))
+
     // ---- find the active batch ---------------------------------------
     const { data: batchRows } = await supabase
       .from('ladder_batches').select('*')
@@ -70,7 +83,45 @@ Deno.serve(async (req) => {
     const active = batches.find(
       (b) => b.status !== 'finalized' && b.status !== 'invalidated',
     )
-    if (!active) return json({ skipped: 'no_active_batch' })
+
+    // No active batch: if the last processed batch was mid-week, generate the
+    // next batch of the SAME week (covers a manual/tie-resolved process too).
+    // Never crosses a week boundary.
+    if (!active) {
+      const finalized = batches.filter((b) => b.status === 'finalized')
+      if (finalized.length === 0) return json({ skipped: 'no_active_batch' })
+      const last = finalized.reduce((acc, b) =>
+        (b.week_number as number) > (acc.week_number as number)
+        || ((b.week_number as number) === (acc.week_number as number)
+            && (b.batch_number as number) > (acc.batch_number as number))
+          ? b : acc, finalized[0])
+      const lastWeek = last.week_number as number
+      const lastBatch = last.batch_number as number
+      if (lastBatch >= batchesPerWeek) return json({ skipped: 'week_complete' })
+      if (batches.some((b) => b.week_number === lastWeek && b.batch_number === lastBatch + 1)) {
+        return json({ skipped: 'next_batch_exists' })
+      }
+      const { data: seedSnap } = await supabase
+        .from('ladder_snapshots').select('*').eq('id', last.result_snapshot_id as string).maybeSingle()
+      if (!seedSnap) return json({ error: 'processed snapshot missing' }, 500)
+      const nextBatch = lastBatch + 1
+      const grps = buildGroups(seedSnap.player_ids as string[])
+      const { error: genErr } = await supabase.rpc('ladder_generate_batch', {
+        p_season_id: season_id,
+        p_start_snapshot_id: seedSnap.id,
+        p_plan: {
+          batch: {
+            week: lastWeek, batch: nextBatch,
+            session_id: last.session_id ?? null,
+            court_waves: Math.ceil(grps.length / courtCount),
+            idempotency_key: `batch:${season_id}:${lastWeek}:${nextBatch}`,
+            groups: grps,
+          },
+        },
+      })
+      if (genErr) return json({ error: genErr.message, phase: 'generate' }, 400)
+      return json({ advanced: true, generated: { week: lastWeek, batch: nextBatch } })
+    }
 
     const batchId = active.id as string
     const { data: startSnap } = await supabase
@@ -112,21 +163,62 @@ Deno.serve(async (req) => {
     })
     const order: string[] = startSnap.player_ids as string[]
 
-    // ---- refuse to guess a tie ---------------------------------------
+    // ---- ties: write pending rows, consume any player resolutions -----
     const needs = detectTieBreaks(order, gamesByGroup)
+    const resolutions: Record<number, string[]> = {}
     if (needs.length > 0) {
-      return json({
-        skipped: 'tiebreak_required',
-        courts: needs.map((n) => ({
+      // Ensure a pending row exists for each tied court (never clobbers a
+      // row a player already resolved — ON CONFLICT DO NOTHING).
+      await supabase.from('ladder_tiebreaks').upsert(
+        needs.map((n) => ({
+          league_id: active.league_id as string,
+          season_id: season_id,
+          batch_id: batchId,
+          group_id: (groups[n.groupIndex] as { id: string }).id,
           court_number: (groups[n.groupIndex] as { court_number?: number | null })?.court_number
             ?? n.groupIndex + 1,
+          tied_player_ids: n.tiedPlayerIds,
           boundaries: n.boundaries,
         })),
+        { onConflict: 'batch_id,group_id', ignoreDuplicates: true },
+      )
+
+      // Read back resolutions recorded by players/admin for this batch.
+      const { data: tbRows } = await supabase
+        .from('ladder_tiebreaks').select('group_id, resolved_order')
+        .eq('batch_id', batchId)
+      const resolvedByGroup = new Map<string, string[]>(
+        ((tbRows ?? []) as Array<{ group_id: string; resolved_order: string[] | null }>)
+          .filter((r) => r.resolved_order && r.resolved_order.length > 0)
+          .map((r) => [r.group_id, r.resolved_order as string[]]),
+      )
+
+      const unresolved = needs.filter((n) => {
+        const gid = (groups[n.groupIndex] as { id: string }).id
+        const resolvedOrder = resolvedByGroup.get(gid)
+        if (!resolvedOrder) return true
+        const set = new Set(resolvedOrder)
+        return n.tiedPlayerIds.some((id) => !set.has(id))
+      })
+      if (unresolved.length > 0) {
+        return json({
+          skipped: 'tiebreak_required',
+          courts: unresolved.map((n) => ({
+            court_number: (groups[n.groupIndex] as { court_number?: number | null })?.court_number
+              ?? n.groupIndex + 1,
+            boundaries: n.boundaries,
+          })),
+        })
+      }
+      // All resolved — feed the orderings to the engine by group index.
+      needs.forEach((n) => {
+        const gid = (groups[n.groupIndex] as { id: string }).id
+        resolutions[n.groupIndex] = resolvedByGroup.get(gid) as string[]
       })
     }
 
     // ---- process the complete batch ----------------------------------
-    const outcome = computeBatchOutcome(order, gamesByGroup)
+    const outcome = computeBatchOutcome(order, gamesByGroup, resolutions)
     const movements = outcome.rankedByGroup.flatMap((rows, gi) =>
       rows.map((s) => ({
         player_id: s.playerId, group_id: (groups[gi] as { id: string }).id,

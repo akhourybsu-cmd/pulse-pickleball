@@ -14,6 +14,7 @@ import { resolvePlayerName } from "@/lib/matchDisplay";
 import { computePlayerStandings, computeTeamStandings } from "@/lib/leagues/standings";
 import { StandingsTable } from "@/components/leagues/StandingsTable";
 import { LeagueMatchActions } from "@/components/leagues/LeagueMatchActions";
+import { LadderTiebreakPrompt } from "@/components/leagues/LadderTiebreakPrompt";
 import { cn } from "@/lib/utils";
 
 const TYPE_META: Record<LeagueType, { stripe: string; pill: string; icon: typeof Trophy; label: string }> = {
@@ -290,6 +291,14 @@ export default function PlayerLeagueDetail() {
         </div>
       )}
 
+      {/* Ladder tiebreak — surfaces only when this player's court is tied. */}
+      {league?.league_type === "ladder" && leagueId && (
+        <LadderTiebreakPrompt
+          leagueId={leagueId}
+          playersById={playersById}
+          onResolved={refresh}
+        />
+      )}
 
       {/* Upcoming matches */}
       <div className="rounded-xl border border-border/70 bg-card p-4">
