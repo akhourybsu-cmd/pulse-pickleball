@@ -50,7 +50,9 @@ Deno.serve(async (req) => {
         auth: { autoRefreshToken: false, persistSession: false } },
     )
 
-    const { season_id } = await req.json()
+    const { season_id, session_id } = await req.json() as {
+      season_id?: string; session_id?: string | null;
+    }
     if (!season_id) return json({ error: 'season_id required' }, 400)
 
     // ---- settings -----------------------------------------------------
