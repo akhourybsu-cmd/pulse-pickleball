@@ -187,7 +187,7 @@ export default function AdminLeagueDetail() {
           {/* Gold hairline at top */}
           <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[color:var(--lg-gold)]/60 to-transparent" aria-hidden />
 
-          <div className="relative p-6 sm:p-8">
+          <div className="relative p-5 sm:p-6">
             {/* Meta row */}
             <div className="flex items-center gap-2 flex-wrap">
               <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-[0.14em] bg-[color:var(--lg-gold)]/15 text-[color:var(--lg-gold-bright)] ring-1 ring-[color:var(--lg-gold)]/40">
@@ -211,18 +211,18 @@ export default function AdminLeagueDetail() {
             </div>
 
             {/* League title */}
-            <h1 className="font-display mt-4 text-5xl sm:text-6xl leading-[0.95] text-[color:var(--lg-text)]">
+            <h1 className="font-display mt-3 text-3xl sm:text-4xl leading-[1] text-[color:var(--lg-text)]">
               {league.name.toUpperCase()}
             </h1>
 
             {league.description && (
-              <p className="text-[color:var(--lg-text-dim)] text-sm mt-3 max-w-2xl leading-relaxed">
+              <p className="text-[color:var(--lg-text-dim)] text-sm mt-2 max-w-2xl leading-relaxed">
                 {league.description}
               </p>
             )}
 
             {league.location && (
-              <div className="text-xs text-[color:var(--lg-text-dim)] mt-3 inline-flex items-center gap-1.5">
+              <div className="text-xs text-[color:var(--lg-text-dim)] mt-2 inline-flex items-center gap-1.5">
                 <MapPin className="w-3.5 h-3.5" />
                 {league.location}
               </div>
@@ -230,7 +230,7 @@ export default function AdminLeagueDetail() {
 
             {/* KPI scoreboard */}
             {counts && (
-              <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-0 border-t border-[color:var(--lg-gold)]/25 divide-y sm:divide-y-0 sm:divide-x divide-[color:var(--lg-gold)]/20">
+              <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-0 border-t border-[color:var(--lg-gold)]/25 divide-y sm:divide-y-0 sm:divide-x divide-[color:var(--lg-gold)]/20">
                 <HeroStat icon={<CalendarDays className="w-3.5 h-3.5" />}    label="Seasons"  value={counts.seasons} />
                 <HeroStat icon={<Users className="w-3.5 h-3.5" />}           label="Roster"   value={counts.members} />
                 <HeroStat icon={<UsersRound className="w-3.5 h-3.5" />}      label="Teams"    value={counts.teams} />
@@ -247,11 +247,8 @@ export default function AdminLeagueDetail() {
           <div className="flex-1 min-w-0 space-y-3">
             {activeTabDef && (
               <div className="hidden lg:flex items-baseline gap-2 pb-1">
-                <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-[color:var(--lg-gold)]/80">
-                  Managing
-                </div>
-                <h2 className="font-display text-lg leading-none text-[color:var(--lg-text)]">
-                  {activeTabDef.label.toUpperCase()}
+                <h2 className="text-sm font-bold tracking-normal text-[color:var(--lg-text)]">
+                  {activeTabDef.label}
                 </h2>
                 <span className="text-[11px] text-[color:var(--lg-text-dim)]/80">
                   · {activeTabDef.hint}
