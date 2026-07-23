@@ -737,19 +737,61 @@ function TiebreakDialog({
         </DialogHeader>
 
         <div className="space-y-4 max-h-[55vh] overflow-y-auto">
-          {ties.map((t) => (
+          {ties.map((t) => {
+            const promo = t.boundaries.includes("promotion");
+            const relo = t.boundaries.includes("relegation");
+            const arr = orders[t.group_index] ?? [];
+            const movementFor = (i: number): "up" | "down" | "stay" => {
+              if (i === 0 && promo) return "up";
+              if (i === arr.length - 1 && relo) return "down";
+              return "stay";
+            };
+            return (
             <div key={t.group_index} className="rounded-lg border border-border/70">
               <div className="px-3 py-2 bg-muted/40 border-b border-border/50">
                 <div className="text-sm font-bold">Court {t.court_number}</div>
                 <div className="text-[11px] text-muted-foreground">{label(t)}</div>
               </div>
+              <div className="flex flex-wrap items-center gap-1.5 px-3 py-2 bg-muted/20 border-b border-border/50 text-[10px] text-muted-foreground">
+                <span className="font-bold uppercase tracking-wide">Finishing order:</span>
+                {promo && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/40 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide">
+                    <ArrowUp className="w-3 h-3" strokeWidth={3} /> Up
+                  </span>
+                )}
+                {promo && <span>top moves up a court</span>}
+                {promo && relo && <span>·</span>}
+                {relo && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-red-500/15 text-red-700 dark:text-red-400 border border-red-500/40 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide">
+                    <ArrowDown className="w-3 h-3" strokeWidth={3} /> Down
+                  </span>
+                )}
+                {relo && <span>bottom moves down a court</span>}
+              </div>
               <ol className="divide-y divide-border/40">
-                {(orders[t.group_index] ?? []).map((pid, i) => (
+                {arr.map((pid, i) => {
+                  const kind = movementFor(i);
+                  return (
                   <li key={pid} className="flex items-center gap-2 px-3 py-2">
                     <span className="text-xs font-black tabular-nums w-5 text-center text-muted-foreground">
                       {i + 1}
                     </span>
                     <span className="text-sm font-medium flex-1 truncate">{nameOf(pid)}</span>
+                    {kind === "up" && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/40 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide">
+                        <ArrowUp className="w-3 h-3" strokeWidth={3} /> Up
+                      </span>
+                    )}
+                    {kind === "down" && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-red-500/15 text-red-700 dark:text-red-400 border border-red-500/40 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide">
+                        <ArrowDown className="w-3 h-3" strokeWidth={3} /> Down
+                      </span>
+                    )}
+                    {kind === "stay" && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-muted text-muted-foreground border border-border px-2 py-0.5 text-[10px] font-black uppercase tracking-wide">
+                        <Minus className="w-3 h-3" strokeWidth={3} /> Stay
+                      </span>
+                    )}
                     <div className="flex items-center">
                       <Button variant="ghost" size="sm" className="h-7 w-7 p-0"
                         disabled={i === 0 || busy}
@@ -763,10 +805,12 @@ function TiebreakDialog({
                       </Button>
                     </div>
                   </li>
-                ))}
+                  );
+                })}
               </ol>
             </div>
-          ))}
+            );
+          })}
         </div>
 
         <DialogFooter>
