@@ -2690,6 +2690,94 @@ export type Database = {
           },
         ]
       }
+      ladder_tiebreaks: {
+        Row: {
+          batch_id: string
+          boundaries: string[]
+          court_number: number | null
+          created_at: string
+          group_id: string
+          id: string
+          league_id: string
+          resolved_at: string | null
+          resolved_by: string | null
+          resolved_order: string[] | null
+          season_id: string
+          tied_player_ids: string[]
+        }
+        Insert: {
+          batch_id: string
+          boundaries?: string[]
+          court_number?: number | null
+          created_at?: string
+          group_id: string
+          id?: string
+          league_id: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          resolved_order?: string[] | null
+          season_id: string
+          tied_player_ids: string[]
+        }
+        Update: {
+          batch_id?: string
+          boundaries?: string[]
+          court_number?: number | null
+          created_at?: string
+          group_id?: string
+          id?: string
+          league_id?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          resolved_order?: string[] | null
+          season_id?: string
+          tied_player_ids?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ladder_tiebreaks_batch_id_fkey"
+            columns: ["batch_id"]
+            isOneToOne: false
+            referencedRelation: "ladder_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ladder_tiebreaks_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "ladder_batch_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ladder_tiebreaks_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ladder_tiebreaks_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ladder_tiebreaks_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ladder_tiebreaks_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "league_seasons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       league_audit_log: {
         Row: {
           action: string
@@ -8652,6 +8740,10 @@ export type Database = {
         Args: { p_league_id: string }
         Returns: boolean
       }
+      player_is_in_ladder_group: {
+        Args: { p_group_id: string }
+        Returns: boolean
+      }
       player_is_in_league_match: {
         Args: { p_match_id: string }
         Returns: boolean
@@ -8690,6 +8782,10 @@ export type Database = {
       recalculate_player_stats: {
         Args: { p_player_id: string }
         Returns: undefined
+      }
+      record_ladder_tiebreak: {
+        Args: { p_group_id: string; p_ordered_ids: string[] }
+        Returns: Json
       }
       regenerate_group_invite_code: {
         Args: { p_group_id: string; p_ttl_hours?: number }
