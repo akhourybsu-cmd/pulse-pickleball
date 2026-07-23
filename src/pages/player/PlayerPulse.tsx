@@ -214,7 +214,7 @@ export default function PlayerPulse() {
                       <XAxis
                         dataKey="index"
                         type="number"
-                        domain={[1, "dataMax"]}
+                        domain={["dataMin", "dataMax"]}
                         allowDecimals={false}
                         tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
                         tickLine={false}
