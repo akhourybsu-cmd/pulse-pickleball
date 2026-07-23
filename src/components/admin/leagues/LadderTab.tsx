@@ -101,6 +101,7 @@ function LadderSetup({
   const [scoring, setScoring] = useState("to_11_win_by_2");
   const [source, setSource] = useState<"manual" | "pulse_rating" | "random">("pulse_rating");
   const [autoAdvance, setAutoAdvance] = useState(true);
+  const [selfReport, setSelfReport] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const save = async () => {
@@ -114,6 +115,7 @@ function LadderSetup({
       scoring_format: scoring,
       initial_order_source: source,
       auto_advance: autoAdvance,
+      self_report_scoring: selfReport,
       status: "setup",
     } as never);
     setSaving(false);
