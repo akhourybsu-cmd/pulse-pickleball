@@ -173,97 +173,87 @@ export default function AdminLeagueDetail() {
   const activeTabDef = MANAGE_TABS.find((t) => t.key === activeTab);
 
   return shell(
-    <>
+    <div className="league-admin bg-[color:var(--lg-bg)] min-h-screen">
       <div className="container mx-auto px-4 py-5 max-w-6xl space-y-5">
-        {/* Sporty hero — dark gradient stadium vibe */}
+        {/* Emerald Prestige hero */}
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, ease: "easeOut" }}
-          className="relative overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-br from-[#0B171F] via-[#142029] to-[#1a2d38]"
+          className="relative overflow-hidden rounded-xl border border-[color:var(--lg-border)] lg-hero-gradient shadow-[inset_0_1px_0_0_rgba(201,168,76,0.15)]"
         >
-          {/* Type-accent side stripe */}
-          <div className={cn("absolute top-0 bottom-0 left-0 w-1.5", typeAccent.stripe)} aria-hidden />
-          {/* Decorative diagonal stripes */}
-          <div className="absolute inset-0 opacity-[0.04] pointer-events-none"
-               style={{
-                 backgroundImage: "repeating-linear-gradient(45deg, transparent 0, transparent 12px, currentColor 12px, currentColor 13px)",
-                 color: "#A6DB5A",
-               }}
-               aria-hidden />
-          <div aria-hidden className="absolute -top-24 -right-16 h-64 w-64 rounded-full bg-[#A6DB5A]/15 blur-3xl pointer-events-none" />
+          {/* Diagonal court-line texture */}
+          <div className="absolute inset-0 lg-court-lines pointer-events-none" aria-hidden />
+          {/* Gold hairline at top */}
+          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[color:var(--lg-gold)]/60 to-transparent" aria-hidden />
 
-          <div className="relative p-5 sm:p-6">
-            {/* Type + status row */}
+          <div className="relative p-6 sm:p-8">
+            {/* Meta row */}
             <div className="flex items-center gap-2 flex-wrap">
-              <span className={cn(
-                "inline-flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider",
-                typeAccent.pill,
-              )}>
+              <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-[0.14em] bg-[color:var(--lg-gold)]/15 text-[color:var(--lg-gold-bright)] ring-1 ring-[color:var(--lg-gold)]/40">
                 <TypeIcon className="w-3 h-3" />
                 {typeAccent.label}
               </span>
               <StatusPill status={league.status} />
               {league.rating_eligible && (
-                <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider bg-[#A6DB5A]/15 text-[#A6DB5A] ring-1 ring-[#A6DB5A]/30">
+                <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-[0.14em] text-[color:var(--lg-gold)] ring-1 ring-[color:var(--lg-gold)]/50">
                   Rating-eligible
                 </span>
               )}
-              <span className="text-[10px] uppercase tracking-wider font-semibold text-slate-500">
+              <span className="text-[10px] uppercase tracking-[0.14em] font-semibold text-[color:var(--lg-text-dim)]">
                 {league.visibility.replace("_", " ")}
               </span>
               {league.guests_allowed && (
-                <span className="text-[10px] uppercase tracking-wider font-semibold text-slate-500">
+                <span className="text-[10px] uppercase tracking-[0.14em] font-semibold text-[color:var(--lg-text-dim)]">
                   · Guests allowed
                 </span>
               )}
             </div>
 
-            {/* Big league name */}
-            <h1 className="mt-3 text-2xl sm:text-3xl font-black text-white tracking-tight leading-tight">
-              {league.name}
+            {/* League title */}
+            <h1 className="font-display mt-4 text-5xl sm:text-6xl leading-[0.95] text-[color:var(--lg-text)]">
+              {league.name.toUpperCase()}
             </h1>
 
             {league.description && (
-              <p className="text-slate-400 text-sm mt-2 max-w-2xl">
+              <p className="text-[color:var(--lg-text-dim)] text-sm mt-3 max-w-2xl leading-relaxed">
                 {league.description}
               </p>
             )}
 
             {league.location && (
-              <div className="text-xs text-slate-400 mt-2 inline-flex items-center gap-1">
-                <MapPin className="w-3 h-3" />
+              <div className="text-xs text-[color:var(--lg-text-dim)] mt-3 inline-flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5" />
                 {league.location}
               </div>
             )}
 
-            {/* Summary stats — the "scoreboard" */}
+            {/* KPI scoreboard */}
             {counts && (
-              <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-3 pt-4 border-t border-slate-800">
-                <HeroStat icon={<CalendarDays className="w-3.5 h-3.5" />} label="Seasons"  value={counts.seasons} />
-                <HeroStat icon={<Users className="w-3.5 h-3.5" />}        label="Members"  value={counts.members} />
-                <HeroStat icon={<UsersRound className="w-3.5 h-3.5" />}   label="Teams"    value={counts.teams} />
-                <HeroStat icon={<CalendarClock className="w-3.5 h-3.5" />} label="Sessions" value={counts.sessions} />
+              <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-0 border-t border-[color:var(--lg-gold)]/25 divide-y sm:divide-y-0 sm:divide-x divide-[color:var(--lg-gold)]/20">
+                <HeroStat icon={<CalendarDays className="w-3.5 h-3.5" />}    label="Seasons"  value={counts.seasons} />
+                <HeroStat icon={<Users className="w-3.5 h-3.5" />}           label="Roster"   value={counts.members} />
+                <HeroStat icon={<UsersRound className="w-3.5 h-3.5" />}      label="Teams"    value={counts.teams} />
+                <HeroStat icon={<CalendarClock className="w-3.5 h-3.5" />}   label="Sessions" value={counts.sessions} />
               </div>
             )}
           </div>
         </motion.div>
 
-        {/* Two-column layout — nav rail on desktop, strip on mobile.
-            The rail keeps activeTab state, the pane below animates
-            when the caller switches. */}
+        {/* Rail + workspace */}
         <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
           <LeagueManageNav active={activeTab} onChange={setActiveTab} />
 
           <div className="flex-1 min-w-0 space-y-3">
-            {/* Section header — visible label above the pane so the
-                mobile strip's active state is echoed here. */}
             {activeTabDef && (
               <div className="hidden lg:flex items-baseline gap-2 pb-1">
-                <h2 className="text-sm font-bold uppercase tracking-[0.14em] text-muted-foreground">
-                  {activeTabDef.label}
+                <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-[color:var(--lg-gold)]/80">
+                  Managing
+                </div>
+                <h2 className="font-display text-lg leading-none text-[color:var(--lg-text)]">
+                  {activeTabDef.label.toUpperCase()}
                 </h2>
-                <span className="text-[11px] text-muted-foreground/70">
+                <span className="text-[11px] text-[color:var(--lg-text-dim)]/80">
                   · {activeTabDef.hint}
                 </span>
               </div>
@@ -275,7 +265,7 @@ export default function AdminLeagueDetail() {
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.18, ease: "easeOut" }}
+                transition={{ duration: 0.16, ease: "easeOut" }}
               >
                 {activeTab === "overview" && (
                   <OverviewTab league={league} onRefresh={refresh} onMutated={onDataMutated} />
@@ -315,14 +305,13 @@ export default function AdminLeagueDetail() {
           </div>
         </div>
       </div>
-    </>,
+    </div>,
     league.name
   );
 }
 
 /**
- * Big scoreboard-style stat callout. White numbers on the dark hero,
- * with an accent label above.
+ * Scoreboard-style hero stat. Bebas numeral over uppercase label.
  */
 function HeroStat({
   icon, label, value,
@@ -332,12 +321,12 @@ function HeroStat({
   value: number;
 }) {
   return (
-    <div className="flex flex-col items-start">
-      <div className="flex items-center gap-1 text-slate-500">
+    <div className="flex flex-col items-start px-4 py-4 first:pl-0">
+      <div className="flex items-center gap-1.5 text-[color:var(--lg-gold)]/85">
         {icon}
-        <span className="text-[10px] uppercase tracking-wider font-bold">{label}</span>
+        <span className="text-[10px] uppercase tracking-[0.16em] font-bold">{label}</span>
       </div>
-      <div className="text-2xl sm:text-3xl font-black tabular-nums mt-1 leading-none text-white">
+      <div className="lg-num text-4xl sm:text-5xl mt-1 leading-none text-[color:var(--lg-text)]">
         {value}
       </div>
     </div>
@@ -347,14 +336,14 @@ function HeroStat({
 function StatusPill({ status }: { status: League["status"] }) {
   const tone =
     status === "active"
-      ? "bg-[#A6DB5A]/15 text-[#A6DB5A] ring-1 ring-[#A6DB5A]/30"
+      ? "bg-[color:var(--lg-emerald)]/25 text-[color:var(--lg-emerald-bright)] ring-1 ring-[color:var(--lg-emerald)]/50"
       : status === "archived"
-      ? "bg-slate-600/30 text-slate-400 ring-1 ring-slate-500/30"
-      : "bg-slate-700/50 text-slate-300 ring-1 ring-slate-600/50";
+      ? "bg-white/5 text-[color:var(--lg-text-dim)] ring-1 ring-white/10"
+      : "bg-white/8 text-[color:var(--lg-text-dim)] ring-1 ring-white/15";
   return (
     <span
       className={cn(
-        "text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded",
+        "text-[10px] font-bold uppercase tracking-[0.14em] px-2 py-1 rounded",
         tone,
       )}
     >
