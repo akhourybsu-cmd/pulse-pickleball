@@ -180,6 +180,18 @@ function LadderSetup({
           </div>
           <Switch checked={autoAdvance} onCheckedChange={setAutoAdvance} className="mt-0.5" />
         </label>
+        <label className="flex items-start justify-between gap-3 cursor-pointer mt-3">
+          <div>
+            <div className="text-sm font-semibold">Players self-report scores</div>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Any player on the court can enter the final score and it counts
+              immediately — no second confirmation. Scores still can't be
+              entered before the week's scheduled start time, so make sure the
+              week's date and time are set correctly.
+            </p>
+          </div>
+          <Switch checked={selfReport} onCheckedChange={setSelfReport} className="mt-0.5" />
+        </label>
       </FormSection>
 
       <Button onClick={save} disabled={saving}
