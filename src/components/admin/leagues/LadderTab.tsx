@@ -419,6 +419,41 @@ function LadderManage({
     onChanged();
   };
 
+  // Load persisted unresolved tiebreaks for the active batch so the banner
+  // survives page reloads and shows up when auto-advance flagged the ties.
+  const activeBatchId = activeBatch?.id;
+  useEffect(() => {
+    if (!activeBatchId) { setPendingTies([]); return; }
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("ladder_tiebreaks" as never)
+        .select("group_id, court_number, tied_player_ids, boundaries, resolved_at")
+        .eq("batch_id", activeBatchId)
+        .is("resolved_at", null);
+      if (cancelled) return;
+      const rows = (data ?? []) as unknown as Array<{
+        group_id: string; court_number: number | null;
+        tied_player_ids: string[]; boundaries: ("promotion" | "relegation")[];
+      }>;
+      const infos: TieInfo[] = rows
+        .map((r) => {
+          const gi = groups.findIndex((g) => g.id === r.group_id);
+          if (gi < 0) return null;
+          return {
+            group_index: gi,
+            court_number: r.court_number ?? gi + 1,
+            boundaries: r.boundaries,
+            player_ids: r.tied_player_ids,
+          } satisfies TieInfo;
+        })
+        .filter((x): x is TieInfo => x !== null);
+      setPendingTies(infos);
+    })();
+    return () => { cancelled = true; };
+  }, [activeBatchId, groups]);
+
+
   const batchesPerWeek = settings?.batches_per_week ?? 1;
   const totalWeeks = settings?.total_weeks ?? null;
 
