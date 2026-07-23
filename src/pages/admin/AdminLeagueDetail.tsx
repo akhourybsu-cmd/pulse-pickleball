@@ -99,6 +99,26 @@ export default function AdminLeagueDetail() {
     }
     setLeague(data as unknown as League);
     setAccessDenied(false);
+    // Fetch manager (creator) display name for the hero banner. Non-fatal
+    // if it fails or the profile is not visible.
+    const createdBy = (data as unknown as League).created_by;
+    if (createdBy) {
+      const { data: prof } = await supabase
+        .from("profiles_public" as never)
+        .select("display_name, full_name, first_name, last_name")
+        .eq("id", createdBy)
+        .maybeSingle();
+      if (prof) {
+        const p = prof as { display_name?: string | null; full_name?: string | null; first_name?: string | null; last_name?: string | null };
+        const name = p.display_name
+          || p.full_name
+          || [p.first_name, p.last_name].filter(Boolean).join(" ")
+          || null;
+        setManagerName(name);
+      } else {
+        setManagerName(null);
+      }
+    }
     await refetchCounts();
     setLoading(false);
   };
