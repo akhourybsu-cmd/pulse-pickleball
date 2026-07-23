@@ -70,13 +70,13 @@ export function LeagueManageNav({
     <>
       {/* ------------------ Desktop rail ------------------ */}
       <aside className="hidden lg:block w-[220px] shrink-0 sticky top-4 self-start">
-        <div className="rounded-2xl border border-border/60 bg-card p-2 space-y-3">
+        <div className="rounded-xl border border-[color:var(--lg-border)] bg-[color:var(--lg-surface)] p-2 space-y-3 shadow-[inset_0_1px_0_0_rgba(201,168,76,0.08)]">
           {GROUPS.map((group) => {
             const items = MANAGE_TABS.filter((t) => t.group === group);
             if (items.length === 0) return null;
             return (
               <div key={group} className="space-y-0.5">
-                <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground px-2 py-1">
+                <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-[color:var(--lg-gold)]/70 px-2 py-1">
                   {group}
                 </div>
                 {items.map((t) => {
@@ -88,16 +88,16 @@ export function LeagueManageNav({
                       type="button"
                       onClick={() => onChange(t.key)}
                       className={cn(
-                        "relative w-full text-left rounded-lg px-2.5 py-2 flex items-center gap-2.5 transition-colors group",
+                        "relative w-full text-left rounded-md pl-3 pr-2.5 py-2 flex items-center gap-2.5 transition-colors group",
                         isActive
-                          ? "text-primary"
-                          : "text-foreground/80 hover:bg-muted/50 hover:text-foreground",
+                          ? "text-[color:var(--lg-text)]"
+                          : "text-[color:var(--lg-text-dim)] hover:bg-white/5 hover:text-[color:var(--lg-text)]",
                       )}
                     >
                       {isActive && (
                         <motion.span
                           layoutId="league-nav-active"
-                          className="absolute inset-0 rounded-lg bg-primary/10 ring-1 ring-primary/25"
+                          className="absolute inset-0 rounded-md bg-[color:var(--lg-emerald)]/25 ring-1 ring-[color:var(--lg-emerald)]/40"
                           transition={{ type: "spring", stiffness: 500, damping: 40 }}
                           aria-hidden
                         />
@@ -105,22 +105,22 @@ export function LeagueManageNav({
                       {isActive && (
                         <motion.span
                           layoutId="league-nav-bar"
-                          className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-r bg-primary"
+                          className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r bg-[color:var(--lg-gold)]"
                           transition={{ type: "spring", stiffness: 500, damping: 40 }}
                           aria-hidden
                         />
                       )}
                       <Icon className={cn(
                         "w-4 h-4 shrink-0 relative",
-                        isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground",
+                        isActive ? "text-[color:var(--lg-gold)]" : "text-[color:var(--lg-text-dim)] group-hover:text-[color:var(--lg-text)]",
                       )} />
                       <div className="min-w-0 relative">
-                        <div className="text-sm font-semibold leading-tight">
+                        <div className="text-[13px] font-bold leading-tight tracking-wide">
                           {t.label}
                         </div>
                         <div className={cn(
                           "text-[10px] leading-tight truncate",
-                          isActive ? "text-primary/70" : "text-muted-foreground",
+                          isActive ? "text-[color:var(--lg-text)]/70" : "text-[color:var(--lg-text-dim)]/80",
                         )}>
                           {t.hint}
                         </div>
@@ -135,9 +135,6 @@ export function LeagueManageNav({
       </aside>
 
       {/* ------------------ Mobile section picker ------------------ */}
-      {/* A bottom drawer replaces the old cramped 10-item scroll strip:
-          one full-width control shows the current section, and tapping
-          opens a grouped, thumb-friendly list of every section. */}
       <MobileSectionPicker active={active} onChange={onChange} />
     </>
   );
