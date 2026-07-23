@@ -101,6 +101,7 @@ function LadderSetup({
   const [scoring, setScoring] = useState("to_11_win_by_2");
   const [source, setSource] = useState<"manual" | "pulse_rating" | "random">("pulse_rating");
   const [autoAdvance, setAutoAdvance] = useState(true);
+  const [selfReport, setSelfReport] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const save = async () => {
@@ -114,6 +115,7 @@ function LadderSetup({
       scoring_format: scoring,
       initial_order_source: source,
       auto_advance: autoAdvance,
+      self_report_scoring: selfReport,
       status: "setup",
     } as never);
     setSaving(false);
@@ -177,6 +179,18 @@ function LadderSetup({
             </p>
           </div>
           <Switch checked={autoAdvance} onCheckedChange={setAutoAdvance} className="mt-0.5" />
+        </label>
+        <label className="flex items-start justify-between gap-3 cursor-pointer mt-3">
+          <div>
+            <div className="text-sm font-semibold">Players self-report scores</div>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Any player on the court can enter the final score and it counts
+              immediately — no second confirmation. Scores still can't be
+              entered before the week's scheduled start time, so make sure the
+              week's date and time are set correctly.
+            </p>
+          </div>
+          <Switch checked={selfReport} onCheckedChange={setSelfReport} className="mt-0.5" />
         </label>
       </FormSection>
 
@@ -475,11 +489,13 @@ function LadderManage({
     return { kind: "complete" as const, week: lastW, batch: lastB, label: "" };
   }, [ladder.lastFinalBatch, activeBatch, batchesPerWeek, totalWeeks]);
 
-  const generateNext = async () => {
+  const [weekPrompt, setWeekPrompt] = useState(false);
+
+  const runGenerate = async (session_id?: string) => {
     if (!settings) return;
     setGenerating(true);
     const { data, error } = await supabase.functions.invoke("ladder-generate-next", {
-      body: { season_id: settings.season_id },
+      body: { season_id: settings.season_id, session_id: session_id ?? null },
     });
     setGenerating(false);
     if (error || (data as { error?: string })?.error) {
@@ -489,6 +505,15 @@ function LadderManage({
     const kind = (data as { kind?: string })?.kind;
     toast.success(kind === "week" ? "Next week generated" : "Next batch generated");
     onChanged();
+  };
+
+  const generateNext = () => {
+    if (!nextStage) return;
+    // Starting a new week is only ever an explicit organizer action AND
+    // requires confirming the date/time up front — scores can't be entered
+    // before that moment (safeguard when self-report scoring is on).
+    if (nextStage.kind === "week") { setWeekPrompt(true); return; }
+    void runGenerate();
   };
 
   // Auto-advance: when a batch is complete and tie-free, move on without the
@@ -528,6 +553,18 @@ function LadderManage({
       .eq("season_id", settings.season_id);
     if (error) { toast.error(error.message); return; }
     toast.success(autoAdvance ? "Auto-advance turned off" : "Auto-advance turned on");
+    onChanged();
+  };
+
+  const selfReport = (settings as unknown as { self_report_scoring?: boolean } | null)
+    ?.self_report_scoring ?? false;
+  const toggleSelfReport = async () => {
+    if (!settings) return;
+    const { error } = await supabase.from("ladder_settings" as never)
+      .update({ self_report_scoring: !selfReport } as never)
+      .eq("season_id", settings.season_id);
+    if (error) { toast.error(error.message); return; }
+    toast.success(selfReport ? "Self-report scoring off" : "Self-report scoring on");
     onChanged();
   };
 
@@ -619,6 +656,18 @@ function LadderManage({
             </div>
             <Switch checked={autoAdvance} onCheckedChange={toggleAuto} />
           </label>
+          <label className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-background/50 px-3 py-2 cursor-pointer">
+            <div className="flex items-center gap-2 text-xs">
+              <CheckCircle2 className={cn("w-3.5 h-3.5", selfReport ? "text-[#A6DB5A]" : "text-muted-foreground")} />
+              <span className="font-semibold">Self-report scoring</span>
+              <span className="text-muted-foreground">
+                {selfReport
+                  ? "on — any player on the court can lock in the final score"
+                  : "off — a second player must verify each score"}
+              </span>
+            </div>
+            <Switch checked={selfReport} onCheckedChange={toggleSelfReport} />
+          </label>
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={togglePause} disabled={pauseBusy}
               className="h-12 shrink-0">
@@ -652,6 +701,36 @@ function LadderManage({
           paused={paused}
           generating={generating}
           onGenerate={generateNext}
+        />
+      )}
+
+      {weekPrompt && nextStage?.kind === "week" && settings && (
+        <WeekSessionDialog
+          weekNumber={nextStage.week}
+          busy={generating}
+          onCancel={() => setWeekPrompt(false)}
+          onConfirm={async (details) => {
+            const { data, error } = await supabase
+              .from("league_sessions" as never)
+              .insert({
+                league_id: league.id,
+                season_id: settings.season_id,
+                name: `Week ${nextStage.week}`,
+                scheduled_date: details.scheduled_date,
+                start_time: details.start_time,
+                end_time: details.end_time || null,
+                location: details.location || null,
+                status: "published",
+              } as never)
+              .select("id")
+              .single();
+            if (error || !data) {
+              toast.error(error?.message ?? "Couldn't schedule the week");
+              return;
+            }
+            setWeekPrompt(false);
+            await runGenerate((data as { id: string }).id);
+          }}
         />
       )}
 
@@ -879,6 +958,75 @@ function GenerateNextPanel({
         </p>
       )}
     </div>
+  );
+}
+
+function WeekSessionDialog({
+  weekNumber, busy, onCancel, onConfirm,
+}: {
+  weekNumber: number;
+  busy: boolean;
+  onCancel: () => void;
+  onConfirm: (d: {
+    scheduled_date: string;
+    start_time: string;
+    end_time: string;
+    location: string;
+  }) => void | Promise<void>;
+}) {
+  const today = new Date().toISOString().slice(0, 10);
+  const [date, setDate] = useState(today);
+  const [start, setStart] = useState("18:00");
+  const [end, setEnd] = useState("");
+  const [loc, setLoc] = useState("");
+  const canSubmit = !!date && !!start && !busy;
+
+  return (
+    <Dialog open onOpenChange={(o) => { if (!o) onCancel(); }}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Schedule Week {weekNumber}</DialogTitle>
+          <DialogDescription>
+            Confirm when this week is played. Players can't enter scores
+            before this start time, so make sure it's right.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Date</div>
+            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={FIELD_H} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Start time</div>
+              <Input type="time" value={start} onChange={(e) => setStart(e.target.value)} className={FIELD_H} />
+            </div>
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">End time (optional)</div>
+              <Input type="time" value={end} onChange={(e) => setEnd(e.target.value)} className={FIELD_H} />
+            </div>
+          </div>
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Location (optional)</div>
+            <Input value={loc} onChange={(e) => setLoc(e.target.value)}
+              placeholder="e.g. Nickerson courts" className={FIELD_H} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onCancel} disabled={busy}>Cancel</Button>
+          <Button
+            disabled={!canSubmit}
+            onClick={() => onConfirm({
+              scheduled_date: date, start_time: start,
+              end_time: end, location: loc,
+            })}
+            className="font-bold uppercase tracking-wide"
+          >
+            {busy ? "Generating…" : `Generate Week ${weekNumber}`}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

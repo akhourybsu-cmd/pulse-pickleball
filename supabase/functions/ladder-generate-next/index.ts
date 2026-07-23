@@ -50,7 +50,9 @@ Deno.serve(async (req) => {
         auth: { autoRefreshToken: false, persistSession: false } },
     )
 
-    const { season_id } = await req.json()
+    const { season_id, session_id } = await req.json() as {
+      season_id?: string; session_id?: string | null;
+    }
     if (!season_id) return json({ error: 'season_id required' }, 400)
 
     // ---- settings -----------------------------------------------------
@@ -144,9 +146,12 @@ Deno.serve(async (req) => {
     const plan = {
       batch: {
         week: nextWeek, batch: nextBatch,
-        // Same-week next batch shares the session; a new week starts with no
-        // session until the organizer schedules that week.
-        session_id: sameWeek ? (last.session_id ?? null) : null,
+        // Same-week next batch shares the session; a new week uses the
+        // organizer-confirmed session_id (from the date/time dialog) when
+        // provided, otherwise starts unscheduled.
+        session_id: sameWeek
+          ? (last.session_id ?? null)
+          : (session_id ?? null),
         court_waves: Math.ceil(groups.length / courtCount),
         idempotency_key: `batch:${season_id}:${nextWeek}:${nextBatch}`,
         groups,
