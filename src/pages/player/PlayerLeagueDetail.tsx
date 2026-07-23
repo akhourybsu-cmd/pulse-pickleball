@@ -60,20 +60,32 @@ export default function PlayerLeagueDetail() {
   const detail = useLeagueDetailForPlayer(leagueId);
   const {
     league, membership, season, division,
-    matches, allMatches, teamsById, playersById, loading,
+    matches, allMatches, allTeams, teamsById, playersById, teammates,
+    myTeams, loading,
     currentUserId, refresh,
   } = detail;
 
-  // Individual standings scoped to my current season + division.
-  const standings = useMemo(
-    () => computePlayerStandings(
+  const isTeamMode =
+    league?.league_type === "doubles" || league?.league_type === "team";
+
+  // Standings scoped to my current season + division. Team-format
+  // leagues get team standings; individual formats get per-player.
+  const standings = useMemo(() => {
+    const opts = { seasonId: season?.id ?? undefined, divisionId: division?.id ?? undefined };
+    if (isTeamMode) {
+      return computeTeamStandings(allMatches, allTeams, opts);
+    }
+    return computePlayerStandings(
       allMatches,
       (id) => (playersById[id] ? resolvePlayerName(playersById[id]) : "Player"),
-      { seasonId: season?.id ?? undefined, divisionId: division?.id ?? undefined },
-    ),
-    [allMatches, playersById, season?.id, division?.id],
-  );
-  const myRow = standings.find((r) => r.teamId === currentUserId);
+      opts,
+    );
+  }, [allMatches, allTeams, playersById, season?.id, division?.id, isTeamMode]);
+
+  const myTeamIdSet = useMemo(() => new Set(myTeams.map((t) => t.id)), [myTeams]);
+  const myRow = isTeamMode
+    ? standings.find((r) => myTeamIdSet.has(r.teamId))
+    : standings.find((r) => r.teamId === currentUserId);
 
   if (loading) {
     return (
