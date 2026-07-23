@@ -429,7 +429,7 @@ function AddMemberDialog({
 
         // Guests I added that have been linked to a real profile
         const { data: gs } = await supabase
-          .from("guest_players")
+          .from("guest_players" as never)
           .select("linked_user_id")
           .eq("added_by_user_id", uid)
           .not("linked_user_id", "is", null);
