@@ -1,11 +1,17 @@
 // =====================================================================
-// ladder-finalize-batch
+// ladder-finalize-batch  (PROCESS-ONLY)
 //
-// Server-side (authoritative) finalization of a ladder batch. Runs the
+// Server-side (authoritative) PROCESSING of a ladder batch. Runs the
 // TESTED pure engine against the REAL scores in the DB — the client never
 // supplies ladder positions or movement — then hands a plan to the
 // transactional ladder_finalize_batch RPC, which persists it atomically
 // and idempotently (row lock + unique keys).
+//
+// This function DOES NOT generate the next batch or week. Per the
+// sequential-progression spec, generation is an EXPLICIT organizer step
+// (ladder-generate-next-batch / ladder-generate-next-week). Processing a
+// batch only computes the resulting ladder order + movements and stores
+// the result snapshot, unlocking the next generation action.
 //
 // Runs as the CALLING USER (anon key + their JWT) so RLS + the RPC's
 // is_league_admin check apply — no service role, no privilege escalation.
@@ -15,7 +21,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import {
-  computeBatchOutcome, groupIntoFours, batchMatchups,
+  computeBatchOutcome,
   type LadderGameResult,
 } from '../_shared/leagues/ladder.ts'
 
@@ -58,12 +64,6 @@ Deno.serve(async (req) => {
     const { data: startSnap } = await supabase
       .from('ladder_snapshots').select('*').eq('id', batch.start_snapshot_id).maybeSingle()
     if (!startSnap) return json({ error: 'Start snapshot missing' }, 500)
-
-    const { data: settings } = await supabase
-      .from('ladder_settings').select('*').eq('season_id', batch.season_id).maybeSingle()
-    const batchesPerWeek = settings?.batches_per_week ?? 1
-    const totalWeeks = settings?.total_weeks ?? null
-    const courtCount = Math.max(1, settings?.court_count ?? 1)
 
     const { data: groups } = await supabase
       .from('ladder_batch_groups').select('*')
@@ -122,47 +122,18 @@ Deno.serve(async (req) => {
       })),
     )
 
-    // ---- decide whether another batch follows -------------------------
+    // ---- build the PROCESS plan (no downstream generation) ------------
     const week = batch.week_number as number
     const bnum = batch.batch_number as number
-    let next: Record<string, unknown> | null = null
-    let nextWeek = 0, nextBatch = 0, sameWeek = false
-    if (bnum < batchesPerWeek) { nextWeek = week; nextBatch = bnum + 1; sameWeek = true }
-    else if (totalWeeks == null || week < totalWeeks) { nextWeek = week + 1; nextBatch = 1 }
-
-    if (nextWeek > 0) {
-      const nextGroups = groupIntoFours(outcome.nextOrder).map((grp, gi) => ({
-        group_index: gi,
-        court_number: (gi % courtCount) + 1,
-        wave: Math.floor(gi / courtCount) + 1,
-        player_ids: grp,
-        games: batchMatchups(grp).map((m) => ({
-          game_number: m.game,
-          side_a: m.sideA,
-          side_b: m.sideB,
-        })),
-      }))
-      next = {
-        week: nextWeek,
-        batch: nextBatch,
-        // Same-week next batch shares the session; next week's session is
-        // attached by the organizer when that week is scheduled.
-        session_id: sameWeek ? (batch.session_id ?? null) : null,
-        court_waves: Math.ceil(nextGroups.length / courtCount),
-        idempotency_key: `batch:${batch.season_id}:${nextWeek}:${nextBatch}`,
-        groups: nextGroups,
-      }
-    }
 
     const plan = {
       result_snapshot: {
         week, batch: bnum,
         player_ids: outcome.nextOrder,
-        reason: `week ${week} batch ${bnum} finalized`,
+        reason: `week ${week} batch ${bnum} processed`,
         idempotency_key: `res:${batch.season_id}:${week}:${bnum}`,
       },
       movements,
-      next,
     }
 
     // ---- persist atomically via the guarded RPC ----------------------
