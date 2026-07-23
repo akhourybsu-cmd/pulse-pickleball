@@ -32,9 +32,24 @@ import type { LeagueMatch, LeagueTeam } from "@/lib/leagues/types";
  * `currentUserId` and `isParticipant` come from the parent so the
  * component doesn't need its own auth call.
  */
+/**
+ * Fire-and-forget nudge so a ladder can move on without the organizer. Safe
+ * to call by anyone and idempotent server-side — it only advances a batch
+ * that's genuinely complete and tie-free. No-op for non-ladder seasons
+ * (ladderSeasonId undefined).
+ */
+async function nudgeLadderAdvance(ladderSeasonId?: string) {
+  if (!ladderSeasonId) return;
+  try {
+    await supabase.functions.invoke("ladder-advance", {
+      body: { season_id: ladderSeasonId },
+    });
+  } catch { /* best-effort; the organizer view / schedule will catch up */ }
+}
+
 export function LeagueMatchActions({
   match, teamsById, currentUserId, isParticipant, onChanged,
-  sideALabel, sideBLabel,
+  sideALabel, sideBLabel, ladderSeasonId,
 }: {
   match: LeagueMatch;
   teamsById: Record<string, LeagueTeam>;
@@ -45,6 +60,10 @@ export function LeagueMatchActions({
    *  names when not supplied. */
   sideALabel?: string;
   sideBLabel?: string;
+  /** When set, this match belongs to a ladder season; after a score is
+   *  submitted/confirmed we nudge auto-advance so play continues without
+   *  the organizer. */
+  ladderSeasonId?: string;
 }) {
   const [scoreOpen, setScoreOpen] = useState(false);
   const [disputeOpen, setDisputeOpen] = useState(false);
@@ -131,6 +150,7 @@ export function LeagueMatchActions({
                   return;
                 }
                 toast.success("Score confirmed");
+                await nudgeLadderAdvance(ladderSeasonId);
                 await onChanged();
               }}
             >
@@ -183,6 +203,7 @@ export function LeagueMatchActions({
         teamsById={teamsById}
         sideALabel={sideALabel}
         sideBLabel={sideBLabel}
+        ladderSeasonId={ladderSeasonId}
         onSubmitted={onChanged}
       />
       <DisputeDialog
@@ -207,7 +228,7 @@ export function LeagueMatchActions({
 /* ---------- inner dialogs ---------- */
 
 function SubmitScoreDialog({
-  open, onOpenChange, match, teamsById, sideALabel, sideBLabel, onSubmitted,
+  open, onOpenChange, match, teamsById, sideALabel, sideBLabel, ladderSeasonId, onSubmitted,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
@@ -215,6 +236,7 @@ function SubmitScoreDialog({
   teamsById: Record<string, LeagueTeam>;
   sideALabel?: string;
   sideBLabel?: string;
+  ladderSeasonId?: string;
   onSubmitted: () => void | Promise<void>;
 }) {
   const [aScore, setAScore] = useState<string>(
@@ -261,6 +283,7 @@ function SubmitScoreDialog({
     if (error) { toast.error(error.message); return; }
     toast.success("Score submitted — waiting for a teammate or opponent to confirm");
     onOpenChange(false);
+    await nudgeLadderAdvance(ladderSeasonId);
     await onSubmitted();
   };
 

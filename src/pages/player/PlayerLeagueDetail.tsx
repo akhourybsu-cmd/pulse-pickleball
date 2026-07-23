@@ -311,6 +311,7 @@ export default function PlayerLeagueDetail() {
                 teamsById={teamsById}
                 playersById={playersById}
                 currentUserId={currentUserId}
+                isLadder={league?.league_type === "ladder"}
                 onChanged={refresh}
               />
             ))}
@@ -333,6 +334,7 @@ export default function PlayerLeagueDetail() {
                 teamsById={teamsById}
                 playersById={playersById}
                 currentUserId={currentUserId}
+                isLadder={league?.league_type === "ladder"}
                 onChanged={refresh}
               />
             ))}
@@ -368,12 +370,13 @@ function InfoRow({
 }
 
 function MatchRow({
-  match, teamsById, playersById, currentUserId, onChanged,
+  match, teamsById, playersById, currentUserId, isLadder, onChanged,
 }: {
   match: import("@/lib/leagues/types").LeagueMatch;
   teamsById: Record<string, import("@/lib/leagues/types").LeagueTeam>;
   playersById: Record<string, { display_name: string | null; full_name: string | null; first_name: string | null; last_name: string | null }>;
   currentUserId: string | null;
+  isLadder?: boolean;
   onChanged: () => void;
 }) {
   const teamA = match.team_a_id ? teamsById[match.team_a_id] : null;
@@ -453,6 +456,7 @@ function MatchRow({
             isParticipant
             sideALabel={aName}
             sideBLabel={bName}
+            ladderSeasonId={isLadder ? match.season_id : undefined}
             onChanged={onChanged}
           />
         </div>

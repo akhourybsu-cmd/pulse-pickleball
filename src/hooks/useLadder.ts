@@ -23,6 +23,7 @@ export interface LadderSettings {
   scoring_format: string;
   initial_order_source: "manual" | "pulse_rating" | "random" | "prior_season";
   status: "setup" | "active" | "paused" | "complete";
+  auto_advance: boolean;
 }
 
 export interface LadderBatch {
