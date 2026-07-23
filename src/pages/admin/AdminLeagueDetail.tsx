@@ -108,7 +108,10 @@ export default function AdminLeagueDetail() {
     if (!leagueId) return;
     const [seasonsQ, membersQ, teamsQ, sessionsQ] = await Promise.all([
       supabase.from("league_seasons"  as never).select("id", { count: "exact", head: true }).eq("league_id", leagueId),
-      supabase.from("league_members"  as never).select("id", { count: "exact", head: true }).eq("league_id", leagueId).eq("status", "active"),
+      // Roster count excludes the auto-enrolled manager row (season-less,
+      // role='manager'). Managers are only counted here if they've also
+      // been added as a player/captain/sub in a season — a separate row.
+      supabase.from("league_members"  as never).select("id", { count: "exact", head: true }).eq("league_id", leagueId).eq("status", "active").neq("role", "manager"),
       supabase.from("league_teams"    as never).select("id", { count: "exact", head: true }).eq("league_id", leagueId).eq("status", "active"),
       supabase.from("league_sessions" as never).select("id", { count: "exact", head: true }).eq("league_id", leagueId),
     ]);
