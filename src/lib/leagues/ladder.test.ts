@@ -7,6 +7,7 @@ import {
   rankGroup,
   applyMovement,
   computeBatchOutcome,
+  detectTieBreaks,
   validateLadderTransition,
   LadderError,
   type LadderGameResult,
@@ -234,6 +235,58 @@ describe("computeBatchOutcome — end to end", () => {
     const order = ["p1", "p2", "p3", "p4", "p5", "p6", "p7", "p8"];
     const g1 = score(batchMatchups(["p1", "p2", "p3", "p4"]), [[11, 9], [11, 9], [11, 9]]);
     expect(() => computeBatchOutcome(order, [g1])).toThrow(LadderError);
+  });
+});
+
+describe("detectTieBreaks + organizer resolution", () => {
+  // 8 players, two groups. Group 0 is a clean 1-2-3-4. Group 1 (the bottom
+  // group) has p5 and p6 dead-even for 1st — a genuine promotion tie that
+  // scores alone can't settle.
+  const order = ["p1", "p2", "p3", "p4", "p5", "p6", "p7", "p8"];
+  const gamesByGroup: LadderGameResult[][] = [
+    score(batchMatchups(["p1", "p2", "p3", "p4"]), [[11, 3], [11, 4], [11, 5]]),
+    // p5 & p6 both finish 2-1 with identical +6 diff and 31 points; p7 is 2-1
+    // but -2; p8 is 0-3. So {p5,p6} tie for the single promotion slot.
+    score(batchMatchups(["p5", "p6", "p7", "p8"]), [[11, 5], [11, 9], [9, 11]]),
+  ];
+
+  it("flags the promotion tie in the bottom group and nothing else", () => {
+    const needs = detectTieBreaks(order, gamesByGroup);
+    expect(needs).toHaveLength(1);
+    expect(needs[0].groupIndex).toBe(1);
+    expect(needs[0].boundaries).toEqual(["promotion"]);
+    expect([...needs[0].tiedPlayerIds].sort()).toEqual(["p5", "p6"]);
+  });
+
+  it("returns [] when every group is decided by score", () => {
+    const clean: LadderGameResult[][] = [
+      score(batchMatchups(["p1", "p2", "p3", "p4"]), [[11, 3], [11, 4], [11, 5]]),
+      score(batchMatchups(["p5", "p6", "p7", "p8"]), [[11, 3], [11, 4], [11, 5]]),
+    ];
+    expect(detectTieBreaks(order, clean)).toEqual([]);
+  });
+
+  it("falls back to start position when no resolution is given", () => {
+    const outcome = computeBatchOutcome(order, gamesByGroup);
+    // p5 starts above p6, so with no organizer input p5 takes 1st and is promoted.
+    expect(outcome.rankedByGroup[1][0].playerId).toBe("p5");
+    expect(outcome.movements["p5"].direction).toBe("up");
+    expect(outcome.movements["p6"].direction).toBe("stay");
+  });
+
+  it("honors an organizer resolution (skinny-singles winner advances)", () => {
+    // Organizer says p6 won the tiebreaker → p6 finishes 1st and is promoted.
+    const outcome = computeBatchOutcome(order, gamesByGroup, { 1: ["p6", "p5"] });
+    expect(outcome.rankedByGroup[1][0].playerId).toBe("p6");
+    expect(outcome.movements["p6"].direction).toBe("up");
+    expect(outcome.movements["p5"].direction).toBe("stay");
+  });
+
+  it("a resolution can't move a player past someone they out-scored", () => {
+    // p7 is behind p5/p6 on the tiebreak key; naming it first must NOT promote it.
+    const outcome = computeBatchOutcome(order, gamesByGroup, { 1: ["p7", "p6", "p5"] });
+    expect(outcome.rankedByGroup[1][0].playerId).toBe("p6"); // p7 stays 3rd
+    expect(outcome.rankedByGroup[1][2].playerId).toBe("p7");
   });
 });
 

@@ -136,10 +136,20 @@ export function isBatchComplete(games: LadderGameResult[]): boolean {
  *
  * Order: wins → point differential → total points scored → head-to-head
  * (only for an exact two-way tie, since it's ambiguous otherwise) →
- * starting ladder position (higher start keeps the higher finish on an exact
- * tie). Fully deterministic.
+ * organizer tiebreak resolution (`resolvedOrder`, e.g. a skinny-singles
+ * result) → starting ladder position (higher start keeps the higher finish
+ * on an exact tie). Fully deterministic.
+ *
+ * `resolvedOrder` is an organizer-supplied ordering of tied players (the ones
+ * a skinny-singles/coin-flip decided). It only ever breaks a tie between
+ * players who are otherwise dead-even on wins/diff/points — it can never move
+ * a player past someone they actually out-performed.
  */
-export function rankGroup(group: PlayerId[], games: LadderGameResult[]): PlayerBatchStats[] {
+export function rankGroup(
+  group: PlayerId[],
+  games: LadderGameResult[],
+  resolvedOrder?: PlayerId[],
+): PlayerBatchStats[] {
   if (group.length !== 4) {
     throw new LadderError("A ladder group must have exactly four players.");
   }
@@ -190,11 +200,21 @@ export function rankGroup(group: PlayerId[], games: LadderGameResult[]): PlayerB
 
   const tieKey = (s: PlayerBatchStats) => `${s.wins}|${s.pointDiff}|${s.pointsFor}`;
 
-  // Base deterministic order (startPosition as the final, total-order tiebreak).
+  // Organizer tiebreak resolution: index in `resolvedOrder`, or +Infinity for
+  // players it doesn't mention (they fall through to startPosition).
+  const resolvedIdx = (pid: PlayerId): number => {
+    const i = resolvedOrder ? resolvedOrder.indexOf(pid) : -1;
+    return i === -1 ? Number.POSITIVE_INFINITY : i;
+  };
+
+  // Base deterministic order. resolvedOrder outranks startPosition so an
+  // organizer decision wins an otherwise-even tie; players not covered by a
+  // resolution still fall back to startPosition.
   const ranked = Array.from(stats.values()).sort((a, b) =>
     b.wins - a.wins
     || b.pointDiff - a.pointDiff
     || b.pointsFor - a.pointsFor
+    || resolvedIdx(a.playerId) - resolvedIdx(b.playerId)
     || a.startPosition - b.startPosition,
   );
 
@@ -215,6 +235,75 @@ export function rankGroup(group: PlayerId[], games: LadderGameResult[]): PlayerB
 
   ranked.forEach((s, idx) => { s.finishPosition = idx + 1; });
   return ranked;
+}
+
+// ---------------------------------------------------------------------------
+// Tiebreak detection (organizer input required)
+// ---------------------------------------------------------------------------
+
+/** A movement boundary a tie makes ambiguous. */
+export type TieBoundary = "promotion" | "relegation";
+
+/**
+ * A group whose result can't be resolved by scores alone AND where the tie
+ * straddles a movement boundary — so the organizer must say who advances
+ * (e.g. by a skinny-singles game). Ties that don't affect who moves up/down
+ * (e.g. 2nd vs 3rd, both stay) are NOT surfaced.
+ */
+export interface TieBreakNeed {
+  groupIndex: number;
+  /** Which boundaries this group's tie makes ambiguous. */
+  boundaries: TieBoundary[];
+  /** The dead-even players, in the engine's provisional order (a suggestion). */
+  tiedPlayerIds: PlayerId[];
+}
+
+/**
+ * Detect ties that require an organizer decision. A cluster of players who are
+ * exactly even on wins/diff/points needs a decision when it spans the 1st/2nd
+ * boundary (who gets promoted) in a non-top group, or the 3rd/4th boundary
+ * (who gets relegated) in a non-bottom group.
+ */
+export function detectTieBreaks(
+  order: PlayerId[],
+  gamesByGroup: LadderGameResult[][],
+): TieBreakNeed[] {
+  const groups = groupIntoFours(order);
+  if (gamesByGroup.length !== groups.length) {
+    throw new LadderError(
+      `Expected results for ${groups.length} group(s), got ${gamesByGroup.length}.`,
+    );
+  }
+  const key = (s: PlayerBatchStats) => `${s.wins}|${s.pointDiff}|${s.pointsFor}`;
+  const needs: TieBreakNeed[] = [];
+
+  groups.forEach((g, gi) => {
+    const ranked = rankGroup(g, gamesByGroup[gi]); // provisional (start-pos fallback)
+    const isTop = gi === 0;
+    const isBottom = gi === groups.length - 1;
+
+    let i = 0;
+    while (i < ranked.length) {
+      let j = i + 1;
+      while (j < ranked.length && key(ranked[j]) === key(ranked[i])) j += 1;
+      if (j - i > 1) {
+        const startPos = i + 1; // 1-indexed finish position of the cluster's top
+        const endPos = j;       // 1-indexed finish position of the cluster's bottom
+        const boundaries: TieBoundary[] = [];
+        if (!isTop && startPos <= 1 && endPos >= 2) boundaries.push("promotion");
+        if (!isBottom && endPos >= 4 && startPos <= 3) boundaries.push("relegation");
+        if (boundaries.length) {
+          needs.push({
+            groupIndex: gi,
+            boundaries,
+            tiedPlayerIds: ranked.slice(i, j).map((r) => r.playerId),
+          });
+        }
+      }
+      i = j;
+    }
+  });
+  return needs;
 }
 
 // ---------------------------------------------------------------------------
@@ -302,10 +391,14 @@ export function applyMovement(
  * per-player movement, and the next ladder order. Pure and deterministic.
  *
  * `gamesByGroup[i]` are the games for the i-th group of `groupIntoFours(order)`.
+ *
+ * `tieResolutions[i]` is an optional organizer ordering of the tied players in
+ * group i (see `detectTieBreaks`). It only breaks otherwise-even ties.
  */
 export function computeBatchOutcome(
   order: PlayerId[],
   gamesByGroup: LadderGameResult[][],
+  tieResolutions?: Record<number, PlayerId[]>,
 ): BatchOutcome {
   const groups = groupIntoFours(order);
   if (gamesByGroup.length !== groups.length) {
@@ -313,7 +406,8 @@ export function computeBatchOutcome(
       `Expected results for ${groups.length} group(s), got ${gamesByGroup.length}.`,
     );
   }
-  const rankedByGroup = groups.map((g, i) => rankGroup(g, gamesByGroup[i]));
+  const rankedByGroup = groups.map((g, i) =>
+    rankGroup(g, gamesByGroup[i], tieResolutions?.[i]));
   const finishOrderGroups = rankedByGroup.map((rows) =>
     rows.slice().sort((a, b) => a.finishPosition - b.finishPosition).map((r) => r.playerId),
   );
