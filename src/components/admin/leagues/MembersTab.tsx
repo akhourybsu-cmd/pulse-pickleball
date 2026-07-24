@@ -126,14 +126,81 @@ export function MembersTab({ league, dataVersion, onMutated }: LeagueTabProps) {
 
   // Filter members by the search query (name substring). Case-insensitive.
   const q = query.trim().toLowerCase();
-  const filteredMembers = q
-    ? members.filter((m) => {
-        const p = profilesById[m.user_id];
-        if (!p) return false;
-        const name = resolvePlayerName(p).toLowerCase();
-        return name.includes(q);
-      })
-    : members;
+  const matches = (m: LeagueMember) => {
+    if (!q) return true;
+    const p = profilesById[m.user_id];
+    if (!p) return false;
+    return resolvePlayerName(p).toLowerCase().includes(q);
+  };
+
+  // Split: assistant managers (role=manager, active) first, then active
+  // players, then inactive/removed at the very bottom. Primary manager is
+  // pinned above the whole list as a special row.
+  const assistantMgrs = members
+    .filter((m) => m.role === "manager" && m.status === "active" && m.user_id !== league.created_by && matches(m));
+  const activePlayers = members
+    .filter((m) => m.status === "active" && m.role !== "manager" && matches(m));
+  const inactive = members
+    .filter((m) => m.status !== "active" && matches(m));
+
+  const renderMemberRow = (m: LeagueMember) => {
+    const p = profilesById[m.user_id];
+    const name = p ? resolvePlayerName(p) : "Loading…";
+    const division = divisions.find((d) => d.id === m.division_id);
+    const initials = name
+      .split(/\s+/).filter(Boolean).slice(0, 2)
+      .map((s) => s[0]).join("").toUpperCase() || "?";
+    const roleLabel = m.role === "manager" ? "Assistant manager" : m.role;
+    const isInactive = m.status !== "active";
+    return (
+      <li key={m.id} className={cn(
+        "rounded-lg border border-border/70 bg-card p-3 flex flex-col sm:flex-row sm:items-center gap-3",
+        isInactive && "opacity-60",
+      )}>
+        <div className="flex items-center gap-3 min-w-0 sm:flex-1">
+          <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center shrink-0 overflow-hidden ring-1 ring-border">
+            {p?.avatar_url ? (
+              <img src={p.avatar_url} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <span className="text-[11px] font-bold text-muted-foreground">{initials}</span>
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="font-medium truncate">{name}</div>
+            <div className="text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap mt-1">
+              <span className={cn(
+                "inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded",
+                m.role === "manager"
+                  ? "bg-primary/10 text-primary ring-1 ring-primary/20"
+                  : "bg-muted text-muted-foreground",
+              )}>
+                {m.role === "manager" && <Crown className="w-2.5 h-2.5" />}
+                {roleLabel}
+              </span>
+              {m.status !== "active" && (
+                <span className={cn(
+                  "text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded",
+                  m.status === "removed"
+                    ? "bg-destructive/10 text-destructive"
+                    : "bg-amber-500/10 text-amber-600",
+                )}>
+                  {m.status}
+                </span>
+              )}
+              {division && <span className="text-muted-foreground">{division.name}</span>}
+            </div>
+          </div>
+        </div>
+        <MemberInlineActions
+          league={league}
+          member={m}
+          memberName={name}
+          divisions={divisions}
+          onChanged={async () => { await reload(); onMutated(); }}
+        />
+      </li>
+    );
+  };
 
   return (
     <div className="space-y-3">
@@ -170,8 +237,7 @@ export function MembersTab({ league, dataVersion, onMutated }: LeagueTabProps) {
         </Dialog>
       </div>
 
-      {/* Search bar — visible whenever there's more than a handful of
-          members. Below that it's just noise. */}
+      {/* Search bar — visible whenever there's more than a handful of members. */}
       {members.length > 4 && (
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -184,6 +250,30 @@ export function MembersTab({ league, dataVersion, onMutated }: LeagueTabProps) {
         </div>
       )}
 
+      {/* Primary manager — pinned. Cannot be removed here (they run the league). */}
+      {primaryManager && (
+        <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 flex items-center gap-3">
+          <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center shrink-0 overflow-hidden ring-1 ring-primary/30">
+            {primaryManager.avatar_url ? (
+              <img src={primaryManager.avatar_url} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <span className="text-[11px] font-bold text-muted-foreground">
+                {resolvePlayerName(primaryManager).split(/\s+/).slice(0, 2).map((s) => s[0]).join("").toUpperCase() || "?"}
+              </span>
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="font-medium truncate">{resolvePlayerName(primaryManager)}</div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-primary/15 text-primary ring-1 ring-primary/30">
+                <Crown className="w-2.5 h-2.5" />
+                Manager
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {members.length === 0 ? (
         <EmptyState
           icon={<Users className="w-5 h-5" />}
@@ -191,77 +281,45 @@ export function MembersTab({ league, dataVersion, onMutated }: LeagueTabProps) {
           desc="Search for existing players and add them as league members."
           action={{ label: "Add member", onClick: () => setAddOpen(true) }}
         />
-      ) : filteredMembers.length === 0 ? (
+      ) : (assistantMgrs.length + activePlayers.length + inactive.length === 0) ? (
         <EmptyState
           icon={<Search className="w-5 h-5" />}
           title="No matches"
           desc={`No members match "${query}".`}
         />
       ) : (
-        <ul className="space-y-2">
-          {filteredMembers.map((m) => {
-            const p = profilesById[m.user_id];
-            const name = p ? resolvePlayerName(p) : "Loading…";
-            const division = divisions.find((d) => d.id === m.division_id);
-            const initials = name
-              .split(/\s+/).filter(Boolean).slice(0, 2)
-              .map((s) => s[0]).join("").toUpperCase() || "?";
-            return (
-              <li key={m.id} className="rounded-lg border border-border/70 bg-card p-3 flex flex-col sm:flex-row sm:items-center gap-3">
-                <div className="flex items-center gap-3 min-w-0 sm:flex-1">
-                  {/* Avatar chip — pulls from profile.avatar_url when
-                      available, initials otherwise. Small enough to not
-                      dominate the row. */}
-                  <div className="h-9 w-9 rounded-full bg-muted flex items-center justify-center shrink-0 overflow-hidden ring-1 ring-border">
-                    {p?.avatar_url ? (
-                      <img src={p.avatar_url} alt="" className="h-full w-full object-cover" />
-                    ) : (
-                      <span className="text-[11px] font-bold text-muted-foreground">
-                        {initials}
-                      </span>
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="font-medium truncate">{name}</div>
-                    <div className="text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap mt-1">
-                      <span className={cn(
-                        "inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded",
-                        m.role === "player"
-                          ? "bg-muted text-muted-foreground"
-                          : "bg-primary/10 text-primary ring-1 ring-primary/20",
-                      )}>
-                        {m.role === "captain" && <Crown className="w-2.5 h-2.5" />}
-                        {m.role}
-                      </span>
-                      {m.status !== "active" && (
-                        <span className={cn(
-                          "text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded",
-                          m.status === "removed"
-                            ? "bg-destructive/10 text-destructive"
-                            : "bg-amber-500/10 text-amber-600",
-                        )}>
-                          {m.status}
-                        </span>
-                      )}
-                      {division && <span className="text-muted-foreground">{division.name}</span>}
-                    </div>
-                  </div>
-                </div>
-                <MemberInlineActions
-                  league={league}
-                  member={m}
-                  memberName={name}
-                  divisions={divisions}
-                  onChanged={async () => { await reload(); onMutated(); }}
-                />
-              </li>
-            );
-          })}
-        </ul>
+        <div className="space-y-4">
+          {(assistantMgrs.length > 0 || activePlayers.length > 0) && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                <span>Active roster</span>
+                <span className="text-muted-foreground/70">
+                  · {assistantMgrs.length + activePlayers.length}
+                </span>
+              </div>
+              <ul className="space-y-2">
+                {assistantMgrs.map(renderMemberRow)}
+                {activePlayers.map(renderMemberRow)}
+              </ul>
+            </div>
+          )}
+          {inactive.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                <span>Inactive</span>
+                <span className="text-muted-foreground/70">· {inactive.length}</span>
+              </div>
+              <ul className="space-y-2">
+                {inactive.map(renderMemberRow)}
+              </ul>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
 }
+
 
 function MemberInlineActions({
   league, member, memberName, divisions, onChanged,
