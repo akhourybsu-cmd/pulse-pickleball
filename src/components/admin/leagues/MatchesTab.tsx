@@ -452,6 +452,25 @@ export function MatchesTab({ league, dataVersion, onMutated }: LeagueTabProps) {
             sessions={sessions} teams={teams} members={members} profilesById={profilesById}
             initial={editing}
             onDone={async () => { setEditing(null); await reload(); onMutated(); }}
+            onSaved={async (saved) => { await reload(); onMutated(); setEditing(saved); }}
+            onSaveAndNext={async (saved) => {
+              await reload();
+              onMutated();
+              // Find the next match in the current stable order (court asc within its group).
+              // Use the freshly-sorted visible list from state — edits don't reshuffle.
+              const ordered = [...matches].sort((a, b) => {
+                const ak = a.session_id ?? a.scheduled_time?.slice(0, 10) ?? "~";
+                const bk = b.session_id ?? b.scheduled_time?.slice(0, 10) ?? "~";
+                if (ak !== bk) return ak.localeCompare(bk);
+                const ac = a.court_number ?? Number.POSITIVE_INFINITY;
+                const bc = b.court_number ?? Number.POSITIVE_INFINITY;
+                if (ac !== bc) return ac - bc;
+                return a.id.localeCompare(b.id);
+              });
+              const idx = ordered.findIndex((m) => m.id === saved.id);
+              const next = idx >= 0 && idx < ordered.length - 1 ? ordered[idx + 1] : null;
+              setEditing(next);
+            }}
           />
         </Dialog>
       )}
