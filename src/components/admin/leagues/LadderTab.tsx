@@ -346,6 +346,35 @@ function LadderStart({
         <Play className="w-4 h-4 mr-1.5" />
         {starting ? "Starting…" : "Start ladder"}
       </Button>
+
+      {weekPrompt && (
+        <WeekSessionDialog
+          weekNumber={1}
+          busy={starting}
+          onCancel={() => setWeekPrompt(false)}
+          onConfirm={async (details) => {
+            const { data, error } = await supabase
+              .from("league_sessions" as never)
+              .insert({
+                league_id: league.id,
+                season_id: seasonId,
+                name: `Week 1`,
+                scheduled_date: details.scheduled_date,
+                start_time: details.start_time,
+                end_time: details.end_time || null,
+                location: details.location || null,
+                status: "published",
+              } as never)
+              .select("id")
+              .single();
+            if (error || !data) {
+              toast.error(error?.message ?? "Couldn't schedule the week");
+              return;
+            }
+            await invokeStart((data as { id: string }).id);
+          }}
+        />
+      )}
     </div>
   );
 }
