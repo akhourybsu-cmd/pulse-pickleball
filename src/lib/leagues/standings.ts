@@ -26,24 +26,16 @@ export function computePlayerStandings(
     return true;
   };
 
-  // Stand-in remap: a fill-in plays under the absent regular's identity, so
-  // the regular is credited for the result. `${match_id}:${sub_id}` -> regular.
-  const standIn = new Map<string, string>();
-  (opts.substitutions ?? []).forEach((s) =>
-    standIn.set(`${s.match_id}:${s.in_player_id}`, s.out_player_id));
-  const eff = (matchId: string, pid: string | null): string | null =>
-    pid ? (standIn.get(`${matchId}:${pid}`) ?? pid) : pid;
-  const sidesOf = (m: LeagueMatch) => ({
-    sideA: [eff(m.id, m.player_a_id), eff(m.id, m.player_b_id)].filter(Boolean) as string[],
-    sideB: [eff(m.id, m.player_c_id), eff(m.id, m.player_d_id)].filter(Boolean) as string[],
-  });
-
+  // Stats follow whoever actually played: a fill-in accrues their OWN record
+  // and the absent regular's stats are untouched. (A sub only affects the
+  // regular's ladder POSITION — handled in the ladder engine, not here.)
   const eligible = matches.filter((m) => {
     if (!inScope(m)) return false;
     if (m.team_a_score == null || m.team_b_score == null) return false;
     if (m.team_a_score === m.team_b_score) return false;
     if (m.status !== "verified" && m.status !== "score_submitted") return false;
-    const { sideA, sideB } = sidesOf(m);
+    const sideA = [m.player_a_id, m.player_b_id].filter(Boolean) as string[];
+    const sideB = [m.player_c_id, m.player_d_id].filter(Boolean) as string[];
     return sideA.length > 0 && sideB.length > 0;
   });
 
@@ -76,7 +68,8 @@ export function computePlayerStandings(
   };
 
   for (const m of eligible) {
-    const { sideA, sideB } = sidesOf(m);
+    const sideA = [m.player_a_id, m.player_b_id].filter(Boolean) as string[];
+    const sideB = [m.player_c_id, m.player_d_id].filter(Boolean) as string[];
     const aScore = m.team_a_score!;
     const bScore = m.team_b_score!;
     const aWon = aScore > bScore;
@@ -169,12 +162,6 @@ export interface StandingRow {
 interface StandingsOpts {
   /** If provided, only matches with this season_id contribute. */
   seasonId?: string;
-  /**
-   * Stand-in substitutions: a fill-in's result is credited to the absent
-   * regular. Each row remaps `in_player_id` -> `out_player_id` for that match
-   * (individual/ladder leagues; ignored by team standings).
-   */
-  substitutions?: Array<{ match_id: string; in_player_id: string; out_player_id: string }>;
 }
 
 /**

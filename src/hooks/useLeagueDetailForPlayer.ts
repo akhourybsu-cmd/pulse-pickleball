@@ -42,8 +42,6 @@ export interface PlayerLeagueDetailData {
   allMatches: LeagueMatch[];
   /** All teams in the league — used for standings + opponent names. */
   allTeams: LeagueTeam[];
-  /** Stand-in substitutions, so standings credit the absent regular. */
-  substitutions: Array<{ match_id: string; in_player_id: string; out_player_id: string }>;
   /** Team-id → team row lookup, for match card rendering. */
   teamsById: Record<string, LeagueTeam>;
   /** Player-id → public profile, so match sides render as names. */
@@ -66,7 +64,7 @@ export function useLeagueDetailForPlayer(leagueId: string | undefined): PlayerLe
   const [data, setData] = useState<PlayerLeagueDetailData>({
     league: null, membership: null, season: null,
     myTeams: [], myTeamIds: new Set<string>(),
-    teammates: [], matches: [], allMatches: [], allTeams: [], substitutions: [],
+    teammates: [], matches: [], allMatches: [], allTeams: [],
     teamsById: {},
     playersById: {},
     currentUserId: null,
@@ -99,7 +97,7 @@ export function useLeagueDetailForPlayer(leagueId: string | undefined): PlayerLe
           setData({
             league: null, membership: null, season: null,
             myTeams: [], myTeamIds: new Set<string>(),
-            teammates: [], matches: [], allMatches: [], allTeams: [], substitutions: [],
+            teammates: [], matches: [], allMatches: [], allTeams: [],
             teamsById: {},
             playersById: {},
             currentUserId: user.id,
@@ -197,15 +195,6 @@ export function useLeagueDetailForPlayer(leagueId: string | undefined): PlayerLe
         .from("league_matches" as never).select("*")
         .eq("league_id", leagueId).order("scheduled_time", { ascending: true, nullsFirst: false });
       const matchList = (allMatches ?? []) as unknown as LeagueMatch[];
-
-      // Stand-in substitutions (RLS lets members read them) so standings
-      // credit the absent regular, not the fill-in.
-      const { data: subRows } = await supabase
-        .from("league_match_substitutions" as never)
-        .select("match_id, in_player_id, out_player_id").eq("league_id", leagueId);
-      const substitutions = (subRows ?? []) as unknown as
-        Array<{ match_id: string; in_player_id: string; out_player_id: string }>;
-
       const mine = matchList.filter((m) => {
         const inTeam =
           (m.team_a_id && myTeamIds.has(m.team_a_id)) ||
@@ -247,7 +236,7 @@ export function useLeagueDetailForPlayer(leagueId: string | undefined): PlayerLe
           league, membership, season,
           myTeams, teammates, matches: mine, teamsById, playersById,
           // Full league dataset — needed for the standings section.
-          allTeams, allMatches: matchList, substitutions, myTeamIds,
+          allTeams, allMatches: matchList, myTeamIds,
           currentUserId: user.id,
           loading: false,
           refresh,

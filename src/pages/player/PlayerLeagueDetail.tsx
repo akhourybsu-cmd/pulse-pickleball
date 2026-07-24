@@ -61,7 +61,7 @@ export default function PlayerLeagueDetail() {
   const detail = useLeagueDetailForPlayer(leagueId);
   const {
     league, membership, season,
-    matches, allMatches, allTeams, substitutions, teamsById, playersById, teammates,
+    matches, allMatches, allTeams, teamsById, playersById, teammates,
     myTeams, loading,
     currentUserId, refresh,
   } = detail;
@@ -78,9 +78,9 @@ export default function PlayerLeagueDetail() {
     return computePlayerStandings(
       allMatches,
       (id) => (playersById[id] ? resolvePlayerName(playersById[id]) : "Player"),
-      { seasonId: season?.id ?? undefined, substitutions },
+      { seasonId: season?.id ?? undefined },
     );
-  }, [allMatches, allTeams, substitutions, playersById, season?.id, isTeamMode]);
+  }, [allMatches, allTeams, playersById, season?.id, isTeamMode]);
 
   const myTeamIdSet = useMemo(() => new Set(myTeams.map((t) => t.id)), [myTeams]);
   const myRow = isTeamMode
