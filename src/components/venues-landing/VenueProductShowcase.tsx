@@ -161,19 +161,19 @@ const showcaseItems = [
     title: "Your Venue Dashboard",
     description: "A complete command center for managing courts, events, staff, and analytics. See real-time activity and key metrics at a glance.",
     mockup: <DashboardMockup />,
-    url: "pulse-pickleball.lovable.app/venue/dashboard",
+    url: "pulsepb.com/venue/dashboard",
   },
   {
     title: "Player-Facing Venue Page",
     description: "Your branded public page where players book courts, register for events, and discover coaching — all under your brand.",
     mockup: <PublicPageMockup />,
-    url: "pulse-pickleball.lovable.app/v/your-venue",
+    url: "pulsepb.com/v/your-venue",
   },
   {
     title: "Event & Tournament Management",
     description: "Create, manage, and run round robins, clinics, and tournaments with automated scheduling and registration.",
     mockup: <EventsMockup />,
-    url: "pulse-pickleball.lovable.app/venue/events",
+    url: "pulsepb.com/venue/events",
   },
 ];
 
