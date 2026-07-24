@@ -505,6 +505,7 @@ function TeamCell({
 
 function MatchEditor({
   mode, league, seasonId, sessions, teams, members, profilesById, initial, onDone,
+  onSaved, onSaveAndNext,
 }: {
   mode: "create" | "edit";
   league: League;
@@ -515,6 +516,10 @@ function MatchEditor({
   profilesById: Record<string, PlayerRow>;
   initial: LeagueMatch | null;
   onDone: () => Promise<void>;
+  /** Edit mode: called after save; parent keeps the dialog open. */
+  onSaved?: (saved: LeagueMatch) => Promise<void> | void;
+  /** Edit mode: called to advance to the next match after save. */
+  onSaveAndNext?: (saved: LeagueMatch) => Promise<void> | void;
 }) {
   const isTeamMode =
     league.league_type === "doubles" || league.league_type === "team";
