@@ -171,7 +171,7 @@ export default function PlayerLeagues() {
         </div>
       ) : (
         <ul className="space-y-2.5">
-          {rows.map(({ league, membership, season, division }, i) => {
+          {rows.map(({ league, membership, season }, i) => {
             const meta = TYPE_META[league.league_type];
             const Icon = meta.icon;
             return (
@@ -212,7 +212,6 @@ export default function PlayerLeagues() {
                               {season.name}
                             </span>
                           )}
-                          {division && (<><span>·</span><span>{division.name}</span></>)}
                           {membership.role !== "player" && (
                             <span className="uppercase tracking-wider text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded ring-1 ring-primary/20">
                               {membership.role}

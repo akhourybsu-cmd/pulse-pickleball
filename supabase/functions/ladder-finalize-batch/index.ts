@@ -90,6 +90,20 @@ Deno.serve(async (req) => {
       .from('league_matches').select('*')
       .in('ladder_batch_group_id', groupIds)
 
+    // Stand-in remap: a sub plays but the absent regular keeps their ladder
+    // identity, so for RANKING we map each sub's id back to the original
+    // player. `${match_id}:${sub_id}` -> original_id.
+    const matchIds = (games ?? []).map((m: { id: string }) => m.id)
+    const { data: subRows } = matchIds.length
+      ? await supabase.from('league_match_substitutions')
+          .select('match_id, in_player_id, out_player_id').in('match_id', matchIds)
+      : { data: [] as Array<Record<string, string>> }
+    const standIn = new Map<string, string>()
+    ;(subRows ?? []).forEach((r: Record<string, string>) =>
+      standIn.set(`${r.match_id}:${r.in_player_id}`, r.out_player_id))
+    const rankId = (matchId: string, pid: string | null): string =>
+      (pid && standIn.get(`${matchId}:${pid}`)) || (pid as string)
+
     // ---- completeness (friendly pre-check; the RPC re-checks too) ------
     const incomplete = (games ?? []).filter((m: Record<string, unknown>) =>
       m.team_a_score == null || m.team_b_score == null
@@ -109,13 +123,16 @@ Deno.serve(async (req) => {
         .filter((m: Record<string, unknown>) => m.ladder_batch_group_id === g.id)
         .sort((a: Record<string, unknown>, b: Record<string, unknown>) =>
           ((a.ladder_game_number as number) ?? 0) - ((b.ladder_game_number as number) ?? 0))
-      return gGames.map((m: Record<string, unknown>) => ({
-        game: (m.ladder_game_number as number) ?? 0,
-        sideA: [m.player_a_id as string, m.player_b_id as string] as [string, string],
-        sideB: [m.player_c_id as string, m.player_d_id as string] as [string, string],
-        scoreA: m.team_a_score as number,
-        scoreB: m.team_b_score as number,
-      }))
+      return gGames.map((m: Record<string, unknown>) => {
+        const id = m.id as string
+        return {
+          game: (m.ladder_game_number as number) ?? 0,
+          sideA: [rankId(id, m.player_a_id as string), rankId(id, m.player_b_id as string)] as [string, string],
+          sideB: [rankId(id, m.player_c_id as string), rankId(id, m.player_d_id as string)] as [string, string],
+          scoreA: m.team_a_score as number,
+          scoreB: m.team_b_score as number,
+        }
+      })
     })
 
     const order: string[] = startSnap.player_ids as string[]

@@ -39,6 +39,10 @@ export function OverviewTab({
   const [visibility, setVisibility] = useState<LeagueVisibility>(league.visibility);
   const [ratingEligible, setRatingEligible] = useState(league.rating_eligible);
   const [guestsAllowed, setGuestsAllowed] = useState(league.guests_allowed);
+  const [skillMin, setSkillMin] = useState(
+    league.skill_min != null ? String(league.skill_min) : "");
+  const [skillMax, setSkillMax] = useState(
+    league.skill_max != null ? String(league.skill_max) : "");
   const [saving, setSaving] = useState(false);
 
   const dirty =
@@ -49,11 +53,30 @@ export function OverviewTab({
     status !== league.status ||
     visibility !== league.visibility ||
     ratingEligible !== league.rating_eligible ||
-    guestsAllowed !== league.guests_allowed;
+    guestsAllowed !== league.guests_allowed ||
+    skillMin !== (league.skill_min != null ? String(league.skill_min) : "") ||
+    skillMax !== (league.skill_max != null ? String(league.skill_max) : "");
 
   const save = async () => {
     if (!name.trim()) {
       toast.error("Name is required");
+      return;
+    }
+    const parseSkill = (s: string): number | null => {
+      const t = s.trim();
+      if (!t) return null;
+      const n = Number(t);
+      return Number.isFinite(n) ? n : null;
+    };
+    const sMin = parseSkill(skillMin);
+    const sMax = parseSkill(skillMax);
+    const inRange = (n: number | null) => n === null || (n >= 2 && n <= 6);
+    if (!inRange(sMin) || !inRange(sMax)) {
+      toast.error("Skill ratings must be between 2.0 and 6.0");
+      return;
+    }
+    if (sMin !== null && sMax !== null && sMax < sMin) {
+      toast.error("Max skill can't be below min skill");
       return;
     }
     setSaving(true);
@@ -66,6 +89,8 @@ export function OverviewTab({
       visibility,
       rating_eligible: ratingEligible,
       guests_allowed: guestsAllowed,
+      skill_min: sMin,
+      skill_max: sMax,
     };
     const { error } = await supabase
       .from("leagues" as never)
@@ -191,6 +216,32 @@ export function OverviewTab({
           </div>
         </FormSection>
 
+        <FormSection label="Skill level">
+          <p className="text-xs text-muted-foreground -mt-1">
+            The rating range this league is meant for. A league is a single
+            division — spin up a separate league for a different skill tier.
+            Leave blank for all-comers.
+          </p>
+          <div className="grid gap-3 md:grid-cols-2">
+            <FormRow label="Min rating" htmlFor="ov-skill-min">
+              <Input id="ov-skill-min" type="number" inputMode="decimal"
+                min="2" max="6" step="0.1" placeholder="e.g. 3.0"
+                value={skillMin} onChange={(e) => setSkillMin(e.target.value)}
+                className={FIELD_H} />
+            </FormRow>
+            <FormRow label="Max rating" htmlFor="ov-skill-max">
+              <Input id="ov-skill-max" type="number" inputMode="decimal"
+                min="2" max="6" step="0.1" placeholder="e.g. 3.5"
+                value={skillMax} onChange={(e) => setSkillMax(e.target.value)}
+                className={FIELD_H} />
+            </FormRow>
+          </div>
+          <SkillRangeBar
+            min={skillMin.trim() ? Number(skillMin) : null}
+            max={skillMax.trim() ? Number(skillMax) : null}
+          />
+        </FormSection>
+
         <FormSection label="Toggles">
           <div className="grid gap-3 md:grid-cols-2">
             <ToggleCard
@@ -247,6 +298,40 @@ export function OverviewTab({
           its own lifecycle (set / regenerate / clear) and doesn't
           participate in the dirty/save pattern above. */}
       <InviteCodeCard league={league} onMutated={onMutated} />
+    </div>
+  );
+}
+
+/**
+ * Small skill-range visualizer spanning the PULSE 2.0–5.5 window. When one
+ * endpoint is missing we skip the bar (a half-open range reads oddly).
+ */
+function SkillRangeBar({ min, max }: { min: number | null; max: number | null }) {
+  const bothSet = min !== null && max !== null && Number.isFinite(min) && Number.isFinite(max);
+  if (!bothSet) {
+    return (
+      <div className="text-xs text-muted-foreground mt-1">
+        {min == null && max == null
+          ? "Open to all skill levels"
+          : `Skill ${min != null ? min.toFixed(1) : "—"} – ${max != null ? max.toFixed(1) : "—"}`}
+      </div>
+    );
+  }
+  const LO = 2.0, HI = 5.5;
+  const pctFrom = Math.max(0, Math.min(1, (min - LO) / (HI - LO))) * 100;
+  const pctTo = Math.max(0, Math.min(1, (max - LO) / (HI - LO))) * 100;
+  const width = Math.max(4, pctTo - pctFrom);
+  return (
+    <div className="mt-1.5">
+      <div className="relative h-1.5 rounded-full bg-muted overflow-hidden">
+        <div className="absolute h-full rounded-full bg-primary/70"
+          style={{ left: `${pctFrom}%`, width: `${width}%` }} />
+      </div>
+      <div className="text-[10px] font-mono text-muted-foreground mt-1 flex justify-between">
+        <span className="font-bold text-foreground">{min.toFixed(1)}</span>
+        <span className="opacity-70">skill</span>
+        <span className="font-bold text-foreground">{max.toFixed(1)}</span>
+      </div>
     </div>
   );
 }

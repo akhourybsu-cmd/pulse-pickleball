@@ -26,7 +26,7 @@ const STEPS: Array<{ icon: typeof Plus; title: string; body: string }> = [
   {
     icon: CalendarDays,
     title: "Set up a season",
-    body: "Add a season, split players into skill divisions, and enroll members or pair them into teams.",
+    body: "Add a season, set the league's skill level, and enroll members or pair them into teams.",
   },
   {
     icon: CalendarClock,

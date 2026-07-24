@@ -4,16 +4,13 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
-import {
   Dialog, DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Plus, Calendar as CalendarIcon, ChevronRight, CalendarClock, Clock,
 } from "lucide-react";
 import type {
-  League, LeagueSeason, LeagueDivision, LeagueSession, SessionStatus,
+  League, LeagueSeason, LeagueSession, SessionStatus,
 } from "@/lib/leagues/types";
 import { logLeagueAction } from "@/lib/leagues/audit";
 import { cn } from "@/lib/utils";
@@ -40,7 +37,6 @@ function fmtTime(t: string | null): string {
 export function SessionsTab({ league, dataVersion, onMutated }: LeagueTabProps) {
   const [seasons, setSeasons] = useState<LeagueSeason[]>([]);
   const [seasonId, setSeasonId] = useState<string | "">("");
-  const [divisions, setDivisions] = useState<LeagueDivision[]>([]);
   const [sessions, setSessions] = useState<LeagueSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
@@ -66,12 +62,8 @@ export function SessionsTab({ league, dataVersion, onMutated }: LeagueTabProps) 
   }, [seasonId, dataVersion]);
 
   const reload = async () => {
-    const [{ data: divs }, { data: sess }] = await Promise.all([
-      supabase.from("league_divisions" as never).select("*").eq("season_id", seasonId),
-      supabase.from("league_sessions" as never).select("*")
-        .eq("season_id", seasonId).order("scheduled_date", { ascending: true }),
-    ]);
-    setDivisions((divs ?? []) as unknown as LeagueDivision[]);
+    const { data: sess } = await supabase.from("league_sessions" as never).select("*")
+      .eq("season_id", seasonId).order("scheduled_date", { ascending: true });
     setSessions((sess ?? []) as unknown as LeagueSession[]);
   };
 
@@ -97,7 +89,7 @@ export function SessionsTab({ league, dataVersion, onMutated }: LeagueTabProps) 
           {seasonId && (
             <SessionEditor
               mode="create"
-              league={league} seasonId={seasonId} divisions={divisions} initial={null}
+              league={league} seasonId={seasonId} initial={null}
               onDone={async () => { setCreateOpen(false); await reload(); onMutated(); }}
             />
           )}
@@ -113,7 +105,6 @@ export function SessionsTab({ league, dataVersion, onMutated }: LeagueTabProps) 
       ) : (
         <ul className="space-y-2">
           {sessions.map((s) => {
-            const division = divisions.find((d) => d.id === s.division_id);
             const tile = fmtDateTile(s.scheduled_date);
             return (
               <li key={s.id}>
@@ -151,7 +142,6 @@ export function SessionsTab({ league, dataVersion, onMutated }: LeagueTabProps) 
                           </span>
                         )}
                         {s.court_count && <span>{s.court_count} court{s.court_count === 1 ? "" : "s"}</span>}
-                        {division && <span>{division.name}</span>}
                         {s.location && <span className="truncate">{s.location}</span>}
                       </div>
                     </div>
@@ -169,7 +159,7 @@ export function SessionsTab({ league, dataVersion, onMutated }: LeagueTabProps) 
           <SessionEditor
             mode="edit"
             league={league} seasonId={seasonId as string}
-            divisions={divisions} initial={editing}
+            initial={editing}
             onDone={async () => { setEditing(null); await reload(); onMutated(); }}
           />
         </Dialog>
@@ -193,12 +183,11 @@ function SessionStatusBadge({ status }: { status: SessionStatus }) {
 }
 
 function SessionEditor({
-  mode, league, seasonId, divisions, initial, onDone,
+  mode, league, seasonId, initial, onDone,
 }: {
   mode: "create" | "edit";
   league: League;
   seasonId: string;
-  divisions: LeagueDivision[];
   initial: LeagueSession | null;
   onDone: () => Promise<void>;
 }) {
@@ -208,7 +197,6 @@ function SessionEditor({
   const [endTime, setEndTime] = useState(initial?.end_time ?? "");
   const [courtCount, setCourtCount] = useState(initial?.court_count?.toString() ?? "");
   const [location, setLocation] = useState(initial?.location ?? league.location ?? "");
-  const [divisionId, setDivisionId] = useState<string | "none">(initial?.division_id ?? "none");
   const [status, setStatus] = useState<SessionStatus>(initial?.status ?? "draft");
   const [saving, setSaving] = useState(false);
 
@@ -218,7 +206,6 @@ function SessionEditor({
     const payload = {
       league_id: league.id,
       season_id: seasonId,
-      division_id: divisionId === "none" ? null : divisionId,
       name: name.trim(),
       scheduled_date: scheduledDate || null,
       start_time: startTime || null,
@@ -298,7 +285,7 @@ function SessionEditor({
         </div>
       </FormSection>
 
-      <FormSection label="Venue & division">
+      <FormSection label="Venue">
         <div className="grid grid-cols-2 gap-3">
           <FormRow label="Courts">
             <Input type="number" min="1" value={courtCount}
@@ -310,18 +297,6 @@ function SessionEditor({
               className={FIELD_H} placeholder="Optional" />
           </FormRow>
         </div>
-        <FormRow
-          label="Division"
-          hint="Leave open to schedule across all divisions."
-        >
-          <Select value={divisionId} onValueChange={setDivisionId}>
-            <SelectTrigger className={FIELD_H}><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">All divisions</SelectItem>
-              {divisions.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </FormRow>
       </FormSection>
     </FormShell>
   );
