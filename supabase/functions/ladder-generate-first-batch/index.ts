@@ -39,7 +39,9 @@ Deno.serve(async (req) => {
         auth: { autoRefreshToken: false, persistSession: false } },
     )
 
-    const { season_id, order } = await req.json()
+    const { season_id, order, session_id } = await req.json() as {
+      season_id?: string; order?: string[]; session_id?: string | null;
+    }
     if (!season_id || !Array.isArray(order)) {
       return json({ error: 'season_id and order[] required' }, 400)
     }
