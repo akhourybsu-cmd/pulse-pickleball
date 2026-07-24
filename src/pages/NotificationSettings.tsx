@@ -165,7 +165,7 @@ function TestNotificationCard() {
 
   const handleSend = async () => {
     if (isPreview) {
-      toast.error("Push notifications are disabled in the Lovable preview. Open the published app to test.");
+      toast.error("Push notifications are disabled in the app preview. Open the published app to test.");
       return;
     }
     if (!supported) {
@@ -299,7 +299,7 @@ function TestNotificationCard() {
         </Button>
         {isPreview && (
           <p className="text-xs text-muted-foreground mt-2">
-            Push notifications are disabled in the Lovable preview. Open your published app on the device to run this test.
+            Push notifications are disabled in the app preview. Open your published app on the device to run this test.
           </p>
         )}
         {!isPreview && state === "denied" && (

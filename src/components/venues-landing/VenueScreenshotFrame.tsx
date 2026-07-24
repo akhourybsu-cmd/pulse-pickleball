@@ -7,7 +7,7 @@ interface VenueScreenshotFrameProps {
 }
 
 export const VenueScreenshotFrame = ({ 
-  url = "pulse-pickleball.lovable.app", 
+  url = "pulsepb.com", 
   children,
   className = ""
 }: VenueScreenshotFrameProps) => {

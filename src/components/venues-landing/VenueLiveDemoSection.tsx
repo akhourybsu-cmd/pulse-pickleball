@@ -19,7 +19,7 @@ export const VenueLiveDemoSection = () => {
 
           {/* Browser Frame with Demo Preview */}
           <VenueScreenshotFrame 
-            url="pulse-pickleball.lovable.app/v/pickleball-palace"
+            url="pulsepb.com/v/pickleball-palace"
             className="mb-8"
           >
             {/* Demo Venue Preview */}
