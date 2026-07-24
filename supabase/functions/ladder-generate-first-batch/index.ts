@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
       order,
       initial_idempotency_key: `init:${season_id}`,
       first_batch: {
-        week: 1, batch: 1, session_id: null,
+        week: 1, batch: 1, session_id: session_id ?? null,
         court_waves: Math.ceil(groups.length / courtCount),
         idempotency_key: `batch:${season_id}:1:1`,
         groups,
