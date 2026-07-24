@@ -2852,53 +2852,105 @@ export type Database = {
           },
         ]
       }
-      league_divisions: {
+      league_match_substitutions: {
         Row: {
           created_at: string
-          description: string | null
+          created_by: string | null
           id: string
+          in_player_id: string
           league_id: string
-          name: string
+          match_id: string
+          note: string | null
+          out_player_id: string
           season_id: string
-          skill_max: number | null
-          skill_min: number | null
-          status: string
+          slot: string
           updated_at: string
         }
         Insert: {
           created_at?: string
-          description?: string | null
+          created_by?: string | null
           id?: string
+          in_player_id: string
           league_id: string
-          name: string
+          match_id: string
+          note?: string | null
+          out_player_id: string
           season_id: string
-          skill_max?: number | null
-          skill_min?: number | null
-          status?: string
+          slot: string
           updated_at?: string
         }
         Update: {
           created_at?: string
-          description?: string | null
+          created_by?: string | null
           id?: string
+          in_player_id?: string
           league_id?: string
-          name?: string
+          match_id?: string
+          note?: string | null
+          out_player_id?: string
           season_id?: string
-          skill_max?: number | null
-          skill_min?: number | null
-          status?: string
+          slot?: string
           updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "league_divisions_league_id_fkey"
+            foreignKeyName: "league_match_substitutions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_match_substitutions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_match_substitutions_in_player_id_fkey"
+            columns: ["in_player_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_match_substitutions_in_player_id_fkey"
+            columns: ["in_player_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_match_substitutions_league_id_fkey"
             columns: ["league_id"]
             isOneToOne: false
             referencedRelation: "leagues"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "league_divisions_season_id_fkey"
+            foreignKeyName: "league_match_substitutions_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "league_matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_match_substitutions_out_player_id_fkey"
+            columns: ["out_player_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_match_substitutions_out_player_id_fkey"
+            columns: ["out_player_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "league_match_substitutions_season_id_fkey"
             columns: ["season_id"]
             isOneToOne: false
             referencedRelation: "league_seasons"
@@ -2995,13 +3047,6 @@ export type Database = {
           verified_by?: string[]
         }
         Relationships: [
-          {
-            foreignKeyName: "league_matches_division_id_fkey"
-            columns: ["division_id"]
-            isOneToOne: false
-            referencedRelation: "league_divisions"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "league_matches_forfeit_winner_team_id_fkey"
             columns: ["forfeit_winner_team_id"]
@@ -3169,13 +3214,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "league_members_division_id_fkey"
-            columns: ["division_id"]
-            isOneToOne: false
-            referencedRelation: "league_divisions"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "league_members_league_id_fkey"
             columns: ["league_id"]
             isOneToOne: false
@@ -3297,13 +3335,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "league_sessions_division_id_fkey"
-            columns: ["division_id"]
-            isOneToOne: false
-            referencedRelation: "league_divisions"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "league_sessions_league_id_fkey"
             columns: ["league_id"]
             isOneToOne: false
@@ -3408,13 +3439,6 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "league_substitutes_division_id_fkey"
-            columns: ["division_id"]
-            isOneToOne: false
-            referencedRelation: "league_divisions"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "league_substitutes_league_id_fkey"
             columns: ["league_id"]
@@ -3547,13 +3571,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "league_teams_division_id_fkey"
-            columns: ["division_id"]
-            isOneToOne: false
-            referencedRelation: "league_divisions"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "league_teams_league_id_fkey"
             columns: ["league_id"]
             isOneToOne: false
@@ -3582,6 +3599,8 @@ export type Database = {
           location: string | null
           name: string
           rating_eligible: boolean
+          skill_max: number | null
+          skill_min: number | null
           status: string
           updated_at: string
           visibility: string
@@ -3598,6 +3617,8 @@ export type Database = {
           location?: string | null
           name: string
           rating_eligible?: boolean
+          skill_max?: number | null
+          skill_min?: number | null
           status?: string
           updated_at?: string
           visibility?: string
@@ -3614,6 +3635,8 @@ export type Database = {
           location?: string | null
           name?: string
           rating_eligible?: boolean
+          skill_max?: number | null
+          skill_min?: number | null
           status?: string
           updated_at?: string
           visibility?: string
@@ -8474,16 +8497,6 @@ export type Database = {
       get_my_leagues_with_context: {
         Args: never
         Returns: {
-          division_created_at: string
-          division_description: string
-          division_id: string
-          division_league_id: string
-          division_name: string
-          division_season_id: string
-          division_skill_max: number
-          division_skill_min: number
-          division_status: string
-          division_updated_at: string
           league_community_id: string
           league_created_at: string
           league_created_by: string
@@ -8494,11 +8507,12 @@ export type Database = {
           league_location: string
           league_name: string
           league_rating_eligible: boolean
+          league_skill_max: number
+          league_skill_min: number
           league_status: string
           league_updated_at: string
           league_visibility: string
           membership_created_at: string
-          membership_division_id: string
           membership_id: string
           membership_joined_at: string
           membership_league_id: string
@@ -8891,6 +8905,16 @@ export type Database = {
           p_slot: string
         }
         Returns: undefined
+      }
+      swap_league_week_player: {
+        Args: {
+          p_in_player_id: string
+          p_league_id: string
+          p_note?: string
+          p_out_player_id: string
+          p_season_id: string
+        }
+        Returns: Json
       }
       sync_league_season_statuses: {
         Args: { p_league_id: string }
