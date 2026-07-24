@@ -3,14 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
-import {
-  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
-  DialogTrigger,
+  Dialog, DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -21,8 +16,7 @@ import {
   Plus, Search, LifeBuoy, Trash2, Repeat, Power, PowerOff, StickyNote,
 } from "lucide-react";
 import type {
-  LeagueSeason, LeagueSubstitute, SubstituteStatus,
-  LeagueSession, LeagueMatch, LeagueTeam,
+  LeagueSeason, LeagueSubstitute, SubstituteStatus, LeagueMatch,
 } from "@/lib/leagues/types";
 import { logLeagueAction } from "@/lib/leagues/audit";
 import { resolvePlayerName } from "@/lib/matchDisplay";
@@ -41,20 +35,11 @@ interface PlayerRow {
   avatar_url?: string | null;
 }
 
-const SLOTS: Array<{ key: "a" | "b" | "c" | "d"; team: "A" | "B" }> = [
-  { key: "a", team: "A" },
-  { key: "b", team: "A" },
-  { key: "c", team: "B" },
-  { key: "d", team: "B" },
-];
-
 export function SubstitutesTab({ league, dataVersion, onMutated }: LeagueTabProps) {
   const [seasons, setSeasons] = useState<LeagueSeason[]>([]);
   const [seasonId, setSeasonId] = useState<string | "">("");
   const [subs, setSubs] = useState<LeagueSubstitute[]>([]);
-  const [sessions, setSessions] = useState<LeagueSession[]>([]);
   const [matches, setMatches] = useState<LeagueMatch[]>([]);
-  const [teams, setTeams] = useState<LeagueTeam[]>([]);
   const [profilesById, setProfilesById] = useState<Record<string, PlayerRow>>({});
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
@@ -81,22 +66,16 @@ export function SubstitutesTab({ league, dataVersion, onMutated }: LeagueTabProp
   }, [seasonId, dataVersion]);
 
   const reload = async () => {
-    const [{ data: s }, { data: sess }, { data: mt }, { data: t }] =
-      await Promise.all([
-        supabase.from("league_substitutes" as never).select("*")
-          .eq("season_id", seasonId).order("created_at", { ascending: false }),
-        supabase.from("league_sessions" as never).select("*")
-          .eq("season_id", seasonId).order("scheduled_date", { ascending: true }),
-        supabase.from("league_matches" as never).select("*")
-          .eq("season_id", seasonId).order("scheduled_time", { ascending: true }),
-        supabase.from("league_teams" as never).select("*").eq("season_id", seasonId),
-      ]);
+    const [{ data: s }, { data: mt }] = await Promise.all([
+      supabase.from("league_substitutes" as never).select("*")
+        .eq("season_id", seasonId).order("created_at", { ascending: false }),
+      supabase.from("league_matches" as never).select("*")
+        .eq("season_id", seasonId).order("scheduled_time", { ascending: true }),
+    ]);
     const subList = (s ?? []) as unknown as LeagueSubstitute[];
     setSubs(subList);
-    setSessions((sess ?? []) as unknown as LeagueSession[]);
     const matchList = (mt ?? []) as unknown as LeagueMatch[];
     setMatches(matchList);
-    setTeams((t ?? []) as unknown as LeagueTeam[]);
 
     // Names for subs + every slot occupant referenced by a match.
     const ids = new Set<string>(subList.map((x) => x.user_id));
@@ -260,11 +239,11 @@ export function SubstitutesTab({ league, dataVersion, onMutated }: LeagueTabProp
         <SubSwapDialog
           open={!!swapFor}
           onOpenChange={(o) => !o && setSwapFor(null)}
+          leagueId={league.id}
+          seasonId={seasonId as string}
           sub={swapFor}
           subName={profilesById[swapFor.user_id] ? resolvePlayerName(profilesById[swapFor.user_id]) : "This sub"}
-          sessions={sessions}
           matches={matches}
-          teams={teams}
           profilesById={profilesById}
           onDone={async () => { setSwapFor(null); await reload(); onMutated(); }}
         />
@@ -541,68 +520,62 @@ function SubEditorDialog({
 /* ------------------------------------------------------------------ */
 
 function SubSwapDialog({
-  open, onOpenChange, sub, subName, sessions, matches, teams, profilesById, onDone,
+  open, onOpenChange, leagueId, seasonId, sub, subName, matches, profilesById, onDone,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
+  leagueId: string;
+  seasonId: string;
   sub: LeagueSubstitute;
   subName: string;
-  sessions: LeagueSession[];
   matches: LeagueMatch[];
-  teams: LeagueTeam[];
   profilesById: Record<string, PlayerRow>;
   onDone: () => Promise<void>;
 }) {
-  const [sessionId, setSessionId] = useState<string>(sessions[0]?.id ?? "");
-  const [matchId, setMatchId] = useState<string>("");
-  const [slot, setSlot] = useState<"a" | "b" | "c" | "d" | "">("");
+  const [outPlayerId, setOutPlayerId] = useState<string>("");
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const sessionMatches = useMemo(
-    () => matches.filter((m) => m.session_id === sessionId),
-    [matches, sessionId],
-  );
-  const match = useMemo(
-    () => sessionMatches.find((m) => m.id === matchId) ?? null,
-    [sessionMatches, matchId],
-  );
-
-  const teamName = (id: string | null) =>
-    (id && teams.find((t) => t.id === id)?.name) || "TBD";
-  const occupantName = (id: string | null) =>
-    id ? (profilesById[id] ? resolvePlayerName(profilesById[id]) : "Assigned") : "Empty";
-
-  // Reset downstream selections when the week changes.
-  useEffect(() => { setMatchId(""); setSlot(""); }, [sessionId]);
-  useEffect(() => { setSlot(""); }, [matchId]);
+  // "This week" = every player's upcoming (scheduled / in-progress) games.
+  // With explicit ladder progression only the current week is scheduled, so
+  // this is exactly the players due to play next.
+  const candidates = useMemo(() => {
+    const games = new Map<string, number>();
+    matches
+      .filter((m) => m.status === "scheduled" || m.status === "in_progress")
+      .forEach((m) => {
+        [m.player_a_id, m.player_b_id, m.player_c_id, m.player_d_id].forEach((id) => {
+          if (id && id !== sub.user_id) games.set(id, (games.get(id) ?? 0) + 1);
+        });
+      });
+    return Array.from(games.entries())
+      .map(([id, count]) => ({
+        id, count,
+        name: profilesById[id] ? resolvePlayerName(profilesById[id]) : id.slice(0, 8),
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [matches, profilesById, sub.user_id]);
 
   const submit = async () => {
-    if (!match || !slot) { toast.error("Pick a match and a slot"); return; }
+    if (!outPlayerId) { toast.error("Pick the player who's out"); return; }
     setSaving(true);
-    const { error } = await (supabase.rpc as unknown as (
+    const { data, error } = await (supabase.rpc as unknown as (
       fn: string, args: Record<string, unknown>,
-    ) => Promise<{ error: { message: string } | null }>)(
-      "swap_league_match_player",
+    ) => Promise<{ data: { matches_updated?: number } | null; error: { message: string } | null }>)(
+      "swap_league_week_player",
       {
-        p_match_id: match.id,
-        p_slot: slot,
-        p_new_player_id: sub.user_id,
+        p_league_id: leagueId,
+        p_season_id: seasonId,
+        p_out_player_id: outPlayerId,
+        p_in_player_id: sub.user_id,
         p_note: note.trim() || null,
       },
     );
     setSaving(false);
     if (error) { toast.error(error.message); return; }
-    toast.success(`${subName} swapped in`);
+    const n = data?.matches_updated ?? 0;
+    toast.success(`${subName} filling in for this week (${n} game${n === 1 ? "" : "s"})`);
     await onDone();
-  };
-
-  const slotOccupant = (key: "a" | "b" | "c" | "d"): string | null => {
-    if (!match) return null;
-    return key === "a" ? match.player_a_id
-      : key === "b" ? match.player_b_id
-      : key === "c" ? match.player_c_id
-      : match.player_d_id;
   };
 
   return (
@@ -612,10 +585,10 @@ function SubSwapDialog({
         tone="emerald"
         kicker="Substitute"
         title={`Swap in ${subName}`}
-        subtitle="Drop this sub into a match for a given week."
-        primaryLabel="Swap in"
+        subtitle="Pick the player who can't make it — the sub takes over all their games this week."
+        primaryLabel="Swap in for the week"
         primaryLoading={saving}
-        primaryDisabled={!match || !slot}
+        primaryDisabled={!outPlayerId}
         onPrimary={submit}
         secondary={
           <Button variant="ghost" className="h-12"
@@ -624,75 +597,35 @@ function SubSwapDialog({
           </Button>
         }
       >
-        <FormRow label="Week">
-          <Select value={sessionId} onValueChange={setSessionId}>
-            <SelectTrigger className={FIELD_H}><SelectValue placeholder="Pick a week" /></SelectTrigger>
-            <SelectContent>
-              {sessions.map((s) => (
-                <SelectItem key={s.id} value={s.id}>
-                  {s.name}{s.scheduled_date ? ` · ${s.scheduled_date}` : ""}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {sessions.length === 0 && (
-            <p className="text-xs text-muted-foreground mt-1.5">
-              No sessions in this season yet — create them on the Sessions tab.
+        <FormRow label="Who's out this week?" hint="Everyone with games coming up.">
+          {candidates.length === 0 ? (
+            <p className="text-xs text-muted-foreground">
+              No upcoming games to fill in for. Generate this week's matches
+              first, then swap a sub in.
             </p>
+          ) : (
+            <div className="space-y-1.5 max-h-64 overflow-y-auto">
+              {candidates.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => setOutPlayerId(c.id)}
+                  className={cn(
+                    "w-full text-left rounded-lg border px-3 py-2.5 flex items-center justify-between gap-2 transition-colors",
+                    outPlayerId === c.id
+                      ? "border-primary bg-primary/10 ring-1 ring-primary/25"
+                      : "border-border/70 hover:bg-muted/50",
+                  )}
+                >
+                  <span className="text-sm font-semibold truncate">{c.name}</span>
+                  <span className="text-[11px] font-medium text-muted-foreground shrink-0">
+                    {c.count} game{c.count === 1 ? "" : "s"}
+                  </span>
+                </button>
+              ))}
+            </div>
           )}
         </FormRow>
-
-        <FormRow label="Match">
-          <Select value={matchId} onValueChange={setMatchId} disabled={!sessionId}>
-            <SelectTrigger className={FIELD_H}>
-              <SelectValue placeholder={sessionMatches.length ? "Pick a match" : "No matches this week"} />
-            </SelectTrigger>
-            <SelectContent>
-              {sessionMatches.map((m) => (
-                <SelectItem key={m.id} value={m.id}>
-                  {teamName(m.team_a_id)} vs {teamName(m.team_b_id)}
-                  {m.court_number ? ` · Court ${m.court_number}` : ""}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </FormRow>
-
-        {match && (
-          <FormRow
-            label="Replace which player?"
-            hint={`Slots A/B are ${teamName(match.team_a_id)}; C/D are ${teamName(match.team_b_id)}.`}
-          >
-            <div className="space-y-1.5">
-              {SLOTS.map((s) => {
-                const occ = slotOccupant(s.key);
-                const isSelf = occ === sub.user_id;
-                return (
-                  <button
-                    key={s.key}
-                    type="button"
-                    disabled={isSelf}
-                    onClick={() => setSlot(s.key)}
-                    className={cn(
-                      "w-full text-left rounded-lg border px-3 py-2.5 flex items-center justify-between gap-2 transition-colors",
-                      slot === s.key
-                        ? "border-primary bg-primary/10 ring-1 ring-primary/25"
-                        : "border-border/70 hover:bg-muted/50",
-                      isSelf && "opacity-50 cursor-not-allowed",
-                    )}
-                  >
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                      Team {s.team} · Slot {s.key.toUpperCase()}
-                    </span>
-                    <span className="text-sm font-semibold truncate">
-                      {isSelf ? "Already this sub" : occupantName(occ)}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </FormRow>
-        )}
 
         <FormRow label="Note (optional)" hint="Kept in the audit log.">
           <Textarea
