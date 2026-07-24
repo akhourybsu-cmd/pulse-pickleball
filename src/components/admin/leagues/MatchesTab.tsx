@@ -651,9 +651,20 @@ function MatchEditor({
         kicker={mode === "create" ? "New matchup" : "Matchup"}
         title={mode === "create" ? "Schedule a match" : "Edit match"}
         subtitle="Scores feed standings only — league play never touches PULSE Ratings."
-        primaryLabel={mode === "create" ? "Schedule match" : "Save changes"}
+        primaryLabel={mode === "create" ? "Schedule match" : "Save score"}
         primaryLoading={saving}
         onPrimary={submit}
+        secondary={mode === "edit" && onSaveAndNext ? (
+          <Button
+            type="button"
+            variant="outline"
+            className="h-12"
+            disabled={saving}
+            onClick={submitAndNext}
+          >
+            Save & next <ChevronRight className="w-4 h-4 ml-1" />
+          </Button>
+        ) : undefined}
       >
         <FormSection label="When & where">
           <FormRow label="Session">
