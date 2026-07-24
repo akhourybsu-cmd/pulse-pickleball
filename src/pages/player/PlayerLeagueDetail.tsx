@@ -60,7 +60,7 @@ export default function PlayerLeagueDetail() {
   const navigate = useNavigate();
   const detail = useLeagueDetailForPlayer(leagueId);
   const {
-    league, membership, season, division,
+    league, membership, season,
     matches, allMatches, allTeams, teamsById, playersById, teammates,
     myTeams, loading,
     currentUserId, refresh,
@@ -69,10 +69,10 @@ export default function PlayerLeagueDetail() {
   const isTeamMode =
     league?.league_type === "doubles" || league?.league_type === "team";
 
-  // Standings scoped to my current season + division. Team-format
-  // leagues get team standings; individual formats get per-player.
+  // Standings scoped to my current season. Team-format leagues get team
+  // standings; individual formats get per-player.
   const standings = useMemo(() => {
-    const opts = { seasonId: season?.id ?? undefined, divisionId: division?.id ?? undefined };
+    const opts = { seasonId: season?.id ?? undefined };
     if (isTeamMode) {
       return computeTeamStandings(allMatches, allTeams, opts);
     }
@@ -81,7 +81,7 @@ export default function PlayerLeagueDetail() {
       (id) => (playersById[id] ? resolvePlayerName(playersById[id]) : "Player"),
       opts,
     );
-  }, [allMatches, allTeams, playersById, season?.id, division?.id, isTeamMode]);
+  }, [allMatches, allTeams, playersById, season?.id, isTeamMode]);
 
   const myTeamIdSet = useMemo(() => new Set(myTeams.map((t) => t.id)), [myTeams]);
   const myRow = isTeamMode
@@ -212,11 +212,9 @@ export default function PlayerLeagueDetail() {
         <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
           Your spot in this league
         </h2>
-        <div className="grid gap-2.5 grid-cols-2 sm:grid-cols-4">
+        <div className="grid gap-2.5 grid-cols-3">
           <InfoRow icon={<CalendarDays className="w-4 h-4" />} label="Season"
                    value={season?.name ?? "Not assigned"} />
-          <InfoRow icon={<Users className="w-4 h-4" />} label="Division"
-                   value={division?.name ?? "Not assigned"} />
           <InfoRow icon={<Trophy className="w-4 h-4" />} label="Role"
                    value={membership?.role ?? "player"} />
           <InfoRow icon={<Swords className="w-4 h-4" />} label="Record"
@@ -231,11 +229,6 @@ export default function PlayerLeagueDetail() {
             <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
               <Trophy className="w-3.5 h-3.5" />
               Standings
-              {division && (
-                <span className="text-muted-foreground/70 normal-case font-medium">
-                  · {division.name}
-                </span>
-              )}
             </h2>
           </div>
           <StandingsTable

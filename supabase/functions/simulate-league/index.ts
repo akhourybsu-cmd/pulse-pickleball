@@ -7,7 +7,7 @@
 //   • ensures N test players exist (auth users + profiles)
 //   • creates a league OWNED BY THE CALLER (created_by = caller) so
 //     they get full organizer control via is_league_admin()
-//   • one season (default 8 weeks), one division, all players enrolled
+//   • one season (default 8 weeks), all players enrolled
 //   • pairs players into doubles teams
 //   • one session per week
 //   • a round-robin schedule across the weeks (circle method) — past
@@ -239,7 +239,7 @@ Deno.serve(async (req) => {
     }
 
     // ==========================================================
-    // 3. League (owned by caller), season, division
+    // 3. League (owned by caller) + season
     // ==========================================================
     const startDate = mondayNWeeksAgo(Math.min(4, weeks - 1)) // ~half the season already played
     const endDate = new Date(startDate)
@@ -280,32 +280,16 @@ Deno.serve(async (req) => {
     if (seasonErr || !season) throw seasonErr ?? new Error('Season insert failed')
     const seasonId = season.id as string
 
-    const { data: division, error: divErr } = await admin
-      .from('league_divisions')
-      .insert({
-        league_id: leagueId,
-        season_id: seasonId,
-        name: 'Open (3.0–4.5)',
-        skill_min: 3.0,
-        skill_max: 4.5,
-        description: 'All-comers doubles ladder division.',
-        status: 'active',
-      })
-      .select('id')
-      .single()
-    if (divErr || !division) throw divErr ?? new Error('Division insert failed')
-    const divisionId = division.id as string
-
     // ==========================================================
     // 4. Members — caller as manager + all players
     // ==========================================================
     const memberRows = [
       {
-        league_id: leagueId, season_id: seasonId, division_id: divisionId,
+        league_id: leagueId, season_id: seasonId,
         user_id: user.id, role: 'manager', status: 'active',
       },
       ...playerIds.map((uid, i) => ({
-        league_id: leagueId, season_id: seasonId, division_id: divisionId,
+        league_id: leagueId, season_id: seasonId,
         user_id: uid,
         // First player of each pair captains their team.
         role: i % 2 === 0 ? 'captain' : 'player',
@@ -368,7 +352,7 @@ Deno.serve(async (req) => {
         current_rating: 3.0 + (i % 4) / 2,
       }).eq('id', uid)
       await admin.from('league_substitutes').insert({
-        league_id: leagueId, season_id: seasonId, division_id: divisionId,
+        league_id: leagueId, season_id: seasonId,
         user_id: uid, notes: subNotes[i % subNotes.length], status: 'active',
       })
     }
@@ -387,7 +371,7 @@ Deno.serve(async (req) => {
       const { data: session, error: sessErr } = await admin
         .from('league_sessions')
         .insert({
-          league_id: leagueId, season_id: seasonId, division_id: divisionId,
+          league_id: leagueId, season_id: seasonId,
           name: `Week ${w + 1}`,
           scheduled_date: dateIso,
           start_time: '18:00',
@@ -421,7 +405,7 @@ Deno.serve(async (req) => {
 
         // Individual-based: no teams — each side is two named players.
         const base: Record<string, unknown> = {
-          league_id: leagueId, season_id: seasonId, division_id: divisionId,
+          league_id: leagueId, season_id: seasonId,
           session_id: sessionIds[w],
           court_number: court,
           scheduled_time: when.toISOString(),
@@ -473,7 +457,6 @@ Deno.serve(async (req) => {
       success: true,
       league_id: leagueId,
       season_id: seasonId,
-      division_id: divisionId,
       players: playerCount,
       teams: teamCount,
       weeks,

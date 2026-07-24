@@ -167,7 +167,7 @@ export function SeasonsTab({ league, dataVersion, onMutated }: LeagueTabProps) {
         <EmptyState
           icon={<CalendarIcon className="w-5 h-5" />}
           title="No seasons yet"
-          desc="Start with a season — divisions, members, teams, and sessions all live inside one."
+          desc="Start with a season — members, teams, and sessions all live inside one."
           action={{ label: "New season", onClick: () => setCreateOpen(true) }}
         />
       ) : null}
@@ -286,7 +286,7 @@ function SeasonEditor({
       kicker={isNew ? "New season" : "Season"}
       title={isNew ? "New season" : "Edit season"}
       subtitle={isNew
-        ? "A season is the container for divisions, teams, sessions, and standings."
+        ? "A season is the container for teams, sessions, and standings."
         : `Editing ${initial!.name}`}
       primaryLabel={isNew ? "Create season" : "Save changes"}
       primaryLoading={saving}

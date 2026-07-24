@@ -12,7 +12,6 @@ export type LeagueStatus = "draft" | "active" | "archived";
 export type LeagueVisibility = "admin_only" | "private" | "public_future";
 export type LeagueType = "singles" | "doubles" | "team" | "flex" | "ladder";
 export type SeasonStatus = "draft" | "active" | "completed" | "archived";
-export type DivisionStatus = "active" | "archived";
 export type MemberRole = "player" | "captain" | "manager";
 export type MemberStatus = "active" | "pending" | "removed";
 export type TeamStatus = "active" | "archived";
@@ -45,6 +44,10 @@ export interface League {
   league_type: LeagueType;
   rating_eligible: boolean;
   guests_allowed: boolean;
+  /** Optional advertised skill range (PULSE rating scale). A league is one
+   *  implicit division; this is shown on the Overview. */
+  skill_min: number | null;
+  skill_max: number | null;
   invite_code: string | null;
   created_at: string;
   updated_at: string;
@@ -77,24 +80,10 @@ export interface LeagueSeason {
   updated_at: string;
 }
 
-export interface LeagueDivision {
-  id: string;
-  league_id: string;
-  season_id: string;
-  name: string;
-  skill_min: number | null;
-  skill_max: number | null;
-  description: string | null;
-  status: DivisionStatus;
-  created_at: string;
-  updated_at: string;
-}
-
 export interface LeagueMember {
   id: string;
   league_id: string;
   season_id: string | null;
-  division_id: string | null;
   user_id: string;
   role: MemberRole;
   status: MemberStatus;
@@ -107,7 +96,6 @@ export interface LeagueTeam {
   id: string;
   league_id: string;
   season_id: string;
-  division_id: string | null;
   name: string;
   captain_user_id: string | null;
   status: TeamStatus;
@@ -129,7 +117,6 @@ export interface LeagueSubstitute {
   id: string;
   league_id: string;
   season_id: string;
-  division_id: string | null;
   user_id: string;
   notes: string | null;
   status: SubstituteStatus;
@@ -141,7 +128,6 @@ export interface LeagueSession {
   id: string;
   league_id: string;
   season_id: string;
-  division_id: string | null;
   name: string;
   scheduled_date: string | null;
   start_time: string | null;
@@ -157,7 +143,6 @@ export interface LeagueMatch {
   id: string;
   league_id: string;
   season_id: string;
-  division_id: string | null;
   session_id: string | null;
   court_number: number | null;
   scheduled_time: string | null;

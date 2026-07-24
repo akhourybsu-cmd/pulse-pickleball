@@ -356,7 +356,6 @@ function MatchEditor({
     const payload = {
       league_id: league.id,
       season_id: seasonId,
-      division_id: session?.division_id ?? initial?.division_id ?? null,
       session_id: sessionId,
       court_number: courtNumber ? Number(courtNumber) : null,
       scheduled_time: scheduledTime ? new Date(scheduledTime).toISOString() : null,

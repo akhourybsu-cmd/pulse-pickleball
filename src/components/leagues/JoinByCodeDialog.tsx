@@ -190,7 +190,7 @@ export function JoinByCodeDialog({
                 )}
                 <p className="text-xs text-muted-foreground">
                   You'll join as an active member. The organizer can update your
-                  division or team later.
+                  team or role later.
                 </p>
               </>
             ) : (

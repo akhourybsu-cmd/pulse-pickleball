@@ -28,7 +28,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import type {
-  League, LeagueSeason, LeagueDivision, LeagueMember, MemberRole,
+  League, LeagueSeason, LeagueMember, MemberRole,
   MemberStatus,
 } from "@/lib/leagues/types";
 import { logLeagueAction } from "@/lib/leagues/audit";
@@ -47,7 +47,6 @@ interface PlayerRow {
 export function MembersTab({ league, dataVersion, onMutated }: LeagueTabProps) {
   const [seasons, setSeasons] = useState<LeagueSeason[]>([]);
   const [seasonId, setSeasonId] = useState<string | "">("");
-  const [divisions, setDivisions] = useState<LeagueDivision[]>([]);
   const [members, setMembers] = useState<LeagueMember[]>([]);
   const [profilesById, setProfilesById] = useState<Record<string, PlayerRow>>({});
   const [loading, setLoading] = useState(true);
@@ -76,12 +75,10 @@ export function MembersTab({ league, dataVersion, onMutated }: LeagueTabProps) {
   }, [seasonId, dataVersion]);
 
   const reload = async () => {
-    const [{ data: divs }, { data: mems }] = await Promise.all([
-      supabase.from("league_divisions" as never).select("*").eq("season_id", seasonId),
+    const [{ data: mems }] = await Promise.all([
       supabase.from("league_members" as never).select("*")
         .eq("league_id", league.id).eq("season_id", seasonId).order("joined_at", { ascending: false }),
     ]);
-    setDivisions((divs ?? []) as unknown as LeagueDivision[]);
     const memList = (mems ?? []) as unknown as LeagueMember[];
     setMembers(memList);
     if (memList.length) {
@@ -132,7 +129,6 @@ export function MembersTab({ league, dataVersion, onMutated }: LeagueTabProps) {
             <AddMemberDialog
               league={league}
               seasonId={seasonId}
-              divisions={divisions}
               existingUserIds={new Set(members.map((m) => m.user_id))}
               onDone={async () => { setAddOpen(false); await reload(); onMutated(); }}
             />
@@ -148,7 +144,6 @@ export function MembersTab({ league, dataVersion, onMutated }: LeagueTabProps) {
             <BulkAddMembersDialog
               league={league}
               seasonId={seasonId}
-              divisions={divisions}
               onDone={async () => { setBulkOpen(false); await reload(); onMutated(); }}
             />
           )}
@@ -187,7 +182,6 @@ export function MembersTab({ league, dataVersion, onMutated }: LeagueTabProps) {
           {filteredMembers.map((m) => {
             const p = profilesById[m.user_id];
             const name = p ? resolvePlayerName(p) : "Loading…";
-            const division = divisions.find((d) => d.id === m.division_id);
             const initials = name
               .split(/\s+/).filter(Boolean).slice(0, 2)
               .map((s) => s[0]).join("").toUpperCase() || "?";
@@ -228,7 +222,6 @@ export function MembersTab({ league, dataVersion, onMutated }: LeagueTabProps) {
                           {m.status}
                         </span>
                       )}
-                      {division && <span className="text-muted-foreground">{division.name}</span>}
                     </div>
                   </div>
                 </div>
@@ -236,7 +229,6 @@ export function MembersTab({ league, dataVersion, onMutated }: LeagueTabProps) {
                   league={league}
                   member={m}
                   memberName={name}
-                  divisions={divisions}
                   onChanged={async () => { await reload(); onMutated(); }}
                 />
               </li>
@@ -249,12 +241,11 @@ export function MembersTab({ league, dataVersion, onMutated }: LeagueTabProps) {
 }
 
 function MemberInlineActions({
-  league, member, memberName, divisions, onChanged,
+  league, member, memberName, onChanged,
 }: {
   league: League;
   member: LeagueMember;
   memberName: string;
-  divisions: LeagueDivision[];
   onChanged: () => Promise<void>;
 }) {
   const [busy, setBusy] = useState(false);
@@ -269,7 +260,7 @@ function MemberInlineActions({
     await logLeagueAction({
       leagueId: league.id, seasonId: member.season_id,
       action, entityType: "member", entityId: member.id,
-      oldValue: { role: member.role, status: member.status, division_id: member.division_id },
+      oldValue: { role: member.role, status: member.status },
       newValue: fields,
     });
     setBusy(false);
@@ -289,19 +280,6 @@ function MemberInlineActions({
           <SelectItem value="manager">Manager</SelectItem>
         </SelectContent>
       </Select>
-      <Select
-        value={member.division_id ?? "none"}
-        onValueChange={(v) => patch({ division_id: v === "none" ? null : v }, "member.division_changed")}
-      >
-        <SelectTrigger className="h-8 flex-1 sm:flex-none sm:w-[130px] text-xs"><SelectValue /></SelectTrigger>
-        <SelectContent>
-          <SelectItem value="none">No division</SelectItem>
-          {divisions.map((d) => (
-            <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-
       {/* Restore is benign — direct action. Remove needs a confirm. */}
       {isRemoved ? (
         <Button
@@ -352,11 +330,10 @@ function MemberInlineActions({
 }
 
 function AddMemberDialog({
-  league, seasonId, divisions, existingUserIds, onDone,
+  league, seasonId, existingUserIds, onDone,
 }: {
   league: League;
   seasonId: string;
-  divisions: LeagueDivision[];
   existingUserIds: Set<string>;
   onDone: () => Promise<void>;
 }) {
@@ -365,7 +342,6 @@ function AddMemberDialog({
   const [pickedId, setPickedId] = useState<string | null>(null);
   const [pickedRowOverride, setPickedRowOverride] = useState<PlayerRow | null>(null);
   const [role, setRole] = useState<MemberRole>("player");
-  const [divisionId, setDivisionId] = useState<string | "none">("none");
   const [status, setStatus] = useState<MemberStatus>("active");
   const [saving, setSaving] = useState(false);
   const [tab, setTab] = useState<"search" | "friends" | "community" | "guests">("search");
@@ -473,7 +449,6 @@ function AddMemberDialog({
     const payload = {
       league_id: league.id,
       season_id: seasonId,
-      division_id: divisionId === "none" ? null : divisionId,
       user_id: pickedId,
       role, status,
     };
@@ -637,17 +612,6 @@ function AddMemberDialog({
             ]}
           />
         </FormRow>
-        <FormRow label="Division">
-          <Select value={divisionId} onValueChange={setDivisionId}>
-            <SelectTrigger className={FIELD_H}><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">No division</SelectItem>
-              {divisions.map((d) => (
-                <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </FormRow>
       </FormSection>
     </FormShell>
   );
@@ -680,15 +644,13 @@ interface DryRunReport {
  * left alone), so re-running is cheap.
  */
 function BulkAddMembersDialog({
-  league, seasonId, divisions, onDone,
+  league, seasonId, onDone,
 }: {
   league: League;
   seasonId: string;
-  divisions: LeagueDivision[];
   onDone: () => Promise<void>;
 }) {
   const [raw, setRaw] = useState("");
-  const [divisionId, setDivisionId] = useState<string | "none">("none");
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState<DryRunReport | null>(null);
 
@@ -716,7 +678,6 @@ function BulkAddMembersDialog({
       {
         p_league_id: league.id,
         p_season_id: seasonId,
-        p_division_id: divisionId === "none" ? null : divisionId,
         p_emails: emails,
         p_dry_run: true,
       } as never,
@@ -734,7 +695,6 @@ function BulkAddMembersDialog({
       {
         p_league_id: league.id,
         p_season_id: seasonId,
-        p_division_id: divisionId === "none" ? null : divisionId,
         p_emails: emails,
         p_dry_run: false,
       } as never,
@@ -782,18 +742,6 @@ function BulkAddMembersDialog({
               <Mail className="w-3 h-3" />
               Case-insensitive. Matches must be existing PULSE accounts.
             </p>
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs">Division (optional)</Label>
-            <Select value={divisionId} onValueChange={setDivisionId}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">No division</SelectItem>
-                {divisions.map((d) => (
-                  <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
           {emails.length > 0 && (
             <div className="text-[11px] text-muted-foreground">

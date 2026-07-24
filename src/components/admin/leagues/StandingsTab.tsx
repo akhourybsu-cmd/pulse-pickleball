@@ -1,12 +1,9 @@
 import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
 import { Trophy } from "lucide-react";
 import type {
-  LeagueSeason, LeagueDivision, LeagueMatch, LeagueTeam,
+  LeagueSeason, LeagueMatch, LeagueTeam,
 } from "@/lib/leagues/types";
 import {
   computePlayerStandings, computeTeamStandings,
@@ -28,8 +25,6 @@ export function StandingsTab({ league, dataVersion }: LeagueTabProps) {
     league.league_type === "doubles" || league.league_type === "team";
   const [seasons, setSeasons] = useState<LeagueSeason[]>([]);
   const [seasonId, setSeasonId] = useState<string | "">("");
-  const [divisions, setDivisions] = useState<LeagueDivision[]>([]);
-  const [divisionId, setDivisionId] = useState<string | "all">("all");
   const [matches, setMatches] = useState<LeagueMatch[]>([]);
   const [teams, setTeams] = useState<LeagueTeam[]>([]);
   const [namesById, setNamesById] = useState<Record<string, string>>({});
@@ -49,18 +44,16 @@ export function StandingsTab({ league, dataVersion }: LeagueTabProps) {
     // eslint-disable-next-line
   }, [league.id, dataVersion]);
 
-  // Reload divisions + matches whenever season changes, then resolve the
-  // names of every player who appears in a match slot.
+  // Reload matches whenever season changes, then resolve the names of every
+  // player who appears in a match slot.
   useEffect(() => {
     if (!seasonId) return;
     (async () => {
-      const [{ data: divs }, { data: m }, { data: t }] = await Promise.all([
-        supabase.from("league_divisions" as never).select("*").eq("season_id", seasonId),
+      const [{ data: m }, { data: t }] = await Promise.all([
         supabase.from("league_matches" as never).select("*")
           .eq("league_id", league.id).eq("season_id", seasonId),
         supabase.from("league_teams" as never).select("*").eq("season_id", seasonId),
       ]);
-      if (divs) setDivisions(divs as unknown as LeagueDivision[]);
       const matchList = (m ?? []) as unknown as LeagueMatch[];
       setMatches(matchList);
       setTeams((t ?? []) as unknown as LeagueTeam[]);
@@ -88,15 +81,12 @@ export function StandingsTab({ league, dataVersion }: LeagueTabProps) {
   }, [seasonId, dataVersion, league.id]);
 
   const rows = useMemo(() => {
-    const opts = {
-      seasonId: seasonId || undefined,
-      divisionId: divisionId === "all" ? undefined : divisionId,
-    };
+    const opts = { seasonId: seasonId || undefined };
     if (isTeamMode) {
       return computeTeamStandings(matches, teams, opts);
     }
     return computePlayerStandings(matches, (id) => namesById[id] ?? "Player", opts);
-  }, [matches, teams, namesById, seasonId, divisionId, isTeamMode]);
+  }, [matches, teams, namesById, seasonId, isTeamMode]);
 
   if (loading) return <TabSkeleton lines={4} />;
 
@@ -114,15 +104,6 @@ export function StandingsTab({ league, dataVersion }: LeagueTabProps) {
     <div className="space-y-3">
       <div className="flex gap-2 items-center flex-wrap">
         <SeasonSelect seasons={seasons} value={seasonId} onChange={setSeasonId} className="flex-1 min-w-[140px]" />
-        <Select value={divisionId} onValueChange={setDivisionId}>
-          <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All divisions</SelectItem>
-            {divisions.map((d) => (
-              <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
       </div>
 
       <p className="text-xs text-muted-foreground">

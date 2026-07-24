@@ -23,7 +23,6 @@ export function computePlayerStandings(
 ): StandingRow[] {
   const inScope = (m: LeagueMatch): boolean => {
     if (opts.seasonId && m.season_id !== opts.seasonId) return false;
-    if (opts.divisionId !== undefined && m.division_id !== opts.divisionId) return false;
     return true;
   };
 
@@ -160,8 +159,6 @@ export interface StandingRow {
 interface StandingsOpts {
   /** If provided, only matches with this season_id contribute. */
   seasonId?: string;
-  /** If provided, only matches with this division_id contribute. */
-  divisionId?: string | null;
 }
 
 /**
@@ -200,9 +197,6 @@ export function computeTeamStandings(
 
   const inScope = (m: LeagueMatch): boolean => {
     if (opts.seasonId && m.season_id !== opts.seasonId) return false;
-    if (opts.divisionId !== undefined && m.division_id !== opts.divisionId) {
-      return false;
-    }
     return true;
   };
 

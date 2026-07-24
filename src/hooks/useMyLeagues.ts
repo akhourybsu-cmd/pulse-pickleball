@@ -1,14 +1,13 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type {
-  League, LeagueMember, LeagueSeason, LeagueDivision,
+  League, LeagueMember, LeagueSeason,
 } from "@/lib/leagues/types";
 
 export interface MyLeagueRow {
   league: League;
   membership: LeagueMember;
   season: LeagueSeason | null;
-  division: LeagueDivision | null;
 }
 
 /**
@@ -20,7 +19,6 @@ interface RpcRow {
   membership_id: string;
   membership_league_id: string;
   membership_season_id: string | null;
-  membership_division_id: string | null;
   membership_user_id: string;
   membership_role: LeagueMember["role"];
   membership_status: LeagueMember["status"];
@@ -39,8 +37,10 @@ interface RpcRow {
   league_league_type: League["league_type"];
   league_rating_eligible: boolean;
   league_guests_allowed: boolean;
+  league_skill_min: number | null;
+  league_skill_max: number | null;
   // invite_code intentionally NOT read on the player side — the RPC
-  // no longer returns it. See 20260703310000 migration.
+  // no longer returns it.
   league_created_at: string;
   league_updated_at: string;
 
@@ -53,17 +53,6 @@ interface RpcRow {
   season_status: LeagueSeason["status"] | null;
   season_created_at: string | null;
   season_updated_at: string | null;
-
-  division_id: string | null;
-  division_league_id: string | null;
-  division_season_id: string | null;
-  division_name: string | null;
-  division_skill_min: number | null;
-  division_skill_max: number | null;
-  division_description: string | null;
-  division_status: LeagueDivision["status"] | null;
-  division_created_at: string | null;
-  division_updated_at: string | null;
 }
 
 function mapRow(r: RpcRow): MyLeagueRow {
@@ -72,7 +61,6 @@ function mapRow(r: RpcRow): MyLeagueRow {
       id: r.membership_id,
       league_id: r.membership_league_id,
       season_id: r.membership_season_id,
-      division_id: r.membership_division_id,
       user_id: r.membership_user_id,
       role: r.membership_role,
       status: r.membership_status,
@@ -92,6 +80,8 @@ function mapRow(r: RpcRow): MyLeagueRow {
       league_type: r.league_league_type,
       rating_eligible: r.league_rating_eligible,
       guests_allowed: r.league_guests_allowed,
+      skill_min: r.league_skill_min,
+      skill_max: r.league_skill_max,
       // invite_code is admin-owned metadata — not returned by the RPC
       // for player callers. Set to null to preserve the League shape.
       invite_code: null,
@@ -108,18 +98,6 @@ function mapRow(r: RpcRow): MyLeagueRow {
       status: r.season_status!,
       created_at: r.season_created_at!,
       updated_at: r.season_updated_at!,
-    } : null,
-    division: r.division_id ? {
-      id: r.division_id,
-      league_id: r.division_league_id!,
-      season_id: r.division_season_id!,
-      name: r.division_name!,
-      skill_min: r.division_skill_min,
-      skill_max: r.division_skill_max,
-      description: r.division_description,
-      status: r.division_status!,
-      created_at: r.division_created_at!,
-      updated_at: r.division_updated_at!,
     } : null,
   };
 }
@@ -179,7 +157,6 @@ export function useMyLeagues() {
               id: `owner:${l.id}`,
               league_id: l.id,
               season_id: null,
-              division_id: null,
               user_id: user.id,
               role: "manager",
               status: "active",
@@ -188,7 +165,6 @@ export function useMyLeagues() {
               updated_at: l.updated_at,
             },
             season: null,
-            division: null,
           }));
         merged = [...list, ...synthetic].sort((a, b) =>
           a.league.name.localeCompare(b.league.name),

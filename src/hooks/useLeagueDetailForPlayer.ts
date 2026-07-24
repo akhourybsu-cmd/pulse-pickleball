@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type {
-  League, LeagueMember, LeagueSeason, LeagueDivision, LeagueTeam,
+  League, LeagueMember, LeagueSeason, LeagueTeam,
   LeagueTeamMember, LeagueMatch,
 } from "@/lib/leagues/types";
 
@@ -30,7 +30,6 @@ export interface PlayerLeagueDetailData {
   league: League | null;
   membership: LeagueMember | null;
   season: LeagueSeason | null;
-  division: LeagueDivision | null;
   /** Teams the player is on (usually 0 or 1 per season). */
   myTeams: LeagueTeam[];
   /** Set of team IDs the player is on. */
@@ -63,7 +62,7 @@ export function useLeagueDetailForPlayer(leagueId: string | undefined): PlayerLe
   const [tick, setTick] = useState(0);
   const refresh = useCallback(() => setTick((t) => t + 1), []);
   const [data, setData] = useState<PlayerLeagueDetailData>({
-    league: null, membership: null, season: null, division: null,
+    league: null, membership: null, season: null,
     myTeams: [], myTeamIds: new Set<string>(),
     teammates: [], matches: [], allMatches: [], allTeams: [],
     teamsById: {},
@@ -96,7 +95,7 @@ export function useLeagueDetailForPlayer(leagueId: string | undefined): PlayerLe
       if (!league) {
         if (!cancelled) {
           setData({
-            league: null, membership: null, season: null, division: null,
+            league: null, membership: null, season: null,
             myTeams: [], myTeamIds: new Set<string>(),
             teammates: [], matches: [], allMatches: [], allTeams: [],
             teamsById: {},
@@ -109,17 +108,11 @@ export function useLeagueDetailForPlayer(leagueId: string | undefined): PlayerLe
         return;
       }
 
-      // 2. Season + division (both nullable).
-      const [seasonR, divisionR] = await Promise.all([
-        membership?.season_id
-          ? supabase.from("league_seasons" as never).select("*").eq("id", membership.season_id).maybeSingle()
-          : Promise.resolve({ data: null }),
-        membership?.division_id
-          ? supabase.from("league_divisions" as never).select("*").eq("id", membership.division_id).maybeSingle()
-          : Promise.resolve({ data: null }),
-      ]);
+      // 2. Season (nullable).
+      const seasonR = membership?.season_id
+        ? await supabase.from("league_seasons" as never).select("*").eq("id", membership.season_id).maybeSingle()
+        : { data: null };
       const season = (seasonR.data ?? null) as unknown as LeagueSeason | null;
-      const division = (divisionR.data ?? null) as unknown as LeagueDivision | null;
 
       // 3. All teams in the league. Phase 4 broadened league_teams RLS
       //    so any active member can see every team in a league they can
@@ -240,7 +233,7 @@ export function useLeagueDetailForPlayer(leagueId: string | undefined): PlayerLe
 
       if (!cancelled) {
         setData({
-          league, membership, season, division,
+          league, membership, season,
           myTeams, teammates, matches: mine, teamsById, playersById,
           // Full league dataset — needed for the standings section.
           allTeams, allMatches: matchList, myTeamIds,

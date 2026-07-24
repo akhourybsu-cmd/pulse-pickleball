@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 import { OverviewTab } from "@/components/admin/leagues/OverviewTab";
 import { SeasonsTab } from "@/components/admin/leagues/SeasonsTab";
-import { DivisionsTab } from "@/components/admin/leagues/DivisionsTab";
 import { MembersTab } from "@/components/admin/leagues/MembersTab";
 import { TeamsTab } from "@/components/admin/leagues/TeamsTab";
 import { SubstitutesTab } from "@/components/admin/leagues/SubstitutesTab";
@@ -279,9 +278,6 @@ export default function AdminLeagueDetail() {
                 )}
                 {activeTab === "seasons" && (
                   <SeasonsTab league={league} dataVersion={dataVersion} onMutated={onDataMutated} />
-                )}
-                {activeTab === "divisions" && (
-                  <DivisionsTab league={league} dataVersion={dataVersion} onMutated={onDataMutated} />
                 )}
                 {activeTab === "members" && (
                   <MembersTab league={league} dataVersion={dataVersion} onMutated={onDataMutated} />
