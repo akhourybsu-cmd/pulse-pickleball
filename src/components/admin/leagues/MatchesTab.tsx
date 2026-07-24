@@ -89,7 +89,10 @@ export function MatchesTab({ league, dataVersion, onMutated }: LeagueTabProps) {
       supabase.from("league_sessions" as never).select("*").eq("season_id", seasonId),
       supabase.from("league_teams" as never).select("*").eq("season_id", seasonId),
       supabase.from("league_matches" as never).select("*")
-        .eq("season_id", seasonId).order("scheduled_time", { ascending: true }),
+        .eq("season_id", seasonId)
+        .order("scheduled_time", { ascending: true, nullsFirst: false })
+        .order("court_number", { ascending: true, nullsFirst: false })
+        .order("id", { ascending: true }),
       supabase.from("league_members" as never).select("*")
         .eq("season_id", seasonId).eq("status", "active"),
     ]);
