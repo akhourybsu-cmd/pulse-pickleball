@@ -228,16 +228,19 @@ export function MatchesTab({ league, dataVersion, onMutated }: LeagueTabProps) {
 
         const visible = matches.filter((m) => inFilter(m) && inQuery(m));
 
-        // Group by ISO day (YYYY-MM-DD); undated matches go under "unscheduled".
+        // Group by week (session) first, falling back to scheduled_time day
+        // when a match hasn't been tied to a week yet.
         const groups = new Map<string, LeagueMatch[]>();
         visible.forEach((m) => {
-          const key = m.scheduled_time
-            ? new Date(m.scheduled_time).toISOString().slice(0, 10)
-            : "unscheduled";
+          const key = m.session_id
+            ? `session:${m.session_id}`
+            : m.scheduled_time
+              ? `day:${new Date(m.scheduled_time).toISOString().slice(0, 10)}`
+              : "unscheduled";
           if (!groups.has(key)) groups.set(key, []);
           groups.get(key)!.push(m);
         });
-        // Within each day, court asc (null last) then scheduled_time then id
+        // Within each group, court asc (null last) then scheduled_time then id
         // — stable across edits.
         groups.forEach((list) => list.sort((a, b) => {
           const ac = a.court_number ?? Number.POSITIVE_INFINITY;
@@ -249,10 +252,18 @@ export function MatchesTab({ league, dataVersion, onMutated }: LeagueTabProps) {
           return a.id.localeCompare(b.id);
         }));
 
+        const keySortDate = (key: string): string => {
+          if (key.startsWith("day:")) return key.slice(4);
+          if (key.startsWith("session:")) {
+            const sess = sessions.find((s) => s.id === key.slice(8));
+            return sess?.scheduled_date ?? "9999-12-31";
+          }
+          return "9999-12-32";
+        };
         const dayKeys = Array.from(groups.keys()).sort((a, b) => {
           if (a === "unscheduled") return 1;
           if (b === "unscheduled") return -1;
-          return a.localeCompare(b);
+          return keySortDate(a).localeCompare(keySortDate(b));
         });
 
         const totals = {
@@ -316,13 +327,23 @@ export function MatchesTab({ league, dataVersion, onMutated }: LeagueTabProps) {
                 {dayKeys.map((key) => {
                   const list = groups.get(key)!;
                   const collapsed = collapsedDays[key] ?? false;
-                  const label = key === "unscheduled"
-                    ? "Unscheduled"
-                    : new Date(key + "T00:00:00").toLocaleDateString(undefined, {
-                        weekday: "short", month: "short", day: "numeric",
-                        year: new Date(key).getFullYear() !== new Date().getFullYear() ? "numeric" : undefined,
-                      });
-                  const isToday = key === todayKey;
+                  const session = key.startsWith("session:")
+                    ? sessions.find((s) => s.id === key.slice(8)) ?? null
+                    : null;
+                  const dayIso = key.startsWith("day:")
+                    ? key.slice(4)
+                    : session?.scheduled_date ?? null;
+                  const fmtDay = (iso: string) =>
+                    new Date(iso + "T00:00:00").toLocaleDateString(undefined, {
+                      weekday: "short", month: "short", day: "numeric",
+                      year: new Date(iso).getFullYear() !== new Date().getFullYear() ? "numeric" : undefined,
+                    });
+                  const label = session
+                    ? session.name + (session.scheduled_date ? ` · ${fmtDay(session.scheduled_date)}` : "")
+                    : key === "unscheduled"
+                      ? "Unscheduled"
+                      : fmtDay(key.slice(4));
+                  const isToday = dayIso === todayKey;
 
                   return (
                     <section key={key}>
