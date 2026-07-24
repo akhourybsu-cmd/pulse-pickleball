@@ -541,10 +541,10 @@ function MatchEditor({
   const [teamBScore, setTeamBScore] = useState(initial?.team_b_score?.toString() ?? "");
   const [saving, setSaving] = useState(false);
 
-  const submit = async () => {
-    if (!sessionId) { toast.error("Session required"); return; }
+  const doSave = async (): Promise<LeagueMatch | null> => {
+    if (!sessionId) { toast.error("Session required"); return null; }
     if (isTeamMode && teamAId !== "none" && teamBId !== "none" && teamAId === teamBId) {
-      toast.error("Team A and Team B must be different"); return;
+      toast.error("Team A and Team B must be different"); return null;
     }
     setSaving(true);
 
@@ -582,7 +582,7 @@ function MatchEditor({
     if (error || !data) {
       toast.error(error?.message ?? "Save failed");
       setSaving(false);
-      return;
+      return null;
     }
     const saved = data as unknown as LeagueMatch;
     await logLeagueAction({
@@ -596,10 +596,29 @@ function MatchEditor({
       } : null,
       newValue: payload,
     });
-    toast.success(mode === "create" ? "Match scheduled" : "Match updated");
+    toast.success(mode === "create" ? "Match scheduled" : "Score locked in");
     setSaving(false);
-    await onDone();
+    return saved;
   };
+
+  // Primary save: in edit mode we keep the dialog open so the admin can
+  // rip through scores fast; in create mode we close as usual.
+  const submit = async () => {
+    const saved = await doSave();
+    if (!saved) return;
+    if (mode === "edit" && onSaved) {
+      await onSaved(saved);
+    } else {
+      await onDone();
+    }
+  };
+
+  const submitAndNext = async () => {
+    const saved = await doSave();
+    if (!saved) return;
+    if (onSaveAndNext) await onSaveAndNext(saved);
+  };
+
 
   // Player pool = members with a profile we already know about.
   const playerPool = members.map((m) => ({
