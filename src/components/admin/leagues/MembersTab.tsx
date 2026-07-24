@@ -692,18 +692,10 @@ function AddMemberDialog({
           <SegmentedControl
             value={role}
             onChange={(v) => setRole(v as MemberRole)}
-            options={
-              league.league_type === "flex"
-                ? [
-                    { value: "player",  label: "Player" },
-                    { value: "manager", label: "Manager" },
-                  ]
-                : [
-                    { value: "player",  label: "Player" },
-                    { value: "captain", label: "Captain" },
-                    { value: "manager", label: "Manager" },
-                  ]
-            }
+            options={[
+              { value: "player",  label: "Player" },
+              { value: "manager", label: "Assistant manager" },
+            ]}
           />
         </FormRow>
         <FormRow label="Status">
