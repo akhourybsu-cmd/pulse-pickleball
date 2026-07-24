@@ -21,7 +21,7 @@ import {
   Plus, Search, LifeBuoy, Trash2, Repeat, Power, PowerOff, StickyNote,
 } from "lucide-react";
 import type {
-  LeagueSeason, LeagueDivision, LeagueSubstitute, SubstituteStatus,
+  LeagueSeason, LeagueSubstitute, SubstituteStatus,
   LeagueSession, LeagueMatch, LeagueTeam,
 } from "@/lib/leagues/types";
 import { logLeagueAction } from "@/lib/leagues/audit";
@@ -51,7 +51,6 @@ const SLOTS: Array<{ key: "a" | "b" | "c" | "d"; team: "A" | "B" }> = [
 export function SubstitutesTab({ league, dataVersion, onMutated }: LeagueTabProps) {
   const [seasons, setSeasons] = useState<LeagueSeason[]>([]);
   const [seasonId, setSeasonId] = useState<string | "">("");
-  const [divisions, setDivisions] = useState<LeagueDivision[]>([]);
   const [subs, setSubs] = useState<LeagueSubstitute[]>([]);
   const [sessions, setSessions] = useState<LeagueSession[]>([]);
   const [matches, setMatches] = useState<LeagueMatch[]>([]);
@@ -82,9 +81,8 @@ export function SubstitutesTab({ league, dataVersion, onMutated }: LeagueTabProp
   }, [seasonId, dataVersion]);
 
   const reload = async () => {
-    const [{ data: divs }, { data: s }, { data: sess }, { data: mt }, { data: t }] =
+    const [{ data: s }, { data: sess }, { data: mt }, { data: t }] =
       await Promise.all([
-        supabase.from("league_divisions" as never).select("*").eq("season_id", seasonId),
         supabase.from("league_substitutes" as never).select("*")
           .eq("season_id", seasonId).order("created_at", { ascending: false }),
         supabase.from("league_sessions" as never).select("*")
@@ -93,7 +91,6 @@ export function SubstitutesTab({ league, dataVersion, onMutated }: LeagueTabProp
           .eq("season_id", seasonId).order("scheduled_time", { ascending: true }),
         supabase.from("league_teams" as never).select("*").eq("season_id", seasonId),
       ]);
-    setDivisions((divs ?? []) as unknown as LeagueDivision[]);
     const subList = (s ?? []) as unknown as LeagueSubstitute[];
     setSubs(subList);
     setSessions((sess ?? []) as unknown as LeagueSession[]);
@@ -156,7 +153,6 @@ export function SubstitutesTab({ league, dataVersion, onMutated }: LeagueTabProp
               mode="create"
               leagueId={league.id}
               seasonId={seasonId}
-              divisions={divisions}
               existingUserIds={new Set(subs.map((x) => x.user_id))}
               initial={null}
               onDone={async () => { setAddOpen(false); await reload(); onMutated(); }}
@@ -186,7 +182,6 @@ export function SubstitutesTab({ league, dataVersion, onMutated }: LeagueTabProp
           {subs.map((sub) => {
             const p = profilesById[sub.user_id];
             const name = p ? resolvePlayerName(p) : "Loading…";
-            const division = divisions.find((d) => d.id === sub.division_id);
             const initials = name
               .split(/\s+/).filter(Boolean).slice(0, 2)
               .map((s) => s[0]).join("").toUpperCase() || "?";
@@ -223,7 +218,6 @@ export function SubstitutesTab({ league, dataVersion, onMutated }: LeagueTabProp
                       )}
                     </div>
                     <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap mt-0.5">
-                      {division && <span>{division.name}</span>}
                       {sub.notes && (
                         <span className="inline-flex items-center gap-1 min-w-0">
                           <StickyNote className="w-3 h-3 shrink-0" />
@@ -254,7 +248,6 @@ export function SubstitutesTab({ league, dataVersion, onMutated }: LeagueTabProp
             mode="edit"
             leagueId={league.id}
             seasonId={seasonId as string}
-            divisions={divisions}
             existingUserIds={new Set(subs.map((x) => x.user_id))}
             initial={editing}
             onDone={async () => { setEditing(null); await reload(); onMutated(); }}
@@ -344,7 +337,7 @@ function SubInlineActions({
       </Button>
       <Button
         size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
-        disabled={busy} onClick={onEdit} aria-label="Edit sub" title="Edit notes / division"
+        disabled={busy} onClick={onEdit} aria-label="Edit sub" title="Edit notes"
       >
         <StickyNote className="w-4 h-4" />
       </Button>
@@ -388,12 +381,11 @@ function SubInlineActions({
 /* ------------------------------------------------------------------ */
 
 function SubEditorDialog({
-  mode, leagueId, seasonId, divisions, existingUserIds, initial, onDone,
+  mode, leagueId, seasonId, existingUserIds, initial, onDone,
 }: {
   mode: "create" | "edit";
   leagueId: string;
   seasonId: string;
-  divisions: LeagueDivision[];
   existingUserIds: Set<string>;
   initial: LeagueSubstitute | null;
   onDone: () => Promise<void>;
@@ -402,7 +394,6 @@ function SubEditorDialog({
   const [results, setResults] = useState<PlayerRow[]>([]);
   const [pickedId, setPickedId] = useState<string | null>(initial?.user_id ?? null);
   const [pickedName, setPickedName] = useState<string>("");
-  const [divisionId, setDivisionId] = useState<string | "none">(initial?.division_id ?? "none");
   const [status, setStatus] = useState<SubstituteStatus>(initial?.status ?? "active");
   const [notes, setNotes] = useState(initial?.notes ?? "");
   const [saving, setSaving] = useState(false);
@@ -434,7 +425,6 @@ function SubEditorDialog({
       const payload = {
         league_id: leagueId,
         season_id: seasonId,
-        division_id: divisionId === "none" ? null : divisionId,
         user_id: pickedId,
         notes: notes.trim() || null,
         status,
@@ -450,7 +440,6 @@ function SubEditorDialog({
       toast.success("Sub added to the bench");
     } else if (initial) {
       const payload = {
-        division_id: divisionId === "none" ? null : divisionId,
         notes: notes.trim() || null,
         status,
       };
@@ -461,7 +450,7 @@ function SubEditorDialog({
         leagueId, seasonId,
         action: "substitute.updated", entityType: "substitute",
         entityId: initial.id,
-        oldValue: { division_id: initial.division_id, notes: initial.notes, status: initial.status },
+        oldValue: { notes: initial.notes, status: initial.status },
         newValue: payload,
       });
       toast.success("Sub updated");
@@ -478,7 +467,7 @@ function SubEditorDialog({
       title={mode === "create" ? "Add substitute" : "Edit substitute"}
       subtitle={mode === "create"
         ? "Add a fill-in player to the bench for this season."
-        : "Update this sub's division, status, or notes."}
+        : "Update this sub's status or notes."}
       primaryLabel={mode === "create" ? "Add sub" : "Save changes"}
       primaryLoading={saving}
       primaryDisabled={!pickedId}
@@ -525,15 +514,6 @@ function SubEditorDialog({
       ) : null}
 
       <FormSection label="Details">
-        <FormRow label="Preferred division" hint="Optional — where this sub best fits.">
-          <Select value={divisionId} onValueChange={setDivisionId}>
-            <SelectTrigger className={FIELD_H}><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">No division</SelectItem>
-              {divisions.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </FormRow>
         <FormRow label="Status" hint="Inactive subs stay on the bench but can't be swapped in.">
           <SegmentedControl
             value={status}

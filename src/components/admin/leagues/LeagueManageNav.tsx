@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
  * strip) and to dispatch which tab body to render.
  */
 export type ManageTab =
-  | "overview" | "seasons" | "divisions"
+  | "overview" | "seasons"
   | "members" | "teams" | "subs"
   | "ladder" | "sessions" | "matches"
   | "standings"
@@ -37,7 +37,6 @@ interface TabDef {
 export const MANAGE_TABS: TabDef[] = [
   { key: "overview",  label: "Overview",   short: "Info",     icon: Trophy,        group: "Setup",   hint: "Details, visibility, invite code" },
   { key: "seasons",   label: "Seasons",    short: "Seasons",  icon: CalendarDays,  group: "Setup",   hint: "Semesters or session runs" },
-  { key: "divisions", label: "Divisions",  short: "Divs",     icon: Layers,        group: "Setup",   hint: "Skill tiers within a season" },
   { key: "members",   label: "Players",    short: "Players",  icon: Users,         group: "People",  hint: "Everyone in this league" },
   { key: "subs",      label: "Subs",       short: "Subs",     icon: LifeBuoy,      group: "People",  hint: "Sub pool + swap into a week" },
   { key: "ladder",    label: "Ladder",     short: "Ladder",   icon: Layers,        group: "Play",    hint: "Individual doubles ladder" },

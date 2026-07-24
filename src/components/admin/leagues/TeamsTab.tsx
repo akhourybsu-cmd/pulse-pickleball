@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Plus, Users, ChevronRight, UsersRound, Shield, Crown } from "lucide-react";
 import type {
-  League, LeagueSeason, LeagueDivision, LeagueTeam, LeagueMember,
+  League, LeagueSeason, LeagueTeam, LeagueMember,
 } from "@/lib/leagues/types";
 import { logLeagueAction } from "@/lib/leagues/audit";
 import { resolvePlayerName } from "@/lib/matchDisplay";
@@ -32,7 +32,6 @@ function teamInitials(name: string): string {
 export function TeamsTab({ league, dataVersion, onMutated }: LeagueTabProps) {
   const [seasons, setSeasons] = useState<LeagueSeason[]>([]);
   const [seasonId, setSeasonId] = useState<string | "">("");
-  const [divisions, setDivisions] = useState<LeagueDivision[]>([]);
   const [teams, setTeams] = useState<LeagueTeam[]>([]);
   const [members, setMembers] = useState<LeagueMember[]>([]);
   /** count of active roster rows per team_id (for the badge on the team card) */
@@ -62,14 +61,12 @@ export function TeamsTab({ league, dataVersion, onMutated }: LeagueTabProps) {
   }, [seasonId, dataVersion]);
 
   const reload = async () => {
-    const [{ data: divs }, { data: t }, { data: mems }] = await Promise.all([
-      supabase.from("league_divisions" as never).select("*").eq("season_id", seasonId),
+    const [{ data: t }, { data: mems }] = await Promise.all([
       supabase.from("league_teams" as never).select("*")
         .eq("season_id", seasonId).order("created_at", { ascending: false }),
       supabase.from("league_members" as never).select("*")
         .eq("season_id", seasonId).eq("status", "active"),
     ]);
-    setDivisions((divs ?? []) as unknown as LeagueDivision[]);
     const teamList = (t ?? []) as unknown as LeagueTeam[];
     setTeams(teamList);
     const memList = (mems ?? []) as unknown as LeagueMember[];
@@ -128,7 +125,7 @@ export function TeamsTab({ league, dataVersion, onMutated }: LeagueTabProps) {
           {seasonId && (
             <TeamEditor
               league={league} seasonId={seasonId}
-              divisions={divisions} members={members} profilesById={profilesById}
+              members={members} profilesById={profilesById}
               onDone={async () => { setCreateOpen(false); await reload(); onMutated(); }}
             />
           )}
@@ -146,7 +143,6 @@ export function TeamsTab({ league, dataVersion, onMutated }: LeagueTabProps) {
         <ul className="space-y-2">
           {teams.map((t) => {
             const captain = t.captain_user_id ? profilesById[t.captain_user_id] : null;
-            const division = divisions.find((d) => d.id === t.division_id);
             const rosterCount = rosterCounts[t.id] ?? 0;
             return (
               <li key={t.id}>
@@ -180,7 +176,6 @@ export function TeamsTab({ league, dataVersion, onMutated }: LeagueTabProps) {
                         ) : (
                           <span>No captain</span>
                         )}
-                        {division && (<><span>·</span><span>{division.name}</span></>)}
                       </div>
                     </div>
                     {/* Roster stat */}
@@ -215,18 +210,16 @@ export function TeamsTab({ league, dataVersion, onMutated }: LeagueTabProps) {
 }
 
 function TeamEditor({
-  league, seasonId, divisions, members, profilesById, onDone,
+  league, seasonId, members, profilesById, onDone,
 }: {
   league: League;
   seasonId: string;
-  divisions: LeagueDivision[];
   members: LeagueMember[];
   profilesById: Record<string, PlayerRow>;
   onDone: () => Promise<void>;
 }) {
   const [name, setName] = useState("");
   const [captainId, setCaptainId] = useState<string | "none">("none");
-  const [divisionId, setDivisionId] = useState<string | "none">("none");
   const [saving, setSaving] = useState(false);
 
   const submit = async () => {
@@ -235,7 +228,6 @@ function TeamEditor({
     const payload = {
       league_id: league.id,
       season_id: seasonId,
-      division_id: divisionId === "none" ? null : divisionId,
       name: name.trim(),
       captain_user_id: captainId === "none" ? null : captainId,
     };
@@ -288,20 +280,6 @@ function TeamEditor({
             value={name} onChange={(e) => setName(e.target.value)}
             placeholder="Team A" className={FIELD_H}
           />
-        </FormRow>
-        <FormRow
-          label="Division"
-          hint={divisions.length === 0
-            ? "No divisions yet — you can assign this later."
-            : undefined}
-        >
-          <Select value={divisionId} onValueChange={setDivisionId}>
-            <SelectTrigger className={FIELD_H}><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">No division</SelectItem>
-              {divisions.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
-            </SelectContent>
-          </Select>
         </FormRow>
       </FormSection>
 

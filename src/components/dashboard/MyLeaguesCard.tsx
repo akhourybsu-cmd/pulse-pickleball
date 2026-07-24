@@ -46,7 +46,7 @@ export function MyLeaguesCard() {
 
   return (
     <div className="space-y-2">
-      {visible.map(({ league, season, division, membership }) => {
+      {visible.map(({ league, season, membership }) => {
         const meta = TYPE_META[league.league_type];
         const Icon = meta.icon;
         const isOfficer = membership.role !== "player";
@@ -92,12 +92,6 @@ export function MyLeaguesCard() {
                       <>
                         <CalendarDays className="w-3 h-3 shrink-0" />
                         <span className="truncate">{season.name}</span>
-                        {division && (
-                          <>
-                            <span className="text-muted-foreground/40">·</span>
-                            <span className="truncate">{division.name}</span>
-                          </>
-                        )}
                       </>
                     ) : (
                       <span className="italic">No active season yet</span>
