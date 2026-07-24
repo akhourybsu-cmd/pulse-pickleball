@@ -452,6 +452,25 @@ export function MatchesTab({ league, dataVersion, onMutated }: LeagueTabProps) {
             sessions={sessions} teams={teams} members={members} profilesById={profilesById}
             initial={editing}
             onDone={async () => { setEditing(null); await reload(); onMutated(); }}
+            onSaved={async (saved) => { await reload(); onMutated(); setEditing(saved); }}
+            onSaveAndNext={async (saved) => {
+              await reload();
+              onMutated();
+              // Find the next match in the current stable order (court asc within its group).
+              // Use the freshly-sorted visible list from state — edits don't reshuffle.
+              const ordered = [...matches].sort((a, b) => {
+                const ak = a.session_id ?? a.scheduled_time?.slice(0, 10) ?? "~";
+                const bk = b.session_id ?? b.scheduled_time?.slice(0, 10) ?? "~";
+                if (ak !== bk) return ak.localeCompare(bk);
+                const ac = a.court_number ?? Number.POSITIVE_INFINITY;
+                const bc = b.court_number ?? Number.POSITIVE_INFINITY;
+                if (ac !== bc) return ac - bc;
+                return a.id.localeCompare(b.id);
+              });
+              const idx = ordered.findIndex((m) => m.id === saved.id);
+              const next = idx >= 0 && idx < ordered.length - 1 ? ordered[idx + 1] : null;
+              setEditing(next);
+            }}
           />
         </Dialog>
       )}
@@ -486,6 +505,7 @@ function TeamCell({
 
 function MatchEditor({
   mode, league, seasonId, sessions, teams, members, profilesById, initial, onDone,
+  onSaved, onSaveAndNext,
 }: {
   mode: "create" | "edit";
   league: League;
@@ -496,6 +516,10 @@ function MatchEditor({
   profilesById: Record<string, PlayerRow>;
   initial: LeagueMatch | null;
   onDone: () => Promise<void>;
+  /** Edit mode: called after save; parent keeps the dialog open. */
+  onSaved?: (saved: LeagueMatch) => Promise<void> | void;
+  /** Edit mode: called to advance to the next match after save. */
+  onSaveAndNext?: (saved: LeagueMatch) => Promise<void> | void;
 }) {
   const isTeamMode =
     league.league_type === "doubles" || league.league_type === "team";
@@ -517,10 +541,10 @@ function MatchEditor({
   const [teamBScore, setTeamBScore] = useState(initial?.team_b_score?.toString() ?? "");
   const [saving, setSaving] = useState(false);
 
-  const submit = async () => {
-    if (!sessionId) { toast.error("Session required"); return; }
+  const doSave = async (): Promise<LeagueMatch | null> => {
+    if (!sessionId) { toast.error("Session required"); return null; }
     if (isTeamMode && teamAId !== "none" && teamBId !== "none" && teamAId === teamBId) {
-      toast.error("Team A and Team B must be different"); return;
+      toast.error("Team A and Team B must be different"); return null;
     }
     setSaving(true);
 
@@ -558,7 +582,7 @@ function MatchEditor({
     if (error || !data) {
       toast.error(error?.message ?? "Save failed");
       setSaving(false);
-      return;
+      return null;
     }
     const saved = data as unknown as LeagueMatch;
     await logLeagueAction({
@@ -572,10 +596,29 @@ function MatchEditor({
       } : null,
       newValue: payload,
     });
-    toast.success(mode === "create" ? "Match scheduled" : "Match updated");
+    toast.success(mode === "create" ? "Match scheduled" : "Score locked in");
     setSaving(false);
-    await onDone();
+    return saved;
   };
+
+  // Primary save: in edit mode we keep the dialog open so the admin can
+  // rip through scores fast; in create mode we close as usual.
+  const submit = async () => {
+    const saved = await doSave();
+    if (!saved) return;
+    if (mode === "edit" && onSaved) {
+      await onSaved(saved);
+    } else {
+      await onDone();
+    }
+  };
+
+  const submitAndNext = async () => {
+    const saved = await doSave();
+    if (!saved) return;
+    if (onSaveAndNext) await onSaveAndNext(saved);
+  };
+
 
   // Player pool = members with a profile we already know about.
   const playerPool = members.map((m) => ({
@@ -608,9 +651,20 @@ function MatchEditor({
         kicker={mode === "create" ? "New matchup" : "Matchup"}
         title={mode === "create" ? "Schedule a match" : "Edit match"}
         subtitle="Scores feed standings only — league play never touches PULSE Ratings."
-        primaryLabel={mode === "create" ? "Schedule match" : "Save changes"}
+        primaryLabel={mode === "create" ? "Schedule match" : "Save score"}
         primaryLoading={saving}
         onPrimary={submit}
+        secondary={mode === "edit" && onSaveAndNext ? (
+          <Button
+            type="button"
+            variant="outline"
+            className="h-12"
+            disabled={saving}
+            onClick={submitAndNext}
+          >
+            Save & next <ChevronRight className="w-4 h-4 ml-1" />
+          </Button>
+        ) : undefined}
       >
         <FormSection label="When & where">
           <FormRow label="Session">
