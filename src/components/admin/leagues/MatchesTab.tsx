@@ -327,13 +327,23 @@ export function MatchesTab({ league, dataVersion, onMutated }: LeagueTabProps) {
                 {dayKeys.map((key) => {
                   const list = groups.get(key)!;
                   const collapsed = collapsedDays[key] ?? false;
-                  const label = key === "unscheduled"
-                    ? "Unscheduled"
-                    : new Date(key + "T00:00:00").toLocaleDateString(undefined, {
-                        weekday: "short", month: "short", day: "numeric",
-                        year: new Date(key).getFullYear() !== new Date().getFullYear() ? "numeric" : undefined,
-                      });
-                  const isToday = key === todayKey;
+                  const session = key.startsWith("session:")
+                    ? sessions.find((s) => s.id === key.slice(8)) ?? null
+                    : null;
+                  const dayIso = key.startsWith("day:")
+                    ? key.slice(4)
+                    : session?.scheduled_date ?? null;
+                  const fmtDay = (iso: string) =>
+                    new Date(iso + "T00:00:00").toLocaleDateString(undefined, {
+                      weekday: "short", month: "short", day: "numeric",
+                      year: new Date(iso).getFullYear() !== new Date().getFullYear() ? "numeric" : undefined,
+                    });
+                  const label = session
+                    ? session.name + (session.scheduled_date ? ` · ${fmtDay(session.scheduled_date)}` : "")
+                    : key === "unscheduled"
+                      ? "Unscheduled"
+                      : fmtDay(key.slice(4));
+                  const isToday = dayIso === todayKey;
 
                   return (
                     <section key={key}>
