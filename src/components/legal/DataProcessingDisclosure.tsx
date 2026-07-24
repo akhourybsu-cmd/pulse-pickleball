@@ -36,7 +36,7 @@ export const DataProcessingDisclosure = () => {
                 <div className="space-y-4 mt-4">
                   <div className="bg-muted/50 rounded-lg p-4">
                     <div className="flex justify-between items-start mb-2">
-                      <h4 className="font-medium text-foreground">Supabase (via Lovable Cloud)</h4>
+                      <h4 className="font-medium text-foreground">Managed Cloud Backend</h4>
                       <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">Infrastructure</span>
                     </div>
                     <p className="text-sm mb-2">Database hosting, authentication, file storage, and edge functions</p>
@@ -45,7 +45,7 @@ export const DataProcessingDisclosure = () => {
 
                   <div className="bg-muted/50 rounded-lg p-4">
                     <div className="flex justify-between items-start mb-2">
-                      <h4 className="font-medium text-foreground">Lovable Platform</h4>
+                      <h4 className="font-medium text-foreground">PULSE Hosting</h4>
                       <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">Hosting</span>
                     </div>
                     <p className="text-sm mb-2">Application hosting and deployment infrastructure</p>
