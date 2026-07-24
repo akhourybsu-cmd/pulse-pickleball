@@ -50,6 +50,7 @@ export function MembersTab({ league, dataVersion, onMutated }: LeagueTabProps) {
   const [divisions, setDivisions] = useState<LeagueDivision[]>([]);
   const [members, setMembers] = useState<LeagueMember[]>([]);
   const [profilesById, setProfilesById] = useState<Record<string, PlayerRow>>({});
+  const [primaryManager, setPrimaryManager] = useState<PlayerRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
@@ -68,6 +69,19 @@ export function MembersTab({ league, dataVersion, onMutated }: LeagueTabProps) {
     })();
     // eslint-disable-next-line
   }, [league.id, dataVersion]);
+
+  // Primary manager (league creator) — pinned at top of the roster.
+  useEffect(() => {
+    (async () => {
+      if (!league.created_by) { setPrimaryManager(null); return; }
+      const { data } = await supabase
+        .from("profiles_public" as never)
+        .select("id, display_name, full_name, first_name, last_name, avatar_url")
+        .eq("id", league.created_by)
+        .maybeSingle();
+      setPrimaryManager((data ?? null) as PlayerRow | null);
+    })();
+  }, [league.created_by]);
 
   useEffect(() => {
     if (!seasonId) return;
@@ -97,6 +111,7 @@ export function MembersTab({ league, dataVersion, onMutated }: LeagueTabProps) {
       setProfilesById({});
     }
   };
+
 
   if (loading) return <TabSkeleton lines={3} />;
   if (seasons.length === 0) {
