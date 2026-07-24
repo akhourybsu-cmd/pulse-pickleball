@@ -216,6 +216,7 @@ function LadderStart({
 }) {
   const [order, setOrder] = useState<string[]>([]);
   const [starting, setStarting] = useState(false);
+  const [weekPrompt, setWeekPrompt] = useState(false);
   const source = ladder.settings?.initial_order_source ?? "pulse_rating";
 
   useEffect(() => {
@@ -256,10 +257,10 @@ function LadderStart({
 
   const divisibleByFour = order.length > 0 && order.length % 4 === 0;
 
-  const start = async () => {
+  const invokeStart = async (session_id: string | null) => {
     setStarting(true);
     const { data, error } = await supabase.functions.invoke("ladder-generate-first-batch", {
-      body: { season_id: seasonId, order },
+      body: { season_id: seasonId, order, session_id },
     });
     setStarting(false);
     if (error || (data as { error?: string })?.error) {
@@ -267,8 +268,28 @@ function LadderStart({
       return;
     }
     toast.success("Ladder started — Week 1, Batch 1 generated");
+    setWeekPrompt(false);
     onStarted();
   };
+
+  const start = async () => {
+    // Every batch must be assigned to a week (league_sessions row). Look for
+    // an existing Week 1 session; if none exists, prompt the manager to
+    // schedule one before we generate the first batch.
+    const { data: existing } = await supabase
+      .from("league_sessions" as never)
+      .select("id")
+      .eq("season_id", seasonId)
+      .order("scheduled_date", { ascending: true, nullsFirst: false })
+      .limit(1);
+    const existingId = (existing?.[0] as { id?: string } | undefined)?.id;
+    if (existingId) {
+      await invokeStart(existingId);
+    } else {
+      setWeekPrompt(true);
+    }
+  };
+
 
   return (
     <div className="rounded-xl border border-border/70 bg-card p-4 space-y-4">
@@ -325,6 +346,35 @@ function LadderStart({
         <Play className="w-4 h-4 mr-1.5" />
         {starting ? "Starting…" : "Start ladder"}
       </Button>
+
+      {weekPrompt && (
+        <WeekSessionDialog
+          weekNumber={1}
+          busy={starting}
+          onCancel={() => setWeekPrompt(false)}
+          onConfirm={async (details) => {
+            const { data, error } = await supabase
+              .from("league_sessions" as never)
+              .insert({
+                league_id: league.id,
+                season_id: seasonId,
+                name: `Week 1`,
+                scheduled_date: details.scheduled_date,
+                start_time: details.start_time,
+                end_time: details.end_time || null,
+                location: details.location || null,
+                status: "published",
+              } as never)
+              .select("id")
+              .single();
+            if (error || !data) {
+              toast.error(error?.message ?? "Couldn't schedule the week");
+              return;
+            }
+            await invokeStart((data as { id: string }).id);
+          }}
+        />
+      )}
     </div>
   );
 }
