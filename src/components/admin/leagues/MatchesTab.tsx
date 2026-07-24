@@ -64,6 +64,9 @@ export function MatchesTab({ league, dataVersion, onMutated }: LeagueTabProps) {
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<LeagueMatch | null>(null);
+  const [statusFilter, setStatusFilter] = useState<"all" | "open" | "needs_review" | "done">("all");
+  const [query, setQuery] = useState("");
+  const [collapsedDays, setCollapsedDays] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     (async () => {
