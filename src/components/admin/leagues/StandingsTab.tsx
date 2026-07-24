@@ -20,6 +20,8 @@ interface ProfileRow {
   last_name: string | null;
 }
 
+interface SubRow { match_id: string; in_player_id: string; out_player_id: string; }
+
 export function StandingsTab({ league, dataVersion }: LeagueTabProps) {
   const isTeamMode =
     league.league_type === "doubles" || league.league_type === "team";
@@ -27,6 +29,7 @@ export function StandingsTab({ league, dataVersion }: LeagueTabProps) {
   const [seasonId, setSeasonId] = useState<string | "">("");
   const [matches, setMatches] = useState<LeagueMatch[]>([]);
   const [teams, setTeams] = useState<LeagueTeam[]>([]);
+  const [subs, setSubs] = useState<SubRow[]>([]);
   const [namesById, setNamesById] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
 
@@ -49,14 +52,17 @@ export function StandingsTab({ league, dataVersion }: LeagueTabProps) {
   useEffect(() => {
     if (!seasonId) return;
     (async () => {
-      const [{ data: m }, { data: t }] = await Promise.all([
+      const [{ data: m }, { data: t }, { data: sb }] = await Promise.all([
         supabase.from("league_matches" as never).select("*")
           .eq("league_id", league.id).eq("season_id", seasonId),
         supabase.from("league_teams" as never).select("*").eq("season_id", seasonId),
+        supabase.from("league_match_substitutions" as never)
+          .select("match_id, in_player_id, out_player_id").eq("season_id", seasonId),
       ]);
       const matchList = (m ?? []) as unknown as LeagueMatch[];
       setMatches(matchList);
       setTeams((t ?? []) as unknown as LeagueTeam[]);
+      setSubs((sb ?? []) as unknown as SubRow[]);
 
       const ids = Array.from(new Set(
         matchList
@@ -81,12 +87,14 @@ export function StandingsTab({ league, dataVersion }: LeagueTabProps) {
   }, [seasonId, dataVersion, league.id]);
 
   const rows = useMemo(() => {
-    const opts = { seasonId: seasonId || undefined };
     if (isTeamMode) {
-      return computeTeamStandings(matches, teams, opts);
+      return computeTeamStandings(matches, teams, { seasonId: seasonId || undefined });
     }
-    return computePlayerStandings(matches, (id) => namesById[id] ?? "Player", opts);
-  }, [matches, teams, namesById, seasonId, isTeamMode]);
+    return computePlayerStandings(matches, (id) => namesById[id] ?? "Player", {
+      seasonId: seasonId || undefined,
+      substitutions: subs,
+    });
+  }, [matches, teams, subs, namesById, seasonId, isTeamMode]);
 
   if (loading) return <TabSkeleton lines={4} />;
 

@@ -41,6 +41,12 @@ CREATE POLICY "League admins full access" ON public.league_match_substitutions
   FOR ALL USING (public.is_league_admin(league_id, auth.uid()))
   WITH CHECK (public.is_league_admin(league_id, auth.uid()));
 
+-- Members can READ subs for leagues they're in, so player-side standings
+-- credit the absent regular (not the fill-in) too. Not sensitive.
+DROP POLICY IF EXISTS "Members read subs of own leagues" ON public.league_match_substitutions;
+CREATE POLICY "Members read subs of own leagues" ON public.league_match_substitutions
+  FOR SELECT USING (public.player_can_view_league(league_id));
+
 -- Replace an absent player with a fill-in across ALL their upcoming
 -- (scheduled / in-progress) games in a season, in one call.
 CREATE OR REPLACE FUNCTION public.swap_league_week_player(

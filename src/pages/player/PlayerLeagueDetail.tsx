@@ -61,7 +61,7 @@ export default function PlayerLeagueDetail() {
   const detail = useLeagueDetailForPlayer(leagueId);
   const {
     league, membership, season,
-    matches, allMatches, allTeams, teamsById, playersById, teammates,
+    matches, allMatches, allTeams, substitutions, teamsById, playersById, teammates,
     myTeams, loading,
     currentUserId, refresh,
   } = detail;
@@ -72,16 +72,15 @@ export default function PlayerLeagueDetail() {
   // Standings scoped to my current season. Team-format leagues get team
   // standings; individual formats get per-player.
   const standings = useMemo(() => {
-    const opts = { seasonId: season?.id ?? undefined };
     if (isTeamMode) {
-      return computeTeamStandings(allMatches, allTeams, opts);
+      return computeTeamStandings(allMatches, allTeams, { seasonId: season?.id ?? undefined });
     }
     return computePlayerStandings(
       allMatches,
       (id) => (playersById[id] ? resolvePlayerName(playersById[id]) : "Player"),
-      opts,
+      { seasonId: season?.id ?? undefined, substitutions },
     );
-  }, [allMatches, allTeams, playersById, season?.id, isTeamMode]);
+  }, [allMatches, allTeams, substitutions, playersById, season?.id, isTeamMode]);
 
   const myTeamIdSet = useMemo(() => new Set(myTeams.map((t) => t.id)), [myTeams]);
   const myRow = isTeamMode
