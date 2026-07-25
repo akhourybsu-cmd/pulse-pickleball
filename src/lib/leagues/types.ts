@@ -153,6 +153,7 @@ export interface LeagueMatch {
   player_c_id: string | null;
   player_d_id: string | null;
   linked_match_id: string | null;
+  ladder_batch_group_id: string | null;
   status: LeagueMatchStatus;
   rating_status: LeagueMatchRatingStatus;
   team_a_score: number | null;
