@@ -40,6 +40,7 @@ export function SubstitutesTab({ league, dataVersion, onMutated }: LeagueTabProp
   const [seasonId, setSeasonId] = useState<string | "">("");
   const [subs, setSubs] = useState<LeagueSubstitute[]>([]);
   const [matches, setMatches] = useState<LeagueMatch[]>([]);
+  const [batchByGroup, setBatchByGroup] = useState<Record<string, { batch_id: string; week_number: number; batch_number: number }>>({});
   const [profilesById, setProfilesById] = useState<Record<string, PlayerRow>>({});
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
@@ -76,6 +77,38 @@ export function SubstitutesTab({ league, dataVersion, onMutated }: LeagueTabProp
     setSubs(subList);
     const matchList = (mt ?? []) as unknown as LeagueMatch[];
     setMatches(matchList);
+
+    // Build a group_id → batch (with week/batch ordering) map so a swap
+    // can be scoped to the *earliest* upcoming batch a player is in,
+    // rather than sweeping every scheduled batch in the season.
+    const groupIds = Array.from(new Set(
+      matchList.map((m) => m.ladder_batch_group_id).filter(Boolean),
+    )) as string[];
+    if (groupIds.length) {
+      const { data: groups } = await supabase
+        .from("ladder_batch_groups" as never)
+        .select("id, batch_id")
+        .in("id", groupIds);
+      const batchIds = Array.from(new Set(((groups ?? []) as { batch_id: string }[]).map((g) => g.batch_id)));
+      const { data: batches } = batchIds.length
+        ? await supabase
+            .from("ladder_batches" as never)
+            .select("id, week_number, batch_number")
+            .in("id", batchIds)
+        : { data: [] as { id: string; week_number: number; batch_number: number }[] };
+      const batchMap = new Map<string, { week_number: number; batch_number: number }>();
+      ((batches ?? []) as { id: string; week_number: number; batch_number: number }[]).forEach((b) => {
+        batchMap.set(b.id, { week_number: b.week_number, batch_number: b.batch_number });
+      });
+      const map: Record<string, { batch_id: string; week_number: number; batch_number: number }> = {};
+      ((groups ?? []) as { id: string; batch_id: string }[]).forEach((g) => {
+        const b = batchMap.get(g.batch_id);
+        if (b) map[g.id] = { batch_id: g.batch_id, ...b };
+      });
+      setBatchByGroup(map);
+    } else {
+      setBatchByGroup({});
+    }
 
     // Names for subs + every slot occupant referenced by a match.
     const ids = new Set<string>(subList.map((x) => x.user_id));
@@ -244,6 +277,7 @@ export function SubstitutesTab({ league, dataVersion, onMutated }: LeagueTabProp
           sub={swapFor}
           subName={profilesById[swapFor.user_id] ? resolvePlayerName(profilesById[swapFor.user_id]) : "This sub"}
           matches={matches}
+          batchByGroup={batchByGroup}
           profilesById={profilesById}
           onDone={async () => { setSwapFor(null); await reload(); onMutated(); }}
         />
@@ -520,7 +554,7 @@ function SubEditorDialog({
 /* ------------------------------------------------------------------ */
 
 function SubSwapDialog({
-  open, onOpenChange, leagueId, seasonId, sub, subName, matches, profilesById, onDone,
+  open, onOpenChange, leagueId, seasonId, sub, subName, matches, batchByGroup, profilesById, onDone,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
@@ -529,6 +563,7 @@ function SubSwapDialog({
   sub: LeagueSubstitute;
   subName: string;
   matches: LeagueMatch[];
+  batchByGroup: Record<string, { batch_id: string; week_number: number; batch_number: number }>;
   profilesById: Record<string, PlayerRow>;
   onDone: () => Promise<void>;
 }) {
@@ -556,6 +591,29 @@ function SubSwapDialog({
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [matches, profilesById, sub.user_id]);
 
+  // Scope the swap to the *earliest* upcoming ladder batch that contains the
+  // out player. Without this, all in-progress + scheduled batches sharing a
+  // session get swept up in a single swap.
+  const targetBatchId = useMemo(() => {
+    if (!outPlayerId) return null;
+    let best: { batch_id: string; week_number: number; batch_number: number } | null = null;
+    matches
+      .filter((m) => m.status === "scheduled" || m.status === "in_progress")
+      .filter((m) => [m.player_a_id, m.player_b_id, m.player_c_id, m.player_d_id].includes(outPlayerId))
+      .forEach((m) => {
+        const b = m.ladder_batch_group_id ? batchByGroup[m.ladder_batch_group_id] : null;
+        if (!b) return;
+        if (
+          !best ||
+          b.week_number < best.week_number ||
+          (b.week_number === best.week_number && b.batch_number < best.batch_number)
+        ) {
+          best = b;
+        }
+      });
+    return best?.batch_id ?? null;
+  }, [matches, batchByGroup, outPlayerId]);
+
   const submit = async () => {
     if (!outPlayerId) { toast.error("Pick the player who's out"); return; }
     setSaving(true);
@@ -569,6 +627,7 @@ function SubSwapDialog({
         p_out_player_id: outPlayerId,
         p_in_player_id: sub.user_id,
         p_note: note.trim() || null,
+        p_batch_id: targetBatchId,
       },
     );
     setSaving(false);

@@ -8910,16 +8910,28 @@ export type Database = {
         }
         Returns: undefined
       }
-      swap_league_week_player: {
-        Args: {
-          p_in_player_id: string
-          p_league_id: string
-          p_note?: string
-          p_out_player_id: string
-          p_season_id: string
-        }
-        Returns: Json
-      }
+      swap_league_week_player:
+        | {
+            Args: {
+              p_in_player_id: string
+              p_league_id: string
+              p_note?: string
+              p_out_player_id: string
+              p_season_id: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_batch_id?: string
+              p_in_player_id: string
+              p_league_id: string
+              p_note?: string
+              p_out_player_id: string
+              p_season_id: string
+            }
+            Returns: Json
+          }
       sync_league_season_statuses: {
         Args: { p_league_id: string }
         Returns: Json
