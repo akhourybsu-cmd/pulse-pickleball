@@ -170,6 +170,7 @@ const FindEvents = lazy(() => import("./pages/player/FindEvents"));
 const Community = lazy(() => import("./pages/player/Community"));
 const GroupDetail = lazy(() => import("./pages/player/GroupDetail"));
 const JoinGroupByCode = lazy(() => import("./pages/player/JoinGroupByCode"));
+const JoinLeagueByCode = lazy(() => import("./pages/player/JoinLeagueByCode"));
 const GroupManage = lazy(() => import("./pages/player/GroupManage"));
 const DirectMessages = lazy(() => import("./pages/player/DirectMessages"));
 const DirectMessageChat = lazy(() => import("./pages/player/DirectMessageChat"));
@@ -392,6 +393,14 @@ const AppContent = () => {
               shared invite links keep working. Must be declared
               BEFORE the /player block so it wins the URL match. */}
           <Route path="/player/community/join/:code" element={<JoinGroupByCode />} />
+
+          {/* League invite-link landing — same rationale as the group
+              join route above: mounted OUTSIDE the /player AuthGuard so a
+              logged-out recipient sees the league teaser (Sign in / Sign
+              up) instead of a blank auth wall. find_league_by_invite_code
+              is granted to anon; joining still requires an account.
+              Declared BEFORE the /player block so it wins the URL match. */}
+          <Route path="/player/leagues/join/:code" element={<JoinLeagueByCode />} />
 
           {/* Player routes with shell - require auth */}
           <Route path="/player" element={
