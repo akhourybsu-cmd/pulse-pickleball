@@ -331,13 +331,6 @@ export default function PlayerLeagues() {
         }}
         initialCode={prefillCode}
       />
-        open={joinOpen}
-        onOpenChange={(o) => {
-          setJoinOpen(o);
-          if (!o) setPrefillCode(undefined);
-        }}
-        initialCode={prefillCode}
-      />
       <CreateLeagueDialog
         open={createOpen}
         onOpenChange={setCreateOpen}
