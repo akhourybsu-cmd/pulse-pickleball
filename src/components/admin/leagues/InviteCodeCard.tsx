@@ -47,6 +47,16 @@ export function InviteCodeCard({
       toast.error("Code must be 4–32 letters, numbers, hyphens or underscores");
       return;
     }
+    // Setting a code on an admin_only league is a footgun — the join
+    // RPCs skip admin_only, so the code would silently do nothing.
+    // Block save entirely (clearing the code is still allowed).
+    if (isAdminOnly && trimmed !== "") {
+      toast.error(
+        "Change visibility to Private or Public before setting a code — " +
+        "invite codes don't work on admin-only leagues."
+      );
+      return;
+    }
     setSaving(true);
     const nextValue: string | null = trimmed === "" ? null : trimmed;
     const { error } = await supabase

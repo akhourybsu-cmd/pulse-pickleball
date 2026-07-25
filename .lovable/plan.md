@@ -1,74 +1,41 @@
-# League Admin — Refinement Pass
 
-Four targeted adjustments. Dark mode is untouched; light mode is where the nested panels break.
+## Focused audit: League invite & join
 
-## 1. Shrink the hero title
+Reviewed every step of the join flow end-to-end. The system is largely sound — `join_league_by_code` is SECURITY DEFINER with a `FOR UPDATE` lock to prevent double-inserts, `find_league_by_invite_code` returns the teaser with `registration_open` / `registration_closes_at`, `AuthGuard` preserves `?join=CODE` through the `/auth` bounce via `returnTo`, and OAuth stashes the destination in `localStorage` so social sign-in returns to the right URL. The RPCs are case-insensitive, admin_only leagues are excluded, and the `?join=` param is stripped after consumption so refreshes don't re-fire.
 
-In `src/pages/admin/AdminLeagueDetail.tsx`, the league name currently renders at `text-5xl sm:text-6xl` in Bebas Neue — too dominant.
+Four real defects and two hardening items came out of the review.
 
-- Drop to `text-3xl sm:text-4xl`, keep `font-display` (Bebas) and uppercase.
-- Reduce the surrounding hero padding from `p-6 sm:p-8` to `p-5 sm:p-6`.
-- Tighten the KPI scoreboard: numerals from `text-4xl sm:text-5xl` down to `text-3xl sm:text-4xl`, top margin from `mt-6` to `mt-5`.
+### Defects to fix
 
-Net effect: hero occupies ~40% less vertical space, KPIs still read as the visual anchor.
+1. **`prefillCode` is sticky in `PlayerLeagues.tsx`.** After the deep-linked dialog is closed, `prefillCode` state stays set to the old code. If the player opens the dialog again via the "Join with code" button, `JoinByCodeDialog` auto-runs a lookup against the stale code and shows the previous teaser — confusing. Clear `prefillCode` when the dialog closes.
 
-## 2. Fix light-mode contrast (white panels on emerald)
+2. **Reactivation branch of `join_league_by_code` does not update `season_id`.** A member removed by the admin and then rejoining via code gets reactivated against whatever `season_id` they had before — often an old/completed season — so they don't appear in the current season's Members/Teams/Matches tabs. Update the reactivation path to also set `season_id` to the current active season (same resolution logic already used on first-join).
 
-Root cause: the `.league-admin` scope in `src/index.css` sets its own emerald surface + text tokens, but every nested tab component (Overview, Seasons, Members, etc.) uses shadcn primitives (`Card`, `Input`, `Select`, `Dialog`, `Tabs`, `Table`) whose classes resolve to shadcn semantic tokens (`--card`, `--background`, `--muted`, `--border`, `--foreground`, `--popover`, `--input`, `--ring`). Those tokens are defined at `:root` and `.dark` — in light mode they resolve to white/near-white, which is what you're seeing sit on the dark emerald canvas.
+3. **DATE fields parsed as local dates.** `registration_closes_at` comes back as `"YYYY-MM-DD"` and `new Date("YYYY-MM-DD")` is UTC-midnight, so users west of UTC see the deadline as the day before. Parse as a local date in `JoinByCodeDialog` when rendering the "Registration closes …" line.
 
-Fix inside `.league-admin` scope only:
+4. **Invite code silently useless on `admin_only` leagues.** `InviteCodeCard` allows saving a code on an admin_only league and shows a subtle warning, but the DB accepts it and every join RPC ignores it. Block save with a clear toast when visibility is admin_only (kept as UI-side guard — DB constraint would be a bigger change).
 
-- Override the shadcn HSL tokens (`--background`, `--card`, `--card-foreground`, `--popover`, `--popover-foreground`, `--muted`, `--muted-foreground`, `--border`, `--input`, `--foreground`, `--primary`, `--primary-foreground`, `--secondary`, `--accent`, `--ring`) with HSL values derived from the emerald palette (surface = `#0A2A20`, surface-2 = `#0F3A2C`, border = `#134A38`, text = `#F5F0E0`, muted-text = `#9CB5A8`, primary = emerald `#0D7A5F`, ring = gold `#C9A84C`).
-- Apply the override unconditionally (not gated on `.dark`) so the league admin is always a dark emerald island regardless of the app theme. This is the cleanest way to make every downstream shadcn component render correctly without touching each tab file.
-- Keep the existing `--lg-*` custom tokens as-is; they layer on top for bespoke pieces.
+### Hardening
 
-No component files need edits — the override propagates through the shadcn primitives already in use.
+5. **Better error copy for the two RPC error codes.** Map `02000` → "No league matches that code" and `22023` → "Registration for this league has closed" in `JoinByCodeDialog`'s `join()` catch, instead of surfacing the raw Postgres message. Lookup path already does this well; the join path currently just `toast.error(error.message)`.
 
-## 3. Swap the rail nav font
+6. **Guard against a fast double-tap join.** `handleJoin` in `JoinGroupDialog` gates on `loading`, but `JoinByCodeDialog.join()` sets `joining` after the RPC starts and doesn't disable on the Enter key. Add an early-return if `joining` is already true.
 
-Bebas Neue on the small rail labels is too condensed to scan quickly. In `src/components/admin/leagues/LeagueManageNav.tsx`:
+### Not changing
 
-- Remove `font-display` inheritance on the nav labels; explicitly use Barlow (already loaded), weight `600`, `tracking-wide` → `tracking-normal`, size unchanged.
-- Keep the small "MANAGING" eyebrow on the group headers in Bebas so it still reads as a section marker, but ensure the button labels themselves are Barlow.
-- Keep gold accent bar + emerald active surface.
+- Rate limiting: RR/group RPCs are throttled; league RPCs aren't. Skipping unless we see abuse — the join RPC is idempotent and gated on auth.
+- `useMyLeagues` refresh after join: not needed. Successful join navigates straight to `/player/leagues/:id`, and returning to the list remounts the hook.
+- Share link origin (`window.location.origin` vs canonical `pulsepb.com`): out of scope for this pass; would need env/product decision.
 
-## 4. Also nudge the "Managing X" desktop label
+### Files touched
 
-Above the tab workspace the "MANAGING · X · hint" strip re-echoes the rail. It's fine, but since the hero shrinks, this becomes redundant on desktop. Reduce it to just a subdued hint row: eyebrow "MANAGING" removed, keep the tab title in Barlow bold 14px + hint in dim text.
+- `src/pages/player/PlayerLeagues.tsx` — clear `prefillCode` on dialog close.
+- `src/components/leagues/JoinByCodeDialog.tsx` — local-date parse for `registration_closes_at`; friendlier join-error mapping; double-tap guard.
+- `src/components/admin/leagues/InviteCodeCard.tsx` — block save on admin_only leagues with a toast.
+- `supabase/migrations/<new>_join_league_by_code_reactivate_season.sql` — new migration replacing `join_league_by_code` so the reactivation branch also updates `season_id` to the currently-active season.
 
-## Technical section
+### Verification
 
-Files touched:
-
-- `src/index.css` — add shadcn-token overrides inside the existing `.league-admin` block. Roughly:
-    ```css
-    .league-admin {
-      --background: 165 55% 9%;         /* #0A2A20 */
-      --foreground: 44 68% 92%;
-      --card: 165 55% 9%;
-      --card-foreground: 44 68% 92%;
-      --popover: 165 55% 12%;
-      --popover-foreground: 44 68% 92%;
-      --muted: 165 45% 14%;
-      --muted-foreground: 156 15% 66%;
-      --border: 165 45% 18%;
-      --input: 165 45% 18%;
-      --primary: 165 80% 26%;
-      --primary-foreground: 44 68% 92%;
-      --secondary: 165 45% 14%;
-      --secondary-foreground: 44 68% 92%;
-      --accent: 44 55% 54%;             /* gold */
-      --accent-foreground: 165 55% 9%;
-      --ring: 44 55% 54%;
-    }
-    ```
-- `src/pages/admin/AdminLeagueDetail.tsx` — hero title/padding/KPI size shrink; simplify the desktop "Managing" strip.
-- `src/components/admin/leagues/LeagueManageNav.tsx` — Barlow instead of display font on button labels.
-
-No schema, no data, no other tab files.
-
-## Verification
-
-- `tsgo --noEmit` clean.
-- Visually check the page in light mode: nested cards, dialogs, dropdowns, inputs, tables all render with the emerald palette instead of white.
-- Confirm hero fits above the fold on the current 890px viewport.
+- Typecheck.
+- SQL sanity: pick an existing removed member row, call `join_league_by_code` with the league's code, confirm the row is `status='active'` AND `season_id` = current active season.
+- Manual: sign out → click a `/player/leagues?join=CODE` link → confirm `/auth` bounce returns to the dialog with teaser preloaded; close the dialog and reopen → confirm it opens empty, not with the old code.

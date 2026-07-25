@@ -92,12 +92,20 @@ export function JoinByCodeDialog({
   }, [open, initialCode, lookup]);
 
   const join = async () => {
-    if (!teaser) return;
+    if (!teaser || joining) return;
     setJoining(true);
     const { data, error } = await supabase
       .rpc("join_league_by_code" as never, { p_code: code.trim() } as never);
     if (error) {
-      toast.error(error.message);
+      // Map the two well-known Postgres error codes to friendlier copy.
+      // 02000 = "no data found" (bad code / admin_only), 22023 =
+      // "invalid parameter value" (registration closed). Fall back to
+      // the raw message for anything else.
+      const friendly =
+        error.code === "02000" ? "No league matches that code" :
+        error.code === "22023" ? "Registration for this league has closed" :
+        error.message;
+      toast.error(friendly);
       setJoining(false);
       return;
     }
@@ -182,10 +190,16 @@ export function JoinByCodeDialog({
                 {teaser.registration_closes_at && (
                   <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                     <CalendarClock className="w-3.5 h-3.5" />
-                    Registration closes {new Date(teaser.registration_closes_at)
-                      .toLocaleDateString(undefined, {
+                    {(() => {
+                      // Parse "YYYY-MM-DD" as a LOCAL date. `new Date(str)`
+                      // treats a bare date string as UTC-midnight, which
+                      // shifts the day backwards for anyone west of UTC.
+                      const [y, m, d] = teaser.registration_closes_at.split("-").map(Number);
+                      const local = new Date(y, (m ?? 1) - 1, d ?? 1);
+                      return `Registration closes ${local.toLocaleDateString(undefined, {
                         month: "short", day: "numeric", year: "numeric",
-                      })}
+                      })}`;
+                    })()}
                   </p>
                 )}
                 <p className="text-xs text-muted-foreground">

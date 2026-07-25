@@ -324,6 +324,9 @@ export default function PlayerLeagues() {
         open={joinOpen}
         onOpenChange={(o) => {
           setJoinOpen(o);
+          // Clear the prefill once the dialog closes so that reopening
+          // via the "Join with code" button doesn't auto-lookup the
+          // stale deep-linked code.
           if (!o) setPrefillCode(undefined);
         }}
         initialCode={prefillCode}
