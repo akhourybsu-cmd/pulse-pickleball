@@ -264,7 +264,11 @@ export default function PlayerLeagues() {
                 <li key={league.id}>
                   <button
                     type="button"
-                    onClick={() => setJoinOpen(true)}
+                    onClick={() =>
+                      league.invite_code
+                        ? navigate(`/player/leagues/join/${league.invite_code}`)
+                        : setJoinOpen(true)
+                    }
                     className="group w-full text-left rounded-2xl border border-border/70 bg-card/50 hover:border-primary/40 hover:bg-card hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-0.5 transition-all overflow-hidden"
                   >
                     <div className="flex items-stretch">

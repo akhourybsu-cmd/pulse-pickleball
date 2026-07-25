@@ -97,11 +97,11 @@ export function InviteCodeCard({
     }
   };
 
-  // The share link deep-links into /player/leagues with the code as a
-  // query param. PlayerLeagues.tsx auto-opens the JoinByCodeDialog with
-  // it prefilled. Uses window.location.origin so it works in dev + prod.
+  // The share link deep-links into the dedicated join page, which
+  // previews the league (even for logged-out recipients) and then joins.
+  // Uses window.location.origin so it works in dev + prod.
   const shareUrl = currentCode
-    ? `${window.location.origin}/player/leagues?join=${encodeURIComponent(currentCode)}`
+    ? `${window.location.origin}/player/leagues/join/${encodeURIComponent(currentCode)}`
     : null;
 
   const copyLink = async () => {
