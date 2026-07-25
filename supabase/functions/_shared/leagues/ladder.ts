@@ -428,6 +428,105 @@ export function computeBatchOutcome(
   return { nextOrder, rankedByGroup, movements };
 }
 
+// =============================================================================
+// Short weeks — sitting players out when no sub can be found.
+// =============================================================================
+// When a player can't make a week and no substitute fills their slot, they
+// SIT OUT that week: they are removed from the week's grouping/play but HOLD
+// their rung on the ladder, and return automatically next week at the same
+// position. Two pure operations bracket the (unchanged) movement engine:
+//
+//   • excludeSitouts — before grouping, drop the sitting players so the
+//     PRESENT players close ranks into groups of four. The present count must
+//     be divisible by four (the organizer resolves any shortfall by adding a
+//     sub or sitting an extra volunteer — a group of three can't run).
+//
+//   • reinsertSitouts — after the present players are played and reordered,
+//     drop them back into the rungs that were IN PLAY (the non-held slots) in
+//     their new ranked order, while each sitting player keeps the exact rung
+//     they held at the week's start. Sitting players act as inert walls: the
+//     present players flow around them but never rank against them (they
+//     didn't play, so they can't be compared).
+//
+// Together these preserve the snapshot invariant: the result order is a
+// permutation of the same N players as the start order.
+
+/**
+ * Remove the sitting players from an ordered ladder, preserving the order of
+ * everyone who remains. Throws if the resulting present count is not a
+ * positive multiple of four (a week can't be grouped otherwise) or if a
+ * sitting id isn't actually on the ladder.
+ */
+export function excludeSitouts(
+  order: PlayerId[],
+  sitouts: Iterable<PlayerId>,
+): PlayerId[] {
+  const sitSet = new Set(sitouts);
+  for (const id of sitSet) {
+    if (!order.includes(id)) {
+      throw new LadderError(`Sitting player ${id} is not on the ladder.`);
+    }
+  }
+  const present = order.filter((p) => !sitSet.has(p));
+  if (present.length === 0 || present.length % 4 !== 0) {
+    throw new LadderError(
+      `After sitting ${sitSet.size} player(s), ${present.length} would play — ` +
+        `the playing count must be a positive multiple of four. ` +
+        `Add a sub or sit an additional player.`,
+    );
+  }
+  return present;
+}
+
+/**
+ * Rebuild the full-length ladder after a short week. `startOrder` is the
+ * week's starting ladder (all N players). `presentNext` is the reordered list
+ * of the players who actually played (length N − |sitouts|). Sitting players
+ * keep the rung index they held in `startOrder`; the present players fill the
+ * remaining rungs in `presentNext` order.
+ *
+ * Throws if the pieces don't reconcile (wrong lengths, a sitting id not in
+ * startOrder, or presentNext not matching the non-sitting set) so a bad plan
+ * can never silently corrupt a snapshot.
+ */
+export function reinsertSitouts(
+  startOrder: PlayerId[],
+  presentNext: PlayerId[],
+  sitouts: Iterable<PlayerId>,
+): PlayerId[] {
+  const sitSet = new Set(sitouts);
+  const startSet = new Set(startOrder);
+  for (const id of sitSet) {
+    if (!startSet.has(id)) {
+      throw new LadderError(`Sitting player ${id} is not in the start order.`);
+    }
+  }
+  if (presentNext.length !== startOrder.length - sitSet.size) {
+    throw new LadderError(
+      `Present count mismatch: expected ${startOrder.length - sitSet.size} ` +
+        `played player(s), got ${presentNext.length}.`,
+    );
+  }
+  if (new Set(presentNext).size !== presentNext.length) {
+    throw new LadderError("Played order contains a duplicate player.");
+  }
+  for (const id of presentNext) {
+    if (!startSet.has(id) || sitSet.has(id)) {
+      throw new LadderError(`Played player ${id} is not an expected present player.`);
+    }
+  }
+  const result: PlayerId[] = [];
+  let cursor = 0;
+  for (const rungHolder of startOrder) {
+    if (sitSet.has(rungHolder)) {
+      result.push(rungHolder); // sitting player holds this rung
+    } else {
+      result.push(presentNext[cursor++]); // next played player fills an in-play rung
+    }
+  }
+  return result;
+}
+
 /**
  * Invariant check for a computed next order vs the previous order. Returns the
  * list of problems (empty = valid). The persistence layer should assert this

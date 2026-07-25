@@ -9,6 +9,8 @@ import {
   computeBatchOutcome,
   detectTieBreaks,
   validateLadderTransition,
+  excludeSitouts,
+  reinsertSitouts,
   LadderError,
   type LadderGameResult,
 } from "./ladder";
@@ -298,5 +300,96 @@ describe("validateLadderTransition", () => {
     expect(validateLadderTransition(["a", "b"], ["a"]).length).toBeGreaterThan(0);
     expect(validateLadderTransition(["a", "b"], ["a", "a"]).some((p) => /duplicate/.test(p))).toBe(true);
     expect(validateLadderTransition(["a", "b"], ["a", "c"]).some((p) => /dropped/.test(p))).toBe(true);
+  });
+});
+
+describe("excludeSitouts — closing ranks for a short week", () => {
+  const eight = ["p1", "p2", "p3", "p4", "p5", "p6", "p7", "p8"];
+
+  it("returns the full order (copy) when nobody sits", () => {
+    expect(excludeSitouts(eight, [])).toEqual(eight);
+  });
+
+  it("drops the sitting players and preserves order of the rest", () => {
+    // p3,p4,p7,p8 sit → present count 4 (÷4).
+    expect(excludeSitouts(eight, ["p3", "p4", "p7", "p8"])).toEqual(["p1", "p2", "p5", "p6"]);
+  });
+
+  it("rejects a present count that is not a multiple of four", () => {
+    expect(() => excludeSitouts(eight, ["p3"])).toThrow(/multiple of four/);
+    expect(() => excludeSitouts(eight, ["p1", "p2"])).toThrow(LadderError);
+  });
+
+  it("rejects sitting everyone (zero present)", () => {
+    expect(() => excludeSitouts(["a", "b", "c", "d"], ["a", "b", "c", "d"])).toThrow(
+      /multiple of four/,
+    );
+  });
+
+  it("rejects a sitting id that isn't on the ladder", () => {
+    expect(() => excludeSitouts(eight, ["ghost"])).toThrow(/not on the ladder/);
+  });
+});
+
+describe("reinsertSitouts — holding rungs after a short week", () => {
+  const eight = ["p1", "p2", "p3", "p4", "p5", "p6", "p7", "p8"];
+
+  it("is the identity of presentNext when nobody sits", () => {
+    const played = ["p2", "p1", "p4", "p3", "p6", "p5", "p8", "p7"];
+    expect(reinsertSitouts(eight, played, [])).toEqual(played);
+  });
+
+  it("holds sitting rungs while played players fill the in-play rungs", () => {
+    // p3,p4,p7,p8 sat; the present [p1,p2,p5,p6] played and reordered to
+    // [p5,p1,p6,p2]. Sitters keep rungs 3,4,7,8; the rest fill 1,2,5,6.
+    const sitouts = ["p3", "p4", "p7", "p8"];
+    const played = ["p5", "p1", "p6", "p2"];
+    expect(reinsertSitouts(eight, played, sitouts)).toEqual([
+      "p5", "p1", "p3", "p4", "p6", "p2", "p7", "p8",
+    ]);
+  });
+
+  it("holds a sitter at the very top and very bottom", () => {
+    // p1 (top) and p8 (bottom) sit; p2..p7 (6 present) is not ÷4, so add
+    // two more sitters p4,p5 to make 4 present.
+    const sitouts = ["p1", "p4", "p5", "p8"];
+    const played = ["p7", "p2", "p6", "p3"]; // present [p2,p3,p6,p7] reordered
+    expect(reinsertSitouts(eight, played, sitouts)).toEqual([
+      "p1", "p7", "p2", "p4", "p5", "p6", "p3", "p8",
+    ]);
+  });
+
+  it("round-trips with excludeSitouts (present set is preserved)", () => {
+    const sitouts = ["p2", "p3", "p6", "p7"];
+    const present = excludeSitouts(eight, sitouts); // [p1,p4,p5,p8]
+    // Pretend they reordered exactly reversed.
+    const played = [...present].reverse();
+    const next = reinsertSitouts(eight, played, sitouts);
+    // Same multiset as the start order (a valid transition).
+    expect(validateLadderTransition(eight, next)).toEqual([]);
+    // Sitters never moved.
+    expect(next[1]).toBe("p2");
+    expect(next[2]).toBe("p3");
+    expect(next[5]).toBe("p6");
+    expect(next[6]).toBe("p7");
+  });
+
+  it("rejects a played list whose length doesn't match the present count", () => {
+    expect(() => reinsertSitouts(eight, ["p1", "p2"], ["p3", "p4", "p7", "p8"])).toThrow(
+      /mismatch/,
+    );
+  });
+
+  it("rejects a played player who was supposed to be sitting", () => {
+    // p3 is listed as sitting yet appears in the played order.
+    expect(() =>
+      reinsertSitouts(eight, ["p3", "p1", "p5", "p6"], ["p3", "p4", "p7", "p8"]),
+    ).toThrow(/not an expected present player/);
+  });
+
+  it("rejects a duplicate in the played order", () => {
+    expect(() =>
+      reinsertSitouts(eight, ["p1", "p1", "p5", "p6"], ["p3", "p4", "p7", "p8"]),
+    ).toThrow(/duplicate/);
   });
 });
