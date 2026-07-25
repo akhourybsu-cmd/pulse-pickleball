@@ -59,6 +59,12 @@ Deno.serve(async (req) => {
     if (settings.status === 'paused') return json({ skipped: 'paused' })
     const batchesPerWeek = Math.max(1, settings.batches_per_week ?? 1)
     const courtCount = Math.max(1, settings.court_count ?? 1)
+    // Auto-advance must not bypass the confirmation the league requires. When
+    // self-report is OFF a score needs a second player to verify, so only
+    // 'verified' games count here; when ON, a single submission counts.
+    const acceptableStatuses = settings.self_report_scoring
+      ? ['verified', 'score_submitted']
+      : ['verified']
 
     // Build one batch's group/game structure from an order — shared by the
     // "generate next batch" paths below.
@@ -154,7 +160,7 @@ Deno.serve(async (req) => {
     const incomplete = (games ?? []).filter((m: Record<string, unknown>) =>
       m.team_a_score == null || m.team_b_score == null
       || m.team_a_score === m.team_b_score
-      || !['verified', 'score_submitted'].includes(m.status as string),
+      || !acceptableStatuses.includes(m.status as string),
     )
     if (incomplete.length > 0 || (games ?? []).length < groups.length * 3) {
       return json({ skipped: 'incomplete', remaining: incomplete.length })
