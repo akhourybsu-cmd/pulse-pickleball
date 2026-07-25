@@ -422,11 +422,21 @@ function LadderManage({
     return map;
   }, [groups, games]);
 
+  // "Counts toward the batch" must mirror the server: a valid, non-tied score
+  // AND a status the process/finalize path accepts. A disputed (or otherwise
+  // unverified) game keeps its scores but must NOT read as complete, or the
+  // Process button lies and auto-advance stalls.
+  const countable = (m: LadderGame) =>
+    m.team_a_score != null && m.team_b_score != null && m.team_a_score !== m.team_b_score
+    && (m.status === "verified" || m.status === "score_submitted");
   const totalGames = games.length;
-  const scoredGames = games.filter(
-    (m) => m.team_a_score != null && m.team_b_score != null && m.team_a_score !== m.team_b_score,
-  ).length;
+  const scoredGames = games.filter(countable).length;
   const batchComplete = totalGames > 0 && scoredGames === totalGames;
+  // Games with a score entered that still don't count (disputed / awaiting a
+  // second confirmation) — surfaced so the organizer isn't left guessing.
+  const stuckGames = games.filter(
+    (m) => m.team_a_score != null && m.team_b_score != null && !countable(m),
+  ).length;
 
   const processResults = async (tieResolutions?: Record<number, string[]>) => {
     if (!activeBatch) return;
@@ -574,7 +584,11 @@ function LadderManage({
   const advancedForRef = useRef<string | null>(null);
   useEffect(() => {
     if (!autoAdvance || paused || !seasonId) return;
-    if (!activeBatch || !batchComplete) return;
+    if (!activeBatch) return;
+    // Reset the once-per-batch guard whenever the batch is NOT complete, so a
+    // batch that later becomes complete again (e.g. after a disputed score is
+    // corrected) re-triggers auto-advance instead of staying wedged.
+    if (!batchComplete) { advancedForRef.current = null; return; }
     if (advancedForRef.current === activeBatch.id) return;
     advancedForRef.current = activeBatch.id;
     (async () => {
@@ -649,6 +663,13 @@ function LadderManage({
               ? "All games in — process results to apply movement. You'll then generate the next stage as a separate step."
               : "Enter every game's final score, then process the results to move players up and down."}
           </p>
+          {stuckGames > 0 && !batchComplete && (
+            <p className="text-[11px] text-amber-300 mt-1.5">
+              {stuckGames} game{stuckGames === 1 ? " has" : "s have"} a score but
+              {stuckGames === 1 ? " isn't" : " aren't"} counting yet — disputed, or
+              still waiting on a second player to confirm. Resolve those to finish the batch.
+            </p>
+          )}
         </div>
       )}
 

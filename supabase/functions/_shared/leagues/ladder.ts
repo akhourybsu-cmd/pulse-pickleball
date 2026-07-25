@@ -282,6 +282,15 @@ export function detectTieBreaks(
     const isTop = gi === 0;
     const isBottom = gi === groups.length - 1;
 
+    // A single group can have TWO disjoint movement-deciding ties at once
+    // (a promotion tie at the 1/2 boundary AND a relegation tie at the 3/4
+    // boundary). Collect ALL flagged clusters into ONE need per group — the
+    // storage + resolution model is one row per group, and rankGroup's
+    // resolvedOrder handles each cluster independently (clusters never share
+    // a wins/diff/points key, so ordering can't cross between them).
+    const tied: PlayerId[] = [];
+    const boundarySet = new Set<TieBoundary>();
+
     let i = 0;
     while (i < ranked.length) {
       let j = i + 1;
@@ -289,18 +298,22 @@ export function detectTieBreaks(
       if (j - i > 1) {
         const startPos = i + 1; // 1-indexed finish position of the cluster's top
         const endPos = j;       // 1-indexed finish position of the cluster's bottom
-        const boundaries: TieBoundary[] = [];
-        if (!isTop && startPos <= 1 && endPos >= 2) boundaries.push("promotion");
-        if (!isBottom && endPos >= 4 && startPos <= 3) boundaries.push("relegation");
-        if (boundaries.length) {
-          needs.push({
-            groupIndex: gi,
-            boundaries,
-            tiedPlayerIds: ranked.slice(i, j).map((r) => r.playerId),
-          });
+        let flagged = false;
+        if (!isTop && startPos <= 1 && endPos >= 2) { boundarySet.add("promotion"); flagged = true; }
+        if (!isBottom && endPos >= 4 && startPos <= 3) { boundarySet.add("relegation"); flagged = true; }
+        if (flagged) {
+          for (let k = i; k < j; k++) tied.push(ranked[k].playerId);
         }
       }
       i = j;
+    }
+
+    if (tied.length) {
+      needs.push({
+        groupIndex: gi,
+        boundaries: Array.from(boundarySet),
+        tiedPlayerIds: tied, // union of flagged clusters, in provisional finish order
+      });
     }
   });
   return needs;
