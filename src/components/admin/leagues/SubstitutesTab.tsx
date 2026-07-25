@@ -554,7 +554,7 @@ function SubEditorDialog({
 /* ------------------------------------------------------------------ */
 
 function SubSwapDialog({
-  open, onOpenChange, leagueId, seasonId, sub, subName, matches, profilesById, onDone,
+  open, onOpenChange, leagueId, seasonId, sub, subName, matches, batchByGroup, profilesById, onDone,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
@@ -563,6 +563,7 @@ function SubSwapDialog({
   sub: LeagueSubstitute;
   subName: string;
   matches: LeagueMatch[];
+  batchByGroup: Record<string, { batch_id: string; week_number: number; batch_number: number }>;
   profilesById: Record<string, PlayerRow>;
   onDone: () => Promise<void>;
 }) {
@@ -590,6 +591,29 @@ function SubSwapDialog({
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [matches, profilesById, sub.user_id]);
 
+  // Scope the swap to the *earliest* upcoming ladder batch that contains the
+  // out player. Without this, all in-progress + scheduled batches sharing a
+  // session get swept up in a single swap.
+  const targetBatchId = useMemo(() => {
+    if (!outPlayerId) return null;
+    let best: { batch_id: string; week_number: number; batch_number: number } | null = null;
+    matches
+      .filter((m) => m.status === "scheduled" || m.status === "in_progress")
+      .filter((m) => [m.player_a_id, m.player_b_id, m.player_c_id, m.player_d_id].includes(outPlayerId))
+      .forEach((m) => {
+        const b = m.ladder_batch_group_id ? batchByGroup[m.ladder_batch_group_id] : null;
+        if (!b) return;
+        if (
+          !best ||
+          b.week_number < best.week_number ||
+          (b.week_number === best.week_number && b.batch_number < best.batch_number)
+        ) {
+          best = b;
+        }
+      });
+    return best?.batch_id ?? null;
+  }, [matches, batchByGroup, outPlayerId]);
+
   const submit = async () => {
     if (!outPlayerId) { toast.error("Pick the player who's out"); return; }
     setSaving(true);
@@ -603,6 +627,7 @@ function SubSwapDialog({
         p_out_player_id: outPlayerId,
         p_in_player_id: sub.user_id,
         p_note: note.trim() || null,
+        p_batch_id: targetBatchId,
       },
     );
     setSaving(false);
