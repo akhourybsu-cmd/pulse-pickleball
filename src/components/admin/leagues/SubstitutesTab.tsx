@@ -40,6 +40,7 @@ export function SubstitutesTab({ league, dataVersion, onMutated }: LeagueTabProp
   const [seasonId, setSeasonId] = useState<string | "">("");
   const [subs, setSubs] = useState<LeagueSubstitute[]>([]);
   const [matches, setMatches] = useState<LeagueMatch[]>([]);
+  const [batchByGroup, setBatchByGroup] = useState<Record<string, { batch_id: string; week_number: number; batch_number: number }>>({});
   const [profilesById, setProfilesById] = useState<Record<string, PlayerRow>>({});
   const [loading, setLoading] = useState(true);
   const [addOpen, setAddOpen] = useState(false);
