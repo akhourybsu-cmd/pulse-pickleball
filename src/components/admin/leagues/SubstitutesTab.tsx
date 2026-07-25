@@ -277,6 +277,7 @@ export function SubstitutesTab({ league, dataVersion, onMutated }: LeagueTabProp
           sub={swapFor}
           subName={profilesById[swapFor.user_id] ? resolvePlayerName(profilesById[swapFor.user_id]) : "This sub"}
           matches={matches}
+          batchByGroup={batchByGroup}
           profilesById={profilesById}
           onDone={async () => { setSwapFor(null); await reload(); onMutated(); }}
         />
