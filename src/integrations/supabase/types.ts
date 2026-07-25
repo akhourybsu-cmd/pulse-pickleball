@@ -8438,6 +8438,8 @@ export type Database = {
           league_type: string
           location: string
           name: string
+          registration_closes_at: string
+          registration_open: boolean
           visibility: string
         }[]
       }
@@ -8454,6 +8456,7 @@ export type Database = {
         Returns: undefined
       }
       generate_group_invite_code: { Args: never; Returns: string }
+      generate_league_invite_code: { Args: never; Returns: string }
       generate_rr_invite_code: { Args: never; Returns: string }
       generate_unique_handle: { Args: { base_name: string }; Returns: string }
       get_claim_invite: {
