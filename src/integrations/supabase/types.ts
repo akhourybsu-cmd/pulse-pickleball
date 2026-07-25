@@ -8248,6 +8248,10 @@ export type Database = {
       }
     }
     Functions: {
+      admin_score_ladder_batch: {
+        Args: { p_batch_id: string; p_scores: Json }
+        Returns: number
+      }
       apply_guest_link: {
         Args: { _guest_id: string; _user_id: string }
         Returns: undefined
