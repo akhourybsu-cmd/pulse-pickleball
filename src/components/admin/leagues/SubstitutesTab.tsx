@@ -78,6 +78,38 @@ export function SubstitutesTab({ league, dataVersion, onMutated }: LeagueTabProp
     const matchList = (mt ?? []) as unknown as LeagueMatch[];
     setMatches(matchList);
 
+    // Build a group_id → batch (with week/batch ordering) map so a swap
+    // can be scoped to the *earliest* upcoming batch a player is in,
+    // rather than sweeping every scheduled batch in the season.
+    const groupIds = Array.from(new Set(
+      matchList.map((m) => m.ladder_batch_group_id).filter(Boolean),
+    )) as string[];
+    if (groupIds.length) {
+      const { data: groups } = await supabase
+        .from("ladder_batch_groups" as never)
+        .select("id, batch_id")
+        .in("id", groupIds);
+      const batchIds = Array.from(new Set(((groups ?? []) as { batch_id: string }[]).map((g) => g.batch_id)));
+      const { data: batches } = batchIds.length
+        ? await supabase
+            .from("ladder_batches" as never)
+            .select("id, week_number, batch_number")
+            .in("id", batchIds)
+        : { data: [] as { id: string; week_number: number; batch_number: number }[] };
+      const batchMap = new Map<string, { week_number: number; batch_number: number }>();
+      ((batches ?? []) as { id: string; week_number: number; batch_number: number }[]).forEach((b) => {
+        batchMap.set(b.id, { week_number: b.week_number, batch_number: b.batch_number });
+      });
+      const map: Record<string, { batch_id: string; week_number: number; batch_number: number }> = {};
+      ((groups ?? []) as { id: string; batch_id: string }[]).forEach((g) => {
+        const b = batchMap.get(g.batch_id);
+        if (b) map[g.id] = { batch_id: g.batch_id, ...b };
+      });
+      setBatchByGroup(map);
+    } else {
+      setBatchByGroup({});
+    }
+
     // Names for subs + every slot occupant referenced by a match.
     const ids = new Set<string>(subList.map((x) => x.user_id));
     matchList.forEach((m) => {
