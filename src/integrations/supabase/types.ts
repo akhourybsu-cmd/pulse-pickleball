@@ -2696,6 +2696,118 @@ export type Database = {
           },
         ]
       }
+      ladder_sub_requests: {
+        Row: {
+          assigned_sub_id: string | null
+          created_at: string
+          id: string
+          league_id: string
+          note: string | null
+          player_id: string
+          resolved_at: string | null
+          resolved_by: string | null
+          season_id: string
+          session_id: string
+          status: string
+          updated_at: string
+          week_number: number
+        }
+        Insert: {
+          assigned_sub_id?: string | null
+          created_at?: string
+          id?: string
+          league_id: string
+          note?: string | null
+          player_id: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          season_id: string
+          session_id: string
+          status?: string
+          updated_at?: string
+          week_number: number
+        }
+        Update: {
+          assigned_sub_id?: string | null
+          created_at?: string
+          id?: string
+          league_id?: string
+          note?: string | null
+          player_id?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          season_id?: string
+          session_id?: string
+          status?: string
+          updated_at?: string
+          week_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ladder_sub_requests_assigned_sub_id_fkey"
+            columns: ["assigned_sub_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ladder_sub_requests_assigned_sub_id_fkey"
+            columns: ["assigned_sub_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ladder_sub_requests_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ladder_sub_requests_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ladder_sub_requests_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ladder_sub_requests_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ladder_sub_requests_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ladder_sub_requests_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "league_seasons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ladder_sub_requests_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "league_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ladder_tiebreaks: {
         Row: {
           batch_id: string
@@ -2777,6 +2889,82 @@ export type Database = {
           },
           {
             foreignKeyName: "ladder_tiebreaks_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "league_seasons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ladder_week_sitouts: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          league_id: string
+          note: string | null
+          player_id: string
+          season_id: string
+          week_number: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          league_id: string
+          note?: string | null
+          player_id: string
+          season_id: string
+          week_number: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          league_id?: string
+          note?: string | null
+          player_id?: string
+          season_id?: string
+          week_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ladder_week_sitouts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ladder_week_sitouts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ladder_week_sitouts_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ladder_week_sitouts_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ladder_week_sitouts_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ladder_week_sitouts_season_id_fkey"
             columns: ["season_id"]
             isOneToOne: false
             referencedRelation: "league_seasons"
@@ -3289,6 +3477,7 @@ export type Database = {
       }
       league_sessions: {
         Row: {
+          capacity: number | null
           court_count: number | null
           created_at: string
           division_id: string | null
@@ -3302,8 +3491,10 @@ export type Database = {
           start_time: string | null
           status: string
           updated_at: string
+          week_number: number | null
         }
         Insert: {
+          capacity?: number | null
           court_count?: number | null
           created_at?: string
           division_id?: string | null
@@ -3317,8 +3508,10 @@ export type Database = {
           start_time?: string | null
           status?: string
           updated_at?: string
+          week_number?: number | null
         }
         Update: {
+          capacity?: number | null
           court_count?: number | null
           created_at?: string
           division_id?: string | null
@@ -3332,6 +3525,7 @@ export type Database = {
           start_time?: string | null
           status?: string
           updated_at?: string
+          week_number?: number | null
         }
         Relationships: [
           {
@@ -8309,6 +8503,10 @@ export type Database = {
         }
         Returns: number
       }
+      cancel_ladder_sub_request: {
+        Args: { p_request_id: string }
+        Returns: undefined
+      }
       cast_group_poll_vote: {
         Args: { p_option_idx: number; p_post_id: string }
         Returns: number
@@ -8818,6 +9016,19 @@ export type Database = {
         Args: { p_group_id: string; p_ttl_hours?: number }
         Returns: Json
       }
+      request_ladder_sub: {
+        Args: { p_note?: string; p_season_id: string; p_session_id: string }
+        Returns: Json
+      }
+      resolve_ladder_sub_request: {
+        Args: {
+          p_assigned_sub_id?: string
+          p_note?: string
+          p_request_id: string
+          p_resolution: string
+        }
+        Returns: Json
+      }
       resolve_league_match_dispute: {
         Args: {
           p_match_id: string
@@ -8854,6 +9065,20 @@ export type Database = {
         }
         Returns: Json
       }
+      schedule_ladder_week: {
+        Args: {
+          p_capacity?: number
+          p_court_count?: number
+          p_end_time?: string
+          p_league_id: string
+          p_location?: string
+          p_scheduled_date?: string
+          p_season_id: string
+          p_start_time?: string
+          p_week_number: number
+        }
+        Returns: Json
+      }
       search_connectable_users: {
         Args: { _query: string }
         Returns: {
@@ -8873,6 +9098,16 @@ export type Database = {
       set_group_notification_pref: {
         Args: { p_channel: string; p_enabled: boolean; p_group_id: string }
         Returns: undefined
+      }
+      set_ladder_week_sitout: {
+        Args: {
+          p_note?: string
+          p_player_id: string
+          p_season_id: string
+          p_sitting: boolean
+          p_week_number: number
+        }
+        Returns: Json
       }
       slugify_name: { Args: { input: string }; Returns: string }
       submit_league_match_score: {
