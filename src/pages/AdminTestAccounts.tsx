@@ -24,6 +24,38 @@ export default function AdminTestAccounts() {
     { manage_url: string; players: number; teams: number; weeks: number; matches: number } | null
   >(null);
 
+  // Ladder-season simulation state
+  const [ladderLoading, setLadderLoading] = useState(false);
+  const [ladderReport, setLadderReport] = useState<any | null>(null);
+
+  const handleSimulateLadder = async (mode: "run" | "teardown") => {
+    setLadderLoading(true);
+    if (mode === "run") setLadderReport(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("simulate-ladder-season", {
+        body: { mode },
+      });
+      if (error) throw error;
+      if (mode === "teardown") {
+        toast.success(`Teardown: removed ${data?.leagues_deleted ?? 0} league(s), ${data?.users_deleted ?? 0} test users`);
+        setLadderReport(null);
+      } else {
+        setLadderReport(data);
+        const fails = (data?.weeks ?? []).flatMap((w: any) =>
+          (w.assertions ?? []).filter((a: any) => !a.passed).map((a: any) => `W${w.week}: ${a.name}`),
+        );
+        if (data?.fatal) toast.error(`Fatal: ${data.fatal}`);
+        else if (fails.length) toast.error(`${fails.length} assertion(s) failed`);
+        else toast.success("Ladder simulation complete — all assertions passed");
+      }
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Simulation failed");
+      console.error(e);
+    } finally {
+      setLadderLoading(false);
+    }
+  };
+
   const handleSimulateLeague = async () => {
     setSimLoading(true);
     setSimResult(null);
@@ -267,6 +299,111 @@ export default function AdminTestAccounts() {
                 Ratings.
               </AlertDescription>
             </Alert>
+          </CardContent>
+        </Card>
+
+        {/* Ladder-season simulation (5-week end-to-end drive) */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Trophy className="w-5 h-5 text-primary" />
+              Simulate 5-Week Ladder Season (dev)
+            </CardTitle>
+            <CardDescription>
+              Drives a full Individual Doubles Ladder end-to-end through the real
+              RPCs and edge functions: 32 players + 6 subs, sub-requests, sit-outs,
+              tiebreak, auto-advance, late swap, and unschedule. Returns a per-week
+              assertion report.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex gap-2">
+              <Button
+                onClick={() => handleSimulateLadder("run")}
+                disabled={ladderLoading}
+                className="flex-1"
+              >
+                <Trophy className="mr-2 h-4 w-4" />
+                {ladderLoading ? "Running…" : "Run 5-week simulation"}
+              </Button>
+              <Button
+                onClick={() => handleSimulateLadder("teardown")}
+                disabled={ladderLoading}
+                variant="outline"
+              >
+                Teardown
+              </Button>
+            </div>
+
+            {ladderReport && (
+              <div className="space-y-3">
+                {ladderReport.fatal && (
+                  <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertDescription><strong>Fatal:</strong> {ladderReport.fatal}</AlertDescription>
+                  </Alert>
+                )}
+                <Alert>
+                  <AlertDescription>
+                    <strong>Status:</strong>{" "}
+                    {ladderReport.success ? "✅ All assertions passed" : "⚠️ Some assertions failed"}
+                    {ladderReport.manage_url && (
+                      <>
+                        {" · "}
+                        <Button
+                          variant="link"
+                          size="sm"
+                          className="h-auto p-0"
+                          onClick={() => navigate(ladderReport.manage_url)}
+                        >
+                          Open league <ExternalLink className="ml-1 h-3 w-3" />
+                        </Button>
+                      </>
+                    )}
+                  </AlertDescription>
+                </Alert>
+
+                {(ladderReport.weeks ?? []).map((w: any) => (
+                  <div key={w.week} className="border rounded-lg p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="font-semibold">Week {w.week}</p>
+                      <span className="text-xs text-muted-foreground">
+                        {w.assertions.filter((a: any) => a.passed).length}/{w.assertions.length} passed
+                      </span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{w.scenario}</p>
+                    <ul className="text-xs space-y-1">
+                      {w.assertions.map((a: any, i: number) => (
+                        <li key={i} className={a.passed ? "text-emerald-600" : "text-destructive"}>
+                          {a.passed ? "✓" : "✗"} {a.name}
+                          {!a.passed && a.detail != null && (
+                            <span className="ml-1 opacity-70">— {typeof a.detail === "string" ? a.detail : JSON.stringify(a.detail)}</span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+
+                {ladderReport.rating_deltas?.length > 0 && (
+                  <details className="border rounded-lg p-3">
+                    <summary className="cursor-pointer font-semibold text-sm">
+                      Rating deltas ({ladderReport.rating_deltas.length} players)
+                    </summary>
+                    <div className="mt-2 max-h-60 overflow-y-auto text-xs space-y-1">
+                      {ladderReport.rating_deltas.map((d: any, i: number) => (
+                        <div key={i} className="flex justify-between">
+                          <span>{d.player}</span>
+                          <span className="text-muted-foreground">
+                            {d.before?.toFixed?.(3) ?? "—"} → {d.after?.toFixed?.(3) ?? "—"} ({d.games}g)
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
