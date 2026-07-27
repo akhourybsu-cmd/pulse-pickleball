@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import type { League, LeagueSeason } from "@/lib/leagues/types";
 import { resolvePlayerName } from "@/lib/matchDisplay";
+import { formatDistanceToNow } from "date-fns";
 import { gamesPerPlayer } from "@/lib/leagues/ladder";
 import {
   useLadder, type LadderGame, type LadderGroup, type LadderMovementRow,
@@ -586,6 +587,17 @@ function LadderManage({
     }
     const kind = (data as { kind?: string })?.kind;
     toast.success(kind === "week" ? "Next week generated" : "Next batch generated");
+    // A sub was assigned but couldn't be seeded into the new batch (e.g. the
+    // fill-in was double-booked). The week still generated — flag it so the
+    // organizer can fix it with a manual swap instead of it failing silently.
+    const seedErrors = (data as { sub_seed_errors?: string[] })?.sub_seed_errors;
+    if (seedErrors && seedErrors.length > 0) {
+      toast.warning(
+        `${seedErrors.length} assigned sub${seedErrors.length === 1 ? "" : "s"} couldn't be placed — ` +
+        "swap them in from the batch. " + seedErrors[0],
+        { duration: 10000 },
+      );
+    }
     onChanged();
   };
 
@@ -806,6 +818,24 @@ function LadderManage({
           busy={processing}
           onCancel={() => setTies(null)}
           onResolve={(resolutions) => processResults(resolutions)}
+        />
+      )}
+
+      {/* Sub requests — resolve any that the Week roster below isn't already
+          covering (e.g. requests for weeks further out). */}
+      {settings && (
+        <SubRequestsPanel
+          seasonId={settings.season_id}
+          order={ladder.currentOrder}
+          nameOf={ladder.nameOf}
+          excludeWeek={!activeBatch && nextStage?.kind === "week" ? nextStage.week : null}
+          generatedWeeks={new Set([
+            ...ladder.history.map((b) => b.week_number),
+            ...(activeBatch ? [activeBatch.week_number] : []),
+          ])}
+          version={ladder.version}
+          disabled={paused}
+          onChanged={onChanged}
         />
       )}
 
@@ -1049,7 +1079,28 @@ function WeekSchedulePanel({
 }) {
   const [open, setOpen] = useState(false);
   const [editWeek, setEditWeek] = useState<number | null>(null);
+  const [removeWeek, setRemoveWeek] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
+
+  const unschedule = async (week: number) => {
+    setBusy(true);
+    const { data, error } = await supabase.rpc("unschedule_ladder_week" as never, {
+      p_season_id: seasonId, p_week_number: week,
+    } as never);
+    setBusy(false);
+    setRemoveWeek(null);
+    if (error) {
+      toast.error((error as { message?: string }).message ?? "Couldn't remove the week");
+      return;
+    }
+    const canceled = (data as { canceled_requests?: number } | null)?.canceled_requests ?? 0;
+    toast.success(
+      canceled > 0
+        ? `Week ${week} removed — ${canceled} request${canceled === 1 ? "" : "s"} canceled`
+        : `Week ${week} removed`,
+    );
+    onChanged();
+  };
 
   const fmtDate = (d: string | null) =>
     d ? new Date(`${d}T00:00:00`).toLocaleDateString(undefined,
@@ -1116,11 +1167,30 @@ function WeekSchedulePanel({
                     {s?.location ? ` · ${s.location}` : ""}
                   </div>
                 </div>
-                <Button size="sm" variant={s ? "outline" : "default"}
-                  disabled={busy} onClick={() => setEditWeek(w)}
-                  className="h-8 shrink-0 text-xs">
-                  {s ? "Edit" : "Schedule"}
-                </Button>
+                {removeWeek === w ? (
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className="text-[11px] text-muted-foreground">Remove?</span>
+                    <Button size="sm" variant="destructive" disabled={busy}
+                      onClick={() => unschedule(w)} className="h-8 text-xs">Yes</Button>
+                    <Button size="sm" variant="ghost" disabled={busy}
+                      onClick={() => setRemoveWeek(null)} className="h-8 text-xs">No</Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <Button size="sm" variant={s ? "outline" : "default"}
+                      disabled={busy} onClick={() => setEditWeek(w)}
+                      className="h-8 text-xs">
+                      {s ? "Edit" : "Schedule"}
+                    </Button>
+                    {s && (
+                      <Button size="sm" variant="ghost" disabled={busy}
+                        onClick={() => setRemoveWeek(w)}
+                        className="h-8 text-xs text-muted-foreground">
+                        Remove
+                      </Button>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}
@@ -1177,6 +1247,7 @@ interface SubReqRow {
   note: string | null;
   status: "pending" | "sub" | "sitout" | "declined" | "canceled";
   assigned_sub_id: string | null;
+  resolved_at?: string | null;
 }
 
 function WeekRosterPanel({
@@ -1486,6 +1557,178 @@ function WeekRosterPanel({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Sub requests — resolve requests for weeks not covered by the roster */
+/* ------------------------------------------------------------------ */
+
+interface SubReqWeekRow extends SubReqRow { week_number: number }
+
+function SubRequestsPanel({
+  seasonId, order, nameOf, excludeWeek, generatedWeeks, version, disabled, onChanged,
+}: {
+  seasonId: string;
+  order: string[];
+  nameOf: (id: string) => string;
+  /** Week already handled by the Week roster panel — skip it here to avoid
+   *  two places resolving the same request. Null when no roster is shown. */
+  excludeWeek: number | null;
+  /** Weeks that already have a batch — their subs live in the actual games
+   *  (a post-generation swap can change them), so we don't show the request's
+   *  now-possibly-stale assigned_sub_id here. */
+  generatedWeeks: Set<number>;
+  version: number;
+  disabled: boolean;
+  onChanged: () => void;
+}) {
+  const [requests, setRequests] = useState<SubReqWeekRow[]>([]);
+  const [candidates, setCandidates] = useState<Array<{ id: string; name: string }>>([]);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [pickingReqId, setPickingReqId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const onLadder = new Set(order);
+      const [reqRes, memRes, subRes] = await Promise.all([
+        supabase.from("ladder_sub_requests" as never)
+          .select("id, player_id, note, status, assigned_sub_id, week_number, resolved_at")
+          .eq("season_id", seasonId).neq("status", "canceled")
+          .order("week_number", { ascending: true }),
+        supabase.from("league_members" as never).select("user_id")
+          .eq("season_id", seasonId).eq("status", "active"),
+        supabase.from("league_substitutes" as never).select("user_id")
+          .eq("season_id", seasonId).eq("status", "active"),
+      ]);
+      if (cancelled) return;
+      const rows = ((reqRes.data ?? []) as unknown as SubReqWeekRow[])
+        .filter((r) => (excludeWeek == null || r.week_number !== excludeWeek)
+          && !generatedWeeks.has(r.week_number));
+      setRequests(rows);
+
+      const memIds = ((memRes.data ?? []) as Array<{ user_id: string }>)
+        .map((m) => m.user_id).filter((id) => !onLadder.has(id));
+      const subIds = ((subRes.data ?? []) as Array<{ user_id: string }>).map((s) => s.user_id);
+      const candIds = Array.from(new Set([...subIds, ...memIds]));
+      if (candIds.length) {
+        const { data: profs } = await supabase
+          .from("profiles_public" as never)
+          .select("id, display_name, full_name, first_name, last_name")
+          .in("id", candIds);
+        const nameById = new Map<string, string>(
+          ((profs ?? []) as Array<{ id: string }>).map((p) => [p.id, resolvePlayerName(p as never)]),
+        );
+        setCandidates(candIds.map((id) => ({ id, name: nameById.get(id) ?? id.slice(0, 8) })));
+      } else {
+        setCandidates([]);
+      }
+    })().catch(() => { /* leave prior state on failure */ });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seasonId, excludeWeek, version, order.length]);
+
+  const candName = new Map(candidates.map((c) => [c.id, c.name]));
+  const nameFor = (id: string) => candName.get(id) ?? nameOf(id);
+
+  const resolve = async (
+    req: SubReqWeekRow, resolution: "sub" | "sitout" | "declined", subId?: string,
+  ) => {
+    setBusyId(req.id);
+    const { error } = await supabase.rpc("resolve_ladder_sub_request" as never, {
+      p_request_id: req.id,
+      p_resolution: resolution,
+      p_assigned_sub_id: subId ?? null,
+    } as never);
+    setBusyId(null);
+    if (error) {
+      toast.error((error as { message?: string }).message ?? "Couldn't resolve the request");
+      return;
+    }
+    setPickingReqId(null);
+    onChanged();
+  };
+
+  if (requests.length === 0) return null;
+  const pending = requests.filter((r) => r.status === "pending").length;
+
+  return (
+    <div className="rounded-xl border border-border/70 bg-card overflow-hidden">
+      <div className="flex items-center gap-2 p-4 border-b border-border/60">
+        <UserX className="w-4 h-4 text-muted-foreground shrink-0" />
+        <div className="text-sm font-bold">Sub requests</div>
+        {pending > 0 && (
+          <span className="inline-flex items-center rounded-full bg-amber-500/15 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 text-[10px] font-bold">
+            {pending} pending
+          </span>
+        )}
+      </div>
+      <div className="divide-y divide-border/40">
+        {requests.map((req) => {
+          const resolvedLabel =
+            req.status === "sub"
+              ? `Sub: ${req.assigned_sub_id ? nameFor(req.assigned_sub_id) : "assigned"}`
+              : req.status === "sitout" ? "Sitting out"
+              : req.status === "declined" ? "Declined" : null;
+          return (
+            <div key={req.id} className="px-4 py-2.5">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <span className="text-[11px] font-bold text-muted-foreground mr-1.5">Week {req.week_number}</span>
+                  <span className="text-sm font-medium">{nameFor(req.player_id)}</span>
+                  {req.note && (
+                    <span className="text-[11px] text-muted-foreground"> — “{req.note}”</span>
+                  )}
+                </div>
+                {req.status !== "pending" && (
+                  <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 shrink-0 text-right">
+                    {resolvedLabel}
+                    {req.resolved_at && (
+                      <span className="block font-normal text-muted-foreground">
+                        {formatDistanceToNow(new Date(req.resolved_at), { addSuffix: true })}
+                      </span>
+                    )}
+                  </span>
+                )}
+              </div>
+              {req.status === "pending" && pickingReqId !== req.id && (
+                <div className="flex items-center gap-1.5 mt-2">
+                  <Button size="sm" variant="default" disabled={disabled || busyId === req.id}
+                    onClick={() => setPickingReqId(req.id)} className="h-7 text-xs">Find sub</Button>
+                  <Button size="sm" variant="outline" disabled={disabled || busyId === req.id || req.week_number < 2}
+                    onClick={() => resolve(req, "sitout")} className="h-7 text-xs">Sit out</Button>
+                  <Button size="sm" variant="ghost" disabled={disabled || busyId === req.id}
+                    onClick={() => resolve(req, "declined")} className="h-7 text-xs text-muted-foreground">Decline</Button>
+                </div>
+              )}
+              {req.status === "pending" && pickingReqId === req.id && (
+                <div className="mt-2 space-y-1.5">
+                  <div className="text-[11px] text-muted-foreground">Pick a fill-in:</div>
+                  {candidates.length === 0 ? (
+                    <div className="text-[11px] text-amber-600 dark:text-amber-400">
+                      No eligible subs — add one in the Substitutes tab first.
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap gap-1.5">
+                      {candidates.filter((c) => c.id !== req.player_id).map((c) => (
+                        <Button key={c.id} size="sm" variant="outline"
+                          disabled={disabled || busyId === req.id}
+                          onClick={() => resolve(req, "sub", c.id)} className="h-7 text-xs">
+                          {c.name}
+                        </Button>
+                      ))}
+                    </div>
+                  )}
+                  <Button size="sm" variant="ghost" onClick={() => setPickingReqId(null)}
+                    className="h-7 text-xs text-muted-foreground">Cancel</Button>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
