@@ -1,41 +1,77 @@
+# Unified League Design System
 
-## Focused audit: League invite & join
+Bring `PlayerLeagues`, `PlayerLeagueDetail`, and `AdminLeagueDetail` under one visual language so a player and an organizer feel like they're inside the same product — from the league list, through the detail page, into the management console.
 
-Reviewed every step of the join flow end-to-end. The system is largely sound — `join_league_by_code` is SECURITY DEFINER with a `FOR UPDATE` lock to prevent double-inserts, `find_league_by_invite_code` returns the teaser with `registration_open` / `registration_closes_at`, `AuthGuard` preserves `?join=CODE` through the `/auth` bounce via `returnTo`, and OAuth stashes the destination in `localStorage` so social sign-in returns to the right URL. The RPCs are case-insensitive, admin_only leagues are excluded, and the `?join=` param is stripped after consumption so refreshes don't re-fire.
+## Direction
 
-Four real defects and two hardening items came out of the review.
+Adopt **Emerald Prestige** (the admin theme you already approved) as the single league identity. The admin surface stays visually anchored; the player pages get retrofitted to match. Both surfaces render correctly in **light and dark app themes**.
 
-### Defects to fix
+- Colors: emerald `#0D7A5F` + deep `#064E3B`, gold accent `#C9A84C`, cream text `#F5F0E0` on dark / navy ink `#0A2A20` on light.
+- Type: Bebas Neue for page titles + big numerals; Barlow (semibold) for nav, chips, and body labels; Inter stays for long-form paragraphs.
+- Motifs: gold hairline separators, diagonal court-line texture on heroes, scoreboard-style KPI blocks.
 
-1. **`prefillCode` is sticky in `PlayerLeagues.tsx`.** After the deep-linked dialog is closed, `prefillCode` state stays set to the old code. If the player opens the dialog again via the "Join with code" button, `JoinByCodeDialog` auto-runs a lookup against the stale code and shows the previous teaser — confusing. Clear `prefillCode` when the dialog closes.
+## Scope
 
-2. **Reactivation branch of `join_league_by_code` does not update `season_id`.** A member removed by the admin and then rejoining via code gets reactivated against whatever `season_id` they had before — often an old/completed season — so they don't appear in the current season's Members/Teams/Matches tabs. Update the reactivation path to also set `season_id` to the current active season (same resolution logic already used on first-join).
+### 1. Promote `.league-admin` → `.league-scope` (shared token layer)
+`src/index.css`
+- Rename the scope from `.league-admin` to `.league-scope`. Keep every token (`--lg-*`) and helper class (`.lg-card`, `.lg-hero-gradient`, `.lg-court-lines`, `.lg-num`, `.font-display`).
+- Add a **light-mode variant**: `.league-scope.league-scope--light` swaps `--background`, `--card`, `--foreground`, `--border`, `--muted-foreground` to a cream-on-emerald-ink palette (bg `#F5F0E0`, card `#FFFFFF`, ink `#0A2A20`, border `hsl(165 30% 82%)`, muted `hsl(165 20% 40%)`). Emerald + gold accents unchanged so brand reads the same.
+- Player pages: use the light variant when the app is in light mode, dark variant when dark. Admin can stay dark-locked (organizer console reads best on dark) OR follow theme — I'll follow theme for consistency.
+- Detect theme via `next-themes` `useTheme()` and toggle the modifier class on the outer wrapper.
 
-3. **DATE fields parsed as local dates.** `registration_closes_at` comes back as `"YYYY-MM-DD"` and `new Date("YYYY-MM-DD")` is UTC-midnight, so users west of UTC see the deadline as the day before. Parse as a local date in `JoinByCodeDialog` when rendering the "Registration closes …" line.
+### 2. Rebuild `PlayerLeagues` hero + cards
+`src/pages/player/PlayerLeagues.tsx`
+- Wrap the page in `<div className="league-scope ...">`.
+- Hero: replace the navy `#0B171F` gradient with `.lg-hero-gradient` + `.lg-court-lines`. Eyebrow chip becomes emerald/gold. Title uses `.font-display` (Bebas). "My Leagues" reads as a scoreboard title.
+- Primary CTA (Create): swap PULSE-green button for `.lg-btn-primary` — emerald fill, gold hover ring. Secondary (Join): outline with gold border.
+- League row cards: replace `bg-card` + `meta.stripe` colored bars with `.lg-card` (emerald surface, gold inset hairline). The league-type stripe becomes a thin gold left-bar for the league you own/manage, emerald for player-role. Type label uses Barlow uppercase tracking.
+- Discover section: same card treatment, slightly desaturated (`.lg-card` with 60% opacity).
 
-4. **Invite code silently useless on `admin_only` leagues.** `InviteCodeCard` allows saving a code on an admin_only league and shows a subtle warning, but the DB accepts it and every join RPC ignores it. Block save with a clear toast when visibility is admin_only (kept as UI-side guard — DB constraint would be a bigger change).
+### 3. Rebuild `PlayerLeagueDetail` to mirror admin
+`src/pages/player/PlayerLeagueDetail.tsx`
+- Wrap in `.league-scope`.
+- Hero: same `.lg-hero-gradient` + `.lg-court-lines` + gold hairline used on admin. Reuse the exact meta chip / status pill treatment. Add a **"Managed by {name}"** row (already exists on admin — pull it here too) so players know who's running the league.
+- Add a **player-scoped KPI strip** below hero title: `Season` · `Your record` · `Position` (ladder) or `Standing` (others) · `Upcoming`. Same `HeroStat` component visual (Bebas numeral over gold uppercase label).
+- Section headers: switch from lowercase `text-muted-foreground` to gold uppercase Barlow tracking labels with a gold underline hairline (matches admin's tab header treatment).
+- Match rows + standings tables: emerald borders, gold accent on winners, `.lg-num` for scores.
 
-### Hardening
+### 4. Small shared primitives
+`src/components/leagues/_shared.tsx` (new — mirror of `admin/leagues/_shared.tsx`, or move the shared bits up)
+- Extract `LeagueHero`, `LeagueHeroStat`, `LeagueSectionHeader`, `LeagueMetaChip`, `StatusPill` from admin so both player + admin call the same component. This is the mechanism that keeps them cohesive over time — one component, one look.
 
-5. **Better error copy for the two RPC error codes.** Map `02000` → "No league matches that code" and `22023` → "Registration for this league has closed" in `JoinByCodeDialog`'s `join()` catch, instead of surfacing the raw Postgres message. Lookup path already does this well; the join path currently just `toast.error(error.message)`.
+### 5. Admin console adjustments
+`src/pages/admin/AdminLeagueDetail.tsx`
+- Rename class from `league-admin` → `league-scope`. Update all references in `_shared.tsx`, `LeagueManageNav.tsx`, `index.css`.
+- Consume the extracted `LeagueHero` primitive so admin stops carrying a duplicate implementation.
 
-6. **Guard against a fast double-tap join.** `handleJoin` in `JoinGroupDialog` gates on `loading`, but `JoinByCodeDialog.join()` sets `joining` after the RPC starts and doesn't disable on the Enter key. Add an early-return if `joining` is already true.
+### 6. Light-mode contrast pass
+For every `.lg-*` helper and every custom color used in components:
+- Verify text-on-emerald and text-on-cream pairs hit WCAG AA (4.5:1 for body, 3:1 for large).
+- Gold `#C9A84C` on cream `#F5F0E0` fails contrast — use gold only on dark surfaces; on light surfaces switch the eyebrow to `--lg-emerald-deep` `#064E3B` on cream, keeping gold reserved for accent hairlines/icons.
+- Muted text on light: use `hsl(165 20% 35%)` (not the dim cream token, which is dark-mode only).
 
-### Not changing
+## Non-goals
 
-- Rate limiting: RR/group RPCs are throttled; league RPCs aren't. Skipping unless we see abuse — the join RPC is idempotent and gated on auth.
-- `useMyLeagues` refresh after join: not needed. Successful join navigates straight to `/player/leagues/:id`, and returning to the list remounts the hook.
-- Share link origin (`window.location.origin` vs canonical `pulsepb.com`): out of scope for this pass; would need env/product decision.
+- No changes to league business logic, RPCs, or data flow.
+- No changes to tab bodies (Members/Ladder/Matches/etc.) beyond inheriting the new tokens — those already live inside `.league-admin` so the rename picks them up for free.
+- Not restyling `JoinLeagueByCode` public teaser or `CreateLeagueDialog` in this pass (can follow up).
 
-### Files touched
+## Technical notes
 
-- `src/pages/player/PlayerLeagues.tsx` — clear `prefillCode` on dialog close.
-- `src/components/leagues/JoinByCodeDialog.tsx` — local-date parse for `registration_closes_at`; friendlier join-error mapping; double-tap guard.
-- `src/components/admin/leagues/InviteCodeCard.tsx` — block save on admin_only leagues with a toast.
-- `supabase/migrations/<new>_join_league_by_code_reactivate_season.sql` — new migration replacing `join_league_by_code` so the reactivation branch also updates `season_id` to the currently-active season.
+```text
+league-scope (shared class, token layer)
+├── .lg-hero-gradient    ─ emerald→deep radial + gold sheen
+├── .lg-court-lines      ─ 45° cream hairlines @ 6% opacity
+├── .lg-card             ─ surface + gold inset shadow + emerald border
+├── .lg-num              ─ Bebas Neue tabular
+├── .font-display        ─ Bebas Neue uppercase
+└── .league-scope--light ─ light mode token overrides (cream bg, ink text)
 
-### Verification
+Consumers:
+├─ PlayerLeagues.tsx           (list + discover)
+├─ PlayerLeagueDetail.tsx      (player view of one league)
+├─ AdminLeagueDetail.tsx       (organizer console) — already consumes it
+└─ components/leagues/_shared  (LeagueHero, HeroStat, SectionHeader, StatusPill)
+```
 
-- Typecheck.
-- SQL sanity: pick an existing removed member row, call `join_league_by_code` with the league's code, confirm the row is `status='active'` AND `season_id` = current active season.
-- Manual: sign out → click a `/player/leagues?join=CODE` link → confirm `/auth` bounce returns to the dialog with teaser preloaded; close the dialog and reopen → confirm it opens empty, not with the old code.
+Approve and I'll ship it in one pass; if you want to keep the player pages on a lighter/less-editorial variant, say so and I'll dial back the Bebas display type on the player side while keeping the emerald+gold palette.

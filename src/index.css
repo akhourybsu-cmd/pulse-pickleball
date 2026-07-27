@@ -633,29 +633,39 @@ All colors MUST be HSL.
 }
 
 /* ------------------------------------------------------------------ */
-/*  LEAGUE ADMIN SCOPED DESIGN SYSTEM                                 */
-/*  "Emerald Prestige" — applied only inside .league-admin so the     */
-/*  rest of the app keeps its Pulse tokens untouched.                 */
+/*  LEAGUE SCOPED DESIGN SYSTEM                                       */
+/*  "Emerald Prestige" — applied inside .league-scope so the whole    */
+/*  league experience (player list, player detail, organizer console) */
+/*  shares one identity while the rest of the app keeps Pulse tokens. */
+/*  Add .league-scope--light for the cream/ink light-mode variant.    */
 /* ------------------------------------------------------------------ */
-.league-admin {
-  --lg-bg: #04140F;
-  --lg-surface: #0A2A20;
-  --lg-surface-2: #0F3A2C;
-  --lg-border: #134A38;
+.league-scope {
+  /* Brand tokens — stable across light/dark, the accent identity. */
   --lg-emerald: #0D7A5F;
   --lg-emerald-bright: #14B08A;
   --lg-emerald-deep: #064E3B;
   --lg-gold: #C9A84C;
   --lg-gold-bright: #E4C368;
   --lg-gold-soft: #F5F0E0;
-  --lg-text: #F5F0E0;
-  --lg-text-dim: #9CB5A8;
   --lg-danger: #E85D3A;
 
-  /* Override shadcn semantic tokens so nested primitives (Card, Input,
-     Dialog, Select, Table, Tabs, Popover) render on-brand in both
-     light and dark modes. This makes the league admin a self-contained
-     dark emerald island regardless of the app-level theme. */
+  /* Dark-mode surfaces (default). */
+  --lg-bg: #04140F;
+  --lg-surface: #0A2A20;
+  --lg-surface-2: #0F3A2C;
+  --lg-border: #134A38;
+  --lg-text: #F5F0E0;
+  --lg-text-dim: #9CB5A8;
+  --lg-hairline: rgba(201, 168, 76, 0.25);
+  --lg-inset: rgba(201, 168, 76, 0.08);
+  --lg-court-line: rgba(245, 240, 224, 0.06);
+  --lg-hero-radial: rgba(201, 168, 76, 0.18);
+  --lg-hero-stops: #064E3B 0%, #0D7A5F 45%, #0A2A20 100%;
+  --lg-eyebrow: var(--lg-gold-bright);
+  --lg-eyebrow-bg: rgba(201, 168, 76, 0.15);
+  --lg-eyebrow-ring: rgba(201, 168, 76, 0.4);
+
+  /* Shadcn semantic overrides so nested primitives render on-brand. */
   --background: 165 55% 9%;
   --foreground: 44 68% 92%;
   --card: 165 55% 9%;
@@ -681,57 +691,107 @@ All colors MUST be HSL.
   font-feature-settings: "tnum" 1;
 }
 
-.league-admin h1,
-.league-admin h2,
-.league-admin h3,
-.league-admin .font-display {
+/* Light variant — cream on ink. Emerald + gold accents are reserved
+   for chips, hairlines, and icons where they hit AA contrast; body
+   text is rendered in emerald-deep ink for readability. */
+.league-scope.league-scope--light {
+  --lg-bg: #F5F0E0;
+  --lg-surface: #FFFFFF;
+  --lg-surface-2: #FAF6E9;
+  --lg-border: #D9CFB4;
+  --lg-text: #0A2A20;
+  --lg-text-dim: #4A6B5E;
+  --lg-hairline: rgba(6, 78, 59, 0.25);
+  --lg-inset: rgba(6, 78, 59, 0.05);
+  --lg-court-line: rgba(6, 78, 59, 0.05);
+  --lg-hero-radial: rgba(201, 168, 76, 0.28);
+  --lg-hero-stops: #064E3B 0%, #0D7A5F 55%, #14B08A 100%;
+  --lg-eyebrow: var(--lg-gold-bright);
+  --lg-eyebrow-bg: rgba(255, 255, 255, 0.14);
+  --lg-eyebrow-ring: rgba(228, 195, 104, 0.55);
+
+  --background: 44 50% 92%;
+  --foreground: 165 65% 10%;
+  --card: 0 0% 100%;
+  --card-foreground: 165 65% 10%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 165 65% 10%;
+  --muted: 44 30% 88%;
+  --muted-foreground: 165 20% 35%;
+  --border: 44 20% 78%;
+  --input: 44 20% 78%;
+  --primary: 165 85% 22%;
+  --primary-foreground: 44 68% 96%;
+  --secondary: 44 40% 90%;
+  --secondary-foreground: 165 65% 10%;
+  --accent: 44 60% 40%;
+  --accent-foreground: 44 68% 96%;
+  --destructive: 12 78% 47%;
+  --destructive-foreground: 0 0% 100%;
+  --ring: 165 85% 30%;
+}
+
+.league-scope h1,
+.league-scope h2,
+.league-scope h3,
+.league-scope .font-display {
   font-family: 'Bebas Neue', 'Barlow', sans-serif;
   letter-spacing: 0.04em;
   font-weight: 400;
 }
 
-.league-admin .lg-num {
+.league-scope .lg-num {
   font-family: 'Bebas Neue', 'Barlow', sans-serif;
   letter-spacing: 0.02em;
   font-variant-numeric: tabular-nums;
 }
 
-.league-admin .lg-surface { background-color: var(--lg-surface); }
-.league-admin .lg-surface-2 { background-color: var(--lg-surface-2); }
+.league-scope .lg-surface { background-color: var(--lg-surface); }
+.league-scope .lg-surface-2 { background-color: var(--lg-surface-2); }
 
-.league-admin .lg-card {
+.league-scope .lg-card {
   background-color: var(--lg-surface);
   border: 1px solid var(--lg-border);
   border-radius: 0.75rem;
-  box-shadow: inset 0 1px 0 0 rgba(201, 168, 76, 0.08);
+  box-shadow: inset 0 1px 0 0 var(--lg-inset);
 }
 
-.league-admin .lg-card-hover:hover {
+.league-scope .lg-card-hover:hover {
   background-color: var(--lg-surface-2);
 }
 
-.league-admin .lg-hero-gradient {
+/* Hero: emerald→deep gradient with a warm gold sheen top-right.
+   Same silhouette in both modes; light mode brightens the mid stop. */
+.league-scope .lg-hero-gradient {
   background:
-    radial-gradient(1200px 400px at 90% -30%, rgba(201, 168, 76, 0.18), transparent 60%),
-    linear-gradient(135deg, #064E3B 0%, #0D7A5F 45%, #0A2A20 100%);
+    radial-gradient(1200px 400px at 90% -30%, var(--lg-hero-radial), transparent 60%),
+    linear-gradient(135deg, var(--lg-hero-stops));
 }
 
-.league-admin .lg-court-lines {
+.league-scope .lg-court-lines {
   background-image:
-    repeating-linear-gradient(45deg, transparent 0, transparent 22px, rgba(245, 240, 224, 0.06) 22px, rgba(245, 240, 224, 0.06) 23px);
+    repeating-linear-gradient(45deg, transparent 0, transparent 22px, var(--lg-court-line) 22px, var(--lg-court-line) 23px);
 }
 
-.league-admin :focus-visible {
+.league-scope :focus-visible {
   outline: 2px solid rgba(201, 168, 76, 0.7);
   outline-offset: 2px;
 }
 
+/* Gold hairline separator — used above section headers and on hero edges. */
+.league-scope .lg-hairline {
+  background: linear-gradient(to right, transparent, var(--lg-hairline), transparent);
+}
+
 /* Live pulse dot */
-.league-admin .lg-pulse {
+.league-scope .lg-pulse {
   animation: lg-pulse 1.6s ease-in-out infinite;
 }
 @keyframes lg-pulse {
   0%, 100% { opacity: 1; transform: scale(1); }
   50%      { opacity: 0.4; transform: scale(1.4); }
 }
+
+/* Backwards-compat alias so any legacy .league-admin usage still works. */
+.league-admin { }
 

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
-  ListChecks, CalendarDays, Trophy, ChevronRight, MapPin,
+  CalendarDays, Trophy, ChevronRight, MapPin,
   KeyRound, Plus, Sparkles,
 } from "lucide-react";
 import { useMyLeagues } from "@/hooks/useMyLeagues";
@@ -13,10 +13,10 @@ import { JoinByCodeDialog } from "@/components/leagues/JoinByCodeDialog";
 import { CreateLeagueDialog } from "@/components/leagues/CreateLeagueDialog";
 import { LeaguesExplainer } from "@/components/leagues/LeaguesExplainer";
 import { LEAGUE_TYPE_META } from "@/lib/leagues/typeMeta";
+import { LeagueScope, LeagueTypeChip, LgSectionHeader } from "@/components/leagues/_leagueScope";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-// Shared meta module — one source of truth for label/icon/tones.
 const TYPE_META = LEAGUE_TYPE_META;
 
 export default function PlayerLeagues() {
@@ -28,9 +28,6 @@ export default function PlayerLeagues() {
   const [prefillCode, setPrefillCode] = useState<string | undefined>(undefined);
 
   // Deep-link support: /player/leagues?join=SPRING26
-  // Auto-open the dialog with the code pre-filled + auto-looked-up.
-  // Strip the param after we've read it so a page refresh doesn't
-  // keep re-opening the dialog.
   const [searchParams, setSearchParams] = useSearchParams();
   useEffect(() => {
     const code = searchParams.get("join");
@@ -44,9 +41,6 @@ export default function PlayerLeagues() {
   }, []);
 
   // League-slot purchase redirect handler.
-  // Stripe returns to /player/leagues?league_slot=success&session_id=cs_...
-  // We call verify-league-slot-purchase to idempotently grant the slot,
-  // then strip the params so a refresh doesn't re-fire.
   useEffect(() => {
     const status = searchParams.get("league_slot");
     if (!status) return;
@@ -68,7 +62,6 @@ export default function PlayerLeagues() {
             : "Slot unlocked! You can create another league now.");
         }
       }
-      // Strip either flavor of param so refresh doesn't re-fire.
       const next = new URLSearchParams(searchParams);
       next.delete("league_slot");
       next.delete("session_id");
@@ -78,267 +71,257 @@ export default function PlayerLeagues() {
   }, []);
 
   return (
-    <div className="container mx-auto px-4 py-6 max-w-2xl space-y-4">
-      {/* Premium hero — dark gradient with the PULSE gold eyebrow.
-          Sets the tone the rest of the surface plays off. */}
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, ease: "easeOut" }}
-        className="relative overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-br from-[#0B171F] via-[#142029] to-[#1a2d38] p-5 sm:p-6"
-      >
-        <div
-          aria-hidden
-          className="absolute inset-0 opacity-[0.04] pointer-events-none"
-          style={{
-            backgroundImage:
-              "repeating-linear-gradient(45deg, transparent 0, transparent 12px, currentColor 12px, currentColor 13px)",
-            color: "#A6DB5A",
-          }}
-        />
-        {/* Soft accent glow + oversized trophy watermark for depth */}
-        <div
-          aria-hidden
-          className="absolute -top-16 -right-10 h-56 w-56 rounded-full bg-[#A6DB5A]/20 blur-3xl pointer-events-none"
-        />
-        <Trophy
-          aria-hidden
-          className="absolute -right-4 -bottom-8 h-40 w-40 text-white/[0.03] rotate-12 pointer-events-none"
-        />
-        <div className="relative flex items-start justify-between gap-4 flex-wrap">
-          <div className="min-w-0 flex-1">
-            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-[#A6DB5A]/15 text-[#A6DB5A] text-[10px] font-bold uppercase tracking-wider ring-1 ring-[#A6DB5A]/30">
-              <Trophy className="w-3 h-3" />
-              League Play
-            </div>
-            <h1 className="mt-3 text-2xl sm:text-3xl font-black text-white tracking-tight leading-tight">
-              My Leagues
-            </h1>
-            <p className="text-slate-400 text-sm mt-1.5 max-w-md">
-              Leagues you own, play in, or captain — all in one place.
-            </p>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <Button
-              size="sm" variant="outline"
-              onClick={() => setJoinOpen(true)}
-              className="bg-slate-900/60 border-slate-700 text-slate-100 hover:bg-slate-800 hover:text-white"
-            >
-              <KeyRound className="w-4 h-4 mr-1.5" />
-              Join
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => setCreateOpen(true)}
-              className="bg-[#A6DB5A] text-[#0B171F] hover:bg-[#A6DB5A]/90 font-semibold shadow-[0_2px_8px_-2px_rgba(166,219,90,0.5)]"
-            >
-              <Plus className="w-4 h-4 mr-1.5" />
-              Create
-            </Button>
-          </div>
-        </div>
-      </motion.div>
+    <LeagueScope>
+      <div className="container mx-auto px-4 py-5 max-w-2xl space-y-5">
+        {/* Emerald Prestige hero — matches the organizer console. */}
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
+          className="relative overflow-hidden rounded-xl border border-[color:var(--lg-border)] lg-hero-gradient shadow-[inset_0_1px_0_0_var(--lg-inset)]"
+        >
+          <div className="absolute inset-0 lg-court-lines pointer-events-none" aria-hidden />
+          <div className="absolute top-0 left-0 right-0 h-px lg-hairline" aria-hidden />
+          <Trophy
+            aria-hidden
+            className="absolute -right-4 -bottom-8 h-40 w-40 text-[color:var(--lg-gold)]/10 rotate-12 pointer-events-none"
+          />
 
-      {loading ? (
-        <div className="space-y-2 animate-pulse">
-          <div className="h-24 rounded-xl bg-muted/50" />
-          <div className="h-24 rounded-xl bg-muted/50" />
-        </div>
-      ) : error ? (
-        <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
-          Couldn't load leagues: {error}
-        </div>
-      ) : rows.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border p-10 text-center">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
-            <Trophy className="w-6 h-6" />
-          </div>
-          <p className="text-sm font-semibold">No leagues yet</p>
-          <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
-            Start your own league — your first one's free — or join an
-            existing one with an invite code.
-          </p>
-          <div className="mt-4 flex flex-col sm:flex-row gap-2 justify-center">
-            <Button size="sm" onClick={() => setCreateOpen(true)}>
-              <Plus className="w-4 h-4 mr-1.5" />
-              Create a league
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => setJoinOpen(true)}>
-              <KeyRound className="w-4 h-4 mr-1.5" />
-              Enter invite code
-            </Button>
-          </div>
-        </div>
-      ) : (
-        <ul className="space-y-2.5">
-          {rows.map(({ league, membership, season }, i) => {
-            const meta = TYPE_META[league.league_type];
-            const Icon = meta.icon;
-            return (
-              <motion.li
-                key={membership.id}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.22, delay: i * 0.04, ease: "easeOut" }}
-              >
-                <button
-                  type="button"
-                  onClick={() => navigate(`/player/leagues/${league.id}`)}
-                  className="group w-full text-left rounded-2xl border border-border/70 bg-card hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-0.5 active:scale-[0.99] transition-all overflow-hidden"
-                >
-                  <div className="flex items-stretch">
-                    <div className={cn("w-1.5 shrink-0 bg-gradient-to-b from-transparent via-current to-transparent opacity-80", meta.stripe)} aria-hidden />
-                    <div className="flex-1 min-w-0 p-3.5 flex items-center gap-3">
-                      {/* Type-accent icon chip — the visual anchor */}
-                      <div className={cn(
-                        "h-11 w-11 rounded-xl flex items-center justify-center shrink-0 ring-1 ring-inset ring-border/50 transition-transform group-hover:scale-105",
-                        meta.chip,
-                      )}>
-                        <Icon className="w-5 h-5" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-base truncate">
-                            {league.name}
-                          </span>
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                            {meta.label}
-                          </span>
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                          {season && (
-                            <span className="inline-flex items-center gap-1">
-                              <CalendarDays className="w-3 h-3" />
-                              {season.name}
-                            </span>
-                          )}
-                          {membership.role !== "player" && (
-                            <span className="uppercase tracking-wider text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded ring-1 ring-primary/20">
-                              {membership.role}
-                            </span>
-                          )}
-                        </div>
-                        {league.location && (
-                          <div className="text-[11px] text-muted-foreground mt-1 inline-flex items-center gap-1">
-                            <MapPin className="w-3 h-3" />
-                            {league.location}
-                          </div>
-                        )}
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 group-hover:translate-x-0.5 group-hover:text-primary transition-all" />
-                    </div>
-                  </div>
-                </button>
-              </motion.li>
-            );
-          })}
-        </ul>
-      )}
-
-      {/* ---------- Discover ---------- */}
-      {/* Self-hides when there's nothing public to join yet — no point
-          showing "Discover 0 leagues" until admins flip visibility on
-          real leagues. Loading state also hides so the section only
-          appears once we know it has content. */}
-      {!browseLoading && browseable.length > 0 && (
-        <section className="space-y-3 pt-2">
-          <div className="flex items-center gap-2 border-t border-border/60 pt-4">
-            <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center">
-              <Sparkles className="w-3.5 h-3.5 text-muted-foreground" />
-            </div>
+          <div className="relative p-5 sm:p-6 flex items-start justify-between gap-4 flex-wrap">
             <div className="min-w-0 flex-1">
-              <h2 className="text-sm font-bold uppercase tracking-wider">
-                Discover
-              </h2>
-              <p className="text-[11px] text-muted-foreground">
-                Public leagues you can join with an invite code
+              <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-[color:var(--lg-eyebrow-bg)] text-[color:var(--lg-eyebrow)] text-[10px] font-bold uppercase tracking-[0.16em] ring-1 ring-[color:var(--lg-eyebrow-ring)]">
+                <Trophy className="w-3 h-3" />
+                League Play
+              </div>
+              <h1 className="font-display mt-3 text-3xl sm:text-4xl leading-[1] text-[color:var(--lg-text)]">
+                MY LEAGUES
+              </h1>
+              <p className="text-[color:var(--lg-text-dim)] text-sm mt-2 max-w-md">
+                Leagues you own, play in, or captain — all in one place.
               </p>
             </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                size="sm" variant="outline"
+                onClick={() => setJoinOpen(true)}
+                className="border-[color:var(--lg-gold)]/50 bg-transparent text-[color:var(--lg-gold-bright)] hover:bg-[color:var(--lg-gold)]/10 hover:text-[color:var(--lg-gold-bright)]"
+              >
+                <KeyRound className="w-4 h-4 mr-1.5" />
+                Join
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => setCreateOpen(true)}
+                className="bg-[color:var(--lg-emerald)] text-[color:var(--lg-gold-soft)] hover:bg-[color:var(--lg-emerald-bright)] font-semibold shadow-[0_2px_8px_-2px_rgba(13,122,95,0.6)] ring-1 ring-[color:var(--lg-gold)]/40"
+              >
+                <Plus className="w-4 h-4 mr-1.5" />
+                Create
+              </Button>
+            </div>
           </div>
+        </motion.div>
 
-          <ul className="space-y-2.5">
-            {browseable.map((league) => {
-              const meta = TYPE_META[league.league_type];
-              const Icon = meta.icon;
-              return (
-                <li key={league.id}>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      league.invite_code
-                        ? navigate(`/player/leagues/join/${league.invite_code}`)
-                        : setJoinOpen(true)
-                    }
-                    className="group w-full text-left rounded-2xl border border-border/70 bg-card/50 hover:border-primary/40 hover:bg-card hover:shadow-lg hover:shadow-primary/5 hover:-translate-y-0.5 transition-all overflow-hidden"
+        {loading ? (
+          <div className="space-y-2 animate-pulse">
+            <div className="h-24 rounded-xl bg-muted/50" />
+            <div className="h-24 rounded-xl bg-muted/50" />
+          </div>
+        ) : error ? (
+          <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+            Couldn't load leagues: {error}
+          </div>
+        ) : rows.length === 0 ? (
+          <div className="lg-card p-10 text-center">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[color:var(--lg-emerald)]/20 text-[color:var(--lg-gold-bright)] ring-1 ring-[color:var(--lg-gold)]/30">
+              <Trophy className="w-6 h-6" />
+            </div>
+            <p className="text-sm font-semibold text-[color:var(--lg-text)]">No leagues yet</p>
+            <p className="text-xs text-[color:var(--lg-text-dim)] mt-1 max-w-sm mx-auto">
+              Start your own league — your first one's free — or join an
+              existing one with an invite code.
+            </p>
+            <div className="mt-4 flex flex-col sm:flex-row gap-2 justify-center">
+              <Button size="sm" onClick={() => setCreateOpen(true)}
+                className="bg-[color:var(--lg-emerald)] text-[color:var(--lg-gold-soft)] hover:bg-[color:var(--lg-emerald-bright)]">
+                <Plus className="w-4 h-4 mr-1.5" />
+                Create a league
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setJoinOpen(true)}
+                className="border-[color:var(--lg-gold)]/50 text-[color:var(--lg-gold-bright)] hover:bg-[color:var(--lg-gold)]/10">
+                <KeyRound className="w-4 h-4 mr-1.5" />
+                Enter invite code
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <LgSectionHeader>Your Leagues</LgSectionHeader>
+            <ul className="space-y-2.5">
+              {rows.map(({ league, membership, season }, i) => {
+                const isOrganizer = membership.role !== "player";
+                return (
+                  <motion.li
+                    key={membership.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.22, delay: i * 0.04, ease: "easeOut" }}
                   >
-                    <div className="flex items-stretch">
-                      <div className={cn("w-1.5 shrink-0 bg-gradient-to-b from-transparent via-current to-transparent opacity-60", meta.stripe)} aria-hidden />
-                      <div className="flex-1 min-w-0 p-3.5 flex items-start gap-3">
-                        <div className={cn(
-                          "h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ring-1 ring-inset ring-border/50",
-                          meta.chip,
-                        )}>
-                          <Icon className="w-[18px] h-[18px]" />
-                        </div>
-                        <div className="flex items-start justify-between gap-3 flex-1 min-w-0">
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/player/leagues/${league.id}`)}
+                      className="group w-full text-left lg-card lg-card-hover hover:border-[color:var(--lg-gold)]/50 hover:-translate-y-0.5 active:scale-[0.99] transition-all overflow-hidden"
+                    >
+                      <div className="flex items-stretch">
+                        {/* Gold bar if you organize, emerald if you play. */}
+                        <div
+                          className={cn(
+                            "w-1.5 shrink-0",
+                            isOrganizer
+                              ? "bg-gradient-to-b from-[color:var(--lg-gold)]/40 via-[color:var(--lg-gold)] to-[color:var(--lg-gold)]/40"
+                              : "bg-gradient-to-b from-[color:var(--lg-emerald)]/40 via-[color:var(--lg-emerald-bright)] to-[color:var(--lg-emerald)]/40",
+                          )}
+                          aria-hidden
+                        />
+                        <div className="flex-1 min-w-0 p-3.5 flex items-center gap-3">
+                          <LeagueRowIcon type={league.league_type} isOrganizer={isOrganizer} />
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-semibold text-base truncate">
+                              <span className="font-bold text-base truncate text-[color:var(--lg-text)]">
                                 {league.name}
                               </span>
-                              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                                {meta.label}
-                              </span>
+                              <LeagueTypeChip type={league.league_type} />
                             </div>
-                            {league.description && (
-                              <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                                {league.description}
-                              </p>
-                            )}
-                            <div className="text-[11px] text-muted-foreground mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                              {league.location && (
+                            <div className="text-xs text-[color:var(--lg-text-dim)] mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                              {season && (
                                 <span className="inline-flex items-center gap-1">
-                                  <MapPin className="w-3 h-3" />
-                                  {league.location}
+                                  <CalendarDays className="w-3 h-3" />
+                                  {season.name}
                                 </span>
                               )}
-                              <span className="inline-flex items-center gap-1 text-primary/80 font-medium">
-                                <KeyRound className="w-3 h-3" />
-                                Join with code
-                              </span>
+                              {isOrganizer && (
+                                <span className="uppercase tracking-[0.14em] text-[10px] font-bold text-[color:var(--lg-gold-bright)] bg-[color:var(--lg-gold)]/10 px-1.5 py-0.5 rounded ring-1 ring-[color:var(--lg-gold)]/30">
+                                  {membership.role}
+                                </span>
+                              )}
                             </div>
+                            {league.location && (
+                              <div className="text-[11px] text-[color:var(--lg-text-dim)] mt-1 inline-flex items-center gap-1">
+                                <MapPin className="w-3 h-3" />
+                                {league.location}
+                              </div>
+                            )}
                           </div>
-                          <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 mt-1 group-hover:translate-x-0.5 group-hover:text-primary transition-all" />
+                          <ChevronRight className="w-4 h-4 text-[color:var(--lg-text-dim)] shrink-0 group-hover:translate-x-0.5 group-hover:text-[color:var(--lg-gold-bright)] transition-all" />
                         </div>
                       </div>
-                    </div>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
+                    </button>
+                  </motion.li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
+
+        {/* ---------- Discover ---------- */}
+        {!browseLoading && browseable.length > 0 && (
+          <section className="pt-2">
+            <LgSectionHeader icon={Sparkles}>Discover</LgSectionHeader>
+            <p className="text-[11px] text-[color:var(--lg-text-dim)] -mt-1.5 mb-3">
+              Public leagues you can join with an invite code
+            </p>
+
+            <ul className="space-y-2.5">
+              {browseable.map((league) => {
+                return (
+                  <li key={league.id}>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        league.invite_code
+                          ? navigate(`/player/leagues/join/${league.invite_code}`)
+                          : setJoinOpen(true)
+                      }
+                      className="group w-full text-left lg-card lg-card-hover opacity-90 hover:opacity-100 hover:border-[color:var(--lg-gold)]/40 hover:-translate-y-0.5 transition-all overflow-hidden"
+                    >
+                      <div className="flex items-stretch">
+                        <div className="w-1.5 shrink-0 bg-gradient-to-b from-transparent via-[color:var(--lg-emerald)] to-transparent opacity-60" aria-hidden />
+                        <div className="flex-1 min-w-0 p-3.5 flex items-start gap-3">
+                          <LeagueRowIcon type={league.league_type} isOrganizer={false} />
+                          <div className="flex items-start justify-between gap-3 flex-1 min-w-0">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-semibold text-base truncate text-[color:var(--lg-text)]">
+                                  {league.name}
+                                </span>
+                                <LeagueTypeChip type={league.league_type} />
+                              </div>
+                              {league.description && (
+                                <p className="text-xs text-[color:var(--lg-text-dim)] mt-1 line-clamp-2">
+                                  {league.description}
+                                </p>
+                              )}
+                              <div className="text-[11px] text-[color:var(--lg-text-dim)] mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                                {league.location && (
+                                  <span className="inline-flex items-center gap-1">
+                                    <MapPin className="w-3 h-3" />
+                                    {league.location}
+                                  </span>
+                                )}
+                                <span className="inline-flex items-center gap-1 text-[color:var(--lg-gold-bright)] font-medium">
+                                  <KeyRound className="w-3 h-3" />
+                                  Join with code
+                                </span>
+                              </div>
+                            </div>
+                            <ChevronRight className="w-4 h-4 text-[color:var(--lg-text-dim)] shrink-0 mt-1 group-hover:translate-x-0.5 group-hover:text-[color:var(--lg-gold-bright)] transition-all" />
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        )}
+
+        <LeaguesExplainer defaultOpen={!loading && rows.length === 0} />
+
+        <JoinByCodeDialog
+          open={joinOpen}
+          onOpenChange={(o) => {
+            setJoinOpen(o);
+            if (!o) setPrefillCode(undefined);
+          }}
+          initialCode={prefillCode}
+        />
+        <CreateLeagueDialog
+          open={createOpen}
+          onOpenChange={setCreateOpen}
+        />
+      </div>
+    </LeagueScope>
+  );
+}
+
+function LeagueRowIcon({
+  type, isOrganizer,
+}: {
+  type: import("@/lib/leagues/types").LeagueType;
+  isOrganizer: boolean;
+}) {
+  const meta = TYPE_META[type];
+  const Icon = meta.icon;
+  return (
+    <div
+      className={cn(
+        "h-11 w-11 rounded-xl flex items-center justify-center shrink-0 ring-1 ring-inset transition-transform group-hover:scale-105",
+        isOrganizer
+          ? "bg-[color:var(--lg-gold)]/15 text-[color:var(--lg-gold-bright)] ring-[color:var(--lg-gold)]/30"
+          : "bg-[color:var(--lg-emerald)]/20 text-[color:var(--lg-emerald-bright)] ring-[color:var(--lg-emerald)]/40",
       )}
-
-      {/* Plain-language explainer — auto-opens for first-timers, stays
-          collapsed (but handy) once you're in a league. */}
-      <LeaguesExplainer defaultOpen={!loading && rows.length === 0} />
-
-      <JoinByCodeDialog
-        open={joinOpen}
-        onOpenChange={(o) => {
-          setJoinOpen(o);
-          // Clear the prefill once the dialog closes so that reopening
-          // via the "Join with code" button doesn't auto-lookup the
-          // stale deep-linked code.
-          if (!o) setPrefillCode(undefined);
-        }}
-        initialCode={prefillCode}
-      />
-      <CreateLeagueDialog
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-      />
+    >
+      <Icon className="w-5 h-5" />
     </div>
   );
 }
