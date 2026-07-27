@@ -7,6 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import {
   Layers, Trophy, ArrowUp, ArrowDown, Minus, Info, Play, Pause, CheckCircle2,
   ChevronUp, ChevronDown, RotateCcw, Zap, Swords, UserX, Users, AlertTriangle,
+  CalendarClock,
 } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -25,6 +26,38 @@ import {
   EmptyState, TabSkeleton, LeagueTabProps, FormSection, FormRow, FIELD_H,
   SeasonSelect, ChoiceGrid, SegmentedControl,
 } from "./_shared";
+
+/**
+ * Schedule (or reschedule) a ladder week's session via the RPC, which binds
+ * the league_sessions row to (season, week_number). Returns the session id,
+ * or null after toasting the error. One scheduling path for the whole ladder.
+ */
+async function scheduleLadderWeek(
+  leagueId: string,
+  seasonId: string,
+  weekNumber: number,
+  d: {
+    scheduled_date: string; start_time: string; end_time: string;
+    location: string; court_count: number | null; capacity: number | null;
+  },
+): Promise<string | null> {
+  const { data, error } = await supabase.rpc("schedule_ladder_week" as never, {
+    p_league_id: leagueId,
+    p_season_id: seasonId,
+    p_week_number: weekNumber,
+    p_scheduled_date: d.scheduled_date || null,
+    p_start_time: d.start_time || null,
+    p_end_time: d.end_time || null,
+    p_location: d.location || null,
+    p_court_count: d.court_count,
+    p_capacity: d.capacity,
+  } as never);
+  if (error) {
+    toast.error(error.message ?? "Couldn't schedule the week");
+    return null;
+  }
+  return (data as { session_id?: string } | null)?.session_id ?? null;
+}
 
 export function LadderTab({ league, dataVersion, onMutated }: LeagueTabProps) {
   const [seasons, setSeasons] = useState<LeagueSeason[]>([]);
@@ -353,25 +386,9 @@ function LadderStart({
           busy={starting}
           onCancel={() => setWeekPrompt(false)}
           onConfirm={async (details) => {
-            const { data, error } = await supabase
-              .from("league_sessions" as never)
-              .insert({
-                league_id: league.id,
-                season_id: seasonId,
-                name: `Week 1`,
-                scheduled_date: details.scheduled_date,
-                start_time: details.start_time,
-                end_time: details.end_time || null,
-                location: details.location || null,
-                status: "published",
-              } as never)
-              .select("id")
-              .single();
-            if (error || !data) {
-              toast.error(error?.message ?? "Couldn't schedule the week");
-              return;
-            }
-            await invokeStart((data as { id: string }).id);
+            const sid = await scheduleLadderWeek(league.id, seasonId, 1, details);
+            if (!sid) return;
+            await invokeStart(sid);
           }}
         />
       )}
@@ -581,6 +598,10 @@ function LadderManage({
         toast.error("Adjust the week roster so the number of players is a multiple of four.");
         return;
       }
+      // Use the pre-scheduled session for this week if one exists; otherwise
+      // prompt the organizer to schedule it (set its date) first.
+      const scheduled = ladder.weekSessions.find((s) => s.week_number === nextStage.week);
+      if (scheduled) { void runGenerate(scheduled.id); return; }
       setWeekPrompt(true);
       return;
     }
@@ -775,6 +796,18 @@ function LadderManage({
         />
       )}
 
+      {/* Week planner — pre-schedule the dated week shells players request
+          subs against. Always available so organizers can plan ahead. */}
+      {settings && (
+        <WeekSchedulePanel
+          league={league}
+          seasonId={settings.season_id}
+          ladder={ladder}
+          totalWeeks={settings.total_weeks ?? null}
+          onChanged={onChanged}
+        />
+      )}
+
       {/* Week roster — mark who's sitting out (no sub) before starting a new
           week. The playing count must stay a multiple of four. */}
       {!activeBatch && nextStage?.kind === "week" && settings && (
@@ -807,26 +840,11 @@ function LadderManage({
           busy={generating}
           onCancel={() => setWeekPrompt(false)}
           onConfirm={async (details) => {
-            const { data, error } = await supabase
-              .from("league_sessions" as never)
-              .insert({
-                league_id: league.id,
-                season_id: settings.season_id,
-                name: `Week ${nextStage.week}`,
-                scheduled_date: details.scheduled_date,
-                start_time: details.start_time,
-                end_time: details.end_time || null,
-                location: details.location || null,
-                status: "published",
-              } as never)
-              .select("id")
-              .single();
-            if (error || !data) {
-              toast.error(error?.message ?? "Couldn't schedule the week");
-              return;
-            }
+            const sid = await scheduleLadderWeek(
+              league.id, settings.season_id, nextStage.week, details);
+            if (!sid) return;
             setWeekPrompt(false);
-            await runGenerate((data as { id: string }).id);
+            await runGenerate(sid);
           }}
         />
       )}
@@ -998,6 +1016,139 @@ function TiebreakDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Week planner — pre-schedule the dated week shells players pick from */
+/* ------------------------------------------------------------------ */
+
+function WeekSchedulePanel({
+  league, seasonId, ladder, totalWeeks, onChanged,
+}: {
+  league: League;
+  seasonId: string;
+  ladder: ReturnType<typeof useLadder>;
+  totalWeeks: number | null;
+  onChanged: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [editWeek, setEditWeek] = useState<number | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const fmtDate = (d: string | null) =>
+    d ? new Date(`${d}T00:00:00`).toLocaleDateString(undefined,
+      { weekday: "short", month: "short", day: "numeric" }) : null;
+
+  const generated = new Set<number>();
+  ladder.history.forEach((b) => generated.add(b.week_number));
+  if (ladder.activeBatch) generated.add(ladder.activeBatch.week_number);
+  const currentWeek = generated.size ? Math.max(...generated) : 0;
+
+  const byWeek = new Map(ladder.weekSessions.map((s) => [s.week_number, s]));
+  const highestScheduled = ladder.weekSessions.reduce((m, s) => Math.max(m, s.week_number), 0);
+  const horizon = Math.max(totalWeeks ?? 0, highestScheduled, currentWeek + 1);
+
+  const upcoming: number[] = [];
+  for (let w = currentWeek + 1; w <= horizon; w++) upcoming.push(w);
+  const canAddMore = totalWeeks == null || horizon < totalWeeks;
+  const scheduledCount = upcoming.filter((w) => byWeek.has(w)).length;
+
+  const editing = editWeek != null ? byWeek.get(editWeek) : undefined;
+
+  return (
+    <div className="rounded-xl border border-border/70 bg-card overflow-hidden">
+      <button type="button" onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center justify-between gap-3 p-4 text-left">
+        <div className="flex items-center gap-2 min-w-0">
+          <CalendarClock className="w-4 h-4 text-muted-foreground shrink-0" />
+          <div className="min-w-0">
+            <div className="text-sm font-bold">Week schedule</div>
+            <div className="text-[11px] text-muted-foreground">
+              {upcoming.length === 0
+                ? "No upcoming weeks to schedule"
+                : `${scheduledCount}/${upcoming.length} upcoming week${upcoming.length === 1 ? "" : "s"} scheduled`}
+            </div>
+          </div>
+        </div>
+        {open ? <ChevronUp className="w-4 h-4 text-muted-foreground" />
+              : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+      </button>
+
+      {open && (
+        <div className="border-t border-border/60 divide-y divide-border/40">
+          <div className="px-4 py-2.5 text-[11px] text-muted-foreground bg-muted/30">
+            Pre-schedule upcoming weeks so players can request subs for them.
+            Future weeks stay scheduled but aren't generated until the previous
+            week is processed.
+          </div>
+          {upcoming.length === 0 && (
+            <div className="p-4 text-xs text-muted-foreground">
+              All weeks are complete.
+            </div>
+          )}
+          {upcoming.map((w) => {
+            const s = byWeek.get(w);
+            const label = s ? fmtDate(s.scheduled_date) : null;
+            return (
+              <div key={w} className="flex items-center justify-between gap-3 px-4 py-2.5">
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold">Week {w}</div>
+                  <div className="text-[11px] text-muted-foreground">
+                    {s
+                      ? (label ? `${label}${s.start_time ? ` · ${s.start_time.slice(0, 5)}` : ""}` : "Scheduled — no date set")
+                      : "Not scheduled"}
+                    {s?.location ? ` · ${s.location}` : ""}
+                  </div>
+                </div>
+                <Button size="sm" variant={s ? "outline" : "default"}
+                  disabled={busy} onClick={() => setEditWeek(w)}
+                  className="h-8 shrink-0 text-xs">
+                  {s ? "Edit" : "Schedule"}
+                </Button>
+              </div>
+            );
+          })}
+          {canAddMore && (
+            <div className="px-4 py-2.5">
+              <Button size="sm" variant="ghost" disabled={busy}
+                onClick={() => setEditWeek(horizon + 1)}
+                className="h-8 text-xs text-muted-foreground">
+                + Schedule Week {horizon + 1}
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {editWeek != null && (
+        <WeekSessionDialog
+          weekNumber={editWeek}
+          busy={busy}
+          title={`Schedule Week ${editWeek}`}
+          description="Set when this week is played. Players can request a sub for scheduled weeks; scores can't be entered before the start time."
+          submitLabel={`Save Week ${editWeek}`}
+          initial={editing ? {
+            scheduled_date: editing.scheduled_date ?? "",
+            start_time: editing.start_time ? editing.start_time.slice(0, 5) : "",
+            end_time: editing.end_time ? editing.end_time.slice(0, 5) : "",
+            location: editing.location ?? "",
+            court_count: editing.court_count,
+            capacity: editing.capacity,
+          } : undefined}
+          onCancel={() => setEditWeek(null)}
+          onConfirm={async (details) => {
+            setBusy(true);
+            const sid = await scheduleLadderWeek(league.id, seasonId, editWeek, details);
+            setBusy(false);
+            if (!sid) return;
+            setEditWeek(null);
+            toast.success(`Week ${editWeek} scheduled`);
+            onChanged();
+          }}
+        />
+      )}
+    </div>
   );
 }
 
@@ -1227,34 +1378,47 @@ function GenerateNextPanel({
   );
 }
 
+interface WeekSessionDetails {
+  scheduled_date: string;
+  start_time: string;
+  end_time: string;
+  location: string;
+  court_count: number | null;
+  capacity: number | null;
+}
+
 function WeekSessionDialog({
-  weekNumber, busy, onCancel, onConfirm,
+  weekNumber, busy, submitLabel, title, description, initial, onCancel, onConfirm,
 }: {
   weekNumber: number;
   busy: boolean;
+  submitLabel?: string;
+  title?: string;
+  description?: string;
+  initial?: Partial<WeekSessionDetails>;
   onCancel: () => void;
-  onConfirm: (d: {
-    scheduled_date: string;
-    start_time: string;
-    end_time: string;
-    location: string;
-  }) => void | Promise<void>;
+  onConfirm: (d: WeekSessionDetails) => void | Promise<void>;
 }) {
   const today = new Date().toISOString().slice(0, 10);
-  const [date, setDate] = useState(today);
-  const [start, setStart] = useState("18:00");
-  const [end, setEnd] = useState("");
-  const [loc, setLoc] = useState("");
+  const [date, setDate] = useState(initial?.scheduled_date || today);
+  const [start, setStart] = useState(initial?.start_time || "18:00");
+  const [end, setEnd] = useState(initial?.end_time || "");
+  const [loc, setLoc] = useState(initial?.location || "");
+  const [courts, setCourts] = useState(
+    initial?.court_count != null ? String(initial.court_count) : "");
+  const [cap, setCap] = useState(
+    initial?.capacity != null ? String(initial.capacity) : "");
   const canSubmit = !!date && !!start && !busy;
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onCancel(); }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Schedule Week {weekNumber}</DialogTitle>
+          <DialogTitle>{title ?? `Schedule Week ${weekNumber}`}</DialogTitle>
           <DialogDescription>
-            Confirm when this week is played. Players can't enter scores
-            before this start time, so make sure it's right.
+            {description ??
+              "Confirm when this week is played. Players can't enter scores " +
+              "before this start time, so make sure it's right."}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
@@ -1277,6 +1441,18 @@ function WeekSessionDialog({
             <Input value={loc} onChange={(e) => setLoc(e.target.value)}
               placeholder="e.g. Nickerson courts" className={FIELD_H} />
           </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Courts (optional)</div>
+              <Input type="number" min="1" value={courts} onChange={(e) => setCourts(e.target.value)}
+                placeholder="—" className={FIELD_H} />
+            </div>
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Capacity (optional)</div>
+              <Input type="number" min="0" value={cap} onChange={(e) => setCap(e.target.value)}
+                placeholder="—" className={FIELD_H} />
+            </div>
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onCancel} disabled={busy}>Cancel</Button>
@@ -1285,10 +1461,12 @@ function WeekSessionDialog({
             onClick={() => onConfirm({
               scheduled_date: date, start_time: start,
               end_time: end, location: loc,
+              court_count: courts ? Number(courts) : null,
+              capacity: cap ? Number(cap) : null,
             })}
             className="font-bold uppercase tracking-wide"
           >
-            {busy ? "Generating…" : `Generate Week ${weekNumber}`}
+            {busy ? "Saving…" : (submitLabel ?? `Generate Week ${weekNumber}`)}
           </Button>
         </DialogFooter>
       </DialogContent>
