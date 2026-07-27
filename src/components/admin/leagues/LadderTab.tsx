@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import type { League, LeagueSeason } from "@/lib/leagues/types";
 import { resolvePlayerName } from "@/lib/matchDisplay";
+import { formatDistanceToNow } from "date-fns";
 import { gamesPerPlayer } from "@/lib/leagues/ladder";
 import {
   useLadder, type LadderGame, type LadderGroup, type LadderMovementRow,
@@ -1074,7 +1075,28 @@ function WeekSchedulePanel({
 }) {
   const [open, setOpen] = useState(false);
   const [editWeek, setEditWeek] = useState<number | null>(null);
+  const [removeWeek, setRemoveWeek] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
+
+  const unschedule = async (week: number) => {
+    setBusy(true);
+    const { data, error } = await supabase.rpc("unschedule_ladder_week" as never, {
+      p_season_id: seasonId, p_week_number: week,
+    } as never);
+    setBusy(false);
+    setRemoveWeek(null);
+    if (error) {
+      toast.error((error as { message?: string }).message ?? "Couldn't remove the week");
+      return;
+    }
+    const canceled = (data as { canceled_requests?: number } | null)?.canceled_requests ?? 0;
+    toast.success(
+      canceled > 0
+        ? `Week ${week} removed — ${canceled} request${canceled === 1 ? "" : "s"} canceled`
+        : `Week ${week} removed`,
+    );
+    onChanged();
+  };
 
   const fmtDate = (d: string | null) =>
     d ? new Date(`${d}T00:00:00`).toLocaleDateString(undefined,
@@ -1141,11 +1163,30 @@ function WeekSchedulePanel({
                     {s?.location ? ` · ${s.location}` : ""}
                   </div>
                 </div>
-                <Button size="sm" variant={s ? "outline" : "default"}
-                  disabled={busy} onClick={() => setEditWeek(w)}
-                  className="h-8 shrink-0 text-xs">
-                  {s ? "Edit" : "Schedule"}
-                </Button>
+                {removeWeek === w ? (
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className="text-[11px] text-muted-foreground">Remove?</span>
+                    <Button size="sm" variant="destructive" disabled={busy}
+                      onClick={() => unschedule(w)} className="h-8 text-xs">Yes</Button>
+                    <Button size="sm" variant="ghost" disabled={busy}
+                      onClick={() => setRemoveWeek(null)} className="h-8 text-xs">No</Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <Button size="sm" variant={s ? "outline" : "default"}
+                      disabled={busy} onClick={() => setEditWeek(w)}
+                      className="h-8 text-xs">
+                      {s ? "Edit" : "Schedule"}
+                    </Button>
+                    {s && (
+                      <Button size="sm" variant="ghost" disabled={busy}
+                        onClick={() => setRemoveWeek(w)}
+                        className="h-8 text-xs text-muted-foreground">
+                        Remove
+                      </Button>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}
@@ -1202,6 +1243,7 @@ interface SubReqRow {
   note: string | null;
   status: "pending" | "sub" | "sitout" | "declined" | "canceled";
   assigned_sub_id: string | null;
+  resolved_at?: string | null;
 }
 
 function WeekRosterPanel({
@@ -1545,7 +1587,7 @@ function SubRequestsPanel({
       const onLadder = new Set(order);
       const [reqRes, memRes, subRes] = await Promise.all([
         supabase.from("ladder_sub_requests" as never)
-          .select("id, player_id, note, status, assigned_sub_id, week_number")
+          .select("id, player_id, note, status, assigned_sub_id, week_number, resolved_at")
           .eq("season_id", seasonId).neq("status", "canceled")
           .order("week_number", { ascending: true }),
         supabase.from("league_members" as never).select("user_id")
@@ -1632,8 +1674,13 @@ function SubRequestsPanel({
                   )}
                 </div>
                 {req.status !== "pending" && (
-                  <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 shrink-0">
+                  <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 shrink-0 text-right">
                     {resolvedLabel}
+                    {req.resolved_at && (
+                      <span className="block font-normal text-muted-foreground">
+                        {formatDistanceToNow(new Date(req.resolved_at), { addSuffix: true })}
+                      </span>
+                    )}
                   </span>
                 )}
               </div>
