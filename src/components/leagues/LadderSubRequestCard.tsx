@@ -58,8 +58,12 @@ export function LadderSubRequestCard({
     const generated = new Set(
       ((batchRes.data ?? []) as Array<{ week_number: number }>).map((b) => b.week_number),
     );
-    // Requestable = scheduled weeks not yet generated.
-    setWeeks(((sessRes.data ?? []) as unknown as WeekShell[]).filter((w) => !generated.has(w.week_number)));
+    const today = new Date().toISOString().slice(0, 10);
+    // Requestable = week >= 2, not yet generated, and not already in the past.
+    setWeeks(((sessRes.data ?? []) as unknown as WeekShell[]).filter((w) =>
+      w.week_number >= 2
+      && !generated.has(w.week_number)
+      && (!w.scheduled_date || w.scheduled_date >= today)));
     setRequests((reqRes.data ?? []) as unknown as MyRequest[]);
     setLoading(false);
   }, [seasonId, currentUserId]);

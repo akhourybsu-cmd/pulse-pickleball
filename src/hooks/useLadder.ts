@@ -98,6 +98,9 @@ export interface LadderData {
   history: LadderBatch[];
   weekSessions: LadderWeekSession[];
   pendingSubRequests: number;
+  /** Increments on every successful load — a stable signal children can
+   *  depend on to refetch their own data after a mutation + refresh. */
+  version: number;
   refresh: () => void;
 }
 
@@ -112,7 +115,8 @@ export function useLadder(
     loading: true, settings: null, memberIds: [], nameOf: (id) => id.slice(0, 8),
     started: false, activeBatch: null, groups: [], games: [],
     currentOrder: [], lastMovements: [], lastFinalBatch: null,
-    lastFinalGroups: [], history: [], weekSessions: [], pendingSubRequests: 0, refresh,
+    lastFinalGroups: [], history: [], weekSessions: [], pendingSubRequests: 0,
+    version: 0, refresh,
   });
 
   useEffect(() => {
@@ -205,13 +209,14 @@ export function useLadder(
       }
 
       if (!cancelled) {
-        setData({
+        setData((prev) => ({
           loading: false, settings, memberIds, nameOf,
           started: batches.length > 0, activeBatch, groups, games,
           currentOrder, lastMovements, lastFinalBatch: lastFinal,
           lastFinalGroups, history, weekSessions,
-          pendingSubRequests: pendingCount ?? 0, refresh,
-        });
+          pendingSubRequests: pendingCount ?? 0,
+          version: prev.version + 1, refresh,
+        }));
       }
     })().catch(() => { if (!cancelled) setData((d) => ({ ...d, loading: false })); });
 
