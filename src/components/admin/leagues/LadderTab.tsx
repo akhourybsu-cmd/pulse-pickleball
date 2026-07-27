@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import {
   Layers, Trophy, ArrowUp, ArrowDown, Minus, Info, Play, Pause, CheckCircle2,
-  ChevronUp, ChevronDown, RotateCcw, Zap, Swords,
+  ChevronUp, ChevronDown, RotateCcw, Zap, Swords, UserX, Users, AlertTriangle,
 } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -550,6 +550,10 @@ function LadderManage({
   }, [ladder.lastFinalBatch, activeBatch, batchesPerWeek, totalWeeks]);
 
   const [weekPrompt, setWeekPrompt] = useState(false);
+  // Week roster (sit-outs) validity — only meaningful when the next stage is
+  // a new week. Defaults valid so batch generation is never blocked.
+  const [weekRosterValid, setWeekRosterValid] = useState(true);
+  const weekBlocked = nextStage?.kind === "week" && !weekRosterValid;
 
   const runGenerate = async (session_id?: string) => {
     if (!settings) return;
@@ -572,7 +576,14 @@ function LadderManage({
     // Starting a new week is only ever an explicit organizer action AND
     // requires confirming the date/time up front — scores can't be entered
     // before that moment (safeguard when self-report scoring is on).
-    if (nextStage.kind === "week") { setWeekPrompt(true); return; }
+    if (nextStage.kind === "week") {
+      if (!weekRosterValid) {
+        toast.error("Adjust the week roster so the number of players is a multiple of four.");
+        return;
+      }
+      setWeekPrompt(true);
+      return;
+    }
     void runGenerate();
   };
 
@@ -764,6 +775,20 @@ function LadderManage({
         />
       )}
 
+      {/* Week roster — mark who's sitting out (no sub) before starting a new
+          week. The playing count must stay a multiple of four. */}
+      {!activeBatch && nextStage?.kind === "week" && settings && (
+        <WeekRosterPanel
+          seasonId={settings.season_id}
+          weekNumber={nextStage.week}
+          order={ladder.currentOrder}
+          nameOf={ladder.nameOf}
+          disabled={paused || generating}
+          onValidChange={setWeekRosterValid}
+          onMutated={onChanged}
+        />
+      )}
+
       {/* Explicit next-stage generation — only after the current stage is
           fully processed (no active batch). Never runs automatically. */}
       {!activeBatch && nextStage && (
@@ -771,6 +796,7 @@ function LadderManage({
           nextStage={nextStage}
           paused={paused}
           generating={generating}
+          blocked={weekBlocked}
           onGenerate={generateNext}
         />
       )}
@@ -975,12 +1001,176 @@ function TiebreakDialog({
   );
 }
 
+/* ------------------------------------------------------------------ */
+/*  Week roster — sit players out when no sub can be found              */
+/* ------------------------------------------------------------------ */
+
+function WeekRosterPanel({
+  seasonId, weekNumber, order, nameOf, disabled, onValidChange, onMutated,
+}: {
+  seasonId: string;
+  weekNumber: number;
+  order: string[];
+  nameOf: (id: string) => string;
+  disabled: boolean;
+  onValidChange: (valid: boolean) => void;
+  onMutated: () => void;
+}) {
+  const [sitouts, setSitouts] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
+
+  // Load this week's existing sit-outs.
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    (async () => {
+      const { data } = await supabase
+        .from("ladder_week_sitouts" as never)
+        .select("player_id")
+        .eq("season_id", seasonId)
+        .eq("week_number", weekNumber);
+      if (cancelled) return;
+      const ids = ((data ?? []) as Array<{ player_id: string }>).map((r) => r.player_id);
+      // Only keep sit-outs for players still on the ladder.
+      const onLadder = new Set(order);
+      setSitouts(new Set(ids.filter((id) => onLadder.has(id))));
+      setLoading(false);
+    })().catch(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seasonId, weekNumber, order.length]);
+
+  const present = order.length - sitouts.size;
+  const rem = present % 4;
+  const valid = present > 0 && rem === 0;
+
+  useEffect(() => { onValidChange(valid); }, [valid, onValidChange]);
+
+  const toggle = async (pid: string) => {
+    const sitting = !sitouts.has(pid);
+    setBusyId(pid);
+    const { error } = await supabase.rpc("set_ladder_week_sitout" as never, {
+      p_season_id: seasonId,
+      p_week_number: weekNumber,
+      p_player_id: pid,
+      p_sitting: sitting,
+    } as never);
+    setBusyId(null);
+    if (error) {
+      toast.error((error as { message?: string }).message ?? "Couldn't update the roster");
+      return;
+    }
+    setSitouts((prev) => {
+      const next = new Set(prev);
+      if (sitting) next.add(pid); else next.delete(pid);
+      return next;
+    });
+    onMutated();
+  };
+
+  const sitMore = rem;          // sit this many more → present - rem
+  const subCover = 4 - rem;     // cover this many with subs → present + (4-rem)
+
+  return (
+    <div className="rounded-xl border border-border/70 bg-card overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center justify-between gap-3 p-4 text-left"
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          <Users className="w-4 h-4 text-muted-foreground shrink-0" />
+          <div className="min-w-0">
+            <div className="text-sm font-bold">Week {weekNumber} roster</div>
+            <div className="text-[11px] text-muted-foreground">
+              {sitouts.size === 0
+                ? "Everyone's in — tap to sit out anyone who can't make it"
+                : `${sitouts.size} sitting out this week`}
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <span
+            className={cn(
+              "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold tabular-nums",
+              valid
+                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                : "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+            )}
+          >
+            {valid ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertTriangle className="w-3.5 h-3.5" />}
+            {present} playing
+          </span>
+          {open ? <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+        </div>
+      </button>
+
+      {!valid && (
+        <div className="px-4 -mt-1 pb-3">
+          <p className="text-[11px] text-amber-600 dark:text-amber-400 leading-relaxed">
+            Groups are foursomes, so the number playing must be a multiple of four.
+            Sit out {sitMore} more {sitMore === 1 ? "player" : "players"} (→ {present - sitMore} playing),
+            or bring {subCover} sitting {subCover === 1 ? "player" : "players"} back with a sub (→ {present + subCover} playing).
+          </p>
+        </div>
+      )}
+
+      {open && (
+        <div className="border-t border-border/60 divide-y divide-border/40">
+          {loading ? (
+            <div className="p-4 text-xs text-muted-foreground">Loading roster…</div>
+          ) : order.length === 0 ? (
+            <div className="p-4 text-xs text-muted-foreground">No players on the ladder yet.</div>
+          ) : (
+            order.map((pid, i) => {
+              const sitting = sitouts.has(pid);
+              return (
+                <div key={pid} className="flex items-center justify-between gap-3 px-4 py-2.5">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-[11px] font-bold text-muted-foreground tabular-nums w-6 shrink-0">
+                      #{i + 1}
+                    </span>
+                    <span className={cn("text-sm truncate", sitting && "text-muted-foreground line-through")}>
+                      {nameOf(pid)}
+                    </span>
+                    {sitting && (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-amber-600 dark:text-amber-400 shrink-0">
+                        <UserX className="w-3 h-3" /> Sitting out
+                      </span>
+                    )}
+                  </div>
+                  <Button
+                    size="sm"
+                    variant={sitting ? "outline" : "ghost"}
+                    disabled={disabled || busyId === pid}
+                    onClick={() => toggle(pid)}
+                    className="h-8 shrink-0 text-xs"
+                  >
+                    {busyId === pid ? "…" : sitting ? "Bring back" : "Sit out"}
+                  </Button>
+                </div>
+              );
+            })
+          )}
+          <div className="px-4 py-2.5 text-[11px] text-muted-foreground bg-muted/30">
+            Sitting players keep their ladder position and return automatically next week.
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function GenerateNextPanel({
-  nextStage, paused, generating, onGenerate,
+  nextStage, paused, generating, blocked = false, onGenerate,
 }: {
   nextStage: { kind: "batch" | "week" | "complete"; week: number; batch: number; label: string };
   paused: boolean;
   generating: boolean;
+  blocked?: boolean;
   onGenerate: () => void;
 }) {
   if (nextStage.kind === "complete") {
@@ -1017,12 +1207,17 @@ function GenerateNextPanel({
       </p>
       <Button
         onClick={onGenerate}
-        disabled={generating || paused}
+        disabled={generating || paused || blocked}
         className="mt-3 w-full h-12 font-bold uppercase tracking-wide bg-[#A6DB5A] text-[#0B171F] hover:bg-[#95c94f]"
       >
         <Play className="w-4 h-4 mr-1.5" />
         {generating ? "Generating…" : nextStage.label}
       </Button>
+      {blocked && !paused && (
+        <p className="text-[11px] text-amber-300 mt-2">
+          Adjust the week roster above so the number of players is a multiple of four.
+        </p>
+      )}
       {paused && (
         <p className="text-[11px] text-amber-300 mt-2">
           Progression is paused — resume to generate the next stage.

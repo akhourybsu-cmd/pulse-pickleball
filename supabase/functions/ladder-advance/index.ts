@@ -23,6 +23,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import {
   computeBatchOutcome, detectTieBreaks, groupIntoFours, batchMatchups,
+  excludeSitouts, reinsertSitouts, LadderError,
   type LadderGameResult,
 } from '../_shared/leagues/ladder.ts'
 
@@ -66,8 +67,20 @@ Deno.serve(async (req) => {
       ? ['verified', 'score_submitted']
       : ['verified']
 
+    // Sit-outs are per-WEEK: the players with no sub this week are removed
+    // from every batch of the week. Load the effective set (only ids present
+    // on the given order) so grouping closes ranks and finalize can hold
+    // their rungs.
+    const loadSitouts = async (week: number, order: string[]): Promise<string[]> => {
+      const { data: sitRows } = await supabase
+        .from('ladder_week_sitouts').select('player_id')
+        .eq('season_id', season_id).eq('week_number', week)
+      const sitSet = new Set((sitRows ?? []).map((r: { player_id: string }) => r.player_id))
+      return order.filter((p) => sitSet.has(p))
+    }
+
     // Build one batch's group/game structure from an order — shared by the
-    // "generate next batch" paths below.
+    // "generate next batch" paths below. Callers pass the PRESENT order.
     const buildGroups = (nextOrder: string[]) =>
       groupIntoFours(nextOrder).map((grp, gi) => ({
         group_index: gi,
@@ -111,7 +124,15 @@ Deno.serve(async (req) => {
         .from('ladder_snapshots').select('*').eq('id', last.result_snapshot_id as string).maybeSingle()
       if (!seedSnap) return json({ error: 'processed snapshot missing' }, 500)
       const nextBatch = lastBatch + 1
-      const grps = buildGroups(seedSnap.player_ids as string[])
+      const seedOrder = seedSnap.player_ids as string[]
+      const seedSitouts = await loadSitouts(lastWeek, seedOrder)
+      let grps
+      try {
+        grps = buildGroups(excludeSitouts(seedOrder, seedSitouts))
+      } catch (e) {
+        if (e instanceof LadderError) return json({ skipped: 'invalid_player_count', message: e.message })
+        throw e
+      }
       const { error: genErr } = await supabase.rpc('ladder_generate_batch', {
         p_season_id: season_id,
         p_start_snapshot_id: seedSnap.id,
@@ -183,7 +204,18 @@ Deno.serve(async (req) => {
         }
       })
     })
-    const order: string[] = startSnap.player_ids as string[]
+    const fullOrder: string[] = startSnap.player_ids as string[]
+    // Sit-outs: the engine ranks/moves only the players who played; sitting
+    // players hold their rung and are re-inserted into the full result.
+    const activeWeek = active.week_number as number
+    const effectiveSitouts = await loadSitouts(activeWeek, fullOrder)
+    let order: string[]
+    try {
+      order = excludeSitouts(fullOrder, effectiveSitouts)
+    } catch (e) {
+      if (e instanceof LadderError) return json({ skipped: 'invalid_player_count', message: e.message })
+      throw e
+    }
 
     // ---- ties: write pending rows, consume any player resolutions -----
     const needs = detectTieBreaks(order, gamesByGroup)
@@ -253,12 +285,25 @@ Deno.serve(async (req) => {
     )
     const week = active.week_number as number
     const bnum = active.batch_number as number
+    // Rebuild the full ladder: sitting players hold their starting rung, the
+    // players who played fill the in-play rungs in their new order.
+    let fullNext: string[]
+    try {
+      fullNext = effectiveSitouts.length
+        ? reinsertSitouts(fullOrder, outcome.nextOrder, effectiveSitouts)
+        : outcome.nextOrder
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e)
+      return json({ error: message, phase: 'process' }, 500)
+    }
     const { error: procErr } = await supabase.rpc('ladder_finalize_batch', {
       p_batch_id: batchId,
       p_plan: {
         result_snapshot: {
-          week, batch: bnum, player_ids: outcome.nextOrder,
-          reason: `week ${week} batch ${bnum} auto-processed`,
+          week, batch: bnum, player_ids: fullNext,
+          reason: effectiveSitouts.length
+            ? `week ${week} batch ${bnum} auto-processed (${effectiveSitouts.length} sat out)`
+            : `week ${week} batch ${bnum} auto-processed`,
           idempotency_key: `res:${season_id}:${week}:${bnum}`,
         },
         movements,
@@ -278,15 +323,20 @@ Deno.serve(async (req) => {
     if (!resultSnap) return json({ error: 'processed snapshot missing', phase: 'generate' }, 500)
 
     const nextBatch = bnum + 1
-    const nextGroups = groupIntoFours(outcome.nextOrder).map((grp, gi) => ({
-      group_index: gi,
-      court_number: (gi % courtCount) + 1,
-      wave: Math.floor(gi / courtCount) + 1,
-      player_ids: grp,
-      games: batchMatchups(grp).map((m) => ({
-        game_number: m.game, side_a: m.sideA, side_b: m.sideB,
-      })),
-    }))
+    // Same-week next batch: the same sitters sit out again (they didn't move,
+    // so they're still on fullNext). Close ranks around them once more.
+    let nextGroups
+    try {
+      nextGroups = buildGroups(excludeSitouts(fullNext, effectiveSitouts))
+    } catch (e) {
+      if (e instanceof LadderError) {
+        return json({
+          advanced: true, processed: { week, batch: bnum },
+          generate_skipped: 'invalid_player_count', message: e.message,
+        })
+      }
+      throw e
+    }
     const { error: genErr } = await supabase.rpc('ladder_generate_batch', {
       p_season_id: season_id,
       p_start_snapshot_id: resultSnap.id,
