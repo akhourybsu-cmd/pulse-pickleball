@@ -187,6 +187,10 @@ export default function AdminLeagueDetail() {
   }
 
   const activeTabDef = MANAGE_TABS.find((t) => t.key === activeTab);
+  // Teams are a team-format concept only. Individual formats (ladder,
+  // singles, flex) have no teams, so don't surface a "Teams" stat for them.
+  const isTeamFormat =
+    league.league_type === "doubles" || league.league_type === "team";
 
   return shell(
     <LeagueScope>
@@ -209,7 +213,9 @@ export default function AdminLeagueDetail() {
           kpis={counts ? [
             { icon: CalendarDays, label: "Seasons", value: counts.seasons },
             { icon: Users, label: "Roster", value: counts.members },
-            { icon: UsersRound, label: "Teams", value: counts.teams },
+            ...(isTeamFormat
+              ? [{ icon: UsersRound, label: "Teams", value: counts.teams }]
+              : []),
             { icon: CalendarClock, label: "Sessions", value: counts.sessions },
           ] : undefined}
         />

@@ -377,8 +377,7 @@ function MemberInlineActions({
                 <AlertDialogTitle>Remove this member from the season?</AlertDialogTitle>
                 <AlertDialogDescription>
                   {memberName} will be marked removed. This is a soft delete —
-                  you can restore them later. Their existing team assignments
-                  will remain unless you also remove them from those teams.
+                  you can restore them later.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
