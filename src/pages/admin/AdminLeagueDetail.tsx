@@ -5,10 +5,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import type { League } from "@/lib/leagues/types";
-import { LEAGUE_TYPE_META } from "@/lib/leagues/typeMeta";
 import {
   CalendarDays, Users, UsersRound, CalendarClock,
-  Trophy, MapPin, UserCircle2,
+  Trophy,
 } from "lucide-react";
 import { OverviewTab } from "@/components/admin/leagues/OverviewTab";
 import { SeasonsTab } from "@/components/admin/leagues/SeasonsTab";
@@ -23,7 +22,7 @@ import { AuditLogTab } from "@/components/admin/leagues/AuditLogTab";
 import {
   LeagueManageNav, type ManageTab, MANAGE_TABS,
 } from "@/components/admin/leagues/LeagueManageNav";
-import { cn } from "@/lib/utils";
+import { LeagueScope, LeagueHero } from "@/components/leagues/_leagueScope";
 
 interface Counts {
   seasons: number;
