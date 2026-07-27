@@ -829,6 +829,10 @@ function LadderManage({
           order={ladder.currentOrder}
           nameOf={ladder.nameOf}
           excludeWeek={!activeBatch && nextStage?.kind === "week" ? nextStage.week : null}
+          generatedWeeks={new Set([
+            ...ladder.history.map((b) => b.week_number),
+            ...(activeBatch ? [activeBatch.week_number] : []),
+          ])}
           version={ladder.version}
           disabled={paused}
           onChanged={onChanged}
@@ -1564,7 +1568,7 @@ function WeekRosterPanel({
 interface SubReqWeekRow extends SubReqRow { week_number: number }
 
 function SubRequestsPanel({
-  seasonId, order, nameOf, excludeWeek, version, disabled, onChanged,
+  seasonId, order, nameOf, excludeWeek, generatedWeeks, version, disabled, onChanged,
 }: {
   seasonId: string;
   order: string[];
@@ -1572,6 +1576,10 @@ function SubRequestsPanel({
   /** Week already handled by the Week roster panel — skip it here to avoid
    *  two places resolving the same request. Null when no roster is shown. */
   excludeWeek: number | null;
+  /** Weeks that already have a batch — their subs live in the actual games
+   *  (a post-generation swap can change them), so we don't show the request's
+   *  now-possibly-stale assigned_sub_id here. */
+  generatedWeeks: Set<number>;
   version: number;
   disabled: boolean;
   onChanged: () => void;
@@ -1597,7 +1605,8 @@ function SubRequestsPanel({
       ]);
       if (cancelled) return;
       const rows = ((reqRes.data ?? []) as unknown as SubReqWeekRow[])
-        .filter((r) => excludeWeek == null || r.week_number !== excludeWeek);
+        .filter((r) => (excludeWeek == null || r.week_number !== excludeWeek)
+          && !generatedWeeks.has(r.week_number));
       setRequests(rows);
 
       const memIds = ((memRes.data ?? []) as Array<{ user_id: string }>)
