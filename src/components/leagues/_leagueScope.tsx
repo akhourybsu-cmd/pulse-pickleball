@@ -170,12 +170,20 @@ export function HeroStat({
   );
 }
 
-/** Type chip — emerald+gold branded, consistent across surfaces. */
-export function LeagueTypeChip({ type }: { type: LeagueType }) {
+/** Type chip — emerald+gold branded, consistent across surfaces.
+ *  Pass onHero to render against the dark hero gradient (constant tokens). */
+export function LeagueTypeChip({ type, onHero = false }: { type: LeagueType; onHero?: boolean }) {
   const meta = LEAGUE_TYPE_META[type];
   const Icon = meta.icon;
   return (
-    <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-[0.14em] bg-[color:var(--lg-eyebrow-bg)] text-[color:var(--lg-eyebrow)] ring-1 ring-[color:var(--lg-eyebrow-ring)]">
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-[0.14em] ring-1",
+        onHero
+          ? "bg-[color:var(--lg-hero-chip-bg)] text-[color:var(--lg-hero-gold)] ring-[color:var(--lg-hero-chip-ring)]"
+          : "bg-[color:var(--lg-eyebrow-bg)] text-[color:var(--lg-accent-gold)] ring-[color:var(--lg-eyebrow-ring)]",
+      )}
+    >
       <Icon className="w-3 h-3" />
       {meta.label}
     </span>
@@ -183,13 +191,14 @@ export function LeagueTypeChip({ type }: { type: LeagueType }) {
 }
 
 /** Status pill — active/draft/archived. */
-export function LeagueStatusPill({ status }: { status: League["status"] }) {
-  const tone =
-    status === "active"
-      ? "bg-[color:var(--lg-emerald)]/25 text-[color:var(--lg-emerald-bright)] ring-1 ring-[color:var(--lg-emerald)]/50"
-      : status === "archived"
-        ? "bg-black/10 text-[color:var(--lg-text-dim)] ring-1 ring-[color:var(--lg-border)]"
-        : "bg-black/10 text-[color:var(--lg-text-dim)] ring-1 ring-[color:var(--lg-border)]";
+export function LeagueStatusPill({ status, onHero = false }: { status: League["status"]; onHero?: boolean }) {
+  const activeTone = onHero
+    ? "bg-[color:var(--lg-emerald-bright)]/25 text-[color:var(--lg-hero-text)] ring-1 ring-[color:var(--lg-emerald-bright)]/60"
+    : "bg-[color:var(--lg-emerald)]/20 text-[color:var(--lg-emerald)] ring-1 ring-[color:var(--lg-emerald)]/40";
+  const mutedTone = onHero
+    ? "bg-white/10 text-[color:var(--lg-hero-text-dim)] ring-1 ring-white/20"
+    : "bg-[color:var(--lg-surface-2)] text-[color:var(--lg-text-dim)] ring-1 ring-[color:var(--lg-border)]";
+  const tone = status === "active" ? activeTone : mutedTone;
   return (
     <span
       className={cn(
@@ -221,7 +230,7 @@ export function LgSectionHeader({
   return (
     <div className={cn("mb-3", className)}>
       <div className="flex items-center justify-between gap-3">
-        <h2 className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-[color:var(--lg-gold-bright)]">
+        <h2 className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-[color:var(--lg-accent-gold)]">
           {Icon && <Icon className="w-3.5 h-3.5" />}
           {children}
         </h2>
@@ -231,3 +240,4 @@ export function LgSectionHeader({
     </div>
   );
 }
+
