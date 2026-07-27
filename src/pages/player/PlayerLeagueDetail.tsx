@@ -22,7 +22,7 @@ import { cn } from "@/lib/utils";
 const MATCH_STATUS_TONE: Record<LeagueMatchStatus, string> = {
   scheduled:       "bg-[color:var(--lg-surface-2)] text-[color:var(--lg-text-dim)]",
   in_progress:     "bg-[color:var(--lg-emerald)]/25 text-[color:var(--lg-emerald-bright)]",
-  score_submitted: "bg-[color:var(--lg-gold)]/15 text-[color:var(--lg-gold-bright)]",
+  score_submitted: "bg-[color:var(--lg-gold)]/15 text-[color:var(--lg-accent-gold)]",
   verified:        "bg-[color:var(--lg-emerald)]/25 text-[color:var(--lg-emerald-bright)]",
   disputed:        "bg-destructive/20 text-destructive",
   canceled:        "bg-muted text-muted-foreground",
@@ -101,7 +101,7 @@ export default function PlayerLeagueDetail() {
             This league might have ended or your membership isn't active.
           </p>
           <Button
-            size="sm" variant="outline" className="mt-4 border-[color:var(--lg-gold)]/50 text-[color:var(--lg-gold-bright)]"
+            size="sm" variant="outline" className="mt-4 border-[color:var(--lg-gold)]/50 text-[color:var(--lg-accent-gold)]"
             onClick={() => navigate("/player/leagues")}
           >
             <ArrowLeft className="w-4 h-4 mr-1.5" /> Back to my leagues
@@ -147,7 +147,7 @@ export default function PlayerLeagueDetail() {
             <Button
               size="sm" variant="outline"
               onClick={() => navigate(`/player/leagues/${league.id}/manage`)}
-              className="h-8 border-[color:var(--lg-gold)]/50 bg-transparent text-[color:var(--lg-gold-bright)] hover:bg-[color:var(--lg-gold)]/10"
+              className="h-8 border-[color:var(--lg-gold)]/50 bg-transparent text-[color:var(--lg-accent-gold)] hover:bg-[color:var(--lg-gold)]/10"
             >
               <Settings className="w-4 h-4 mr-1.5" />
               Manage
@@ -333,7 +333,7 @@ function MatchRow({
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-4 py-3">
         <div className={cn(
           "text-sm truncate text-right",
-          aWon ? "font-bold text-[color:var(--lg-gold-bright)]" : "font-medium text-[color:var(--lg-text)]",
+          aWon ? "font-bold text-[color:var(--lg-accent-gold)]" : "font-medium text-[color:var(--lg-text)]",
         )}>
           {aName}
         </div>
@@ -342,12 +342,12 @@ function MatchRow({
             <>
               <span className={cn(
                 "text-2xl leading-none",
-                aWon ? "text-[color:var(--lg-gold-bright)]" : "text-[color:var(--lg-text-dim)]",
+                aWon ? "text-[color:var(--lg-accent-gold)]" : "text-[color:var(--lg-text-dim)]",
               )}>{match.team_a_score}</span>
               <span className="text-[color:var(--lg-text-dim)] text-xs font-bold">–</span>
               <span className={cn(
                 "text-2xl leading-none",
-                bWon ? "text-[color:var(--lg-gold-bright)]" : "text-[color:var(--lg-text-dim)]",
+                bWon ? "text-[color:var(--lg-accent-gold)]" : "text-[color:var(--lg-text-dim)]",
               )}>{match.team_b_score}</span>
             </>
           ) : (
@@ -358,7 +358,7 @@ function MatchRow({
         </div>
         <div className={cn(
           "text-sm truncate text-left",
-          bWon ? "font-bold text-[color:var(--lg-gold-bright)]" : "font-medium text-[color:var(--lg-text)]",
+          bWon ? "font-bold text-[color:var(--lg-accent-gold)]" : "font-medium text-[color:var(--lg-text)]",
         )}>
           {bName}
         </div>
