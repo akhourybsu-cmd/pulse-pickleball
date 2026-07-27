@@ -97,6 +97,7 @@ export interface LadderData {
   lastFinalGroups: LadderGroup[];
   history: LadderBatch[];
   weekSessions: LadderWeekSession[];
+  pendingSubRequests: number;
   refresh: () => void;
 }
 
@@ -111,7 +112,7 @@ export function useLadder(
     loading: true, settings: null, memberIds: [], nameOf: (id) => id.slice(0, 8),
     started: false, activeBatch: null, groups: [], games: [],
     currentOrder: [], lastMovements: [], lastFinalBatch: null,
-    lastFinalGroups: [], history: [], weekSessions: [], refresh,
+    lastFinalGroups: [], history: [], weekSessions: [], pendingSubRequests: 0, refresh,
   });
 
   useEffect(() => {
@@ -122,7 +123,7 @@ export function useLadder(
       setData((d) => ({ ...d, loading: true }));
 
       const [{ data: settingsRow }, { data: mems }, { data: batchRows }, { data: snapRows },
-             { data: sessRows }] =
+             { data: sessRows }, { count: pendingCount }] =
         await Promise.all([
           supabase.from("ladder_settings" as never).select("*").eq("season_id", seasonId).maybeSingle(),
           supabase.from("league_members" as never).select("user_id")
@@ -139,6 +140,9 @@ export function useLadder(
             .eq("season_id", seasonId)
             .not("week_number", "is", null)
             .order("week_number", { ascending: true }),
+          supabase.from("ladder_sub_requests" as never)
+            .select("id", { count: "exact", head: true })
+            .eq("season_id", seasonId).eq("status", "pending"),
         ]);
 
       const settings = (settingsRow ?? null) as unknown as LadderSettings | null;
@@ -205,7 +209,8 @@ export function useLadder(
           loading: false, settings, memberIds, nameOf,
           started: batches.length > 0, activeBatch, groups, games,
           currentOrder, lastMovements, lastFinalBatch: lastFinal,
-          lastFinalGroups, history, weekSessions, refresh,
+          lastFinalGroups, history, weekSessions,
+          pendingSubRequests: pendingCount ?? 0, refresh,
         });
       }
     })().catch(() => { if (!cancelled) setData((d) => ({ ...d, loading: false })); });
