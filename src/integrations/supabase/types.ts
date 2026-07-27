@@ -9174,6 +9174,10 @@ export type Database = {
         Args: { p_league_id: string }
         Returns: Json
       }
+      unschedule_ladder_week: {
+        Args: { p_season_id: string; p_week_number: number }
+        Returns: Json
+      }
       user_created_match: {
         Args: { match_id_param: string; user_id_param: string }
         Returns: boolean
