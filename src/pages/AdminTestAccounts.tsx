@@ -28,12 +28,64 @@ export default function AdminTestAccounts() {
   const [ladderLoading, setLadderLoading] = useState(false);
   const [ladderReport, setLadderReport] = useState<any | null>(null);
 
+  // Ladder-sim config (global knobs + per-week scenario injection).
+  type WeekRow = {
+    week: number; sitouts: number; subRequests: number;
+    forceTie: boolean; lateSwap: boolean; selfReport: boolean; autoAdvance: boolean;
+  };
+  const defaultWeekRows = (n: number): WeekRow[] =>
+    Array.from({ length: n }, (_, i) => {
+      const week = i + 1;
+      const base: WeekRow = { week, sitouts: 0, subRequests: 0, forceTie: false, lateSwap: false, selfReport: false, autoAdvance: false };
+      if (week === 2) base.subRequests = 4;
+      else if (week === 3) base.sitouts = 4;
+      else if (week === 4) base.forceTie = true;
+      else if (week === 5) { base.lateSwap = true; base.selfReport = true; base.autoAdvance = true; }
+      return base;
+    });
+  const [cfgPlayers, setCfgPlayers] = useState("32");
+  const [cfgSubs, setCfgSubs] = useState("6");
+  const [cfgCourts, setCfgCourts] = useState("");
+  const [cfgWeeks, setCfgWeeks] = useState("5");
+  const [cfgSeed, setCfgSeed] = useState("12345");
+  const [cfgRating, setCfgRating] = useState(true);
+  const [weekRows, setWeekRows] = useState<WeekRow[]>(defaultWeekRows(5));
+
+  // Keep the per-week rows in sync with the week count (preserve edits).
+  const syncWeekRows = (weeksStr: string) => {
+    setCfgWeeks(weeksStr);
+    const n = Math.max(1, Math.min(12, Number(weeksStr) || 1));
+    setWeekRows((prev) => {
+      const fresh = defaultWeekRows(n);
+      return fresh.map((f) => prev.find((p) => p.week === f.week) ?? f);
+    });
+  };
+  const patchWeek = (week: number, patch: Partial<WeekRow>) =>
+    setWeekRows((prev) => prev.map((r) => (r.week === week ? { ...r, ...patch } : r)));
+
   const handleSimulateLadder = async (mode: "run" | "teardown") => {
     setLadderLoading(true);
     if (mode === "run") setLadderReport(null);
     try {
+      const config = mode === "run" ? {
+        playerCount: Number(cfgPlayers) || 32,
+        subCount: Number(cfgSubs) || 0,
+        courtCount: cfgCourts ? Number(cfgCourts) : undefined,
+        totalWeeks: Number(cfgWeeks) || 5,
+        seed: Number(cfgSeed) || 0,
+        ratingEligible: cfgRating,
+        weeks: weekRows.map((r) => ({
+          week: r.week,
+          sitouts: r.sitouts || undefined,
+          subRequests: r.subRequests || undefined,
+          forceTie: r.forceTie || undefined,
+          lateSwap: r.lateSwap || undefined,
+          selfReport: r.selfReport || undefined,
+          autoAdvance: r.autoAdvance || undefined,
+        })),
+      } : undefined;
       const { data, error } = await supabase.functions.invoke("simulate-ladder-season", {
-        body: { mode },
+        body: { mode, config },
       });
       if (error) throw error;
       if (mode === "teardown") {
@@ -307,16 +359,105 @@ export default function AdminTestAccounts() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Trophy className="w-5 h-5 text-primary" />
-              Simulate 5-Week Ladder Season (dev)
+              Simulate Ladder Season (dev)
             </CardTitle>
             <CardDescription>
               Drives a full Individual Doubles Ladder end-to-end through the real
-              RPCs and edge functions: 32 players + 6 subs, sub-requests, sit-outs,
-              tiebreak, auto-advance, late swap, and unschedule. Returns a per-week
-              assertion report.
+              RPCs, edge functions and triggers. Configure the season below, then
+              per-week inject sit-outs, sub requests, a forced tiebreak, a late
+              swap, self-report or auto-advance. Returns a per-week assertion report.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
+            {/* Global knobs */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <div>
+                <Label className="text-xs">Players (×4)</Label>
+                <Input type="number" min={8} max={64} step={4} value={cfgPlayers}
+                  onChange={(e) => setCfgPlayers(e.target.value)} className="h-8" />
+              </div>
+              <div>
+                <Label className="text-xs">Sub pool</Label>
+                <Input type="number" min={0} max={16} value={cfgSubs}
+                  onChange={(e) => setCfgSubs(e.target.value)} className="h-8" />
+              </div>
+              <div>
+                <Label className="text-xs">Courts (blank = max)</Label>
+                <Input type="number" min={1} value={cfgCourts} placeholder="auto"
+                  onChange={(e) => setCfgCourts(e.target.value)} className="h-8" />
+              </div>
+              <div>
+                <Label className="text-xs">Weeks</Label>
+                <Input type="number" min={1} max={12} value={cfgWeeks}
+                  onChange={(e) => syncWeekRows(e.target.value)} className="h-8" />
+              </div>
+              <div>
+                <Label className="text-xs">Seed</Label>
+                <Input type="number" value={cfgSeed}
+                  onChange={(e) => setCfgSeed(e.target.value)} className="h-8" />
+              </div>
+              <label className="flex items-center gap-2 text-xs mt-5">
+                <input type="checkbox" checked={cfgRating}
+                  onChange={(e) => setCfgRating(e.target.checked)} />
+                Rating-eligible
+              </label>
+            </div>
+
+            {/* Per-week scenario injection */}
+            <div className="border rounded-lg overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b text-muted-foreground">
+                    <th className="text-left font-medium px-2 py-1.5">Week</th>
+                    <th className="font-medium px-1 py-1.5">Sit-outs</th>
+                    <th className="font-medium px-1 py-1.5">Sub reqs</th>
+                    <th className="font-medium px-1 py-1.5">Tie</th>
+                    <th className="font-medium px-1 py-1.5">Late swap</th>
+                    <th className="font-medium px-1 py-1.5">Self-report</th>
+                    <th className="font-medium px-1 py-1.5">Auto-adv</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {weekRows.map((r) => (
+                    <tr key={r.week} className="border-b last:border-0">
+                      <td className="px-2 py-1 font-semibold">W{r.week}</td>
+                      <td className="px-1 py-1 text-center">
+                        <Input type="number" min={0} value={r.sitouts}
+                          onChange={(e) => patchWeek(r.week, { sitouts: Math.max(0, Number(e.target.value) || 0) })}
+                          className="h-7 w-14 mx-auto text-center" disabled={r.week === 1} />
+                      </td>
+                      <td className="px-1 py-1 text-center">
+                        <Input type="number" min={0} value={r.subRequests}
+                          onChange={(e) => patchWeek(r.week, { subRequests: Math.max(0, Number(e.target.value) || 0) })}
+                          className="h-7 w-14 mx-auto text-center" disabled={r.week === 1} />
+                      </td>
+                      <td className="px-1 py-1 text-center">
+                        <input type="checkbox" checked={r.forceTie}
+                          onChange={(e) => patchWeek(r.week, { forceTie: e.target.checked })} />
+                      </td>
+                      <td className="px-1 py-1 text-center">
+                        <input type="checkbox" checked={r.lateSwap}
+                          onChange={(e) => patchWeek(r.week, { lateSwap: e.target.checked })} />
+                      </td>
+                      <td className="px-1 py-1 text-center">
+                        <input type="checkbox" checked={r.selfReport}
+                          onChange={(e) => patchWeek(r.week, { selfReport: e.target.checked })} />
+                      </td>
+                      <td className="px-1 py-1 text-center">
+                        <input type="checkbox" checked={r.autoAdvance}
+                          onChange={(e) => patchWeek(r.week, { autoAdvance: e.target.checked })} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Week 1 is always a clean full week (sit-outs/sub-requests start week 2).
+              Sit-out counts that aren't a multiple of four are auto-adjusted after
+              demonstrating the ÷4 gate. A forced tie needs at least 3 courts.
+            </p>
+
             <div className="flex gap-2">
               <Button
                 onClick={() => handleSimulateLadder("run")}
@@ -324,7 +465,7 @@ export default function AdminTestAccounts() {
                 className="flex-1"
               >
                 <Trophy className="mr-2 h-4 w-4" />
-                {ladderLoading ? "Running…" : "Run 5-week simulation"}
+                {ladderLoading ? "Running…" : `Run ${cfgWeeks}-week simulation`}
               </Button>
               <Button
                 onClick={() => handleSimulateLadder("teardown")}
