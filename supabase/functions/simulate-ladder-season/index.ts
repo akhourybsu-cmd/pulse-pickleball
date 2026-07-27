@@ -307,10 +307,16 @@ Deno.serve(async (req) => {
         p_location: 'PULSE Simulation Courts', p_court_count: COURT_COUNT,
       })
       if (error) throw new Error(`schedule_ladder_week W${w}: ${error.message}`)
-      // schedule_ladder_week returns json/uuid; fetch session id by week
-      const { data: sess } = await admin.from('league_sessions').select('id')
-        .eq('season_id', seasonId).eq('name', `Week ${w}`).maybeSingle()
-      sessionIds.push(sess?.id ?? (typeof res === 'string' ? res : (res as any)?.session_id ?? ''))
+      // Use the session id the RPC returns ({session_id, week_number}); fall
+      // back to a lookup only if the shape is unexpected.
+      let sid = (res as any)?.session_id ?? (typeof res === 'string' ? res : '')
+      if (!sid) {
+        const { data: sess } = await admin.from('league_sessions').select('id')
+          .eq('season_id', seasonId).eq('week_number', w).maybeSingle()
+        sid = sess?.id ?? ''
+      }
+      if (!sid) throw new Error(`schedule_ladder_week W${w}: no session id returned`)
+      sessionIds.push(sid)
     }
 
     // === 5. Start ladder (Week 1 Batch 1) ===
@@ -371,14 +377,19 @@ Deno.serve(async (req) => {
       const someMoved = (afterRow ?? []).some((r: any) => (r.current_rating ?? 0) !== (beforeRatings.get(r.id) ?? 0))
       w.assertions.push({ name: 'Ratings moved for some W1 players', passed: someMoved })
 
-      // Bridge check: matches rows exist w/ match_type=ladder
-      const { data: bridgedCount } = await admin.from('matches').select('id', { count: 'exact', head: true })
-        .eq('match_type', 'ladder').in('id',
-          (games.map((g: any) => g.linked_match_id).filter(Boolean) as string[]))
-      // Above returns rows; recount raw:
-      const linkedIds = games.map((g: any) => g.linked_match_id).filter(Boolean)
+      // Bridge check: RE-FETCH the games (linked_match_id is written by the
+      // bridge trigger during scoring, so the pre-score `games` array is
+      // stale). Every scored game should now point at a ladder match row.
+      const { games: gamesAfter } = await loadBatch(admin, b1.id)
+      const linkedIds = gamesAfter.map((g: any) => g.linked_match_id).filter(Boolean) as string[]
       w.counts.bridged_matches = linkedIds.length
-      w.assertions.push({ name: 'W1 games bridged to matches table', passed: linkedIds.length === games.length, detail: `${linkedIds.length}/${games.length}` })
+      w.assertions.push({ name: 'W1 games bridged to matches table', passed: linkedIds.length === gamesAfter.length, detail: `${linkedIds.length}/${gamesAfter.length}` })
+      if (linkedIds.length) {
+        const { count: ladderMatchCount } = await admin.from('matches')
+          .select('id', { count: 'exact', head: true })
+          .eq('match_type', 'ladder').in('id', linkedIds)
+        w.assertions.push({ name: 'W1 bridged rows are match_type=ladder', passed: (ladderMatchCount ?? 0) === linkedIds.length, detail: `${ladderMatchCount}/${linkedIds.length}` })
+      }
       push(w)
     }
 
@@ -468,13 +479,23 @@ Deno.serve(async (req) => {
       const stillOnLadder = orderPost.includes(absent1)
       w.assertions.push({ name: 'Absent (stand-in) player retained on ladder', passed: stillOnLadder })
 
-      // Verify: rated match participants include the SUB (in-player), not the absent regular
-      const oneGame = gamesW2[0]
-      const { data: parts } = await admin.from('match_participants').select('user_id')
-        .eq('match_id', oneGame.linked_match_id)
-      const partIds = (parts ?? []).map((p: any) => p.user_id)
+      // Verify the rating bridge used the SUB (who actually played), not the
+      // absent regular. Re-fetch games so linked_match_id (written by the
+      // bridge trigger at scoring time) is present, target a game the sub is
+      // actually in, and read the correct column — match_participants has
+      // `player_id`, not `user_id`.
+      const { games: gamesW2After } = await loadBatch(admin, b2.id)
+      const subGame = gamesW2After.find((g: any) =>
+        g.linked_match_id &&
+        [g.player_a_id, g.player_b_id, g.player_c_id, g.player_d_id].includes(subA))
+      const { data: parts } = await admin.from('match_participants').select('player_id')
+        .eq('match_id', subGame?.linked_match_id ?? '00000000-0000-0000-0000-000000000000')
+      const partIds = (parts ?? []).map((p: any) => p.player_id)
       w.counts.match_participants_sample = partIds.length
       w.assertions.push({ name: 'match_participants count = 4', passed: partIds.length === 4, detail: partIds.length })
+      w.assertions.push({ name: 'Rated participant is the SUB, not the absent regular',
+        passed: partIds.includes(subA) && !partIds.includes(absent1),
+        detail: { hasSub: partIds.includes(subA), hasRegular: partIds.includes(absent1) } })
 
       push(w)
     }
@@ -542,26 +563,33 @@ Deno.serve(async (req) => {
       const { games, groups } = await loadBatch(admin, b4.id)
       w.counts.games = games.length
 
-      // Score everything cleanly, then engineer court 1 to be a TRUE tie
-      // (each pair wins one, and pointsFor equal). Court 1 group = first group.
-      const groupG1 = groups[0]
-      const g1Games = games.filter((g: any) => g.ladder_batch_group_id === groupG1.id).sort((a: any, b: any) => a.ladder_game_number - b.ladder_game_number)
-      // 4-player round-robin has 3 games (AB vs CD, AC vs BD, AD vs BC)
-      // Force scores 11-9 each round with alternating winners so pairs each win 1, but a tie occurs at the boundary.
+      // Engineer a TRUE promotion tie on a MIDDLE group (not the top or
+      // bottom — detectTieBreaks only flags a promotion tie for non-top
+      // groups, and this cluster spans the 1st/2nd boundary). In the group's
+      // player order [P1,P2,P3,P4] the three games are:
+      //   g1: P1+P2 vs P3+P4   g2: P1+P3 vs P2+P4   g3: P1+P4 vs P2+P3
+      // Scoring g1 & g2 to side A (11-9) and g3 to side B (9-11) gives P1,P2,P3
+      // two wins each at +2 diff / 31 PF (a genuine 3-way tie for 1-3), P4 0.
+      const tieGroupIdx = groups.length > 2 ? 1 : 0
+      const tieGroup = groups[tieGroupIdx]
+      const tGames = games.filter((g: any) => g.ladder_batch_group_id === tieGroup.id)
+        .sort((a: any, b: any) => a.ladder_game_number - b.ladder_game_number)
       const forcedScores = [
-        { id: g1Games[0].id, a: 11, b: 9 }, // AB beats CD
-        { id: g1Games[1].id, a: 9, b: 11 }, // BD beats AC
-        { id: g1Games[2].id, a: 11, b: 9 }, // AD beats BC
+        { id: tGames[0].id, a: 11, b: 9 }, // P1+P2 win
+        { id: tGames[1].id, a: 11, b: 9 }, // P1+P3 win
+        { id: tGames[2].id, a: 9,  b: 11 }, // P2+P3 win  → P1,P2,P3 all 2-0-… tie
       ]
+      w.actions.push(`Forced a 3-way promotion tie on group index ${tieGroupIdx}`)
 
-      // Score all games (default) then overwrite court 1 with forced scores.
+      // Score all games cleanly first, then overwrite the tie group.
       await scoreBatch(admin, adminToken, b4.id, 'admin', beforeRatings)
       const userSb = userClient(adminToken)
-      await userSb.rpc('admin_score_ladder_batch', { p_batch_id: b4.id, p_scores: forcedScores })
+      const { error: forceErr } = await userSb.rpc('admin_score_ladder_batch', { p_batch_id: b4.id, p_scores: forcedScores })
+      if (forceErr) throw new Error(`W4 force scores: ${forceErr.message}`)
 
       const fin1 = await invokeFn('ladder-finalize-batch', { batch_id: b4.id }, adminToken)
       const needsTie = fin1.json?.error === 'tiebreak_required'
-      w.assertions.push({ name: 'W4 finalize returned tiebreak_required (may or may not fire)', passed: true, detail: fin1.json?.error ?? 'no tie surfaced (fine)' })
+      w.assertions.push({ name: 'W4 finalize required a tiebreak', passed: needsTie, detail: fin1.json?.error ?? fin1.json })
 
       if (needsTie) {
         const ties = fin1.json.ties as Array<{ group_index: number; player_ids: string[] }>
@@ -570,9 +598,6 @@ Deno.serve(async (req) => {
         w.actions.push(`Resolved ${ties.length} tie(s) with organizer order`)
         const fin2 = await invokeFn('ladder-finalize-batch', { batch_id: b4.id, tie_resolutions: resolutions }, adminToken)
         w.assertions.push({ name: 'W4 finalize succeeded after tie resolution', passed: fin2.status === 200 && !fin2.json?.error, detail: fin2.json?.error })
-      } else {
-        // No tie triggered → still ensure finalize succeeded normally
-        w.assertions.push({ name: 'W4 finalize succeeded (no tie)', passed: fin1.status === 200 && !fin1.json?.error, detail: fin1.json?.error })
       }
       push(w)
     }
@@ -608,10 +633,17 @@ Deno.serve(async (req) => {
       // Score via submit_league_match_score (manager override; self-report enabled path)
       await scoreBatch(admin, adminToken, b5.id, 'submit', beforeRatings)
 
-      // ladder-advance should process it (auto_advance on)
+      // ladder-advance should PROCESS it (auto_advance on). A 200 alone isn't
+      // proof — advance returns 200 with {skipped:...} when it declines — so
+      // require advanced === true and confirm the W5 batch finalized.
       const adv = await invokeFn('ladder-advance', { season_id: seasonId }, adminToken)
-      w.assertions.push({ name: 'ladder-advance processed W5', passed: adv.status === 200,
+      w.assertions.push({ name: 'ladder-advance processed W5 (advanced=true)',
+        passed: adv.status === 200 && adv.json?.advanced === true,
         detail: adv.json })
+      const { data: b5After } = await admin.from('ladder_batches').select('status')
+        .eq('id', b5.id).maybeSingle()
+      w.assertions.push({ name: 'W5 batch finalized after auto-advance',
+        passed: b5After?.status === 'finalized', detail: b5After?.status })
 
       // unschedule demo: create a scratch Week 6 then unschedule it
       const sched6 = await userClient(adminToken).rpc('schedule_ladder_week', {
@@ -630,10 +662,10 @@ Deno.serve(async (req) => {
 
     // === Rating deltas ===
     const { data: afterRows } = await admin.from('profiles').select('id, current_rating, full_name').in('id', [...playerIds, ...subIds])
-    const { data: partRows } = await admin.from('match_participants').select('user_id, match_id')
-      .in('user_id', [...playerIds, ...subIds])
+    const { data: partRows } = await admin.from('match_participants').select('player_id, match_id')
+      .in('player_id', [...playerIds, ...subIds])
     const gameCounts = new Map<string, number>()
-    for (const r of (partRows ?? []) as any[]) gameCounts.set(r.user_id, (gameCounts.get(r.user_id) ?? 0) + 1)
+    for (const r of (partRows ?? []) as any[]) gameCounts.set(r.player_id, (gameCounts.get(r.player_id) ?? 0) + 1)
     report.rating_deltas = (afterRows ?? []).map((r: any) => ({
       player: r.full_name, before: beforeRatings.get(r.id) ?? null,
       after: r.current_rating, games: gameCounts.get(r.id) ?? 0,
