@@ -89,14 +89,14 @@ export default function PlayerLeagues() {
 
           <div className="relative p-5 sm:p-6 flex items-start justify-between gap-4 flex-wrap">
             <div className="min-w-0 flex-1">
-              <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-[color:var(--lg-eyebrow-bg)] text-[color:var(--lg-eyebrow)] text-[10px] font-bold uppercase tracking-[0.16em] ring-1 ring-[color:var(--lg-eyebrow-ring)]">
+              <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-[color:var(--lg-hero-chip-bg)] text-[color:var(--lg-hero-gold)] text-[10px] font-bold uppercase tracking-[0.16em] ring-1 ring-[color:var(--lg-hero-chip-ring)]">
                 <Trophy className="w-3 h-3" />
                 League Play
               </div>
-              <h1 className="font-display mt-3 text-3xl sm:text-4xl leading-[1] text-[color:var(--lg-text)]">
+              <h1 className="font-display mt-3 text-3xl sm:text-4xl leading-[1] text-[color:var(--lg-hero-text)]">
                 MY LEAGUES
               </h1>
-              <p className="text-[color:var(--lg-text-dim)] text-sm mt-2 max-w-md">
+              <p className="text-[color:var(--lg-hero-text-dim)] text-sm mt-2 max-w-md">
                 Leagues you own, play in, or captain — all in one place.
               </p>
             </div>
@@ -104,7 +104,7 @@ export default function PlayerLeagues() {
               <Button
                 size="sm" variant="outline"
                 onClick={() => setJoinOpen(true)}
-                className="border-[color:var(--lg-gold)]/50 bg-transparent text-[color:var(--lg-gold-bright)] hover:bg-[color:var(--lg-gold)]/10 hover:text-[color:var(--lg-gold-bright)]"
+                className="border-[color:var(--lg-hero-gold)]/60 bg-transparent text-[color:var(--lg-hero-gold)] hover:bg-white/10 hover:text-[color:var(--lg-hero-gold)]"
               >
                 <KeyRound className="w-4 h-4 mr-1.5" />
                 Join
@@ -132,7 +132,7 @@ export default function PlayerLeagues() {
           </div>
         ) : rows.length === 0 ? (
           <div className="lg-card p-10 text-center">
-            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[color:var(--lg-emerald)]/20 text-[color:var(--lg-gold-bright)] ring-1 ring-[color:var(--lg-gold)]/30">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[color:var(--lg-emerald)]/20 text-[color:var(--lg-accent-gold)] ring-1 ring-[color:var(--lg-gold)]/30">
               <Trophy className="w-6 h-6" />
             </div>
             <p className="text-sm font-semibold text-[color:var(--lg-text)]">No leagues yet</p>
@@ -147,7 +147,7 @@ export default function PlayerLeagues() {
                 Create a league
               </Button>
               <Button size="sm" variant="outline" onClick={() => setJoinOpen(true)}
-                className="border-[color:var(--lg-gold)]/50 text-[color:var(--lg-gold-bright)] hover:bg-[color:var(--lg-gold)]/10">
+                className="border-[color:var(--lg-gold)]/50 text-[color:var(--lg-accent-gold)] hover:bg-[color:var(--lg-gold)]/10">
                 <KeyRound className="w-4 h-4 mr-1.5" />
                 Enter invite code
               </Button>
@@ -199,7 +199,7 @@ export default function PlayerLeagues() {
                                 </span>
                               )}
                               {isOrganizer && (
-                                <span className="uppercase tracking-[0.14em] text-[10px] font-bold text-[color:var(--lg-gold-bright)] bg-[color:var(--lg-gold)]/10 px-1.5 py-0.5 rounded ring-1 ring-[color:var(--lg-gold)]/30">
+                                <span className="uppercase tracking-[0.14em] text-[10px] font-bold text-[color:var(--lg-accent-gold)] bg-[color:var(--lg-gold)]/10 px-1.5 py-0.5 rounded ring-1 ring-[color:var(--lg-gold)]/30">
                                   {membership.role}
                                 </span>
                               )}
@@ -211,7 +211,7 @@ export default function PlayerLeagues() {
                               </div>
                             )}
                           </div>
-                          <ChevronRight className="w-4 h-4 text-[color:var(--lg-text-dim)] shrink-0 group-hover:translate-x-0.5 group-hover:text-[color:var(--lg-gold-bright)] transition-all" />
+                          <ChevronRight className="w-4 h-4 text-[color:var(--lg-text-dim)] shrink-0 group-hover:translate-x-0.5 group-hover:text-[color:var(--lg-accent-gold)] transition-all" />
                         </div>
                       </div>
                     </button>
@@ -267,13 +267,13 @@ export default function PlayerLeagues() {
                                     {league.location}
                                   </span>
                                 )}
-                                <span className="inline-flex items-center gap-1 text-[color:var(--lg-gold-bright)] font-medium">
+                                <span className="inline-flex items-center gap-1 text-[color:var(--lg-accent-gold)] font-medium">
                                   <KeyRound className="w-3 h-3" />
                                   Join with code
                                 </span>
                               </div>
                             </div>
-                            <ChevronRight className="w-4 h-4 text-[color:var(--lg-text-dim)] shrink-0 mt-1 group-hover:translate-x-0.5 group-hover:text-[color:var(--lg-gold-bright)] transition-all" />
+                            <ChevronRight className="w-4 h-4 text-[color:var(--lg-text-dim)] shrink-0 mt-1 group-hover:translate-x-0.5 group-hover:text-[color:var(--lg-accent-gold)] transition-all" />
                           </div>
                         </div>
                       </div>
@@ -317,7 +317,7 @@ function LeagueRowIcon({
       className={cn(
         "h-11 w-11 rounded-xl flex items-center justify-center shrink-0 ring-1 ring-inset transition-transform group-hover:scale-105",
         isOrganizer
-          ? "bg-[color:var(--lg-gold)]/15 text-[color:var(--lg-gold-bright)] ring-[color:var(--lg-gold)]/30"
+          ? "bg-[color:var(--lg-gold)]/15 text-[color:var(--lg-accent-gold)] ring-[color:var(--lg-gold)]/30"
           : "bg-[color:var(--lg-emerald)]/20 text-[color:var(--lg-emerald-bright)] ring-[color:var(--lg-emerald)]/40",
       )}
     >

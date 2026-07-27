@@ -85,10 +85,10 @@ export function LeagueHero({
         {/* Meta row */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-2 flex-wrap min-w-0">
-            <LeagueTypeChip type={league.league_type} />
-            <LeagueStatusPill status={league.status} />
+            <LeagueTypeChip type={league.league_type} onHero />
+            <LeagueStatusPill status={league.status} onHero />
             {league.rating_eligible && (
-              <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-[0.14em] text-[color:var(--lg-gold-bright)] ring-1 ring-[color:var(--lg-gold)]/50">
+              <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-[0.14em] text-[color:var(--lg-hero-gold)] ring-1 ring-[color:var(--lg-hero-gold)]/50">
                 Rating-eligible
               </span>
             )}
@@ -98,17 +98,17 @@ export function LeagueHero({
         </div>
 
         {/* Title */}
-        <h1 className="font-display mt-3 text-3xl sm:text-4xl leading-[1] text-[color:var(--lg-text)]">
+        <h1 className="font-display mt-3 text-3xl sm:text-4xl leading-[1] text-[color:var(--lg-hero-text)]">
           {league.name.toUpperCase()}
         </h1>
 
         {league.description && (
-          <p className="text-[color:var(--lg-text-dim)] text-sm mt-2 max-w-2xl leading-relaxed">
+          <p className="text-[color:var(--lg-hero-text-dim)] text-sm mt-2 max-w-2xl leading-relaxed">
             {league.description}
           </p>
         )}
 
-        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[color:var(--lg-text-dim)]">
+        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[color:var(--lg-hero-text-dim)]">
           {league.location && (
             <span className="inline-flex items-center gap-1.5">
               <MapPin className="w-3.5 h-3.5" />
@@ -117,11 +117,11 @@ export function LeagueHero({
           )}
           {managerName && (
             <span className="inline-flex items-center gap-1.5">
-              <UserCircle2 className="w-3.5 h-3.5 text-[color:var(--lg-gold)]" />
-              <span className="text-[10px] uppercase tracking-[0.14em] font-bold text-[color:var(--lg-gold-bright)]">
+              <UserCircle2 className="w-3.5 h-3.5 text-[color:var(--lg-hero-gold)]" />
+              <span className="text-[10px] uppercase tracking-[0.14em] font-bold text-[color:var(--lg-hero-gold)]">
                 Manager
               </span>
-              <span className="text-[color:var(--lg-text)]/90 font-medium">{managerName}</span>
+              <span className="text-[color:var(--lg-hero-text)] font-medium">{managerName}</span>
             </span>
           )}
         </div>
@@ -146,6 +146,7 @@ export function LeagueHero({
 
 /**
  * Scoreboard-style hero stat. Bebas numeral over uppercase gold label.
+ * Uses hero-* tokens because it always sits on the dark hero gradient.
  */
 export function HeroStat({
   icon,
@@ -158,23 +159,31 @@ export function HeroStat({
 }) {
   return (
     <div className="flex flex-col items-start px-4 py-3 first:pl-0">
-      <div className="flex items-center gap-1.5 text-[color:var(--lg-gold-bright)]">
+      <div className="flex items-center gap-1.5 text-[color:var(--lg-hero-gold)]">
         {icon}
         <span className="text-[10px] uppercase tracking-[0.16em] font-bold">{label}</span>
       </div>
-      <div className="lg-num text-3xl sm:text-4xl mt-1 leading-none text-[color:var(--lg-text)]">
+      <div className="lg-num text-3xl sm:text-4xl mt-1 leading-none text-[color:var(--lg-hero-text)]">
         {value}
       </div>
     </div>
   );
 }
 
-/** Type chip — emerald+gold branded, consistent across surfaces. */
-export function LeagueTypeChip({ type }: { type: LeagueType }) {
+/** Type chip — emerald+gold branded, consistent across surfaces.
+ *  Pass onHero to render against the dark hero gradient (constant tokens). */
+export function LeagueTypeChip({ type, onHero = false }: { type: LeagueType; onHero?: boolean }) {
   const meta = LEAGUE_TYPE_META[type];
   const Icon = meta.icon;
   return (
-    <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-[0.14em] bg-[color:var(--lg-eyebrow-bg)] text-[color:var(--lg-eyebrow)] ring-1 ring-[color:var(--lg-eyebrow-ring)]">
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-[0.14em] ring-1",
+        onHero
+          ? "bg-[color:var(--lg-hero-chip-bg)] text-[color:var(--lg-hero-gold)] ring-[color:var(--lg-hero-chip-ring)]"
+          : "bg-[color:var(--lg-eyebrow-bg)] text-[color:var(--lg-accent-gold)] ring-[color:var(--lg-eyebrow-ring)]",
+      )}
+    >
       <Icon className="w-3 h-3" />
       {meta.label}
     </span>
@@ -182,13 +191,14 @@ export function LeagueTypeChip({ type }: { type: LeagueType }) {
 }
 
 /** Status pill — active/draft/archived. */
-export function LeagueStatusPill({ status }: { status: League["status"] }) {
-  const tone =
-    status === "active"
-      ? "bg-[color:var(--lg-emerald)]/25 text-[color:var(--lg-emerald-bright)] ring-1 ring-[color:var(--lg-emerald)]/50"
-      : status === "archived"
-        ? "bg-black/10 text-[color:var(--lg-text-dim)] ring-1 ring-[color:var(--lg-border)]"
-        : "bg-black/10 text-[color:var(--lg-text-dim)] ring-1 ring-[color:var(--lg-border)]";
+export function LeagueStatusPill({ status, onHero = false }: { status: League["status"]; onHero?: boolean }) {
+  const activeTone = onHero
+    ? "bg-[color:var(--lg-emerald-bright)]/25 text-[color:var(--lg-hero-text)] ring-1 ring-[color:var(--lg-emerald-bright)]/60"
+    : "bg-[color:var(--lg-emerald)]/20 text-[color:var(--lg-emerald)] ring-1 ring-[color:var(--lg-emerald)]/40";
+  const mutedTone = onHero
+    ? "bg-white/10 text-[color:var(--lg-hero-text-dim)] ring-1 ring-white/20"
+    : "bg-[color:var(--lg-surface-2)] text-[color:var(--lg-text-dim)] ring-1 ring-[color:var(--lg-border)]";
+  const tone = status === "active" ? activeTone : mutedTone;
   return (
     <span
       className={cn(
@@ -220,7 +230,7 @@ export function LgSectionHeader({
   return (
     <div className={cn("mb-3", className)}>
       <div className="flex items-center justify-between gap-3">
-        <h2 className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-[color:var(--lg-gold-bright)]">
+        <h2 className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-[color:var(--lg-accent-gold)]">
           {Icon && <Icon className="w-3.5 h-3.5" />}
           {children}
         </h2>
@@ -230,3 +240,4 @@ export function LgSectionHeader({
     </div>
   );
 }
+

@@ -148,11 +148,11 @@ export function Td({ children, className, right, mono }: { children: ReactNode; 
  */
 export type ChipTone = "emerald" | "gold" | "slate" | "danger" | "muted";
 const CHIP_TONES: Record<ChipTone, string> = {
-  emerald: "bg-[color:var(--lg-emerald)]/20 text-[color:var(--lg-emerald-bright)] ring-1 ring-[color:var(--lg-emerald)]/40",
-  gold:    "bg-[color:var(--lg-gold)]/15 text-[color:var(--lg-gold-bright)] ring-1 ring-[color:var(--lg-gold)]/40",
-  slate:   "bg-white/5 text-[color:var(--lg-text-dim)] ring-1 ring-white/10",
+  emerald: "bg-[color:var(--lg-emerald)]/20 text-[color:var(--lg-emerald)] ring-1 ring-[color:var(--lg-emerald)]/40",
+  gold:    "bg-[color:var(--lg-gold)]/15 text-[color:var(--lg-accent-gold)] ring-1 ring-[color:var(--lg-gold)]/40",
+  slate:   "bg-[color:var(--lg-surface-2)] text-[color:var(--lg-text-dim)] ring-1 ring-[color:var(--lg-border)]",
   danger:  "bg-[color:var(--lg-danger)]/15 text-[color:var(--lg-danger)] ring-1 ring-[color:var(--lg-danger)]/40",
-  muted:   "bg-white/3 text-[color:var(--lg-text-dim)]/80 ring-1 ring-white/5",
+  muted:   "bg-[color:var(--lg-surface-2)]/60 text-[color:var(--lg-text-dim)]/80 ring-1 ring-[color:var(--lg-border)]/60",
 };
 export function StatusChip({
   tone = "slate", children, icon,
