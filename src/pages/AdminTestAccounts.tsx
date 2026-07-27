@@ -24,6 +24,38 @@ export default function AdminTestAccounts() {
     { manage_url: string; players: number; teams: number; weeks: number; matches: number } | null
   >(null);
 
+  // Ladder-season simulation state
+  const [ladderLoading, setLadderLoading] = useState(false);
+  const [ladderReport, setLadderReport] = useState<any | null>(null);
+
+  const handleSimulateLadder = async (mode: "run" | "teardown") => {
+    setLadderLoading(true);
+    if (mode === "run") setLadderReport(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("simulate-ladder-season", {
+        body: { mode },
+      });
+      if (error) throw error;
+      if (mode === "teardown") {
+        toast.success(`Teardown: removed ${data?.leagues_deleted ?? 0} league(s), ${data?.users_deleted ?? 0} test users`);
+        setLadderReport(null);
+      } else {
+        setLadderReport(data);
+        const fails = (data?.weeks ?? []).flatMap((w: any) =>
+          (w.assertions ?? []).filter((a: any) => !a.passed).map((a: any) => `W${w.week}: ${a.name}`),
+        );
+        if (data?.fatal) toast.error(`Fatal: ${data.fatal}`);
+        else if (fails.length) toast.error(`${fails.length} assertion(s) failed`);
+        else toast.success("Ladder simulation complete — all assertions passed");
+      }
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Simulation failed");
+      console.error(e);
+    } finally {
+      setLadderLoading(false);
+    }
+  };
+
   const handleSimulateLeague = async () => {
     setSimLoading(true);
     setSimResult(null);
