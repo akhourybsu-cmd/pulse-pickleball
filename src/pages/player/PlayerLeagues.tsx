@@ -89,14 +89,14 @@ export default function PlayerLeagues() {
 
           <div className="relative p-5 sm:p-6 flex items-start justify-between gap-4 flex-wrap">
             <div className="min-w-0 flex-1">
-              <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-[color:var(--lg-eyebrow-bg)] text-[color:var(--lg-eyebrow)] text-[10px] font-bold uppercase tracking-[0.16em] ring-1 ring-[color:var(--lg-eyebrow-ring)]">
+              <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-[color:var(--lg-hero-chip-bg)] text-[color:var(--lg-hero-gold)] text-[10px] font-bold uppercase tracking-[0.16em] ring-1 ring-[color:var(--lg-hero-chip-ring)]">
                 <Trophy className="w-3 h-3" />
                 League Play
               </div>
-              <h1 className="font-display mt-3 text-3xl sm:text-4xl leading-[1] text-[color:var(--lg-text)]">
+              <h1 className="font-display mt-3 text-3xl sm:text-4xl leading-[1] text-[color:var(--lg-hero-text)]">
                 MY LEAGUES
               </h1>
-              <p className="text-[color:var(--lg-text-dim)] text-sm mt-2 max-w-md">
+              <p className="text-[color:var(--lg-hero-text-dim)] text-sm mt-2 max-w-md">
                 Leagues you own, play in, or captain — all in one place.
               </p>
             </div>
