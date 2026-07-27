@@ -728,6 +728,10 @@ All colors MUST be HSL.
   --lg-eyebrow-bg: rgba(255, 255, 255, 0.14);
   --lg-eyebrow-ring: rgba(228, 195, 104, 0.55);
 
+  /* On light card surfaces, gold accent text must be darker ink gold
+     to hit AA contrast. Hero tokens stay bright (dark gradient). */
+  --lg-accent-gold: var(--lg-gold-ink);
+
   --background: 44 50% 92%;
   --foreground: 165 65% 10%;
   --card: 0 0% 100%;
