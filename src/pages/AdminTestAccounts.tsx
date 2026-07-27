@@ -30,14 +30,14 @@ export default function AdminTestAccounts() {
 
   // Ladder-sim config (global knobs + per-week scenario injection).
   type WeekRow = {
-    week: number; sitouts: number; subRequests: number;
-    forceTie: boolean; lateSwap: boolean; selfReport: boolean; autoAdvance: boolean;
+    week: number; sitouts: number; subRequests: number; subMix: boolean;
+    forceTie: boolean; dispute: boolean; lateSwap: boolean; selfReport: boolean; autoAdvance: boolean;
   };
   const defaultWeekRows = (n: number): WeekRow[] =>
     Array.from({ length: n }, (_, i) => {
       const week = i + 1;
-      const base: WeekRow = { week, sitouts: 0, subRequests: 0, forceTie: false, lateSwap: false, selfReport: false, autoAdvance: false };
-      if (week === 2) base.subRequests = 4;
+      const base: WeekRow = { week, sitouts: 0, subRequests: 0, subMix: false, forceTie: false, dispute: false, lateSwap: false, selfReport: false, autoAdvance: false };
+      if (week === 2) { base.subRequests = 4; base.subMix = true; }
       else if (week === 3) base.sitouts = 4;
       else if (week === 4) base.forceTie = true;
       else if (week === 5) { base.lateSwap = true; base.selfReport = true; base.autoAdvance = true; }
@@ -78,7 +78,12 @@ export default function AdminTestAccounts() {
           week: r.week,
           sitouts: r.sitouts || undefined,
           subRequests: r.subRequests || undefined,
+          // "Mix" exercises cancel/decline/duplicate-block; otherwise all subs.
+          subResolutions: r.subRequests && r.subMix
+            ? ["sub", "cancel", "decline", "sub"]
+            : undefined,
           forceTie: r.forceTie || undefined,
+          dispute: r.dispute || undefined,
           lateSwap: r.lateSwap || undefined,
           selfReport: r.selfReport || undefined,
           autoAdvance: r.autoAdvance || undefined,
@@ -411,7 +416,9 @@ export default function AdminTestAccounts() {
                     <th className="text-left font-medium px-2 py-1.5">Week</th>
                     <th className="font-medium px-1 py-1.5">Sit-outs</th>
                     <th className="font-medium px-1 py-1.5">Sub reqs</th>
+                    <th className="font-medium px-1 py-1.5">Sub mix</th>
                     <th className="font-medium px-1 py-1.5">Tie</th>
+                    <th className="font-medium px-1 py-1.5">Dispute</th>
                     <th className="font-medium px-1 py-1.5">Late swap</th>
                     <th className="font-medium px-1 py-1.5">Self-report</th>
                     <th className="font-medium px-1 py-1.5">Auto-adv</th>
@@ -432,8 +439,17 @@ export default function AdminTestAccounts() {
                           className="h-7 w-14 mx-auto text-center" disabled={r.week === 1} />
                       </td>
                       <td className="px-1 py-1 text-center">
+                        <input type="checkbox" checked={r.subMix}
+                          disabled={r.week === 1 || !r.subRequests}
+                          onChange={(e) => patchWeek(r.week, { subMix: e.target.checked })} />
+                      </td>
+                      <td className="px-1 py-1 text-center">
                         <input type="checkbox" checked={r.forceTie}
                           onChange={(e) => patchWeek(r.week, { forceTie: e.target.checked })} />
+                      </td>
+                      <td className="px-1 py-1 text-center">
+                        <input type="checkbox" checked={r.dispute}
+                          onChange={(e) => patchWeek(r.week, { dispute: e.target.checked })} />
                       </td>
                       <td className="px-1 py-1 text-center">
                         <input type="checkbox" checked={r.lateSwap}
@@ -456,6 +472,8 @@ export default function AdminTestAccounts() {
               Week 1 is always a clean full week (sit-outs/sub-requests start week 2).
               Sit-out counts that aren't a multiple of four are auto-adjusted after
               demonstrating the ÷4 gate. A forced tie needs at least 3 courts.
+              "Sub mix" resolves the week's requests as sub / cancel / decline
+              (exercising the duplicate-sub block); otherwise all get a sub.
             </p>
 
             <div className="flex gap-2">
