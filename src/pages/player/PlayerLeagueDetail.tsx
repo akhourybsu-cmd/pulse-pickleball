@@ -160,7 +160,7 @@ export default function PlayerLeagueDetail() {
           managerName={managerName}
           eyebrow={
             membership && membership.role !== "player" ? (
-              <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-[0.14em] bg-[color:var(--lg-emerald)]/25 text-[color:var(--lg-emerald-bright)] ring-1 ring-[color:var(--lg-emerald)]/50">
+              <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-[0.14em] bg-[color:var(--lg-hero-chip-bg)] text-[color:var(--lg-hero-gold)] ring-1 ring-[color:var(--lg-hero-chip-ring)]">
                 You're {membership.role}
               </span>
             ) : undefined
