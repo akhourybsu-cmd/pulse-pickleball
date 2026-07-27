@@ -665,6 +665,24 @@ All colors MUST be HSL.
   --lg-eyebrow-bg: rgba(201, 168, 76, 0.15);
   --lg-eyebrow-ring: rgba(201, 168, 76, 0.4);
 
+  /* Hero tokens — CONSTANT across themes because the hero gradient is
+     always dark emerald. Any text/icon on top of .lg-hero-gradient
+     must use --lg-hero-* tokens, not --lg-text/--lg-gold-bright,
+     otherwise light-mode text renders dark-on-dark. */
+  --lg-hero-text: #F5F0E0;
+  --lg-hero-text-dim: rgba(245, 240, 224, 0.78);
+  --lg-hero-gold: #E4C368;
+  --lg-hero-gold-dim: rgba(228, 195, 104, 0.85);
+  --lg-hero-chip-bg: rgba(255, 255, 255, 0.10);
+  --lg-hero-chip-ring: rgba(228, 195, 104, 0.55);
+
+  /* Accent gold for text on the current SURFACE (auto per theme).
+     Light mode below darkens this to gold ink for AA contrast on
+     cream/white cards. Use this instead of --lg-gold-bright anywhere
+     gold text sits on a body surface. */
+  --lg-accent-gold: var(--lg-gold-bright);
+  --lg-gold-ink: #7A5E14;
+
   /* Shadcn semantic overrides so nested primitives render on-brand. */
   --background: 165 55% 9%;
   --foreground: 44 68% 92%;
