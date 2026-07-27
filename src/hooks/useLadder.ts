@@ -70,6 +70,18 @@ export interface LadderMovementRow {
   points_against: number;
 }
 
+export interface LadderWeekSession {
+  id: string;
+  week_number: number;
+  scheduled_date: string | null;
+  start_time: string | null;
+  end_time: string | null;
+  location: string | null;
+  court_count: number | null;
+  capacity: number | null;
+  status: string;
+}
+
 export interface LadderData {
   loading: boolean;
   settings: LadderSettings | null;
@@ -84,6 +96,8 @@ export interface LadderData {
   lastFinalBatch: LadderBatch | null;
   lastFinalGroups: LadderGroup[];
   history: LadderBatch[];
+  weekSessions: LadderWeekSession[];
+  pendingSubRequests: number;
   refresh: () => void;
 }
 
@@ -98,7 +112,7 @@ export function useLadder(
     loading: true, settings: null, memberIds: [], nameOf: (id) => id.slice(0, 8),
     started: false, activeBatch: null, groups: [], games: [],
     currentOrder: [], lastMovements: [], lastFinalBatch: null,
-    lastFinalGroups: [], history: [], refresh,
+    lastFinalGroups: [], history: [], weekSessions: [], pendingSubRequests: 0, refresh,
   });
 
   useEffect(() => {
@@ -108,7 +122,8 @@ export function useLadder(
     (async () => {
       setData((d) => ({ ...d, loading: true }));
 
-      const [{ data: settingsRow }, { data: mems }, { data: batchRows }, { data: snapRows }] =
+      const [{ data: settingsRow }, { data: mems }, { data: batchRows }, { data: snapRows },
+             { data: sessRows }, { count: pendingCount }] =
         await Promise.all([
           supabase.from("ladder_settings" as never).select("*").eq("season_id", seasonId).maybeSingle(),
           supabase.from("league_members" as never).select("user_id")
@@ -121,12 +136,20 @@ export function useLadder(
             .eq("season_id", seasonId)
             .order("week_number", { ascending: false })
             .order("batch_number", { ascending: false }),
+          supabase.from("league_sessions" as never).select("*")
+            .eq("season_id", seasonId)
+            .not("week_number", "is", null)
+            .order("week_number", { ascending: true }),
+          supabase.from("ladder_sub_requests" as never)
+            .select("id", { count: "exact", head: true })
+            .eq("season_id", seasonId).eq("status", "pending"),
         ]);
 
       const settings = (settingsRow ?? null) as unknown as LadderSettings | null;
       const memberIds = ((mems ?? []) as Array<{ user_id: string }>).map((m) => m.user_id);
       const batches = (batchRows ?? []) as unknown as LadderBatch[];
       const snapshots = (snapRows ?? []) as unknown as Array<{ player_ids: string[] }>;
+      const weekSessions = (sessRows ?? []) as unknown as LadderWeekSession[];
 
       // Names for members + everyone in the latest snapshot.
       const nameIds = new Set<string>(memberIds);
@@ -186,7 +209,8 @@ export function useLadder(
           loading: false, settings, memberIds, nameOf,
           started: batches.length > 0, activeBatch, groups, games,
           currentOrder, lastMovements, lastFinalBatch: lastFinal,
-          lastFinalGroups, history, refresh,
+          lastFinalGroups, history, weekSessions,
+          pendingSubRequests: pendingCount ?? 0, refresh,
         });
       }
     })().catch(() => { if (!cancelled) setData((d) => ({ ...d, loading: false })); });

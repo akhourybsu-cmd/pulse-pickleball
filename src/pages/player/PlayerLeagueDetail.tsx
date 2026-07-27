@@ -13,6 +13,7 @@ import { sideName } from "@/lib/leagues/matchSides";
 import { resolvePlayerName } from "@/lib/matchDisplay";
 import { computePlayerStandings, computeTeamStandings } from "@/lib/leagues/standings";
 import { StandingsTable } from "@/components/leagues/StandingsTable";
+import { LadderSubRequestCard } from "@/components/leagues/LadderSubRequestCard";
 import { LeagueMatchActions } from "@/components/leagues/LeagueMatchActions";
 import { LadderTiebreakPrompt } from "@/components/leagues/LadderTiebreakPrompt";
 import { cn } from "@/lib/utils";
@@ -220,6 +221,15 @@ export default function PlayerLeagueDetail() {
                    value={myRow ? `${myRow.wins}–${myRow.losses}` : "0–0"} />
         </div>
       </div>
+
+      {/* Request a sub — ladder leagues only */}
+      {league.league_type === "ladder" && (
+        <LadderSubRequestCard
+          leagueId={league.id}
+          seasonId={season?.id ?? null}
+          currentUserId={currentUserId}
+        />
+      )}
 
       {/* Standings — only render if there's anything to show */}
       {standings.length > 0 && (

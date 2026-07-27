@@ -117,6 +117,35 @@ Deno.serve(async (req) => {
       }, 409)
     }
 
+    // The session this stage fills: a same-week batch reuses the current
+    // week's session; a new week uses the organizer-selected/created session.
+    const effectiveSessionId: string | null = sameWeek
+      ? ((last.session_id as string | null) ?? null)
+      : (session_id ?? null)
+
+    // A NEW WEEK must be scheduled first — the client selects a pre-scheduled
+    // session or creates one, then passes its id. No session → prompt.
+    if (kind === 'week' && !effectiveSessionId) {
+      return json({
+        error: 'no_session',
+        message: `Schedule Week ${nextWeek} (set its date) before generating it.`,
+      }, 409)
+    }
+
+    // GATE: every sub-request for this week's session must be resolved
+    // (a specific fill-in assigned, sat out, or declined) before generating.
+    if (kind === 'week' && effectiveSessionId) {
+      const { data: pendRows } = await supabase
+        .from('ladder_sub_requests').select('player_id')
+        .eq('session_id', effectiveSessionId).eq('status', 'pending')
+      if ((pendRows ?? []).length > 0) {
+        return json({
+          error: 'unresolved_requests',
+          message: `${(pendRows ?? []).length} sub request(s) for Week ${nextWeek} still need a decision.`,
+        }, 409)
+      }
+    }
+
     // ---- seed order = result snapshot of the last processed batch -----
     const { data: startSnap } = await supabase
       .from('ladder_snapshots').select('*')
@@ -167,12 +196,7 @@ Deno.serve(async (req) => {
     const plan = {
       batch: {
         week: nextWeek, batch: nextBatch,
-        // Same-week next batch shares the session; a new week uses the
-        // organizer-confirmed session_id (from the date/time dialog) when
-        // provided, otherwise starts unscheduled.
-        session_id: sameWeek
-          ? (last.session_id ?? null)
-          : (session_id ?? null),
+        session_id: effectiveSessionId,
         court_waves: Math.ceil(groups.length / courtCount),
         idempotency_key: `batch:${season_id}:${nextWeek}:${nextBatch}`,
         groups,
@@ -186,9 +210,41 @@ Deno.serve(async (req) => {
     })
     if (error) return json({ error: error.message }, 400)
 
+    const genResult = (result ?? {}) as { batch_id?: string; already_existed?: boolean }
+    const newBatchId = genResult.batch_id
+
+    // ---- seed assigned subs into the fresh batch ----------------------
+    // A 'sub' resolution keeps the absent player in the ladder (they hold
+    // their rung) but the assigned fill-in plays their slots. We apply it
+    // with the tested, audited per-week swap scoped to this new batch, so
+    // the stand-in mapping (sub -> original for ranking) is recorded exactly
+    // as an organizer's manual swap would be. Only when we actually created
+    // the batch (not an idempotent re-return).
+    const subSeedErrors: string[] = []
+    if (newBatchId && !genResult.already_existed && effectiveSessionId) {
+      const { data: subReqs } = await supabase
+        .from('ladder_sub_requests')
+        .select('player_id, assigned_sub_id')
+        .eq('session_id', effectiveSessionId).eq('status', 'sub')
+      for (const r of (subReqs ?? []) as Array<{ player_id: string; assigned_sub_id: string | null }>) {
+        if (!r.assigned_sub_id) continue
+        const { data: swapData, error: swapErr } = await supabase.rpc('swap_league_week_player', {
+          p_league_id: settings.league_id,
+          p_season_id: season_id,
+          p_out_player_id: r.player_id,
+          p_in_player_id: r.assigned_sub_id,
+          p_note: 'Requested sub',
+          p_batch_id: newBatchId,
+        })
+        const swapErrMsg = swapErr?.message ?? (swapData as { error?: string } | null)?.error
+        if (swapErrMsg) subSeedErrors.push(swapErrMsg)
+      }
+    }
+
     return json({
       success: true, kind, week: nextWeek, batch: nextBatch,
-      ...(result as Record<string, unknown>),
+      ...(genResult as Record<string, unknown>),
+      ...(subSeedErrors.length ? { sub_seed_errors: subSeedErrors } : {}),
     })
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)
