@@ -63,8 +63,10 @@ BEGIN
   IF v_user IS NULL THEN
     RAISE EXCEPTION 'Authentication required' USING ERRCODE = '28000';
   END IF;
-  IF p_week_number IS NULL OR p_week_number < 1 THEN
-    RAISE EXCEPTION 'A valid week number is required' USING ERRCODE = '22023';
+  -- Week 1 defines the ladder's starting roster (set when the season is
+  -- launched), so sit-outs only make sense from week 2 onward.
+  IF p_week_number IS NULL OR p_week_number < 2 THEN
+    RAISE EXCEPTION 'Sit-outs apply from week 2 onward' USING ERRCODE = '22023';
   END IF;
 
   SELECT league_id INTO v_league_id FROM public.league_seasons WHERE id = p_season_id;

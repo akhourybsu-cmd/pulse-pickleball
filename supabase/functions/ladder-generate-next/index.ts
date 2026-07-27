@@ -24,7 +24,7 @@
 // =====================================================================
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { groupIntoFours, batchMatchups, LadderError } from '../_shared/leagues/ladder.ts'
+import { groupIntoFours, batchMatchups, excludeSitouts, LadderError } from '../_shared/leagues/ladder.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -124,10 +124,31 @@ Deno.serve(async (req) => {
     if (!startSnap) return json({ error: 'Processed result snapshot missing' }, 500)
     const order = startSnap.player_ids as string[]
 
+    // ---- sit-outs: players with no sub this week close ranks out ------
+    // The full ladder stays the batch's start snapshot; only the PRESENT
+    // players are grouped. They must still number a multiple of four
+    // (excludeSitouts enforces it — the organizer resolves any shortfall).
+    const { data: sitRows } = await supabase
+      .from('ladder_week_sitouts').select('player_id')
+      .eq('season_id', season_id).eq('week_number', nextWeek)
+    const sitSet = new Set((sitRows ?? []).map((r: { player_id: string }) => r.player_id))
+    // Only sit players actually on the ladder (defensive against stale rows).
+    const effectiveSitouts = order.filter((p) => sitSet.has(p))
+
     // ---- build the batch structure with the tested engine ------------
+    let present: string[]
+    try {
+      present = excludeSitouts(order, effectiveSitouts)
+    } catch (e) {
+      if (e instanceof LadderError) {
+        return json({ error: 'invalid_player_count', message: e.message }, 400)
+      }
+      throw e
+    }
+
     let groups
     try {
-      groups = groupIntoFours(order).map((grp, gi) => ({
+      groups = groupIntoFours(present).map((grp, gi) => ({
         group_index: gi,
         court_number: (gi % courtCount) + 1,
         wave: Math.floor(gi / courtCount) + 1,

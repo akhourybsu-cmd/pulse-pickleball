@@ -28,7 +28,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import {
-  computeBatchOutcome, detectTieBreaks,
+  computeBatchOutcome, detectTieBreaks, excludeSitouts, reinsertSitouts,
   type LadderGameResult,
 } from '../_shared/leagues/ladder.ts'
 
@@ -135,7 +135,23 @@ Deno.serve(async (req) => {
       })
     })
 
-    const order: string[] = startSnap.player_ids as string[]
+    const fullOrder: string[] = startSnap.player_ids as string[]
+
+    // ---- sit-outs: reconstruct the PRESENT set the week was played with.
+    // The engine ranks/moves only the players who played; sitting players
+    // hold their rung and are re-inserted into the full result afterward.
+    const { data: sitRows } = await supabase
+      .from('ladder_week_sitouts').select('player_id')
+      .eq('season_id', batch.season_id).eq('week_number', batch.week_number)
+    const sitSet = new Set((sitRows ?? []).map((r: { player_id: string }) => r.player_id))
+    const effectiveSitouts = fullOrder.filter((p) => sitSet.has(p))
+    let order: string[]
+    try {
+      order = excludeSitouts(fullOrder, effectiveSitouts)
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e)
+      return json({ error: 'invalid_player_count', message }, 400)
+    }
 
     // ---- tiebreaks: any tie that decides a move needs organizer input --
     const needs = detectTieBreaks(order, gamesByGroup)
@@ -181,11 +197,25 @@ Deno.serve(async (req) => {
     const week = batch.week_number as number
     const bnum = batch.batch_number as number
 
+    // Rebuild the full ladder: sitting players hold the rung they started
+    // on; the players who played fill the in-play rungs in their new order.
+    let nextOrder: string[]
+    try {
+      nextOrder = effectiveSitouts.length
+        ? reinsertSitouts(fullOrder, outcome.nextOrder, effectiveSitouts)
+        : outcome.nextOrder
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e)
+      return json({ error: 'sitout_reinsert_failed', message }, 500)
+    }
+
     const plan = {
       result_snapshot: {
         week, batch: bnum,
-        player_ids: outcome.nextOrder,
-        reason: `week ${week} batch ${bnum} processed`,
+        player_ids: nextOrder,
+        reason: effectiveSitouts.length
+          ? `week ${week} batch ${bnum} processed (${effectiveSitouts.length} sat out)`
+          : `week ${week} batch ${bnum} processed`,
         idempotency_key: `res:${batch.season_id}:${week}:${bnum}`,
       },
       movements,
