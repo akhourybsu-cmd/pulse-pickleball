@@ -2,6 +2,7 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/leagues/ActionButton";
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -140,9 +141,9 @@ export function LeagueMatchActions({
           </div>
         ) : (
           <>
-            <Button
+            <ActionButton
               size="sm" variant="outline" className="h-8 text-xs"
-              onClick={async () => {
+              onClickAsync={async () => {
                 const { error } = await supabase
                   .rpc("verify_league_match" as never, { p_match_id: match.id } as never);
                 if (error) {
@@ -156,22 +157,22 @@ export function LeagueMatchActions({
             >
               <Check className="w-3.5 h-3.5 mr-1" />
               Confirm
-            </Button>
-            <Button
+            </ActionButton>
+            <ActionButton
               size="sm" variant="ghost"
               className="h-8 text-xs text-muted-foreground hover:text-destructive"
               onClick={() => setDisputeOpen(true)}
             >
               <X className="w-3.5 h-3.5 mr-1" />
               Dispute
-            </Button>
+            </ActionButton>
           </>
         )
       ) : null}
 
       {/* Enter/re-enter score. Always available to participants when
           the match isn't yet verified/canceled/forfeit. */}
-      <Button
+      <ActionButton
         size="sm"
         variant={match.status === "score_submitted" ? "ghost" : "outline"}
         className="h-8 text-xs"
@@ -181,19 +182,19 @@ export function LeagueMatchActions({
         {match.status === "score_submitted"
           ? iSubmitted ? "Edit score" : "Fix score"
           : "Enter score"}
-      </Button>
+      </ActionButton>
 
       {/* Captain-only concede — hidden from regular teammates so a
           frustrated player can't hand the match to the other side. */}
       {canForfeit && (
-        <Button
+        <ActionButton
           size="sm" variant="ghost"
           className="h-8 text-xs text-muted-foreground hover:text-amber-600"
           onClick={() => setForfeitOpen(true)}
         >
           <Flag className="w-3.5 h-3.5 mr-1" />
           Concede
-        </Button>
+        </ActionButton>
       )}
 
       <SubmitScoreDialog
@@ -322,12 +323,12 @@ function SubmitScoreDialog({
           </p>
         </div>
         <DialogFooter>
-          <Button
-            onClick={submit} disabled={saving}
+          <ActionButton
+            onClick={submit} loading={saving}
             className="w-full h-11"
           >
-            {saving ? "Submitting…" : "Submit"}
-          </Button>
+            Submit
+          </ActionButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -382,19 +383,19 @@ function DisputeDialog({
           </div>
         </div>
         <DialogFooter className="gap-2 sm:gap-2">
-          <Button
+          <ActionButton
             variant="ghost" className="flex-1"
             onClick={() => onOpenChange(false)}
             disabled={saving}
           >
             Cancel
-          </Button>
-          <Button
+          </ActionButton>
+          <ActionButton
             variant="destructive" className="flex-1"
-            onClick={submit} disabled={saving}
+            onClick={submit} loading={saving}
           >
-            {saving ? "Submitting…" : "Submit dispute"}
-          </Button>
+            Submit dispute
+          </ActionButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -1,5 +1,6 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/leagues/ActionButton";
 import {
   ArrowLeft, Trophy,
   CalendarDays, Users, CalendarClock,
@@ -100,12 +101,12 @@ export default function PlayerLeagueDetail() {
           <p className="text-xs text-[color:var(--lg-text-dim)] mt-1">
             This league might have ended or your membership isn't active.
           </p>
-          <Button
-            size="sm" variant="outline" className="mt-4 border-[color:var(--lg-gold)]/50 text-[color:var(--lg-accent-gold)]"
+          <ActionButton
+            size="sm" variant="outline" className="group mt-4 border-[color:var(--lg-gold)]/50 text-[color:var(--lg-accent-gold)]"
             onClick={() => navigate("/player/leagues")}
           >
-            <ArrowLeft className="w-4 h-4 mr-1.5" /> Back to my leagues
-          </Button>
+            <ArrowLeft className="w-4 h-4 mr-1.5 motion-safe:transition-transform motion-safe:group-hover:-translate-x-0.5" /> Back to my leagues
+          </ActionButton>
         </div>
       </LeagueScope>
     );
@@ -136,22 +137,22 @@ export default function PlayerLeagueDetail() {
     <LeagueScope>
       <div className="container mx-auto px-4 py-5 max-w-3xl space-y-5">
         <div className="flex items-center justify-between gap-2">
-          <Button
+          <ActionButton
             variant="ghost" size="sm" onClick={() => navigate("/player/leagues")}
-            className="-ml-2 h-8 text-[color:var(--lg-text-dim)] hover:text-[color:var(--lg-text)] hover:bg-[color:var(--lg-surface-2)]"
+            className="group -ml-2 h-8 text-[color:var(--lg-text-dim)] hover:text-[color:var(--lg-text)] hover:bg-[color:var(--lg-surface-2)]"
           >
-            <ArrowLeft className="w-4 h-4 mr-1.5" />
+            <ArrowLeft className="w-4 h-4 mr-1.5 motion-safe:transition-transform motion-safe:group-hover:-translate-x-0.5" />
             My leagues
-          </Button>
+          </ActionButton>
           {isOrganizer && (
-            <Button
+            <ActionButton
               size="sm" variant="outline"
               onClick={() => navigate(`/player/leagues/${league.id}/manage`)}
               className="h-8 border-[color:var(--lg-gold)]/50 bg-transparent text-[color:var(--lg-accent-gold)] hover:bg-[color:var(--lg-gold)]/10"
             >
               <Settings className="w-4 h-4 mr-1.5" />
               Manage
-            </Button>
+            </ActionButton>
           )}
         </div>
 
