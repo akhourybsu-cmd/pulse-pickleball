@@ -259,7 +259,10 @@ export default function AdminLeagueDetail() {
                 initial="enter"
                 animate="center"
                 exit="exit"
-                transition={{ duration: DUR.content, ease: EASE_OUT }}
+                // mode="wait" runs exit then enter serially, so each half is
+                // kept short to keep the whole switch within the ~200-320ms
+                // perceived-content budget.
+                transition={{ duration: DUR.hover, ease: EASE_OUT }}
               >
                 {activeTab === "overview" && (
                   <OverviewTab league={league} onRefresh={refresh} onMutated={onDataMutated} />
