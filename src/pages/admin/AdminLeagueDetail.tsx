@@ -19,9 +19,8 @@ import { SessionsTab } from "@/components/admin/leagues/SessionsTab";
 import { MatchesTab } from "@/components/admin/leagues/MatchesTab";
 import { StandingsTab } from "@/components/admin/leagues/StandingsTab";
 import { AuditLogTab } from "@/components/admin/leagues/AuditLogTab";
-import {
-  LeagueManageNav, type ManageTab, MANAGE_TABS,
-} from "@/components/admin/leagues/LeagueManageNav";
+import { LeagueManageNav } from "@/components/admin/leagues/LeagueManageNav";
+import { type ManageTab, MANAGE_TABS } from "@/components/admin/leagues/leagueManageTabs";
 import { LeagueScope, LeagueHero } from "@/components/leagues/_leagueScope";
 
 interface Counts {
