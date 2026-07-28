@@ -1,5 +1,5 @@
 import { ReactNode } from "react";
-import { motion, Transition } from "framer-motion";
+import { motion, Transition, useReducedMotion } from "framer-motion";
 
 interface WizardCardProps {
   children: ReactNode;
@@ -21,6 +21,13 @@ const variants = {
   }),
 };
 
+// Reduced-motion users get a plain cross-fade with no horizontal travel.
+const reducedVariants = {
+  enter: { x: 0, opacity: 0 },
+  center: { x: 0, opacity: 1 },
+  exit: { x: 0, opacity: 0 },
+};
+
 // Softer spring — smaller distance + faster settle for a snappy but smooth feel.
 const transition: Transition = {
   type: "spring",
@@ -37,14 +44,15 @@ const transition: Transition = {
  * --primary) so it adapts to both light and dark themes automatically.
  */
 export function WizardCard({ children, direction }: WizardCardProps) {
+  const reduced = useReducedMotion();
   return (
     <motion.div
       custom={direction}
-      variants={variants}
+      variants={reduced ? reducedVariants : variants}
       initial="enter"
       animate="center"
       exit="exit"
-      transition={transition}
+      transition={reduced ? { duration: 0.15 } : transition}
       className="w-full"
     >
       <div

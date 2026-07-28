@@ -1,5 +1,8 @@
 import { ChevronLeft } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { DUR, EASE_OUT, PRESSABLE } from "@/lib/motion";
+import { cn } from "@/lib/utils";
 
 interface WizardProgressProps {
   currentStep: number;
@@ -30,9 +33,10 @@ export function WizardProgress({
   canGoBack,
   stepLabel,
 }: WizardProgressProps) {
+  const reduced = useReducedMotion();
   // 1-based display, clamped so the bar fills at the final step.
   const oneBased = currentStep + 1;
-  const pct = Math.min(100, Math.max(0, ((currentStep + 1) / totalSteps) * 100));
+  const frac = Math.min(1, Math.max(0, (currentStep + 1) / totalSteps));
 
   return (
     <div className="mb-6 space-y-2.5">
@@ -43,10 +47,10 @@ export function WizardProgress({
             variant="ghost"
             size="icon"
             onClick={onBack}
-            className="h-8 w-8 flex-shrink-0 -ml-2"
+            className={cn("group h-8 w-8 flex-shrink-0 -ml-2", PRESSABLE)}
             aria-label="Previous step"
           >
-            <ChevronLeft className="h-5 w-5" />
+            <ChevronLeft className="h-5 w-5 motion-safe:transition-transform motion-safe:group-hover:-translate-x-0.5" />
           </Button>
         ) : (
           // Keep horizontal alignment stable when back is unavailable —
@@ -70,11 +74,15 @@ export function WizardProgress({
       </div>
 
       {/* Progress bar — continuous fill, easier to read than dots at
-          13-step density. */}
+          13-step density. Animated via a transform (scaleX) rather than
+          width, so it stays smooth and cheap; reduced motion snaps. */}
       <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
-        <div
-          className="h-full bg-primary transition-[width] duration-300 ease-out rounded-full"
-          style={{ width: `${pct}%` }}
+        <motion.div
+          className="h-full origin-left bg-primary rounded-full"
+          initial={false}
+          animate={{ scaleX: frac }}
+          transition={reduced ? { duration: 0 } : { duration: DUR.content, ease: EASE_OUT }}
+          style={{ width: "100%" }}
         />
       </div>
     </div>
