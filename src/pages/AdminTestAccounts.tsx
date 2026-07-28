@@ -24,9 +24,23 @@ export default function AdminTestAccounts() {
     { manage_url: string; players: number; teams: number; weeks: number; matches: number } | null
   >(null);
 
-  // Ladder-season simulation state
+  // Ladder-season simulation state (report shape mirrors the edge function).
+  type SimAssertion = { name: string; passed: boolean; detail?: unknown };
+  type SimWeek = {
+    week: number; scenario: string; actions: string[];
+    counts: Record<string, number>; assertions: SimAssertion[];
+  };
+  type SimRatingDelta = { player: string; before: number | null; after: number | null; games: number };
+  type LadderSimReport = {
+    success: boolean;
+    fatal?: string;
+    manage_url?: string;
+    league_id?: string;
+    weeks?: SimWeek[];
+    rating_deltas?: SimRatingDelta[];
+  };
   const [ladderLoading, setLadderLoading] = useState(false);
-  const [ladderReport, setLadderReport] = useState<any | null>(null);
+  const [ladderReport, setLadderReport] = useState<LadderSimReport | null>(null);
 
   // Ladder-sim config (global knobs + per-week scenario injection).
   type WeekRow = {
@@ -94,14 +108,16 @@ export default function AdminTestAccounts() {
       });
       if (error) throw error;
       if (mode === "teardown") {
-        toast.success(`Teardown: removed ${data?.leagues_deleted ?? 0} league(s), ${data?.users_deleted ?? 0} test users`);
+        const td = (data ?? {}) as { leagues_deleted?: number; users_deleted?: number };
+        toast.success(`Teardown: removed ${td.leagues_deleted ?? 0} league(s), ${td.users_deleted ?? 0} test users`);
         setLadderReport(null);
       } else {
-        setLadderReport(data);
-        const fails = (data?.weeks ?? []).flatMap((w: any) =>
-          (w.assertions ?? []).filter((a: any) => !a.passed).map((a: any) => `W${w.week}: ${a.name}`),
+        const report = (data ?? null) as LadderSimReport | null;
+        setLadderReport(report);
+        const fails = (report?.weeks ?? []).flatMap((w) =>
+          w.assertions.filter((a) => !a.passed).map((a) => `W${w.week}: ${a.name}`),
         );
-        if (data?.fatal) toast.error(`Fatal: ${data.fatal}`);
+        if (report?.fatal) toast.error(`Fatal: ${report.fatal}`);
         else if (fails.length) toast.error(`${fails.length} assertion(s) failed`);
         else toast.success("Ladder simulation complete — all assertions passed");
       }
@@ -522,17 +538,17 @@ export default function AdminTestAccounts() {
                   </AlertDescription>
                 </Alert>
 
-                {(ladderReport.weeks ?? []).map((w: any) => (
+                {(ladderReport.weeks ?? []).map((w) => (
                   <div key={w.week} className="border rounded-lg p-3 space-y-2">
                     <div className="flex items-center justify-between">
                       <p className="font-semibold">Week {w.week}</p>
                       <span className="text-xs text-muted-foreground">
-                        {w.assertions.filter((a: any) => a.passed).length}/{w.assertions.length} passed
+                        {w.assertions.filter((a) => a.passed).length}/{w.assertions.length} passed
                       </span>
                     </div>
                     <p className="text-sm text-muted-foreground">{w.scenario}</p>
                     <ul className="text-xs space-y-1">
-                      {w.assertions.map((a: any, i: number) => (
+                      {w.assertions.map((a, i: number) => (
                         <li key={i} className={a.passed ? "text-emerald-600" : "text-destructive"}>
                           {a.passed ? "✓" : "✗"} {a.name}
                           {!a.passed && a.detail != null && (
@@ -544,13 +560,13 @@ export default function AdminTestAccounts() {
                   </div>
                 ))}
 
-                {ladderReport.rating_deltas?.length > 0 && (
+                {(ladderReport.rating_deltas?.length ?? 0) > 0 && (
                   <details className="border rounded-lg p-3">
                     <summary className="cursor-pointer font-semibold text-sm">
-                      Rating deltas ({ladderReport.rating_deltas.length} players)
+                      Rating deltas ({ladderReport.rating_deltas!.length} players)
                     </summary>
                     <div className="mt-2 max-h-60 overflow-y-auto text-xs space-y-1">
-                      {ladderReport.rating_deltas.map((d: any, i: number) => (
+                      {ladderReport.rating_deltas!.map((d, i: number) => (
                         <div key={i} className="flex justify-between">
                           <span>{d.player}</span>
                           <span className="text-muted-foreground">

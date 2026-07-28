@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/leagues/ActionButton";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import { CalendarClock, UserX, CheckCircle2, Ban, Clock } from "lucide-react";
+import { CalendarClock, UserX, CheckCircle2, Ban, Clock, Check } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { PRESSABLE_CARD } from "@/lib/leagues/motion";
 
 interface WeekShell {
   id: string;
@@ -139,10 +141,10 @@ export function LadderSubRequestCard({
           Can't make a week?
         </h2>
         {openWeeks.length > 0 && (
-          <Button size="sm" variant="outline" className="h-8 text-xs"
+          <ActionButton size="sm" variant="outline" className="h-9 text-xs"
             onClick={() => { setPickWeek(openWeeks[0].id); setOpen(true); }}>
             Request a sub
-          </Button>
+          </ActionButton>
         )}
       </div>
 
@@ -154,17 +156,17 @@ export function LadderSubRequestCard({
               const m = statusMeta(r.status);
               return (
                 <li key={r.id} className="flex items-center justify-between gap-3 text-xs">
-                  <span className="flex items-center gap-1.5 min-w-0">
+                  <span className="flex flex-wrap items-center gap-1.5 min-w-0 break-words">
                     <span className="font-semibold">Week {r.week_number}</span>
                     <span className={`inline-flex items-center gap-1 ${m.cls}`}>
                       {m.icon}{m.label}
                     </span>
                   </span>
                   {r.status === "pending" && (
-                    <Button size="sm" variant="ghost" disabled={busy}
-                      onClick={() => cancel(r.id)} className="h-7 text-xs text-muted-foreground shrink-0">
+                    <ActionButton size="sm" variant="ghost" disabled={busy}
+                      onClick={() => cancel(r.id)} className="h-9 text-xs text-muted-foreground shrink-0">
                       Cancel
-                    </Button>
+                    </ActionButton>
                   )}
                 </li>
               );
@@ -190,17 +192,29 @@ export function LadderSubRequestCard({
             <div>
               <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Week</div>
               <div className="space-y-1.5 max-h-56 overflow-y-auto">
-                {openWeeks.map((w) => (
-                  <button key={w.id} type="button" onClick={() => setPickWeek(w.id)}
-                    className={`w-full text-left rounded-lg border px-3 py-2 text-sm transition-colors ${
-                      pickWeek === w.id
-                        ? "border-primary bg-primary/5 font-semibold"
-                        : "border-border/70 hover:border-primary/40"
-                    }`}>
-                    {fmt(w)}
-                    {w.location ? <span className="text-muted-foreground"> · {w.location}</span> : null}
-                  </button>
-                ))}
+                {openWeeks.map((w) => {
+                  const picked = pickWeek === w.id;
+                  return (
+                    <button key={w.id} type="button" onClick={() => setPickWeek(w.id)}
+                      aria-pressed={picked}
+                      className={cn(
+                        "relative w-full text-left rounded-lg border px-3 py-2 pr-8 text-sm transition-colors",
+                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
+                        PRESSABLE_CARD,
+                        picked
+                          ? "border-primary bg-primary/5 font-semibold"
+                          : "border-border/70 hover:border-primary/40",
+                      )}>
+                      {fmt(w)}
+                      {w.location ? <span className="text-muted-foreground"> · {w.location}</span> : null}
+                      {picked && (
+                        <span aria-hidden className="absolute top-1/2 right-2 -translate-y-1/2 inline-flex h-4 w-4 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                          <Check className="h-3 w-3" strokeWidth={3} />
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
             <div>
@@ -210,11 +224,11 @@ export function LadderSubRequestCard({
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)} disabled={busy}>Cancel</Button>
-            <Button onClick={submit} disabled={!pickWeek || busy}
+            <ActionButton variant="outline" onClick={() => setOpen(false)} disabled={busy}>Cancel</ActionButton>
+            <ActionButton onClick={submit} loading={busy} disabled={!pickWeek}
               className="font-bold uppercase tracking-wide">
-              {busy ? "Sending…" : "Send request"}
-            </Button>
+              Send request
+            </ActionButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>

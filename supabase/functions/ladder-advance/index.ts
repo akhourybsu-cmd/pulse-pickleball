@@ -92,6 +92,29 @@ Deno.serve(async (req) => {
         })),
       }))
 
+    // Re-seed assigned subs into a freshly-generated same-week batch. Subs
+    // are per-week; batch 1 is seeded by ladder-generate-next, but auto-
+    // advance builds batches 2+, so we must re-apply them here too (via the
+    // swap RPC's service_role bypass). Mirrors ladder-generate-next.
+    const seedSubs = async (leagueId: string, sessionId: string | null, batchId: string): Promise<string[]> => {
+      if (!sessionId || !batchId) return []
+      const errs: string[] = []
+      const { data: subReqs } = await supabase
+        .from('ladder_sub_requests').select('player_id, assigned_sub_id')
+        .eq('session_id', sessionId).eq('status', 'sub')
+      for (const r of (subReqs ?? []) as Array<{ player_id: string; assigned_sub_id: string | null }>) {
+        if (!r.assigned_sub_id) continue
+        const { data: sd, error: se } = await supabase.rpc('swap_league_week_player', {
+          p_league_id: leagueId, p_season_id: season_id,
+          p_out_player_id: r.player_id, p_in_player_id: r.assigned_sub_id,
+          p_note: 'Requested sub', p_batch_id: batchId,
+        })
+        const msg = se?.message ?? (sd as { error?: string } | null)?.error
+        if (msg) errs.push(msg)
+      }
+      return errs
+    }
+
     // ---- find the active batch ---------------------------------------
     const { data: batchRows } = await supabase
       .from('ladder_batches').select('*')
@@ -133,7 +156,7 @@ Deno.serve(async (req) => {
         if (e instanceof LadderError) return json({ skipped: 'invalid_player_count', message: e.message })
         throw e
       }
-      const { error: genErr } = await supabase.rpc('ladder_generate_batch', {
+      const { data: genData, error: genErr } = await supabase.rpc('ladder_generate_batch', {
         p_season_id: season_id,
         p_start_snapshot_id: seedSnap.id,
         p_plan: {
@@ -147,7 +170,14 @@ Deno.serve(async (req) => {
         },
       })
       if (genErr) return json({ error: genErr.message, phase: 'generate' }, 400)
-      return json({ advanced: true, generated: { week: lastWeek, batch: nextBatch } })
+      const gd = (genData ?? {}) as { batch_id?: string; already_existed?: boolean }
+      const seedErrs = (gd.batch_id && !gd.already_existed)
+        ? await seedSubs(last.league_id as string, last.session_id as string | null, gd.batch_id)
+        : []
+      return json({
+        advanced: true, generated: { week: lastWeek, batch: nextBatch },
+        ...(seedErrs.length ? { sub_seed_errors: seedErrs } : {}),
+      })
     }
 
     const batchId = active.id as string
@@ -337,7 +367,7 @@ Deno.serve(async (req) => {
       }
       throw e
     }
-    const { error: genErr } = await supabase.rpc('ladder_generate_batch', {
+    const { data: genData2, error: genErr } = await supabase.rpc('ladder_generate_batch', {
       p_season_id: season_id,
       p_start_snapshot_id: resultSnap.id,
       p_plan: {
@@ -351,11 +381,16 @@ Deno.serve(async (req) => {
       },
     })
     if (genErr) return json({ error: genErr.message, phase: 'generate' }, 400)
+    const gd2 = (genData2 ?? {}) as { batch_id?: string; already_existed?: boolean }
+    const seedErrs2 = (gd2.batch_id && !gd2.already_existed)
+      ? await seedSubs(active.league_id as string, active.session_id as string | null, gd2.batch_id)
+      : []
 
     return json({
       advanced: true,
       processed: { week, batch: bnum },
       generated: { week, batch: nextBatch },
+      ...(seedErrs2.length ? { sub_seed_errors: seedErrs2 } : {}),
     })
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)

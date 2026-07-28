@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
+import { ActionButton } from "@/components/leagues/ActionButton";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -20,6 +21,7 @@ import type { League, LeagueSeason } from "@/lib/leagues/types";
 import { resolvePlayerName } from "@/lib/matchDisplay";
 import { formatDistanceToNow } from "date-fns";
 import { gamesPerPlayer } from "@/lib/leagues/ladder";
+import { DUR, EASE_OUT } from "@/lib/leagues/motion";
 import {
   useLadder, type LadderGame, type LadderGroup, type LadderMovementRow,
 } from "@/hooks/useLadder";
@@ -229,10 +231,10 @@ function LadderSetup({
         </label>
       </FormSection>
 
-      <Button onClick={save} disabled={saving}
+      <ActionButton onClick={save} loading={saving}
         className="w-full h-11 font-bold uppercase tracking-wide">
-        {saving ? "Saving…" : "Save ladder settings"}
-      </Button>
+        Save ladder settings
+      </ActionButton>
     </div>
   );
 }
@@ -358,29 +360,29 @@ function LadderStart({
             <span className="text-xs font-black tabular-nums w-6 text-center text-muted-foreground">
               {i + 1}
             </span>
-            <span className="text-sm font-medium flex-1 truncate">{ladder.nameOf(pid)}</span>
+            <span className="text-sm font-medium flex-1 min-w-0 break-words">{ladder.nameOf(pid)}</span>
             <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
               Court {Math.floor(i / 4) + 1}
             </span>
             <div className="flex items-center">
-              <Button variant="ghost" size="sm" className="h-7 w-7 p-0"
+              <ActionButton variant="ghost" size="sm" className="h-9 w-9 p-0"
                 disabled={i === 0} onClick={() => move(i, -1)} aria-label="Move up">
                 <ChevronUp className="w-4 h-4" />
-              </Button>
-              <Button variant="ghost" size="sm" className="h-7 w-7 p-0"
+              </ActionButton>
+              <ActionButton variant="ghost" size="sm" className="h-9 w-9 p-0"
                 disabled={i === order.length - 1} onClick={() => move(i, 1)} aria-label="Move down">
                 <ChevronDown className="w-4 h-4" />
-              </Button>
+              </ActionButton>
             </div>
           </li>
         ))}
       </ol>
 
-      <Button onClick={start} disabled={starting || !divisibleByFour}
+      <ActionButton onClick={start} loading={starting} disabled={!divisibleByFour}
         className="w-full h-11 font-bold uppercase tracking-wide">
         <Play className="w-4 h-4 mr-1.5" />
-        {starting ? "Starting…" : "Start ladder"}
-      </Button>
+        Start ladder
+      </ActionButton>
 
       {weekPrompt && (
         <WeekSessionDialog
@@ -762,10 +764,10 @@ function LadderManage({
               can also record it from their league page.
             </p>
           </div>
-          <Button size="sm" onClick={() => setTies(pendingTies)}
+          <ActionButton size="sm" onClick={() => setTies(pendingTies)}
             className="font-bold uppercase tracking-wide shrink-0">
             Resolve
-          </Button>
+          </ActionButton>
         </div>
       )}
 
@@ -797,16 +799,16 @@ function LadderManage({
             <Switch checked={selfReport} onCheckedChange={toggleSelfReport} />
           </label>
           <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={togglePause} disabled={pauseBusy}
+            <ActionButton variant="outline" onClick={togglePause} loading={pauseBusy}
               className="h-12 shrink-0">
               {paused ? <Play className="w-4 h-4 mr-1.5" /> : <Pause className="w-4 h-4 mr-1.5" />}
               {paused ? "Resume" : "Pause"}
-            </Button>
-            <Button onClick={() => processResults()} disabled={processing || !batchComplete || paused}
+            </ActionButton>
+            <ActionButton onClick={() => processResults()} loading={processing} disabled={!batchComplete || paused}
               className="flex-1 h-12 font-bold uppercase tracking-wide">
               <CheckCircle2 className="w-4 h-4 mr-1.5" />
-              {processing ? "Processing…" : batchComplete ? "Process results" : `Process (${totalGames - scoredGames} left)`}
-            </Button>
+              {batchComplete ? "Process results" : `Process (${totalGames - scoredGames} left)`}
+            </ActionButton>
           </div>
         </>
       )}
@@ -1015,7 +1017,7 @@ function TiebreakDialog({
                     <span className="text-xs font-black tabular-nums w-5 text-center text-muted-foreground">
                       {i + 1}
                     </span>
-                    <span className="text-sm font-medium flex-1 truncate">{nameOf(pid)}</span>
+                    <span className="text-sm font-medium flex-1 min-w-0 break-words">{nameOf(pid)}</span>
                     {kind === "up" && (
                       <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/40 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide">
                         <ArrowUp className="w-3 h-3" strokeWidth={3} /> Up
@@ -1032,16 +1034,16 @@ function TiebreakDialog({
                       </span>
                     )}
                     <div className="flex items-center">
-                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0"
+                      <ActionButton variant="ghost" size="sm" className="h-9 w-9 p-0"
                         disabled={i === 0 || busy}
                         onClick={() => move(t.group_index, i, -1)} aria-label="Move up">
                         <ChevronUp className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0"
+                      </ActionButton>
+                      <ActionButton variant="ghost" size="sm" className="h-9 w-9 p-0"
                         disabled={i === (orders[t.group_index]?.length ?? 0) - 1 || busy}
                         onClick={() => move(t.group_index, i, 1)} aria-label="Move down">
                         <ChevronDown className="w-4 h-4" />
-                      </Button>
+                      </ActionButton>
                     </div>
                   </li>
                   );
@@ -1053,11 +1055,11 @@ function TiebreakDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onCancel} disabled={busy}>Cancel</Button>
-          <Button onClick={() => onResolve(orders)} disabled={busy}
+          <ActionButton variant="outline" onClick={onCancel} disabled={busy}>Cancel</ActionButton>
+          <ActionButton onClick={() => onResolve(orders)} loading={busy}
             className="font-bold uppercase tracking-wide">
-            {busy ? "Processing…" : "Confirm & process"}
-          </Button>
+            Confirm & process
+          </ActionButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -1170,24 +1172,24 @@ function WeekSchedulePanel({
                 {removeWeek === w ? (
                   <div className="flex items-center gap-1.5 shrink-0">
                     <span className="text-[11px] text-muted-foreground">Remove?</span>
-                    <Button size="sm" variant="destructive" disabled={busy}
-                      onClick={() => unschedule(w)} className="h-8 text-xs">Yes</Button>
-                    <Button size="sm" variant="ghost" disabled={busy}
-                      onClick={() => setRemoveWeek(null)} className="h-8 text-xs">No</Button>
+                    <ActionButton size="sm" variant="destructive" disabled={busy}
+                      onClick={() => unschedule(w)} className="h-9 text-xs">Yes</ActionButton>
+                    <ActionButton size="sm" variant="ghost" disabled={busy}
+                      onClick={() => setRemoveWeek(null)} className="h-9 text-xs">No</ActionButton>
                   </div>
                 ) : (
                   <div className="flex items-center gap-1.5 shrink-0">
-                    <Button size="sm" variant={s ? "outline" : "default"}
+                    <ActionButton size="sm" variant={s ? "outline" : "default"}
                       disabled={busy} onClick={() => setEditWeek(w)}
-                      className="h-8 text-xs">
+                      className="h-9 text-xs">
                       {s ? "Edit" : "Schedule"}
-                    </Button>
+                    </ActionButton>
                     {s && (
-                      <Button size="sm" variant="ghost" disabled={busy}
+                      <ActionButton size="sm" variant="ghost" disabled={busy}
                         onClick={() => setRemoveWeek(w)}
-                        className="h-8 text-xs text-muted-foreground">
+                        className="h-9 text-xs text-muted-foreground">
                         Remove
-                      </Button>
+                      </ActionButton>
                     )}
                   </div>
                 )}
@@ -1196,11 +1198,11 @@ function WeekSchedulePanel({
           })}
           {canAddMore && (
             <div className="px-4 py-2.5">
-              <Button size="sm" variant="ghost" disabled={busy}
+              <ActionButton size="sm" variant="ghost" disabled={busy}
                 onClick={() => setEditWeek(horizon + 1)}
-                className="h-8 text-xs text-muted-foreground">
+                className="h-9 text-xs text-muted-foreground">
                 + Schedule Week {horizon + 1}
-              </Button>
+              </ActionButton>
             </div>
           )}
         </div>
@@ -1471,19 +1473,19 @@ function WeekRosterPanel({
                       )}
                     </div>
                     {req.status === "pending" && pickingReqId !== req.id && (
-                      <div className="flex items-center gap-1.5 mt-2">
-                        <Button size="sm" variant="default" disabled={disabled || busyId === req.id}
-                          onClick={() => setPickingReqId(req.id)} className="h-7 text-xs">
+                      <div className="flex flex-wrap items-center gap-2 mt-2">
+                        <ActionButton size="sm" variant="default" disabled={disabled || busyId === req.id}
+                          onClick={() => setPickingReqId(req.id)} className="h-9 text-xs px-3">
                           Find sub
-                        </Button>
-                        <Button size="sm" variant="outline" disabled={disabled || busyId === req.id || weekNumber < 2}
-                          onClick={() => resolve(req, "sitout")} className="h-7 text-xs">
+                        </ActionButton>
+                        <ActionButton size="sm" variant="outline" disabled={disabled || busyId === req.id || weekNumber < 2}
+                          onClick={() => resolve(req, "sitout")} className="h-9 text-xs px-3">
                           Sit out
-                        </Button>
-                        <Button size="sm" variant="ghost" disabled={disabled || busyId === req.id}
-                          onClick={() => resolve(req, "declined")} className="h-7 text-xs text-muted-foreground">
+                        </ActionButton>
+                        <ActionButton size="sm" variant="ghost" disabled={disabled || busyId === req.id}
+                          onClick={() => resolve(req, "declined")} className="h-9 text-xs px-3 text-muted-foreground">
                           Decline
-                        </Button>
+                        </ActionButton>
                       </div>
                     )}
                     {req.status === "pending" && pickingReqId === req.id && (
@@ -1498,17 +1500,17 @@ function WeekRosterPanel({
                             {candidates
                               .filter((c) => c.id !== req.player_id)
                               .map((c) => (
-                                <Button key={c.id} size="sm" variant="outline"
+                                <ActionButton key={c.id} size="sm" variant="outline"
                                   disabled={disabled || busyId === req.id}
                                   onClick={() => resolve(req, "sub", c.id)}
-                                  className="h-7 text-xs">
+                                  className="h-9 text-xs px-3">
                                   {c.name}
-                                </Button>
+                                </ActionButton>
                               ))}
                           </div>
                         )}
-                        <Button size="sm" variant="ghost" onClick={() => setPickingReqId(null)}
-                          className="h-7 text-xs text-muted-foreground">Cancel</Button>
+                        <ActionButton size="sm" variant="ghost" onClick={() => setPickingReqId(null)}
+                          className="h-9 text-xs px-3 text-muted-foreground">Cancel</ActionButton>
                       </div>
                     )}
                   </div>
@@ -1530,7 +1532,7 @@ function WeekRosterPanel({
                     <span className="text-[11px] font-bold text-muted-foreground tabular-nums w-6 shrink-0">
                       #{i + 1}
                     </span>
-                    <span className={cn("text-sm truncate", sitting && "text-muted-foreground line-through")}>
+                    <span className={cn("text-sm min-w-0 break-words", sitting && "text-muted-foreground line-through")}>
                       {nameOf(pid)}
                     </span>
                     {sitting && (
@@ -1539,15 +1541,16 @@ function WeekRosterPanel({
                       </span>
                     )}
                   </div>
-                  <Button
+                  <ActionButton
                     size="sm"
                     variant={sitting ? "outline" : "ghost"}
-                    disabled={disabled || busyId === pid}
+                    disabled={disabled}
+                    loading={busyId === pid}
                     onClick={() => toggle(pid)}
-                    className="h-8 shrink-0 text-xs"
+                    className="h-9 shrink-0 text-xs"
                   >
-                    {busyId === pid ? "…" : sitting ? "Bring back" : "Sit out"}
-                  </Button>
+                    {sitting ? "Bring back" : "Sit out"}
+                  </ActionButton>
                 </div>
               );
             })
@@ -1694,13 +1697,13 @@ function SubRequestsPanel({
                 )}
               </div>
               {req.status === "pending" && pickingReqId !== req.id && (
-                <div className="flex items-center gap-1.5 mt-2">
-                  <Button size="sm" variant="default" disabled={disabled || busyId === req.id}
-                    onClick={() => setPickingReqId(req.id)} className="h-7 text-xs">Find sub</Button>
-                  <Button size="sm" variant="outline" disabled={disabled || busyId === req.id || req.week_number < 2}
-                    onClick={() => resolve(req, "sitout")} className="h-7 text-xs">Sit out</Button>
-                  <Button size="sm" variant="ghost" disabled={disabled || busyId === req.id}
-                    onClick={() => resolve(req, "declined")} className="h-7 text-xs text-muted-foreground">Decline</Button>
+                <div className="flex flex-wrap items-center gap-2 mt-2">
+                  <ActionButton size="sm" variant="default" disabled={disabled || busyId === req.id}
+                    onClick={() => setPickingReqId(req.id)} className="h-9 text-xs px-3">Find sub</ActionButton>
+                  <ActionButton size="sm" variant="outline" disabled={disabled || busyId === req.id || req.week_number < 2}
+                    onClick={() => resolve(req, "sitout")} className="h-9 text-xs px-3">Sit out</ActionButton>
+                  <ActionButton size="sm" variant="ghost" disabled={disabled || busyId === req.id}
+                    onClick={() => resolve(req, "declined")} className="h-9 text-xs px-3 text-muted-foreground">Decline</ActionButton>
                 </div>
               )}
               {req.status === "pending" && pickingReqId === req.id && (
@@ -1713,16 +1716,16 @@ function SubRequestsPanel({
                   ) : (
                     <div className="flex flex-wrap gap-1.5">
                       {candidates.filter((c) => c.id !== req.player_id).map((c) => (
-                        <Button key={c.id} size="sm" variant="outline"
+                        <ActionButton key={c.id} size="sm" variant="outline"
                           disabled={disabled || busyId === req.id}
-                          onClick={() => resolve(req, "sub", c.id)} className="h-7 text-xs">
+                          onClick={() => resolve(req, "sub", c.id)} className="h-9 text-xs px-3">
                           {c.name}
-                        </Button>
+                        </ActionButton>
                       ))}
                     </div>
                   )}
-                  <Button size="sm" variant="ghost" onClick={() => setPickingReqId(null)}
-                    className="h-7 text-xs text-muted-foreground">Cancel</Button>
+                  <ActionButton size="sm" variant="ghost" onClick={() => setPickingReqId(null)}
+                    className="h-9 text-xs px-3 text-muted-foreground">Cancel</ActionButton>
                 </div>
               )}
             </div>
@@ -1742,22 +1745,33 @@ function GenerateNextPanel({
   blocked?: boolean;
   onGenerate: () => void;
 }) {
+  const reduced = useReducedMotion();
+  // When this panel appears (a batch/week was just processed), settle it
+  // in so the next action doesn't pop into place without context.
+  const reveal = reduced
+    ? {}
+    : {
+        initial: { opacity: 0, y: 8 },
+        animate: { opacity: 1, y: 0 },
+        transition: { duration: DUR.content, ease: EASE_OUT },
+      };
+
   if (nextStage.kind === "complete") {
     return (
-      <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 text-center">
+      <motion.div {...reveal} className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 text-center">
         <Trophy className="w-6 h-6 mx-auto text-emerald-500 mb-1.5" />
         <div className="text-sm font-bold">Ladder complete</div>
         <p className="text-xs text-muted-foreground mt-0.5">
           Every week has been played and processed. Final standings are the
           current ladder below.
         </p>
-      </div>
+      </motion.div>
     );
   }
 
   const isWeek = nextStage.kind === "week";
   return (
-    <div className="rounded-xl border border-border/70 bg-gradient-to-br from-[#0B171F] to-[#142029] p-4 text-white">
+    <motion.div {...reveal} className="rounded-xl border border-border/70 bg-gradient-to-br from-[#0B171F] to-[#142029] p-4 text-white">
       <div className="text-[10px] font-black uppercase tracking-[0.2em] text-[#A6DB5A]">
         {isWeek ? "Week complete" : "Batch processed"}
       </div>
@@ -1774,14 +1788,15 @@ function GenerateNextPanel({
           : `The ladder has been updated. Generate Batch ${nextStage.batch} to ` +
             "build the next round's foursomes from the current positions."}
       </p>
-      <Button
+      <ActionButton
         onClick={onGenerate}
-        disabled={generating || paused || blocked}
+        loading={generating}
+        disabled={paused || blocked}
         className="mt-3 w-full h-12 font-bold uppercase tracking-wide bg-[#A6DB5A] text-[#0B171F] hover:bg-[#95c94f]"
       >
         <Play className="w-4 h-4 mr-1.5" />
-        {generating ? "Generating…" : nextStage.label}
-      </Button>
+        {nextStage.label}
+      </ActionButton>
       {blocked && !paused && (
         <p className="text-[11px] text-amber-300 mt-2">
           Adjust the week roster above so the number of players is a multiple of four.
@@ -1792,7 +1807,7 @@ function GenerateNextPanel({
           Progression is paused — resume to generate the next stage.
         </p>
       )}
-    </div>
+    </motion.div>
   );
 }
 
@@ -1873,9 +1888,10 @@ function WeekSessionDialog({
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onCancel} disabled={busy}>Cancel</Button>
-          <Button
+          <ActionButton variant="outline" onClick={onCancel} disabled={busy}>Cancel</ActionButton>
+          <ActionButton
             disabled={!canSubmit}
+            loading={busy}
             onClick={() => onConfirm({
               scheduled_date: date, start_time: start,
               end_time: end, location: loc,
@@ -1884,8 +1900,8 @@ function WeekSessionDialog({
             })}
             className="font-bold uppercase tracking-wide"
           >
-            {busy ? "Saving…" : (submitLabel ?? `Generate Week ${weekNumber}`)}
-          </Button>
+            {submitLabel ?? `Generate Week ${weekNumber}`}
+          </ActionButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -1903,9 +1919,9 @@ function CourtGroupCard({
 }) {
   return (
     <div className="rounded-xl border border-border/70 bg-card overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-2 bg-muted/40 border-b border-border/50">
-        <span className="text-sm font-bold">Court {group.court_number ?? group.group_index + 1}</span>
-        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+      <div className="flex items-start justify-between gap-3 px-4 py-2 bg-muted/40 border-b border-border/50">
+        <span className="text-sm font-bold shrink-0">Court {group.court_number ?? group.group_index + 1}</span>
+        <span className="text-[10px] uppercase tracking-wider text-muted-foreground min-w-0 text-right break-words leading-snug">
           {group.player_ids.map((p) => nameOf(p)).join(" · ")}
         </span>
       </div>
@@ -1954,23 +1970,24 @@ function GameScoreRow({
   return (
     <li className="px-4 py-2.5">
       <div className="flex items-center gap-2">
-        <span className="text-xs flex-1 text-right truncate">{sideA || "—"}</span>
+        <span className="text-xs flex-1 min-w-0 text-right break-words leading-snug">{sideA || "—"}</span>
         <Input value={a} onChange={(e) => setA(e.target.value)} type="number" min="0"
-          inputMode="numeric" className="h-9 w-12 text-center font-bold tabular-nums px-1" />
-        <span className="text-muted-foreground text-xs">–</span>
+          inputMode="numeric" className="h-10 w-12 text-center font-bold tabular-nums px-1 shrink-0" />
+        <span className="text-muted-foreground text-xs shrink-0">–</span>
         <Input value={b} onChange={(e) => setB(e.target.value)} type="number" min="0"
-          inputMode="numeric" className="h-9 w-12 text-center font-bold tabular-nums px-1" />
-        <span className="text-xs flex-1 truncate">{sideB || "—"}</span>
-        <Button size="sm" variant={dirty ? "default" : "ghost"} className="h-8 shrink-0"
+          inputMode="numeric" className="h-10 w-12 text-center font-bold tabular-nums px-1 shrink-0" />
+        <span className="text-xs flex-1 min-w-0 break-words leading-snug">{sideB || "—"}</span>
+        <ActionButton size="sm" variant={dirty ? "default" : "ghost"} className="h-10 shrink-0"
           disabled={saving || !dirty} onClick={save}>
           {scored && !dirty ? <CheckCircle2 className="w-4 h-4 text-emerald-500" /> : "Save"}
-        </Button>
+        </ActionButton>
       </div>
     </li>
   );
 }
 
 function CurrentLadder({ ladder }: { ladder: ReturnType<typeof useLadder> }) {
+  const reduced = useReducedMotion();
   const moveOf = useMemo(() => {
     const m: Record<string, "up" | "stay" | "down"> = {};
     ladder.lastMovements.forEach((mv) => { m[mv.player_id] = mv.direction; });
@@ -1984,11 +2001,18 @@ function CurrentLadder({ ladder }: { ladder: ReturnType<typeof useLadder> }) {
       <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
         <Trophy className="w-3.5 h-3.5" /> Current ladder
       </h3>
+      {/* Rows are keyed by player id and animate their layout, so when a
+          new batch is processed each player glides to their new rung
+          (up/down) while unchanged players stay put. Movement is a pure
+          transform, so names + ranks never blur or get obscured, and
+          reduced-motion users get an instant reorder. */}
       <ol className="space-y-1">
         {ladder.currentOrder.map((pid, i) => {
           const dir = moveOf[pid];
           return (
-            <li key={pid}
+            <motion.li key={pid}
+              layout={reduced ? false : "position"}
+              transition={{ type: "spring", stiffness: 600, damping: 45 }}
               className={cn(
                 "flex items-center gap-2 rounded-lg px-2 py-1.5",
                 i % 4 === 0 && "bg-muted/40",
@@ -1997,11 +2021,11 @@ function CurrentLadder({ ladder }: { ladder: ReturnType<typeof useLadder> }) {
               <span className="text-xs font-black tabular-nums w-6 text-center text-muted-foreground">
                 {i + 1}
               </span>
-              <span className="text-sm font-medium flex-1 truncate">{ladder.nameOf(pid)}</span>
+              <span className="text-sm font-medium flex-1 min-w-0 break-words">{ladder.nameOf(pid)}</span>
               {dir === "up" && <ArrowUp className="w-3.5 h-3.5 text-emerald-500" aria-label="Moved up" />}
               {dir === "down" && <ArrowDown className="w-3.5 h-3.5 text-destructive" aria-label="Moved down" />}
               {dir === "stay" && <Minus className="w-3.5 h-3.5 text-muted-foreground/50" aria-label="Stayed" />}
-            </li>
+            </motion.li>
           );
         })}
       </ol>
@@ -2072,13 +2096,13 @@ function LastBatchResults({
         <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
           Last batch results · Week {lastFinalBatch.week_number} · Batch {lastFinalBatch.batch_number}
         </h3>
-        <Button
+        <ActionButton
           size="sm" variant="ghost"
           className="h-7 text-muted-foreground hover:text-foreground"
           onClick={() => setConfirmOpen(true)}
         >
           <RotateCcw className="w-3.5 h-3.5 mr-1.5" /> Reopen
-        </Button>
+        </ActionButton>
       </div>
 
       {/* Confirm: reopen the last finalized batch */}
@@ -2144,8 +2168,8 @@ function LastBatchResults({
                     <span className="w-5 text-center font-black tabular-nums text-muted-foreground">
                       {r.finish_position}
                     </span>
-                    <span className="flex-1 truncate font-medium">{nameOf(r.player_id)}</span>
-                    <span className="tabular-nums text-xs text-muted-foreground">
+                    <span className="flex-1 min-w-0 break-words font-medium">{nameOf(r.player_id)}</span>
+                    <span className="tabular-nums text-xs text-muted-foreground shrink-0">
                       {r.wins}–{r.losses}
                     </span>
                     <span className={cn(

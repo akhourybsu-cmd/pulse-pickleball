@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { resolvePlayerName } from "@/lib/matchDisplay";
 
@@ -218,7 +219,17 @@ export function useLadder(
           version: prev.version + 1, refresh,
         }));
       }
-    })().catch(() => { if (!cancelled) setData((d) => ({ ...d, loading: false })); });
+    })().catch((e) => {
+      // Surface the failure instead of silently rendering an empty ladder
+      // (which reads as "nothing generated yet" and invites a bad re-run).
+      console.error("useLadder load failed:", e);
+      if (!cancelled) {
+        toast.error(
+          e instanceof Error ? `Couldn't load the ladder: ${e.message}` : "Couldn't load the ladder",
+        );
+        setData((d) => ({ ...d, loading: false }));
+      }
+    });
 
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps

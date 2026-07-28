@@ -1,52 +1,13 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import {
-  Trophy, CalendarDays, Layers, Users,
-  CalendarClock, Swords, Award, Shield, LifeBuoy,
-  Check, ChevronsUpDown,
-  type LucideIcon,
-} from "lucide-react";
+import { Check, ChevronsUpDown } from "lucide-react";
 import {
   Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger,
 } from "@/components/ui/drawer";
 import { cn } from "@/lib/utils";
+import { type ManageTab, MANAGE_TABS, GROUPS } from "./leagueManageTabs";
 
-/**
- * The full set of manage tabs, in canonical display order. Callers
- * consume this array to render both the nav (desktop rail + mobile
- * strip) and to dispatch which tab body to render.
- */
-export type ManageTab =
-  | "overview" | "seasons"
-  | "members" | "teams" | "subs"
-  | "ladder" | "sessions" | "matches"
-  | "standings"
-  | "audit";
-
-interface TabDef {
-  key: ManageTab;
-  label: string;
-  /** Short label used when the mobile strip is tight. */
-  short: string;
-  icon: LucideIcon;
-  group: "Setup" | "People" | "Play" | "Results" | "Log";
-  /** One-line hint shown under the label on the desktop rail. */
-  hint: string;
-}
-
-export const MANAGE_TABS: TabDef[] = [
-  { key: "overview",  label: "Overview",   short: "Info",     icon: Trophy,        group: "Setup",   hint: "Details, visibility, invite code" },
-  { key: "seasons",   label: "Seasons",    short: "Seasons",  icon: CalendarDays,  group: "Setup",   hint: "Semesters or session runs" },
-  { key: "members",   label: "Players",    short: "Players",  icon: Users,         group: "People",  hint: "Everyone in this league" },
-  { key: "subs",      label: "Subs",       short: "Subs",     icon: LifeBuoy,      group: "People",  hint: "Sub pool + swap into a week" },
-  { key: "ladder",    label: "Ladder",     short: "Ladder",   icon: Layers,        group: "Play",    hint: "Individual doubles ladder" },
-  { key: "sessions",  label: "Sessions",   short: "Sessions", icon: CalendarClock, group: "Play",    hint: "Nights of scheduled play" },
-  { key: "matches",   label: "Matches",    short: "Matches",  icon: Swords,        group: "Play",    hint: "Individual matchups" },
-  { key: "standings", label: "Standings",  short: "Table",    icon: Award,         group: "Results", hint: "Wins, points, form" },
-  { key: "audit",     label: "Audit log",  short: "Log",      icon: Shield,        group: "Log",     hint: "Every change, who + when" },
-];
-
-const GROUPS = ["Setup", "People", "Play", "Results", "Log"] as const;
+export type { ManageTab };
 
 /**
  * Grouped nav for the league management surface.
@@ -118,7 +79,7 @@ export function LeagueManageNav({
                           {t.label}
                         </div>
                         <div className={cn(
-                          "text-[11px] leading-tight truncate font-normal",
+                          "text-[11px] leading-tight line-clamp-2 font-normal",
                           isActive ? "text-[color:var(--lg-text)]/70" : "text-[color:var(--lg-text-dim)]/80",
                         )}>
                           {t.hint}
@@ -205,7 +166,7 @@ function MobileSectionPicker({
                         )} />
                         <div className="min-w-0 flex-1">
                           <div className="text-sm font-semibold leading-tight">{t.label}</div>
-                          <div className="text-[11px] text-muted-foreground truncate">{t.hint}</div>
+                          <div className="text-[11px] text-muted-foreground">{t.hint}</div>
                         </div>
                         {isActive && <Check className="w-4 h-4 text-primary shrink-0" />}
                       </button>

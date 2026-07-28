@@ -1,5 +1,5 @@
-import { useEffect, useState, ReactNode } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useEffect, useRef, useState, ReactNode } from "react";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -19,10 +19,10 @@ import { SessionsTab } from "@/components/admin/leagues/SessionsTab";
 import { MatchesTab } from "@/components/admin/leagues/MatchesTab";
 import { StandingsTab } from "@/components/admin/leagues/StandingsTab";
 import { AuditLogTab } from "@/components/admin/leagues/AuditLogTab";
-import {
-  LeagueManageNav, type ManageTab, MANAGE_TABS,
-} from "@/components/admin/leagues/LeagueManageNav";
+import { LeagueManageNav } from "@/components/admin/leagues/LeagueManageNav";
+import { type ManageTab, MANAGE_TABS } from "@/components/admin/leagues/leagueManageTabs";
 import { LeagueScope, LeagueHero } from "@/components/leagues/_leagueScope";
+import { DUR, EASE_OUT, contentVariants } from "@/lib/leagues/motion";
 
 interface Counts {
   seasons: number;
@@ -54,6 +54,21 @@ export default function AdminLeagueDetail() {
   const [dataVersion, setDataVersion] = useState(0);
   const bumpDataVersion = () => setDataVersion((v) => v + 1);
   const [activeTab, setActiveTab] = useState<ManageTab>("overview");
+
+  // Direction for the tab-content transition: forward (right) when moving
+  // to a later tab in canonical order, backward (left) otherwise. Tracked
+  // on a ref so computing it never triggers a re-render.
+  const reducedMotion = useReducedMotion();
+  const activeIndex = MANAGE_TABS.findIndex((t) => t.key === activeTab);
+  const prevIndexRef = useRef(activeIndex);
+  const tabDir = reducedMotion
+    ? 0
+    : activeIndex > prevIndexRef.current ? 1
+    : activeIndex < prevIndexRef.current ? -1
+    : 0;
+  useEffect(() => {
+    prevIndexRef.current = activeIndex;
+  }, [activeIndex]);
 
   useEffect(() => {
     const init = async () => {
@@ -236,13 +251,18 @@ export default function AdminLeagueDetail() {
               </div>
             )}
 
-            <AnimatePresence mode="wait" initial={false}>
+            <AnimatePresence mode="wait" initial={false} custom={tabDir}>
               <motion.div
                 key={activeTab}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.16, ease: "easeOut" }}
+                custom={tabDir}
+                variants={contentVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                // mode="wait" runs exit then enter serially, so each half is
+                // kept short to keep the whole switch within the ~200-320ms
+                // perceived-content budget.
+                transition={{ duration: DUR.hover, ease: EASE_OUT }}
               >
                 {activeTab === "overview" && (
                   <OverviewTab league={league} onRefresh={refresh} onMutated={onDataMutated} />

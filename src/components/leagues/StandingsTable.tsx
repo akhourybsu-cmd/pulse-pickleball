@@ -73,7 +73,7 @@ export function StandingsTable({
                 )}
                 title={row.teamName}
               >
-                <span className={cn("truncate font-medium",
+                <span className={cn("min-w-0 break-words leading-tight font-medium",
                   highlighted && "font-bold",
                 )}>{row.teamName}</span>
                 {(row.forfeitWins > 0 || row.forfeitLosses > 0) && (

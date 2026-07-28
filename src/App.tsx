@@ -10,6 +10,7 @@ import { ModeProvider } from "@/contexts/ModeContext";
 import { useAuthPersistence } from "@/hooks/useAuthPersistence";
 import { PlayerShell } from "@/components/layout/PlayerShell";
 import { CommunityTransitionOutlet } from "@/components/community/CommunityTransitionOutlet";
+import { LeagueTransitionOutlet } from "@/components/leagues/LeagueTransitionOutlet";
 import { AuthGuard, VenueGuard, AdminGuard } from "@/components/guards";
 import { VenueShell } from "@/components/layout/VenueShell";
 import { supabase } from "@/integrations/supabase/client";
@@ -426,14 +427,21 @@ const AppContent = () => {
             {/* Phase 1 player-facing leagues: read-only "my leagues"
                 view. Deeper features (match schedule, standings) land
                 as later phases. RLS keeps admin_only leagues invisible. */}
-            <Route path="leagues" element={<PlayerLeagues />} />
-            <Route path="leagues/:leagueId" element={<PlayerLeagueDetail />} />
-            {/* League owner surface — same component as /admin/leagues/:id
-                but rendered inside PlayerShell chrome via URL detection.
-                NOTE: the /poster variant is mounted OUTSIDE PlayerShell
-                (see top-level route below) so print stylesheets don't
-                capture the sticky header + bottom nav. */}
-            <Route path="leagues/:leagueId/manage" element={<AdminLeagueDetail />} />
+            {/* League routes share a directional slide transition (deeper
+                slides in from the right, back slides in from the left),
+                mirroring the Community outlet. The pathless parent keeps
+                PlayerShell above the transition so the header + bottom nav
+                don't remount, and react-router still owns navigation. */}
+            <Route element={<LeagueTransitionOutlet />}>
+              <Route path="leagues" element={<PlayerLeagues />} />
+              <Route path="leagues/:leagueId" element={<PlayerLeagueDetail />} />
+              {/* League owner surface — same component as /admin/leagues/:id
+                  but rendered inside PlayerShell chrome via URL detection.
+                  NOTE: the /poster variant is mounted OUTSIDE PlayerShell
+                  (see top-level route below) so print stylesheets don't
+                  capture the sticky header + bottom nav. */}
+              <Route path="leagues/:leagueId/manage" element={<AdminLeagueDetail />} />
+            </Route>
             <Route path="guests" element={<MyGuests />} />
             {/* Legacy aliases - kept functional, redirected from old paths */}
             <Route path="find" element={<RedirectWithParams to="/player/play" />} />

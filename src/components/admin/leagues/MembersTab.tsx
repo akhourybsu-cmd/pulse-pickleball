@@ -451,7 +451,8 @@ function AddMemberDialog({
           .eq("status", "accepted")
           .or(`user_id.eq.${uid},friend_id.eq.${uid}`);
         const friendIds = Array.from(new Set(
-          (fships ?? []).map((f: any) => f.user_id === uid ? f.friend_id : f.user_id),
+          ((fships ?? []) as Array<{ user_id: string; friend_id: string }>)
+            .map((f) => (f.user_id === uid ? f.friend_id : f.user_id)),
         ));
 
         // Community members (groups current user belongs to)
@@ -460,7 +461,7 @@ function AddMemberDialog({
           .select("group_id")
           .eq("user_id", uid)
           .eq("status", "active");
-        const groupIds = (myMems ?? []).map((m: any) => m.group_id);
+        const groupIds = ((myMems ?? []) as Array<{ group_id: string }>).map((m) => m.group_id);
         let communityIds: string[] = [];
         if (groupIds.length) {
           const { data: coMems } = await supabase
@@ -469,7 +470,8 @@ function AddMemberDialog({
             .in("group_id", groupIds)
             .eq("status", "active");
           communityIds = Array.from(new Set(
-            (coMems ?? []).map((m: any) => m.user_id).filter((id: string) => id !== uid),
+            ((coMems ?? []) as Array<{ user_id: string }>)
+              .map((m) => m.user_id).filter((id) => id !== uid),
           ));
         }
 
@@ -480,7 +482,8 @@ function AddMemberDialog({
           .eq("added_by_user_id", uid)
           .not("linked_user_id", "is", null);
         const guestIds = Array.from(new Set(
-          (gs ?? []).map((g: any) => g.linked_user_id).filter(Boolean),
+          ((gs ?? []) as Array<{ linked_user_id: string | null }>)
+            .map((g) => g.linked_user_id).filter((id): id is string => Boolean(id)),
         ));
 
         const allIds = Array.from(new Set([...friendIds, ...communityIds, ...guestIds]));
@@ -490,7 +493,7 @@ function AddMemberDialog({
           .select("id, display_name, full_name, first_name, last_name, avatar_url")
           .in("id", allIds as string[]);
         const map: Record<string, PlayerRow> = {};
-        (profs ?? []).forEach((p: any) => { map[p.id] = p as PlayerRow; });
+        ((profs ?? []) as PlayerRow[]).forEach((p) => { map[p.id] = p; });
 
         setFriends(friendIds.map((id) => map[id]).filter(Boolean));
         setCommunity(communityIds.map((id) => map[id]).filter(Boolean));
