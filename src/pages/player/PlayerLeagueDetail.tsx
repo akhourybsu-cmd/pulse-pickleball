@@ -219,7 +219,7 @@ export default function PlayerLeagueDetail() {
                     {tm.display_name.slice(0, 1).toUpperCase()}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="text-sm font-semibold truncate text-[color:var(--lg-text)]">
+                    <div className="text-sm font-semibold break-words text-[color:var(--lg-text)]">
                       {tm.display_name}
                       {tm.is_me && <span className="text-[color:var(--lg-text-dim)] font-normal"> · you</span>}
                     </div>
@@ -332,7 +332,7 @@ function MatchRow({
 
       <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-4 py-3">
         <div className={cn(
-          "text-sm truncate text-right",
+          "text-sm min-w-0 break-words text-right",
           aWon ? "font-bold text-[color:var(--lg-accent-gold)]" : "font-medium text-[color:var(--lg-text)]",
         )}>
           {aName}
@@ -357,7 +357,7 @@ function MatchRow({
           )}
         </div>
         <div className={cn(
-          "text-sm truncate text-left",
+          "text-sm min-w-0 break-words text-left",
           bWon ? "font-bold text-[color:var(--lg-accent-gold)]" : "font-medium text-[color:var(--lg-text)]",
         )}>
           {bName}

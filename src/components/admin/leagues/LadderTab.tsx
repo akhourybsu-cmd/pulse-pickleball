@@ -358,16 +358,16 @@ function LadderStart({
             <span className="text-xs font-black tabular-nums w-6 text-center text-muted-foreground">
               {i + 1}
             </span>
-            <span className="text-sm font-medium flex-1 truncate">{ladder.nameOf(pid)}</span>
+            <span className="text-sm font-medium flex-1 min-w-0 break-words">{ladder.nameOf(pid)}</span>
             <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
               Court {Math.floor(i / 4) + 1}
             </span>
             <div className="flex items-center">
-              <Button variant="ghost" size="sm" className="h-7 w-7 p-0"
+              <Button variant="ghost" size="sm" className="h-9 w-9 p-0"
                 disabled={i === 0} onClick={() => move(i, -1)} aria-label="Move up">
                 <ChevronUp className="w-4 h-4" />
               </Button>
-              <Button variant="ghost" size="sm" className="h-7 w-7 p-0"
+              <Button variant="ghost" size="sm" className="h-9 w-9 p-0"
                 disabled={i === order.length - 1} onClick={() => move(i, 1)} aria-label="Move down">
                 <ChevronDown className="w-4 h-4" />
               </Button>
@@ -1015,7 +1015,7 @@ function TiebreakDialog({
                     <span className="text-xs font-black tabular-nums w-5 text-center text-muted-foreground">
                       {i + 1}
                     </span>
-                    <span className="text-sm font-medium flex-1 truncate">{nameOf(pid)}</span>
+                    <span className="text-sm font-medium flex-1 min-w-0 break-words">{nameOf(pid)}</span>
                     {kind === "up" && (
                       <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/40 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide">
                         <ArrowUp className="w-3 h-3" strokeWidth={3} /> Up
@@ -1032,12 +1032,12 @@ function TiebreakDialog({
                       </span>
                     )}
                     <div className="flex items-center">
-                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0"
+                      <Button variant="ghost" size="sm" className="h-9 w-9 p-0"
                         disabled={i === 0 || busy}
                         onClick={() => move(t.group_index, i, -1)} aria-label="Move up">
                         <ChevronUp className="w-4 h-4" />
                       </Button>
-                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0"
+                      <Button variant="ghost" size="sm" className="h-9 w-9 p-0"
                         disabled={i === (orders[t.group_index]?.length ?? 0) - 1 || busy}
                         onClick={() => move(t.group_index, i, 1)} aria-label="Move down">
                         <ChevronDown className="w-4 h-4" />
@@ -1171,21 +1171,21 @@ function WeekSchedulePanel({
                   <div className="flex items-center gap-1.5 shrink-0">
                     <span className="text-[11px] text-muted-foreground">Remove?</span>
                     <Button size="sm" variant="destructive" disabled={busy}
-                      onClick={() => unschedule(w)} className="h-8 text-xs">Yes</Button>
+                      onClick={() => unschedule(w)} className="h-9 text-xs">Yes</Button>
                     <Button size="sm" variant="ghost" disabled={busy}
-                      onClick={() => setRemoveWeek(null)} className="h-8 text-xs">No</Button>
+                      onClick={() => setRemoveWeek(null)} className="h-9 text-xs">No</Button>
                   </div>
                 ) : (
                   <div className="flex items-center gap-1.5 shrink-0">
                     <Button size="sm" variant={s ? "outline" : "default"}
                       disabled={busy} onClick={() => setEditWeek(w)}
-                      className="h-8 text-xs">
+                      className="h-9 text-xs">
                       {s ? "Edit" : "Schedule"}
                     </Button>
                     {s && (
                       <Button size="sm" variant="ghost" disabled={busy}
                         onClick={() => setRemoveWeek(w)}
-                        className="h-8 text-xs text-muted-foreground">
+                        className="h-9 text-xs text-muted-foreground">
                         Remove
                       </Button>
                     )}
@@ -1198,7 +1198,7 @@ function WeekSchedulePanel({
             <div className="px-4 py-2.5">
               <Button size="sm" variant="ghost" disabled={busy}
                 onClick={() => setEditWeek(horizon + 1)}
-                className="h-8 text-xs text-muted-foreground">
+                className="h-9 text-xs text-muted-foreground">
                 + Schedule Week {horizon + 1}
               </Button>
             </div>
@@ -1471,17 +1471,17 @@ function WeekRosterPanel({
                       )}
                     </div>
                     {req.status === "pending" && pickingReqId !== req.id && (
-                      <div className="flex items-center gap-1.5 mt-2">
+                      <div className="flex flex-wrap items-center gap-2 mt-2">
                         <Button size="sm" variant="default" disabled={disabled || busyId === req.id}
-                          onClick={() => setPickingReqId(req.id)} className="h-7 text-xs">
+                          onClick={() => setPickingReqId(req.id)} className="h-9 text-xs px-3">
                           Find sub
                         </Button>
                         <Button size="sm" variant="outline" disabled={disabled || busyId === req.id || weekNumber < 2}
-                          onClick={() => resolve(req, "sitout")} className="h-7 text-xs">
+                          onClick={() => resolve(req, "sitout")} className="h-9 text-xs px-3">
                           Sit out
                         </Button>
                         <Button size="sm" variant="ghost" disabled={disabled || busyId === req.id}
-                          onClick={() => resolve(req, "declined")} className="h-7 text-xs text-muted-foreground">
+                          onClick={() => resolve(req, "declined")} className="h-9 text-xs px-3 text-muted-foreground">
                           Decline
                         </Button>
                       </div>
@@ -1501,14 +1501,14 @@ function WeekRosterPanel({
                                 <Button key={c.id} size="sm" variant="outline"
                                   disabled={disabled || busyId === req.id}
                                   onClick={() => resolve(req, "sub", c.id)}
-                                  className="h-7 text-xs">
+                                  className="h-9 text-xs px-3">
                                   {c.name}
                                 </Button>
                               ))}
                           </div>
                         )}
                         <Button size="sm" variant="ghost" onClick={() => setPickingReqId(null)}
-                          className="h-7 text-xs text-muted-foreground">Cancel</Button>
+                          className="h-9 text-xs px-3 text-muted-foreground">Cancel</Button>
                       </div>
                     )}
                   </div>
@@ -1530,7 +1530,7 @@ function WeekRosterPanel({
                     <span className="text-[11px] font-bold text-muted-foreground tabular-nums w-6 shrink-0">
                       #{i + 1}
                     </span>
-                    <span className={cn("text-sm truncate", sitting && "text-muted-foreground line-through")}>
+                    <span className={cn("text-sm min-w-0 break-words", sitting && "text-muted-foreground line-through")}>
                       {nameOf(pid)}
                     </span>
                     {sitting && (
@@ -1544,7 +1544,7 @@ function WeekRosterPanel({
                     variant={sitting ? "outline" : "ghost"}
                     disabled={disabled || busyId === pid}
                     onClick={() => toggle(pid)}
-                    className="h-8 shrink-0 text-xs"
+                    className="h-9 shrink-0 text-xs"
                   >
                     {busyId === pid ? "…" : sitting ? "Bring back" : "Sit out"}
                   </Button>
@@ -1694,13 +1694,13 @@ function SubRequestsPanel({
                 )}
               </div>
               {req.status === "pending" && pickingReqId !== req.id && (
-                <div className="flex items-center gap-1.5 mt-2">
+                <div className="flex flex-wrap items-center gap-2 mt-2">
                   <Button size="sm" variant="default" disabled={disabled || busyId === req.id}
-                    onClick={() => setPickingReqId(req.id)} className="h-7 text-xs">Find sub</Button>
+                    onClick={() => setPickingReqId(req.id)} className="h-9 text-xs px-3">Find sub</Button>
                   <Button size="sm" variant="outline" disabled={disabled || busyId === req.id || req.week_number < 2}
-                    onClick={() => resolve(req, "sitout")} className="h-7 text-xs">Sit out</Button>
+                    onClick={() => resolve(req, "sitout")} className="h-9 text-xs px-3">Sit out</Button>
                   <Button size="sm" variant="ghost" disabled={disabled || busyId === req.id}
-                    onClick={() => resolve(req, "declined")} className="h-7 text-xs text-muted-foreground">Decline</Button>
+                    onClick={() => resolve(req, "declined")} className="h-9 text-xs px-3 text-muted-foreground">Decline</Button>
                 </div>
               )}
               {req.status === "pending" && pickingReqId === req.id && (
@@ -1715,14 +1715,14 @@ function SubRequestsPanel({
                       {candidates.filter((c) => c.id !== req.player_id).map((c) => (
                         <Button key={c.id} size="sm" variant="outline"
                           disabled={disabled || busyId === req.id}
-                          onClick={() => resolve(req, "sub", c.id)} className="h-7 text-xs">
+                          onClick={() => resolve(req, "sub", c.id)} className="h-9 text-xs px-3">
                           {c.name}
                         </Button>
                       ))}
                     </div>
                   )}
                   <Button size="sm" variant="ghost" onClick={() => setPickingReqId(null)}
-                    className="h-7 text-xs text-muted-foreground">Cancel</Button>
+                    className="h-9 text-xs px-3 text-muted-foreground">Cancel</Button>
                 </div>
               )}
             </div>
@@ -1903,9 +1903,9 @@ function CourtGroupCard({
 }) {
   return (
     <div className="rounded-xl border border-border/70 bg-card overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-2 bg-muted/40 border-b border-border/50">
-        <span className="text-sm font-bold">Court {group.court_number ?? group.group_index + 1}</span>
-        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+      <div className="flex items-start justify-between gap-3 px-4 py-2 bg-muted/40 border-b border-border/50">
+        <span className="text-sm font-bold shrink-0">Court {group.court_number ?? group.group_index + 1}</span>
+        <span className="text-[10px] uppercase tracking-wider text-muted-foreground min-w-0 text-right break-words leading-snug">
           {group.player_ids.map((p) => nameOf(p)).join(" · ")}
         </span>
       </div>
@@ -1954,14 +1954,14 @@ function GameScoreRow({
   return (
     <li className="px-4 py-2.5">
       <div className="flex items-center gap-2">
-        <span className="text-xs flex-1 text-right truncate">{sideA || "—"}</span>
+        <span className="text-xs flex-1 min-w-0 text-right break-words leading-snug">{sideA || "—"}</span>
         <Input value={a} onChange={(e) => setA(e.target.value)} type="number" min="0"
-          inputMode="numeric" className="h-9 w-12 text-center font-bold tabular-nums px-1" />
-        <span className="text-muted-foreground text-xs">–</span>
+          inputMode="numeric" className="h-10 w-12 text-center font-bold tabular-nums px-1 shrink-0" />
+        <span className="text-muted-foreground text-xs shrink-0">–</span>
         <Input value={b} onChange={(e) => setB(e.target.value)} type="number" min="0"
-          inputMode="numeric" className="h-9 w-12 text-center font-bold tabular-nums px-1" />
-        <span className="text-xs flex-1 truncate">{sideB || "—"}</span>
-        <Button size="sm" variant={dirty ? "default" : "ghost"} className="h-8 shrink-0"
+          inputMode="numeric" className="h-10 w-12 text-center font-bold tabular-nums px-1 shrink-0" />
+        <span className="text-xs flex-1 min-w-0 break-words leading-snug">{sideB || "—"}</span>
+        <Button size="sm" variant={dirty ? "default" : "ghost"} className="h-10 shrink-0"
           disabled={saving || !dirty} onClick={save}>
           {scored && !dirty ? <CheckCircle2 className="w-4 h-4 text-emerald-500" /> : "Save"}
         </Button>
@@ -1997,7 +1997,7 @@ function CurrentLadder({ ladder }: { ladder: ReturnType<typeof useLadder> }) {
               <span className="text-xs font-black tabular-nums w-6 text-center text-muted-foreground">
                 {i + 1}
               </span>
-              <span className="text-sm font-medium flex-1 truncate">{ladder.nameOf(pid)}</span>
+              <span className="text-sm font-medium flex-1 min-w-0 break-words">{ladder.nameOf(pid)}</span>
               {dir === "up" && <ArrowUp className="w-3.5 h-3.5 text-emerald-500" aria-label="Moved up" />}
               {dir === "down" && <ArrowDown className="w-3.5 h-3.5 text-destructive" aria-label="Moved down" />}
               {dir === "stay" && <Minus className="w-3.5 h-3.5 text-muted-foreground/50" aria-label="Stayed" />}
@@ -2144,8 +2144,8 @@ function LastBatchResults({
                     <span className="w-5 text-center font-black tabular-nums text-muted-foreground">
                       {r.finish_position}
                     </span>
-                    <span className="flex-1 truncate font-medium">{nameOf(r.player_id)}</span>
-                    <span className="tabular-nums text-xs text-muted-foreground">
+                    <span className="flex-1 min-w-0 break-words font-medium">{nameOf(r.player_id)}</span>
+                    <span className="tabular-nums text-xs text-muted-foreground shrink-0">
                       {r.wins}–{r.losses}
                     </span>
                     <span className={cn(

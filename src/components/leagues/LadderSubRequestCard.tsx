@@ -139,7 +139,7 @@ export function LadderSubRequestCard({
           Can't make a week?
         </h2>
         {openWeeks.length > 0 && (
-          <Button size="sm" variant="outline" className="h-8 text-xs"
+          <Button size="sm" variant="outline" className="h-9 text-xs"
             onClick={() => { setPickWeek(openWeeks[0].id); setOpen(true); }}>
             Request a sub
           </Button>
@@ -154,7 +154,7 @@ export function LadderSubRequestCard({
               const m = statusMeta(r.status);
               return (
                 <li key={r.id} className="flex items-center justify-between gap-3 text-xs">
-                  <span className="flex items-center gap-1.5 min-w-0">
+                  <span className="flex flex-wrap items-center gap-1.5 min-w-0 break-words">
                     <span className="font-semibold">Week {r.week_number}</span>
                     <span className={`inline-flex items-center gap-1 ${m.cls}`}>
                       {m.icon}{m.label}
@@ -162,7 +162,7 @@ export function LadderSubRequestCard({
                   </span>
                   {r.status === "pending" && (
                     <Button size="sm" variant="ghost" disabled={busy}
-                      onClick={() => cancel(r.id)} className="h-7 text-xs text-muted-foreground shrink-0">
+                      onClick={() => cancel(r.id)} className="h-9 text-xs text-muted-foreground shrink-0">
                       Cancel
                     </Button>
                   )}

@@ -118,7 +118,7 @@ export function LeagueManageNav({
                           {t.label}
                         </div>
                         <div className={cn(
-                          "text-[11px] leading-tight truncate font-normal",
+                          "text-[11px] leading-tight line-clamp-2 font-normal",
                           isActive ? "text-[color:var(--lg-text)]/70" : "text-[color:var(--lg-text-dim)]/80",
                         )}>
                           {t.hint}
@@ -205,7 +205,7 @@ function MobileSectionPicker({
                         )} />
                         <div className="min-w-0 flex-1">
                           <div className="text-sm font-semibold leading-tight">{t.label}</div>
-                          <div className="text-[11px] text-muted-foreground truncate">{t.hint}</div>
+                          <div className="text-[11px] text-muted-foreground">{t.hint}</div>
                         </div>
                         {isActive && <Check className="w-4 h-4 text-primary shrink-0" />}
                       </button>
