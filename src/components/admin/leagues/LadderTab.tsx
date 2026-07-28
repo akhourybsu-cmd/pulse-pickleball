@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,7 @@ import type { League, LeagueSeason } from "@/lib/leagues/types";
 import { resolvePlayerName } from "@/lib/matchDisplay";
 import { formatDistanceToNow } from "date-fns";
 import { gamesPerPlayer } from "@/lib/leagues/ladder";
+import { DUR, EASE_OUT } from "@/lib/leagues/motion";
 import {
   useLadder, type LadderGame, type LadderGroup, type LadderMovementRow,
 } from "@/hooks/useLadder";
@@ -1744,22 +1746,33 @@ function GenerateNextPanel({
   blocked?: boolean;
   onGenerate: () => void;
 }) {
+  const reduced = useReducedMotion();
+  // When this panel appears (a batch/week was just processed), settle it
+  // in so the next action doesn't pop into place without context.
+  const reveal = reduced
+    ? {}
+    : {
+        initial: { opacity: 0, y: 8 },
+        animate: { opacity: 1, y: 0 },
+        transition: { duration: DUR.content, ease: EASE_OUT },
+      };
+
   if (nextStage.kind === "complete") {
     return (
-      <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 text-center">
+      <motion.div {...reveal} className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4 text-center">
         <Trophy className="w-6 h-6 mx-auto text-emerald-500 mb-1.5" />
         <div className="text-sm font-bold">Ladder complete</div>
         <p className="text-xs text-muted-foreground mt-0.5">
           Every week has been played and processed. Final standings are the
           current ladder below.
         </p>
-      </div>
+      </motion.div>
     );
   }
 
   const isWeek = nextStage.kind === "week";
   return (
-    <div className="rounded-xl border border-border/70 bg-gradient-to-br from-[#0B171F] to-[#142029] p-4 text-white">
+    <motion.div {...reveal} className="rounded-xl border border-border/70 bg-gradient-to-br from-[#0B171F] to-[#142029] p-4 text-white">
       <div className="text-[10px] font-black uppercase tracking-[0.2em] text-[#A6DB5A]">
         {isWeek ? "Week complete" : "Batch processed"}
       </div>
@@ -1795,7 +1808,7 @@ function GenerateNextPanel({
           Progression is paused — resume to generate the next stage.
         </p>
       )}
-    </div>
+    </motion.div>
   );
 }
 
@@ -1975,6 +1988,7 @@ function GameScoreRow({
 }
 
 function CurrentLadder({ ladder }: { ladder: ReturnType<typeof useLadder> }) {
+  const reduced = useReducedMotion();
   const moveOf = useMemo(() => {
     const m: Record<string, "up" | "stay" | "down"> = {};
     ladder.lastMovements.forEach((mv) => { m[mv.player_id] = mv.direction; });
@@ -1988,11 +2002,18 @@ function CurrentLadder({ ladder }: { ladder: ReturnType<typeof useLadder> }) {
       <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
         <Trophy className="w-3.5 h-3.5" /> Current ladder
       </h3>
+      {/* Rows are keyed by player id and animate their layout, so when a
+          new batch is processed each player glides to their new rung
+          (up/down) while unchanged players stay put. Movement is a pure
+          transform, so names + ranks never blur or get obscured, and
+          reduced-motion users get an instant reorder. */}
       <ol className="space-y-1">
         {ladder.currentOrder.map((pid, i) => {
           const dir = moveOf[pid];
           return (
-            <li key={pid}
+            <motion.li key={pid}
+              layout={reduced ? false : "position"}
+              transition={{ type: "spring", stiffness: 600, damping: 45 }}
               className={cn(
                 "flex items-center gap-2 rounded-lg px-2 py-1.5",
                 i % 4 === 0 && "bg-muted/40",
@@ -2005,7 +2026,7 @@ function CurrentLadder({ ladder }: { ladder: ReturnType<typeof useLadder> }) {
               {dir === "up" && <ArrowUp className="w-3.5 h-3.5 text-emerald-500" aria-label="Moved up" />}
               {dir === "down" && <ArrowDown className="w-3.5 h-3.5 text-destructive" aria-label="Moved down" />}
               {dir === "stay" && <Minus className="w-3.5 h-3.5 text-muted-foreground/50" aria-label="Stayed" />}
-            </li>
+            </motion.li>
           );
         })}
       </ol>
