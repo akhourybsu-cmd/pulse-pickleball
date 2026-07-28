@@ -3,9 +3,10 @@
  * Extract so every tab looks and behaves the same.
  */
 import { ReactNode, useId } from "react";
-import { motion } from "framer-motion";
-import { CalendarDays } from "lucide-react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { CalendarDays, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DUR, INDICATOR_SPRING, PRESSABLE, PRESSABLE_CARD } from "@/lib/leagues/motion";
 import {
   DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
@@ -178,21 +179,60 @@ export function StatusChip({
  * inside the scoped surface without fighting the app-wide primary.
  */
 export function LgButton({
-  variant = "primary", size = "md", className, children, ...rest
+  variant = "primary", size = "md", className, children,
+  loading, success, disabled, ...rest
 }: {
   variant?: "primary" | "outline" | "ghost";
   size?: "sm" | "md";
+  /** Shows a centered spinner + blocks interaction; width stays stable. */
+  loading?: boolean;
+  /** Brief checkmark confirmation. */
+  success?: boolean;
 } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
-  const base = "inline-flex items-center justify-center gap-1.5 rounded-md font-bold uppercase tracking-[0.08em] transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed";
+  const reduced = useReducedMotion();
+  const base = cn(
+    "relative inline-flex items-center justify-center gap-1.5 rounded-md font-bold uppercase tracking-[0.08em]",
+    "transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--lg-gold)]/60 focus-visible:ring-offset-1 focus-visible:ring-offset-[color:var(--lg-surface)]",
+    "disabled:opacity-40 disabled:cursor-not-allowed",
+    PRESSABLE,
+  );
   const sizes = { sm: "h-8 px-3 text-[11px]", md: "h-9 px-4 text-xs" };
   const variants = {
     primary: "bg-[color:var(--lg-gold)] text-[#1a1408] hover:bg-[color:var(--lg-gold-bright)] shadow-[0_2px_10px_-2px_rgba(201,168,76,0.4)]",
     outline: "bg-transparent text-[color:var(--lg-gold)] ring-1 ring-[color:var(--lg-gold)]/50 hover:bg-[color:var(--lg-gold)]/10",
     ghost:   "bg-transparent text-[color:var(--lg-text-dim)] hover:text-[color:var(--lg-text)] hover:bg-white/5",
   };
+  const showSuccess = success && !loading;
   return (
-    <button className={cn(base, sizes[size], variants[variant], className)} {...rest}>
-      {children}
+    <button
+      className={cn(base, sizes[size], variants[variant], className)}
+      aria-busy={loading || undefined}
+      disabled={disabled || loading}
+      {...rest}
+    >
+      <span className={cn(
+        "inline-flex items-center gap-1.5 motion-safe:transition-opacity",
+        (loading || showSuccess) && "opacity-0",
+      )}>
+        {children}
+      </span>
+      <span className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        {loading && <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden />}
+        <AnimatePresence>
+          {showSuccess && (
+            <motion.span
+              key="ok"
+              initial={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.6 }}
+              animate={reduced ? { opacity: 1 } : { opacity: 1, scale: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: DUR.hover, ease: "easeOut" }}
+              className="inline-flex"
+            >
+              <Check className="w-3.5 h-3.5" aria-hidden />
+            </motion.span>
+          )}
+        </AnimatePresence>
+      </span>
     </button>
   );
 }
@@ -531,6 +571,7 @@ export function SegmentedControl<T extends string>({
   ariaLabel?: string;
 }) {
   const id = useId();
+  const reduced = useReducedMotion();
   return (
     <div
       role="radiogroup"
@@ -548,6 +589,8 @@ export function SegmentedControl<T extends string>({
             onClick={() => onChange(o.value)}
             className={cn(
               "relative flex-1 rounded-lg px-2 py-2 text-[11px] font-bold uppercase tracking-wide transition-colors",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
+              PRESSABLE,
               active ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground",
             )}
           >
@@ -555,7 +598,7 @@ export function SegmentedControl<T extends string>({
               <motion.span
                 layoutId={`seg-${id}`}
                 className="absolute inset-0 rounded-lg bg-primary shadow-[0_2px_8px_-2px_hsl(var(--primary)/0.5)]"
-                transition={{ type: "spring", stiffness: 500, damping: 40 }}
+                transition={reduced ? { duration: 0 } : INDICATOR_SPRING}
                 aria-hidden
               />
             )}
@@ -582,6 +625,7 @@ export function ChoiceGrid<T extends string>({
   options: ChoiceOption<T>[];
   columns?: 2 | 3;
 }) {
+  const reduced = useReducedMotion();
   return (
     <div className={cn("grid gap-2", columns === 3 ? "grid-cols-3" : "grid-cols-2")}>
       {options.map((o) => {
@@ -593,12 +637,31 @@ export function ChoiceGrid<T extends string>({
             aria-pressed={active}
             onClick={() => onChange(o.value)}
             className={cn(
-              "rounded-xl border p-2.5 text-left transition-all active:scale-[0.98]",
+              "relative rounded-xl border p-2.5 pr-7 text-left transition-colors",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
+              PRESSABLE_CARD,
               active
                 ? "border-primary/50 bg-primary/10 ring-1 ring-primary/25 shadow-[0_2px_10px_-4px_hsl(var(--primary)/0.35)]"
                 : "border-border/60 bg-card hover:border-border hover:bg-muted/40",
             )}
           >
+            {/* Selection tick — absolutely placed so selecting never
+                changes the tile's size or nudges neighbours. */}
+            <AnimatePresence>
+              {active && (
+                <motion.span
+                  key="tick"
+                  aria-hidden
+                  initial={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.4 }}
+                  animate={reduced ? { opacity: 1 } : { opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={reduced ? { duration: 0 } : INDICATOR_SPRING}
+                  className="absolute top-2 right-2 inline-flex h-4 w-4 items-center justify-center rounded-full bg-primary text-primary-foreground"
+                >
+                  <Check className="h-3 w-3" strokeWidth={3} />
+                </motion.span>
+              )}
+            </AnimatePresence>
             <div className="flex items-center gap-2">
               {o.icon && (
                 <span className={cn("shrink-0", active ? "text-primary" : "text-muted-foreground")}>
