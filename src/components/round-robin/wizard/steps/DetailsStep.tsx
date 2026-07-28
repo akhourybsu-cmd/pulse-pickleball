@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { CityAutocomplete, VerifiedCity } from "@/components/match-wizard/CityAutocomplete";
 import { generateDefaultEventName } from "../hooks/useWizardSteps";
 import { cn } from "@/lib/utils";
+import { PRESSABLE_CARD } from "@/lib/motion";
 import { StepHeader } from "../StepHeader";
 
 interface DetailsStepProps {
@@ -163,8 +164,11 @@ export function DetailsStep({
               <button
                 type="button"
                 onClick={() => onIsInviteOnlyChange(false)}
+                aria-pressed={!isInviteOnly}
                 className={cn(
-                  "flex items-start gap-3 p-3 rounded-lg border-2 text-left transition-all",
+                  "flex items-start gap-3 p-3 rounded-lg border-2 text-left transition-colors",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2",
+                  PRESSABLE_CARD,
                   !isInviteOnly
                     ? "border-primary bg-primary/5"
                     : "border-border hover:border-border/80 hover:bg-muted/30",
@@ -189,8 +193,11 @@ export function DetailsStep({
               <button
                 type="button"
                 onClick={() => onIsInviteOnlyChange(true)}
+                aria-pressed={isInviteOnly}
                 className={cn(
-                  "flex items-start gap-3 p-3 rounded-lg border-2 text-left transition-all",
+                  "flex items-start gap-3 p-3 rounded-lg border-2 text-left transition-colors",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2",
+                  PRESSABLE_CARD,
                   isInviteOnly
                     ? "border-primary bg-primary/5"
                     : "border-border hover:border-border/80 hover:bg-muted/30",

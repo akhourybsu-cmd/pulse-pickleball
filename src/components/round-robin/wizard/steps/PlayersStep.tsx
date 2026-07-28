@@ -1,8 +1,10 @@
 import { useState } from "react";
-import { UserPlus, Hash, Plus, Minus, Users, Pencil, AlertCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { UserPlus, Hash, Users, Pencil, AlertCircle } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { StepHeader } from "../StepHeader";
+import { WizardStepper } from "../WizardStepper";
+import { cn } from "@/lib/utils";
+import { PRESSABLE_CARD } from "@/lib/motion";
 
 import { PlayerPickerSheet } from "@/components/round-robin/PlayerPickerSheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -90,29 +92,15 @@ export function PlayersStep({
         />
 
         <div className="flex-1 flex flex-col items-center justify-center">
-          <div className="flex items-center gap-6">
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-14 w-14 rounded-full"
-              onClick={() => onMaxPlayersChange(Math.max(4, maxPlayers - 1))}
-              disabled={maxPlayers <= 4}
-            >
-              <Minus className="h-6 w-6" />
-            </Button>
-            <span className="text-5xl font-bold tabular-nums w-20 text-center">
-              {maxPlayers}
-            </span>
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-14 w-14 rounded-full"
-              onClick={() => onMaxPlayersChange(Math.min(100, maxPlayers + 1))}
-              disabled={maxPlayers >= 100}
-            >
-              <Plus className="h-6 w-6" />
-            </Button>
-          </div>
+          <WizardStepper
+            value={maxPlayers}
+            onChange={onMaxPlayersChange}
+            min={4}
+            max={100}
+            size="lg"
+            decrementLabel="Decrease maximum players"
+            incrementLabel="Increase maximum players"
+          />
           <p className="text-muted-foreground text-sm mt-4">Maximum players</p>
           {maxPlayers % 4 !== 0 && (
             <p className="text-amber-600 dark:text-amber-400 text-xs mt-2">
@@ -140,9 +128,13 @@ export function PlayersStep({
           <button
             type="button"
             onClick={() => onInputMethodChange("add")}
-            className="flex items-start gap-4 p-5 rounded-xl border-2 border-border hover:border-primary/50 text-left transition-all"
+            className={cn(
+              "group flex items-start gap-4 p-5 rounded-xl border-2 border-border hover:border-primary/50 text-left transition-colors",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2",
+              PRESSABLE_CARD,
+            )}
           >
-            <div className="p-3 rounded-lg bg-muted">
+            <div className="p-3 rounded-lg bg-muted motion-safe:transition-colors group-hover:bg-primary/10 group-hover:text-primary">
               <UserPlus className="h-5 w-5" />
             </div>
             <div>
@@ -156,9 +148,13 @@ export function PlayersStep({
           <button
             type="button"
             onClick={() => onInputMethodChange("count")}
-            className="flex items-start gap-4 p-5 rounded-xl border-2 border-border hover:border-primary/50 text-left transition-all"
+            className={cn(
+              "group flex items-start gap-4 p-5 rounded-xl border-2 border-border hover:border-primary/50 text-left transition-colors",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2",
+              PRESSABLE_CARD,
+            )}
           >
-            <div className="p-3 rounded-lg bg-muted">
+            <div className="p-3 rounded-lg bg-muted motion-safe:transition-colors group-hover:bg-primary/10 group-hover:text-primary">
               <Hash className="h-5 w-5" />
             </div>
             <div>
@@ -186,29 +182,15 @@ export function PlayersStep({
         />
 
         <div className="flex-1 flex flex-col items-center justify-center">
-          <div className="flex items-center gap-6">
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-14 w-14 rounded-full"
-              onClick={() => onPlayerCountChange(Math.max(4, playerCount - 1))}
-              disabled={playerCount <= 4}
-            >
-              <Minus className="h-6 w-6" />
-            </Button>
-            <span className="text-5xl font-bold tabular-nums w-20 text-center">
-              {playerCount}
-            </span>
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-14 w-14 rounded-full"
-              onClick={() => onPlayerCountChange(Math.min(100, playerCount + 1))}
-              disabled={playerCount >= 100}
-            >
-              <Plus className="h-6 w-6" />
-            </Button>
-          </div>
+          <WizardStepper
+            value={playerCount}
+            onChange={onPlayerCountChange}
+            min={4}
+            max={100}
+            size="lg"
+            decrementLabel="Decrease player count"
+            incrementLabel="Increase player count"
+          />
           <p className="text-muted-foreground text-sm mt-4">Players</p>
           {playerCount % 4 !== 0 && (
             <p className="text-amber-600 dark:text-amber-400 text-xs mt-2">

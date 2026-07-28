@@ -1,6 +1,8 @@
 import { Users, UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StepHeader } from "../StepHeader";
+import { SelectionTick } from "../SelectionTick";
+import { PRESSABLE_CARD } from "@/lib/motion";
 
 interface FormatStepProps {
   value: "open" | "mixed" | "male" | "female";
@@ -51,16 +53,20 @@ export function FormatStep({ value, onChange }: FormatStepProps) {
               key={format.id}
               type="button"
               onClick={() => onChange(format.id)}
+              aria-pressed={value === format.id}
               className={cn(
-                "flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 text-center transition-all",
+                "relative flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 text-center transition-colors",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2",
+                PRESSABLE_CARD,
                 value === format.id
                   ? "border-primary bg-primary/5"
                   : "border-border hover:border-primary/50"
               )}
             >
+              <SelectionTick active={value === format.id} />
               <div
                 className={cn(
-                  "p-2 rounded-lg",
+                  "p-2 rounded-lg motion-safe:transition-colors",
                   value === format.id ? "bg-primary text-primary-foreground" : "bg-muted"
                 )}
               >
