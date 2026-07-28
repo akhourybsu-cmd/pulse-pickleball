@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
 import { ActionButton } from "@/components/leagues/ActionButton";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";

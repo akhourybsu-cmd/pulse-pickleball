@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
 import { ActionButton } from "@/components/leagues/ActionButton";
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
