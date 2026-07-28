@@ -17,6 +17,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import type { LeagueMatch, LeagueTeam } from "@/lib/leagues/types";
+import { haptic } from "@/lib/haptics";
 
 /**
  * Per-match action bar shown to a participant on the player league
@@ -150,6 +151,7 @@ export function LeagueMatchActions({
                   return;
                 }
                 toast.success("Score confirmed");
+                haptic("success");
                 await nudgeLadderAdvance(ladderSeasonId);
                 await onChanged();
               }}
@@ -282,6 +284,7 @@ function SubmitScoreDialog({
     setSaving(false);
     if (error) { toast.error(error.message); return; }
     toast.success("Score submitted — waiting for a teammate or opponent to confirm");
+    haptic("success");
     onOpenChange(false);
     await nudgeLadderAdvance(ladderSeasonId);
     await onSubmitted();
