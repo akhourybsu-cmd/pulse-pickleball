@@ -159,23 +159,41 @@ export function useSkillAssessment() {
     if (error) toast.error("That answer didn't save — check your connection and try again.");
   }, [state.attemptId]);
 
-  /** Score locally (pure engine) and finalize via the controlled RPC. */
+  /**
+   * Finalize via the server-authoritative edge function. The client's local
+   * score is a PROVISIONAL preview only (loading fallback / dev parity check)
+   * — it is never persisted as authoritative. The server independently
+   * recomputes from the stored responses; its result always wins. Idempotent:
+   * a retry after a timeout returns the already-stored result rather than
+   * duplicating or recalculating.
+   */
   const finalize = useCallback(async () => {
     if (!state.attemptId) return;
     setState((s) => ({ ...s, phase: "finalizing" }));
+    const provisional = scoreAssessment(QUESTION_BANK_V1, state.responses);
     try {
-      const snapshot = scoreAssessment(QUESTION_BANK_V1, state.responses);
-      const { error } = await supabase.rpc(
-        "apply_skill_scoring_snapshot" as never,
-        { p_attempt_id: state.attemptId, p_snapshot: snapshot as unknown } as never,
-      );
+      const { data, error } = await supabase.functions.invoke("skill-complete", {
+        body: { attemptId: state.attemptId, finalResponses: state.responses },
+      });
       if (error) throw error;
-      await load();
+      const payload = (data ?? {}) as { snapshot?: ScoringSnapshot; error?: string; message?: string };
+      if (payload.error) throw new Error(payload.message || payload.error);
+      // Dev-only diagnostics: the server result is authoritative regardless.
+      if (payload.snapshot && Math.abs((payload.snapshot.estimatedLevelRaw ?? 0) - provisional.estimatedLevelRaw) > 0.001) {
+        console.warn("[skill] server/client scoring mismatch — using server result", {
+          server: payload.snapshot.estimatedLevelRaw,
+          client: provisional.estimatedLevelRaw,
+        });
+      }
+      await load(); // pull the authoritative snapshot the server stored
       setState((s) => ({ ...s, phase: "result" }));
     } catch (e) {
-      // Never lose a completed assessment to a failed result request.
+      // Never lose a completed assessment to a failed result request — a
+      // retry is safe (the edge function is idempotent), and if it already
+      // completed server-side, reload() surfaces the stored result.
       toast.error(e instanceof Error ? `Couldn't save your results: ${e.message}` : "Couldn't save your results");
-      setState((s) => ({ ...s, phase: "in_progress" }));
+      await load();
+      setState((s) => ({ ...s, phase: s.latest ? "result" : "in_progress" }));
     }
   }, [state.attemptId, state.responses, load]);
 

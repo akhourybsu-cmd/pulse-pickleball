@@ -337,11 +337,15 @@ GRANT SELECT ON public.skill_evidence TO authenticated;
 GRANT SELECT ON public.skill_overrides TO authenticated;
 
 -- ----------------------------------------------------------------------------
--- apply_skill_scoring_snapshot: single controlled write path that finalizes
--- an attempt. Caller must own an in-progress attempt. Stores the immutable
--- snapshot + derived scores, flips to completed, and upserts the summary.
--- (The snapshot is produced by the shared TS scoring engine. A future edge
---  function should recompute server-side to fully harden against forgery.)
+-- apply_skill_scoring_snapshot: the SERVER-ONLY finalize path. Callable only
+-- with the service role (the skill-complete edge function), which has already
+-- authenticated the player and INDEPENDENTLY recomputed the snapshot from the
+-- authoritative stored responses. The client can no longer write a result.
+--
+-- Atomic (a single plpgsql function body = one transaction): stores the
+-- immutable snapshot + derived scores, flips to completed, upserts the
+-- summary, and records the self-assessment evidence row. Idempotent: a
+-- repeat call on an already-completed attempt is a no-op.
 -- ----------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.apply_skill_scoring_snapshot(
   p_attempt_id UUID,
@@ -349,16 +353,22 @@ CREATE OR REPLACE FUNCTION public.apply_skill_scoring_snapshot(
 )
 RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
-  v_uid   UUID := auth.uid();
-  v_att   public.skill_assessment_attempts%ROWTYPE;
+  v_uid        UUID := auth.uid();
+  v_is_service BOOLEAN := (COALESCE(auth.role(),'') = 'service_role');
+  v_att        public.skill_assessment_attempts%ROWTYPE;
   v_raw   NUMERIC := LEAST( (p_snapshot->>'estimatedLevelRaw')::NUMERIC, 4.7 );
   v_conf  INTEGER := (p_snapshot->'confidence'->>'total')::INTEGER;
   v_rec   JSONB;
 BEGIN
   SELECT * INTO v_att FROM public.skill_assessment_attempts WHERE id = p_attempt_id FOR UPDATE;
   IF v_att.id IS NULL THEN RAISE EXCEPTION 'Attempt not found' USING ERRCODE = '02000'; END IF;
-  IF v_att.player_id <> v_uid THEN RAISE EXCEPTION 'Not your attempt' USING ERRCODE = '42501'; END IF;
-  IF v_att.status = 'completed' THEN RAISE EXCEPTION 'Attempt already completed' USING ERRCODE = '22023'; END IF;
+  -- Ownership is enforced by the edge function; a direct authenticated call
+  -- (no service role) must still be its own attempt, and is otherwise denied.
+  IF NOT v_is_service AND (v_uid IS NULL OR v_att.player_id <> v_uid) THEN
+    RAISE EXCEPTION 'Not authorized to finalize this attempt' USING ERRCODE = '42501';
+  END IF;
+  -- Idempotent: already completed → return the stored result unchanged.
+  IF v_att.status = 'completed' THEN RETURN; END IF;
 
   UPDATE public.skill_assessment_attempts SET
     status                  = 'completed',
@@ -402,7 +412,10 @@ BEGIN
   INSERT INTO public.skill_evidence (player_id, evidence_type, source_id, level_value, confidence_value, submitted_by)
   VALUES (v_uid, 'self_assessment', p_attempt_id, v_raw, v_conf, v_uid);
 END; $$;
-GRANT EXECUTE ON FUNCTION public.apply_skill_scoring_snapshot(UUID, JSONB) TO authenticated;
+-- Service-role only: finalization must go through the skill-complete edge
+-- function, never straight from a browser with a client-computed snapshot.
+REVOKE ALL ON FUNCTION public.apply_skill_scoring_snapshot(UUID, JSONB) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.apply_skill_scoring_snapshot(UUID, JSONB) TO service_role;
 
 -- ----------------------------------------------------------------------------
 -- get_league_skill_cards: organizer read-only view of authorized players'
