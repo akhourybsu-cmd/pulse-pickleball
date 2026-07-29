@@ -27,6 +27,7 @@ import {
   Gauge,
 } from 'lucide-react';
 import { useLeagueEntitlement } from '@/hooks/useLeagueEntitlement';
+import { isSkillAssessmentEnabled } from '@/lib/skill/featureFlag';
 import { cn } from '@/lib/utils';
 import { PlayerPageHeader } from '@/components/layout/PlayerPageHeader';
 import { SectionHeader } from '@/components/layout/SectionHeader';
