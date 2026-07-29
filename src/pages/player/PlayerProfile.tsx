@@ -24,8 +24,10 @@ import {
   CalendarDays,
   ListOrdered,
   Trophy,
+  Gauge,
 } from 'lucide-react';
 import { useLeagueEntitlement } from '@/hooks/useLeagueEntitlement';
+import { isSkillAssessmentEnabled } from '@/lib/skill/featureFlag';
 import { cn } from '@/lib/utils';
 import { PlayerPageHeader } from '@/components/layout/PlayerPageHeader';
 import { SectionHeader } from '@/components/layout/SectionHeader';
@@ -93,6 +95,13 @@ const COMMUNITY_LINKS: HubLink[] = [
   },
 ];
 
+const SKILL_ASSESSMENT_LINK: HubLink = {
+  to: '/player/self-assessment',
+  icon: Gauge,
+  label: 'Skill self-assessment',
+  description: 'Estimate your current level',
+};
+
 const ACCOUNT_LINKS: HubLink[] = [
   {
     to: '/profile/edit',
@@ -142,6 +151,10 @@ export default function PlayerProfile() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const { entitled: leagueEntitled } = useLeagueEntitlement();
+  const accountLinks = isSkillAssessmentEnabled()
+    ? [SKILL_ASSESSMENT_LINK, ...ACCOUNT_LINKS]
+    : ACCOUNT_LINKS;
+
   const activityLinks = leagueEntitled
     ? [...ACTIVITY_LINKS, LEAGUES_LINK]
     : ACTIVITY_LINKS;
@@ -318,7 +331,7 @@ export default function PlayerProfile() {
         {/* Account group */}
         <div>
           <SectionHeader label="Account" />
-          {renderLinkGroup(ACCOUNT_LINKS, 300)}
+          {renderLinkGroup(accountLinks, 300)}
         </div>
 
         {/* Admin row — only when isPlatformAdmin. Migrated from
