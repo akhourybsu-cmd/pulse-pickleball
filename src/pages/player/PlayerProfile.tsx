@@ -331,7 +331,7 @@ export default function PlayerProfile() {
         {/* Account group */}
         <div>
           <SectionHeader label="Account" />
-          {renderLinkGroup(ACCOUNT_LINKS, 300)}
+          {renderLinkGroup(accountLinks, 300)}
         </div>
 
         {/* Admin row — only when isPlatformAdmin. Migrated from
