@@ -22,6 +22,7 @@ import { resolvePlayerName } from "@/lib/matchDisplay";
 import { formatDistanceToNow } from "date-fns";
 import { gamesPerPlayer } from "@/lib/leagues/ladder";
 import { DUR, EASE_OUT } from "@/lib/leagues/motion";
+import { haptic } from "@/lib/haptics";
 import {
   useLadder, type LadderGame, type LadderGroup, type LadderMovementRow,
 } from "@/hooks/useLadder";
@@ -511,6 +512,7 @@ function LadderManage({
     setTies(null);
     setPendingTies([]);
     toast.success("Results processed — ladder updated. Generate the next stage when ready.");
+    haptic("success");
     onChanged();
   };
 

@@ -1,5 +1,7 @@
 import { Loader2, ChevronRight, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { PRESSABLE } from "@/lib/motion";
 
 interface WizardNavigationProps {
   onContinue: () => void;
@@ -42,7 +44,7 @@ export function WizardNavigation({
             variant="ghost"
             onClick={onSkip}
             disabled={isLoading}
-            className="text-muted-foreground hover:text-foreground"
+            className={cn("text-muted-foreground hover:text-foreground", PRESSABLE)}
           >
             Skip
           </Button>
@@ -50,7 +52,7 @@ export function WizardNavigation({
         <Button
           onClick={onContinue}
           disabled={!isValid || isLoading}
-          className="flex-1 gap-1.5 font-semibold"
+          className={cn("group flex-1 gap-1.5 font-semibold", PRESSABLE)}
           size="lg"
         >
           {isLoading ? (
@@ -66,7 +68,7 @@ export function WizardNavigation({
           ) : (
             <>
               Continue
-              <ChevronRight className="h-4 w-4" />
+              <ChevronRight className="h-4 w-4 motion-safe:transition-transform motion-safe:group-hover:translate-x-0.5" />
             </>
           )}
         </Button>

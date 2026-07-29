@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Minus, Plus, Zap, Target, Trophy, Settings, CalendarDays } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Zap, Target, Trophy, Settings, CalendarDays } from "lucide-react";
 import { StepHeader } from "../StepHeader";
+import { SelectionTick } from "../SelectionTick";
+import { WizardStepper } from "../WizardStepper";
 import {
   Select,
   SelectContent,
@@ -10,6 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { PRESSABLE_CARD } from "@/lib/motion";
 
 interface ScheduleStepProps {
   courtCount: number;
@@ -64,31 +66,15 @@ export function ScheduleStep({
           <label className="text-sm font-medium mb-3 block">
             Courts available
           </label>
-          <div className="flex items-center justify-center gap-5">
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-12 w-12 rounded-full"
-              onClick={() => onCourtCountChange(Math.max(1, courtCount - 1))}
-              disabled={courtCount <= 1}
-              aria-label="Decrease court count"
-            >
-              <Minus className="h-5 w-5" />
-            </Button>
-            <span className="text-4xl font-bold tabular-nums w-16 text-center">
-              {courtCount}
-            </span>
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-12 w-12 rounded-full"
-              onClick={() => onCourtCountChange(Math.min(20, courtCount + 1))}
-              disabled={courtCount >= 20}
-              aria-label="Increase court count"
-            >
-              <Plus className="h-5 w-5" />
-            </Button>
-          </div>
+          <WizardStepper
+            value={courtCount}
+            onChange={onCourtCountChange}
+            min={1}
+            max={20}
+            size="md"
+            decrementLabel="Decrease court count"
+            incrementLabel="Increase court count"
+          />
           <p className="text-xs text-muted-foreground text-center mt-2">
             More courts = more simultaneous games
           </p>
@@ -108,16 +94,20 @@ export function ScheduleStep({
                   key={preset.id}
                   type="button"
                   onClick={() => handleGamesPreset(preset.id)}
+                  aria-pressed={active}
                   className={cn(
-                    "flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border-2 text-center transition-all",
+                    "relative flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border-2 text-center transition-colors",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2",
+                    PRESSABLE_CARD,
                     active
                       ? "border-primary bg-primary/5"
                       : "border-border hover:border-primary/50"
                   )}
                 >
+                  <SelectionTick active={active} />
                   <div
                     className={cn(
-                      "p-1.5 rounded-lg",
+                      "p-1.5 rounded-lg motion-safe:transition-colors",
                       active ? "bg-primary text-primary-foreground" : "bg-muted"
                     )}
                   >
@@ -138,16 +128,20 @@ export function ScheduleStep({
             <button
               type="button"
               onClick={handleCustomClick}
+              aria-pressed={showCustomGames}
               className={cn(
-                "flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border-2 text-center transition-all",
+                "relative flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border-2 text-center transition-colors",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2",
+                PRESSABLE_CARD,
                 showCustomGames
                   ? "border-primary bg-primary/5"
                   : "border-border hover:border-primary/50"
               )}
             >
+              <SelectionTick active={showCustomGames} />
               <div
                 className={cn(
-                  "p-1.5 rounded-lg",
+                  "p-1.5 rounded-lg motion-safe:transition-colors",
                   showCustomGames
                     ? "bg-primary text-primary-foreground"
                     : "bg-muted"

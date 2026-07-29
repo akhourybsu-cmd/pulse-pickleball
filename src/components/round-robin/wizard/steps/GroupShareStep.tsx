@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { useAdminGroups } from "@/hooks/useAdminGroups";
 import { StepHeader } from "../StepHeader";
+import { SelectionTick } from "../SelectionTick";
+import { PRESSABLE_CARD } from "@/lib/motion";
 import {
   Select,
   SelectContent,
@@ -74,6 +76,7 @@ export function GroupShareStep({ visibility, groupId, onChange }: GroupShareStep
               <button
                 type="button"
                 disabled={disabled}
+                aria-pressed={selected}
                 onClick={() => {
                   if (opt.id === "personal") {
                     onChange("personal", null);
@@ -84,13 +87,16 @@ export function GroupShareStep({ visibility, groupId, onChange }: GroupShareStep
                   }
                 }}
                 className={cn(
-                  "w-full flex items-start gap-3 p-4 rounded-xl border-2 text-left transition-all",
+                  "relative w-full flex items-start gap-3 p-4 rounded-xl border-2 text-left transition-colors",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2",
+                  !disabled && PRESSABLE_CARD,
                   selected
                     ? "border-primary bg-primary/5"
                     : "border-border hover:border-primary/50",
                   disabled && "opacity-50 cursor-not-allowed"
                 )}
               >
+                <SelectionTick active={selected} />
                 <div
                   className={cn(
                     "p-2.5 rounded-lg shrink-0",

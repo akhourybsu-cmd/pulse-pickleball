@@ -1,6 +1,13 @@
 import { CalendarClock, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StepHeader } from "../StepHeader";
+import { SelectionTick } from "../SelectionTick";
+import { PRESSABLE_CARD } from "@/lib/motion";
+
+const OPTION_BASE =
+  "relative flex items-start gap-4 p-5 rounded-xl border-2 text-left transition-colors " +
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 " +
+  PRESSABLE_CARD;
 
 interface EventModeStepProps {
   value: "immediate" | "open_registration";
@@ -20,15 +27,17 @@ export function EventModeStep({ value, onChange }: EventModeStepProps) {
         <button
           type="button"
           onClick={() => onChange("immediate")}
+          aria-pressed={value === "immediate"}
           className={cn(
-            "flex items-start gap-4 p-5 rounded-xl border-2 text-left transition-all",
+            OPTION_BASE,
             value === "immediate"
               ? "border-primary bg-primary/5"
               : "border-border hover:border-primary/50"
           )}
         >
+          <SelectionTick active={value === "immediate"} />
           <div className={cn(
-            "p-3 rounded-lg",
+            "p-3 rounded-lg motion-safe:transition-colors",
             value === "immediate" ? "bg-primary text-primary-foreground" : "bg-muted"
           )}>
             <Zap className="h-5 w-5" />
@@ -44,15 +53,17 @@ export function EventModeStep({ value, onChange }: EventModeStepProps) {
         <button
           type="button"
           onClick={() => onChange("open_registration")}
+          aria-pressed={value === "open_registration"}
           className={cn(
-            "flex items-start gap-4 p-5 rounded-xl border-2 text-left transition-all",
+            OPTION_BASE,
             value === "open_registration"
               ? "border-primary bg-primary/5"
               : "border-border hover:border-primary/50"
           )}
         >
+          <SelectionTick active={value === "open_registration"} />
           <div className={cn(
-            "p-3 rounded-lg",
+            "p-3 rounded-lg motion-safe:transition-colors",
             value === "open_registration" ? "bg-primary text-primary-foreground" : "bg-muted"
           )}>
             <CalendarClock className="h-5 w-5" />

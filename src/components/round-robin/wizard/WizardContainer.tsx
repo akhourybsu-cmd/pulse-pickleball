@@ -6,6 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import { PRESSABLE } from "@/lib/motion";
+import { haptic } from "@/lib/haptics";
 import { WizardProgress } from "./WizardProgress";
 import { WizardCard } from "./WizardCard";
 import { WizardNavigation } from "./WizardNavigation";
@@ -329,6 +332,7 @@ export function WizardContainer() {
             : "Event created in draft mode.";
         toast.success(successMessage);
       }
+      haptic("success");
       // Venue-context creates land on the venue console RR detail so staff
       // stay inside their console. Player-organized creates land on the
       // public detail page they would naturally share.
@@ -474,10 +478,10 @@ export function WizardContainer() {
             variant="ghost"
             size="icon"
             onClick={() => navigate('/player/dashboard')}
-            className="h-9 w-9 text-white hover:text-white hover:bg-white/10"
+            className={cn("group h-9 w-9 text-white hover:text-white hover:bg-white/10", PRESSABLE)}
             aria-label="Cancel and return home"
           >
-            <ArrowLeft className="h-5 w-5" />
+            <ArrowLeft className="h-5 w-5 motion-safe:transition-transform motion-safe:group-hover:-translate-x-0.5" />
           </Button>
           <Link
             to="/player/dashboard"

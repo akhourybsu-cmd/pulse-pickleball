@@ -1,8 +1,10 @@
 import { Pencil, Calendar, MapPin, Users, LayoutGrid, Target, TrendingUp, FileText, Zap, Lock, Globe, CheckCircle2, AlertTriangle, type LucideIcon } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { WizardFormData, calculateScheduleMetrics } from "../hooks/useWizardSteps";
 import { StepHeader } from "../StepHeader";
 import { cn } from "@/lib/utils";
+import { DUR, EASE_OUT, PRESSABLE, PRESSABLE_CARD } from "@/lib/motion";
 
 interface ReviewStepProps {
   formData: WizardFormData;
@@ -43,6 +45,7 @@ interface ReviewGroup {
  * calculateScheduleMetrics call.
  */
 export function ReviewStep({ formData, onEdit }: ReviewStepProps) {
+  const reduced = useReducedMotion();
   const playerCount =
     formData.eventMode === "immediate"
       ? formData.selectedPlayers.length || formData.playerCount
@@ -186,12 +189,17 @@ export function ReviewStep({ formData, onEdit }: ReviewStepProps) {
         {/* Fairness warning — prominent, top of card stack so the host
             can't miss it. Pre-overhaul this hid at the bottom. */}
         {metrics.fairnessWarning && (
-          <div className="flex items-start gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2.5">
+          <motion.div
+            initial={reduced ? { opacity: 0 } : { opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={reduced ? { duration: 0 } : { duration: DUR.content, ease: EASE_OUT }}
+            className="flex items-start gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2.5"
+          >
             <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
             <p className="text-xs text-amber-700 dark:text-amber-300 leading-snug">
               {metrics.fairnessWarning}
             </p>
-          </div>
+          </motion.div>
         )}
 
         {groups.map((group) => (
@@ -209,10 +217,10 @@ export function ReviewStep({ formData, onEdit }: ReviewStepProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 -mr-2 px-2 text-xs gap-1 text-muted-foreground hover:text-foreground"
+                className={cn("group/edit h-7 -mr-2 px-2 text-xs gap-1 text-muted-foreground hover:text-foreground", PRESSABLE)}
                 onClick={() => onEdit(group.editStepIndex)}
               >
-                <Pencil className="h-3 w-3" />
+                <Pencil className="h-3 w-3 motion-safe:transition-transform motion-safe:group-hover/edit:-rotate-12" />
                 Edit
               </Button>
             </div>
@@ -228,6 +236,8 @@ export function ReviewStep({ formData, onEdit }: ReviewStepProps) {
                     className={cn(
                       "w-full flex items-center gap-3 px-4 py-2.5 text-left",
                       "transition-colors hover:bg-muted/40 active:bg-muted/60",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40",
+                      PRESSABLE_CARD,
                     )}
                   >
                     <Icon className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />

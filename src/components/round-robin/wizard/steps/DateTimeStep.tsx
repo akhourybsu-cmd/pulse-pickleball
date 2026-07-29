@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Calendar, Clock, CalendarClock } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
 import { StepHeader } from "../StepHeader";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +12,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { DUR, EASE_OUT, PRESSABLE } from "@/lib/motion";
 import { format, addDays, isAfter, isBefore, startOfToday, parse } from "date-fns";
 
 interface DateTimeStepProps {
@@ -61,6 +63,15 @@ export function DateTimeStep({
 }: DateTimeStepProps) {
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const today = startOfToday();
+  const reduced = useReducedMotion();
+  // Settle-in for conditional confirmations (start-time line, summary card).
+  const reveal = reduced
+    ? {}
+    : {
+        initial: { opacity: 0, y: 6 },
+        animate: { opacity: 1, y: 0 },
+        transition: { duration: DUR.content, ease: EASE_OUT },
+      };
 
   // Parse current event date
   const selectedDate = eventDate ? parse(eventDate, "yyyy-MM-dd'T'HH:mm", new Date()) : undefined;
@@ -142,7 +153,7 @@ export function DateTimeStep({
                 variant={startTime === preset.value ? "default" : "outline"}
                 size="sm"
                 onClick={() => onStartTimeChange(preset.value)}
-                className="text-xs"
+                className={cn("text-xs", PRESSABLE)}
               >
                 {preset.label}
               </Button>
@@ -168,9 +179,9 @@ export function DateTimeStep({
           </div>
 
           {startTime && (
-            <p className="text-center text-sm text-muted-foreground">
+            <motion.p key={startTime} {...reveal} className="text-center text-sm text-muted-foreground">
               Starting at <span className="font-medium text-foreground">{formatTime12Hour(startTime)}</span>
-            </p>
+            </motion.p>
           )}
         </div>
       </div>
@@ -199,6 +210,7 @@ export function DateTimeStep({
                 variant="outline"
                 className={cn(
                   "w-full h-12 justify-start text-left font-normal",
+                  PRESSABLE,
                   !selectedDateOnly && "text-muted-foreground"
                 )}
               >
@@ -235,7 +247,7 @@ export function DateTimeStep({
                 variant={startTime === preset.value ? "default" : "outline"}
                 size="sm"
                 onClick={() => handleTimePreset(preset.value)}
-                className="text-xs"
+                className={cn("text-xs", PRESSABLE)}
               >
                 {preset.label}
               </Button>
@@ -264,7 +276,7 @@ export function DateTimeStep({
                   variant="outline"
                   size="sm"
                   onClick={() => handleDeadlinePreset(preset)}
-                  className="text-xs"
+                  className={cn("text-xs", PRESSABLE)}
                 >
                   {preset.label}
                 </Button>
@@ -293,7 +305,7 @@ export function DateTimeStep({
 
         {/* Summary */}
         {eventDate && startTime && registrationDeadline && isDeadlineValid() && (
-          <div className="p-3 rounded-lg bg-muted/50 border text-sm space-y-1">
+          <motion.div {...reveal} className="p-3 rounded-lg bg-muted/50 border text-sm space-y-1">
             <p>
               <span className="text-muted-foreground">Event:</span>{" "}
               <span className="font-medium">
@@ -306,7 +318,7 @@ export function DateTimeStep({
                 {format(new Date(registrationDeadline), "EEE, MMM d 'at' h:mm a")}
               </span>
             </p>
-          </div>
+          </motion.div>
         )}
       </div>
     </div>

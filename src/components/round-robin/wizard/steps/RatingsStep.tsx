@@ -1,7 +1,9 @@
 import { TrendingUp, UserPlus, AlertCircle, Trophy } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { DUR, EASE_OUT } from "@/lib/motion";
 import { StepHeader } from "../StepHeader";
 import {
   Select,
@@ -30,6 +32,14 @@ export function RatingsStep({
   onAllowGuestsChange,
 }: RatingsStepProps) {
   const effectiveRatingEligible = allowGuests ? false : ratingEligible;
+  const reduced = useReducedMotion();
+  const reveal = reduced
+    ? {}
+    : {
+        initial: { opacity: 0, y: 6 },
+        animate: { opacity: 1, y: 0 },
+        transition: { duration: DUR.content, ease: EASE_OUT },
+      };
 
   return (
     <div className="flex flex-col h-full">
@@ -65,14 +75,14 @@ export function RatingsStep({
             />
           </div>
           {allowGuests && (
-            <div className="mt-4 flex items-start gap-2 rounded-lg bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
+            <motion.div {...reveal} className="mt-4 flex items-start gap-2 rounded-lg bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
               <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
               <span>
                 Heads up: scheduled generation and live scoring don't yet
                 support guest slots. You'll be prompted to swap guests for
                 registered players before generating a schedule.
               </span>
-            </div>
+            </motion.div>
           )}
         </div>
 
@@ -104,7 +114,7 @@ export function RatingsStep({
         </div>
 
         {effectiveRatingEligible && (
-          <div className="space-y-2">
+          <motion.div {...reveal} className="space-y-2">
             <Label className="text-sm font-medium">Rating Type</Label>
             <Select value={ratingType} onValueChange={onRatingTypeChange}>
               <SelectTrigger className="h-14">
@@ -117,7 +127,7 @@ export function RatingsStep({
                 <SelectItem value="casual">Casual</SelectItem>
               </SelectContent>
             </Select>
-          </div>
+          </motion.div>
         )}
       </div>
     </div>
