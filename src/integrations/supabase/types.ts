@@ -4644,6 +4644,139 @@ export type Database = {
           },
         ]
       }
+      player_skill_profiles: {
+        Row: {
+          handedness: string | null
+          last_reviewed_at: string | null
+          observed_at: string | null
+          observed_level: number | null
+          performance_level_reference: number | null
+          player_id: string
+          preferred_display_source: string
+          preferred_side: string | null
+          provisional_status: boolean
+          self_assessed_at: string | null
+          self_assessed_band: string | null
+          self_assessed_level: number | null
+          self_assessment_confidence: number | null
+          updated_at: string
+          visibility: string
+        }
+        Insert: {
+          handedness?: string | null
+          last_reviewed_at?: string | null
+          observed_at?: string | null
+          observed_level?: number | null
+          performance_level_reference?: number | null
+          player_id: string
+          preferred_display_source?: string
+          preferred_side?: string | null
+          provisional_status?: boolean
+          self_assessed_at?: string | null
+          self_assessed_band?: string | null
+          self_assessed_level?: number | null
+          self_assessment_confidence?: number | null
+          updated_at?: string
+          visibility?: string
+        }
+        Update: {
+          handedness?: string | null
+          last_reviewed_at?: string | null
+          observed_at?: string | null
+          observed_level?: number | null
+          performance_level_reference?: number | null
+          player_id?: string
+          preferred_display_source?: string
+          preferred_side?: string | null
+          provisional_status?: boolean
+          self_assessed_at?: string | null
+          self_assessed_band?: string | null
+          self_assessed_level?: number | null
+          self_assessment_confidence?: number | null
+          updated_at?: string
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_skill_profiles_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "player_skill_profiles_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: true
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      player_skill_scores: {
+        Row: {
+          attempt_id: string
+          confidence_score: number | null
+          created_at: string
+          display_score: number | null
+          evidence_count: number | null
+          id: string
+          player_id: string
+          raw_score: number | null
+          score_key: string
+          score_type: string
+          scoring_details: Json | null
+        }
+        Insert: {
+          attempt_id: string
+          confidence_score?: number | null
+          created_at?: string
+          display_score?: number | null
+          evidence_count?: number | null
+          id?: string
+          player_id: string
+          raw_score?: number | null
+          score_key: string
+          score_type: string
+          scoring_details?: Json | null
+        }
+        Update: {
+          attempt_id?: string
+          confidence_score?: number | null
+          created_at?: string
+          display_score?: number | null
+          evidence_count?: number | null
+          id?: string
+          player_id?: string
+          raw_score?: number | null
+          score_key?: string
+          score_type?: string
+          scoring_details?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_skill_scores_attempt_id_fkey"
+            columns: ["attempt_id"]
+            isOneToOne: false
+            referencedRelation: "skill_assessment_attempts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "player_skill_scores_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "player_skill_scores_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           accessibility_needs: string | null
@@ -5616,6 +5749,346 @@ export type Database = {
             columns: ["court_id"]
             isOneToOne: false
             referencedRelation: "courts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      skill_assessment_attempts: {
+        Row: {
+          assessment_type: string
+          assessment_version: number
+          completed_at: string | null
+          confidence_label: string | null
+          confidence_score: number | null
+          created_at: string
+          display_band: string | null
+          estimated_level_display: number | null
+          estimated_level_raw: number | null
+          id: string
+          last_activity_at: string
+          lower_bound: number | null
+          player_id: string
+          primary_style: string | null
+          scoring_model_version: number | null
+          scoring_snapshot: Json | null
+          secondary_style: string | null
+          started_at: string
+          status: string
+          updated_at: string
+          upper_bound: number | null
+        }
+        Insert: {
+          assessment_type?: string
+          assessment_version: number
+          completed_at?: string | null
+          confidence_label?: string | null
+          confidence_score?: number | null
+          created_at?: string
+          display_band?: string | null
+          estimated_level_display?: number | null
+          estimated_level_raw?: number | null
+          id?: string
+          last_activity_at?: string
+          lower_bound?: number | null
+          player_id: string
+          primary_style?: string | null
+          scoring_model_version?: number | null
+          scoring_snapshot?: Json | null
+          secondary_style?: string | null
+          started_at?: string
+          status?: string
+          updated_at?: string
+          upper_bound?: number | null
+        }
+        Update: {
+          assessment_type?: string
+          assessment_version?: number
+          completed_at?: string | null
+          confidence_label?: string | null
+          confidence_score?: number | null
+          created_at?: string
+          display_band?: string | null
+          estimated_level_display?: number | null
+          estimated_level_raw?: number | null
+          id?: string
+          last_activity_at?: string
+          lower_bound?: number | null
+          player_id?: string
+          primary_style?: string | null
+          scoring_model_version?: number | null
+          scoring_snapshot?: Json | null
+          secondary_style?: string | null
+          started_at?: string
+          status?: string
+          updated_at?: string
+          upper_bound?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "skill_assessment_attempts_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "skill_assessment_attempts_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      skill_assessment_items: {
+        Row: {
+          adaptive_rules: Json | null
+          anchor_level: number
+          assessment_version: number
+          contradiction_group: string | null
+          created_at: string
+          dimension: string | null
+          display_order: number
+          domain: string
+          id: string
+          is_active: boolean
+          is_essential: boolean
+          item_key: string
+          item_weight: number
+          phase: string
+          prerequisite_rules: Json | null
+          question_text: string
+          response_type: string
+          subskill: string
+          updated_at: string
+        }
+        Insert: {
+          adaptive_rules?: Json | null
+          anchor_level: number
+          assessment_version?: number
+          contradiction_group?: string | null
+          created_at?: string
+          dimension?: string | null
+          display_order?: number
+          domain: string
+          id?: string
+          is_active?: boolean
+          is_essential?: boolean
+          item_key: string
+          item_weight?: number
+          phase?: string
+          prerequisite_rules?: Json | null
+          question_text: string
+          response_type?: string
+          subskill: string
+          updated_at?: string
+        }
+        Update: {
+          adaptive_rules?: Json | null
+          anchor_level?: number
+          assessment_version?: number
+          contradiction_group?: string | null
+          created_at?: string
+          dimension?: string | null
+          display_order?: number
+          domain?: string
+          id?: string
+          is_active?: boolean
+          is_essential?: boolean
+          item_key?: string
+          item_weight?: number
+          phase?: string
+          prerequisite_rules?: Json | null
+          question_text?: string
+          response_type?: string
+          subskill?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      skill_assessment_responses: {
+        Row: {
+          attempt_id: string
+          created_at: string
+          id: string
+          item_id: string | null
+          item_key: string
+          response_key: string
+          response_time_ms: number | null
+          response_value: number | null
+          updated_at: string
+          was_skipped: boolean
+        }
+        Insert: {
+          attempt_id: string
+          created_at?: string
+          id?: string
+          item_id?: string | null
+          item_key: string
+          response_key: string
+          response_time_ms?: number | null
+          response_value?: number | null
+          updated_at?: string
+          was_skipped?: boolean
+        }
+        Update: {
+          attempt_id?: string
+          created_at?: string
+          id?: string
+          item_id?: string | null
+          item_key?: string
+          response_key?: string
+          response_time_ms?: number | null
+          response_value?: number | null
+          updated_at?: string
+          was_skipped?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "skill_assessment_responses_attempt_id_fkey"
+            columns: ["attempt_id"]
+            isOneToOne: false
+            referencedRelation: "skill_assessment_attempts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "skill_assessment_responses_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "skill_assessment_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      skill_evidence: {
+        Row: {
+          confidence_value: number | null
+          created_at: string
+          evidence_type: string
+          expires_at: string | null
+          id: string
+          level_value: number | null
+          notes: string | null
+          player_id: string
+          source_id: string | null
+          submitted_by: string | null
+        }
+        Insert: {
+          confidence_value?: number | null
+          created_at?: string
+          evidence_type: string
+          expires_at?: string | null
+          id?: string
+          level_value?: number | null
+          notes?: string | null
+          player_id: string
+          source_id?: string | null
+          submitted_by?: string | null
+        }
+        Update: {
+          confidence_value?: number | null
+          created_at?: string
+          evidence_type?: string
+          expires_at?: string | null
+          id?: string
+          level_value?: number | null
+          notes?: string | null
+          player_id?: string
+          source_id?: string | null
+          submitted_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "skill_evidence_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "skill_evidence_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "skill_evidence_submitted_by_fkey"
+            columns: ["submitted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "skill_evidence_submitted_by_fkey"
+            columns: ["submitted_by"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      skill_overrides: {
+        Row: {
+          created_at: string
+          created_by: string
+          expires_at: string | null
+          id: string
+          organization_id: string | null
+          override_level: number | null
+          player_id: string
+          previous_level: number | null
+          reason: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          expires_at?: string | null
+          id?: string
+          organization_id?: string | null
+          override_level?: number | null
+          player_id: string
+          previous_level?: number | null
+          reason?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          expires_at?: string | null
+          id?: string
+          organization_id?: string | null
+          override_level?: number | null
+          player_id?: string
+          previous_level?: number | null
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "skill_overrides_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "skill_overrides_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "skill_overrides_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "skill_overrides_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
             referencedColumns: ["id"]
           },
         ]
@@ -8454,6 +8927,10 @@ export type Database = {
         Args: { p_match_id: string }
         Returns: undefined
       }
+      apply_skill_scoring_snapshot: {
+        Args: { p_attempt_id: string; p_snapshot: Json }
+        Returns: undefined
+      }
       approve_guest_claim: { Args: { _invite_id: string }; Returns: Json }
       are_friends: { Args: { _a: string; _b: string }; Returns: boolean }
       assign_players_to_courts: {
@@ -8503,6 +8980,7 @@ export type Database = {
         }
         Returns: number
       }
+      can_view_player_skill: { Args: { p_player_id: string }; Returns: boolean }
       cancel_ladder_sub_request: {
         Args: { p_request_id: string }
         Returns: undefined
@@ -8697,6 +9175,20 @@ export type Database = {
           pending: number
           season_id: string
           verified: number
+        }[]
+      }
+      get_league_skill_cards: {
+        Args: { p_league_id: string }
+        Returns: {
+          confidence: number
+          player_id: string
+          preferred_side: string
+          primary_style: string
+          provisional_status: boolean
+          secondary_style: string
+          self_assessed_at: string
+          self_assessed_band: string
+          self_assessed_level: number
         }[]
       }
       get_my_leagues_with_context: {
