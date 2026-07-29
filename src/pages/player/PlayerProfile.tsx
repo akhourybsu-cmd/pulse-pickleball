@@ -150,6 +150,10 @@ export default function PlayerProfile() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const { entitled: leagueEntitled } = useLeagueEntitlement();
+  const accountLinks = isSkillAssessmentEnabled()
+    ? [SKILL_ASSESSMENT_LINK, ...ACCOUNT_LINKS]
+    : ACCOUNT_LINKS;
+
   const activityLinks = leagueEntitled
     ? [...ACTIVITY_LINKS, LEAGUES_LINK]
     : ACTIVITY_LINKS;
