@@ -3544,6 +3544,62 @@ export type Database = {
           },
         ]
       }
+      league_skill_eligibility: {
+        Row: {
+          accept_self_assessment: boolean
+          accepted_sources: string[]
+          allow_organizer_approval: boolean
+          allow_playing_down: boolean
+          allow_playing_up: boolean
+          created_at: string
+          enabled: boolean
+          league_id: string
+          max_level: number | null
+          min_confidence: number
+          min_level: number | null
+          provisional_policy: string
+          updated_at: string
+        }
+        Insert: {
+          accept_self_assessment?: boolean
+          accepted_sources?: string[]
+          allow_organizer_approval?: boolean
+          allow_playing_down?: boolean
+          allow_playing_up?: boolean
+          created_at?: string
+          enabled?: boolean
+          league_id: string
+          max_level?: number | null
+          min_confidence?: number
+          min_level?: number | null
+          provisional_policy?: string
+          updated_at?: string
+        }
+        Update: {
+          accept_self_assessment?: boolean
+          accepted_sources?: string[]
+          allow_organizer_approval?: boolean
+          allow_playing_down?: boolean
+          allow_playing_up?: boolean
+          created_at?: string
+          enabled?: boolean
+          league_id?: string
+          max_level?: number | null
+          min_confidence?: number
+          min_level?: number | null
+          provisional_policy?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "league_skill_eligibility_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: true
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       league_slot_purchases: {
         Row: {
           amount_cents: number | null
