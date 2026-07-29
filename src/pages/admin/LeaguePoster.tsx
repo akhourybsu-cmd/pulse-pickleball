@@ -1,14 +1,28 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
+import { toBlob } from "html-to-image";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Printer, ArrowLeft, Share2, Link2, Check, ScanLine, KeyRound } from "lucide-react";
+import { Printer, ArrowLeft, Share2, Link2, Check, ScanLine, KeyRound, Download, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PRESSABLE } from "@/lib/motion";
 import { haptic } from "@/lib/haptics";
 import type { League } from "@/lib/leagues/types";
+
+/** Can this browser share files (image) via the native sheet? */
+function canShareFiles(): boolean {
+  const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
+  try {
+    return (
+      typeof nav.canShare === "function" &&
+      nav.canShare({ files: [new File([], "x.png", { type: "image/png" })] })
+    );
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Full-page printable + shareable invite poster. Real leagues stick
@@ -28,6 +42,9 @@ export default function LeaguePoster() {
   const [league, setLeague] = useState<League | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [rendering, setRendering] = useState(false);
+  const posterRef = useRef<HTMLDivElement>(null);
+  const shareFiles = canShareFiles();
 
   // Leagues live in one public portal — always route back there.
   const backToLeague = leagueId ? `/player/leagues/${leagueId}/manage` : "/player/leagues";
@@ -99,21 +116,65 @@ export default function LeaguePoster() {
     }
   };
 
-  const nativeShare = async () => {
-    const nav = navigator as Navigator & { share?: (data: ShareData) => Promise<void> };
-    if (nav.share) {
-      try {
-        await nav.share({
-          title: `Join ${league.name}`,
-          text: `Join ${league.name} on PULSE (code: ${league.invite_code})`,
-          url: shareUrl,
-        });
-        haptic("success");
-      } catch {
-        // User dismissed the sheet — silent.
+  const fileBase =
+    league.name.replace(/[^a-z0-9]+/gi, "-").replace(/^-+|-+$/g, "").toLowerCase() || "league";
+
+  /** Rasterise the poster canvas to a PNG blob at 2× for crisp output. */
+  const renderPng = async (): Promise<Blob | null> => {
+    if (!posterRef.current) return null;
+    // Make sure the display font is ready so the title doesn't fall back.
+    if (document.fonts?.ready) {
+      try { await document.fonts.ready; } catch { /* ignore */ }
+    }
+    return toBlob(posterRef.current, {
+      pixelRatio: 2,
+      cacheBust: true,
+      backgroundColor: "#0B171F",
+    });
+  };
+
+  /** Adaptive: share the image file where supported, else download it. */
+  const shareOrSaveImage = async () => {
+    if (rendering) return;
+    setRendering(true);
+    try {
+      const blob = await renderPng();
+      if (!blob) throw new Error("render failed");
+      const file = new File([blob], `${fileBase}-invite.png`, { type: "image/png" });
+
+      const nav = navigator as Navigator & {
+        canShare?: (d: ShareData) => boolean;
+        share?: (d: ShareData) => Promise<void>;
+      };
+      if (shareFiles && nav.share) {
+        try {
+          await nav.share({
+            files: [file],
+            title: `Join ${league.name}`,
+            text: `Join ${league.name} on PULSE (code: ${league.invite_code})`,
+          });
+          haptic("success");
+          return;
+        } catch (err) {
+          // AbortError = user dismissed the sheet; don't fall back to a download.
+          if ((err as DOMException)?.name === "AbortError") return;
+          // Any other share failure → fall through to download.
+        }
       }
-    } else {
-      void copyLink();
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = file.name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      haptic("success");
+    } catch {
+      toast.error("Couldn't generate the poster image");
+    } finally {
+      setRendering(false);
     }
   };
 
@@ -144,18 +205,26 @@ export default function LeaguePoster() {
               )}
             </Button>
             <Button
-              size="sm"
-              onClick={nativeShare}
-              className={cn("h-9 bg-[#A6DB5A] text-slate-950 hover:bg-[#A6DB5A]/90", PRESSABLE)}
-            >
-              <Share2 className="w-4 h-4 sm:mr-1.5" /><span className="hidden sm:inline">Share</span>
-            </Button>
-            <Button
               variant="outline" size="sm"
               className={cn("h-9 border-slate-700 bg-transparent text-slate-200 hover:bg-slate-800 hover:text-white", PRESSABLE)}
               onClick={() => window.print()}
             >
               <Printer className="w-4 h-4 sm:mr-1.5" /><span className="hidden sm:inline">Print</span>
+            </Button>
+            <Button
+              size="sm"
+              onClick={shareOrSaveImage}
+              disabled={rendering}
+              aria-busy={rendering || undefined}
+              className={cn("h-9 min-w-[2.25rem] bg-[#A6DB5A] text-slate-950 hover:bg-[#A6DB5A]/90", PRESSABLE)}
+            >
+              {rendering ? (
+                <><Loader2 className="w-4 h-4 sm:mr-1.5 animate-spin" /><span className="hidden sm:inline">Rendering…</span></>
+              ) : shareFiles ? (
+                <><Share2 className="w-4 h-4 sm:mr-1.5" /><span className="hidden sm:inline">Share image</span></>
+              ) : (
+                <><Download className="w-4 h-4 sm:mr-1.5" /><span className="hidden sm:inline">Save image</span></>
+              )}
             </Button>
           </div>
         </div>
@@ -166,6 +235,7 @@ export default function LeaguePoster() {
           full-page dark rectangle (ink hog + often ignored by drivers). */}
       <div className="pt-14 print:pt-0 px-3 sm:px-0">
         <div
+          ref={posterRef}
           className={[
             "relative mx-auto my-6 sm:my-8 print:my-0",
             "aspect-[8.5/11] w-full max-w-[850px]",
