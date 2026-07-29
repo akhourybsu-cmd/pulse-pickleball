@@ -93,6 +93,13 @@ const COMMUNITY_LINKS: HubLink[] = [
   },
 ];
 
+const SKILL_ASSESSMENT_LINK: HubLink = {
+  to: '/player/self-assessment',
+  icon: Gauge,
+  label: 'Skill self-assessment',
+  description: 'Estimate your current level',
+};
+
 const ACCOUNT_LINKS: HubLink[] = [
   {
     to: '/profile/edit',
