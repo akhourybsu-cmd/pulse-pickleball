@@ -24,6 +24,7 @@ import {
   CalendarDays,
   ListOrdered,
   Trophy,
+  Gauge,
 } from 'lucide-react';
 import { useLeagueEntitlement } from '@/hooks/useLeagueEntitlement';
 import { cn } from '@/lib/utils';
