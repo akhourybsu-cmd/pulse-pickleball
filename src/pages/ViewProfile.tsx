@@ -24,6 +24,7 @@ import { AnimatedStatChip } from "@/components/profile/AnimatedStatChip";
 import { LastPlayedBadge } from "@/components/profile/LastPlayedBadge";
 import { PlayStyleChip } from "@/components/profile/PlayStyleChip";
 import { SectionHeader } from "@/components/layout/SectionHeader";
+import { SkillProfileSection } from "@/components/skill/SkillProfileSection";
 import { useFriends } from "@/hooks/useFriends";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/Logo";
@@ -549,6 +550,12 @@ const ViewProfile = () => {
               </p>
             )}
           </div>
+        )}
+
+        {/* Skill self-assessment — distinct from the Performance Rating above.
+            Feature-flagged; renders its own entry prompt on the owner's profile. */}
+        {userId && (
+          <SkillProfileSection userId={userId} isSelf={!!isSelf} />
         )}
 
         {/* Highlights */}
