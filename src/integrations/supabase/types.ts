@@ -6028,6 +6028,82 @@ export type Database = {
           },
         ]
       }
+      skill_organizer_reviews: {
+        Row: {
+          attempt_id: string | null
+          created_at: string
+          id: string
+          league_id: string
+          note: string | null
+          player_id: string
+          review_status: string
+          reviewer_id: string
+        }
+        Insert: {
+          attempt_id?: string | null
+          created_at?: string
+          id?: string
+          league_id: string
+          note?: string | null
+          player_id: string
+          review_status: string
+          reviewer_id: string
+        }
+        Update: {
+          attempt_id?: string | null
+          created_at?: string
+          id?: string
+          league_id?: string
+          note?: string | null
+          player_id?: string
+          review_status?: string
+          reviewer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "skill_organizer_reviews_attempt_id_fkey"
+            columns: ["attempt_id"]
+            isOneToOne: false
+            referencedRelation: "skill_assessment_attempts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "skill_organizer_reviews_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "skill_organizer_reviews_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "skill_organizer_reviews_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "skill_organizer_reviews_reviewer_id_fkey"
+            columns: ["reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "skill_organizer_reviews_reviewer_id_fkey"
+            columns: ["reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       skill_overrides: {
         Row: {
           created_at: string
@@ -9185,6 +9261,7 @@ export type Database = {
           preferred_side: string
           primary_style: string
           provisional_status: boolean
+          review_recommended: boolean
           secondary_style: string
           self_assessed_at: string
           self_assessed_band: string
@@ -9278,6 +9355,27 @@ export type Database = {
           team1_score: number
           team2_score: number
           verified_count: number
+        }[]
+      }
+      get_player_skill_card: {
+        Args: { p_league_id?: string; p_player_id: string }
+        Returns: {
+          card: Json
+          confidence_label: string
+          confidence_score: number
+          handedness: string
+          latest_review_status: string
+          lower_bound: number
+          player_id: string
+          preferred_side: string
+          primary_style: string
+          provisional_status: boolean
+          review_recommended: boolean
+          secondary_style: string
+          self_assessed_at: string
+          self_assessed_band: string
+          self_assessed_level: number
+          upper_bound: number
         }[]
       }
       get_profile_email: { Args: { profile_id: string }; Returns: string }
@@ -9503,6 +9601,16 @@ export type Database = {
       record_ladder_tiebreak: {
         Args: { p_group_id: string; p_ordered_ids: string[] }
         Returns: Json
+      }
+      record_skill_review: {
+        Args: {
+          p_attempt_id?: string
+          p_league_id: string
+          p_note?: string
+          p_player_id: string
+          p_review_status: string
+        }
+        Returns: string
       }
       regenerate_group_invite_code: {
         Args: { p_group_id: string; p_ttl_hours?: number }
