@@ -33,6 +33,7 @@ import type {
 } from "@/lib/leagues/types";
 import { logLeagueAction } from "@/lib/leagues/audit";
 import { resolvePlayerName } from "@/lib/matchDisplay";
+import { OrganizerSkillCard } from "@/components/skill/OrganizerSkillCard";
 
 interface PlayerRow {
   id: string;
@@ -182,6 +183,14 @@ export function MembersTab({ league, dataVersion, onMutated }: LeagueTabProps) {
                 </span>
               )}
             </div>
+            {/* Organizer-only skill self-assessment (feature-flagged; renders
+                nothing when disabled, unauthorized, or not taken). */}
+            <OrganizerSkillCard
+              playerId={m.user_id}
+              leagueId={league.id}
+              playerName={name}
+              variant="compact"
+            />
           </div>
         </div>
         <MemberInlineActions

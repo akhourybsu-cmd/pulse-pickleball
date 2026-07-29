@@ -19,6 +19,7 @@ import type {
 } from "@/lib/leagues/types";
 import { logLeagueAction } from "@/lib/leagues/audit";
 import { InviteCodeCard } from "./InviteCodeCard";
+import { LeagueEligibilitySettings } from "./LeagueEligibilitySettings";
 import {
   FormSection, FormRow, FIELD_H, ChoiceGrid, SegmentedControl,
 } from "./_shared";
@@ -298,6 +299,10 @@ export function OverviewTab({
           its own lifecycle (set / regenerate / clear) and doesn't
           participate in the dirty/save pattern above. */}
       <InviteCodeCard league={league} onMutated={onMutated} />
+
+      {/* Optional skill-eligibility config (feature-flagged; renders nothing
+          when disabled). Inactive foundation — saved but not enforced yet. */}
+      <LeagueEligibilitySettings league={league} />
     </div>
   );
 }

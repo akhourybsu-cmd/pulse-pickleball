@@ -247,8 +247,8 @@ export function InviteCodeCard({
               <QRCodeSVG
                 value={shareUrl}
                 size={180}
-                level="M"
-                includeMargin={false}
+                level="Q"
+                marginSize={2}
                 bgColor="#ffffff"
                 fgColor="#0B171F"
               />

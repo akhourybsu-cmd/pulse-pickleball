@@ -11,6 +11,7 @@ import { useAuthPersistence } from "@/hooks/useAuthPersistence";
 import { PlayerShell } from "@/components/layout/PlayerShell";
 import { CommunityTransitionOutlet } from "@/components/community/CommunityTransitionOutlet";
 import { LeagueTransitionOutlet } from "@/components/leagues/LeagueTransitionOutlet";
+import { isSkillAssessmentEnabled } from "@/lib/skill/featureFlag";
 import { AuthGuard, VenueGuard, AdminGuard } from "@/components/guards";
 import { VenueShell } from "@/components/layout/VenueShell";
 import { supabase } from "@/integrations/supabase/client";
@@ -157,6 +158,7 @@ const BlockedUsers = lazy(() => import("./pages/BlockedUsers"));
 
 // Player pages
 const PlayerDashboard = lazy(() => import("./pages/player/PlayerDashboard"));
+const SelfAssessment = lazy(() => import("./pages/player/SelfAssessment"));
 const PlayerLeagues = lazy(() => import("./pages/player/PlayerLeagues"));
 const PlayerLeagueDetail = lazy(() => import("./pages/player/PlayerLeagueDetail"));
 const PlayerProfile = lazy(() => import("./pages/player/PlayerProfile"));
@@ -420,6 +422,11 @@ const AppContent = () => {
             {/* Player Pulse — interactive rating analytics. Opened by tapping
                 the PULSE rating pill on the dashboard/profile identity card. */}
             <Route path="pulse" element={<PlayerPulse />} />
+            {/* PULSE Skill Assessment — dedicated route, feature-flagged
+                (VITE_SKILL_ASSESSMENT). Distinct from the match-based rating. */}
+            {isSkillAssessmentEnabled() && (
+              <Route path="self-assessment" element={<SelfAssessment />} />
+            )}
             {/* My Round Robins history — replaces the catch-all /round-robin
                 hub link that used to live on the dashboard. Past + active
                 events in one place. */}

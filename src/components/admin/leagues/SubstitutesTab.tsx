@@ -25,6 +25,13 @@ import {
   EmptyState, TabSkeleton, LeagueTabProps,
   FormShell, FormSection, FormRow, FIELD_H, SegmentedControl, SeasonSelect,
 } from "./_shared";
+import { isSkillAssessmentEnabled } from "@/lib/skill/featureFlag";
+import {
+  scoreSubstituteFit, fitTierLabel, type SubstituteFit,
+} from "@/lib/skill/substituteMatching";
+import { useLeagueSkillCards, type LeagueSkillCard } from "@/hooks/useLeagueSkillCards";
+import { useOrganizerSkillCard } from "@/hooks/useOrganizerSkillCard";
+import { SkillLevelChip } from "@/components/skill/SkillLevelChip";
 
 interface PlayerRow {
   id: string;
@@ -46,6 +53,11 @@ export function SubstitutesTab({ league, dataVersion, onMutated }: LeagueTabProp
   const [addOpen, setAddOpen] = useState(false);
   const [editing, setEditing] = useState<LeagueSubstitute | null>(null);
   const [swapFor, setSwapFor] = useState<LeagueSubstitute | null>(null);
+
+  // Advisory PULSE Self-Assessed skill cards (organizer-authorized, read-only)
+  // used to surface fill-in fit. Empty/denied ⇒ the UI simply shows no skill
+  // info; nothing here gates or blocks a swap.
+  const { cards: skillCards } = useLeagueSkillCards(league.id);
 
   useEffect(() => {
     (async () => {
@@ -199,6 +211,7 @@ export function SubstitutesTab({ league, dataVersion, onMutated }: LeagueTabProp
               .map((s) => s[0]).join("").toUpperCase() || "?";
             const appearances = appearancesByUser[sub.user_id] ?? 0;
             const inactive = sub.status === "inactive";
+            const card = skillCards.get(sub.user_id);
             return (
               <li
                 key={sub.id}
@@ -227,6 +240,9 @@ export function SubstitutesTab({ league, dataVersion, onMutated }: LeagueTabProp
                         <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-primary/10 text-primary">
                           In {appearances} matchup{appearances === 1 ? "" : "s"}
                         </span>
+                      )}
+                      {card?.level != null && (
+                        <SkillLevelChip level={card.level} band={card.band} className="px-2 py-0.5 text-xs" />
                       )}
                     </div>
                     <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap mt-0.5">
@@ -279,6 +295,7 @@ export function SubstitutesTab({ league, dataVersion, onMutated }: LeagueTabProp
           matches={matches}
           batchByGroup={batchByGroup}
           profilesById={profilesById}
+          skillCards={skillCards}
           onDone={async () => { setSwapFor(null); await reload(); onMutated(); }}
         />
       )}
@@ -554,7 +571,7 @@ function SubEditorDialog({
 /* ------------------------------------------------------------------ */
 
 function SubSwapDialog({
-  open, onOpenChange, leagueId, seasonId, sub, subName, matches, batchByGroup, profilesById, onDone,
+  open, onOpenChange, leagueId, seasonId, sub, subName, matches, batchByGroup, profilesById, skillCards, onDone,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
@@ -565,11 +582,18 @@ function SubSwapDialog({
   matches: LeagueMatch[];
   batchByGroup: Record<string, { batch_id: string; week_number: number; batch_number: number }>;
   profilesById: Record<string, PlayerRow>;
+  skillCards: Map<string, LeagueSkillCard>;
   onDone: () => Promise<void>;
 }) {
   const [outPlayerId, setOutPlayerId] = useState<string>("");
   const [note, setNote] = useState("");
   const [saving, setSaving] = useState(false);
+
+  // The fill-in sub's own skill card (organizer-authorized, denial-safe). Drives
+  // the advisory "fit" hint below. If unavailable, fit is simply not shown.
+  const skillOn = isSkillAssessmentEnabled();
+  const { state: subCardState } = useOrganizerSkillCard(sub.user_id, skillOn ? leagueId : null);
+  const subCard = subCardState.status === "ready" ? subCardState.data : null;
 
   // "This week" = every player's upcoming (scheduled / in-progress) games.
   // With explicit ladder progression only the current week is scheduled, so
@@ -584,12 +608,39 @@ function SubSwapDialog({
         });
       });
     return Array.from(games.entries())
-      .map(([id, count]) => ({
-        id, count,
-        name: profilesById[id] ? resolvePlayerName(profilesById[id]) : id.slice(0, 8),
-      }))
+      .map(([id, count]) => {
+        // Advisory: how well THIS sub fills in for THAT absent player. Never
+        // reorders the list (who's out is a real-world fact, not a ranking) and
+        // never blocks a choice — purely a heads-up for the organizer.
+        let fit: SubstituteFit | null = null;
+        const outCard = skillCards.get(id);
+        if (skillOn && subCard?.level != null && outCard?.level != null) {
+          fit = scoreSubstituteFit(
+            {
+              level: outCard.level,
+              primaryStyle: outCard.primaryStyle,
+              secondaryStyle: outCard.secondaryStyle,
+              preferredSide: outCard.preferredSide,
+            },
+            {
+              level: subCard.level,
+              confidence: subCard.confidence,
+              provisional: subCard.provisional,
+              primaryStyle: subCard.primaryStyle,
+              secondaryStyle: subCard.secondaryStyle,
+              preferredSide: subCard.preferredSide,
+              active: sub.status !== "inactive",
+            },
+          );
+        }
+        return {
+          id, count,
+          name: profilesById[id] ? resolvePlayerName(profilesById[id]) : id.slice(0, 8),
+          fit,
+        };
+      })
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [matches, profilesById, sub.user_id]);
+  }, [matches, profilesById, sub.user_id, sub.status, skillCards, skillOn, subCard]);
 
   // Scope the swap to the *earliest* upcoming ladder batch that contains the
   // out player. Without this, all in-progress + scheduled batches sharing a
@@ -656,6 +707,13 @@ function SubSwapDialog({
           </Button>
         }
       >
+        {skillOn && subCard?.level != null && (
+          <div className="flex items-center gap-2 rounded-lg bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+            <span>Fit shown vs. {subName}'s self-assessed level</span>
+            <SkillLevelChip level={subCard.level} band={subCard.band} className="px-2 py-0.5 text-xs" />
+          </div>
+        )}
+
         <FormRow label="Who's out this week?" hint="Everyone with games coming up.">
           {candidates.length === 0 ? (
             <p className="text-xs text-muted-foreground">
@@ -677,8 +735,11 @@ function SubSwapDialog({
                   )}
                 >
                   <span className="text-sm font-semibold truncate">{c.name}</span>
-                  <span className="text-[11px] font-medium text-muted-foreground shrink-0">
-                    {c.count} game{c.count === 1 ? "" : "s"}
+                  <span className="flex items-center gap-2 shrink-0">
+                    {c.fit && <FitBadge fit={c.fit} />}
+                    <span className="text-[11px] font-medium text-muted-foreground">
+                      {c.count} game{c.count === 1 ? "" : "s"}
+                    </span>
                   </span>
                 </button>
               ))}
@@ -694,5 +755,42 @@ function SubSwapDialog({
         </FormRow>
       </FormShell>
     </Dialog>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Advisory sub-fit badge                                             */
+/* ------------------------------------------------------------------ */
+
+const FIT_TONE: Record<SubstituteFit["tier"], string> = {
+  great: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30",
+  good: "bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-500/30",
+  playable: "bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30",
+  stretch: "bg-muted text-muted-foreground border-border/70",
+  unknown: "bg-muted text-muted-foreground border-border/70",
+};
+
+/**
+ * Advisory only. Communicates how well the selected sub fills in for this
+ * player — it never gates or reorders the choice.
+ */
+function FitBadge({ fit }: { fit: SubstituteFit }) {
+  if (fit.tier === "unknown" || !fit.hasData) return null;
+  const delta = fit.levelDelta;
+  const deltaLabel =
+    delta == null || Math.abs(delta) < 0.05
+      ? null
+      : `${delta > 0 ? "+" : "−"}${Math.abs(delta).toFixed(1)}`;
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold",
+        FIT_TONE[fit.tier],
+      )}
+      title={fit.reasons.join(" · ") || undefined}
+    >
+      {fitTierLabel(fit.tier)}
+      {deltaLabel && <span className="opacity-70 tabular-nums">{deltaLabel}</span>}
+    </span>
   );
 }
