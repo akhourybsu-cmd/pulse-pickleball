@@ -294,14 +294,17 @@ CREATE POLICY skill_responses_write_own ON public.skill_assessment_responses
     SELECT 1 FROM public.skill_assessment_attempts a
      WHERE a.id = attempt_id AND a.player_id = auth.uid() AND a.status = 'in_progress'));
 
--- Player skill profiles: visible per can_view_player_skill; owner writes own
--- (level columns are only written server-side via apply RPC / service role).
+-- Player skill profiles: visible per can_view_player_skill. The summary is
+-- AUTHORITATIVE and is written ONLY by apply_skill_scoring_snapshot (service
+-- role) via the skill-complete edge function — so there is deliberately NO
+-- owner-write policy and NO client write grant (see the GRANTs below). This
+-- installs the secured authorization state from first deployment; a client
+-- can never write self_assessed_* directly.
 DROP POLICY IF EXISTS skill_profiles_select ON public.player_skill_profiles;
 CREATE POLICY skill_profiles_select ON public.player_skill_profiles
   FOR SELECT USING (public.can_view_player_skill(player_id));
+-- (Intentionally no skill_profiles_upsert_own policy — writes are service-only.)
 DROP POLICY IF EXISTS skill_profiles_upsert_own ON public.player_skill_profiles;
-CREATE POLICY skill_profiles_upsert_own ON public.player_skill_profiles
-  FOR ALL USING (player_id = auth.uid()) WITH CHECK (player_id = auth.uid());
 
 -- Derived scores: readable per visibility; written only by service_role.
 DROP POLICY IF EXISTS skill_scores_select ON public.player_skill_scores;
@@ -329,9 +332,22 @@ CREATE POLICY skill_overrides_admin ON public.skill_overrides
   WITH CHECK (public.has_role(auth.uid(), 'admin'::public.app_role));
 
 GRANT SELECT ON public.skill_assessment_items TO authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.skill_assessment_attempts TO authenticated;
+-- skill_assessment_attempts: the client may create an in_progress draft and
+-- keep it fresh, but may NEVER write scoring columns or flip status to
+-- 'completed' (that is the service-only apply RPC's job). COLUMN-LEVEL grants
+-- enforce this from first deployment; the SECURITY DEFINER apply RPC runs as
+-- the table owner and bypasses column privileges, so the server finalize path
+-- is unaffected. (INSERT columns match useSkillAssessment `start()`; the RLS
+-- insert policy additionally pins status='in_progress' and player_id.)
+GRANT SELECT, DELETE ON public.skill_assessment_attempts TO authenticated;
+GRANT INSERT (player_id, assessment_version, assessment_type, status)
+  ON public.skill_assessment_attempts TO authenticated;
+GRANT UPDATE (last_activity_at)
+  ON public.skill_assessment_attempts TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.skill_assessment_responses TO authenticated;
-GRANT SELECT, INSERT, UPDATE ON public.player_skill_profiles TO authenticated;
+-- player_skill_profiles: client-readable, NOT client-writable. The summary is
+-- written solely by the service-role apply RPC.
+GRANT SELECT ON public.player_skill_profiles TO authenticated;
 GRANT SELECT ON public.player_skill_scores TO authenticated;
 GRANT SELECT ON public.skill_evidence TO authenticated;
 GRANT SELECT ON public.skill_overrides TO authenticated;
@@ -456,4 +472,4 @@ END; $$;
 GRANT EXECUTE ON FUNCTION public.get_league_skill_cards(UUID) TO authenticated;
 
 COMMENT ON TABLE public.player_skill_profiles IS
-  'PULSE Self-Assessed Level + Observed Skill summary. Separate from profiles.current_rating (Performance Rating), which this never modifies.';
+  'PULSE Self-Assessed Level + Observed Skill summary. Written ONLY by apply_skill_scoring_snapshot (service role) via the skill-complete edge function; client-readable, not client-writable. Separate from profiles.current_rating (Performance Rating), which this never modifies.';

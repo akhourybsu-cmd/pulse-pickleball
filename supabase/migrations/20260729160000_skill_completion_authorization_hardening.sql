@@ -1,37 +1,31 @@
 -- ============================================================================
--- PULSE Skill Assessment — completion-authorization HARDENING (defect fix)
+-- PULSE Skill Assessment — completion-authorization (idempotent re-assertion)
 --
--- Invariant being enforced: the `skill-complete` edge function (which calls
--- apply_skill_scoring_snapshot under the service role) must be the ONLY path
--- that produces an AUTHORITATIVE result. A player must never be able to write
--- their own score.
+-- STATUS: As of the folded foundation, the secure column-level privileges are
+-- installed by 20260729123000_skill_assessment_foundation.sql from FIRST
+-- deployment, so a fresh environment never passes through the pre-hardening
+-- (client-forgeable) state — not even transiently. This migration is RETAINED
+-- as an idempotent, defense-in-depth re-assertion of that secure state, so any
+-- environment that had already applied an OLDER (table-level-grant) version of
+-- the foundation is still brought to the secured state when this runs. On a
+-- fresh, folded install it is a harmless no-op.
 --
--- Defect this closes (found in the release-candidate audit): the earlier
--- foundation granted the `authenticated` role TABLE-LEVEL INSERT/UPDATE on
--- both authoritative surfaces with only a row-level RLS predicate
--- (`player_id = auth.uid()`) and no COLUMN restriction. Combined with the
--- completed-attempt immutability trigger only firing on OLD.status =
--- 'completed', an authenticated owner could:
---   (A) UPDATE their own in_progress attempt to status='completed' with a
---       forged scoring_snapshot / estimated_level_* (capped only at raw<=4.7),
---       finalizing WITHOUT the server recompute; and
---   (B) upsert player_skill_profiles.self_assessed_level (and band/confidence/
---       provisional_status) directly.
--- Either bypasses skill-complete entirely, and the edge function's idempotent
--- branch would then launder the forged attempt row back as "authoritative".
+-- Invariant enforced (here and in the foundation): the `skill-complete` edge
+-- function (→ apply_skill_scoring_snapshot under the service role) is the ONLY
+-- path that produces an AUTHORITATIVE result. A player can never:
+--   • mark an assessment completed,
+--   • write authoritative estimated levels / a scoring snapshot,
+--   • directly update self-assessed profile values, or
+--   • invoke apply_skill_scoring_snapshot.
 --
--- Fix strategy: COLUMN-LEVEL privileges. The client keeps exactly the writes
--- its real flow needs (create an in_progress draft; bump last_activity_at;
--- delete its own draft) and loses the ability to touch any scoring column or
--- to set status='completed'. player_skill_profiles becomes read-only to the
--- client (its flow never wrote it). This is deliberately NOT a trigger that
--- inspects auth.role(): apply_skill_scoring_snapshot is SECURITY DEFINER and
--- runs as the table owner, so column privileges granted to `authenticated`
--- never constrain it — the server finalize path is provably unaffected.
+-- Mechanism: COLUMN-LEVEL privileges (not an auth.role()-sniffing trigger).
+-- apply_skill_scoring_snapshot is SECURITY DEFINER and runs as the table owner,
+-- so column privileges granted to `authenticated` never constrain it — the
+-- server finalize path is provably unaffected.
 --
 -- Does not touch scoring, the question bank, the mirror, or the PULSE
 -- Performance Rating. No data is modified; only privileges/policies change.
--- Idempotent and safe to re-run.
+-- Every statement is idempotent and safe to re-run.
 -- ============================================================================
 
 -- ----------------------------------------------------------------------------
