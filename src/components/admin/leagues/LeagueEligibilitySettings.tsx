@@ -157,7 +157,7 @@ export function LeagueEligibilitySettings({ league }: { league: League }) {
         </FormRow>
 
         <FormRow label="Provisional players">
-          <SegmentedControl<ProvisionalPolicy>
+          <SegmentedControl
             value={s.provisionalPolicy}
             onChange={(v) => set("provisionalPolicy", v)}
             options={[
