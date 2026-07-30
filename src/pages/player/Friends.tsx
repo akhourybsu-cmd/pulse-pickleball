@@ -66,6 +66,7 @@ export default function Friends() {
     loading,
     acceptRequest,
     declineRequest,
+    cancelRequest,
     removeFriend,
     sendFriendRequest,
   } = useFriends();
@@ -359,7 +360,7 @@ export default function Friends() {
                             {onlineFriends.has(r.profile.id) ? 'Online now' : 'Request sent'}
                           </div>
                         </div>
-                        <Button variant="ghost" size="sm" className="shrink-0" disabled={processingIds.has(r.id)} onClick={() => handleRequestAction(r.id, declineRequest)}>
+                        <Button variant="ghost" size="sm" className="shrink-0" disabled={processingIds.has(r.id)} onClick={() => handleRequestAction(r.id, cancelRequest)}>
                           Cancel
                         </Button>
                       </div>

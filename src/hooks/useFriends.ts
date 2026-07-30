@@ -234,6 +234,24 @@ export function useFriends() {
     }
   }, [fetchFriends]);
 
+  // Cancelling your OWN outbound request — same delete, correct copy.
+  const cancelRequest = useCallback(async (friendshipId: string) => {
+    try {
+      const { error } = await supabase
+        .from('friendships')
+        .delete()
+        .eq('id', friendshipId);
+      if (error) throw error;
+      toast.success('Friend request canceled');
+      await fetchFriends();
+      return true;
+    } catch (error) {
+      console.error('Error canceling friend request:', error);
+      toast.error('Failed to cancel friend request');
+      return false;
+    }
+  }, [fetchFriends]);
+
   const removeFriend = useCallback(async (friendshipId: string) => {
     try {
       const { error } = await supabase
@@ -308,6 +326,7 @@ export function useFriends() {
     sendFriendRequest,
     acceptRequest,
     declineRequest,
+    cancelRequest,
     removeFriend,
     blockUser,
     getFriendshipStatus,

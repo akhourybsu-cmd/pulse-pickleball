@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, memo, useMemo, useCallback } from 'react';
-import { Send, Loader2, Smile, Image as ImageIcon, Pin, X, ArrowDown } from 'lucide-react';
+import { Send, Loader2, Image as ImageIcon, Pin, X, ArrowDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -352,15 +352,6 @@ export const GroupChat = memo(function GroupChat({
         )}
 
         <div className="flex items-end gap-1.5 sm:gap-2">
-          {/* Emoji Button - hidden on mobile */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-9 w-9 sm:h-10 sm:w-10 shrink-0 text-muted-foreground hover:text-foreground hidden sm:flex"
-          >
-            <Smile className="h-4 w-4 sm:h-5 sm:w-5" />
-          </Button>
-
           {/* Message Input */}
           <div className="flex-1 relative">
             <Textarea

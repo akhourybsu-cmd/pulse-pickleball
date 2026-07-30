@@ -70,6 +70,8 @@ export default function DirectMessageChat() {
   const [reportOpen, setReportOpen] = useState(false);
   const [reportReason, setReportReason] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const prevCountRef = useRef(0);
   const inputRef = useRef<MessageComposerHandle>(null);
 
   const { typingUsers, startTyping } = useTypingIndicator(conversationId ? `dm-${conversationId}` : undefined);
@@ -126,9 +128,24 @@ export default function DirectMessageChat() {
     })();
   }, [participant?.id, currentUserId, messages.length]);
 
+  // Only auto-scroll to the newest message when it makes sense: on first load,
+  // when the newest message is your own, or when you're already near the
+  // bottom. Otherwise leave the scroll position alone so reading older
+  // history isn't yanked down by an incoming message.
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    const container = scrollContainerRef.current;
+    const end = messagesEndRef.current;
+    if (!container || !end) return;
+    const isInitial = prevCountRef.current === 0 && messages.length > 0;
+    const last = messages[messages.length - 1];
+    const lastIsMine = last?.sender_id === currentUserId;
+    const nearBottom =
+      container.scrollHeight - container.scrollTop - container.clientHeight < 140;
+    prevCountRef.current = messages.length;
+    if (isInitial || lastIsMine || nearBottom) {
+      end.scrollIntoView({ behavior: isInitial ? 'auto' : 'smooth' });
+    }
+  }, [messages, currentUserId]);
 
   // Fire-and-forget — sendMessage is optimistic now, so the bubble
   // renders before the network completes. Clear the input synchronously
@@ -339,7 +356,7 @@ export default function DirectMessageChat() {
         </DropdownMenu>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-1">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4 space-y-1">
         <AnimatePresence initial={false}>
           {messages.map((message, index) => {
             const prev = index > 0 ? messages[index - 1] : null;
