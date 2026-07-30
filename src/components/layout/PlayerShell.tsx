@@ -291,10 +291,17 @@ export function PlayerShell() {
                       : 'text-muted-foreground/70 hover:text-foreground active:scale-95'
                   )}
                 >
-                  <item.icon className={cn(
-                    'h-[22px] w-[22px] transition-all duration-[240ms] ease-out',
-                    isActive ? 'text-primary' : 'stroke-[1.5]'
-                  )} />
+                  <span className="relative">
+                    <item.icon className={cn(
+                      'h-[22px] w-[22px] transition-all duration-[240ms] ease-out',
+                      isActive ? 'text-primary' : 'stroke-[1.5]'
+                    )} />
+                    {item.to === '/player/social' && dmUnread > 0 && (
+                      <span className="absolute -top-1.5 -right-2 min-w-[16px] h-[16px] px-1 rounded-full bg-primary text-primary-foreground text-[9px] font-bold flex items-center justify-center tabular-nums">
+                        {dmUnread > 9 ? '9+' : dmUnread}
+                      </span>
+                    )}
+                  </span>
                   <span className={cn(
                     'nav-label',
                     isActive ? 'text-primary font-semibold' : 'font-medium'
@@ -337,10 +344,17 @@ export function PlayerShell() {
                         : 'text-muted-foreground/70 hover:text-foreground hover:bg-muted/50'
                     )}
                   >
-                    <item.icon className={cn(
-                      'h-4 w-4 transition-all duration-[200ms] ease-out',
-                      !isActive && 'stroke-[1.5]'
-                    )} />
+                    <span className="relative">
+                      <item.icon className={cn(
+                        'h-4 w-4 transition-all duration-[200ms] ease-out',
+                        !isActive && 'stroke-[1.5]'
+                      )} />
+                      {item.to === '/player/social' && dmUnread > 0 && (
+                        <span className="absolute -top-1.5 -right-2 min-w-[15px] h-[15px] px-1 rounded-full bg-primary text-primary-foreground text-[9px] font-bold flex items-center justify-center tabular-nums">
+                          {dmUnread > 9 ? '9+' : dmUnread}
+                        </span>
+                      )}
+                    </span>
                     <span className={cn(
                       'text-sm nav-label',
                       isActive ? 'font-semibold' : 'font-medium'
