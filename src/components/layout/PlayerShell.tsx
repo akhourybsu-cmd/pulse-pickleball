@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Trophy, Users, User, Plus, MessageSquare } from 'lucide-react';
+import { Home, Trophy, Users, User, Plus, MessageSquare, MessageCircle } from 'lucide-react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -23,6 +23,7 @@ import { FriendsPresenceProvider } from '@/contexts/FriendsPresenceContext';
 const navItems = [
   { to: '/player/dashboard', icon: Home, label: 'Home' },
   { to: '/player/matches', icon: Trophy, label: 'Matches' },
+  { to: '/player/social', icon: MessageCircle, label: 'Social' },
   { to: '/player/community', icon: Users, label: 'Community' },
   { to: '/player/profile', icon: User, label: 'Profile' },
 ];
@@ -31,6 +32,7 @@ const navItems = [
 const prefetchMap: Record<string, () => Promise<unknown>> = {
   '/player/dashboard': () => import('@/pages/player/PlayerDashboard'),
   '/player/matches': () => import('@/pages/MatchHistory'),
+  '/player/social': () => import('@/pages/player/Social'),
   '/player/community': () => import('@/pages/player/Community'),
   '/player/profile': () => import('@/pages/player/PlayerProfile'),
 };
@@ -69,9 +71,14 @@ export function PlayerShell() {
 
   // Calculate active tab index for sliding indicator
   const activeIndex = navItems.findIndex(item => {
+    if (item.to === '/player/social') {
+      // Social owns chats + friends (both live inside the hub now).
+      return location.pathname.startsWith('/player/social') ||
+        location.pathname.startsWith('/player/friends') ||
+        location.pathname.startsWith('/player/messages');
+    }
     if (item.to === '/player/community') {
-      return location.pathname.startsWith('/player/community') ||
-        location.pathname.startsWith('/player/friends');
+      return location.pathname.startsWith('/player/community');
     }
     return location.pathname === item.to ||
       (item.to !== '/player/dashboard' && location.pathname.startsWith(item.to));
