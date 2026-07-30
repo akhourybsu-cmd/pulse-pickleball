@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { ChevronDown, TrendingUp, Target, Sparkles, Info, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,16 @@ import {
   type Subskill,
 } from "@/lib/skill/model";
 import type { ScoringSnapshot } from "@/lib/skill/scoring";
+
+/* Reduced-motion-safe entrance: a gentle staggered fade-up of each section. */
+const staggerContainer = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.06, delayChildren: 0.04 } },
+};
+const staggerItem = {
+  hidden: { opacity: 0, y: 12 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.42, ease: [0.32, 0.72, 0, 1] as const } },
+};
 
 /**
  * PULSE Skill Fingerprint result screen. Hierarchy follows the product
@@ -32,33 +43,40 @@ export function SkillFingerprint({
   canRetake?: boolean;
   nextRetakeLabel?: string | null;
 }) {
+  const reduced = useReducedMotion();
+  const motionProps = reduced
+    ? {}
+    : { variants: staggerContainer, initial: "hidden" as const, animate: "show" as const };
+  const itemProps = reduced ? {} : { variants: staggerItem };
+
   return (
-    <div className="space-y-5">
-      {/* 1–2. Overall + confidence + source */}
-      <section className="rounded-2xl border border-border/70 bg-card p-6 text-center shadow-sm">
+    <motion.div className="space-y-5" {...motionProps}>
+      {/* 1–2. Overall + confidence + source (radial gauge hero) */}
+      <motion.section {...itemProps} className="rounded-2xl border border-border/70 bg-card p-6 text-center shadow-sm">
         <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-primary">
           PULSE Self-Assessed Level
         </div>
-        <div className="mt-2 flex items-end justify-center gap-2">
-          <span className="font-display text-6xl font-bold leading-none" style={{ fontVariantNumeric: "tabular-nums" }}>
-            {snapshot.estimatedLevelDisplay.toFixed(1)}
-          </span>
-        </div>
+        <LevelGauge
+          level={snapshot.estimatedLevelDisplay}
+          lower={snapshot.lowerBound}
+          upper={snapshot.upperBound}
+        />
         <div className="mt-1 text-lg font-semibold">{snapshot.displayBand}</div>
-        <div className="mt-3 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-          <span>Likely range {snapshot.lowerBound.toFixed(1)}–{snapshot.upperBound.toFixed(1)}</span>
-          <span aria-hidden>·</span>
-          <span>{snapshot.confidence.label}</span>
-        </div>
-        <p className="mt-3 text-xs text-muted-foreground max-w-sm mx-auto leading-relaxed">
+        <ConfidenceMeter
+          lower={snapshot.lowerBound}
+          upper={snapshot.upperBound}
+          total={snapshot.confidence.total}
+          label={snapshot.confidence.label}
+        />
+        <p className="mt-4 text-xs text-muted-foreground max-w-sm mx-auto leading-relaxed">
           This is your self-assessment. It is separate from your PULSE Performance Rating,
           which comes from verified match results.
         </p>
-      </section>
+      </motion.section>
 
       {/* Style identity */}
       {snapshot.primaryStyle && (
-        <section className="rounded-2xl border border-border/70 bg-card p-4">
+        <motion.section {...itemProps} className="rounded-2xl border border-border/70 bg-card p-4">
           <div className="flex items-center gap-2 mb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
             <Sparkles className="w-3.5 h-3.5 text-primary" /> Your style
           </div>
@@ -68,35 +86,39 @@ export function SkillFingerprint({
               <StyleBadge label={snapshot.secondaryStyle.label} stage={snapshot.secondaryStyle.stage} />
             )}
           </div>
-        </section>
+        </motion.section>
       )}
 
       {/* 4. Strengths */}
       {snapshot.strengths.length > 0 && (
-        <FingerprintList
-          icon={<TrendingUp className="w-3.5 h-3.5 text-emerald-600" />}
-          title="Strongest skills"
-          items={snapshot.strengths.map((s) => ({
-            label: SUBSKILL_LABELS[s.subskill], value: s.displayLevel, reason: s.reason,
-          }))}
-          tone="emerald"
-        />
+        <motion.div {...itemProps}>
+          <FingerprintList
+            icon={<TrendingUp className="w-3.5 h-3.5 text-emerald-600" />}
+            title="Strongest skills"
+            items={snapshot.strengths.map((s) => ({
+              label: SUBSKILL_LABELS[s.subskill], value: s.displayLevel, reason: s.reason,
+            }))}
+            tone="emerald"
+          />
+        </motion.div>
       )}
 
       {/* 5. Development priorities */}
       {snapshot.developmentPriorities.length > 0 && (
-        <FingerprintList
-          icon={<Target className="w-3.5 h-3.5 text-amber-600" />}
-          title="Development priorities"
-          items={snapshot.developmentPriorities.map((s) => ({
-            label: SUBSKILL_LABELS[s.subskill], value: s.displayLevel, reason: s.reason,
-          }))}
-          tone="amber"
-        />
+        <motion.div {...itemProps}>
+          <FingerprintList
+            icon={<Target className="w-3.5 h-3.5 text-amber-600" />}
+            title="Development priorities"
+            items={snapshot.developmentPriorities.map((s) => ({
+              label: SUBSKILL_LABELS[s.subskill], value: s.displayLevel, reason: s.reason,
+            }))}
+            tone="amber"
+          />
+        </motion.div>
       )}
 
       {/* 6. Broad domains */}
-      <section className="rounded-2xl border border-border/70 bg-card p-4">
+      <motion.section {...itemProps} className="rounded-2xl border border-border/70 bg-card p-4">
         <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-3">
           Broad domains
         </div>
@@ -110,10 +132,10 @@ export function SkillFingerprint({
             />
           ))}
         </div>
-      </section>
+      </motion.section>
 
       {/* 7. Individual skills — progressive disclosure by group */}
-      <section className="space-y-2">
+      <motion.section {...itemProps} className="space-y-2">
         <div className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground px-1">
           Individual skills
         </div>
@@ -125,10 +147,10 @@ export function SkillFingerprint({
             snapshot={snapshot}
           />
         ))}
-      </section>
+      </motion.section>
 
       {/* 9. Assessment details */}
-      <section className="rounded-2xl border border-border/60 bg-muted/20 p-4 text-xs text-muted-foreground space-y-1">
+      <motion.section {...itemProps} className="rounded-2xl border border-border/60 bg-muted/20 p-4 text-xs text-muted-foreground space-y-1">
         <div className="flex items-center gap-1.5 font-semibold text-foreground">
           <Info className="w-3.5 h-3.5" /> Assessment details
         </div>
@@ -138,19 +160,87 @@ export function SkillFingerprint({
         {snapshot.contradictions.length > 0 && (
           <div>{snapshot.contradictions.length} response(s) flagged for a closer look — this lowers confidence, not your level.</div>
         )}
-      </section>
+      </motion.section>
 
       {/* 10. Retake */}
       {onRetake && (
-        <div className="space-y-2">
+        <motion.div {...itemProps} className="space-y-2">
           <Button onClick={onRetake} disabled={!canRetake} variant="outline" className="w-full h-11 gap-2">
             <RotateCcw className="w-4 h-4" /> Retake assessment
           </Button>
           {!canRetake && nextRetakeLabel && (
             <p className="text-center text-xs text-muted-foreground">{nextRetakeLabel}</p>
           )}
-        </div>
+        </motion.div>
       )}
+    </motion.div>
+  );
+}
+
+/* ---------------- hero gauge ---------------- */
+
+/**
+ * Animated radial gauge for the overall level. Full-ring progress (starts at
+ * 12 o'clock) with a translucent "likely range" band behind the solid value
+ * arc. SVG stroke + opacity only — no layout shift; reduced-motion users get
+ * the final state with no sweep.
+ */
+function LevelGauge({ level, lower, upper }: { level: number; lower: number; upper: number }) {
+  const reduced = useReducedMotion();
+  const [shown, setShown] = useState(!!reduced);
+  useEffect(() => {
+    if (reduced) { setShown(true); return; }
+    const id = requestAnimationFrame(() => setShown(true));
+    return () => cancelAnimationFrame(id);
+  }, [reduced]);
+
+  const MIN = 1, MAX = 5, P = 100;
+  const frac = (v: number) => Math.max(0, Math.min(1, (v - MIN) / (MAX - MIN)));
+  const vFrac = frac(level), lFrac = frac(lower), uFrac = frac(upper);
+  const valueOffset = shown ? P - P * vFrac : P;
+  const bandLen = Math.max(0, uFrac - lFrac) * P;
+
+  return (
+    <div className="relative mx-auto mt-3 h-40 w-40">
+      <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90" aria-hidden="true">
+        <circle cx="50" cy="50" r="42" fill="none" stroke="hsl(var(--muted))" strokeWidth="8" />
+        {bandLen > 0 && (
+          <circle
+            cx="50" cy="50" r="42" fill="none"
+            stroke="hsl(var(--primary) / 0.22)" strokeWidth="8" strokeLinecap="round"
+            pathLength={P} strokeDasharray={`${bandLen} ${P}`} strokeDashoffset={-lFrac * P}
+          />
+        )}
+        <circle
+          cx="50" cy="50" r="42" fill="none"
+          stroke="hsl(var(--primary))" strokeWidth="8" strokeLinecap="round"
+          pathLength={P} strokeDasharray={P} strokeDashoffset={valueOffset}
+          style={reduced ? undefined : { transition: "stroke-dashoffset 900ms cubic-bezier(0.32,0.72,0,1)" }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="font-display text-5xl font-bold leading-none tabular-nums">
+          {level.toFixed(1)}
+        </span>
+        <span className="mt-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+          of {MAX.toFixed(1)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function ConfidenceMeter({ lower, upper, total, label }: { lower: number; upper: number; total: number; label: string }) {
+  const pct = Math.max(0, Math.min(100, total));
+  return (
+    <div className="mx-auto mt-3 max-w-[15rem] space-y-1.5">
+      <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <span>Likely {lower.toFixed(1)}–{upper.toFixed(1)}</span>
+        <span className="font-medium text-foreground/80">{label}</span>
+      </div>
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted" role="img" aria-label={`Confidence ${total} of 100 (${label})`}>
+        <div className="h-full rounded-full bg-primary/70" style={{ width: `${pct}%` }} />
+      </div>
     </div>
   );
 }
