@@ -22,7 +22,7 @@ import { supabase } from "@/integrations/supabase/client";
 // dismissible toast above every screen. The component file is kept on
 // disk in case we want to revive a global indicator later.
 // import { RoundRobinBanner } from "@/components/RoundRobinBanner";
-import { ScrollToTop } from "@/components/ScrollToTop";
+import { ScrollManager } from "@/components/ScrollManager";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
@@ -338,7 +338,7 @@ const AppContent = () => {
 
   return (
     <>
-      <ScrollToTop />
+      <ScrollManager />
       <PWAInstallPrompt />
       <Suspense fallback={<PageLoader />}>
         <Routes>

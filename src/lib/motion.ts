@@ -86,6 +86,30 @@ export const routeVariants = {
 };
 
 /**
+ * Restrained horizontal transition for the five PRIMARY bottom-nav tabs.
+ * The goal is "adjacent areas of one app", not a full-screen carousel — so
+ * the incoming screen starts only ~28% off-axis (not 100%) and the outgoing
+ * screen moves the opposite way by the same amount. With a 28% opposed
+ * offset the viewport stays fully covered by the two opaque layers for the
+ * whole transition, so there is never a background gap to flash through —
+ * which is why this is a pure transform with NO opacity fade. `dir` is +1
+ * moving right, -1 moving left. Transform-only ⇒ GPU-friendly, no layout.
+ */
+export const TAB_SLIDE_OFFSET = "28%";
+export const tabSlideVariants = {
+  enter: (dir: number) => ({
+    x: dir > 0 ? TAB_SLIDE_OFFSET : dir < 0 ? `-${TAB_SLIDE_OFFSET}` : "0%",
+  }),
+  center: { x: "0%" },
+  exit: (dir: number) => ({
+    x: dir > 0 ? `-${TAB_SLIDE_OFFSET}` : dir < 0 ? TAB_SLIDE_OFFSET : "0%",
+    // Immediately inert while sliding out so it can't intercept taps meant
+    // for the incoming screen (framer applies non-animated props at once).
+    pointerEvents: "none" as const,
+  }),
+};
+
+/**
  * Tactile press/hover/focus classes for buttons and pressable surfaces.
  * Pure Tailwind so there's zero JS cost and `motion-safe:` fully removes
  * the movement for reduced-motion users. Transform-only ⇒ no layout shift.
