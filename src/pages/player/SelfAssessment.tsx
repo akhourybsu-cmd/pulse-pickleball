@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ArrowLeft, Loader2, History, ChevronRight, Gauge } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { WizardCard } from "@/components/round-robin/wizard/WizardCard";
 import { ResponseScalePicker } from "@/components/skill/ResponseScalePicker";
 import { SkillIntro } from "@/components/skill/SkillIntro";
 import { SkillFingerprint } from "@/components/skill/SkillFingerprint";
@@ -89,6 +88,7 @@ function WizardStep({
   a: ReturnType<typeof useSkillAssessment>;
   onExit: () => void;
 }) {
+  const reduced = useReducedMotion();
   const item = a.nextItemKey ? itemByKey(a.nextItemKey) : null;
   const answered = a.answeredCount;
   const softTotal = Math.max(a.minItems, answered + 1);
@@ -117,42 +117,56 @@ function WizardStep({
     );
   }
 
+  // Dense, single-viewport layout: slim progress + inline exit, then a compact
+  // card whose question + all response options fit without scrolling.
   return (
-    <div className="space-y-4">
-      {/* Progress */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span className="font-medium text-foreground">Question {answered + 1}</span>
-          <span aria-live="polite">{answered} answered</span>
+    <div className="space-y-3">
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between text-xs">
+          <span className="font-semibold text-foreground">Question {answered + 1}</span>
+          <div className="flex items-center gap-3">
+            {a.saving && (
+              <span className="inline-flex items-center gap-1 text-muted-foreground" aria-live="polite">
+                <Loader2 className="h-3 w-3 animate-spin" /> Saving
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={onExit}
+              className="font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Save &amp; exit
+            </button>
+          </div>
         </div>
-        <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={`${answered} answered`}>
           <div className="h-full rounded-full bg-primary transition-[width] duration-300 ease-out" style={{ width: `${pct}%` }} />
         </div>
       </div>
 
       <AnimatePresence mode="wait">
-        <WizardCard key={item.itemKey} direction={1}>
-          <div className="space-y-4">
-            <div>
-              <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-primary mb-1.5">
-                {SUBSKILL_LABELS[item.subskill]}
-              </div>
-              <p className="text-base font-medium leading-snug text-balance">{item.text}</p>
-            </div>
-            <ResponseScalePicker
-              value={(a.responses[item.itemKey] as ResponseKey | undefined) ?? null}
-              onSelect={(key) => void a.answer(item.itemKey, key)}
-            />
+        <motion.div
+          key={item.itemKey}
+          initial={reduced ? { opacity: 0 } : { opacity: 0, x: 28 }}
+          animate={reduced ? { opacity: 1 } : { opacity: 1, x: 0 }}
+          exit={reduced ? { opacity: 0 } : { opacity: 0, x: -28 }}
+          transition={reduced ? { duration: 0.12 } : { type: "spring", stiffness: 420, damping: 36, mass: 0.7 }}
+          className="rounded-2xl border border-border/60 p-4 shadow-[0_4px_20px_-6px_hsl(var(--foreground)/0.07)]"
+          style={{
+            background:
+              "linear-gradient(180deg, hsl(var(--card)) 0%, hsl(var(--card)) 62%, hsl(var(--primary) / 0.045) 100%)",
+          }}
+        >
+          <div className="mb-1 text-[11px] font-bold uppercase tracking-[0.16em] text-primary">
+            {SUBSKILL_LABELS[item.subskill]}
           </div>
-        </WizardCard>
+          <p className="mb-3.5 text-[15px] font-semibold leading-snug text-balance">{item.text}</p>
+          <ResponseScalePicker
+            value={(a.responses[item.itemKey] as ResponseKey | undefined) ?? null}
+            onSelect={(key) => void a.answer(item.itemKey, key)}
+          />
+        </motion.div>
       </AnimatePresence>
-
-      <div className="flex items-center justify-between">
-        <Button variant="ghost" size="sm" onClick={onExit} className="text-muted-foreground">
-          Save &amp; exit
-        </Button>
-        {a.saving && <span className="text-xs text-muted-foreground inline-flex items-center gap-1.5"><Loader2 className="h-3 w-3 animate-spin" /> Saving</span>}
-      </div>
     </div>
   );
 }
