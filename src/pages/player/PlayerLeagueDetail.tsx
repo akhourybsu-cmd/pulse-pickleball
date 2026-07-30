@@ -1,4 +1,5 @@
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { useReducedMotion } from "framer-motion";
 import { ActionButton } from "@/components/leagues/ActionButton";
 import {
   ArrowLeft, Trophy,
@@ -32,6 +33,8 @@ const MATCH_STATUS_TONE: Record<LeagueMatchStatus, string> = {
 export default function PlayerLeagueDetail() {
   const { leagueId } = useParams<{ leagueId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const reducedMotion = useReducedMotion();
   const detail = useLeagueDetailForPlayer(leagueId);
   const {
     league, membership, season,
@@ -76,6 +79,16 @@ export default function PlayerLeagueDetail() {
       { seasonId: season?.id ?? undefined },
     );
   }, [allMatches, allTeams, playersById, season?.id, isTeamMode, league]);
+
+  // Inbound deep-link: if the URL carries a #section, scroll to it once the
+  // page has loaded and the target section has rendered.
+  useEffect(() => {
+    if (loading) return;
+    const id = location.hash.replace(/^#/, "");
+    if (!id) return;
+    const el = document.getElementById(id);
+    if (el) requestAnimationFrame(() => el.scrollIntoView({ behavior: "auto", block: "start" }));
+  }, [loading, location.hash]);
 
   const myTeamIdSet = useMemo(() => new Set(myTeams.map((t) => t.id)), [myTeams]);
   const myRow = isTeamMode
@@ -132,6 +145,22 @@ export default function PlayerLeagueDetail() {
   const record = myRow ? `${myRow.wins}–${myRow.losses}` : "0–0";
   const isOrganizer = currentUserId != null && league.created_by === currentUserId;
 
+  // In-page jump nav (the single-page analog of the admin tabs). Only the
+  // sections that actually render are offered, and a click updates the URL
+  // hash so the current view is shareable.
+  const scrollToSection = (id: string) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "start" });
+    window.history.replaceState(null, "", `#${id}`);
+  };
+  const sections: { id: string; label: string }[] = [
+    standings.length > 0 ? { id: "standings", label: "Standings" } : null,
+    isTeamMode && teammates.length > 0 ? { id: "team", label: "Team" } : null,
+    { id: "upcoming", label: "Upcoming" },
+    past.length > 0 ? { id: "past", label: "Past" } : null,
+  ].filter((s): s is { id: string; label: string } => s !== null);
+
   return (
     <LeagueScope>
       <div className="container mx-auto px-4 py-5 max-w-3xl space-y-5">
@@ -172,6 +201,21 @@ export default function PlayerLeagueDetail() {
           ]}
         />
 
+        {sections.length > 1 && (
+          <nav aria-label="Jump to section" className="flex flex-wrap gap-1.5">
+            {sections.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => scrollToSection(s.id)}
+                className="rounded-full border border-[color:var(--lg-border)] bg-[color:var(--lg-surface-2)] px-3 py-1 text-xs font-medium text-[color:var(--lg-text-dim)] transition-colors hover:text-[color:var(--lg-text)] hover:border-[color:var(--lg-gold)]/40"
+              >
+                {s.label}
+              </button>
+            ))}
+          </nav>
+        )}
+
         {league.league_type === "ladder" && (
           <LadderSubRequestCard
             leagueId={league.id}
@@ -181,7 +225,7 @@ export default function PlayerLeagueDetail() {
         )}
 
         {standings.length > 0 && (
-          <div className="lg-card p-4 space-y-3">
+          <div id="standings" className="lg-card p-4 space-y-3 scroll-mt-20">
             <LgSectionHeader icon={Trophy} className="mb-0">Standings</LgSectionHeader>
             <StandingsTable
               rows={standings}
@@ -197,7 +241,7 @@ export default function PlayerLeagueDetail() {
         )}
 
         {isTeamMode && teammates.length > 0 && (
-          <div className="lg-card p-4">
+          <div id="team" className="lg-card p-4 scroll-mt-20">
             <LgSectionHeader icon={Users}>
               Your team{myTeams.length === 1 ? "" : "s"}
               {myTeams.length === 1 && (
@@ -242,7 +286,7 @@ export default function PlayerLeagueDetail() {
           />
         )}
 
-        <div className="lg-card p-4">
+        <div id="upcoming" className="lg-card p-4 scroll-mt-20">
           <LgSectionHeader icon={CalendarClock}>Upcoming matches</LgSectionHeader>
           {upcoming.length === 0 ? (
             <p className="text-xs text-[color:var(--lg-text-dim)]">
@@ -267,7 +311,7 @@ export default function PlayerLeagueDetail() {
         </div>
 
         {past.length > 0 && (
-          <div className="lg-card p-4">
+          <div id="past" className="lg-card p-4 scroll-mt-20">
             <LgSectionHeader icon={Swords}>Past matches</LgSectionHeader>
             <ul className="space-y-2">
               {past.map((m) => (
