@@ -54,6 +54,21 @@ export const contentVariants = {
 };
 
 /**
+ * Shared "premium entrance" — a gentle staggered fade-up for a column of
+ * sections/cards. Pair `staggerContainer` on the wrapper with `staggerItem`
+ * on each child. Gate both behind a reduced-motion check at the call site
+ * (pass no variants when reduced) so it fully collapses to a static render.
+ */
+export const staggerContainer = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.06, delayChildren: 0.04 } },
+};
+export const staggerItem = {
+  hidden: { opacity: 0, y: 12 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.42, ease: EASE_OUT } },
+};
+
+/**
  * Full-screen directional route transition (deeper = in from the right).
  * Mirrors the proven Community outlet; percentages keep it resolution
  * independent and the parent clips overflow-x so nothing scrolls sideways.

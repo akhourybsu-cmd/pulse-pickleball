@@ -11,16 +11,7 @@ import {
   type Subskill,
 } from "@/lib/skill/model";
 import type { ScoringSnapshot } from "@/lib/skill/scoring";
-
-/* Reduced-motion-safe entrance: a gentle staggered fade-up of each section. */
-const staggerContainer = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.06, delayChildren: 0.04 } },
-};
-const staggerItem = {
-  hidden: { opacity: 0, y: 12 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.42, ease: [0.32, 0.72, 0, 1] as const } },
-};
+import { staggerContainer, staggerItem } from "@/lib/motion";
 
 /**
  * PULSE Skill Fingerprint result screen. Hierarchy follows the product
