@@ -1,12 +1,16 @@
 import { useState, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, MessageCircle, UserMinus, Check, X, UserPlus, Users, AlertCircle } from 'lucide-react';
+import { ArrowLeft, MessageCircle, UserMinus, Check, X, UserPlus, Users, AlertCircle, MoreVertical, User } from 'lucide-react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { SearchField } from '@/components/ui/search-field';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem,
+} from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,11 +33,40 @@ import { cn } from '@/lib/utils';
 const initials = (name: string | null) =>
   (name || 'U').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
 
+/** Consistent "3.00 rating · Online" metadata line for a person row. */
+const personMeta = (rating: number | null, online: boolean): string => {
+  const parts: string[] = [];
+  if (rating != null) parts.push(`${rating.toFixed(2)} rating`);
+  parts.push(online ? 'Online' : 'Offline');
+  return parts.join(' · ');
+};
+
+/** Only surface a suggestion reason when it's a real, specific one — never a
+ *  generic placeholder. Presentation guard; the RPC stays the source. */
+const realReason = (reason: string | null | undefined): string | null => {
+  const r = (reason ?? '').trim();
+  if (!r) return null;
+  if (/^(suggested( for you)?|you might know)$/i.test(r)) return null;
+  return r;
+};
+
+/** Motion presets for request rows animating out (reduced-motion aware). */
+const rowExit = (reduced: boolean | null) =>
+  reduced
+    ? { transition: { duration: 0 } }
+    : {
+        initial: { opacity: 0, y: 4 },
+        animate: { opacity: 1, y: 0 },
+        exit: { opacity: 0, x: 12, height: 0, marginBottom: 0 },
+        transition: { duration: 0.2, ease: [0.32, 0.72, 0, 1] as const },
+      };
+
 const VALID_TABS = ['friends', 'requests', 'suggestions'] as const;
 type FriendsTabValue = (typeof VALID_TABS)[number];
 
 export default function Friends({ embedded = false }: { embedded?: boolean } = {}) {
   const navigate = useNavigate();
+  const reduced = useReducedMotion();
   const [searchParams, setSearchParams] = useSearchParams();
   const [connectOpen, setConnectOpen] = useState(false);
   const [friendQuery, setFriendQuery] = useState('');
@@ -134,7 +167,7 @@ export default function Friends({ embedded = false }: { embedded?: boolean } = {
       });
       if (error) throw error;
       navigate(`/player/messages/${data}`);
-    } catch (e: any) {
+    } catch (e) {
       console.error(e);
       toast.error(interpretDmError(e));
     }
@@ -190,19 +223,6 @@ export default function Friends({ embedded = false }: { embedded?: boolean } = {
       )}
       <ConnectSheet open={connectOpen} onOpenChange={setConnectOpen} />
 
-      {embedded && (
-        <div className="flex justify-end px-4 sm:px-6 pt-3">
-          <Button
-            onClick={() => setConnectOpen(true)}
-            size="sm"
-            className="h-9 rounded-full btn-premium"
-          >
-            <UserPlus className="h-4 w-4 mr-1.5" />
-            Add friend
-          </Button>
-        </div>
-      )}
-
       {error && !loading && (
         <div className="mx-4 sm:mx-6 mt-3 flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
           <AlertCircle className="h-3.5 w-3.5 shrink-0" />
@@ -212,24 +232,25 @@ export default function Friends({ embedded = false }: { embedded?: boolean } = {
       )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-        <div className="px-4 sm:px-6 pt-3">
-          <TabsList className="w-full h-11 bg-muted/40 p-1 rounded-xl grid grid-cols-3">
-            <TabsTrigger value="friends" className="h-9 rounded-lg text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm">
-              Friends
-              {friends.length > 0 && <span className="ml-1.5 text-xs text-muted-foreground">{friends.length}</span>}
-            </TabsTrigger>
-            <TabsTrigger value="requests" className="h-9 rounded-lg text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm">
-              Requests
-              {totalRequests > 0 && (
-                <Badge variant="secondary" className="ml-1.5 h-5 px-1.5 text-[10px] font-semibold">
-                  {totalRequests}
-                </Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="suggestions" className="h-9 rounded-lg text-sm font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm">
-              Suggestions
-            </TabsTrigger>
+        {/* Secondary underline tabs — deliberately lighter than the primary
+            Chats/Friends switch in the Social hero so the hierarchy reads. */}
+        <div className="px-4 sm:px-6 pt-1 flex items-center gap-2 border-b border-border/40">
+          <TabsList className="flex-1 h-auto bg-transparent p-0 gap-5 justify-start rounded-none">
+            <UnderlineTab value="friends" label="Friends" count={friends.length > 0 ? friends.length : undefined} />
+            <UnderlineTab value="requests" label="Requests" count={totalRequests > 0 ? totalRequests : undefined} accent />
+            <UnderlineTab value="suggestions" label="Suggestions" />
           </TabsList>
+          {embedded && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setConnectOpen(true)}
+              className="h-8 w-8 shrink-0 text-primary -mb-px"
+              aria-label="Add friend"
+            >
+              <UserPlus className="h-[18px] w-[18px]" />
+            </Button>
+          )}
         </div>
 
         <div className="flex-1 overflow-y-auto">
@@ -287,30 +308,38 @@ export default function Friends({ embedded = false }: { embedded?: boolean } = {
                           >
                             <div className="text-sm font-medium truncate">{name}</div>
                             <div className="text-xs text-muted-foreground truncate">
-                              {isOnline
-                                ? 'Online now'
-                                : f.profile.current_rating != null
-                                  ? `Rating ${f.profile.current_rating.toFixed(2)}`
-                                  : 'Offline'}
+                              {personMeta(f.profile.current_rating, isOnline)}
                             </div>
                           </button>
                           <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => openDM(f.profile.id)} aria-label={`Message ${name}`}>
                             <MessageCircle className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-9 w-9 text-muted-foreground shrink-0"
-                            onClick={() =>
-                              setRemoveTarget({
-                                friendshipId: f.id,
-                                name,
-                              })
-                            }
-                            aria-label={`Remove ${name}`}
-                          >
-                            <UserMinus className="h-4 w-4" />
-                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-9 w-9 text-muted-foreground shrink-0"
+                                aria-label={`More actions for ${name}`}
+                              >
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-44">
+                              <DropdownMenuItem onClick={() => navigate(`/profile/${f.profile.id}`)}>
+                                <User className="h-4 w-4 mr-2" /> View profile
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => openDM(f.profile.id)}>
+                                <MessageCircle className="h-4 w-4 mr-2" /> Message
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => setRemoveTarget({ friendshipId: f.id, name })}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <UserMinus className="h-4 w-4 mr-2" /> Remove friend
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       );
                     })}
@@ -330,32 +359,34 @@ export default function Friends({ embedded = false }: { embedded?: boolean } = {
                 <p className="text-sm text-muted-foreground">No incoming requests.</p>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {pendingRequests.map(r => {
-                    const name = r.profile.display_name || r.profile.full_name || 'Player';
-                    return (
-                      <div key={r.id} className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border/40">
-                        <button onClick={() => navigate(`/profile/${r.profile.id}`)} aria-label={`View ${name}'s profile`} className="shrink-0">
-                          <PresenceAvatar
-                            src={r.profile.avatar_url}
-                            name={name}
-                            online={onlineFriends.has(r.profile.id)}
-                          />
-                        </button>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-medium truncate">{name}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {onlineFriends.has(r.profile.id) ? 'Online now' : 'Wants to be friends'}
+                  <AnimatePresence initial={false}>
+                    {pendingRequests.map(r => {
+                      const name = r.profile.display_name || r.profile.full_name || 'Player';
+                      return (
+                        <motion.div key={r.id} layout={!reduced} {...rowExit(reduced)} className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border/40 overflow-hidden">
+                          <button onClick={() => navigate(`/profile/${r.profile.id}`)} aria-label={`View ${name}'s profile`} className="shrink-0">
+                            <PresenceAvatar
+                              src={r.profile.avatar_url}
+                              name={name}
+                              online={onlineFriends.has(r.profile.id)}
+                            />
+                          </button>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium truncate">{name}</div>
+                            <div className="text-xs text-muted-foreground truncate">
+                              {onlineFriends.has(r.profile.id) ? 'Online · wants to be friends' : 'Wants to be friends'}
+                            </div>
                           </div>
-                        </div>
-                        <Button size="icon" className="h-9 w-9 rounded-full shrink-0" disabled={processingIds.has(r.id)} onClick={() => handleRequestAction(r.id, acceptRequest)} aria-label={`Accept ${name}`}>
-                          <Check className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full shrink-0" disabled={processingIds.has(r.id)} onClick={() => handleRequestAction(r.id, declineRequest)} aria-label={`Decline ${name}`}>
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    );
-                  })}
+                          <Button size="icon" className="h-9 w-9 rounded-full shrink-0" disabled={processingIds.has(r.id)} onClick={() => handleRequestAction(r.id, acceptRequest)} aria-label={`Accept ${name}`}>
+                            <Check className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full shrink-0" disabled={processingIds.has(r.id)} onClick={() => handleRequestAction(r.id, declineRequest)} aria-label={`Decline ${name}`}>
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </motion.div>
+                      );
+                    })}
+                  </AnimatePresence>
                 </div>
               )}
             </section>
@@ -368,29 +399,31 @@ export default function Friends({ embedded = false }: { embedded?: boolean } = {
                 <p className="text-sm text-muted-foreground">No pending sent requests.</p>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {sentRequests.map(r => {
-                    const name = r.profile.display_name || r.profile.full_name || 'Player';
-                    return (
-                      <div key={r.id} className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border/40">
-                        <button onClick={() => navigate(`/profile/${r.profile.id}`)} aria-label={`View ${name}'s profile`} className="shrink-0">
-                          <PresenceAvatar
-                            src={r.profile.avatar_url}
-                            name={name}
-                            online={onlineFriends.has(r.profile.id)}
-                          />
-                        </button>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-medium truncate">{name}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {onlineFriends.has(r.profile.id) ? 'Online now' : 'Request sent'}
+                  <AnimatePresence initial={false}>
+                    {sentRequests.map(r => {
+                      const name = r.profile.display_name || r.profile.full_name || 'Player';
+                      return (
+                        <motion.div key={r.id} layout={!reduced} {...rowExit(reduced)} className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border/40 overflow-hidden">
+                          <button onClick={() => navigate(`/profile/${r.profile.id}`)} aria-label={`View ${name}'s profile`} className="shrink-0">
+                            <PresenceAvatar
+                              src={r.profile.avatar_url}
+                              name={name}
+                              online={onlineFriends.has(r.profile.id)}
+                            />
+                          </button>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium truncate">{name}</div>
+                            <div className="text-xs text-muted-foreground truncate">
+                              {onlineFriends.has(r.profile.id) ? 'Online · request sent' : 'Request sent'}
+                            </div>
                           </div>
-                        </div>
-                        <Button variant="ghost" size="sm" className="shrink-0" disabled={processingIds.has(r.id)} onClick={() => handleRequestAction(r.id, cancelRequest)}>
-                          Cancel
-                        </Button>
-                      </div>
-                    );
-                  })}
+                          <Button variant="ghost" size="sm" className="shrink-0" disabled={processingIds.has(r.id)} onClick={() => handleRequestAction(r.id, cancelRequest)}>
+                            Cancel
+                          </Button>
+                        </motion.div>
+                      );
+                    })}
+                  </AnimatePresence>
                 </div>
               )}
             </section>
@@ -412,6 +445,10 @@ export default function Friends({ embedded = false }: { embedded?: boolean } = {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {suggestions.map(s => {
                   const name = s.display_name || s.full_name || 'Player';
+                  const reason = realReason(s.reason);
+                  // Prefer a real, specific reason; otherwise fall back to the
+                  // consistent rating · presence line (never a fake reason).
+                  const meta = reason ?? personMeta(s.current_rating, onlineFriends.has(s.id));
                   return (
                     <div key={s.id} className="flex items-center gap-2 p-3 rounded-xl bg-card border border-border/40">
                       <button onClick={() => navigate(`/profile/${s.id}`)} aria-label={`View ${name}'s profile`} className="shrink-0">
@@ -426,7 +463,7 @@ export default function Friends({ embedded = false }: { embedded?: boolean } = {
                       <button onClick={() => navigate(`/profile/${s.id}`)} className="flex-1 min-w-0 text-left">
                         <div className="text-sm font-medium truncate">{name}</div>
                         <div className="text-xs text-muted-foreground truncate">
-                          {onlineFriends.has(s.id) ? 'Online now' : s.reason}
+                          {meta}
                         </div>
                       </button>
                       {/* Dismiss — quiet, secondary affordance. Sits to the
@@ -491,6 +528,35 @@ export default function Friends({ embedded = false }: { embedded?: boolean } = {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+function UnderlineTab({
+  value, label, count, accent,
+}: { value: string; label: string; count?: number; accent?: boolean }) {
+  return (
+    <TabsTrigger
+      value={value}
+      className={cn(
+        "relative h-10 px-0 rounded-none bg-transparent shadow-none text-sm font-medium text-muted-foreground",
+        "data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-foreground",
+        "after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:rounded-full after:bg-primary",
+        "after:opacity-0 after:transition-opacity motion-reduce:after:transition-none data-[state=active]:after:opacity-100",
+      )}
+    >
+      {label}
+      {count != null && (
+        <Badge
+          variant="secondary"
+          className={cn(
+            "ml-1.5 h-5 px-1.5 text-[10px] font-semibold",
+            accent && "bg-primary/15 text-primary",
+          )}
+        >
+          {count}
+        </Badge>
+      )}
+    </TabsTrigger>
   );
 }
 
