@@ -16,6 +16,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import type { League } from "@/lib/leagues/types";
+import type { ManageTab } from "./leagueManageTabs";
 
 /* ------------------------------------------------------------------ */
 /*  LEAGUE-ADMIN VISUAL PRIMITIVES                                     */
@@ -285,6 +286,8 @@ export interface LeagueTabProps {
   league: League;
   dataVersion: number;
   onMutated: () => void;
+  /** Jump to another manage tab — used for in-context cross-links. */
+  onNavigate?: (tab: ManageTab) => void;
 }
 
 export function EmptyState({

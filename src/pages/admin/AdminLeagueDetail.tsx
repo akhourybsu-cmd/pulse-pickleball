@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, ReactNode } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,7 +20,7 @@ import { MatchesTab } from "@/components/admin/leagues/MatchesTab";
 import { StandingsTab } from "@/components/admin/leagues/StandingsTab";
 import { AuditLogTab } from "@/components/admin/leagues/AuditLogTab";
 import { LeagueManageNav } from "@/components/admin/leagues/LeagueManageNav";
-import { type ManageTab, MANAGE_TABS } from "@/components/admin/leagues/leagueManageTabs";
+import { type ManageTab, MANAGE_TABS, visibleManageTabs } from "@/components/admin/leagues/leagueManageTabs";
 import { LeagueScope, LeagueHero } from "@/components/leagues/_leagueScope";
 import { DUR, EASE_OUT, contentVariants } from "@/lib/leagues/motion";
 
@@ -69,6 +69,18 @@ export default function AdminLeagueDetail() {
   useEffect(() => {
     prevIndexRef.current = activeIndex;
   }, [activeIndex]);
+
+  // Only the tabs that make sense for this league's setup (ladder vs manual).
+  const visibleTabs = useMemo(
+    () => (league ? visibleManageTabs(league.league_type) : MANAGE_TABS),
+    [league],
+  );
+  // If the current tab isn't valid for this league type, fall back to Overview.
+  useEffect(() => {
+    if (league && !visibleTabs.some((t) => t.key === activeTab)) {
+      setActiveTab("overview");
+    }
+  }, [league, visibleTabs, activeTab]);
 
   useEffect(() => {
     const init = async () => {
@@ -237,7 +249,7 @@ export default function AdminLeagueDetail() {
 
         {/* Rail + workspace */}
         <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
-          <LeagueManageNav active={activeTab} onChange={setActiveTab} />
+          <LeagueManageNav active={activeTab} onChange={setActiveTab} tabs={visibleTabs} />
 
           <div className="flex-1 min-w-0 space-y-3">
             {activeTabDef && (
@@ -280,7 +292,7 @@ export default function AdminLeagueDetail() {
                   <SubstitutesTab league={league} dataVersion={dataVersion} onMutated={onDataMutated} />
                 )}
                 {activeTab === "ladder" && (
-                  <LadderTab league={league} dataVersion={dataVersion} onMutated={onDataMutated} />
+                  <LadderTab league={league} dataVersion={dataVersion} onMutated={onDataMutated} onNavigate={setActiveTab} />
                 )}
                 {activeTab === "sessions" && (
                   <SessionsTab league={league} dataVersion={dataVersion} onMutated={onDataMutated} />

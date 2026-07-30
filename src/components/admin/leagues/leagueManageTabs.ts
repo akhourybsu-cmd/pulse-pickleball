@@ -43,3 +43,23 @@ export const MANAGE_TABS: TabDef[] = [
 ];
 
 export const GROUPS = ["Setup", "People", "Play", "Results", "Log"] as const;
+
+/**
+ * The tabs that make sense for a given league type. The product runs two
+ * setups: an automated ladder and a manual "basic" league. We only surface
+ * the Play tabs each one actually uses:
+ *   • ladder leagues drive scheduling from the Ladder tab's own week planner,
+ *     so the manual "Sessions" tab is hidden;
+ *   • non-ladder leagues have no ladder engine, so the "Ladder" tab (which
+ *     would only show a dead-end) is hidden.
+ * Everything else (Overview, Seasons, Players, Subs, Matches, Standings,
+ * Audit) is shared. Order is preserved from MANAGE_TABS.
+ */
+export function visibleManageTabs(leagueType: string): TabDef[] {
+  const isLadder = leagueType === "ladder";
+  return MANAGE_TABS.filter((t) => {
+    if (t.key === "sessions") return !isLadder;
+    if (t.key === "ladder") return isLadder;
+    return true;
+  });
+}

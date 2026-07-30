@@ -5,7 +5,7 @@ import {
   Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger,
 } from "@/components/ui/drawer";
 import { cn } from "@/lib/utils";
-import { type ManageTab, MANAGE_TABS, GROUPS } from "./leagueManageTabs";
+import { type ManageTab, type TabDef, MANAGE_TABS, GROUPS } from "./leagueManageTabs";
 
 export type { ManageTab };
 
@@ -21,10 +21,12 @@ export type { ManageTab };
  *   Active tab gets a filled pill. Scroll-snaps for a native feel.
  */
 export function LeagueManageNav({
-  active, onChange,
+  active, onChange, tabs = MANAGE_TABS,
 }: {
   active: ManageTab;
   onChange: (t: ManageTab) => void;
+  /** The tabs to show (defaults to all). Callers pass a type-filtered set. */
+  tabs?: TabDef[];
 }) {
   return (
     <>
@@ -32,7 +34,7 @@ export function LeagueManageNav({
       <aside className="hidden lg:block w-[220px] shrink-0 sticky top-4 self-start">
         <div className="rounded-xl border border-[color:var(--lg-border)] bg-[color:var(--lg-surface)] p-2 space-y-3 shadow-[inset_0_1px_0_0_rgba(201,168,76,0.08)]">
           {GROUPS.map((group) => {
-            const items = MANAGE_TABS.filter((t) => t.group === group);
+            const items = tabs.filter((t) => t.group === group);
             if (items.length === 0) return null;
             return (
               <div key={group} className="space-y-0.5">
@@ -95,19 +97,20 @@ export function LeagueManageNav({
       </aside>
 
       {/* ------------------ Mobile section picker ------------------ */}
-      <MobileSectionPicker active={active} onChange={onChange} />
+      <MobileSectionPicker active={active} onChange={onChange} tabs={tabs} />
     </>
   );
 }
 
 function MobileSectionPicker({
-  active, onChange,
+  active, onChange, tabs,
 }: {
   active: ManageTab;
   onChange: (t: ManageTab) => void;
+  tabs: TabDef[];
 }) {
   const [open, setOpen] = useState(false);
-  const activeDef = MANAGE_TABS.find((t) => t.key === active) ?? MANAGE_TABS[0];
+  const activeDef = tabs.find((t) => t.key === active) ?? tabs[0];
   const ActiveIcon = activeDef.icon;
 
   return (
@@ -138,7 +141,7 @@ function MobileSectionPicker({
           </DrawerHeader>
           <div className="px-4 pb-8 space-y-4 max-h-[65vh] overflow-y-auto">
             {GROUPS.map((group) => {
-              const items = MANAGE_TABS.filter((t) => t.group === group);
+              const items = tabs.filter((t) => t.group === group);
               if (items.length === 0) return null;
               return (
                 <div key={group} className="space-y-1">
