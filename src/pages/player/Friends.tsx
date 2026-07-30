@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, MessageCircle, UserMinus, Check, X, UserPlus, Users } from 'lucide-react';
+import { ArrowLeft, MessageCircle, UserMinus, Check, X, UserPlus, Users, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -32,7 +32,7 @@ const initials = (name: string | null) =>
 const VALID_TABS = ['friends', 'requests', 'suggestions'] as const;
 type FriendsTabValue = (typeof VALID_TABS)[number];
 
-export default function Friends() {
+export default function Friends({ embedded = false }: { embedded?: boolean } = {}) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [connectOpen, setConnectOpen] = useState(false);
@@ -64,11 +64,14 @@ export default function Friends() {
     pendingRequests,
     sentRequests,
     loading,
+    error,
     acceptRequest,
     declineRequest,
+    cancelRequest,
     removeFriend,
     sendFriendRequest,
-  } = useFriends();
+    refetch,
+  } = useFriends({ realtime: true });
   const { suggestions, loading: suggestionsLoading, refetch: refetchSuggestions, dismissSuggestion } = useFriendSuggestions();
 
   // Live online presence for green dots + online-first ordering. Track every
@@ -140,50 +143,73 @@ export default function Friends() {
   const totalRequests = pendingRequests.length + sentRequests.length;
 
   return (
-    <div className="flex flex-col min-h-[calc(100vh-120px)]">
-      {/* Header */}
-      <div className={cn(
-        "border-b border-border/40 bg-gradient-to-b from-primary/[0.06] via-background to-background"
-      )}>
-        <div className="container mx-auto px-4 py-4 md:py-5 max-w-3xl">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-start gap-3 min-w-0 flex-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => navigate('/player/community')}
-                className="h-9 w-9 -ml-1 shrink-0 mt-0.5"
-                aria-label="Back to Community"
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
+    <div className={cn("flex flex-col", !embedded && "min-h-[calc(100vh-120px)]")}>
+      {/* Header (standalone only — the Social hub provides its own). */}
+      {!embedded && (
+        <div className={cn(
+          "border-b border-border/40 bg-gradient-to-b from-primary/[0.06] via-background to-background"
+        )}>
+          <div className="container mx-auto px-4 py-4 md:py-5 max-w-3xl">
+            <div className="flex items-start justify-between gap-3">
               <div className="flex items-start gap-3 min-w-0 flex-1">
-                <div className="h-9 w-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <Users className="h-[18px] w-[18px]" strokeWidth={2} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h1 className="text-2xl md:text-[28px] font-bold tracking-tight text-foreground leading-tight">
-                    Friends
-                  </h1>
-                  <div className="h-[3px] w-10 mt-1.5 bg-primary rounded-full" />
-                  <p className="text-sm text-muted-foreground mt-2 leading-snug">
-                    Connect with players you know
-                  </p>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => navigate('/player/community')}
+                  className="h-9 w-9 -ml-1 shrink-0 mt-0.5"
+                  aria-label="Back to Community"
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+                <div className="flex items-start gap-3 min-w-0 flex-1">
+                  <div className="h-9 w-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <Users className="h-[18px] w-[18px]" strokeWidth={2} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h1 className="text-2xl md:text-[28px] font-bold tracking-tight text-foreground leading-tight">
+                      Friends
+                    </h1>
+                    <div className="h-[3px] w-10 mt-1.5 bg-primary rounded-full" />
+                    <p className="text-sm text-muted-foreground mt-2 leading-snug">
+                      Connect with players you know
+                    </p>
+                  </div>
                 </div>
               </div>
+              <Button
+                onClick={() => setConnectOpen(true)}
+                size="sm"
+                className="h-9 rounded-full btn-premium shrink-0 mt-1"
+              >
+                <UserPlus className="h-4 w-4 mr-1.5" />
+                Add
+              </Button>
             </div>
-            <Button
-              onClick={() => setConnectOpen(true)}
-              size="sm"
-              className="h-9 rounded-full btn-premium shrink-0 mt-1"
-            >
-              <UserPlus className="h-4 w-4 mr-1.5" />
-              Add
-            </Button>
           </div>
         </div>
-      </div>
+      )}
       <ConnectSheet open={connectOpen} onOpenChange={setConnectOpen} />
+
+      {embedded && (
+        <div className="flex justify-end px-4 sm:px-6 pt-3">
+          <Button
+            onClick={() => setConnectOpen(true)}
+            size="sm"
+            className="h-9 rounded-full btn-premium"
+          >
+            <UserPlus className="h-4 w-4 mr-1.5" />
+            Add friend
+          </Button>
+        </div>
+      )}
+
+      {error && !loading && (
+        <div className="mx-4 sm:mx-6 mt-3 flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+          <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+          <span className="flex-1">{error}</span>
+          <button onClick={() => void refetch()} className="font-medium underline underline-offset-2">Retry</button>
+        </div>
+      )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
         <div className="px-4 sm:px-6 pt-3">
@@ -359,7 +385,7 @@ export default function Friends() {
                             {onlineFriends.has(r.profile.id) ? 'Online now' : 'Request sent'}
                           </div>
                         </div>
-                        <Button variant="ghost" size="sm" className="shrink-0" disabled={processingIds.has(r.id)} onClick={() => handleRequestAction(r.id, declineRequest)}>
+                        <Button variant="ghost" size="sm" className="shrink-0" disabled={processingIds.has(r.id)} onClick={() => handleRequestAction(r.id, cancelRequest)}>
                           Cancel
                         </Button>
                       </div>

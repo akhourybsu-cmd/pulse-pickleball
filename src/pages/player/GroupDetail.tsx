@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   ArrowLeft, Settings, Users, MessageSquare, MessageCircle, Calendar, 
   FolderOpen, Plus, Share2, MoreVertical, MoreHorizontal, UserPlus, Bell
@@ -42,12 +42,18 @@ export default function GroupDetail() {
   const [group, setGroup] = useState<Group | null>(null);
   const [membership, setMembership] = useState<GroupMember | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('feed');
+  // Honor a ?tab= deep link (e.g. from the Social hub's group-chats list) so
+  // a shared/tapped link can open straight to Chat, Events, etc.
+  const [searchParams] = useSearchParams();
+  const initialTab = ['feed', 'events', 'chat', 'members', 'more'].includes(searchParams.get('tab') || '')
+    ? (searchParams.get('tab') as string)
+    : 'feed';
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUserProfile, setCurrentUserProfile] = useState<{ display_name: string | null; full_name: string | null; avatar_url: string | null } | null>(null);
-  
+
   // Track which tabs have been visited for lazy mounting
-  const [visitedTabs, setVisitedTabs] = useState<Set<string>>(new Set(['feed']));
+  const [visitedTabs, setVisitedTabs] = useState<Set<string>>(new Set([initialTab]));
   const [notifSettingsOpen, setNotifSettingsOpen] = useState(false);
   
   

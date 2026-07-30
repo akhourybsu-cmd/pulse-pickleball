@@ -175,9 +175,8 @@ const GroupDetail = lazy(() => import("./pages/player/GroupDetail"));
 const JoinGroupByCode = lazy(() => import("./pages/player/JoinGroupByCode"));
 const JoinLeagueByCode = lazy(() => import("./pages/player/JoinLeagueByCode"));
 const GroupManage = lazy(() => import("./pages/player/GroupManage"));
-const DirectMessages = lazy(() => import("./pages/player/DirectMessages"));
 const DirectMessageChat = lazy(() => import("./pages/player/DirectMessageChat"));
-const Friends = lazy(() => import("./pages/player/Friends"));
+const Social = lazy(() => import("./pages/player/Social"));
 
 // Venue pages
 const VenueOverview = lazy(() => import("./pages/venue/VenueOverview"));
@@ -462,7 +461,10 @@ const AppContent = () => {
             <Route path="bookings" element={<Navigate to="/player/dashboard" replace />} />
             <Route path="my-bookings" element={<Navigate to="/player/dashboard" replace />} />
             <Route path="my-events" element={<MyEvents />} />
-            <Route path="friends" element={<Friends />} />
+            {/* Friends now lives inside the unified Social hub; the path is
+                kept so existing links (incl. ?tab=requests) still resolve. */}
+            <Route path="social" element={<Social />} />
+            <Route path="friends" element={<Social />} />
             {/* community/join/:code is mounted as a top-level route below
                 (outside this AuthGuard wrapper) so anon users can land
                 on the preview before signing in. The
@@ -481,7 +483,7 @@ const AppContent = () => {
               <Route path="community/group/:groupId" element={<GroupDetail />} />
               <Route path="community/group/:groupId/manage" element={<GroupManage />} />
             </Route>
-            <Route path="messages" element={<DirectMessages />} />
+            <Route path="messages" element={<Social />} />
             <Route path="messages/:conversationId" element={<DirectMessageChat />} />
             <Route path="profile/edit" element={<EditProfile />} />
           </Route>
