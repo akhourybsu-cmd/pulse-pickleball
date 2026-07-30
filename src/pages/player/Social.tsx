@@ -3,8 +3,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { MessageCircle, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Friends from "./Friends";
-import DirectMessages from "./DirectMessages";
-import { GroupChatsList } from "@/components/social/GroupChatsList";
+import { SocialInbox } from "@/components/social/SocialInbox";
 
 /**
  * Unified Social hub. One destination for Chats (direct + group) and Friends,
@@ -25,26 +24,20 @@ export default function Social() {
 
   return (
     <div className="flex flex-col min-h-[calc(100vh-120px)]">
-      {/* Hero (matches the app's player-surface hero pattern). */}
+      {/* Compact hero — title + prominent view switch (no subtitle). */}
       <div className="border-b border-border/40 bg-gradient-to-b from-primary/[0.06] via-background to-background">
-        <div className="container mx-auto px-4 py-4 md:py-5 max-w-3xl">
-          <div className="flex items-start gap-3">
-            <div className="mt-0.5 h-9 w-9 shrink-0 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-              <MessageCircle className="h-[18px] w-[18px]" strokeWidth={2} />
+        <div className="container mx-auto px-4 pt-4 pb-3 max-w-3xl">
+          <div className="flex items-center gap-2.5">
+            <div className="h-8 w-8 shrink-0 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+              <MessageCircle className="h-[17px] w-[17px]" strokeWidth={2} />
             </div>
-            <div className="min-w-0">
-              <h1 className="text-2xl md:text-[28px] font-bold tracking-tight text-foreground leading-tight">
-                Social
-              </h1>
-              <div className="h-[3px] w-10 mt-1.5 bg-primary rounded-full" />
-              <p className="text-sm text-muted-foreground mt-2 leading-snug">
-                Your chats and friends in one place
-              </p>
-            </div>
+            <h1 className="text-xl font-bold tracking-tight text-foreground leading-none">
+              Social
+            </h1>
           </div>
 
           {/* View switcher — premium animated segmented control. */}
-          <div className="mt-4 inline-flex rounded-xl bg-muted/50 p-1" role="tablist" aria-label="Social views">
+          <div className="mt-3 inline-flex rounded-xl bg-muted/50 p-1" role="tablist" aria-label="Social views">
             <SegButton active={view === "chats"} onClick={() => navigate("/player/social")} icon={MessageCircle} reduced={reduced}>
               Chats
             </SegButton>
@@ -55,20 +48,8 @@ export default function Social() {
         </div>
       </div>
 
-      <div className="flex-1 min-h-0">
-        {view === "chats" ? (
-          <>
-            <GroupChatsList />
-            <div className="px-4 pt-4">
-              <h2 className="px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Direct messages
-              </h2>
-            </div>
-            <DirectMessages embedded />
-          </>
-        ) : (
-          <Friends embedded />
-        )}
+      <div className="flex-1 min-h-0 container mx-auto max-w-3xl px-0">
+        {view === "chats" ? <SocialInbox /> : <Friends embedded />}
       </div>
     </div>
   );
