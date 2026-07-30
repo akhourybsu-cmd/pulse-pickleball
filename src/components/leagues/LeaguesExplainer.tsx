@@ -2,7 +2,6 @@ import { useState } from "react";
 import {
   ChevronDown, HelpCircle, Plus, CalendarDays, CalendarClock, Trophy,
 } from "lucide-react";
-import { LEAGUE_TYPE_META, LEAGUE_TYPES } from "@/lib/leagues/typeMeta";
 import { cn } from "@/lib/utils";
 
 /**
@@ -12,9 +11,8 @@ import { cn } from "@/lib/utils";
  *
  * Two parts:
  *   1. How it works — the season → play → standings flow in four steps.
- *   2. League formats — every league type, its one-liner, and what it
- *      means, straight from the shared LEAGUE_TYPE_META so the copy
- *      never drifts from the create flow.
+ *   2. Two ways to play — the automated ladder and the manual basic
+ *      league, matching the two setups offered in the create flow.
  */
 
 const STEPS: Array<{ icon: typeof Plus; title: string; body: string }> = [
@@ -26,7 +24,7 @@ const STEPS: Array<{ icon: typeof Plus; title: string; body: string }> = [
   {
     icon: CalendarDays,
     title: "Set up a season",
-    body: "Add a season, set the league's skill level, and enroll members or pair them into teams.",
+    body: "Add a season, set the league's skill level, and enroll your members.",
   },
   {
     icon: CalendarClock,
@@ -97,40 +95,33 @@ export function LeaguesExplainer({ defaultOpen = false }: { defaultOpen?: boolea
             })}
           </ol>
 
-          {/* Formats */}
+          {/* Two ways to play */}
           <div>
             <h3 className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground mb-2">
-              League formats
+              Two ways to play
             </h3>
             <div className="grid gap-2 sm:grid-cols-2">
-              {LEAGUE_TYPES.map((t) => {
-                const meta = LEAGUE_TYPE_META[t];
-                const Icon = meta.icon;
-                return (
-                  <div
-                    key={t}
-                    className="rounded-xl border border-border/60 bg-background/50 p-3 flex gap-3"
-                  >
-                    <div className={cn(
-                      "h-9 w-9 rounded-lg flex items-center justify-center shrink-0",
-                      meta.chip,
-                    )}>
-                      <Icon className="w-4 h-4" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-baseline gap-2 flex-wrap">
-                        <span className="text-sm font-bold">{meta.label}</span>
-                        <span className="text-[11px] text-muted-foreground">
-                          {meta.tagline}
-                        </span>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                        {meta.description}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
+              <div className="rounded-xl border border-border/60 bg-background/50 p-3">
+                <div className="flex items-baseline gap-2 flex-wrap">
+                  <span className="text-sm font-bold">Individual Doubles Ladder</span>
+                  <span className="text-[11px] text-muted-foreground">Automated</span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                  Players are ranked individually and split into groups of four each week,
+                  rotating partners across games. Winners move up a court and losers down —
+                  the ladder advances automatically.
+                </p>
+              </div>
+              <div className="rounded-xl border border-border/60 bg-background/50 p-3">
+                <div className="flex items-baseline gap-2 flex-wrap">
+                  <span className="text-sm font-bold">Basic League</span>
+                  <span className="text-[11px] text-muted-foreground">Manual</span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                  A simple league you run yourself — set up sessions and matchups and enter
+                  scores by hand. Full manual control.
+                </p>
+              </div>
             </div>
           </div>
         </div>

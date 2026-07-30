@@ -15,13 +15,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { AlertTriangle } from "lucide-react";
 import type {
-  League, LeagueStatus, LeagueType, LeagueVisibility,
+  League, LeagueStatus, LeagueVisibility,
 } from "@/lib/leagues/types";
 import { logLeagueAction } from "@/lib/leagues/audit";
 import { InviteCodeCard } from "./InviteCodeCard";
 import { LeagueEligibilitySettings } from "./LeagueEligibilitySettings";
 import {
-  FormSection, FormRow, FIELD_H, ChoiceGrid, SegmentedControl,
+  FormSection, FormRow, FIELD_H, SegmentedControl,
 } from "./_shared";
 import { cn } from "@/lib/utils";
 
@@ -35,7 +35,6 @@ export function OverviewTab({
   const [name, setName] = useState(league.name);
   const [description, setDescription] = useState(league.description ?? "");
   const [location, setLocation] = useState(league.location ?? "");
-  const [type, setType] = useState<LeagueType>(league.league_type);
   const [status, setStatus] = useState<LeagueStatus>(league.status);
   const [visibility, setVisibility] = useState<LeagueVisibility>(league.visibility);
   const [ratingEligible, setRatingEligible] = useState(league.rating_eligible);
@@ -50,7 +49,6 @@ export function OverviewTab({
     name !== league.name ||
     description !== (league.description ?? "") ||
     location !== (league.location ?? "") ||
-    type !== league.league_type ||
     status !== league.status ||
     visibility !== league.visibility ||
     ratingEligible !== league.rating_eligible ||
@@ -85,7 +83,6 @@ export function OverviewTab({
       name: name.trim(),
       description: description.trim() || null,
       location: location.trim() || null,
-      league_type: type,
       status,
       visibility,
       rating_eligible: ratingEligible,
@@ -177,21 +174,7 @@ export function OverviewTab({
           </FormRow>
         </FormSection>
 
-        <FormSection label="Format">
-          <FormRow label="League type">
-            <ChoiceGrid
-              columns={3}
-              value={type}
-              onChange={(v) => setType(v as LeagueType)}
-              options={[
-                { value: "singles", label: "Singles" },
-                { value: "doubles", label: "Doubles" },
-                { value: "team",    label: "Team" },
-                { value: "flex",    label: "Flex" },
-                { value: "ladder",  label: "Ladder" },
-              ]}
-            />
-          </FormRow>
+        <FormSection label="Status & visibility">
           <div className="grid gap-3 md:grid-cols-2">
             <FormRow label="Status">
               <SegmentedControl

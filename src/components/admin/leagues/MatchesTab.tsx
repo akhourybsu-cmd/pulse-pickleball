@@ -53,7 +53,7 @@ const STATUS_TONE: Record<LeagueMatchStatus, string> = {
   forfeit:         "bg-slate-500/15 text-slate-500",
 };
 
-export function MatchesTab({ league, dataVersion, onMutated }: LeagueTabProps) {
+export function MatchesTab({ league, dataVersion, onMutated, onNavigate }: LeagueTabProps) {
   const [seasons, setSeasons] = useState<LeagueSeason[]>([]);
   const [seasonId, setSeasonId] = useState<string | "">("");
   const [sessions, setSessions] = useState<LeagueSession[]>([]);
@@ -133,6 +133,15 @@ export function MatchesTab({ league, dataVersion, onMutated }: LeagueTabProps) {
 
   return (
     <div className="space-y-3">
+      {onNavigate && league.league_type === "ladder" && (
+        <button
+          type="button"
+          onClick={() => onNavigate("ladder")}
+          className="-ml-1 inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+        >
+          ← Back to ladder
+        </button>
+      )}
       <div className="rounded-lg border border-blue-500/30 bg-blue-500/5 p-3 text-xs text-blue-700 dark:text-blue-300 flex gap-2">
         <Info className="w-4 h-4 shrink-0 mt-0.5" />
         <span>

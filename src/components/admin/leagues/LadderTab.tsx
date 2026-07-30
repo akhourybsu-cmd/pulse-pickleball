@@ -64,7 +64,7 @@ async function scheduleLadderWeek(
   return (data as { session_id?: string } | null)?.session_id ?? null;
 }
 
-export function LadderTab({ league, dataVersion, onMutated }: LeagueTabProps) {
+export function LadderTab({ league, dataVersion, onMutated, onNavigate }: LeagueTabProps) {
   const [seasons, setSeasons] = useState<LeagueSeason[]>([]);
   const [seasonId, setSeasonId] = useState<string | "">("");
   const [loadingSeasons, setLoadingSeasons] = useState(true);
@@ -108,6 +108,17 @@ export function LadderTab({ league, dataVersion, onMutated }: LeagueTabProps) {
   return (
     <div className="space-y-3">
       <SeasonSelect seasons={seasons} value={seasonId} onChange={setSeasonId} className="w-full" />
+
+      {onNavigate && !ladder.loading && ladder.started && (
+        <div className="flex flex-wrap gap-2">
+          <ActionButton size="sm" variant="outline" onClick={() => onNavigate("matches")} className="h-8 text-xs gap-1.5">
+            <Swords className="w-3.5 h-3.5" /> All matches
+          </ActionButton>
+          <ActionButton size="sm" variant="outline" onClick={() => onNavigate("standings")} className="h-8 text-xs gap-1.5">
+            <Trophy className="w-3.5 h-3.5" /> Standings
+          </ActionButton>
+        </div>
+      )}
 
       {ladder.loading ? (
         <TabSkeleton lines={4} />
@@ -1081,7 +1092,9 @@ function WeekSchedulePanel({
   totalWeeks: number | null;
   onChanged: () => void;
 }) {
-  const [open, setOpen] = useState(false);
+  // Open by default so week scheduling (dates, cancel/reschedule) is visible
+  // up front rather than hidden behind a collapsed accordion.
+  const [open, setOpen] = useState(true);
   const [editWeek, setEditWeek] = useState<number | null>(null);
   const [removeWeek, setRemoveWeek] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
