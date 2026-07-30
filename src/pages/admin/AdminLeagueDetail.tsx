@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState, ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, ReactNode } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { AdminLayout } from "@/components/admin/AdminLayout";
@@ -53,7 +53,21 @@ export default function AdminLeagueDetail() {
   // manual reload. Also refetches hero counts.
   const [dataVersion, setDataVersion] = useState(0);
   const bumpDataVersion = () => setDataVersion((v) => v + 1);
-  const [activeTab, setActiveTab] = useState<ManageTab>("overview");
+
+  // Active tab is synced to the URL (?tab=…) so a refresh keeps your place and
+  // organizers can share a link straight to a section. Unknown values fall
+  // back to Overview; the type-validity guard below handles hidden tabs.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const paramTab = searchParams.get("tab");
+  const activeTab: ManageTab =
+    paramTab && MANAGE_TABS.some((t) => t.key === paramTab)
+      ? (paramTab as ManageTab)
+      : "overview";
+  const setActiveTab = useCallback((t: ManageTab) => {
+    const next = new URLSearchParams(searchParams);
+    next.set("tab", t);
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   // Direction for the tab-content transition: forward (right) when moving
   // to a later tab in canonical order, backward (left) otherwise. Tracked
@@ -80,7 +94,7 @@ export default function AdminLeagueDetail() {
     if (league && !visibleTabs.some((t) => t.key === activeTab)) {
       setActiveTab("overview");
     }
-  }, [league, visibleTabs, activeTab]);
+  }, [league, visibleTabs, activeTab, setActiveTab]);
 
   useEffect(() => {
     const init = async () => {
@@ -286,7 +300,7 @@ export default function AdminLeagueDetail() {
                   <MembersTab league={league} dataVersion={dataVersion} onMutated={onDataMutated} />
                 )}
                 {activeTab === "teams" && (
-                  <TeamsTab league={league} dataVersion={dataVersion} onMutated={onDataMutated} />
+                  <TeamsTab league={league} dataVersion={dataVersion} onMutated={onDataMutated} onNavigate={setActiveTab} />
                 )}
                 {activeTab === "subs" && (
                   <SubstitutesTab league={league} dataVersion={dataVersion} onMutated={onDataMutated} />
@@ -298,10 +312,10 @@ export default function AdminLeagueDetail() {
                   <SessionsTab league={league} dataVersion={dataVersion} onMutated={onDataMutated} />
                 )}
                 {activeTab === "matches" && (
-                  <MatchesTab league={league} dataVersion={dataVersion} onMutated={onDataMutated} />
+                  <MatchesTab league={league} dataVersion={dataVersion} onMutated={onDataMutated} onNavigate={setActiveTab} />
                 )}
                 {activeTab === "standings" && (
-                  <StandingsTab league={league} dataVersion={dataVersion} onMutated={onDataMutated} />
+                  <StandingsTab league={league} dataVersion={dataVersion} onMutated={onDataMutated} onNavigate={setActiveTab} />
                 )}
                 {activeTab === "audit" && (
                   <AuditLogTab league={league} dataVersion={dataVersion} />

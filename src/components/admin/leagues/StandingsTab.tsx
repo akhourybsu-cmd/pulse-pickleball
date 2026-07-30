@@ -21,7 +21,7 @@ interface ProfileRow {
 }
 
 
-export function StandingsTab({ league, dataVersion }: LeagueTabProps) {
+export function StandingsTab({ league, dataVersion, onNavigate }: LeagueTabProps) {
   const isTeamMode =
     league.league_type === "doubles" || league.league_type === "team";
   const [seasons, setSeasons] = useState<LeagueSeason[]>([]);
@@ -104,6 +104,15 @@ export function StandingsTab({ league, dataVersion }: LeagueTabProps) {
 
   return (
     <div className="space-y-3">
+      {onNavigate && league.league_type === "ladder" && (
+        <button
+          type="button"
+          onClick={() => onNavigate("ladder")}
+          className="-ml-1 inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+        >
+          ← Back to ladder
+        </button>
+      )}
       <div className="flex gap-2 items-center flex-wrap">
         <SeasonSelect seasons={seasons} value={seasonId} onChange={setSeasonId} className="flex-1 min-w-[140px]" />
       </div>
