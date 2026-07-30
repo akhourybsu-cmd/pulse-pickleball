@@ -171,7 +171,7 @@ export function CreateLeagueDialog({
                   </DialogTitle>
                   <p className="text-xs text-muted-foreground mt-1">
                     {step === 1
-                      ? "Step 1 of 2 · Pick a format"
+                      ? "Step 1 of 2 · Choose a setup"
                       : "Step 2 of 2 · Basics"}
                   </p>
                 </div>
@@ -205,9 +205,6 @@ export function CreateLeagueDialog({
                         />
                       </motion.div>
                     ))}
-                    <p className="text-[11px] text-center text-muted-foreground pt-1">
-                      More formats (singles, team, flex) coming soon.
-                    </p>
                   </motion.div>
                 ) : (
                   <motion.div
@@ -284,7 +281,7 @@ export function CreateLeagueDialog({
                     </div>
                     <p className="text-[11px] text-muted-foreground leading-relaxed pt-1">
                       Your first league is free. Starts as a draft — invite
-                      players once you've scaffolded seasons and divisions.
+                      players once you've set up your season.
                     </p>
                   </motion.div>
                 )}
@@ -434,8 +431,9 @@ function PaywallView({
         <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-700 dark:text-amber-300 flex items-start gap-2">
           <Sparkles className="w-3.5 h-3.5 mt-0.5 shrink-0" />
           <span>
-            Every slot unlocks one more league — run a Singles ladder,
-            a Doubles night, and a Team season all under one account.
+            Every slot unlocks one more league you can run at the same time —
+            spin up separate ladders for different nights or skill levels, all
+            under one account.
           </span>
         </div>
         {capacity && (
