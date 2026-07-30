@@ -3,6 +3,7 @@ import { MessageCircle, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Friends from "./Friends";
 import DirectMessages from "./DirectMessages";
+import { GroupChatsList } from "@/components/social/GroupChatsList";
 
 /**
  * Unified Social hub. One destination for Chats (direct messages) + Friends,
@@ -47,7 +48,14 @@ export default function Social() {
       </div>
 
       <div className="flex-1 min-h-0">
-        {view === "chats" ? <DirectMessages embedded /> : <Friends embedded />}
+        {view === "chats" ? (
+          <>
+            <GroupChatsList />
+            <DirectMessages embedded />
+          </>
+        ) : (
+          <Friends embedded />
+        )}
       </div>
     </div>
   );
