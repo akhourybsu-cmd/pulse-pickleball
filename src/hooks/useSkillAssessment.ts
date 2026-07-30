@@ -10,6 +10,7 @@ import {
   type ResponseKey,
 } from "@/lib/skill/model";
 import { scoreAssessment, type Responses, type ScoringSnapshot } from "@/lib/skill/scoring";
+import { haptic } from "@/lib/haptics";
 import {
   selectNextItemKey,
   isComplete,
@@ -186,6 +187,7 @@ export function useSkillAssessment() {
         });
       }
       await load(); // pull the authoritative snapshot the server stored
+      haptic("success"); // a meaningful confirmation — results are ready
       setState((s) => ({ ...s, phase: "result" }));
     } catch (e) {
       // Never lose a completed assessment to a failed result request — a

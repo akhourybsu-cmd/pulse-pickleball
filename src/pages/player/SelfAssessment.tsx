@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { ArrowLeft, Loader2, History, ChevronRight, Gauge } from "lucide-react";
+import { ArrowLeft, Loader2, History, ChevronRight, Gauge, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ResponseScalePicker } from "@/components/skill/ResponseScalePicker";
 import { SkillIntro } from "@/components/skill/SkillIntro";
@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 export default function SelfAssessment() {
   const navigate = useNavigate();
   const a = useSkillAssessment();
+  const reduced = useReducedMotion();
   const [showHistory, setShowHistory] = useState(false);
 
   if (a.phase === "loading") {
@@ -60,8 +61,20 @@ export default function SelfAssessment() {
         />
       ) : a.phase === "finalizing" ? (
         <Centered>
-          <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          <p className="mt-3 text-sm text-muted-foreground">Building your Skill Fingerprint…</p>
+          <div className="relative flex h-20 w-20 items-center justify-center">
+            <motion.span
+              aria-hidden
+              className="absolute inset-0 rounded-full"
+              style={{ background: "radial-gradient(circle, hsl(var(--primary) / 0.2), transparent 70%)" }}
+              animate={reduced ? undefined : { scale: [1, 1.18, 1], opacity: [0.55, 1, 0.55] }}
+              transition={reduced ? undefined : { duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+            />
+            <span className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/12 text-primary ring-1 ring-primary/25">
+              <Gauge className="h-7 w-7" />
+            </span>
+          </div>
+          <p className="mt-4 text-sm font-semibold">Building your Skill Fingerprint…</p>
+          <p className="mt-1 text-xs text-muted-foreground">Scoring your answers securely on the server</p>
         </Centered>
       ) : a.phase === "result" && a.latest?.scoring_snapshot ? (
         <SkillFingerprint
@@ -97,17 +110,22 @@ function WizardStep({
   // Complete (or no eligible item left) → offer results.
   if (!item || a.complete) {
     return (
-      <div className="space-y-5 text-center">
-        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/12 text-primary">
-          <Gauge className="h-7 w-7" />
-        </div>
+      <div className="space-y-5 pt-6 text-center">
+        <motion.div
+          initial={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.6 }}
+          animate={reduced ? { opacity: 1 } : { opacity: 1, scale: 1 }}
+          transition={reduced ? { duration: 0.15 } : { type: "spring", stiffness: 380, damping: 18 }}
+          className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 text-primary ring-1 ring-primary/25 shadow-[0_6px_20px_-6px_hsl(var(--primary)/0.5)]"
+        >
+          <Check className="h-8 w-8" strokeWidth={2.5} />
+        </motion.div>
         <div>
-          <h2 className="font-display text-xl font-semibold">You're all set</h2>
-          <p className="mt-1 text-sm text-muted-foreground max-w-sm mx-auto">
+          <h2 className="font-display text-2xl font-semibold tracking-tight">You're all set</h2>
+          <p className="mx-auto mt-1.5 max-w-sm text-sm text-muted-foreground">
             You answered {answered} questions. Generate your PULSE Self-Assessed Level and Skill Fingerprint.
           </p>
         </div>
-        <Button onClick={a.finalize} className="w-full h-12 font-semibold gap-2">
+        <Button onClick={a.finalize} className="h-12 w-full gap-2 rounded-xl font-semibold shadow-[0_8px_24px_-8px_hsl(var(--primary)/0.6)]">
           See my results <ChevronRight className="h-4 w-4" />
         </Button>
         <Button variant="ghost" onClick={onExit} className="w-full text-muted-foreground">
