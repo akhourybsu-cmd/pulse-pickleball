@@ -4,9 +4,10 @@ import { ActionButton } from "@/components/leagues/ActionButton";
 import {
   ArrowLeft, Trophy,
   CalendarDays, Users, CalendarClock,
-  Swords, Settings,
+  Swords, Settings, Gauge, ChevronRight,
 } from "lucide-react";
 import { useMemo, useEffect, useState } from "react";
+import { isSkillAssessmentEnabled } from "@/lib/skill/featureFlag";
 import { supabase } from "@/integrations/supabase/client";
 import type { LeagueMatchStatus } from "@/lib/leagues/types";
 import { useLeagueDetailForPlayer } from "@/hooks/useLeagueDetailForPlayer";
@@ -161,6 +162,11 @@ export default function PlayerLeagueDetail() {
     past.length > 0 ? { id: "past", label: "Past" } : null,
   ].filter((s): s is { id: string; label: string } => s !== null);
 
+  // Brand-new member (or a season that hasn't kicked off): nothing to show in
+  // standings or matches yet. Show one friendly empty state instead of a
+  // stack of empty cards.
+  const noActivity = standings.length === 0 && upcoming.length === 0 && past.length === 0;
+
   return (
     <LeagueScope>
       <div className="container mx-auto px-4 py-5 max-w-3xl space-y-5">
@@ -202,7 +208,10 @@ export default function PlayerLeagueDetail() {
         />
 
         {sections.length > 1 && (
-          <nav aria-label="Jump to section" className="flex flex-wrap gap-1.5">
+          <nav
+            aria-label="Jump to section"
+            className="sticky top-[64px] sm:top-[72px] z-30 -mx-4 flex flex-wrap gap-1.5 border-b border-[color:var(--lg-border)] bg-[color:var(--lg-bg)] px-4 py-2"
+          >
             {sections.map((s) => (
               <button
                 key={s.id}
@@ -286,47 +295,84 @@ export default function PlayerLeagueDetail() {
           />
         )}
 
-        <div id="upcoming" className="lg-card p-4 scroll-mt-20">
-          <LgSectionHeader icon={CalendarClock}>Upcoming matches</LgSectionHeader>
-          {upcoming.length === 0 ? (
-            <p className="text-xs text-[color:var(--lg-text-dim)]">
-              No upcoming matches yet. Your organizer will schedule matches as
-              the season gets going.
+        {noActivity ? (
+          <div id="upcoming" className="lg-card p-6 text-center scroll-mt-20">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-[color:var(--lg-surface-2)] text-[color:var(--lg-text-dim)]">
+              <CalendarClock className="h-6 w-6" />
+            </div>
+            <p className="text-sm font-semibold text-[color:var(--lg-text)]">
+              {season ? "No matches scheduled yet" : "Your season hasn't started"}
             </p>
-          ) : (
-            <ul className="space-y-2">
-              {upcoming.map((m) => (
-                <MatchRow
-                  key={m.id}
-                  match={m}
-                  teamsById={teamsById}
-                  playersById={playersById}
-                  currentUserId={currentUserId}
-                  isLadder={league?.league_type === "ladder"}
-                  onChanged={refresh}
-                />
-              ))}
-            </ul>
-          )}
-        </div>
-
-        {past.length > 0 && (
-          <div id="past" className="lg-card p-4 scroll-mt-20">
-            <LgSectionHeader icon={Swords}>Past matches</LgSectionHeader>
-            <ul className="space-y-2">
-              {past.map((m) => (
-                <MatchRow
-                  key={m.id}
-                  match={m}
-                  teamsById={teamsById}
-                  playersById={playersById}
-                  currentUserId={currentUserId}
-                  isLadder={league?.league_type === "ladder"}
-                  onChanged={refresh}
-                />
-              ))}
-            </ul>
+            <p className="mx-auto mt-1 max-w-xs text-xs text-[color:var(--lg-text-dim)]">
+              {season
+                ? "Matches and standings will show up here as your organizer schedules play."
+                : "Once your organizer starts a season and schedules play, your matches and standings appear here."}
+            </p>
           </div>
+        ) : (
+          <>
+            <div id="upcoming" className="lg-card p-4 scroll-mt-20">
+              <LgSectionHeader icon={CalendarClock}>Upcoming matches</LgSectionHeader>
+              {upcoming.length === 0 ? (
+                <p className="text-xs text-[color:var(--lg-text-dim)]">
+                  No upcoming matches right now. Your organizer will schedule
+                  matches as the season gets going.
+                </p>
+              ) : (
+                <ul className="space-y-2">
+                  {upcoming.map((m) => (
+                    <MatchRow
+                      key={m.id}
+                      match={m}
+                      teamsById={teamsById}
+                      playersById={playersById}
+                      currentUserId={currentUserId}
+                      isLadder={league?.league_type === "ladder"}
+                      onChanged={refresh}
+                    />
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {past.length > 0 && (
+              <div id="past" className="lg-card p-4 scroll-mt-20">
+                <LgSectionHeader icon={Swords}>Past matches</LgSectionHeader>
+                <ul className="space-y-2">
+                  {past.map((m) => (
+                    <MatchRow
+                      key={m.id}
+                      match={m}
+                      teamsById={teamsById}
+                      playersById={playersById}
+                      currentUserId={currentUserId}
+                      isLadder={league?.league_type === "ladder"}
+                      onChanged={refresh}
+                    />
+                  ))}
+                </ul>
+              </div>
+            )}
+          </>
+        )}
+
+        {isSkillAssessmentEnabled() && (
+          <button
+            type="button"
+            onClick={() => navigate("/player/self-assessment")}
+            className="lg-card group flex w-full items-center gap-3 p-4 text-left transition-colors hover:border-[color:var(--lg-gold)]/40"
+          >
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[color:var(--lg-gold)]/12 text-[color:var(--lg-accent-gold)]">
+              <Gauge className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-semibold text-[color:var(--lg-text)]">Rate your game</div>
+              <div className="text-xs text-[color:var(--lg-text-dim)]">
+                Take the PULSE Skill Assessment for your Self-Assessed Level &amp; Skill Fingerprint.
+              </div>
+            </div>
+            <ChevronRight className="h-4 w-4 shrink-0 text-[color:var(--lg-text-dim)] transition-transform motion-safe:group-hover:translate-x-0.5" />
+          </button>
         )}
       </div>
     </LeagueScope>
