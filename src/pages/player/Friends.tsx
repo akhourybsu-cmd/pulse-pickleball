@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, MessageCircle, UserMinus, Check, X, UserPlus, Users } from 'lucide-react';
+import { ArrowLeft, MessageCircle, UserMinus, Check, X, UserPlus, Users, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -64,12 +64,14 @@ export default function Friends({ embedded = false }: { embedded?: boolean } = {
     pendingRequests,
     sentRequests,
     loading,
+    error,
     acceptRequest,
     declineRequest,
     cancelRequest,
     removeFriend,
     sendFriendRequest,
-  } = useFriends();
+    refetch,
+  } = useFriends({ realtime: true });
   const { suggestions, loading: suggestionsLoading, refetch: refetchSuggestions, dismissSuggestion } = useFriendSuggestions();
 
   // Live online presence for green dots + online-first ordering. Track every
@@ -198,6 +200,14 @@ export default function Friends({ embedded = false }: { embedded?: boolean } = {
             <UserPlus className="h-4 w-4 mr-1.5" />
             Add friend
           </Button>
+        </div>
+      )}
+
+      {error && !loading && (
+        <div className="mx-4 sm:mx-6 mt-3 flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+          <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+          <span className="flex-1">{error}</span>
+          <button onClick={() => void refetch()} className="font-medium underline underline-offset-2">Retry</button>
         </div>
       )}
 

@@ -30,15 +30,18 @@ export interface FriendRequest {
   profile: FriendProfile;
 }
 
-export function useFriends() {
+export function useFriends(options?: { realtime?: boolean }) {
+  const realtime = options?.realtime ?? false;
   const [friends, setFriends] = useState<FriendWithProfile[]>([]);
   const [pendingRequests, setPendingRequests] = useState<FriendRequest[]>([]);
   const [sentRequests, setSentRequests] = useState<FriendRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   const fetchFriends = useCallback(async () => {
     try {
+      setError(null);
       // getSession() reads the cached local session instead of a server
       // round-trip — RLS is the real auth boundary for every query below.
       const { data: { session } } = await supabase.auth.getSession();
@@ -157,6 +160,9 @@ export function useFriends() {
 
     } catch (error) {
       console.error('Error fetching friends:', error);
+      // Surface a real error so the UI can distinguish "load failed" from
+      // "genuinely no friends yet" and offer a retry.
+      setError('Could not load your friends. Check your connection and try again.');
     } finally {
       setLoading(false);
     }
@@ -165,6 +171,24 @@ export function useFriends() {
   useEffect(() => {
     fetchFriends();
   }, [fetchFriends]);
+
+  // Opt-in realtime (only the Friends surface passes realtime:true, so the
+  // lightweight rail/card consumers don't each open a channel). Incoming
+  // requests / accepts / removals update the list live instead of only on
+  // remount or after a local mutation.
+  useEffect(() => {
+    if (!realtime || !currentUserId) return;
+    const channel = supabase
+      .channel(`friendships-rt-${currentUserId}`)
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'friendships', filter: `user_id=eq.${currentUserId}` },
+        () => { void fetchFriends(); })
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'friendships', filter: `friend_id=eq.${currentUserId}` },
+        () => { void fetchFriends(); })
+      .subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [realtime, currentUserId, fetchFriends]);
 
   const sendFriendRequest = useCallback(async (friendId: string) => {
     try {
@@ -322,6 +346,7 @@ export function useFriends() {
     pendingRequests,
     sentRequests,
     loading,
+    error,
     currentUserId,
     sendFriendRequest,
     acceptRequest,
