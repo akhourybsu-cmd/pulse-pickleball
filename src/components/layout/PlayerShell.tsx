@@ -1,13 +1,15 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useCallback, Suspense } from 'react';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Home, Trophy, Users, User, Plus, MessageSquare, MessageCircle } from 'lucide-react';
-import { motion, useReducedMotion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { NotificationBell } from '@/components/NotificationBell';
 import { NotificationCenter } from '@/components/notifications/NotificationCenter';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useDirectMessages } from '@/hooks/useDirectMessages';
+import { PrimaryTabTransition } from '@/components/layout/PrimaryTabTransition';
+import { PRIMARY_TABS, primaryTabIndex } from '@/lib/navigation/primaryTabs';
+import { Skeleton } from '@/components/ui/skeleton';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,19 +18,24 @@ import { FriendsPresenceProvider } from '@/contexts/FriendsPresenceContext';
 // VenueModeBanner removed during the player-only beta. Component file
 // stays put for easy revival when the venue surface is re-enabled.
 
-// Player-first bottom nav. The previous "Venues" tab was removed as part of
-// the player/venue separation — venue discovery lives behind the mode toggle
-// (RoleSwitcherCard on the dashboard, ModeSwitcher in the page header for
-// dual-role users), not as a primary player navigation destination.
-const navItems = [
-  { to: '/player/dashboard', icon: Home, label: 'Home' },
-  { to: '/player/matches', icon: Trophy, label: 'Matches' },
-  { to: '/player/social', icon: MessageCircle, label: 'Social' },
-  { to: '/player/community', icon: Users, label: 'Community' },
-  { to: '/player/profile', icon: User, label: 'Profile' },
-];
+// Player-first bottom nav. Tab ORDER + labels come from the single
+// authoritative definition (src/lib/navigation/primaryTabs) so the nav and
+// the horizontal page transition can never disagree about which tab is where.
+// Only the icon (a pure view concern) is mapped locally.
+const TAB_ICONS: Record<string, typeof Home> = {
+  '/player/dashboard': Home,
+  '/player/matches': Trophy,
+  '/player/social': MessageCircle,
+  '/player/community': Users,
+  '/player/profile': User,
+};
+const navItems = PRIMARY_TABS.map((t) => ({
+  to: t.path,
+  label: t.label,
+  icon: TAB_ICONS[t.path] ?? Home,
+}));
 
-// Prefetch map for route preloading on hover
+// Prefetch map for route preloading (hover on desktop, idle on mobile).
 const prefetchMap: Record<string, () => Promise<unknown>> = {
   '/player/dashboard': () => import('@/pages/player/PlayerDashboard'),
   '/player/matches': () => import('@/pages/MatchHistory'),
@@ -36,6 +43,20 @@ const prefetchMap: Record<string, () => Promise<unknown>> = {
   '/player/community': () => import('@/pages/player/Community'),
   '/player/profile': () => import('@/pages/player/PlayerProfile'),
 };
+
+/** In-frame skeleton shown only if a tab's code chunk is still loading —
+ *  keeps the header + bottom nav mounted instead of flashing a full-screen
+ *  loader (which would blank the whole shell). */
+function TabContentFallback() {
+  return (
+    <div className="container mx-auto px-4 py-6 max-w-3xl space-y-4" aria-hidden>
+      <Skeleton className="h-8 w-1/2" />
+      <Skeleton className="h-24 w-full rounded-2xl" />
+      <Skeleton className="h-24 w-full rounded-2xl" />
+      <Skeleton className="h-24 w-full rounded-2xl" />
+    </div>
+  );
+}
 
 export function PlayerShell() {
   const location = useLocation();
@@ -69,20 +90,10 @@ export function PlayerShell() {
     location.pathname.includes('/player/messages/') ||
     location.pathname === '/player/matches/new';
 
-  // Calculate active tab index for sliding indicator
-  const activeIndex = navItems.findIndex(item => {
-    if (item.to === '/player/social') {
-      // Social owns chats + friends (both live inside the hub now).
-      return location.pathname.startsWith('/player/social') ||
-        location.pathname.startsWith('/player/friends') ||
-        location.pathname.startsWith('/player/messages');
-    }
-    if (item.to === '/player/community') {
-      return location.pathname.startsWith('/player/community');
-    }
-    return location.pathname === item.to ||
-      (item.to !== '/player/dashboard' && location.pathname.startsWith(item.to));
-  });
+  // Active tab index for the sliding indicator + per-item active state —
+  // from the shared definition, so the highlight, the indicator, and the
+  // slide direction all agree (incl. the Social→friends/messages aliases).
+  const activeIndex = primaryTabIndex(location.pathname);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -120,25 +131,23 @@ export function PlayerShell() {
     if (prefetch) prefetch();
   }, []);
 
-  // ---- Page-transition wiring ---------------------------------------
-  // A gentle enter animation as content swaps between routes. The header,
-  // FAB, and bottom nav live OUTSIDE the animated wrapper below, so they
-  // stay perfectly stable while only the page body fades in.
-  const reduceMotion = useReducedMotion();
-  const isCommunityRoute = location.pathname.startsWith('/player/community');
-  // The Community subtree owns its own directional slide
-  // (CommunityTransitionOutlet). Give it ONE constant key so this wrapper
-  // never remounts as you move list ↔ group ↔ manage — otherwise the two
-  // systems would fight. It still fades once when you enter/leave the
-  // subtree. Every other route keys by pathname so each navigation replays
-  // the enter animation.
-  const contentTransitionKey = isCommunityRoute ? 'community-subtree' : location.pathname;
-  // Immersive pages (match wizard, DM chat) carry their own fixed bottom
-  // bars. A transform on an ancestor re-anchors position:fixed children, so
-  // those get an opacity-only fade — standard pages (no fixed descendants)
-  // get the slightly richer opacity + lift.
-  const enterInitial = isImmersiveRoute ? { opacity: 0 } : { opacity: 0, y: 8 };
-  const enterAnimate = isImmersiveRoute ? { opacity: 1 } : { opacity: 1, y: 0 };
+  // Warm every primary tab's code chunk once, at idle, so tapping a tab on
+  // mobile (no hover to trigger prefetch) can animate immediately instead of
+  // suspending on a cold chunk. Bounded to the five known tabs; failures are
+  // ignored (the route will still lazy-load normally).
+  useEffect(() => {
+    const warm = () => Object.values(prefetchMap).forEach((fn) => fn().catch(() => {}));
+    const w = window as unknown as {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+      cancelIdleCallback?: (h: number) => void;
+    };
+    if (typeof w.requestIdleCallback === 'function') {
+      const handle = w.requestIdleCallback(warm, { timeout: 2500 });
+      return () => w.cancelIdleCallback?.(handle);
+    }
+    const t = setTimeout(warm, 600);
+    return () => clearTimeout(t);
+  }, []);
 
   return (
     <FriendsPresenceProvider>
@@ -210,20 +219,14 @@ export function PlayerShell() {
         groupedByTime={groupedByTime}
       />
 
-      {/* Main Content */}
+      {/* Main Content — the ONLY region that moves during a tab change. The
+          header (above) and bottom nav (below) are siblings, so they stay
+          visually fixed. An inner Suspense keeps them mounted if a tab's
+          chunk is still loading, instead of blanking the shell. */}
       <main className={isImmersiveRoute ? "flex-1" : "flex-1 pb-24 md:pb-20"}>
-        {reduceMotion ? (
-          <Outlet />
-        ) : (
-          <motion.div
-            key={contentTransitionKey}
-            initial={enterInitial}
-            animate={enterAnimate}
-            transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
-          >
-            <Outlet />
-          </motion.div>
-        )}
+        <Suspense fallback={<TabContentFallback />}>
+          <PrimaryTabTransition immersive={isImmersiveRoute} />
+        </Suspense>
       </main>
 
       {/* Record Match FAB — only surfaced on the player tabs where logging
@@ -274,10 +277,9 @@ export function PlayerShell() {
             }}
           />
           <div className="flex items-center justify-around py-2.5">
-            {navItems.map((item) => {
-              const isActive = location.pathname === item.to || 
-                (item.to !== '/player/dashboard' && location.pathname.startsWith(item.to));
-              
+            {navItems.map((item, index) => {
+              const isActive = activeIndex === index;
+
               return (
                 <NavLink
                   key={item.to}
@@ -327,10 +329,9 @@ export function PlayerShell() {
               }}
             />
             <div className="flex items-center justify-center gap-6 py-2.5">
-              {navItems.map((item) => {
-                const isActive = location.pathname === item.to || 
-                  (item.to !== '/player/dashboard' && location.pathname.startsWith(item.to));
-                
+              {navItems.map((item, index) => {
+                const isActive = activeIndex === index;
+
                 return (
                   <NavLink
                     key={item.to}
