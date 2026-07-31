@@ -24,20 +24,12 @@ export default function Social() {
 
   return (
     <div className="flex flex-col min-h-[calc(100vh-120px)]">
-      {/* Compact hero — title + prominent view switch (no subtitle). */}
+      {/* Compact hero — the "Social" title is dropped (it just echoed the
+          bottom-nav label); the Chats/Friends switch leads instead. */}
       <div className="border-b border-border/40 bg-gradient-to-b from-primary/[0.06] via-background to-background">
-        <div className="container mx-auto px-4 pt-4 pb-3 max-w-3xl">
-          <div className="flex items-center gap-2.5">
-            <div className="h-8 w-8 shrink-0 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-              <MessageCircle className="h-[17px] w-[17px]" strokeWidth={2} />
-            </div>
-            <h1 className="text-xl font-bold tracking-tight text-foreground leading-none">
-              Social
-            </h1>
-          </div>
-
+        <div className="container mx-auto px-4 py-3 max-w-3xl">
           {/* View switcher — premium animated segmented control. */}
-          <div className="mt-3 inline-flex rounded-xl bg-muted/50 p-1" role="tablist" aria-label="Social views">
+          <div className="inline-flex rounded-xl bg-muted/50 p-1" role="tablist" aria-label="Social views">
             <SegButton active={view === "chats"} onClick={() => navigate("/player/social")} icon={MessageCircle} reduced={reduced}>
               Chats
             </SegButton>

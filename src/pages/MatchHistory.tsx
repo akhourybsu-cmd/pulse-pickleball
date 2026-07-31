@@ -657,7 +657,7 @@ const MatchHistory = () => {
           redundancy that made the page feel busy. */}
       <PlayerPageHeader
         icon={History}
-        title={playerId ? `${playerName}'s Matches` : 'Matches'}
+        title={playerId ? `${playerName}'s Matches` : undefined}
         subtitle={
           playerId
             ? `Review ${playerName}'s pickleball results.`
