@@ -31,7 +31,7 @@ import { isSkillAssessmentEnabled } from '@/lib/skill/featureFlag';
 import { cn } from '@/lib/utils';
 import { PlayerPageHeader } from '@/components/layout/PlayerPageHeader';
 import { SectionHeader } from '@/components/layout/SectionHeader';
-import { PlayerIdentityCard } from '@/components/dashboard/PlayerIdentityCard';
+import { SkillAssessmentCTA } from '@/components/skill/SkillAssessmentCTA';
 
 interface ProfileSummary {
   id: string;
