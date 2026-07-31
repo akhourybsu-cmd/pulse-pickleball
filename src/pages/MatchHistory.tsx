@@ -658,11 +658,6 @@ const MatchHistory = () => {
       <PlayerPageHeader
         icon={History}
         title={playerId ? `${playerName}'s Matches` : undefined}
-        subtitle={
-          playerId
-            ? `Review ${playerName}'s pickleball results.`
-            : 'Track your submitted, pending, and verified pickleball results.'
-        }
         background="gradient"
       />
 

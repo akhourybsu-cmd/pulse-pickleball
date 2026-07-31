@@ -64,7 +64,6 @@ export default function PlayHub() {
       <PlayerPageHeader
         icon={Compass}
         title="Play"
-        subtitle="Your upcoming round robins and events — plus more to join nearby."
         background="gradient"
         action={
           <Button
