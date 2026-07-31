@@ -1,5 +1,5 @@
 import { useEffect, useRef, type ReactNode } from "react";
-import { Outlet, useLocation, useNavigationType } from "react-router-dom";
+import { useLocation, useNavigationType, useOutlet } from "react-router-dom";
 import { AnimatePresence, motion, useIsPresent, useReducedMotion } from "framer-motion";
 import { DUR, EASE_OUT, tabSlideVariants } from "@/lib/motion";
 import {
@@ -25,6 +25,13 @@ const SLIDE = { duration: DUR.tab, ease: EASE_OUT };
  * gentle fade so nothing double-animates and immersive fixed action bars are
  * never re-anchored by a transform.
  *
+ * IMPORTANT: each animated layer renders a FROZEN outlet element captured with
+ * useOutlet() rather than a live <Outlet/>. A live <Outlet/> always renders
+ * the *current* route, so the outgoing layer would show the new page (and, once
+ * popLayout makes it absolute, leave it overlapping). Freezing pins each layer
+ * to the route it entered with, so the exiting layer shows the OLD page and is
+ * cleanly removed when its exit animation ends — no permanent overlap.
+ *
  * The header, FAB, and bottom nav live ABOVE this component in PlayerShell —
  * only the region between them moves.
  */
@@ -32,6 +39,9 @@ export function ShellContentTransition({ immersive }: { immersive: boolean }) {
   const location = useLocation();
   const navType = useNavigationType();
   const reduced = useReducedMotion();
+  // Frozen snapshot of the current route's element — held per layer so the
+  // outgoing layer keeps rendering the page it entered with.
+  const outlet = useOutlet();
   const prevPathRef = useRef<string | null>(null);
   const nextPath = location.pathname;
 
@@ -46,7 +56,7 @@ export function ShellContentTransition({ immersive }: { immersive: boolean }) {
   }, [nextPath]);
 
   // Reduced motion → instant swap; navigation is never delayed for animation.
-  if (reduced) return <Outlet />;
+  if (reduced) return <>{outlet}</>;
 
   const toKind = shellRouteKind(nextPath);
   const delegated =
@@ -56,7 +66,8 @@ export function ShellContentTransition({ immersive }: { immersive: boolean }) {
     toKind === "other";
 
   if (delegated) {
-    // Owned by an outlet or an immersive shell. Preserve the prior fade —
+    // Owned by an outlet or an immersive shell. A bare keyed motion.div (no
+    // AnimatePresence ⇒ no exiting layer, no overlap) with the prior fade:
     // opacity-only for immersive routes (a transform would re-anchor their
     // fixed action bars), a small lift otherwise. Outlet subtrees key on a
     // constant so their own outlet owns depth transitions.
@@ -69,7 +80,7 @@ export function ShellContentTransition({ immersive }: { immersive: boolean }) {
         animate={animate}
         transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
       >
-        <Outlet />
+        {outlet}
       </motion.div>
     );
   }
@@ -78,37 +89,26 @@ export function ShellContentTransition({ immersive }: { immersive: boolean }) {
   // for within-tab / first-render changes (same key ⇒ no animation anyway),
   // ±1 for a real lateral slide or forward/back push. The restrained 28%
   // opaque translate keeps the viewport fully covered (no gap flash); the
-  // parent clips horizontal overflow only, so vertical scroll + sticky work.
+  // parent clips horizontal overflow (matching the proven Community/League
+  // outlets) so a mid-slide layer can't push a sideways scrollbar.
   return (
-    <div className="relative overflow-x-clip">
+    <div className="relative overflow-x-hidden">
       <AnimatePresence mode="popLayout" initial={false} custom={direction}>
-        <motion.div
-          key={transitionKey(nextPath)}
-          custom={direction}
-          variants={tabSlideVariants}
-          initial="enter"
-          animate="center"
-          exit="exit"
-          transition={SLIDE}
-          style={{ willChange: "transform" }}
-        >
-          <AnimatedLayer>
-            <Outlet />
-          </AnimatedLayer>
-        </motion.div>
+        <SlideLayer key={transitionKey(nextPath)} direction={direction}>
+          {outlet}
+        </SlideLayer>
       </AnimatePresence>
     </div>
   );
 }
 
 /**
- * Wraps the animated route content and, while its layer is EXITING (framer's
- * useIsPresent === false), marks it aria-hidden + inert + non-interactive so
- * the outgoing screen can't take focus, be announced by a screen reader, or
- * intercept taps meant for the incoming screen. `inert` is set on the node
- * directly because React 18 doesn't type the attribute.
+ * One animated route layer. While EXITING (framer's useIsPresent === false) it
+ * is marked aria-hidden + inert so the outgoing screen can't take focus or be
+ * read by a screen reader; pointer-events are disabled by the exit variant.
+ * `inert` is set on the node directly because React 18 doesn't type it.
  */
-function AnimatedLayer({ children }: { children: ReactNode }) {
+function SlideLayer({ direction, children }: { direction: number; children: ReactNode }) {
   const isPresent = useIsPresent();
   const ref = useRef<HTMLDivElement>(null);
 
@@ -118,13 +118,24 @@ function AnimatedLayer({ children }: { children: ReactNode }) {
     if (isPresent) {
       el.removeAttribute("aria-hidden");
       el.removeAttribute("inert");
-      el.style.pointerEvents = "";
     } else {
       el.setAttribute("aria-hidden", "true");
       el.setAttribute("inert", "");
-      el.style.pointerEvents = "none";
     }
   }, [isPresent]);
 
-  return <div ref={ref}>{children}</div>;
+  return (
+    <motion.div
+      ref={ref}
+      custom={direction}
+      variants={tabSlideVariants}
+      initial="enter"
+      animate="center"
+      exit="exit"
+      transition={SLIDE}
+      style={{ willChange: "transform" }}
+    >
+      {children}
+    </motion.div>
+  );
 }
