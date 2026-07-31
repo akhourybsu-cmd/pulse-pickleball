@@ -314,8 +314,8 @@ export function PlayerShell() {
                   className={cn(
                     'flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg min-w-[56px]',
                     'transition-all duration-[240ms] ease-out',
-                    isActive 
-                      ? 'text-primary' 
+                    isActive
+                      ? 'text-primary'
                       : 'text-muted-foreground/70 hover:text-foreground active:scale-95'
                   )}
                 >

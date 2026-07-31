@@ -281,7 +281,6 @@ export default function PlayerProfile() {
     <div className="min-h-screen bg-background">
       <PlayerPageHeader
         icon={UserIcon}
-        title="Profile"
         subtitle="Your PULSE identity and account hub."
         background="gradient"
       />

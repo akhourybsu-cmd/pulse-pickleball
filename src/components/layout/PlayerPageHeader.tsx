@@ -5,8 +5,12 @@ import { cn } from "@/lib/utils";
 interface PlayerPageHeaderProps {
   /** Lucide icon component shown in a tinted tile next to the title. */
   icon: LucideIcon;
-  /** Page title (h1). */
-  title: string;
+  /**
+   * Page title (h1). Optional: when omitted the header collapses to a compact
+   * single row (icon + subtitle + action) — used on the tabs whose title would
+   * just repeat the bottom-nav label (Matches / Social / Community / Profile).
+   */
+  title?: string;
   /** Optional one-line subtitle. */
   subtitle?: string;
   /** Optional action node shown at the right end (button, link, etc.). */
@@ -50,28 +54,49 @@ export function PlayerPageHeader({
         className,
       )}
     >
-      <div className="container mx-auto px-4 py-4 md:py-5 max-w-3xl">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-start gap-3 min-w-0 flex-1">
-            <div className="h-9 w-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center flex-shrink-0 mt-0.5">
-              <Icon className="h-[18px] w-[18px]" strokeWidth={2} />
+      {title ? (
+        <div className="container mx-auto px-4 py-4 md:py-5 max-w-3xl">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-3 min-w-0 flex-1">
+              <div className="h-9 w-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center flex-shrink-0 mt-0.5">
+                <Icon className="h-[18px] w-[18px]" strokeWidth={2} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h1 className="text-2xl md:text-[28px] font-bold tracking-tight text-foreground leading-tight">
+                  {title}
+                </h1>
+                {/* Static accent line — uses the design-system primary token. */}
+                <div className="h-[3px] w-10 mt-1.5 bg-primary rounded-full" />
+                {subtitle && (
+                  <p className="text-sm text-muted-foreground mt-2 leading-snug">
+                    {subtitle}
+                  </p>
+                )}
+              </div>
             </div>
-            <div className="min-w-0 flex-1">
-              <h1 className="text-2xl md:text-[28px] font-bold tracking-tight text-foreground leading-tight">
-                {title}
-              </h1>
-              {/* Static accent line — uses the design-system primary token. */}
-              <div className="h-[3px] w-10 mt-1.5 bg-primary rounded-full" />
+            {action && <div className="flex-shrink-0">{action}</div>}
+          </div>
+        </div>
+      ) : (
+        // Compact header — no title (it would just echo the bottom-nav label).
+        // Keeps the brand icon, a contextual subtitle, and any actions in one
+        // tight row so page content sits higher.
+        <div className="container mx-auto px-4 py-3 max-w-3xl">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+              <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
+                <Icon className="h-[17px] w-[17px]" strokeWidth={2} />
+              </div>
               {subtitle && (
-                <p className="text-sm text-muted-foreground mt-2 leading-snug">
+                <p className="text-sm text-muted-foreground leading-snug min-w-0 truncate">
                   {subtitle}
                 </p>
               )}
             </div>
+            {action && <div className="flex-shrink-0">{action}</div>}
           </div>
-          {action && <div className="flex-shrink-0">{action}</div>}
         </div>
-      </div>
+      )}
     </div>
   );
 }

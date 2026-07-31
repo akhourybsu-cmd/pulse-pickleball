@@ -31,7 +31,6 @@ export default function Community() {
       {/* Page Header */}
       <PlayerPageHeader
         icon={Users}
-        title="Community"
         subtitle="Groups, players, and local pickleball activity"
         background="gradient"
         action={
