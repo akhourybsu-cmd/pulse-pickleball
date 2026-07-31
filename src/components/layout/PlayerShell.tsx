@@ -245,7 +245,7 @@ export function PlayerShell() {
       <main
         ref={mainRef}
         tabIndex={-1}
-        className={cn("focus:outline-none", isImmersiveRoute ? "flex-1" : "flex-1 pb-24 md:pb-20")}
+        className={cn("focus:outline-none", isImmersiveRoute ? "flex-1" : "flex-1 pb-20 md:pb-20")}
       >
         <Suspense fallback={<TabContentFallback />}>
           <ShellContentTransition immersive={isImmersiveRoute} />
@@ -282,7 +282,7 @@ export function PlayerShell() {
               'fixed right-4 z-40 flex items-center gap-2 rounded-full bg-primary text-primary-foreground shadow-lg',
               'h-14 pl-5 pr-6 font-semibold text-sm',
               'hover:bg-primary/90 active:scale-95 transition-all',
-              'bottom-[88px] md:bottom-[72px] pb-[env(safe-area-inset-bottom)]'
+              'bottom-[76px] md:bottom-[72px] pb-[env(safe-area-inset-bottom)]'
             )}
           >
             <Plus className="h-5 w-5" strokeWidth={2.5} />
@@ -302,7 +302,10 @@ export function PlayerShell() {
               left: `${(100 / navItems.length) * activeIndex + (100 / navItems.length) * 0.25}%`,
             }}
           />
-          <div className="flex items-center justify-around py-2.5">
+          {/* Icon-only bar — labels removed to reclaim vertical space. Each
+              link keeps an aria-label + title so the tab name is still exposed
+              to screen readers and on hover. */}
+          <div className="flex items-center justify-around py-2">
             {navItems.map((item, index) => {
               const isActive = activeIndex === index;
 
@@ -311,17 +314,19 @@ export function PlayerShell() {
                   key={item.to}
                   to={item.to}
                   onMouseEnter={() => handlePrefetch(item.to)}
+                  aria-label={item.label}
+                  title={item.label}
                   className={cn(
-                    'flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg min-w-[56px]',
+                    'flex items-center justify-center p-2.5 rounded-xl min-w-[56px]',
                     'transition-all duration-[240ms] ease-out',
-                    isActive 
-                      ? 'text-primary' 
+                    isActive
+                      ? 'text-primary'
                       : 'text-muted-foreground/70 hover:text-foreground active:scale-95'
                   )}
                 >
                   <span className="relative">
                     <item.icon className={cn(
-                      'h-[22px] w-[22px] transition-all duration-[240ms] ease-out',
+                      'h-6 w-6 transition-all duration-[240ms] ease-out',
                       isActive ? 'text-primary' : 'stroke-[1.5]'
                     )} />
                     {item.to === '/player/social' && dmUnread > 0 && (
@@ -330,10 +335,6 @@ export function PlayerShell() {
                       </span>
                     )}
                   </span>
-                  <span className={cn(
-                    'nav-label',
-                    isActive ? 'text-primary font-semibold' : 'font-medium'
-                  )}>{item.label}</span>
                 </NavLink>
               );
             })}
