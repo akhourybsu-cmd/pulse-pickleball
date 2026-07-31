@@ -279,41 +279,39 @@ export default function PlayerProfile() {
 
   return (
     <div className="min-h-screen bg-background">
-      <PlayerPageHeader
-        icon={UserIcon}
-        subtitle="Your PULSE identity and account hub."
-        background="gradient"
-      />
+      <PlayerPageHeader icon={UserIcon} background="gradient" />
 
       <div className="container mx-auto px-4 py-5 max-w-3xl space-y-7 pb-12">
-        {/* Identity hero — reuses Dashboard's PlayerIdentityCard so Home and
-            Profile share the same self-portrait. */}
-        <PlayerIdentityCard
-          userId={userId}
-          fullName={profile?.full_name || null}
-          displayName={profile?.display_name || null}
-          avatarUrl={profile?.avatar_url}
-          location={locationStr}
-          currentRating={profile?.current_rating ?? undefined}
-          totalMatches={profile?.total_matches ?? 0}
-          wins={profile?.wins ?? 0}
-          losses={profile?.losses ?? 0}
-        />
+        {/* Name only — the full identity card lives on Home; duplicating it
+            here just pushed everything else down. */}
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight leading-tight">
+            {profile?.display_name || profile?.full_name || (loading ? '' : 'Your profile')}
+          </h1>
+          {locationStr && (
+            <p className="text-sm text-muted-foreground mt-0.5">{locationStr}</p>
+          )}
+        </div>
 
-        {/* Share CTA — primary action on this page. */}
+        {/* Skill assessment — hero CTA at the top of the profile. */}
+        <SkillAssessmentCTA userId={userId} />
+
+        {/* Share CTA */}
         <div
           className="opacity-0 animate-fade-up"
           style={{ animationDelay: '120ms', animationFillMode: 'forwards' }}
         >
           <Button
             onClick={handleShare}
-            className="w-full h-12 gap-2 text-base font-semibold shadow-[0_4px_16px_-4px_hsl(var(--primary)/0.5)]"
+            variant="outline"
+            className="w-full h-12 gap-2 text-base font-semibold"
             disabled={loading || !profile?.id}
           >
             <Share2 className="h-4 w-4" />
             Share your PULSE
           </Button>
         </div>
+
 
         {/* Activity group — Leagues row appears when entitled. */}
         <div>
