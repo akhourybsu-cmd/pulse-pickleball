@@ -158,7 +158,6 @@ export default function MyRoundRobinsPage() {
       <PlayerPageHeader
         icon={Repeat}
         title="My Round Robins"
-        subtitle="Every event you're hosting or playing in — past, present, and upcoming."
         background="gradient"
         action={
           <Button

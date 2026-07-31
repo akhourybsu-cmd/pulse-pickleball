@@ -45,6 +45,10 @@ export function PlayerPageHeader({
   background = "none",
   className,
 }: PlayerPageHeaderProps) {
+  // Nothing to show (no title, no subtitle, no action) → render no chrome at
+  // all so page content starts at the top instead of under an empty strip.
+  if (!title && !subtitle && !action) return null;
+
   return (
     <div
       className={cn(
