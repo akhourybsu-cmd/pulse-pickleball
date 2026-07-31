@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, Suspense } from 'react';
+import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Home, Trophy, Users, User, Plus, MessageSquare, MessageCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -7,8 +7,9 @@ import { NotificationBell } from '@/components/NotificationBell';
 import { NotificationCenter } from '@/components/notifications/NotificationCenter';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useDirectMessages } from '@/hooks/useDirectMessages';
-import { PrimaryTabTransition } from '@/components/layout/PrimaryTabTransition';
+import { ShellContentTransition } from '@/components/layout/ShellContentTransition';
 import { PRIMARY_TABS, primaryTabIndex } from '@/lib/navigation/primaryTabs';
+import { routeAnnouncement } from '@/lib/navigation/navClassification';
 import { Skeleton } from '@/components/ui/skeleton';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -131,6 +132,22 @@ export function PlayerShell() {
     if (prefetch) prefetch();
   }, []);
 
+  // Move focus into the fresh content region after each navigation so screen
+  // reader + keyboard users follow the route change. Skipped on first render
+  // (deep link) and when the destination has already claimed focus (e.g. a
+  // page that autofocuses a field), so we never steal an intentional focus.
+  const mainRef = useRef<HTMLElement>(null);
+  const firstFocusRef = useRef(true);
+  useEffect(() => {
+    if (firstFocusRef.current) {
+      firstFocusRef.current = false;
+      return;
+    }
+    const active = document.activeElement;
+    if (active && active !== document.body && mainRef.current?.contains(active)) return;
+    mainRef.current?.focus({ preventScroll: true });
+  }, [location.pathname]);
+
   // Warm every primary tab's code chunk once, at idle, so tapping a tab on
   // mobile (no hover to trigger prefetch) can animate immediately instead of
   // suspending on a cold chunk. Bounded to the five known tabs; failures are
@@ -222,12 +239,21 @@ export function PlayerShell() {
       {/* Main Content — the ONLY region that moves during a tab change. The
           header (above) and bottom nav (below) are siblings, so they stay
           visually fixed. An inner Suspense keeps them mounted if a tab's
-          chunk is still loading, instead of blanking the shell. */}
-      <main className={isImmersiveRoute ? "flex-1" : "flex-1 pb-24 md:pb-20"}>
+          chunk is still loading, instead of blanking the shell. Programmatic
+          focus lands here after each navigation (see effect above), moving
+          screen-reader + keyboard focus into the fresh content. */}
+      <main
+        ref={mainRef}
+        tabIndex={-1}
+        className={cn("focus:outline-none", isImmersiveRoute ? "flex-1" : "flex-1 pb-24 md:pb-20")}
+      >
         <Suspense fallback={<TabContentFallback />}>
-          <PrimaryTabTransition immersive={isImmersiveRoute} />
+          <ShellContentTransition immersive={isImmersiveRoute} />
         </Suspense>
       </main>
+
+      {/* Restrained screen-reader route announcement (known pages only). */}
+      <RouteAnnouncer />
 
       {/* Record Match FAB — only surfaced on the player tabs where logging
           a match is a natural next action: the Home dashboard, the Matches
@@ -369,5 +395,30 @@ export function PlayerShell() {
       )}
     </div>
     </FriendsPresenceProvider>
+  );
+}
+
+/**
+ * Visually-hidden polite live region that announces meaningful route changes
+ * (the five tabs + a short list of known detail pages). It skips the first
+ * render (deep link / refresh) and only updates on pathname changes, so query
+ * or loading-state updates are never announced. Rendered once in the shell so
+ * the live region itself is never remounted.
+ */
+function RouteAnnouncer() {
+  const { pathname } = useLocation();
+  const [message, setMessage] = useState('');
+  const firstRef = useRef(true);
+  useEffect(() => {
+    if (firstRef.current) {
+      firstRef.current = false;
+      return;
+    }
+    setMessage(routeAnnouncement(pathname) ?? '');
+  }, [pathname]);
+  return (
+    <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+      {message}
+    </div>
   );
 }
