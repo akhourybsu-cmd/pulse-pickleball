@@ -1,28 +1,22 @@
 import { useEffect, useRef } from "react";
 import { Outlet, useLocation } from "react-router-dom";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { DUR, EASE_OUT, routeVariants } from "@/lib/leagues/motion";
+import { motion, useReducedMotion } from "framer-motion";
+import { EASE_OUT } from "@/lib/leagues/motion";
 
 /**
- * Directional slide transition for the player-facing league routes:
+ * Depth-aware enter transition for the player-facing league routes:
  *   /player/leagues                       (list, depth 0)
  *   /player/leagues/:leagueId             (detail, depth 1)
  *   /player/leagues/:leagueId/manage      (manage, depth 2)
  *
- * Going deeper → the new screen slides in from the right; going
- * shallower → it slides back in from the left. Same-depth or first mount
- * (deep-link / refresh) → no animation, so a direct URL renders instantly
- * with no flash.
- *
- * This is a byte-for-byte sibling of CommunityTransitionOutlet — same
- * design rationale: AnimatePresence `popLayout` (no absolute positioning,
- * so scroll isn't broken), direction on a ref (no extra render), reduced
- * motion bypasses the whole pipeline, and react-router still owns
- * navigation + history — we only animate the render. Wrapping the routes
- * changes nothing about their paths, elements, guards, or the shell above.
+ * Enter-only sibling of CommunityTransitionOutlet: only the incoming screen
+ * animates, so the outgoing page is never held in the tree (no overlap, no
+ * perceived delay when switching).
  */
 
-/** "/player/leagues" = 0, deeper paths count trailing segments. */
+const DURATION = 0.18;
+const OFFSET = 24;
+
 function leagueDepth(pathname: string): number {
   const match = pathname.match(/^\/player\/leagues(?:\/(.*))?$/);
   if (!match) return 0;
@@ -52,20 +46,18 @@ export function LeagueTransitionOutlet() {
 
   return (
     <div className="relative overflow-x-hidden">
-      <AnimatePresence mode="popLayout" initial={false} custom={direction}>
-        <motion.div
-          key={location.pathname}
-          custom={direction}
-          variants={routeVariants}
-          initial="enter"
-          animate="center"
-          exit="exit"
-          transition={{ duration: DUR.overlay, ease: EASE_OUT }}
-          style={{ willChange: "transform" }}
-        >
-          <Outlet />
-        </motion.div>
-      </AnimatePresence>
+      <motion.div
+        key={location.pathname}
+        initial={
+          direction === 0
+            ? { opacity: 0 }
+            : { opacity: 0, x: direction > 0 ? OFFSET : -OFFSET }
+        }
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: DURATION, ease: EASE_OUT }}
+      >
+        <Outlet />
+      </motion.div>
     </div>
   );
 }
