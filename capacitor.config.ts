@@ -19,8 +19,11 @@ import type { CapacitorConfig } from '@capacitor/cli';
  * Remove it again before `npx cap sync` for a release build.
  */
 const config: CapacitorConfig = {
-  appId: 'app.lovable.ca6dbc43755e43dfa1af7527a749b225',
-  appName: 'PULSE - Pickleball Rating System',
+  // Permanent Google Play / App Store identifier — reverse-domain of pulsepb.com.
+  // Do NOT change this after the first store release.
+  appId: 'com.pulsepb.app',
+  // Home-screen launcher name (kept short).
+  appName: 'PULSE',
   webDir: 'dist',
   plugins: {
     SplashScreen: {
