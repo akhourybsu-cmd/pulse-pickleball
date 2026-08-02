@@ -45,6 +45,9 @@ export const GroupChat = memo(function GroupChat({
     sendMessage, retryMessage, deleteMessage, editMessage, togglePinMessage,
   } = useGroupChat(groupId);
   const { typingUsers, startTyping, stopTyping } = useTypingIndicator(groupId);
+  // While this chat is on screen, group notifications for it self-clear.
+  useRegisterActiveContext([groupId ? `group:${groupId}` : null]);
+
 
   const [newMessage, setNewMessage] = useState('');
   const [userDisplayName, setUserDisplayName] = useState('');
