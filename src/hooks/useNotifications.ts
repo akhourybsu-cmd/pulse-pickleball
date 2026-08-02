@@ -203,7 +203,7 @@ export function useNotifications(userId: string | null | undefined, options: Use
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userId, fetchNotifications, showToasts]);
+  }, [userId, fetchNotifications, showToasts, isContextActive]);
 
   // Mark as read
   const markAsRead = useCallback(async (notificationId: string) => {
