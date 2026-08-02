@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect, memo, useMemo, useCallback } from 'react';
+import { useRegisterActiveContext } from '@/contexts/ActiveViewContext';
+
 import { Send, Loader2, Image as ImageIcon, Pin, X, ArrowDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -45,6 +47,9 @@ export const GroupChat = memo(function GroupChat({
     sendMessage, retryMessage, deleteMessage, editMessage, togglePinMessage,
   } = useGroupChat(groupId);
   const { typingUsers, startTyping, stopTyping } = useTypingIndicator(groupId);
+  // While this chat is on screen, group notifications for it self-clear.
+  useRegisterActiveContext([groupId ? `group:${groupId}` : null]);
+
 
   const [newMessage, setNewMessage] = useState('');
   const [userDisplayName, setUserDisplayName] = useState('');

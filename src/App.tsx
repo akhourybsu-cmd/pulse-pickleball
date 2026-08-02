@@ -7,6 +7,8 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate, usePa
 import { ThemeProvider } from "next-themes";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ModeProvider } from "@/contexts/ModeContext";
+import { ActiveViewProvider } from "@/contexts/ActiveViewContext";
+
 import { useAuthPersistence } from "@/hooks/useAuthPersistence";
 import { PlayerShell } from "@/components/layout/PlayerShell";
 import { CommunityTransitionOutlet } from "@/components/community/CommunityTransitionOutlet";
@@ -636,10 +638,13 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
-            <ModeProvider>
-              <AppContent />
-            </ModeProvider>
+            <ActiveViewProvider>
+              <ModeProvider>
+                <AppContent />
+              </ModeProvider>
+            </ActiveViewProvider>
           </BrowserRouter>
+
         </ErrorBoundary>
       </TooltipProvider>
     </ThemeProvider>

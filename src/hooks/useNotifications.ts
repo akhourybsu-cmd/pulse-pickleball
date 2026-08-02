@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useActiveView } from "@/contexts/ActiveViewContext";
+
 
 export interface Notification {
   id: string;
@@ -38,6 +40,8 @@ interface UseNotificationsOptions {
 
 export function useNotifications(userId: string | null | undefined, options: UseNotificationsOptions = {}) {
   const { showToasts = true, categories } = options;
+  const { isContextActive } = useActiveView();
+
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -84,6 +88,21 @@ export function useNotifications(userId: string | null | undefined, options: Use
         event_type: n.event_type,
       }));
 
+      // Anything already unread for the context the user is currently
+      // engaging with (open chat/event) is cleared on the spot.
+      const stale = mapped.filter(n => !n.read && isContextActive(n));
+      if (stale.length > 0) {
+        const staleIds = new Set(stale.map(n => n.id));
+        const cleared = mapped.map(n => (staleIds.has(n.id) ? { ...n, read: true } : n));
+        setNotifications(cleared);
+        setUnreadCount(cleared.filter(n => !n.read).length);
+        void supabase
+          .from("user_notifications")
+          .update({ read: true })
+          .in("id", [...staleIds]);
+        return;
+      }
+
       setNotifications(mapped);
       setUnreadCount(mapped.filter(n => !n.read).length);
     } catch (error) {
@@ -91,7 +110,8 @@ export function useNotifications(userId: string | null | undefined, options: Use
     } finally {
       setLoading(false);
     }
-  }, [userId, categories]);
+  }, [userId, categories, isContextActive]);
+
 
   // Real-time subscription
   useEffect(() => {
@@ -111,17 +131,35 @@ export function useNotifications(userId: string | null | undefined, options: Use
         },
         (payload) => {
           const newNotif = payload.new as Notification;
-          
-          // Add to beginning of list
+
+          // If the user is already looking at whatever this notification is
+          // about (open DM thread, group chat, event page…), clear it silently
+          // instead of surfacing a new-unread badge/toast.
+          const alreadyEngaged = isContextActive({
+            link: newNotif.link,
+            metadata: (newNotif.metadata as Record<string, unknown>) || {},
+            event_id: newNotif.event_id,
+          });
+
           setNotifications(prev => [
             {
               ...newNotif,
               category: newNotif.category || 'system',
               priority: newNotif.priority || 'normal',
               metadata: (newNotif.metadata as Record<string, unknown>) || {},
+              read: alreadyEngaged ? true : newNotif.read,
             },
             ...prev
           ]);
+
+          if (alreadyEngaged) {
+            void supabase
+              .from("user_notifications")
+              .update({ read: true })
+              .eq("id", newNotif.id);
+            return;
+          }
+
           setUnreadCount(prev => prev + 1);
 
           // Show toast for high priority notifications
@@ -135,6 +173,7 @@ export function useNotifications(userId: string | null | undefined, options: Use
             });
           }
         }
+
       )
       .on(
         'postgres_changes',
@@ -180,7 +219,7 @@ export function useNotifications(userId: string | null | undefined, options: Use
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userId, fetchNotifications, showToasts]);
+  }, [userId, fetchNotifications, showToasts, isContextActive]);
 
   // Mark as read
   const markAsRead = useCallback(async (notificationId: string) => {

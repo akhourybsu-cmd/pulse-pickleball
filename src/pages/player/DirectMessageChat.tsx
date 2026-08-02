@@ -25,6 +25,8 @@ import { TypingIndicator } from '@/components/community/TypingIndicator';
 import { supabase } from '@/integrations/supabase/client';
 import { reportUser, useBlockedUsers } from '@/hooks/useMessagingSafety';
 import { cn } from '@/lib/utils';
+import { useRegisterActiveContext } from '@/contexts/ActiveViewContext';
+
 
 // Render http(s) URLs in message text as tappable links — invite links
 // shared in DMs were dead plain text otherwise. Text-only splitting
@@ -57,6 +59,9 @@ export default function DirectMessageChat() {
   const { conversationId } = useParams<{ conversationId: string }>();
   const navigate = useNavigate();
   const { messages, loading, participant, notFound, sendMessage, retryMessage } = useConversation(conversationId || null);
+  // While this thread is open, its message notifications self-clear.
+  useRegisterActiveContext([conversationId ? `conversation:${conversationId}` : null]);
+
   const { block } = useBlockedUsers();
   const [newMessage, setNewMessage] = useState('');
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
