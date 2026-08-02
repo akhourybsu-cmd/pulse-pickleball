@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { ArrowLeft, Loader2, History, ChevronRight, Gauge, Check } from "lucide-react";
+import { ArrowLeft, Loader2, History, ChevronRight, Gauge, Check, PlayCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ResponseScalePicker } from "@/components/skill/ResponseScalePicker";
 import { SkillIntro } from "@/components/skill/SkillIntro";
@@ -16,12 +16,19 @@ import { cn } from "@/lib/utils";
  * PlayerShell (header + bottom nav preserved). Drives the whole flow:
  * intro → adaptive wizard (save-and-resume) → finalize → Skill Fingerprint,
  * plus assessment history. Mobile-first.
+ *
+ * Intent is explicit via `?mode=view` (show the latest Skill Fingerprint) or
+ * `?mode=retake` (start a fresh assessment), so "View Skill Fingerprint"
+ * never drops the player into the questionnaire.
  */
 export default function SelfAssessment() {
   const navigate = useNavigate();
   const a = useSkillAssessment();
   const reduced = useReducedMotion();
   const [showHistory, setShowHistory] = useState(false);
+  const [params] = useSearchParams();
+  const initialMode = params.get("mode") === "retake" ? "retake" : params.get("mode") === "view" ? "view" : null;
+  const [mode, setMode] = useState<"view" | "retake" | null>(initialMode);
 
   if (a.phase === "loading") {
     return <Centered><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></Centered>;
@@ -34,6 +41,12 @@ export default function SelfAssessment() {
       </Centered>
     );
   }
+
+  const hasResult = !!a.latest?.scoring_snapshot;
+  // Viewing wins over an unfinished draft unless the player explicitly asked
+  // to retake / resume.
+  const showFingerprint =
+    hasResult && mode !== "retake" && (mode === "view" || a.phase === "result");
 
   return (
     <div className="container mx-auto max-w-lg px-4 py-5 pb-24">
@@ -52,13 +65,6 @@ export default function SelfAssessment() {
 
       {showHistory && a.phase !== "in_progress" ? (
         <AssessmentHistory history={a.history} />
-      ) : a.phase === "intro" ? (
-        <SkillIntro
-          onStart={a.start}
-          hasDraft={!!a.attemptId}
-          minItems={a.minItems}
-          maxItems={a.maxItems}
-        />
       ) : a.phase === "finalizing" ? (
         <Centered>
           <div className="relative flex h-20 w-20 items-center justify-center">
@@ -76,21 +82,45 @@ export default function SelfAssessment() {
           <p className="mt-4 text-sm font-semibold">Building your Skill Fingerprint…</p>
           <p className="mt-1 text-xs text-muted-foreground">Scoring your answers securely on the server</p>
         </Centered>
-      ) : a.phase === "result" && a.latest?.scoring_snapshot ? (
-        <SkillFingerprint
-          snapshot={a.latest.scoring_snapshot}
-          completedAt={a.latest.completed_at}
-          onRetake={a.showIntro}
-          canRetake
-        />
-      ) : a.phase === "in_progress" ? (
+      ) : showFingerprint ? (
+        <div className="space-y-3">
+          {/* An unfinished draft is still waiting — offer it without hijacking the view. */}
+          {a.attemptId && (
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-primary/35 bg-primary/10 p-3">
+              <p className="text-xs text-muted-foreground">You have an assessment in progress.</p>
+              <Button size="sm" className="h-8 gap-1.5 shrink-0" onClick={() => setMode("retake")}>
+                <PlayCircle className="h-3.5 w-3.5" /> Resume
+              </Button>
+            </div>
+          )}
+          <SkillFingerprint
+            snapshot={a.latest!.scoring_snapshot!}
+            completedAt={a.latest!.completed_at}
+            onRetake={() => { setMode("retake"); a.showIntro(); }}
+            canRetake
+          />
+        </div>
+      ) : a.phase === "in_progress" && (mode === "retake" || !hasResult) ? (
         <WizardStep a={a} onExit={() => navigate("/player/profile")} />
       ) : (
-        <SkillIntro onStart={a.start} minItems={a.minItems} maxItems={a.maxItems} />
+        <div className="space-y-3">
+          <SkillIntro
+            onStart={a.start}
+            hasDraft={!!a.attemptId}
+            minItems={a.minItems}
+            maxItems={a.maxItems}
+          />
+          {hasResult && (
+            <Button variant="ghost" className="w-full text-muted-foreground" onClick={() => { setMode("view"); a.showResult(); }}>
+              View my current Skill Fingerprint
+            </Button>
+          )}
+        </div>
       )}
     </div>
   );
 }
+
 
 /* ---------------- adaptive wizard step ---------------- */
 
