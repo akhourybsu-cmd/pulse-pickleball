@@ -113,17 +113,35 @@ export function useNotifications(userId: string | null | undefined, options: Use
         },
         (payload) => {
           const newNotif = payload.new as Notification;
-          
-          // Add to beginning of list
+
+          // If the user is already looking at whatever this notification is
+          // about (open DM thread, group chat, event page…), clear it silently
+          // instead of surfacing a new-unread badge/toast.
+          const alreadyEngaged = isContextActive({
+            link: newNotif.link,
+            metadata: (newNotif.metadata as Record<string, unknown>) || {},
+            event_id: newNotif.event_id,
+          });
+
           setNotifications(prev => [
             {
               ...newNotif,
               category: newNotif.category || 'system',
               priority: newNotif.priority || 'normal',
               metadata: (newNotif.metadata as Record<string, unknown>) || {},
+              read: alreadyEngaged ? true : newNotif.read,
             },
             ...prev
           ]);
+
+          if (alreadyEngaged) {
+            void supabase
+              .from("user_notifications")
+              .update({ read: true })
+              .eq("id", newNotif.id);
+            return;
+          }
+
           setUnreadCount(prev => prev + 1);
 
           // Show toast for high priority notifications
@@ -137,6 +155,7 @@ export function useNotifications(userId: string | null | undefined, options: Use
             });
           }
         }
+
       )
       .on(
         'postgres_changes',
