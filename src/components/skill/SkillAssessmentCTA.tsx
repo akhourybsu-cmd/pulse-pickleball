@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Gauge, Sparkles, ChevronRight } from "lucide-react";
+import { Gauge, Sparkles, ChevronRight, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { SkillLevelChip } from "@/components/skill/SkillLevelChip";
