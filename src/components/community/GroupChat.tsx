@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect, memo, useMemo, useCallback } from 'react';
+import { useRegisterActiveContext } from '@/contexts/ActiveViewContext';
+
 import { Send, Loader2, Image as ImageIcon, Pin, X, ArrowDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
