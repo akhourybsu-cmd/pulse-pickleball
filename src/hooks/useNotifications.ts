@@ -40,6 +40,8 @@ interface UseNotificationsOptions {
 
 export function useNotifications(userId: string | null | undefined, options: UseNotificationsOptions = {}) {
   const { showToasts = true, categories } = options;
+  const { isContextActive } = useActiveView();
+
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
