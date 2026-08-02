@@ -636,10 +636,13 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
-            <ModeProvider>
-              <AppContent />
-            </ModeProvider>
+            <ActiveViewProvider>
+              <ModeProvider>
+                <AppContent />
+              </ModeProvider>
+            </ActiveViewProvider>
           </BrowserRouter>
+
         </ErrorBoundary>
       </TooltipProvider>
     </ThemeProvider>
