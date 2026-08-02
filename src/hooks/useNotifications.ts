@@ -88,6 +88,21 @@ export function useNotifications(userId: string | null | undefined, options: Use
         event_type: n.event_type,
       }));
 
+      // Anything already unread for the context the user is currently
+      // engaging with (open chat/event) is cleared on the spot.
+      const stale = mapped.filter(n => !n.read && isContextActive(n));
+      if (stale.length > 0) {
+        const staleIds = new Set(stale.map(n => n.id));
+        const cleared = mapped.map(n => (staleIds.has(n.id) ? { ...n, read: true } : n));
+        setNotifications(cleared);
+        setUnreadCount(cleared.filter(n => !n.read).length);
+        void supabase
+          .from("user_notifications")
+          .update({ read: true })
+          .in("id", [...staleIds]);
+        return;
+      }
+
       setNotifications(mapped);
       setUnreadCount(mapped.filter(n => !n.read).length);
     } catch (error) {
@@ -95,7 +110,8 @@ export function useNotifications(userId: string | null | undefined, options: Use
     } finally {
       setLoading(false);
     }
-  }, [userId, categories]);
+  }, [userId, categories, isContextActive]);
+
 
   // Real-time subscription
   useEffect(() => {
