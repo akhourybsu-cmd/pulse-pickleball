@@ -59,6 +59,9 @@ export default function DirectMessageChat() {
   const { conversationId } = useParams<{ conversationId: string }>();
   const navigate = useNavigate();
   const { messages, loading, participant, notFound, sendMessage, retryMessage } = useConversation(conversationId || null);
+  // While this thread is open, its message notifications self-clear.
+  useRegisterActiveContext([conversationId ? `conversation:${conversationId}` : null]);
+
   const { block } = useBlockedUsers();
   const [newMessage, setNewMessage] = useState('');
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
