@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Gauge, Sparkles, ChevronRight } from "lucide-react";
+import { Gauge, Sparkles, ChevronRight, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { SkillLevelChip } from "@/components/skill/SkillLevelChip";
@@ -72,14 +72,36 @@ export function SkillAssessmentCTA({ userId }: { userId?: string }) {
             </p>
           )}
 
-          <Button
-            onClick={() => navigate("/player/self-assessment")}
-            className="mt-3 h-11 w-full gap-2 text-sm font-bold shadow-[0_6px_20px_-6px_hsl(var(--primary)/0.7)]"
-          >
-            <Gauge className="h-4 w-4" />
-            {hasResult ? "View Skill Fingerprint" : "Take the Skill Assessment"}
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+          {hasResult ? (
+            <div className="mt-3 flex flex-col gap-2">
+              <Button
+                onClick={() => navigate("/player/self-assessment?mode=view")}
+                className="h-11 w-full gap-2 text-sm font-bold shadow-[0_6px_20px_-6px_hsl(var(--primary)/0.7)]"
+              >
+                <Gauge className="h-4 w-4" />
+                View Skill Fingerprint
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => navigate("/player/self-assessment?mode=retake")}
+                className="h-10 w-full gap-2 border-primary/40 text-sm font-semibold"
+              >
+                <RotateCcw className="h-4 w-4" />
+                Retake assessment
+              </Button>
+            </div>
+          ) : (
+            <Button
+              onClick={() => navigate("/player/self-assessment")}
+              className="mt-3 h-11 w-full gap-2 text-sm font-bold shadow-[0_6px_20px_-6px_hsl(var(--primary)/0.7)]"
+            >
+              <Gauge className="h-4 w-4" />
+              Take the Skill Assessment
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          )}
+
         </div>
       </div>
     </div>
