@@ -25,6 +25,8 @@ import { TypingIndicator } from '@/components/community/TypingIndicator';
 import { supabase } from '@/integrations/supabase/client';
 import { reportUser, useBlockedUsers } from '@/hooks/useMessagingSafety';
 import { cn } from '@/lib/utils';
+import { useRegisterActiveContext } from '@/contexts/ActiveViewContext';
+
 
 // Render http(s) URLs in message text as tappable links — invite links
 // shared in DMs were dead plain text otherwise. Text-only splitting
