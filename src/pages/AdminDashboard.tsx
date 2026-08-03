@@ -258,14 +258,6 @@ const AdminDashboard = () => {
           <span className="font-medium">Archived surfaces:</span>
           <button
             type="button"
-            onClick={() => navigate("/admin/venue-verification")}
-            className="inline-flex items-center gap-1 hover:text-foreground"
-          >
-            <Building2 className="w-3.5 h-3.5" />
-            Venue verification
-          </button>
-          <button
-            type="button"
             onClick={() => navigate("/archive")}
             className="inline-flex items-center gap-1 hover:text-foreground"
           >

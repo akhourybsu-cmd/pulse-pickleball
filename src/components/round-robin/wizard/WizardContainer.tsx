@@ -34,11 +34,6 @@ interface Court {
 export function WizardContainer() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  // Optional ?venueId=… — when the wizard is launched from a venue console
-  // ("Create Round Robin" button in VenueRoundRobins), this links the new
-  // event to that venue so it shows up in the venue's RR list. Falls back
-  // to a free-standing player-organized event if absent.
-  const venueId = searchParams.get("venueId");
   // Optional ?groupId=… — when launched from a group page, pre-select that
   // group and default to "shared_group" visibility.
   const presetGroupId = searchParams.get("groupId");
@@ -201,10 +196,8 @@ export function WizardContainer() {
 
           notes: formData.notes.trim() || null,
           organizer_id: user.id,
-          // Link to a venue when the wizard was launched from the venue console
-          // (via ?venueId=…). Null for player-organized RRs — keeps existing
-          // free-standing flow unchanged.
-          venue_id: venueId || null,
+          // Inert venue_id column (venue feature retired) — always null.
+          venue_id: null,
           num_courts: formData.courtCount,
           games_per_player: formData.gamesPerPlayer,
           rating_eligible: formData.allowGuests ? false : formData.ratingEligible,
@@ -333,14 +326,7 @@ export function WizardContainer() {
         toast.success(successMessage);
       }
       haptic("success");
-      // Venue-context creates land on the venue console RR detail so staff
-      // stay inside their console. Player-organized creates land on the
-      // public detail page they would naturally share.
-      if (venueId) {
-        navigate(`/venue/round-robins/${event.id}`);
-      } else {
-        navigate(`/round-robin/${event.id}`);
-      }
+      navigate(`/round-robin/${event.id}`);
     } catch (error: unknown) {
       toast.error("Failed to create event");
       console.error(error);

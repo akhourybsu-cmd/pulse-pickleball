@@ -29,38 +29,11 @@ export function NoEventsEmptyState({ onAction, className }: EmptyStateConfigProp
     <EmptyState
       icon={Calendar}
       title="No events found"
-      description="There are no upcoming events in your area yet. Browse venues or check back soon."
+      description="There are no upcoming events in your area yet. Check back soon or create your own."
       actions={[
-        {
-          label: 'Browse Venues',
-          onClick: onAction || (() => navigate('/play?tab=venues')),
-          icon: Search,
-        },
         {
           label: 'Create Event',
-          onClick: () => navigate('/events/new'),
-          variant: 'outline',
-          icon: PlusCircle,
-        },
-      ]}
-      className={className}
-    />
-  );
-}
-
-/** No venues found in discovery */
-export function NoVenuesEmptyState({ onAction, className }: EmptyStateConfigProps) {
-  const navigate = useNavigate();
-  
-  return (
-    <EmptyState
-      icon={MapPin}
-      title="No venues found"
-      description="Venues will appear here once they register with Pulse. Know a venue that should be listed?"
-      actions={[
-        {
-          label: 'Register a Venue',
-          onClick: onAction || (() => navigate('/venue/create-fast')),
+          onClick: onAction || (() => navigate('/events/new')),
           icon: PlusCircle,
         },
       ]}
@@ -125,27 +98,6 @@ export function NoRegistrationsEmptyState({ onAction, className }: EmptyStateCon
           label: 'Browse Events',
           onClick: onAction || (() => navigate('/play')),
           icon: Search,
-        },
-      ]}
-      className={className}
-    />
-  );
-}
-
-/** No venue events (for venue admins) */
-export function NoVenueEventsEmptyState({ onAction, className }: EmptyStateConfigProps) {
-  const navigate = useNavigate();
-  
-  return (
-    <EmptyState
-      icon={Calendar}
-      title="No events scheduled"
-      description="Create your first event to start attracting players and building your community!"
-      actions={[
-        {
-          label: 'Create Event',
-          onClick: onAction || (() => navigate('/venue/events')),
-          icon: PlusCircle,
         },
       ]}
       className={className}

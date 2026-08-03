@@ -1,4 +1,4 @@
-import { Home, MapPin, Users } from "lucide-react";
+import { Home, Users } from "lucide-react";
 import { toast } from "sonner";
 import { demoHomeCourt, demoGroups } from "@/data/demoData";
 
@@ -34,11 +34,7 @@ export const DemoSpacesPreview = () => {
             onClick={handleClick}
             className="flex items-center gap-2 px-4 py-2.5 bg-muted/50 border border-border/50 rounded-full text-sm font-medium whitespace-nowrap hover:bg-muted/70 transition-colors"
           >
-            {group.type === "venue_official" ? (
-              <MapPin className="w-4 h-4 text-muted-foreground" />
-            ) : (
-              <Users className="w-4 h-4 text-muted-foreground" />
-            )}
+            <Users className="w-4 h-4 text-muted-foreground" />
             <span>{group.name}</span>
             {group.verified && (
               <span className="w-2 h-2 bg-blue-500 rounded-full" title="Verified" />

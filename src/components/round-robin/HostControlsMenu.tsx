@@ -70,7 +70,7 @@ export function HostControlsMenu({
         </DropdownMenuLabel>
 
         {/* Kiosk display is available for live AND completed events. After
-            completion hosts often keep the standings on a TV at the venue
+            completion hosts often keep the standings on a big screen
             for a while; restricting to live-only forced them to leave the
             page and re-open before the event status flipped. */}
         {(status === "live" || status === "completed") && onOpenKiosk && (

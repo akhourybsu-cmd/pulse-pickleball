@@ -69,7 +69,7 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <PageSEO
         title="PULSE — Play. Connect. Compete."
-        description="The home for pickleball players and venues. Track matches, earn your rating, find events, and connect with your local community."
+        description="The home for pickleball players. Track matches, earn your rating, find events, and connect with your local community."
         path="/"
       />
       <HomepageNav isLoggedIn={false} userMode="player" />

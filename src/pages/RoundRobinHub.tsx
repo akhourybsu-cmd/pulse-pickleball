@@ -54,7 +54,7 @@ const FEATURES = [
   {
     icon: Monitor,
     title: "Kiosk Mode",
-    description: "Full-screen display for courts and live scoring—perfect for venue TVs."
+    description: "Full-screen display for courts and live scoring—perfect for big-screen TVs."
   },
   {
     icon: Trophy,

@@ -32,7 +32,6 @@ import { EnablePushBanner } from '@/components/dashboard/EnablePushBanner';
 import { GroupNotificationSettingsSheet } from '@/components/community/GroupNotificationSettingsSheet';
 
 
-import { DEFAULT_VENUE_COLORS } from '@/lib/venueBranding';
 
 export default function GroupDetail() {
   const { groupId } = useParams<{ groupId: string }>();
@@ -212,9 +211,9 @@ export default function GroupDetail() {
 
   const isAdmin = membership?.role === 'owner' || membership?.role === 'moderator';
   
-  // Venue branding for venue_official groups
-  const isVenueGroup = group?.type === 'venue_official' && group?.is_venue_verified && group?.venue;
-  const venueColor = isVenueGroup ? (group.venue?.primary_color || DEFAULT_VENUE_COLORS.primary) : null;
+  // Venue feature retired — groups no longer carry venue branding.
+  const isVenueGroup = false;
+  const venueColor: string | null = null;
 
   // Memoize tab config — labeled tabs with More holding Files/Settings
   const tabs = useMemo(() => [

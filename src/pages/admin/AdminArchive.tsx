@@ -1,32 +1,19 @@
-import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { Archive, Building2, Trophy, ExternalLink, ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
+import { Archive, Trophy, ExternalLink, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/integrations/supabase/client";
-
-type VenueRow = { id: string; name: string; slug: string | null };
 
 /**
  * AdminArchive — single index page for all surfaces that have been
  * compartmentalized away from the player-facing app. Lives behind
- * AdminGuard. The underlying routes (/venue/*, /tournaments/*, etc.)
- * are themselves admin-gated, so this page is just discoverable
+ * AdminGuard. The underlying routes (/tournaments/*, etc.) are
+ * themselves admin-gated, so this page is just discoverable
  * navigation for the people who still need to reach them.
  */
 export default function AdminArchive() {
   const navigate = useNavigate();
-  const [venues, setVenues] = useState<VenueRow[]>([]);
-
-  useEffect(() => {
-    supabase
-      .from("venues")
-      .select("id,name,slug")
-      .order("name")
-      .limit(50)
-      .then(({ data }) => setVenues((data ?? []) as VenueRow[]));
-  }, []);
 
   const ArchiveLink = ({ to, label }: { to: string; label: string }) => (
     <Link
@@ -57,40 +44,6 @@ export default function AdminArchive() {
       </div>
 
       <div className="container max-w-4xl mx-auto px-4 py-6 space-y-6">
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Building2 className="h-5 w-5 text-primary" />
-              <CardTitle>Venues</CardTitle>
-            </div>
-            <CardDescription>
-              Venue console, public landings, and onboarding. Not linked from anywhere in the player app.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <ArchiveLink to="/venue" label="Venue console (current workspace)" />
-            <ArchiveLink to="/venues" label="Venues marketing landing" />
-            <ArchiveLink to="/venue/create-fast" label="Create a venue" />
-            <ArchiveLink to="/admin/venue-verification" label="Venue verification queue" />
-            {venues.length > 0 && (
-              <div className="pt-2">
-                <p className="text-xs font-medium text-muted-foreground mb-2">
-                  Public landings ({venues.length})
-                </p>
-                <div className="grid gap-1.5">
-                  {venues.map((v) => (
-                    <ArchiveLink
-                      key={v.id}
-                      to={v.slug ? `/v/${v.slug}` : `/venue/${v.id}`}
-                      label={v.name}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
         <Card>
           <CardHeader>
             <div className="flex items-center gap-2">

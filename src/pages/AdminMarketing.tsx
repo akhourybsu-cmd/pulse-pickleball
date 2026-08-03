@@ -353,7 +353,7 @@ const AdminMarketing = () => {
                 <ul className="text-sm space-y-1 text-foreground/90">
                   <li>• Focus on specific pain points of the facility</li>
                   <li>• Demo the kiosk mode for visual impact</li>
-                  <li>• Share success stories from similar venues</li>
+                  <li>• Share success stories from similar clubs</li>
                   <li>• Offer trial period to prove value</li>
                 </ul>
               </div>

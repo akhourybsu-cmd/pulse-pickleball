@@ -27,7 +27,7 @@ export const demoHomeCourt = {
 
 export const demoGroups = [
   { id: "group-1", name: "Tampa Bay Dinkers", memberCount: 45, type: "recreational" as const },
-  { id: "group-2", name: "Riverside Courts Official", memberCount: 128, type: "venue_official" as const, verified: true },
+  { id: "group-2", name: "Riverside Picklers", memberCount: 128, type: "open_play" as const, verified: true },
 ];
 
 export const demoMatchHistory = [

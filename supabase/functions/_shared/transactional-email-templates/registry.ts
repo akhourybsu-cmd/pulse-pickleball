@@ -20,13 +20,11 @@ import { template as roundRobinConfirmation } from './round-robin-confirmation.t
 import { template as teamAssignment } from './team-assignment.tsx'
 import { template as courtAssignment } from './court-assignment.tsx'
 import { template as calendarEventConfirmation } from './calendar-event-confirmation.tsx'
-import { template as venueAnnouncement } from './venue-announcement.tsx'
 import { template as tournamentNotification } from './tournament-notification.tsx'
 import { template as tournamentReminder } from './tournament-reminder.tsx'
 import { template as eventReminder } from './event-reminder.tsx'
 import { template as groupEventReminder } from './group-event-reminder.tsx'
 import { template as contestedMatchAlert } from './contested-match-alert.tsx'
-import { template as venueInquiryAlert } from './venue-inquiry-alert.tsx'
 import { template as matchVerificationRequest } from './match-verification-request.tsx'
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
@@ -37,12 +35,10 @@ export const TEMPLATES: Record<string, TemplateEntry> = {
   'team-assignment': teamAssignment,
   'court-assignment': courtAssignment,
   'calendar-event-confirmation': calendarEventConfirmation,
-  'venue-announcement': venueAnnouncement,
   'tournament-notification': tournamentNotification,
   'tournament-reminder': tournamentReminder,
   'event-reminder': eventReminder,
   'group-event-reminder': groupEventReminder,
   'contested-match-alert': contestedMatchAlert,
-  'venue-inquiry-alert': venueInquiryAlert,
   'match-verification-request': matchVerificationRequest,
 }

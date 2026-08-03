@@ -47,8 +47,6 @@ project_id = "ryxklkayezjnwwunuphn"
     verify_jwt = false
   [functions.create-tournament-checkout]
     verify_jwt = false
-  [functions.create-venue-checkout]
-    verify_jwt = false
   [functions.delete-old-posts]
     verify_jwt = false
   [functions.get-biometric-credentials]
@@ -70,16 +68,6 @@ project_id = "ryxklkayezjnwwunuphn"
   [functions.send-tournament-notification]
     verify_jwt = false
   [functions.send-tournament-reminders]
-    verify_jwt = false
-  [functions.send-venue-announcement]
-    verify_jwt = true
-  [functions.stripe-connect-onboard]
-    verify_jwt = true
-  [functions.stripe-connect-status]
-    verify_jwt = false
-  [functions.stripe-connect-webhook]
-    verify_jwt = false
-  [functions.subscription-webhook]
     verify_jwt = false
   [functions.tournament-stripe-webhook]
     verify_jwt = false

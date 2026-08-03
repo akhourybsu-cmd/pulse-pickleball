@@ -6,8 +6,6 @@ import { supabase } from "@/integrations/supabase/client";
 import logo from "@/assets/pulse-logo-premium.svg";
 import { NotificationBell } from "@/components/NotificationBell";
 import { NotificationCenter } from "@/components/notifications/NotificationCenter";
-import { ModeSwitcher } from "@/components/mode/ModeSwitcher";
-import { useMode } from "@/contexts/ModeContext";
 import { useState } from "react";
 import { useNotifications } from "@/hooks/useNotifications";
 
@@ -18,7 +16,6 @@ interface PageHeaderProps {
 export function PageHeader({ userId }: PageHeaderProps) {
   const navigate = useNavigate();
   const [isNotificationDrawerOpen, setIsNotificationDrawerOpen] = useState(false);
-  const { hasVenueAccess, isLoading: modeLoading } = useMode();
 
   // Use the new real-time notifications hook
   const {
@@ -62,7 +59,6 @@ export function PageHeader({ userId }: PageHeaderProps) {
                 <UserIcon className="h-[1.2rem] w-[1.2rem]" />
                 <span className="sr-only">View Profile</span>
               </Button>
-              {/* ModeSwitcher hidden — venue surface archived behind /archive */}
             </>
           )}
           <ThemeToggle />

@@ -29,7 +29,6 @@ const GROUP_TYPES: { value: GroupType; label: string; description: string }[] = 
   { value: 'league', label: 'League', description: 'Organized competitive play' },
   { value: 'open_play', label: 'Open Play', description: 'Drop-in sessions open to all' },
   { value: 'tournament', label: 'Tournament', description: 'Tournament teams and brackets' },
-  { value: 'venue_official', label: 'Venue Official', description: 'Official venue community' },
 ];
 
 export function AdminGeneralTab({

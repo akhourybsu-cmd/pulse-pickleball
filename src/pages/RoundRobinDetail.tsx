@@ -208,14 +208,8 @@ export default function RoundRobinDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  // When the user arrived via /venue/round-robins/:id (now a redirect with
-  // ?ctx=venue), back-nav should return them to the venue console rather
-  // than the public RR hub.
-  // Venue context still goes back to the venue console RR list; player
-  // context now lands on the player's own history page (not the
-  // catch-all /round-robin hub, which we're sunsetting from player
-  // navigation).
-  const backHref = searchParams.get("ctx") === "venue" ? "/venue/round-robins" : "/player/round-robins";
+  // Back-nav lands on the player's own round-robin history page.
+  const backHref = "/player/round-robins";
   const [loading, setLoading] = useState(true);
   const [event, setEvent] = useState<Event | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);

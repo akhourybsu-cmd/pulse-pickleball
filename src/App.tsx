@@ -6,7 +6,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { ModeProvider } from "@/contexts/ModeContext";
 import { ActiveViewProvider } from "@/contexts/ActiveViewContext";
 
 import { useAuthPersistence } from "@/hooks/useAuthPersistence";
@@ -14,8 +13,7 @@ import { PlayerShell } from "@/components/layout/PlayerShell";
 import { CommunityTransitionOutlet } from "@/components/community/CommunityTransitionOutlet";
 import { LeagueTransitionOutlet } from "@/components/leagues/LeagueTransitionOutlet";
 import { isSkillAssessmentEnabled } from "@/lib/skill/featureFlag";
-import { AuthGuard, VenueGuard, AdminGuard } from "@/components/guards";
-import { VenueShell } from "@/components/layout/VenueShell";
+import { AuthGuard, AdminGuard } from "@/components/guards";
 import { supabase } from "@/integrations/supabase/client";
 // RoundRobinBanner was a global "Round Robin Match In Progress" strip
 // shown above PlayerShell whenever a participant had a live event.
@@ -53,28 +51,6 @@ function LeagueAdminRedirect({ suffix = "/manage" }: { suffix?: string }) {
     ? `/player/leagues/${leagueId}${suffix}`
     : "/player/leagues";
   return <Navigate to={`${base}${location.search}${location.hash}`} replace />;
-}
-
-/**
- * Send /venue/round-robins/:id traffic to the unified RoundRobinDetail page.
- * Adds `?ctx=venue` so the detail page's back-nav can return to the venue
- * console (instead of the public RoundRobinHub) for venue-context viewers.
- * Replaces the previously-slim VenueRoundRobinDetail (strict subset of the
- * full detail page) so venue staff get every organizer feature.
- */
-function VenueRoundRobinDetailRedirect() {
-  const { id } = useParams();
-  return <Navigate to={`/round-robin/${id}?ctx=venue`} replace />;
-}
-
-/**
- * Same pattern for /venue/round-robins/:id/kiosk → /round-robin/:id/kiosk.
- * Kiosk mode is a fullscreen TV display so back-nav isn't a concern; this
- * just consolidates to a single kiosk implementation.
- */
-function VenueRoundRobinKioskRedirect() {
-  const { id } = useParams();
-  return <Navigate to={`/round-robin/${id}/kiosk`} replace />;
 }
 
 // Loading fallback component
@@ -151,13 +127,11 @@ const TournamentDivisionDetailNew = lazy(() => import("./pages/TournamentDivisio
 const TournamentPaymentSuccess = lazy(() => import("./pages/TournamentPaymentSuccess"));
 const TournamentPaymentCancelled = lazy(() => import("./pages/TournamentPaymentCancelled"));
 const TournamentsLanding = lazy(() => import("./pages/TournamentsLanding"));
-const CreateVenueFast = lazy(() => import("./pages/venue/CreateVenueFast"));
 const DataExport = lazy(() => import("./pages/DataExport"));
 const AdminAuditLog = lazy(() => import("./pages/AdminAuditLog"));
 const AdminTestAccounts = lazy(() => import("./pages/AdminTestAccounts"));
 const AdminBiometrics = lazy(() => import("./pages/AdminBiometrics"));
 const AdminSystemHealth = lazy(() => import("./pages/AdminSystemHealth"));
-const AdminVenueVerification = lazy(() => import("./pages/AdminVenueVerification"));
 const NotificationSettings = lazy(() => import("./pages/NotificationSettings"));
 const BlockedUsers = lazy(() => import("./pages/BlockedUsers"));
 
@@ -183,40 +157,13 @@ const GroupManage = lazy(() => import("./pages/player/GroupManage"));
 const DirectMessageChat = lazy(() => import("./pages/player/DirectMessageChat"));
 const Social = lazy(() => import("./pages/player/Social"));
 
-// Venue pages
-const VenueOverview = lazy(() => import("./pages/venue/VenueOverview"));
-// VenueOnboarding removed - deprecated in favor of CreateVenueFast
-const VenueProfile = lazy(() => import("./pages/venue/VenueProfile"));
-const VenueBranding = lazy(() => import("./pages/venue/VenueBranding"));
-const VenueFacility = lazy(() => import("./pages/venue/VenueFacility"));
-const VenueMedia = lazy(() => import("./pages/venue/VenueMedia"));
-// VenueCommunity removed - orphaned feature, may be re-added in future
-const VenueCourts = lazy(() => import("./pages/venue/VenueCourts"));
-const VenueBookings = lazy(() => import("./pages/venue/VenueBookings"));
-const VenueEvents = lazy(() => import("./pages/venue/VenueEvents"));
-const VenueTournaments = lazy(() => import("./pages/venue/VenueTournaments"));
-const VenueCoaching = lazy(() => import("./pages/venue/VenueCoaching"));
-const VenueStaff = lazy(() => import("./pages/venue/VenueStaff"));
-const VenueSettings = lazy(() => import("./pages/venue/VenueSettings"));
-const VenueAnalytics = lazy(() => import("./pages/venue/VenueAnalytics"));
-const VenueRoundRobins = lazy(() => import("./pages/venue/VenueRoundRobins"));
-const VenueVerificationPending = lazy(() => import("./pages/venue/VenueVerificationPending"));
-const PublicVenueLanding = lazy(() => import("./pages/PublicVenueLanding"));
-const VenueInterestWizard = lazy(() => import("./pages/VenueInterestWizard"));
 const PlayersLanding = lazy(() => import("./pages/PlayersLanding"));
-const VenuesLanding = lazy(() => import("./pages/VenuesLanding"));
 
 // Onboarding pages
 const OnboardingProfileSetup = lazy(() => import("./pages/onboarding/ProfileSetup"));
 const OnboardingFirstMatch = lazy(() => import("./pages/onboarding/FirstMatch"));
 const OnboardingRatingReveal = lazy(() => import("./pages/onboarding/RatingReveal"));
 const OnboardingComplete = lazy(() => import("./pages/onboarding/Complete"));
-
-// Venue onboarding pages
-const VenueOnboardingProfile = lazy(() => import("./pages/venue/onboarding/VenueOnboardingProfile"));
-const VenueOnboardingFirstEvent = lazy(() => import("./pages/venue/onboarding/VenueOnboardingFirstEvent"));
-const VenueOnboardingShare = lazy(() => import("./pages/venue/onboarding/VenueOnboardingShare"));
-const VenueOnboardingComplete = lazy(() => import("./pages/venue/onboarding/VenueOnboardingComplete"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -360,9 +307,7 @@ const AppContent = () => {
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/delete-account" element={<DeleteAccount />} />
-          {/* Venue surface archived — admin-only */}
-          <Route path="/venues" element={<AdminGuard><VenuesLanding /></AdminGuard>} />
-          {/* Unified discovery hub (events + venues). Auth-required because
+          {/* Unified discovery hub (events). Auth-required because
               every inner CTA (register, favorite, book) is auth-gated — letting
               unauthenticated users in causes a partial render then a forced
               bounce to /auth, which loses context. */}
@@ -393,10 +338,6 @@ const AppContent = () => {
             <AuthGuard allowOnboarding><OnboardingComplete /></AuthGuard>
           } />
           
-          {/* Public venue landing pages archived — admin-only */}
-          <Route path="/v/:slug" element={<AdminGuard><PublicVenueLanding /></AdminGuard>} />
-          <Route path="/venue/:slug" element={<AdminGuard><PublicVenueLanding /></AdminGuard>} />
-
           {/* Invite-link landing — intentionally OUTSIDE the /player
               AuthGuard wrapper below. JoinGroupByCode supports both
               anon (shows preview + Sign in / Sign up) and authenticated
@@ -462,11 +403,9 @@ const AppContent = () => {
             {/* Legacy aliases - kept functional, redirected from old paths */}
             <Route path="find" element={<RedirectWithParams to="/player/play" />} />
             <Route path="events" element={<PlayerEvents />} />
-            {/* /player/venues redirects to /player/play as part of the player-first
-                refocus. Venue browsing now lives behind the mode toggle on the
-                venue/organizer side. Legacy deep links land safely. */}
+            {/* Retired venue-era paths — kept as redirects so legacy deep
+                links land safely instead of 404-ing. */}
             <Route path="venues" element={<Navigate to="/player/play" replace />} />
-            {/* Coaching / bookings archived with the venue surface */}
             <Route path="coaching" element={<Navigate to="/player/dashboard" replace />} />
             <Route path="bookings" element={<Navigate to="/player/dashboard" replace />} />
             <Route path="my-bookings" element={<Navigate to="/player/dashboard" replace />} />
@@ -497,54 +436,6 @@ const AppContent = () => {
             <Route path="messages/:conversationId" element={<DirectMessageChat />} />
             <Route path="profile/edit" element={<EditProfile />} />
           </Route>
-
-          {/* Venue console archived — admin-only (entire surface gated) */}
-          <Route path="/venue" element={
-            <AdminGuard>
-              <VenueGuard>
-                <VenueShell />
-              </VenueGuard>
-            </AdminGuard>
-          }>
-            <Route index element={<VenueOverview />} />
-            <Route path="profile" element={<VenueProfile />} />
-            <Route path="branding" element={<VenueBranding />} />
-            <Route path="facility" element={<VenueFacility />} />
-            <Route path="media" element={<VenueMedia />} />
-            <Route path="courts" element={<VenueCourts />} />
-            <Route path="bookings" element={<VenueBookings />} />
-            <Route path="events" element={<VenueEvents />} />
-            <Route path="tournaments" element={<VenueTournaments />} />
-            <Route path="tournaments/new" element={<TournamentNewWithGating />} />
-            <Route path="round-robins" element={<VenueRoundRobins />} />
-            <Route path="round-robins/:id" element={<VenueRoundRobinDetailRedirect />} />
-            <Route path="coaching" element={<VenueCoaching />} />
-            <Route path="staff" element={<VenueStaff />} />
-            <Route path="settings" element={<VenueSettings />} />
-            <Route path="analytics" element={<VenueAnalytics />} />
-          </Route>
-          
-          {/* Venue onboarding archived — admin-only */}
-          <Route path="/venue/onboarding" element={<AdminGuard><Navigate to="/venue/create-fast" replace /></AdminGuard>} />
-          <Route path="/venue/onboarding/profile" element={
-            <AdminGuard><VenueGuard allowOnboarding><VenueOnboardingProfile /></VenueGuard></AdminGuard>
-          } />
-          <Route path="/venue/onboarding/first-event" element={
-            <AdminGuard><VenueGuard allowOnboarding><VenueOnboardingFirstEvent /></VenueGuard></AdminGuard>
-          } />
-          <Route path="/venue/onboarding/share" element={
-            <AdminGuard><VenueGuard allowOnboarding><VenueOnboardingShare /></VenueGuard></AdminGuard>
-          } />
-          <Route path="/venue/onboarding/complete" element={
-            <AdminGuard><VenueGuard allowOnboarding><VenueOnboardingComplete /></VenueGuard></AdminGuard>
-          } />
-          <Route path="/venue/interest" element={<AdminGuard><VenueInterestWizard /></AdminGuard>} />
-          <Route path="/venue/create-fast" element={<AdminGuard><CreateVenueFast /></AdminGuard>} />
-          <Route path="/venue/verification-pending" element={
-            <AdminGuard><VenueVerificationPending /></AdminGuard>
-          } />
-          {/* Kiosk redirect shim left public — QR codes rely on this alias */}
-          <Route path="/venue/round-robins/:id/kiosk" element={<VenueRoundRobinKioskRedirect />} />
 
           {/* Legacy routes - redirect to new structure */}
           <Route path="/dashboard" element={<Navigate to="/player/dashboard" replace />} />
@@ -584,7 +475,6 @@ const AppContent = () => {
           <Route path="/admin/test-accounts" element={<AdminGuard><AdminTestAccounts /></AdminGuard>} />
           <Route path="/admin/biometrics" element={<AdminGuard><AdminBiometrics /></AdminGuard>} />
           <Route path="/admin/system-health" element={<AdminGuard><AdminSystemHealth /></AdminGuard>} />
-          <Route path="/admin/venue-verification" element={<AdminGuard><AdminVenueVerification /></AdminGuard>} />
           <Route path="/admin/manage/:sessionId" element={<AdminGuard><AdminManage /></AdminGuard>} />
           <Route path="/match/ticket/:ticketId" element={<MatchTicket />} />
           <Route path="/qr-checkin" element={<QRCheckIn />} />
@@ -647,9 +537,7 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <ActiveViewProvider>
-              <ModeProvider>
-                <AppContent />
-              </ModeProvider>
+              <AppContent />
             </ActiveViewProvider>
           </BrowserRouter>
 

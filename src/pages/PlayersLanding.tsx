@@ -14,22 +14,11 @@ import { supabase } from "@/integrations/supabase/client";
 
 const PlayersLanding = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userMode, setUserMode] = useState<"player" | "venue" | undefined>();
 
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        setIsLoggedIn(true);
-        // Check if user has venue access
-        const { data: venueAccess } = await supabase
-          .from("venue_staff")
-          .select("venue_id")
-          .eq("user_id", session.user.id)
-          .limit(1);
-        
-        setUserMode(venueAccess && venueAccess.length > 0 ? "venue" : "player");
-      }
+      if (session) setIsLoggedIn(true);
     };
     checkAuth();
   }, []);
@@ -41,7 +30,7 @@ const PlayersLanding = () => {
         description="Record matches, build your Pulse rating, join round robins, find tournaments near you, and stay connected with your pickleball community."
         path="/players"
       />
-      <HomepageNav isLoggedIn={isLoggedIn} userMode={userMode} />
+      <HomepageNav isLoggedIn={isLoggedIn} />
       <main>
         <PlayerHero />
         <WhyPulseSection />
