@@ -272,3 +272,51 @@ a Mac, set the bundle id (`com.pulsepb.app`), signing team, icons/splash
 (`capacitor-assets generate --ios`), and archive to App Store Connect. The native
 OAuth work in §8 is shared. Apple requires "Sign in with Apple" if you offer other
 third-party sign-in, and has its own privacy-nutrition-label + review process.
+
+---
+
+## Push notifications (native / FCM)
+
+The app has two push paths that both fan out from the `push-send` edge function:
+
+- **Web push** (browser/PWA): service worker + VAPID, stored in `push_subscriptions`. Already live.
+- **Native push** (installed app): FCM device tokens stored in `device_tokens`, sent via FCM HTTP v1.
+
+The native client + backend are already wired (`src/lib/push.ts`, `device_tokens`
+table, `supabase/functions/_shared/fcm.ts`). Native delivery stays a **no-op until
+Firebase is configured** — enabling notifications still records permission + a
+token; messages just won't arrive yet. To turn it on:
+
+### 1. Firebase project + Android app
+1. Create a project at <https://console.firebase.google.com>.
+2. Add an **Android app** with package name **`com.pulsepb.app`**.
+3. Download **`google-services.json`** and place it at **`android/app/google-services.json`**.
+
+### 2. Wire Firebase into the Android build
+`@capacitor/push-notifications` is already installed. Add the Google Services
+Gradle plugin so `google-services.json` is processed:
+
+- `android/build.gradle` (project) — in `buildscript { dependencies { … } }`:
+  `classpath 'com.google.gms:google-services:4.4.2'`
+- `android/app/build.gradle` (app) — at the **bottom**:
+  `apply plugin: 'com.google.gms.google-services'`
+
+Then `npx cap sync android` (CI already runs `npm run cap:sync`).
+
+> `google-services.json` is secret-ish — keep it out of public forks. It's safe in
+> a private repo. The Android build will **fail** if the gradle plugin is applied
+> but the json is missing, so add both together.
+
+### 3. Server credential (Supabase secret)
+1. Firebase Console → **Project settings → Service accounts → Generate new private key** → downloads a JSON.
+2. Add it as a Supabase secret so `push-send` can mint FCM tokens:
+   `FCM_SERVICE_ACCOUNT_JSON` = the full contents of that JSON.
+
+That's it — once the secret is present, `push-send` starts delivering to
+`device_tokens` alongside web subscriptions. No app or function code changes needed.
+
+### iOS (later)
+FCM also brokers APNs. When adding iOS: add an iOS app in Firebase, upload an APNs
+auth key, drop `GoogleService-Info.plist` into the Xcode project, and enable the
+Push Notifications + Background Modes capabilities. The `device_tokens` /
+`push-send` path is shared.

@@ -2,6 +2,7 @@
 // Auth: validates `x-dispatch-secret` header against private.app_config.push_dispatch_secret.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import webpush from "npm:web-push@3.6.7";
+import { sendFcmToUser } from "../_shared/fcm.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -24,12 +25,6 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    if (!VAPID_PUBLIC || !VAPID_PRIVATE) {
-      return new Response(JSON.stringify({ error: "VAPID not configured" }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
     // Validate dispatch secret
     const provided = req.headers.get("x-dispatch-secret") ?? "";
     const { data: isValidSecret, error: secretErr } = await admin.rpc(
@@ -50,40 +45,41 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { data: subs } = await admin
-      .from("push_subscriptions")
-      .select("id, endpoint, p256dh, auth")
-      .eq("user_id", user_id);
-
-    if (!subs || subs.length === 0) {
-      return new Response(JSON.stringify({ sent: 0 }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const payload = JSON.stringify({ title, body: msg ?? "", url: url ?? "/", tag: tag ?? "pulse", priority: priority ?? "normal" });
-    const deadIds: string[] = [];
+    // Web push (VAPID / service worker) — skipped when VAPID isn't configured
+    // so native still fires.
     let sent = 0;
+    const deadIds: string[] = [];
+    if (VAPID_PUBLIC && VAPID_PRIVATE) {
+      const { data: subs } = await admin
+        .from("push_subscriptions")
+        .select("id, endpoint, p256dh, auth")
+        .eq("user_id", user_id);
 
-    await Promise.all(subs.map(async (s) => {
-      try {
-        await webpush.sendNotification(
-          { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
-          payload,
-          { TTL: 60 * 60 * 24, urgency: priority === "high" ? "high" : "normal" },
-        );
-        sent++;
-      } catch (err: any) {
-        const status = err?.statusCode ?? 0;
-        if (status === 404 || status === 410) deadIds.push(s.id);
+      if (subs && subs.length > 0) {
+        const payload = JSON.stringify({ title, body: msg ?? "", url: url ?? "/", tag: tag ?? "pulse", priority: priority ?? "normal" });
+        await Promise.all(subs.map(async (s) => {
+          try {
+            await webpush.sendNotification(
+              { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
+              payload,
+              { TTL: 60 * 60 * 24, urgency: priority === "high" ? "high" : "normal" },
+            );
+            sent++;
+          } catch (err: any) {
+            const status = err?.statusCode ?? 0;
+            if (status === 404 || status === 410) deadIds.push(s.id);
+          }
+        }));
+        if (deadIds.length > 0) {
+          await admin.from("push_subscriptions").delete().in("id", deadIds);
+        }
       }
-    }));
-
-    if (deadIds.length > 0) {
-      await admin.from("push_subscriptions").delete().in("id", deadIds);
     }
 
-    return new Response(JSON.stringify({ sent, pruned: deadIds.length }), {
+    // Native push (FCM device tokens) — no-op until Firebase is configured.
+    const fcmSent = await sendFcmToUser(admin, user_id, { title, body: msg, url, tag, priority });
+
+    return new Response(JSON.stringify({ sent, fcm: fcmSent, pruned: deadIds.length }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e: any) {
