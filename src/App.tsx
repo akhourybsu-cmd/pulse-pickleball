@@ -9,6 +9,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ActiveViewProvider } from "@/contexts/ActiveViewContext";
 
 import { useAuthPersistence } from "@/hooks/useAuthPersistence";
+import { setPushNavigator } from "@/lib/push";
 import { PlayerShell } from "@/components/layout/PlayerShell";
 import { CommunityTransitionOutlet } from "@/components/community/CommunityTransitionOutlet";
 import { LeagueTransitionOutlet } from "@/components/leagues/LeagueTransitionOutlet";
@@ -182,6 +183,11 @@ const AppContent = () => {
   const navigate = useNavigate();
   const [authRecoveryChecked, setAuthRecoveryChecked] = useState(false);
   useAuthPersistence();
+
+  // Route a tapped native push notification through the router.
+  useEffect(() => {
+    setPushNavigator((path) => navigate(path));
+  }, [navigate]);
 
   useEffect(() => {
     let cancelled = false;

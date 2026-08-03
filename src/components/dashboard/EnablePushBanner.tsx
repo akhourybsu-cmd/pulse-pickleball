@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { isNativeApp } from "@/lib/platform";
+import { enableNativePush, getNativePushPermission } from "@/lib/push";
 
 const DEFAULT_DISMISS_KEY = "pulse.enablePushBanner.dismissedAt";
 const DISMISS_TTL_MS = 1000 * 60 * 60 * 24 * 7; // 7 days
@@ -27,7 +28,15 @@ interface EnablePushBannerProps {
   contextLabel?: string;
 }
 
-export function EnablePushBanner({ dismissKey, contextLabel }: EnablePushBannerProps = {}) {
+/**
+ * Dispatch to the native (FCM) or web (VAPID) enable flow. In the native
+ * WebView, web push can't run, so we register with the OS push service instead.
+ */
+export function EnablePushBanner(props: EnablePushBannerProps = {}) {
+  return isNativeApp() ? <NativeEnablePushBanner {...props} /> : <WebEnablePushBanner {...props} />;
+}
+
+function WebEnablePushBanner({ dismissKey, contextLabel }: EnablePushBannerProps = {}) {
   const navigate = useNavigate();
   const { state, busy, supported, enable } = usePushSubscription();
   const [dismissed, setDismissed] = useState(true);
@@ -42,10 +51,6 @@ export function EnablePushBanner({ dismissKey, contextLabel }: EnablePushBannerP
     }
   }, []);
 
-  // In the native app, web push isn't available in the WebView — the banner
-  // would just say "not supported", which is misleading. Hide it there;
-  // native push (FCM) would use its own affordance if/when added.
-  if (isNativeApp()) return null;
   if (dismissed) return null;
   if (state === "loading" || state === "enabled") return null;
 
@@ -121,6 +126,84 @@ export function EnablePushBanner({ dismissKey, contextLabel }: EnablePushBannerP
             Manage
           </Button>
         </div>}
+      </div>
+      <button
+        onClick={dismiss}
+        aria-label="Dismiss"
+        className="text-muted-foreground hover:text-foreground shrink-0"
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
+
+/**
+ * Native (Capacitor) enable-notifications banner. Prompts for OS permission and
+ * registers with FCM/APNs. Delivery requires Firebase to be configured on the
+ * backend; until then, enabling still works (permission + token) and messages
+ * simply won't arrive yet.
+ */
+function NativeEnablePushBanner({ dismissKey, contextLabel }: EnablePushBannerProps = {}) {
+  const [permission, setPermission] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [dismissed, setDismissed] = useState(true);
+  const storageKey = (dismissKey || DEFAULT_DISMISS_KEY) + ".native";
+
+  useEffect(() => {
+    void getNativePushPermission().then(setPermission);
+    const raw = localStorage.getItem(storageKey);
+    if (!raw) return setDismissed(false);
+    const ts = Number(raw);
+    if (!Number.isFinite(ts) || Date.now() - ts > DISMISS_TTL_MS) {
+      setDismissed(false);
+    }
+  }, []);
+
+  if (permission === "granted") return null; // already on
+  if (dismissed) return null;
+
+  const blocked = permission === "denied";
+
+  const dismiss = () => {
+    localStorage.setItem(storageKey, String(Date.now()));
+    setDismissed(true);
+  };
+
+  const handleEnable = async () => {
+    setBusy(true);
+    const ok = await enableNativePush();
+    setBusy(false);
+    if (ok) {
+      setPermission("granted");
+      toast.success("Notifications enabled.");
+    } else {
+      setPermission("denied");
+    }
+  };
+
+  const title = blocked ? "Notifications are off" : "Turn on notifications";
+  const body = blocked
+    ? "Enable notifications for PULSE in your device settings."
+    : contextLabel
+      ? `Get pinged when there's new activity in ${contextLabel}.`
+      : "Get pinged for new posts, friend requests, and messages.";
+
+  return (
+    <div className="rounded-2xl border border-primary/30 bg-primary/10 p-4 flex items-start gap-3">
+      <div className="rounded-full bg-primary/20 p-2 shrink-0">
+        <Bell className="h-4 w-4 text-primary" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-foreground">{title}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">{body}</p>
+        {!blocked && (
+          <div className="mt-3 flex gap-2">
+            <Button size="sm" onClick={handleEnable} disabled={busy}>
+              {busy ? "Enabling…" : "Enable"}
+            </Button>
+          </div>
+        )}
       </div>
       <button
         onClick={dismiss}
