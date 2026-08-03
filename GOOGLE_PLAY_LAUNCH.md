@@ -27,7 +27,7 @@ This doc is the end-to-end path from the code in this repo to a live listing.
 ## 1. One-time prerequisites
 
 1. **Google Play Developer account** — https://play.google.com/console — one-time **$25** fee. Individual or organization (org needs D-U-N-S verification and takes longer, so start it early).
-2. **Android Studio** (latest) on your build machine — installs the Android SDK, platform tools, and JDK 17.
+2. **Android Studio** (latest) on your build machine — installs the Android SDK, platform tools, and a JDK. Capacitor 7 needs **JDK 21** (recent Android Studio bundles it; the CI workflows use Temurin 21).
 3. **Node 18+** and this repo cloned with `npm install` run.
 4. A **privacy policy URL** that is publicly reachable (required by Play). Host it at e.g. `https://pulsepb.com/privacy`. See §7.
 
