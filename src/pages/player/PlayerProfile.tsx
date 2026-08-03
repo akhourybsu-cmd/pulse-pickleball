@@ -30,7 +30,6 @@ import {
 import { useLeagueEntitlement } from '@/hooks/useLeagueEntitlement';
 import { isSkillAssessmentEnabled } from '@/lib/skill/featureFlag';
 import { cn } from '@/lib/utils';
-import { PlayerPageHeader } from '@/components/layout/PlayerPageHeader';
 import { SectionHeader } from '@/components/layout/SectionHeader';
 import { SkillAssessmentCTA } from '@/components/skill/SkillAssessmentCTA';
 
@@ -286,17 +285,15 @@ export default function PlayerProfile() {
 
   return (
     <div className="min-h-screen bg-background">
-      <PlayerPageHeader icon={UserIcon} background="gradient" />
-
       <div className="container mx-auto px-4 py-5 max-w-3xl space-y-7 pb-12">
-        {/* Name only — the full identity card lives on Home; duplicating it
-            here just pushed everything else down. */}
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight leading-tight">
+        {/* Centered identity — the name gets a gold gradient so it reads as the
+            top of the profile and pops. The full stats card lives on Home. */}
+        <div className="text-center pt-2">
+          <h1 className="inline-block text-[26px] font-extrabold tracking-tight leading-tight bg-gradient-to-r from-primary to-amber-500 bg-clip-text text-transparent">
             {profile?.display_name || profile?.full_name || (loading ? '' : 'Your profile')}
           </h1>
           {locationStr && (
-            <p className="text-sm text-muted-foreground mt-0.5">{locationStr}</p>
+            <p className="text-sm text-muted-foreground mt-1">{locationStr}</p>
           )}
         </div>
 

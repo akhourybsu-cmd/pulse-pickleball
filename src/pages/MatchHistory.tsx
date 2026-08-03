@@ -651,26 +651,17 @@ const MatchHistory = () => {
 
   return (
     <div className="min-h-screen bg-[hsl(var(--page-bg))]">
-      {/* Page header — unified across the four player tabs via PlayerPageHeader.
-          No top-right Record Match button: the global FAB in PlayerShell
-          handles that intent, and showing it in both places was the kind of
-          redundancy that made the page feel busy. */}
-      <PlayerPageHeader
-        icon={History}
-        title={playerId ? `${playerName}'s Matches` : undefined}
-        background="gradient"
-        action={
-          playerId ? undefined : (
-            <Button
-              onClick={() => navigate("/player/matches/new")}
-              className="h-9 rounded-full btn-premium shrink-0"
-            >
-              <Plus className="h-4 w-4 mr-1.5" />
-              Record Match
-            </Button>
-          )
-        }
-      />
+      {/* Header only when viewing ANOTHER player's matches (it has a real
+          title then). On your own Matches tab the title would just repeat the
+          bottom-nav label, so we skip the band and put "Record" inline with
+          the tabs below — no empty top strip. */}
+      {playerId && (
+        <PlayerPageHeader
+          icon={History}
+          title={`${playerName}'s Matches`}
+          background="gradient"
+        />
+      )}
 
       <div className="container mx-auto px-4 py-6 space-y-6 max-w-3xl">
         {/* Tabs — custom strip with a sliding primary underline indicator
@@ -685,7 +676,8 @@ const MatchHistory = () => {
           ];
           const activeIndex = tabs.findIndex((t) => t.value === activeTab);
           return (
-            <div className="relative border-b border-border/40 max-w-md">
+            <div className="flex items-end justify-between gap-3">
+              <div className="relative border-b border-border/40 flex-1 max-w-md">
               <div className="grid grid-cols-3">
                 {tabs.map((tab) => {
                   const isActive = tab.value === activeTab;
@@ -719,6 +711,15 @@ const MatchHistory = () => {
                   left: `${(100 / tabs.length) * activeIndex}%`,
                 }}
               />
+              </div>
+              <Button
+                onClick={() => navigate("/player/matches/new")}
+                size="sm"
+                className="h-9 rounded-full btn-premium shrink-0 mb-1"
+              >
+                <Plus className="h-4 w-4 mr-1.5" />
+                Record
+              </Button>
             </div>
           );
         })()}

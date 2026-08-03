@@ -3,7 +3,6 @@ import { Plus, QrCode, Users, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
-import { PlayerPageHeader } from '@/components/layout/PlayerPageHeader';
 import { cn } from '@/lib/utils';
 import { GroupCard } from '@/components/community/GroupCard';
 import { ReorderableGroupList } from '@/components/community/ReorderableGroupList';
@@ -28,32 +27,6 @@ export default function Community() {
 
   return (
     <div className="flex flex-col min-h-[calc(100vh-120px)]">
-      {/* Page Header */}
-      <PlayerPageHeader
-        icon={Users}
-        background="gradient"
-        action={
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-10 w-10 rounded-full hover:bg-muted/50"
-              aria-label="Search"
-              onClick={() => setActiveTab('explore')}
-            >
-              <Search className="h-5 w-5" />
-            </Button>
-            <Button
-              onClick={() => setCreateDialogOpen(true)}
-              className="h-10 px-4 rounded-full btn-premium"
-            >
-              <Plus className="h-4 w-4 mr-1.5" />
-              Create
-            </Button>
-          </div>
-        }
-      />
-
       {/* Sliding-underline Tabs — index-driven so adding a tab is one
           array entry rather than a new manual left:% branch. Matches
           the MatchHistory / RoundRobinDetail pattern. */}
@@ -66,7 +39,8 @@ export default function Community() {
             ];
             const activeIndex = tabs.findIndex((t) => t.value === activeTab);
             return (
-              <div className="relative border-b border-border/40">
+              <div className="flex items-end justify-between gap-3">
+              <div className="relative border-b border-border/40 flex-1">
                 <div className="grid grid-cols-2">
                   {tabs.map((tab) => {
                     const isActive = activeTab === tab.value;
@@ -91,6 +65,26 @@ export default function Community() {
                     left: `${(100 / tabs.length) * Math.max(0, activeIndex)}%`,
                   }}
                 />
+                </div>
+                <div className="flex items-center gap-2 mb-1 shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9 rounded-full hover:bg-muted/50"
+                    aria-label="Search"
+                    onClick={() => setActiveTab('explore')}
+                  >
+                    <Search className="h-5 w-5" />
+                  </Button>
+                  <Button
+                    onClick={() => setCreateDialogOpen(true)}
+                    size="sm"
+                    className="h-9 px-4 rounded-full btn-premium"
+                  >
+                    <Plus className="h-4 w-4 mr-1.5" />
+                    Create
+                  </Button>
+                </div>
               </div>
             );
           })()}
