@@ -72,7 +72,7 @@ export const HomepageNav = ({ isLoggedIn }: HomepageNavProps) => {
   const primaryCtaLabel = isLoggedIn ? "Go to Dashboard" : "Get Started";
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-secondary/95 backdrop-blur supports-[backdrop-filter]:bg-secondary/80">
+    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-secondary/95 backdrop-blur supports-[backdrop-filter]:bg-secondary/80 pt-[env(safe-area-inset-top)]">
       <nav className="container mx-auto flex h-[72px] items-center justify-between px-4">
         {/* Logo — inherits cream from text-secondary-foreground so it
             blends into the dark sticky header instead of reading as a

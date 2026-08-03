@@ -262,11 +262,11 @@ export function PlayerShell() {
           (community groups, DMs) where the FAB would clash with their own
           fixed bottom chrome. */}
       {(() => {
-        // NOTE: Home (/player/dashboard) is intentionally excluded — its
-        // QuickActionsBar already has a prominent "Record Match" card, so the
-        // FAB there was redundant and overlapped the content.
+        // Home and Matches are intentionally excluded — each has its own
+        // in-content "Record Match" affordance (Home's QuickActionsBar card,
+        // the Matches header button), so a floating FAB there was redundant
+        // and overlapped content.
         const recordMatchRoutes = [
-          '/player/matches',
           '/player/play',
         ];
         const showFab =

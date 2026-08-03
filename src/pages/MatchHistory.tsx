@@ -659,6 +659,17 @@ const MatchHistory = () => {
         icon={History}
         title={playerId ? `${playerName}'s Matches` : undefined}
         background="gradient"
+        action={
+          playerId ? undefined : (
+            <Button
+              onClick={() => navigate("/player/matches/new")}
+              className="h-9 rounded-full btn-premium shrink-0"
+            >
+              <Plus className="h-4 w-4 mr-1.5" />
+              Record Match
+            </Button>
+          )
+        }
       />
 
       <div className="container mx-auto px-4 py-6 space-y-6 max-w-3xl">

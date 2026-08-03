@@ -390,7 +390,7 @@ const Auth = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-start md:items-center justify-center bg-secondary p-4 pt-8 md:py-12">
+    <div className="min-h-screen flex items-start md:items-center justify-center bg-secondary p-4 md:py-12 [padding-top:calc(2rem+env(safe-area-inset-top))]">
       <div className="w-full max-w-md">
         {/* Logo — wordmark inherits cream from text-secondary-foreground
             so it floats on the dark surface as a brand moment instead of
