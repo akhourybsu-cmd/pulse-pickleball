@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-import { Github, Twitter, Instagram, Youtube } from "lucide-react";
 
 const productLinks = [
   { label: "Players", href: "/players" },
@@ -13,20 +12,13 @@ const legalLinks = [
   { label: "Delete Account", href: "/delete-account" },
 ];
 
-const socialLinks = [
-  { icon: Twitter, href: "https://twitter.com", label: "Twitter" },
-  { icon: Instagram, href: "https://instagram.com", label: "Instagram" },
-  { icon: Youtube, href: "https://youtube.com", label: "YouTube" },
-  { icon: Github, href: "https://github.com", label: "GitHub" },
-];
-
 export const HomepageFooter = () => {
   const currentYear = new Date().getFullYear();
 
   return (
     <footer className="bg-muted/50 border-t border-border">
       <div className="container mx-auto px-4 py-12 md:py-16">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 mb-12">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 mb-12">
           {/* Product */}
           <div>
             <h4 className="font-semibold mb-4 text-foreground">Product</h4>
@@ -59,25 +51,6 @@ export const HomepageFooter = () => {
                 </li>
               ))}
             </ul>
-          </div>
-
-          {/* Connect - Social Links section */}
-          <div>
-            <h4 className="font-semibold mb-4 text-foreground">Connect</h4>
-            <div className="flex gap-3">
-              {socialLinks.map((social) => (
-                <a
-                  key={social.label}
-                  href={social.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
-                  aria-label={social.label}
-                >
-                  <social.icon className="h-4 w-4" />
-                </a>
-              ))}
-            </div>
           </div>
 
           {/* Brand */}
