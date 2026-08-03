@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
+import { getErrorMessage } from "@/lib/getErrorMessage";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, AlertTriangle, CheckCircle2, Flag, History, Plus, Clock } from "lucide-react";
@@ -115,15 +117,16 @@ const MatchHistory = () => {
           schema: 'public',
           table: 'matches'
         },
-        (payload: any) => {
+        (payload: RealtimePostgresChangesPayload<{ id: string; verified_by: string[] | null }>) => {
           console.log('🔔 Realtime verification update received:', payload);
-          console.log('🔔 Updated match ID:', (payload.new as any).id);
-          console.log('🔔 New verified_by:', (payload.new as any).verified_by);
-          
+          const row = payload.new as { id?: string; verified_by?: string[] | null };
+          console.log('🔔 Updated match ID:', row.id);
+          console.log('🔔 New verified_by:', row.verified_by);
+
           // Update local state when a match is verified
-          if (payload.new && 'verified_by' in payload.new) {
-            const newVerifiedBy = (payload.new as any).verified_by || [];
-            const matchId = (payload.new as any).id;
+          if (row && 'verified_by' in row) {
+            const newVerifiedBy = row.verified_by || [];
+            const matchId = row.id;
             console.log('🔄 Updating local state for match', matchId, 'with verified_by:', newVerifiedBy);
             
             setMatches(prevMatches => {
@@ -223,7 +226,7 @@ const MatchHistory = () => {
 
     // Get details for each match
     const matchesWithDetails = await Promise.all(
-      participantsData.map(async (p: any) => {
+      participantsData.map(async (p: any): Promise<Match> => {
         // Select guest_player_id + join guest_players alongside the
         // profile join. Without this, guest rows had no name to
         // display and got resolved as "Removed player" — the visible
@@ -307,8 +310,8 @@ const MatchHistory = () => {
     // Look up RR event linkage. matches.event_id is unreliable for RR
     // matches; the authoritative link is round_robin_schedule.match_id.
     const rrCandidateIds = matchesWithDetails
-      .filter((m: any) => m.source === 'round_robin')
-      .map((m: any) => m.match_id);
+      .filter(m => m.source === 'round_robin')
+      .map(m => m.match_id);
 
     if (rrCandidateIds.length > 0) {
       const { data: rrLinks, error: rrLinksError } = await supabase
@@ -319,7 +322,7 @@ const MatchHistory = () => {
       console.log('[RR group] schedule links:', rrLinks, 'error:', rrLinksError);
 
       const eventIds = Array.from(
-        new Set((rrLinks || []).map((l: any) => l.event_id).filter(Boolean))
+        new Set((rrLinks || []).map(l => l.event_id).filter(Boolean))
       );
 
       let eventsById = new Map<string, { id: string; name: string; date: string }>();
@@ -329,13 +332,13 @@ const MatchHistory = () => {
           .select('id, name, date')
           .in('id', eventIds);
         console.log('[RR group] events:', rrEvents, 'error:', rrEventsError);
-        (rrEvents || []).forEach((e: any) => {
+        (rrEvents || []).forEach(e => {
           eventsById.set(e.id, { id: e.id, name: e.name, date: e.date });
         });
       }
 
       const matchToEvent = new Map<string, { id: string; name: string; date: string }>();
-      (rrLinks || []).forEach((link: any) => {
+      (rrLinks || []).forEach(link => {
         const ev = link.event_id ? eventsById.get(link.event_id) : null;
         if (link.match_id && link.event_id) {
           matchToEvent.set(link.match_id, {
@@ -346,7 +349,7 @@ const MatchHistory = () => {
         }
       });
 
-      matchesWithDetails.forEach((m: any) => {
+      matchesWithDetails.forEach(m => {
         const ev = matchToEvent.get(m.match_id);
         if (ev) {
           m.rr_event_id = ev.id;
@@ -402,7 +405,7 @@ const MatchHistory = () => {
     }
 
     const pendingMatchesWithDetails = await Promise.all(
-      participantsData.map(async (p: any) => {
+      participantsData.map(async (p: any): Promise<Match> => {
         // Pending-matches query — same guest fix as the verified path above.
         const { data: allParticipants } = await supabase
           .from("match_participants")
@@ -498,8 +501,8 @@ const MatchHistory = () => {
       
       // Refresh both lists
       fetchMatchHistory();
-    } catch (error: any) {
-      toast.error(error.message || "Failed to verify match");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, "Failed to verify match"));
     }
   };
 
@@ -515,8 +518,8 @@ const MatchHistory = () => {
       } else {
         toast.success(`Reminded ${count} player${count === 1 ? '' : 's'}.`);
       }
-    } catch (e: any) {
-      toast.error(e?.message || "Could not send reminder");
+    } catch (e: unknown) {
+      toast.error(getErrorMessage(e, "Could not send reminder"));
     }
   };
 
@@ -604,9 +607,9 @@ const MatchHistory = () => {
       toast.success("Match verified");
       setVerifyDialogOpen(false);
       setMatchToVerify(null);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("❌ Error verifying match:", error);
-      toast.error(error?.message || "Failed to verify match");
+      toast.error(getErrorMessage(error, "Failed to verify match"));
     }
   };
 
@@ -926,7 +929,7 @@ const MatchHistory = () => {
             if (m.rr_event_id) {
               const existing = groups.get(m.rr_event_id);
               if (existing) {
-                existing.matches.push(m as any);
+                existing.matches.push(m);
                 if (m.won) existing.wins += 1; else existing.losses += 1;
                 existing.netRating += m.rating_change || 0;
                 if (m.match_date > existing.sortKey) existing.sortKey = m.match_date;
@@ -935,7 +938,7 @@ const MatchHistory = () => {
                   eventId: m.rr_event_id,
                   name: m.rr_event_name || 'Round Robin',
                   date: m.rr_event_date || m.match_date,
-                  matches: [m as any],
+                  matches: [m],
                   wins: m.won ? 1 : 0,
                   losses: m.won ? 0 : 1,
                   netRating: m.rating_change || 0,
@@ -951,7 +954,7 @@ const MatchHistory = () => {
 
           // Sort each group's matches by round/court, then sort top-level by date DESC
           groups.forEach((g) => {
-            g.matches.sort((a: any, b: any) => {
+            g.matches.sort((a, b) => {
               if ((a.round_no || 0) !== (b.round_no || 0)) return (a.round_no || 0) - (b.round_no || 0);
               return (a.court_no || 0) - (b.court_no || 0);
             });
