@@ -72,6 +72,31 @@ Questions or feedback? Reach us at support@pulsepb.com.
 > Trim any section above to fit if you add more. Keep the leading one-liner and
 > the closing support line — Google's reviewers and users both scan those first.
 
+## Release notes / "What's new" (≤500 chars per release)
+
+**v1.0.0 — first release:**
+
+```
+Welcome to PULSE! 🎾
+
+Find players near you, track your matches, and watch your rating climb. Join
+round-robin and ladder leagues with live standings, compete in tournaments,
+and chat with your pickleball community — all in one app.
+
+This is our first release. We'd love your feedback: support@pulsepb.com
+```
+
+(Under 500 chars.) For later updates, keep it short and user-facing — what
+changed and why they'll care, not internal version details. Template:
+
+```
+What's new in this update:
+• <headline improvement>
+• <fix or smaller win>
+
+Questions? support@pulsepb.com
+```
+
 ---
 
 ## Categorization & contact

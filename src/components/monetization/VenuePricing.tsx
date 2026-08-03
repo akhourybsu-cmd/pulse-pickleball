@@ -123,7 +123,7 @@ function PricingCard({
           </Button>
         ) : tier === 'enterprise' ? (
           <Button variant="outline" className="w-full" asChild>
-            <a href="mailto:enterprise@pulse.app">Contact Sales</a>
+            <a href="mailto:support@pulsepb.com?subject=Enterprise%20plan%20inquiry">Contact Sales</a>
           </Button>
         ) : isCurrent ? (
           <Button variant="outline" className="w-full" disabled>
