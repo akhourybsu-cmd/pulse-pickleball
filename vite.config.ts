@@ -15,6 +15,13 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  // In production, strip debug logging (console.log/debug/info) and any stray
+  // `debugger` statements. console.warn/error are kept so real problems still
+  // surface in the field.
+  esbuild: {
+    pure: mode === "production" ? ["console.log", "console.debug", "console.info"] : [],
+    drop: mode === "production" ? ["debugger"] : [],
+  },
   build: {
     target: 'es2020',
     cssCodeSplit: true,
