@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { getErrorMessage } from '@/lib/getErrorMessage';
 
 export interface GroupMessage {
   id: string;
@@ -41,7 +42,7 @@ async function fetchGroupMessages(groupId: string): Promise<GroupMessage[]> {
         .from('profiles_public')
         .select('id, display_name, full_name, avatar_url')
         .in('id', userIds)
-    : { data: [] as any[] };
+    : { data: [] as NonNullable<GroupMessage['profile']>[] };
 
   const profilesMap = new Map((profilesData || []).map(p => [p.id, p]));
 
@@ -120,14 +121,14 @@ export function useGroupChat(groupId: string | undefined) {
         );
       });
     },
-    onError: (error: any, { clientId }) => {
+    onError: (error: unknown, { clientId }) => {
       queryClient.setQueryData<GroupMessage[]>(queryKey, (prev = []) =>
         prev.map((m) => (m._clientId === clientId ? { ...m, _status: 'failed' as const } : m)),
       );
       console.error('Error sending message:', error);
       toast({
         title: 'Message failed',
-        description: error.message || 'Tap to retry',
+        description: getErrorMessage(error, 'Tap to retry'),
         variant: 'destructive',
       });
     },
@@ -148,9 +149,9 @@ export function useGroupChat(groupId: string | undefined) {
       );
       return { prev };
     },
-    onError: (error: any, _id, ctx) => {
+    onError: (error: unknown, _id, ctx) => {
       if (ctx?.prev) queryClient.setQueryData(queryKey, ctx.prev);
-      toast({ title: 'Error', description: error.message || 'Failed to delete', variant: 'destructive' });
+      toast({ title: 'Error', description: getErrorMessage(error, 'Failed to delete'), variant: 'destructive' });
     },
   });
 
@@ -176,9 +177,9 @@ export function useGroupChat(groupId: string | undefined) {
       );
       return { prev };
     },
-    onError: (error: any, _v, ctx) => {
+    onError: (error: unknown, _v, ctx) => {
       if (ctx?.prev) queryClient.setQueryData(queryKey, ctx.prev);
-      toast({ title: 'Error', description: error.message || 'Failed to update message', variant: 'destructive' });
+      toast({ title: 'Error', description: getErrorMessage(error, 'Failed to update message'), variant: 'destructive' });
     },
   });
 
@@ -208,9 +209,9 @@ export function useGroupChat(groupId: string | undefined) {
     onSuccess: (_d, { pinned }) => {
       toast({ title: pinned ? 'Pinned' : 'Unpinned' });
     },
-    onError: (error: any, _v, ctx) => {
+    onError: (error: unknown, _v, ctx) => {
       if (ctx?.prev) queryClient.setQueryData(queryKey, ctx.prev);
-      toast({ title: 'Error', description: error.message || 'Failed to update pin', variant: 'destructive' });
+      toast({ title: 'Error', description: getErrorMessage(error, 'Failed to update pin'), variant: 'destructive' });
     },
   });
 
@@ -244,12 +245,12 @@ export function useGroupChat(groupId: string | undefined) {
           ...(target.image_url ? { image_url: target.image_url } : {}),
         } as any);
       if (error) throw error;
-    } catch (error: any) {
+    } catch (error: unknown) {
       queryClient.setQueryData<GroupMessage[]>(queryKey, (prev = []) =>
         prev.map((m) => (m._clientId === clientId ? { ...m, _status: 'failed' as const } : m)),
       );
       console.error('Error retrying message:', error);
-      toast({ title: 'Message failed', description: error.message || 'Tap to retry', variant: 'destructive' });
+      toast({ title: 'Message failed', description: getErrorMessage(error, 'Tap to retry'), variant: 'destructive' });
     }
   };
 

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { getErrorMessage, getErrorCode } from '@/lib/getErrorMessage';
 import { toast } from 'sonner';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { interpretDmError } from '@/lib/dmErrors';
@@ -186,9 +187,9 @@ export function useDirectMessages() {
 
       setConversations(previews);
       setTotalUnread(unreadTotal);
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('Error fetching conversations:', e);
-      setError(e?.message || 'Failed to load conversations');
+      setError(getErrorMessage(e, 'Failed to load conversations'));
     } finally {
       setLoading(false);
     }
@@ -349,11 +350,11 @@ export function useConversation(conversationId: string | null) {
         .update({ last_read_at: new Date().toISOString() })
         .eq('conversation_id', conversationId)
         .eq('user_id', user.id);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error fetching messages:', error);
       // Malformed id in the URL (not a uuid) errors before the
       // participant check runs — treat it as not-found, not a chat.
-      if (error?.code === '22P02') setNotFound(true);
+      if (getErrorCode(error) === '22P02') setNotFound(true);
     } finally {
       setLoading(false);
     }

@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { getErrorMessage } from '@/lib/getErrorMessage';
 import { useToast } from '@/hooks/use-toast';
 
 export interface GroupPost {
@@ -302,12 +303,12 @@ export function useGroupPosts(groupId: string | undefined) {
       );
       toast({ title: 'Posted!', description: 'Your post has been shared with the group' });
     },
-    onError: (error: any, postData) => {
+    onError: (error: unknown, postData) => {
       queryClient.setQueryData<GroupPost[]>(queryKey, (prev = []) =>
         prev.filter((p) => p.id !== `temp-${postData._clientId}`),
       );
       console.error('Error creating post:', error);
-      toast({ title: 'Error', description: error.message || 'Failed to create post', variant: 'destructive' });
+      toast({ title: 'Error', description: getErrorMessage(error, 'Failed to create post'), variant: 'destructive' });
     },
   });
 
@@ -324,9 +325,9 @@ export function useGroupPosts(groupId: string | undefined) {
     onSuccess: () => {
       toast({ title: 'Deleted', description: 'Post has been removed' });
     },
-    onError: (error: any, _id, ctx) => {
+    onError: (error: unknown, _id, ctx) => {
       if (ctx?.prev) queryClient.setQueryData(queryKey, ctx.prev);
-      toast({ title: 'Error', description: error.message || 'Failed to delete post', variant: 'destructive' });
+      toast({ title: 'Error', description: getErrorMessage(error, 'Failed to delete post'), variant: 'destructive' });
     },
   });
 
@@ -375,9 +376,9 @@ export function useGroupPosts(groupId: string | undefined) {
       );
       return { prev };
     },
-    onError: (error: any, _v, ctx) => {
+    onError: (error: unknown, _v, ctx) => {
       if (ctx?.prev) queryClient.setQueryData(queryKey, ctx.prev);
-      toast({ title: 'Error', description: error.message || 'Failed to update reaction', variant: 'destructive' });
+      toast({ title: 'Error', description: getErrorMessage(error, 'Failed to update reaction'), variant: 'destructive' });
     },
   });
 
@@ -404,9 +405,9 @@ export function useGroupPosts(groupId: string | undefined) {
       const { error } = await supabase.from('group_posts').update({ pinned }).eq('id', postId);
       if (error) throw error;
       toast({ title: pinned ? 'Pinned' : 'Unpinned', description: `Post has been ${pinned ? 'pinned' : 'unpinned'}` });
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (prev) queryClient.setQueryData(queryKey, prev);
-      toast({ title: 'Error', description: error.message || 'Failed to update post', variant: 'destructive' });
+      toast({ title: 'Error', description: getErrorMessage(error, 'Failed to update post'), variant: 'destructive' });
     }
   };
 
@@ -428,9 +429,9 @@ export function useGroupPosts(groupId: string | undefined) {
       if (error) throw error;
       toast({ title: "You're in!", description: 'You have joined this session' });
       return true;
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (prev) queryClient.setQueryData(queryKey, prev);
-      toast({ title: 'Error', description: error.message || 'Failed to join', variant: 'destructive' });
+      toast({ title: 'Error', description: getErrorMessage(error, 'Failed to join'), variant: 'destructive' });
       return false;
     }
   };
@@ -455,9 +456,9 @@ export function useGroupPosts(groupId: string | undefined) {
       if (error) throw error;
       toast({ title: 'Left', description: 'You have left this session' });
       return true;
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (prev) queryClient.setQueryData(queryKey, prev);
-      toast({ title: 'Error', description: error.message || 'Failed to leave', variant: 'destructive' });
+      toast({ title: 'Error', description: getErrorMessage(error, 'Failed to leave'), variant: 'destructive' });
       return false;
     }
   };
@@ -492,10 +493,10 @@ export function useGroupPosts(groupId: string | undefined) {
         p_option_idx: optionIdx,
       });
       if (error) throw error;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error casting poll vote:', error);
       if (prev) queryClient.setQueryData(queryKey, prev);
-      toast({ title: 'Vote failed', description: error.message || 'Could not record your vote', variant: 'destructive' });
+      toast({ title: 'Vote failed', description: getErrorMessage(error, 'Could not record your vote'), variant: 'destructive' });
     }
   };
 

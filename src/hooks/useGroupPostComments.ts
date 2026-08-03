@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { getErrorMessage } from '@/lib/getErrorMessage';
 import { useToast } from '@/hooks/use-toast';
 
 export interface PostComment {
@@ -170,7 +171,7 @@ export function useGroupPostComments(postId: string | undefined) {
         }));
       });
     },
-    onError: (error: any, { clientId }) => {
+    onError: (error: unknown, { clientId }) => {
       queryClient.setQueryData<PostComment[]>(queryKey, (prev = []) =>
         prev
           .filter((c) => c.id !== `temp-${clientId}`)
@@ -183,7 +184,7 @@ export function useGroupPostComments(postId: string | undefined) {
           p.id === postId ? { ...p, comment_count: Math.max(0, (p.comment_count || 0) - 1) } : p,
         ));
       });
-      toast({ title: 'Error', description: error.message || 'Failed to post comment', variant: 'destructive' });
+      toast({ title: 'Error', description: getErrorMessage(error, 'Failed to post comment'), variant: 'destructive' });
     },
   });
 
@@ -209,9 +210,9 @@ export function useGroupPostComments(postId: string | undefined) {
       });
       return { prev };
     },
-    onError: (error: any, _id, ctx) => {
+    onError: (error: unknown, _id, ctx) => {
       if (ctx?.prev) queryClient.setQueryData(queryKey, ctx.prev);
-      toast({ title: 'Error', description: error.message || 'Failed to delete comment', variant: 'destructive' });
+      toast({ title: 'Error', description: getErrorMessage(error, 'Failed to delete comment'), variant: 'destructive' });
     },
   });
 

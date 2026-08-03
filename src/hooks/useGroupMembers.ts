@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { getErrorMessage } from '@/lib/getErrorMessage';
 import { useToast } from '@/hooks/use-toast';
 
 export interface GroupMemberWithProfile {
@@ -115,11 +116,11 @@ export function useGroupMembers(groupId: string | undefined) {
     onSuccess: () => {
       toast({ title: 'Approved', description: 'Member has been approved' });
     },
-    onError: (error: any, _v, ctx) => {
+    onError: (error: unknown, _v, ctx) => {
       if (ctx?.prev) queryClient.setQueryData(cacheKey, ctx.prev);
       toast({
         title: 'Error',
-        description: error.message || 'Failed to approve member',
+        description: getErrorMessage(error, 'Failed to approve member'),
         variant: 'destructive',
       });
     },
@@ -144,11 +145,11 @@ export function useGroupMembers(groupId: string | undefined) {
     onSuccess: () => {
       toast({ title: 'Rejected', description: 'Join request has been rejected' });
     },
-    onError: (error: any, _v, ctx) => {
+    onError: (error: unknown, _v, ctx) => {
       if (ctx?.prev) queryClient.setQueryData(cacheKey, ctx.prev);
       toast({
         title: 'Error',
-        description: error.message || 'Failed to reject member',
+        description: getErrorMessage(error, 'Failed to reject member'),
         variant: 'destructive',
       });
     },
@@ -177,11 +178,11 @@ export function useGroupMembers(groupId: string | undefined) {
         description: `Member is now a ${role}`,
       });
     },
-    onError: (error: any, _v, ctx) => {
+    onError: (error: unknown, _v, ctx) => {
       if (ctx?.prev) queryClient.setQueryData(cacheKey, ctx.prev);
       toast({
         title: 'Error',
-        description: error.message || 'Failed to update role',
+        description: getErrorMessage(error, 'Failed to update role'),
         variant: 'destructive',
       });
     },
@@ -206,11 +207,11 @@ export function useGroupMembers(groupId: string | undefined) {
     onSuccess: () => {
       toast({ title: 'Removed', description: 'Member has been removed from the group' });
     },
-    onError: (error: any, _v, ctx) => {
+    onError: (error: unknown, _v, ctx) => {
       if (ctx?.prev) queryClient.setQueryData(cacheKey, ctx.prev);
       toast({
         title: 'Error',
-        description: error.message || 'Failed to remove member',
+        description: getErrorMessage(error, 'Failed to remove member'),
         variant: 'destructive',
       });
     },
@@ -237,11 +238,11 @@ export function useGroupMembers(groupId: string | undefined) {
     onSuccess: () => {
       toast({ title: 'Banned', description: 'Member has been banned from the group' });
     },
-    onError: (error: any, _v, ctx) => {
+    onError: (error: unknown, _v, ctx) => {
       if (ctx?.prev) queryClient.setQueryData(cacheKey, ctx.prev);
       toast({
         title: 'Error',
-        description: error.message || 'Failed to ban member',
+        description: getErrorMessage(error, 'Failed to ban member'),
         variant: 'destructive',
       });
     },
