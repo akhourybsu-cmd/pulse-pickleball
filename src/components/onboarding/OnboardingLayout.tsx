@@ -2,7 +2,7 @@ import { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { OnboardingProgress } from "./OnboardingProgress";
-import logo from "@/assets/pulse-logo-premium.svg";
+import { Logo } from "@/components/Logo";
 
 interface OnboardingLayoutProps {
   children: ReactNode;
@@ -24,12 +24,8 @@ export const OnboardingLayout = ({
       {/* Header */}
       <nav className="bg-secondary border-b border-secondary-foreground/10 shadow-sm">
         <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-5 flex items-center justify-center h-[72px]">
-          <Link to="/">
-            <img 
-              src={logo} 
-              alt="PULSE Logo" 
-              className="h-[50px] sm:h-[60px] w-auto cursor-pointer hover:opacity-80 transition-opacity" 
-            />
+          <Link to="/" className="text-secondary-foreground hover:opacity-80 transition-opacity">
+            <Logo className="h-[46px] sm:h-[56px] w-auto" />
           </Link>
         </div>
       </nav>

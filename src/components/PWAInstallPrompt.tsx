@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Download, Bell, X, Share2, Plus } from 'lucide-react';
-import pulseLogo from '@/assets/pulse-logo-premium.svg';
 import { isNativeApp } from '@/lib/platform';
 
 export const PWAInstallPrompt = () => {
@@ -82,7 +81,7 @@ export const PWAInstallPrompt = () => {
             {/* Branded Header Strip */}
             <div className="bg-secondary -mx-6 -mt-8 px-6 pt-8 pb-6 mb-6 rounded-t-3xl flex flex-col items-center w-[calc(100%+3rem)]">
               <div className="w-20 h-20 rounded-2xl overflow-hidden shadow-lg bg-white/10 p-2">
-                <img src={pulseLogo} alt="PULSE Logo" className="w-full h-full object-contain" />
+                <img src="/pulse-icon-512.png" alt="PULSE app icon" className="w-full h-full object-contain" />
               </div>
               <SheetTitle className="text-2xl font-bold text-secondary-foreground mt-4">
                 📱 Get the PULSE App
