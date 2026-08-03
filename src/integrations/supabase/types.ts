@@ -5019,33 +5019,6 @@ export type Database = {
         }
         Relationships: []
       }
-      device_tokens: {
-        Row: {
-          created_at: string
-          id: string
-          platform: string
-          token: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          platform: string
-          token: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          platform?: string
-          token?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       push_subscriptions: {
         Row: {
           auth: string
@@ -8672,6 +8645,7 @@ export type Database = {
           display_name: string | null
           first_name: string | null
           full_name: string | null
+          gender: string | null
           handedness: string | null
           handle: string | null
           id: string | null
@@ -8690,6 +8664,7 @@ export type Database = {
           display_name?: string | null
           first_name?: string | null
           full_name?: string | null
+          gender?: string | null
           handedness?: string | null
           handle?: string | null
           id?: string | null
@@ -8708,6 +8683,7 @@ export type Database = {
           display_name?: string | null
           first_name?: string | null
           full_name?: string | null
+          gender?: string | null
           handedness?: string | null
           handle?: string | null
           id?: string | null
