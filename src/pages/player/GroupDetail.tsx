@@ -322,7 +322,7 @@ export default function GroupDetail() {
       {/* Refined Community Header — matches PlayerPageHeader (Match page) treatment */}
       <div
         className={cn(
-          "px-3 sm:px-4 pt-3 pb-3 border-b border-border/40 shrink-0",
+          "px-3 sm:px-4 pb-3 border-b border-border/40 shrink-0 [padding-top:calc(0.75rem+env(safe-area-inset-top))]",
           !isVenueGroup && "bg-gradient-to-b from-primary/[0.10] via-primary/[0.03] to-background"
         )}
         style={isVenueGroup ? {

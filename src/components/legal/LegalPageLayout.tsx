@@ -20,7 +20,7 @@ export function LegalPageLayout({
   const navigate = useNavigate();
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <header className="sticky top-0 z-40 border-b border-secondary-foreground/10 bg-secondary">
+      <header className="sticky top-0 z-40 border-b border-secondary-foreground/10 bg-secondary pt-[env(safe-area-inset-top)]">
         <div className="w-full max-w-3xl mx-auto px-4 py-3 flex items-center gap-2 h-[60px]">
           <Button
             variant="ghost"

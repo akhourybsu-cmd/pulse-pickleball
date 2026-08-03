@@ -373,7 +373,7 @@ export function MatchWizardContainer() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="sticky top-0 z-40 bg-secondary border-b border-secondary-foreground/10 shadow-sm">
+      <div className="sticky top-0 z-40 bg-secondary border-b border-secondary-foreground/10 shadow-sm pt-[env(safe-area-inset-top)]">
         <div className="max-w-lg mx-auto px-4 flex items-center justify-between h-[72px]">
           <Button
             variant="ghost"

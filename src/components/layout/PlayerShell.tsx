@@ -174,7 +174,7 @@ export function PlayerShell() {
           nav strip; that's been removed so this header now owns the top on every
           non-immersive player route. */}
       {!isImmersiveRoute && (
-        <header className="sticky top-0 z-50 border-b border-secondary-foreground/10 bg-secondary shadow-sm">
+        <header className="sticky top-0 z-50 border-b border-secondary-foreground/10 bg-secondary shadow-sm pt-[env(safe-area-inset-top)]">
           <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-3 flex items-center justify-between h-[64px] sm:h-[72px]">
             {/* Logo now inherits color from text-secondary-foreground (cream)
                 so the wordmark + flat lines render cream on the ink top bar
@@ -262,8 +262,10 @@ export function PlayerShell() {
           (community groups, DMs) where the FAB would clash with their own
           fixed bottom chrome. */}
       {(() => {
+        // NOTE: Home (/player/dashboard) is intentionally excluded — its
+        // QuickActionsBar already has a prominent "Record Match" card, so the
+        // FAB there was redundant and overlapped the content.
         const recordMatchRoutes = [
-          '/player/dashboard',
           '/player/matches',
           '/player/play',
         ];

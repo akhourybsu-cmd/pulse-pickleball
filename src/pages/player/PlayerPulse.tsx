@@ -130,7 +130,7 @@ export default function PlayerPulse() {
       />
 
       {/* Top bar */}
-      <div className="sticky top-0 z-20 border-b border-border/40 bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70">
+      <div className="sticky top-0 z-20 border-b border-border/40 bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70 pt-[env(safe-area-inset-top)]">
         <div className="container mx-auto max-w-3xl px-4 py-3 flex items-center gap-2">
           <Button
             variant="ghost"

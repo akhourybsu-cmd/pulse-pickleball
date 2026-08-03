@@ -277,7 +277,7 @@ export default function DirectMessageChat() {
 
   return (
     <div className="flex flex-col h-[100dvh]">
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-border/30 shrink-0 bg-gradient-to-b from-primary/[0.06] via-background to-background">
+      <div className="flex items-center gap-3 px-4 pb-3 border-b border-border/30 shrink-0 bg-gradient-to-b from-primary/[0.06] via-background to-background [padding-top:calc(0.75rem+env(safe-area-inset-top))]">
         <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="h-8 w-8">
           <ArrowLeft className="h-4 w-4" />
         </Button>
