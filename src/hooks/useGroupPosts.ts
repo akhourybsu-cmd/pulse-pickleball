@@ -50,6 +50,20 @@ export interface GroupPost {
   poll_my_vote?: number | null;
 }
 
+/** Shape of the round_robin_events columns this hook selects. */
+type RoundRobinEventRow = {
+  id: string;
+  name: string;
+  date: string;
+  start_time: string | null;
+  num_courts: number;
+  max_players: number | null;
+  status: string;
+  invite_code: string | null;
+  registration_mode: string | null;
+  registration_deadline: string | null;
+};
+
 async function fetchGroupPosts(groupId: string): Promise<GroupPost[]> {
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -67,13 +81,13 @@ async function fetchGroupPosts(groupId: string): Promise<GroupPost[]> {
   const userIds = [...new Set((postsData || []).map(p => p.user_id))];
   const postIds = (postsData || []).map(p => p.id);
   const pollIds = (postsData || [])
-    .filter((p: any) => p.type === 'poll' && Array.isArray(p.poll_options) && p.poll_options.length > 0)
+    .filter(p => p.type === 'poll' && Array.isArray(p.poll_options) && p.poll_options.length > 0)
     .map(p => p.id);
   const rrIds = Array.from(
     new Set(
       (postsData || [])
-        .filter((p: any) => p.type === 'round_robin' && p.round_robin_event_id)
-        .map((p: any) => p.round_robin_event_id as string)
+        .filter(p => p.type === 'round_robin' && p.round_robin_event_id)
+        .map(p => p.round_robin_event_id as string)
     )
   );
 
@@ -129,7 +143,7 @@ async function fetchGroupPosts(groupId: string): Promise<GroupPost[]> {
           .from('round_robin_events')
           .select('id, name, date, start_time, num_courts, max_players, status, invite_code, registration_mode, registration_deadline')
           .in('id', rrIds)
-      : Promise.resolve({ data: [] as Array<any> }),
+      : Promise.resolve({ data: [] as RoundRobinEventRow[] }),
     rrIds.length
       ? supabase
           .from('round_robin_players')
@@ -173,11 +187,11 @@ async function fetchGroupPosts(groupId: string): Promise<GroupPost[]> {
   // Poll vote aggregation — per-option counts + this viewer's vote.
   const pollVotesByPost = new Map<string, { counts: number[]; myVote: number | null }>();
   if (pollIds.length > 0) {
-    (postsData || []).forEach((p: any) => {
+    (postsData || []).forEach(p => {
       if (!pollIds.includes(p.id)) return;
-      const counts = (p.poll_options as any[]).map(() => 0);
+      const counts = (p.poll_options as unknown[]).map(() => 0);
       let myVote: number | null = null;
-      (votesData || []).forEach((v: any) => {
+      (votesData || []).forEach(v => {
         if (v.post_id !== p.id) return;
         if (v.option_idx >= 0 && v.option_idx < counts.length) counts[v.option_idx]++;
         if (user && v.user_id === user.id) myVote = v.option_idx;
@@ -190,10 +204,10 @@ async function fetchGroupPosts(groupId: string): Promise<GroupPost[]> {
   const rrMap = new Map<string, GroupPost['round_robin']>();
   if (rrIds.length > 0) {
     const countMap = new Map<string, number>();
-    (rrPlayers || []).forEach((row: any) => {
+    (rrPlayers || []).forEach(row => {
       countMap.set(row.event_id, (countMap.get(row.event_id) || 0) + 1);
     });
-    (rrData || []).forEach((rr: any) => {
+    (rrData || []).forEach(rr => {
       rrMap.set(rr.id, { ...rr, player_count: countMap.get(rr.id) || 0 });
     });
   }
@@ -212,7 +226,7 @@ async function fetchGroupPosts(groupId: string): Promise<GroupPost[]> {
       user_joined: participantInfo?.userJoined || false,
       poll_vote_counts: pollInfo?.counts,
       poll_my_vote: pollInfo?.myVote ?? null,
-      round_robin: (p as any).round_robin_event_id ? rrMap.get((p as any).round_robin_event_id) ?? null : null,
+      round_robin: p.round_robin_event_id ? rrMap.get(p.round_robin_event_id) ?? null : null,
     };
   });
 }
