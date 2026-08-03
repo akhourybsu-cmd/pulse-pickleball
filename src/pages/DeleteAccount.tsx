@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 // Support inbox shown as the fallback path (and for reviewers who don't sign in).
-const SUPPORT_EMAIL = "support@pulspb.com";
+const SUPPORT_EMAIL = "support@pulsepb.com";
 
 const DELETED_DATA = [
   "Your profile, display name, avatar, and PULSE rating",
