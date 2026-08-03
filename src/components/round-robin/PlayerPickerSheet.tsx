@@ -613,7 +613,7 @@ function SearchList({
     enabled: query.trim().length >= 2,
     queryFn: async () => {
       let q = supabase
-        .from("profiles")
+        .from("profiles_public")
         .select("id, full_name, display_name, avatar_url, current_rating, gender")
         .or(`full_name.ilike.%${query}%,display_name.ilike.%${query}%`)
         .limit(30);
