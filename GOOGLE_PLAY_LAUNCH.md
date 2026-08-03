@@ -213,7 +213,59 @@ Then provide a 1024×1024 export for the Play **512×512 store icon** field too.
 
 ---
 
-## 11. Later: iOS / App Store
+## 11b. Automation (do the least work per release)
+
+Two GitHub Actions workflows + local one-command scripts are set up so you rarely
+touch the signing wizard or hand-bump versions.
+
+### Local one-liners (you have Android Studio + SDK)
+- `npm run android:apk` → builds a debug APK at
+  `android/app/build/outputs/apk/debug/app-debug.apk` (installable on a phone).
+- `npm run android:bundle` → builds a **signed** release `.aab` (needs
+  `android/keystore.properties` — copy `android/keystore.properties.example` and
+  fill it in once). Output: `android/app/build/outputs/bundle/release/app-release.aab`.
+
+Signing is wired in `android/app/build.gradle`: it reads `keystore.properties`
+when present (gitignored), so there's no per-build wizard.
+
+### Cloud builds (no local machine needed)
+- **Actions ▸ "Android debug APK" ▸ Run workflow** — builds an installable APK as
+  a downloadable artifact. No secrets required (the committed `.env` supplies the
+  Supabase config). Great for sending testers a build fast.
+- **Actions ▸ "Android release (signed AAB → Play)" ▸ Run workflow** — builds a
+  signed `.aab`, uploads it as an artifact, and (if the Play service-account
+  secret is set) publishes it straight to the chosen Play track. `versionCode`
+  auto-increments from the run number, so no manual bump.
+
+### One-time setup for the release workflow
+1. Create the upload keystore (§4) and base64-encode it:
+   ```bash
+   base64 -w0 pulse-upload.keystore > keystore.b64   # macOS: base64 -i pulse-upload.keystore | tr -d '\n'
+   ```
+2. GitHub ▸ repo ▸ **Settings ▸ Secrets and variables ▸ Actions ▸ New repository secret**, add:
+   - `ANDROID_KEYSTORE_BASE64` — contents of `keystore.b64`
+   - `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` (`pulse-upload`), `ANDROID_KEY_PASSWORD`
+3. **First release must be created manually** in the Play Console (Google blocks the
+   API until a new app has its first build + core setup). So: run the release
+   workflow once *without* the Play secret, download the `.aab` artifact, and
+   upload it via **Internal testing** in the Console; complete the §7 declarations.
+4. For automated uploads afterward, create a **Play service account**: Play Console
+   ▸ Setup ▸ **API access** ▸ create/link a Google Cloud service account ▸ grant it
+   *Release* permissions ▸ download its JSON key ▸ add it as the
+   `PLAY_SERVICE_ACCOUNT_JSON` secret. From then on the release workflow publishes
+   to the selected track automatically.
+
+> Ongoing release = click **Run workflow** (or push a tag if you later add that
+> trigger). Everything else — build, sign, version bump, upload — is automated.
+
+## 11c. What can't be automated (one-time, by you)
+- Google Play **Developer account** + the **$25** fee.
+- **Creating the app** entry and the first release in the Play Console.
+- Store listing content: **privacy policy URL**, **Data safety**, **account
+  deletion** path, **content rating**, screenshots, descriptions (§7).
+- Safeguarding the **upload keystore** (losing it blocks updates).
+
+## 12. Later: iOS / App Store
 
 The `ios/` platform isn't added yet. When ready: `npx cap add ios`, open in Xcode on
 a Mac, set the bundle id (`com.pulsepb.app`), signing team, icons/splash

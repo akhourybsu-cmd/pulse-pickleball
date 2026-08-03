@@ -13,7 +13,9 @@
     "test:watch": "vitest",
     "cap:sync": "vite build && cap sync android",
     "android:open": "vite build && cap sync android && cap open android",
-    "android:assets": "capacitor-assets generate --android --iconBackgroundColor '#1B1D21' --iconBackgroundColorDark '#1B1D21' --splashBackgroundColor '#1B1D21' --splashBackgroundColorDark '#1B1D21'"
+    "android:assets": "capacitor-assets generate --android --iconBackgroundColor '#1B1D21' --iconBackgroundColorDark '#1B1D21' --splashBackgroundColor '#1B1D21' --splashBackgroundColorDark '#1B1D21'",
+    "android:apk": "npm run cap:sync && cd android && ./gradlew assembleDebug",
+    "android:bundle": "npm run cap:sync && cd android && ./gradlew bundleRelease"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.4",
