@@ -8645,6 +8645,7 @@ export type Database = {
           display_name: string | null
           first_name: string | null
           full_name: string | null
+          gender: string | null
           handedness: string | null
           handle: string | null
           id: string | null
@@ -8663,6 +8664,7 @@ export type Database = {
           display_name?: string | null
           first_name?: string | null
           full_name?: string | null
+          gender?: string | null
           handedness?: string | null
           handle?: string | null
           id?: string | null
@@ -8681,6 +8683,7 @@ export type Database = {
           display_name?: string | null
           first_name?: string | null
           full_name?: string | null
+          gender?: string | null
           handedness?: string | null
           handle?: string | null
           id?: string | null
