@@ -194,6 +194,8 @@ export const ChatMessage = memo(function ChatMessage({
                 <img
                   src={message.image_url}
                   alt=""
+                  loading="lazy"
+                  decoding="async"
                   className="w-full max-h-72 object-cover hover:opacity-95 transition-opacity"
                 />
               </button>

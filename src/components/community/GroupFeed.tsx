@@ -435,6 +435,8 @@ const PostCard = memo(function PostCard({
             <img
               src={post.image_url}
               alt=""
+              loading="lazy"
+              decoding="async"
               className="w-full rounded-lg object-cover max-h-80 cursor-pointer hover:opacity-95 transition-opacity"
               onClick={() => onImageClick?.(post.image_url!)}
             />

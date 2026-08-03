@@ -180,9 +180,11 @@ export function GroupFiles({ groupId, isAdmin, currentUserId }: GroupFilesProps)
                     onClick={isImage ? () => setLightboxImage(file.file_url) : undefined}
                   >
                     {isImage ? (
-                      <img 
-                        src={file.file_url} 
+                      <img
+                        src={file.file_url}
                         alt={file.file_name}
+                        loading="lazy"
+                        decoding="async"
                         className="h-full w-full object-cover"
                       />
                     ) : (
@@ -261,6 +263,8 @@ function GridImageItem({ file, canDelete, onDelete, onClick }: GridImageItemProp
       <img
         src={file.file_url}
         alt={file.file_name}
+        loading="lazy"
+        decoding="async"
         className="w-full h-full object-cover cursor-pointer transition-transform group-hover:scale-105"
         onClick={onClick}
       />

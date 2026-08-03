@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Activity,
@@ -11,24 +11,10 @@ import {
   Sparkles,
   Info,
 } from "lucide-react";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  ResponsiveContainer,
-  ReferenceDot,
-} from "recharts";
 import { PageSEO } from "@/components/seo/PageSEO";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart";
 import { cn } from "@/lib/utils";
 import { useAuthState } from "@/hooks/useAuthState";
 import { usePlayerPulse } from "@/hooks/usePlayerPulse";
@@ -38,6 +24,9 @@ import {
   type PulseRange,
 } from "@/lib/playerPulse";
 import { formatRatingChange } from "@/lib/matchDisplay";
+
+// Lazy so the heavy recharts bundle stays off this page's initial render.
+const PulseTrendChart = lazy(() => import("@/components/player/PulseTrendChart"));
 
 /**
  * Player Pulse — the interactive story behind a player's rating.
@@ -117,10 +106,6 @@ export default function PlayerPulse() {
     );
   }, [visibleTimeline]);
 
-  const chartConfig = {
-    rating: { label: "PULSE", color: "hsl(var(--primary))" },
-  };
-
   return (
     <div className="min-h-screen bg-background pb-24">
       <PageSEO
@@ -197,72 +182,15 @@ export default function PlayerPulse() {
                   your trend.
                 </div>
               ) : (
-                <ChartContainer
-                  config={chartConfig}
-                  className="h-[220px] w-full"
+                <Suspense
+                  fallback={<div className="h-[220px] w-full animate-pulse rounded-lg bg-muted/40" />}
                 >
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart
-                      data={visibleTimeline}
-                      margin={{ top: 8, right: 12, bottom: 0, left: -16 }}
-                    >
-                      <CartesianGrid
-                        strokeDasharray="3 3"
-                        className="stroke-muted"
-                        vertical={false}
-                      />
-                      <XAxis
-                        dataKey="index"
-                        type="number"
-                        domain={["dataMin", "dataMax"]}
-                        allowDecimals={false}
-                        tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
-                        tickLine={false}
-                        axisLine={false}
-                      />
-                      <YAxis
-                        domain={["dataMin - 0.1", "dataMax + 0.1"]}
-                        tickFormatter={(v: number) => v.toFixed(2)}
-                        tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
-                        tickLine={false}
-                        axisLine={false}
-                        width={44}
-                      />
-                      <ChartTooltip
-                        content={
-                          <ChartTooltipContent
-                            labelFormatter={(_, payload) => {
-                              const p = payload?.[0]?.payload;
-                              return p ? relativeDate(p.date) : "";
-                            }}
-                            formatter={(value) =>
-                              `${Number(value).toFixed(2)} PULSE`
-                            }
-                          />
-                        }
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="rating"
-                        stroke="hsl(var(--primary))"
-                        strokeWidth={2.5}
-                        dot={false}
-                        activeDot={{ r: 4, fill: "hsl(var(--primary))" }}
-                      />
-                      {peakPoint && (
-                        <ReferenceDot
-                          x={peakPoint.index}
-                          y={peakPoint.rating}
-                          r={4}
-                          fill="hsl(var(--primary))"
-                          stroke="hsl(var(--background))"
-                          strokeWidth={2}
-                          isFront
-                        />
-                      )}
-                    </LineChart>
-                  </ResponsiveContainer>
-                </ChartContainer>
+                  <PulseTrendChart
+                    data={visibleTimeline}
+                    peakPoint={peakPoint}
+                    relativeDate={relativeDate}
+                  />
+                </Suspense>
               )}
             </Card>
 
