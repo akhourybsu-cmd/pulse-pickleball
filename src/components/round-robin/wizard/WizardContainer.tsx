@@ -115,7 +115,16 @@ export function WizardContainer() {
   };
 
   const handleSkip = () => {
-    goNext();
+    // Skipping an optional step (Ratings / Sharing) jumps past any further
+    // optional steps straight to the next required step — which is Review —
+    // so a host who wants the fast path saves real taps rather than landing
+    // on the next skippable screen.
+    let next = currentStepIndex + 1;
+    while (next < totalSteps - 1 && steps[next].isOptional) {
+      next++;
+    }
+    setDirection(1);
+    setCurrentStepIndex(next);
   };
 
   const handleCreate = async () => {

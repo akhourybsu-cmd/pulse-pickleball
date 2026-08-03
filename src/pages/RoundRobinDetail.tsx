@@ -2277,7 +2277,7 @@ export default function RoundRobinDetail() {
                                             min="0"
                                             max="99"
                                             inputMode="numeric"
-                                            className="w-16 h-10 text-center text-base font-bold tabular-nums ml-2 focus-visible:ring-2 focus-visible:ring-primary"
+                                            className="w-20 h-12 text-center text-lg font-bold tabular-nums ml-2 focus-visible:ring-2 focus-visible:ring-primary"
                                             placeholder="0"
                                             value={scores[match.id]?.team1_score ?? ''}
                                             onChange={(e) => handleScoreChange(match.id, 'team1', e.target.value)}
@@ -2308,7 +2308,7 @@ export default function RoundRobinDetail() {
                                             min="0"
                                             max="99"
                                             inputMode="numeric"
-                                            className="w-16 h-10 text-center text-base font-bold tabular-nums ml-2 focus-visible:ring-2 focus-visible:ring-primary"
+                                            className="w-20 h-12 text-center text-lg font-bold tabular-nums ml-2 focus-visible:ring-2 focus-visible:ring-primary"
                                             placeholder="0"
                                             value={scores[match.id]?.team2_score ?? ''}
                                             onChange={(e) => handleScoreChange(match.id, 'team2', e.target.value)}

@@ -63,8 +63,11 @@ const ALL_STEPS: WizardStep[] = [
   { id: "players", label: "Players", isOptional: false },
   { id: "schedule", label: "Schedule", isOptional: false },
   { id: "datetime", label: "Date & Time", isOptional: false },
-  { id: "ratings", label: "Ratings", isOptional: false },
-  { id: "sharing", label: "Sharing", isOptional: false },
+  // Ratings + Sharing are the two "extras" — both validate with sensible
+  // defaults (rating-eligible casual, personal visibility), so they're
+  // skippable. Skipping Ratings jumps straight to Review for a fast create.
+  { id: "ratings", label: "Ratings", isOptional: true },
+  { id: "sharing", label: "Sharing", isOptional: true },
   { id: "review", label: "Review", isOptional: false },
 ];
 
