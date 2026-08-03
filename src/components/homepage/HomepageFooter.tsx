@@ -7,17 +7,11 @@ const productLinks = [
   { label: "Community", href: "/player/community" },
 ];
 
-// Company and Legal links removed - pages don't exist yet
-// These can be added back when the pages are created:
-// const companyLinks = [
-//   { label: "About", href: "/about" },
-//   { label: "Contact", href: "/contact" },
-//   { label: "Careers", href: "/careers" },
-// ];
-// const legalLinks = [
-//   { label: "Privacy Policy", href: "/privacy" },
-//   { label: "Terms of Service", href: "/terms" },
-// ];
+const legalLinks = [
+  { label: "Privacy Policy", href: "/privacy" },
+  { label: "Terms of Service", href: "/terms" },
+  { label: "Delete Account", href: "/delete-account" },
+];
 
 const socialLinks = [
   { icon: Twitter, href: "https://twitter.com", label: "Twitter" },
@@ -32,12 +26,29 @@ export const HomepageFooter = () => {
   return (
     <footer className="bg-muted/50 border-t border-border">
       <div className="container mx-auto px-4 py-12 md:py-16">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 mb-12">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 mb-12">
           {/* Product */}
           <div>
             <h4 className="font-semibold mb-4 text-foreground">Product</h4>
             <ul className="space-y-3">
               {productLinks.map((link) => (
+                <li key={link.href}>
+                  <Link
+                    to={link.href}
+                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Legal */}
+          <div>
+            <h4 className="font-semibold mb-4 text-foreground">Legal</h4>
+            <ul className="space-y-3">
+              {legalLinks.map((link) => (
                 <li key={link.href}>
                   <Link
                     to={link.href}
