@@ -30,7 +30,7 @@ async function upsertDeviceToken(token: string): Promise<void> {
     if (!user) return;
     const platform = Capacitor.getPlatform();
     if (platform !== "android" && platform !== "ios") return;
-    await supabase
+    await (supabase as any)
       .from("device_tokens")
       .upsert(
         { user_id: user.id, token, platform, updated_at: new Date().toISOString() },
