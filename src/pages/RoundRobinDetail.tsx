@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { getErrorMessage } from "@/lib/getErrorMessage";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -380,7 +381,7 @@ export default function RoundRobinDetail() {
       }
 
       setLoading(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.error("Failed to load event details. Please try again.");
       console.error(error);
       setLoading(false);
@@ -473,7 +474,7 @@ export default function RoundRobinDetail() {
       if (error) throw error;
       toast.success(`Schedule generated with ${calculatedRounds} rounds!`);
       fetchEventDetails();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.error("Failed to generate schedule");
       console.error(error);
     }
@@ -489,7 +490,7 @@ export default function RoundRobinDetail() {
       if (error) throw error;
       toast.success("Event started!");
       fetchEventDetails();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.error("Failed to start event");
       console.error(error);
     }
@@ -518,7 +519,7 @@ export default function RoundRobinDetail() {
         toast.info("This is the final round. Complete the event to submit to match history.");
       }
       fetchEventDetails();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.error("Failed to close round");
       console.error(error);
     }
@@ -728,8 +729,8 @@ export default function RoundRobinDetail() {
         delete newScores[match.id];
         return newScores;
       });
-    } catch (error: any) {
-      toast.error(error?.message || "Failed to save score");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, "Failed to save score"));
       console.error(error);
     } finally {
       setSavingScore(null);
@@ -772,7 +773,7 @@ export default function RoundRobinDetail() {
           p_team2_score: m.team2_score!,
         });
         if (error) {
-          errors.push(`Round ${m.round_no} Court ${m.court_no}: ${error.message}`);
+          errors.push(`Round ${m.round_no} Court ${m.court_no}: ${getErrorMessage(error)}`);
         } else {
           backfilled += 1;
         }
@@ -822,8 +823,8 @@ export default function RoundRobinDetail() {
       );
 
       fetchEventDetails();
-    } catch (error: any) {
-      toast.error(`Failed to complete event: ${error.message}`);
+    } catch (error: unknown) {
+      toast.error(`Failed to complete event: ${getErrorMessage(error)}`);
       console.error(error);
     }
   };
@@ -855,11 +856,11 @@ export default function RoundRobinDetail() {
         navigate(backHref);
         return;
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       // RPC errors surface here. The void/delete RPCs raise sharp
       // messages on permission failure and on the "scored event can't
       // be hard-deleted by non-admin" guard — show them verbatim.
-      toast.error(error.message || "Failed to update event");
+      toast.error(getErrorMessage(error, "Failed to update event"));
       console.error(error);
     }
   };
@@ -898,7 +899,7 @@ export default function RoundRobinDetail() {
       await fetchEventDetails();
       await fetchAuditHistory();
       setHasUnsavedChanges(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.error("Failed to update event settings");
       console.error(error);
     }
@@ -1019,7 +1020,7 @@ export default function RoundRobinDetail() {
 
       await fetchEventDetails();
       return { previousRounds, targetRounds, roundsChanged };
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw error;
     }
   };
@@ -1098,7 +1099,7 @@ export default function RoundRobinDetail() {
           ? `${guestName} added as a guest`
           : "Player added - they will see this event in their events list") + roundsSuffix,
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.error("Failed to add player");
       console.error(error);
       await fetchEventDetails();
@@ -1163,7 +1164,7 @@ export default function RoundRobinDetail() {
           regenMode: "minimal",
         });
         await onSuccess();
-      } catch (error: any) {
+      } catch (error: unknown) {
         const err = error as RRManageParticipantError;
         toast.error(friendlyRpcError(err));
         console.error("rr_manage_participant remove failed", err);
@@ -1277,7 +1278,7 @@ export default function RoundRobinDetail() {
               reason: replaceReason,
               regenMode: "minimal",
             });
-          } catch (rpcErr: any) {
+          } catch (rpcErr: unknown) {
             const err = rpcErr as RRManageParticipantError;
             toast.error(friendlyRpcError(err));
             console.error("rr_manage_participant replace failed", err);
@@ -1346,7 +1347,7 @@ export default function RoundRobinDetail() {
         await fetchEventDetails();
         toast.success(`Player substituted for Round ${scope}`);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.error("Failed to substitute player");
       console.error(error);
       throw error;
@@ -1393,7 +1394,7 @@ export default function RoundRobinDetail() {
 
       toast.success(`Courts updated to ${newCourts} (${newRounds} rounds)`);
       await fetchEventDetails();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.error("Failed to update courts");
       console.error(error);
       throw error;
@@ -1436,7 +1437,7 @@ export default function RoundRobinDetail() {
 
       toast.success(`Games per player updated to ${newGamesPerPlayer} (${newRounds} rounds)`);
       await fetchEventDetails();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.error("Failed to update games per player");
       console.error(error);
       throw error;
@@ -1488,7 +1489,7 @@ export default function RoundRobinDetail() {
 
       toast.success("Partners swapped");
       await fetchEventDetails();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.error("Failed to swap partners");
       console.error(error);
       throw error;
@@ -1539,7 +1540,7 @@ export default function RoundRobinDetail() {
 
       toast.success("Opponents swapped");
       await fetchEventDetails();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.error("Failed to swap opponents");
       console.error(error);
       throw error;
@@ -1575,7 +1576,7 @@ export default function RoundRobinDetail() {
 
       toast.success(`Match moved to Court ${newCourtNo}`);
       await fetchEventDetails();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.error("Failed to move match");
       console.error(error);
       throw error;
@@ -1601,8 +1602,8 @@ export default function RoundRobinDetail() {
 
       toast.success("Score updated");
       await fetchEventDetails();
-    } catch (error: any) {
-      toast.error(error?.message || "Failed to update score");
+    } catch (error: unknown) {
+      toast.error(getErrorMessage(error, "Failed to update score"));
       console.error(error);
       throw error;
     }
@@ -1647,7 +1648,7 @@ export default function RoundRobinDetail() {
 
       toast.success("Match voided and removed from ratings");
       await fetchEventDetails();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.error("Failed to void match");
       console.error(error);
       throw error;
@@ -1705,7 +1706,7 @@ export default function RoundRobinDetail() {
 
       toast.success("Match deleted and ratings reflowed");
       await fetchEventDetails();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.error("Failed to delete match");
       console.error(error);
       throw error;
@@ -1743,7 +1744,7 @@ export default function RoundRobinDetail() {
       toast.success(`You have left ${event.name}`);
       setLeaveDialogOpen(false);
       navigate(backHref);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Leave error:', error);
       toast.error('Failed to leave event');
     }
@@ -2458,7 +2459,7 @@ export default function RoundRobinDetail() {
 
           <TabsContent value="standings" className="mt-6 space-y-6">
             {/* Top 3 Leaderboard - only active players */}
-            {standings.filter(s => !(s as any).isRemoved).length >= 3 && (
+            {standings.filter(s => !s.isRemoved).length >= 3 && (
               <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
                 <CardHeader className="pb-4">
                   <div className="flex items-center gap-2">
@@ -2468,7 +2469,7 @@ export default function RoundRobinDetail() {
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-3 gap-3">
-                    {standings.filter(s => !(s as any).isRemoved).slice(0, 3).map((row, idx) => (
+                    {standings.filter(s => !s.isRemoved).slice(0, 3).map((row, idx) => (
                       <div
                         key={row.player_id}
                         className={`relative p-4 rounded-xl border ${
@@ -2532,7 +2533,7 @@ export default function RoundRobinDetail() {
                         </tr>
                       </thead>
                       <tbody>
-                        {standings.filter(s => !(s as any).isRemoved).map((row, idx) => (
+                        {standings.filter(s => !s.isRemoved).map((row, idx) => (
                           <tr key={row.player_id} className="border-b hover:bg-muted/50">
                             <td className="py-3 px-2">
                               <RankBadge rank={idx + 1} />
@@ -2549,14 +2550,14 @@ export default function RoundRobinDetail() {
                         ))}
                         
                         {/* DNF Section for removed players */}
-                        {standings.filter(s => (s as any).isRemoved).length > 0 && (
+                        {standings.filter(s => s.isRemoved).length > 0 && (
                           <>
                             <tr className="bg-muted/30">
                               <td colSpan={7} className="py-3 px-2 font-medium text-muted-foreground">
                                 Did Not Finish (DNF)
                               </td>
                             </tr>
-                            {standings.filter(s => (s as any).isRemoved).map((row) => (
+                            {standings.filter(s => s.isRemoved).map((row) => (
                               <tr key={row.player_id} className="border-b hover:bg-muted/30 opacity-60">
                                 <td className="py-3 px-2">
                                   <Badge variant="outline" className="w-8 h-8 flex items-center justify-center bg-muted/50">
