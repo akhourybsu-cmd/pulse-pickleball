@@ -641,9 +641,9 @@ const Auth = () => {
                       className="text-sm font-normal leading-relaxed cursor-pointer"
                     >
                       I agree to the{" "}
-                      <a 
-                        href="/changelog?tab=legal&section=terms" 
-                        target="_blank" 
+                      <a
+                        href="/terms"
+                        target="_blank"
                         rel="noopener noreferrer"
                         className="text-primary hover:underline"
                         onClick={(e) => e.stopPropagation()}
@@ -651,9 +651,9 @@ const Auth = () => {
                         Terms of Service
                       </a>
                       {" "}and{" "}
-                      <a 
-                        href="/changelog?tab=legal&section=privacy" 
-                        target="_blank" 
+                      <a
+                        href="/privacy"
+                        target="_blank"
                         rel="noopener noreferrer"
                         className="text-primary hover:underline"
                         onClick={(e) => e.stopPropagation()}

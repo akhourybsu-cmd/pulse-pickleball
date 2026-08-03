@@ -25,6 +25,7 @@ import {
   ListOrdered,
   Trophy,
   Gauge,
+  Trash2,
 } from 'lucide-react';
 import { useLeagueEntitlement } from '@/hooks/useLeagueEntitlement';
 import { isSkillAssessmentEnabled } from '@/lib/skill/featureFlag';
@@ -126,6 +127,12 @@ const ACCOUNT_LINKS: HubLink[] = [
     icon: HelpCircle,
     label: 'Help & FAQ',
     description: 'Guides and answers',
+  },
+  {
+    to: '/delete-account',
+    icon: Trash2,
+    label: 'Delete account',
+    description: 'Permanently remove your account',
   },
 ];
 

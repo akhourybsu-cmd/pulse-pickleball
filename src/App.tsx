@@ -103,6 +103,9 @@ const NewMatch = lazy(() => import("./pages/NewMatch"));
 const PendingMatches = lazy(() => import("./pages/PendingMatches"));
 const MatchHistory = lazy(() => import("./pages/MatchHistory"));
 const FAQ = lazy(() => import("./pages/FAQ"));
+const Privacy = lazy(() => import("./pages/Privacy"));
+const Terms = lazy(() => import("./pages/Terms"));
+const DeleteAccount = lazy(() => import("./pages/DeleteAccount"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const SessionQueue = lazy(() => import("./pages/SessionQueue"));
 const AdminSession = lazy(() => import("./pages/AdminSession"));
@@ -352,6 +355,11 @@ const AppContent = () => {
          <Route path="/claim-guest/:token" element={<ClaimGuest />} />
          <Route path="/demo" element={<DemoTour />} />
           <Route path="/players" element={<PlayersLanding />} />
+          {/* Public legal + account pages — reachable logged-out for the
+              app-store listing links and reviewers. */}
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/delete-account" element={<DeleteAccount />} />
           {/* Venue surface archived — admin-only */}
           <Route path="/venues" element={<AdminGuard><VenuesLanding /></AdminGuard>} />
           {/* Unified discovery hub (events + venues). Auth-required because
