@@ -32,7 +32,7 @@ import { formatTournamentLabel, formatSkillLevelRange, formatGenderLabel } from 
 import { checkDivisionEligibility, type EligibilityResult } from "@/lib/tournamentValidation";
 import { getDivisionPricing, type PricingInfo } from "@/lib/tournamentPricing";
 import { checkTournamentReadiness, type TournamentRequirements } from "@/lib/profileCompleteness";
-import logo from "@/assets/pulse-logo-premium.svg";
+import { Logo } from "@/components/Logo";
 
 interface TournamentEvent {
   id: string;
@@ -361,11 +361,7 @@ export default function TournamentRegister() {
     <nav className="bg-secondary border-b border-secondary-foreground/10 shadow-sm">
       <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-5 flex items-center justify-between h-[72px]">
         <Link to={`/tournament/${eventId}`}>
-          <img
-            src={logo}
-            alt="PULSE Logo"
-            className="h-[60px] sm:h-[75px] w-auto cursor-pointer hover:opacity-80 transition-opacity"
-          />
+          <Logo className="h-[52px] sm:h-[65px] w-auto text-secondary-foreground hover:opacity-80 transition-opacity" />
         </Link>
         <div className="flex items-center gap-2">
           <ThemeToggle />

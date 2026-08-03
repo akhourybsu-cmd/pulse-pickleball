@@ -19,7 +19,7 @@ import { TournamentScheduler } from "@/components/tournament/scheduling/Tourname
 import { EmailTemplateEditor } from "@/components/tournament/communication/EmailTemplateEditor";
 import { format } from "date-fns";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import logo from "@/assets/pulse-logo-premium.svg";
+import { Logo } from "@/components/Logo";
 
 interface TournamentEvent {
   id: string;
@@ -219,8 +219,8 @@ export default function TournamentEventDetail() {
     <div className="min-h-screen bg-background">
       <nav className="bg-secondary border-b border-secondary-foreground/10 shadow-sm">
         <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-5 flex items-center justify-between h-[72px]">
-          <Link to="/tournament-admin">
-            <img src={logo} alt="PULSE Logo" className="h-[60px] sm:h-[75px] w-auto cursor-pointer hover:opacity-80 transition-opacity" />
+          <Link to="/tournament-admin" className="text-secondary-foreground hover:opacity-80 transition-opacity">
+            <Logo className="h-[52px] sm:h-[65px] w-auto" />
           </Link>
           <ThemeToggle />
         </div>

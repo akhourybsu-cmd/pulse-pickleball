@@ -17,7 +17,7 @@ import {
   Zap,
   Download
 } from "lucide-react";
-import logo from "@/assets/pulse-logo-premium.svg";
+import { Logo } from "@/components/Logo";
 import leagueFlyer from "@/assets/league-flyer-nov-2025.png";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Footer } from "@/components/Footer";
@@ -136,7 +136,7 @@ const AdminMarketing = () => {
       <nav className="border-b bg-secondary print:hidden">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <Link to="/dashboard">
-            <img src={logo} alt="PULSE Logo" className="h-[90px] w-auto cursor-pointer hover:opacity-80 transition-opacity" />
+            <Logo className="h-[78px] w-auto text-secondary-foreground hover:opacity-80 transition-opacity" />
           </Link>
           <div className="flex items-center gap-3">
             <Button 

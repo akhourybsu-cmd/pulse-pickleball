@@ -24,7 +24,7 @@ import { BackToDashboard } from "@/components/BackToDashboard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AvailableRoundRobinEvents } from "@/components/round-robin/AvailableRoundRobinEvents";
 import { RoundRobinFeatureCard } from "@/components/round-robin/RoundRobinFeatureCard";
-import logo from "@/assets/pulse-logo-premium.svg";
+import { Logo } from "@/components/Logo";
 import { motion } from "framer-motion";
 import CountUp from "react-countup";
 
@@ -360,7 +360,7 @@ export default function RoundRobinHub() {
             >
               <div className="relative">
                 <div className="absolute inset-0 bg-primary/30 blur-2xl rounded-full scale-150" />
-                <img src={logo} alt="PULSE" className="h-20 lg:h-24 w-auto relative z-10" />
+                <Logo className="h-16 lg:h-20 w-auto text-secondary-foreground relative z-10" />
               </div>
             </motion.div>
 

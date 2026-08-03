@@ -9,7 +9,7 @@ import { useTournamentRealtime } from '@/hooks/useTournamentRealtime';
 import { LiveIndicator } from '@/components/tournament/LiveIndicator';
 import { AlertCircle, Trophy, Users, Link2 } from 'lucide-react';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import logo from '@/assets/pulse-logo-premium.svg';
+import { Logo } from "@/components/Logo";
 
 interface Team {
   id: string;
@@ -308,7 +308,7 @@ const TournamentTeamView = () => {
       <nav className="bg-secondary border-b border-secondary-foreground/10 shadow-sm">
         <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-5 flex items-center justify-between h-[72px]">
           <Link to={`/tournament/${eventId}/live`}>
-            <img src={logo} alt="PULSE Logo" className="h-[60px] sm:h-[75px] w-auto cursor-pointer hover:opacity-80 transition-opacity" />
+            <Logo className="h-[52px] sm:h-[65px] w-auto text-secondary-foreground hover:opacity-80 transition-opacity" />
           </Link>
           <ThemeToggle />
         </div>

@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Footer } from "@/components/Footer";
-import logo from "@/assets/pulse-logo-premium.svg";
+import { Logo } from "@/components/Logo";
 import { cn } from "@/lib/utils";
 
 /**
@@ -86,8 +86,8 @@ export const AdminLayout = ({ title, subtitle, children }: AdminLayoutProps) => 
         <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 h-16 flex items-center gap-2">
           {/* Left: back to /admin (subpages) or logo (dashboard) */}
           {isDashboard ? (
-            <Link to="/dashboard" className="flex items-center shrink-0">
-              <img src={logo} alt="PULSE" className="h-8 w-auto" />
+            <Link to="/dashboard" className="flex items-center shrink-0 text-white hover:opacity-80 transition-opacity">
+              <Logo className="h-8 w-auto" />
             </Link>
           ) : (
             <Button

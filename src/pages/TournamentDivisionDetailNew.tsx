@@ -19,7 +19,7 @@ import { BracketView } from "@/components/tournament/BracketView";
 import { ScoreEntryDialog } from "@/components/tournament/ScoreEntryDialog";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Footer } from "@/components/Footer";
-import logo from "@/assets/pulse-logo-premium.svg";
+import { Logo } from "@/components/Logo";
 
 interface Division {
   id: string;
@@ -338,8 +338,8 @@ export default function TournamentDivisionDetailNew() {
     <div className="min-h-screen bg-background">
       <nav className="bg-secondary border-b border-secondary-foreground/10 shadow-sm">
         <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-5 flex items-center justify-between h-[72px]">
-          <Link to={`/tournaments/${tournamentId}`}>
-            <img src={logo} alt="PULSE Logo" className="h-[60px] sm:h-[75px] w-auto cursor-pointer hover:opacity-80 transition-opacity" />
+          <Link to={`/tournaments/${tournamentId}`} className="text-secondary-foreground hover:opacity-80 transition-opacity">
+            <Logo className="h-[52px] sm:h-[65px] w-auto" />
           </Link>
           <ThemeToggle />
         </div>

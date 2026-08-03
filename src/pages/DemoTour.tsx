@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Eye } from "lucide-react";
-import logo from "@/assets/pulse-logo-premium.svg";
+import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Footer } from "@/components/Footer";
 import { PageSEO } from "@/components/seo/PageSEO";
@@ -26,12 +26,8 @@ const DemoTour = () => {
       {/* Navigation */}
       <nav className="sticky top-0 z-50 bg-secondary/95 backdrop-blur-sm border-b border-secondary-foreground/10 shadow-sm">
         <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-4 flex items-center justify-between">
-          <Link to="/">
-            <img 
-              src={logo} 
-              alt="PULSE Logo" 
-              className="h-[50px] sm:h-[60px] w-auto cursor-pointer hover:opacity-80 transition-opacity" 
-            />
+          <Link to="/" className="text-secondary-foreground hover:opacity-80 transition-opacity">
+            <Logo className="h-[44px] sm:h-[54px] w-auto" />
           </Link>
           <div className="flex items-center gap-2">
             <ThemeToggle />

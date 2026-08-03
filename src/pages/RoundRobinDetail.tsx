@@ -53,7 +53,6 @@ import { PlayerRoundRobinView } from "@/components/round-robin/PlayerRoundRobinV
 import { PageHeader } from "@/components/PageHeader";
 import { z } from "zod";
 import { cn } from "@/lib/utils";
-import logo from "@/assets/pulse-logo-premium.svg";
 import {
   callRrManageParticipant,
   friendlyRpcError,

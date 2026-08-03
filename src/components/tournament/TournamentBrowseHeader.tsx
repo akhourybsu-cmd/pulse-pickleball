@@ -2,7 +2,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { LogIn, LayoutDashboard } from "lucide-react";
-import logo from "@/assets/pulse-logo-premium.svg";
+import { Logo } from "@/components/Logo";
 
 interface TournamentBrowseHeaderProps {
   userId?: string | null;
@@ -16,12 +16,8 @@ export function TournamentBrowseHeader({ userId, activeTab = 'browse' }: Tournam
     <nav className="bg-secondary border-b border-secondary-foreground/10 shadow-sm">
       <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-4 flex items-center justify-between h-16 sm:h-[72px]">
         {/* Logo */}
-        <Link to={userId ? "/player/dashboard" : "/"}>
-          <img 
-            src={logo} 
-            alt="PULSE Logo" 
-            className="h-[50px] sm:h-[60px] w-auto cursor-pointer hover:opacity-80 transition-opacity" 
-          />
+        <Link to={userId ? "/player/dashboard" : "/"} className="text-secondary-foreground hover:opacity-80 transition-opacity">
+          <Logo className="h-[44px] sm:h-[54px] w-auto" />
         </Link>
 
         {/* Navigation Tabs - Desktop */}
