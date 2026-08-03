@@ -21,7 +21,8 @@ android {
         // CI passes VERSION_CODE (the GitHub run number) so every release
         // auto-increments without hand-editing this file; local builds default
         // to 1. Play requires a strictly higher versionCode per upload.
-        versionCode (System.getenv("VERSION_CODE") ?: "1").toInteger()
+        // (Single method call — avoids Groovy parsing `versionCode(x).toInteger()`.)
+        versionCode Integer.parseInt(System.getenv("VERSION_CODE") ?: "1")
         versionName "1.0.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
