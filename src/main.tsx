@@ -4,10 +4,14 @@ import { HelmetProvider } from "react-helmet-async";
 import App from "./App.tsx";
 import "./index.css";
 import { preventPinchZoom } from "./lib/preventZoom";
+import { initNativeApp } from "./lib/platform";
 
 // Native-app feel: block browser pinch-zoom gestures (viewport meta covers
 // touch pinch/focus-zoom; this covers desktop trackpad + Safari gestures).
 preventPinchZoom();
+
+// Native (iOS/Android) startup tweaks — no-op on web.
+void initNativeApp();
 
 // Register service worker for PWA
 const isPreviewHost =

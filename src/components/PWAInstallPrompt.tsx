@@ -5,6 +5,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Download, Bell, X, Share2, Plus } from 'lucide-react';
 import pulseLogo from '@/assets/pulse-logo-premium.svg';
+import { isNativeApp } from '@/lib/platform';
 
 export const PWAInstallPrompt = () => {
   const { isStandalone, isMobile, isIOS, canInstall, promptInstall } = usePWAInstall();
@@ -12,6 +13,10 @@ export const PWAInstallPrompt = () => {
   const [showIOSInstructions, setShowIOSInstructions] = useState(false);
 
   useEffect(() => {
+    // Inside the native (iOS/Android) shell the app is already "installed" —
+    // an "Add to Home Screen" prompt would be nonsensical there.
+    if (isNativeApp()) return;
+
     // Don't show if already installed
     if (isStandalone) {
       localStorage.setItem('pulse_pwa_installed', 'true');

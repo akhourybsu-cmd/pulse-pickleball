@@ -5,6 +5,7 @@ import { usePushSubscription } from "@/hooks/usePushSubscription";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { isNativeApp } from "@/lib/platform";
 
 const DEFAULT_DISMISS_KEY = "pulse.enablePushBanner.dismissedAt";
 const DISMISS_TTL_MS = 1000 * 60 * 60 * 24 * 7; // 7 days
@@ -41,6 +42,10 @@ export function EnablePushBanner({ dismissKey, contextLabel }: EnablePushBannerP
     }
   }, []);
 
+  // In the native app, web push isn't available in the WebView — the banner
+  // would just say "not supported", which is misleading. Hide it there;
+  // native push (FCM) would use its own affordance if/when added.
+  if (isNativeApp()) return null;
   if (dismissed) return null;
   if (state === "loading" || state === "enabled") return null;
 
