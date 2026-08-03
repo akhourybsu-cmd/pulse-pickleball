@@ -319,8 +319,14 @@ export default function Changelog() {
             <Card className="border-primary/20 bg-gradient-to-br from-primary/[0.06] to-primary/[0.02]">
               <CardContent className="py-6 text-center">
                 <p className="text-sm text-muted-foreground">
-                  Have suggestions or found a bug? Reach out to your PULSE
-                  administrator — we read every note.
+                  Have suggestions or found a bug? Email{" "}
+                  <a
+                    href="mailto:support@pulsepb.com"
+                    className="text-primary underline underline-offset-2 hover:text-primary/80"
+                  >
+                    support@pulsepb.com
+                  </a>{" "}
+                  — we read every note.
                 </p>
               </CardContent>
             </Card>
@@ -373,7 +379,14 @@ export default function Changelog() {
                   significant changes.
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Questions? Contact your PULSE administrator.
+                  Questions? Email{" "}
+                  <a
+                    href="mailto:support@pulsepb.com"
+                    className="text-primary underline underline-offset-2 hover:text-primary/80"
+                  >
+                    support@pulsepb.com
+                  </a>
+                  .
                 </p>
               </CardContent>
             </Card>

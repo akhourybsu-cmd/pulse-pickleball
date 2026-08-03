@@ -18,6 +18,7 @@ import {
   RefreshCw,
   Calendar,
   Heart,
+  Smartphone,
   type LucideIcon,
 } from "lucide-react";
 
@@ -35,7 +36,51 @@ export interface ChangelogEntry {
   categories: ChangeCategory[];
 }
 
+/**
+ * PULSE changelog — a public, honest record of every meaningful release.
+ *
+ * MAINTENANCE: add a new entry to the TOP of this array after every major or
+ * feature-level release, and bump APP_VERSION + LAST_UPDATED in
+ * src/config/version.ts to match the newest entry. Keep bullet points
+ * user-facing (what changed and why it matters), not internal implementation
+ * detail. The most recent entry renders as "Latest".
+ */
 export const changelog: ChangelogEntry[] = [
+  {
+    version: "2.4.0",
+    date: "2026-08-03",
+    type: "major",
+    title: "PULSE Goes Native & Gets Focused",
+    categories: [
+      {
+        name: "Native Mobile App",
+        icon: Smartphone,
+        changes: [
+          "PULSE is now a native app — install it from the Google Play Store (iOS coming soon)",
+          "Tuned for mobile: light status-bar icons over the brand header and a keyboard-aware layout so inputs never hide behind the keyboard",
+          "The Android back button now navigates within the app, with a 'press back again to exit' guard at the home screen",
+          "Launches instantly from a bundled build — no waiting on the network at cold start",
+        ],
+      },
+      {
+        name: "Streamlined & Focused",
+        icon: Sparkles,
+        changes: [
+          "Retired the venue management platform to focus PULSE on players, leagues, round robins, tournaments, and community",
+          "Creating a tournament no longer requires a venue — any organizer can spin one up",
+          "Smoother side-to-side navigation between the main tabs with cleaner, tighter page headers",
+        ],
+      },
+      {
+        name: "Privacy & Account",
+        icon: Shield,
+        changes: [
+          "Delete your account and data anytime, right inside the app",
+          "Privacy Policy and Terms of Service are now linked from the footer",
+        ],
+      },
+    ],
+  },
   {
     version: "2.3.0",
     date: "2026-06-18",
