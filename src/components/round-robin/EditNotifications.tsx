@@ -57,14 +57,14 @@ export function EditNotifications({
             if (newEntry.editor_id !== userId) {
               // Fetch the user's name
               const { data: profileData } = await supabase
-                .from("profiles")
-                .select("display_name, email")
+                .from("profiles_public")
+                .select("display_name, full_name")
                 .eq("id", newEntry.editor_id)
                 .single();
 
               const editorName =
                 profileData?.display_name ||
-                profileData?.email ||
+                profileData?.full_name ||
                 "An organizer";
 
               const actionLabels: Record<string, string> = {

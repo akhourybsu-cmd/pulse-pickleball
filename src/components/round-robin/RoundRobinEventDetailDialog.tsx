@@ -69,7 +69,7 @@ export function RoundRobinEventDetailDialog({
 
       // Fetch organizer
       const { data: organizer } = await supabase
-        .from("profiles")
+        .from("profiles_public")
         .select("full_name, display_name")
         .eq("id", event.organizer_id)
         .single();
