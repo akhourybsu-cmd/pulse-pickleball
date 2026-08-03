@@ -68,7 +68,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <PageSEO
-        title="PULSE — Play. Connect. Compete."
+        title="PULSE — Pickleball"
         description="The home for pickleball players. Track matches, earn your rating, find events, and connect with your local community."
         path="/"
       />
