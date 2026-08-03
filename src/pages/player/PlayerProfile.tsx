@@ -116,6 +116,12 @@ const ACCOUNT_LINKS: HubLink[] = [
     description: 'Manage what reaches you',
   },
   {
+    to: '/settings/security',
+    icon: Shield,
+    label: 'Security',
+    description: 'Two-factor, biometrics, linked accounts',
+  },
+  {
     to: '/profile/data-export',
     icon: Download,
     label: 'Export data',

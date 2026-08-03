@@ -132,7 +132,9 @@ const AdminAuditLog = lazy(() => import("./pages/AdminAuditLog"));
 const AdminTestAccounts = lazy(() => import("./pages/AdminTestAccounts"));
 const AdminBiometrics = lazy(() => import("./pages/AdminBiometrics"));
 const AdminSystemHealth = lazy(() => import("./pages/AdminSystemHealth"));
+const AdminPasswordReset = lazy(() => import("./pages/AdminPasswordReset"));
 const NotificationSettings = lazy(() => import("./pages/NotificationSettings"));
+const SecuritySettings = lazy(() => import("./pages/SecuritySettings"));
 const BlockedUsers = lazy(() => import("./pages/BlockedUsers"));
 
 // Player pages
@@ -475,6 +477,7 @@ const AppContent = () => {
           <Route path="/admin/test-accounts" element={<AdminGuard><AdminTestAccounts /></AdminGuard>} />
           <Route path="/admin/biometrics" element={<AdminGuard><AdminBiometrics /></AdminGuard>} />
           <Route path="/admin/system-health" element={<AdminGuard><AdminSystemHealth /></AdminGuard>} />
+          <Route path="/admin/password-reset" element={<AdminGuard><AdminPasswordReset /></AdminGuard>} />
           <Route path="/admin/manage/:sessionId" element={<AdminGuard><AdminManage /></AdminGuard>} />
           <Route path="/match/ticket/:ticketId" element={<MatchTicket />} />
           <Route path="/qr-checkin" element={<QRCheckIn />} />
@@ -483,6 +486,7 @@ const AppContent = () => {
               (the unified hub). The former <BrowseEvents /> route here was dead
               (shadowed by that earlier redirect) and has been removed. */}          <Route path="/profile/data-export" element={<DataExport />} />
           <Route path="/settings/notifications" element={<NotificationSettings />} />
+          <Route path="/settings/security" element={<AuthGuard><SecuritySettings /></AuthGuard>} />
           <Route path="/settings/blocked" element={<BlockedUsers />} />
           <Route path="/events" element={<Events />} />
           <Route path="/events/new" element={<NewEvent />} />
