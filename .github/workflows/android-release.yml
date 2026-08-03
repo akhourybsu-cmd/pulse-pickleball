@@ -32,6 +32,10 @@ jobs:
   release:
     name: Build signed AAB
     runs-on: ubuntu-latest
+    # Surface the Play service-account secret as an env var so the upload step
+    # can gate on it — the `secrets` context is NOT allowed in a step `if`.
+    env:
+      PLAY_SA: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
     steps:
       - uses: actions/checkout@v4
 
@@ -86,10 +90,10 @@ jobs:
           if-no-files-found: error
 
       - name: Upload to Google Play
-        if: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON != '' }}
+        if: ${{ env.PLAY_SA != '' }}
         uses: r0adkll/upload-google-play@v1
         with:
-          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          serviceAccountJsonPlainText: ${{ env.PLAY_SA }}
           packageName: com.pulsepb.app
           releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
           track: ${{ github.event.inputs.track }}
