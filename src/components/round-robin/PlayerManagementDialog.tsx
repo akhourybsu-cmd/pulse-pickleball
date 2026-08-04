@@ -54,6 +54,9 @@ interface PlayerManagementDialogProps {
   groupId?: string | null;
   /** Restrict picker results when the event has a gender format. */
   genderFilter?: "male" | "female";
+  /** When true, the event currently counts toward PULSE Ratings — used to warn
+   *  the host that adding a guest substitute will drop that eligibility. */
+  ratingEligible?: boolean;
   onAddPlayer: (input: { playerId: string | null; guestPlayerId?: string | null; guestName?: string }) => Promise<void>;
   onMarkInactive: (playerEventId: string) => Promise<void>;
   /**
@@ -78,6 +81,7 @@ export function PlayerManagementDialog({
   totalRounds,
   groupId,
   genderFilter,
+  ratingEligible = false,
   onAddPlayer,
   onMarkInactive,
   onSubstitute,
@@ -495,6 +499,16 @@ export function PlayerManagementDialog({
               />
             </div>
 
+
+            {substituteNewPick?.isGuest && ratingEligible && (
+              <Alert variant="destructive" className="border-amber-500/40 text-amber-900 dark:text-amber-200 [&>svg]:text-amber-600">
+                <Users className="w-4 h-4" />
+                <AlertDescription>
+                  Subbing in a guest will make this event no longer count toward PULSE Ratings.
+                  Past results stay in players' history.
+                </AlertDescription>
+              </Alert>
+            )}
 
             <div className="space-y-2">
               <Label>Scope</Label>

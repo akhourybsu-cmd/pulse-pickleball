@@ -47,6 +47,31 @@ export interface ChangelogEntry {
  */
 export const changelog: ChangelogEntry[] = [
   {
+    version: "2.5.0",
+    date: "2026-08-04",
+    type: "feature",
+    title: "Round Robin Roster Changes, Made Effortless",
+    categories: [
+      {
+        name: "Mid-Event Roster Changes",
+        icon: Users,
+        changes: [
+          "Pulling a player who's mid-match no longer dead-ends — you're asked, in plain language, what to do with their current game: keep the score, swap the sub in and restart, or discard the match",
+          "Removing or substituting a player now just works: if a simple swap can't cover the change, PULSE automatically re-optimizes the remaining rounds instead of failing",
+          "You're warned before subbing in a guest turns off PULSE Ratings for the event, so there are no surprises",
+          "Bigger, easier-to-tap score inputs when you're entering results courtside",
+        ],
+      },
+      {
+        name: "Faster Setup",
+        icon: Sparkles,
+        changes: [
+          "Creating a round robin is quicker — the Ratings and Sharing steps are now optional, with a one-tap skip straight to Review when the defaults suit you",
+        ],
+      },
+    ],
+  },
+  {
     version: "2.4.0",
     date: "2026-08-03",
     type: "major",

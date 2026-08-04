@@ -114,6 +114,36 @@ export function manageParticipant(
 }
 
 /**
+ * Apply a participant change, transparently escalating the regeneration
+ * strategy when the conservative "minimal" repair can't cover it.
+ *
+ * The organizer never picks a regen mode — they just want the roster change to
+ * take. We try "minimal" first (preserves the most of the existing schedule);
+ * if the planner reports the change can't be done minimally
+ * (`minimal_regen_not_possible` / `reoptimization_required`), we retry once
+ * with "reoptimize" — a full rewrite of the remaining reoptimizable rounds,
+ * which the Edge Function CAN compute end-to-end. Each `invoke` mints its own
+ * idempotency key (requestId is forced fresh here), so the retry never collides
+ * with the failed first attempt.
+ */
+export async function manageParticipantWithEscalation(
+  input: ManageParticipantInput,
+): Promise<OrchestrationResult> {
+  const first = await manageParticipant({
+    ...input,
+    regenMode: input.regenMode ?? "minimal",
+    requestId: undefined,
+  });
+  if (
+    !first.ok &&
+    (first.code === "minimal_regen_not_possible" || first.code === "reoptimization_required")
+  ) {
+    return manageParticipant({ ...input, regenMode: "reoptimize", requestId: undefined });
+  }
+  return first;
+}
+
+/**
  * Known application-level error codes the apply RPC / planner can return. Any
  * failure whose code is NOT in this set (a transport failure, or a PostgREST
  * "function not found" because the Slice 2b migration/function isn't deployed

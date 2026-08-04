@@ -59,10 +59,17 @@ import {
   type RRManageParticipantError,
 } from "@/lib/roundRobin/manageParticipantRpc";
 import {
-  manageParticipant,
+  manageParticipantWithEscalation,
   friendlyParticipantError,
   isInfrastructureError,
 } from "@/lib/roundRobin/participantOrchestration";
+import {
+  findParticipantLiveMatch,
+  type LiveMatchRow,
+  type ActiveMatchResolutionKind,
+} from "@/lib/roundRobin/activeMatch";
+import { ActiveMatchResolutionDialog } from "@/components/round-robin/ActiveMatchResolutionDialog";
+import { resolveRRParticipant } from "@/lib/roundRobin/resolveParticipant";
 import { countsTowardScore } from "@/lib/roundRobin/standings";
 import { suggestRounds } from "@/lib/roundRobinFairness";
 import { isPlatformAdmin } from "@/lib/permissions";
@@ -238,6 +245,19 @@ export default function RoundRobinDetail() {
   const [auditHistoryOpen, setAuditHistoryOpen] = useState(false);
   const [auditEntries, setAuditEntries] = useState<any[]>([]);
   const [inviteGuest, setInviteGuest] = useState<{ id: string; name: string; email: string | null } | null>(null);
+  // When an organizer pulls a player who is currently ON COURT in the live
+  // round, we collect an explicit decision about that in-progress game before
+  // touching the roster (the RPC requires it). `run` is the continuation that
+  // actually applies the change once the host picks a resolution.
+  const [activeMatchPrompt, setActiveMatchPrompt] = useState<{
+    participantName: string;
+    courtNo: number;
+    isScored: boolean;
+    team1Score: number | null;
+    team2Score: number | null;
+    run: (kind: ActiveMatchResolutionKind) => Promise<void>;
+  } | null>(null);
+  const [resolvingActiveMatch, setResolvingActiveMatch] = useState(false);
 
   useEffect(() => {
     fetchEventDetails();
@@ -1111,68 +1131,98 @@ export default function RoundRobinDetail() {
   const handleMarkInactive = async (playerEventId: string) => {
     if (!event || !userId) return;
     if (rrMutationInFlightRef.current) return;
-    rrMutationInFlightRef.current = true;
 
     const player = players.find(p => p.id === playerEventId);
-    if (!player) { rrMutationInFlightRef.current = false; return; }
+    if (!player) return;
 
     const reason = "Player removed from roster (past scores preserved)";
-    const onSuccess = async () => {
-      // The `active` boolean is kept in sync with `status` by a DB trigger, so
-      // all existing readers reflect the change immediately.
-      await fetchEventDetails();
-      toast.success("Player removed — they can rejoin later.");
-    };
 
-    // Slice 4: prefer the Slice 2b orchestration layer (snapshot → Slice 3
-    // planner → transactional apply) so auto/reoptimize resolves cases the SQL
-    // local-repair planner cannot. Returns true when handled (success or a
-    // surfaced application error); false when the layer is unavailable (edge
-    // function / migration not deployed) and we should fall back.
-    // Approved plan: default to "minimal" (conservative preserve_completed).
-    const handledByOrchestration = async (): Promise<boolean> => {
-      const res = await manageParticipant({
-        eventId: event.id,
-        participantId: playerEventId,
-        action: "remove",
-        reason,
-        regenMode: "minimal",
-      });
-      if (res.ok) {
-        await onSuccess();
-        return true;
-      }
-      if (isInfrastructureError(res)) return false;
-      // Genuine application error — surface it and throw so the dialog stays
-      // open for a retry (it only clears state after a resolved await).
-      toast.error(friendlyParticipantError(res));
-      await fetchEventDetails();
-      throw new Error(res.code ?? "remove_failed");
-    };
+    // Core apply path — optionally carrying the host's decision about a live
+    // match. Wrapped so both the direct case and the post-resolution case run
+    // the exact same orchestration + fallback logic.
+    const doRemove = async (activeMatchResolution?: { kind: ActiveMatchResolutionKind }) => {
+      if (rrMutationInFlightRef.current) return;
+      rrMutationInFlightRef.current = true;
 
-    try {
-      if (await handledByOrchestration()) return;
+      const onSuccess = async () => {
+        // The `active` boolean is kept in sync with `status` by a DB trigger,
+        // so all existing readers reflect the change immediately.
+        await fetchEventDetails();
+        toast.success("Player removed — they can rejoin later.");
+      };
 
-      // Fallback: direct transactional RPC (local-repair only).
-      try {
-        await callRrManageParticipant({
+      // Prefer the Slice 2b orchestration layer (snapshot → Slice 3 planner →
+      // transactional apply); it auto-escalates minimal→reoptimize so the
+      // change never dead-ends on "no simple swap covers this". Returns true
+      // when handled (success or a surfaced application error); false when the
+      // layer is unavailable and we should fall back to the direct RPC.
+      const handledByOrchestration = async (): Promise<boolean> => {
+        const res = await manageParticipantWithEscalation({
           eventId: event.id,
-          playerId: playerEventId,
+          participantId: playerEventId,
           action: "remove",
           reason,
-          regenMode: "minimal",
+          activeMatchResolution,
         });
-        await onSuccess();
-      } catch (error: unknown) {
-        const err = error as RRManageParticipantError;
-        toast.error(friendlyRpcError(err));
-        console.error("rr_manage_participant remove failed", err);
+        if (res.ok) {
+          await onSuccess();
+          return true;
+        }
+        if (isInfrastructureError(res)) return false;
+        toast.error(friendlyParticipantError(res));
         await fetchEventDetails();
-        throw err;
+        throw new Error(res.code ?? "remove_failed");
+      };
+
+      try {
+        if (await handledByOrchestration()) return;
+
+        // Fallback: direct transactional RPC (local-repair only).
+        try {
+          await callRrManageParticipant({
+            eventId: event.id,
+            playerId: playerEventId,
+            action: "remove",
+            reason,
+            regenMode: "minimal",
+            activeMatchResolution,
+          });
+          await onSuccess();
+        } catch (error: unknown) {
+          const err = error as RRManageParticipantError;
+          toast.error(friendlyRpcError(err));
+          console.error("rr_manage_participant remove failed", err);
+          await fetchEventDetails();
+          throw err;
+        }
+      } finally {
+        rrMutationInFlightRef.current = false;
       }
-    } finally {
-      rrMutationInFlightRef.current = false;
+    };
+
+    // If this player is on court in the live round, the RPC won't touch that
+    // match without an explicit decision — collect it first instead of letting
+    // the change fail with a "finish the match first" toast the host can't act
+    // on. When they aren't in a live match, apply immediately.
+    const live = findParticipantLiveMatch(
+      schedule as unknown as LiveMatchRow[],
+      event.current_round,
+      { playerId: player.player_id, guestPlayerId: player.guest_player_id },
+    );
+    if (live) {
+      setPlayerManagementOpen(false);
+      setActiveMatchPrompt({
+        participantName: resolveRRParticipant(player as never).name,
+        courtNo: live.match.court_no,
+        isScored: live.isScored,
+        team1Score: live.match.team1_score ?? null,
+        team2Score: live.match.team2_score ?? null,
+        run: (kind) => doRemove({ kind }),
+      });
+      return;
     }
+
+    await doRemove();
   };
 
 
@@ -1183,125 +1233,153 @@ export default function RoundRobinDetail() {
   ) => {
     if (!event || !userId) return;
     if (rrMutationInFlightRef.current) return;
-    rrMutationInFlightRef.current = true;
 
     // The original is identified by its roster row id, so this works for a
     // guest (no player_id) exactly as it does for a registered player.
     const original = players.find(p => p.id === originalRosterId);
-    if (!original) { rrMutationInFlightRef.current = false; return; }
+    if (!original) return;
 
+    if (scope === 'global') {
+      // Ensure the substitute is an active roster row, then run the
+      // transactional replace. Unlike a removal, a replace never needs an
+      // active-match decision: the planner simply swaps the outgoing seat to
+      // the substitute in the current round's unscored match (scored matches
+      // are preserved), so there's no dead-end to resolve — we apply directly.
+      const doReplace = async () => {
+        if (rrMutationInFlightRef.current) return;
+        rrMutationInFlightRef.current = true;
+        try {
+          // Slice 2b: route global substitution through rr_manage_participant.
+          //
+          // The RPC requires the substitute to already be an ACTIVE roster row,
+          // so we do a small pre-step here (outside the RPC) to guarantee that:
+          //   - if the replacement is already on the roster, reactivate them
+          //     via a status update (the DB trigger keeps `active` in sync);
+          //   - otherwise insert a fresh row (defaults to status='active').
+          // Only THEN do we invoke the transactional replace.
+          const existing = players.find(p =>
+            (replacement.playerId && p.player_id === replacement.playerId) ||
+            (replacement.guestPlayerId && p.guest_player_id === replacement.guestPlayerId)
+          );
+          const wasInactive = !!existing && !existing.active;
 
-    try {
-      if (scope === 'global') {
-        // Slice 2b: route global substitution through rr_manage_participant.
-        //
-        // The RPC requires the substitute to already be an ACTIVE roster row,
-        // so we do a small pre-step here (outside the RPC) to guarantee that:
-        //   - if the replacement is already on the roster, reactivate them
-        //     via a status update (the DB trigger keeps `active` in sync);
-        //   - otherwise insert a fresh row (defaults to status='active').
-        // Only THEN do we invoke the transactional replace, which mutates
-        // participant lifecycle state, plans the schedule repair, bumps
-        // schedule_version, and writes the audit row atomically.
-        const existing = players.find(p =>
-          (replacement.playerId && p.player_id === replacement.playerId) ||
-          (replacement.guestPlayerId && p.guest_player_id === replacement.guestPlayerId)
-        );
-        const wasInactive = !!existing && !existing.active;
-
-        let substituteRosterId: string;
-        if (existing) {
-          substituteRosterId = existing.id;
-          if (!existing.active) {
-            const { error: reErr } = await supabase
-              .from("round_robin_players")
-              .update({ status: 'active' as any })
-              .eq("id", existing.id);
-            if (reErr) throw reErr;
+          let substituteRosterId: string;
+          try {
+            if (existing) {
+              substituteRosterId = existing.id;
+              if (!existing.active) {
+                const { error: reErr } = await supabase
+                  .from("round_robin_players")
+                  .update({ status: 'active' as any })
+                  .eq("id", existing.id);
+                if (reErr) throw reErr;
+              }
+            } else {
+              const { data: inserted, error: insErr } = await supabase
+                .from("round_robin_players")
+                .insert({
+                  event_id: event.id,
+                  player_id: replacement.playerId,
+                  guest_player_id: replacement.guestPlayerId ?? null,
+                  guest_name: replacement.guestName ?? null,
+                  active: true,
+                } as never)
+                .select("id")
+                .single();
+              if (insErr || !inserted) throw insErr;
+              substituteRosterId = (inserted as any).id;
+            }
+          } catch (preErr: unknown) {
+            // Pre-step (roster insert/reactivate) failure — generic surface.
+            toast.error("Failed to substitute player");
+            console.error(preErr);
+            throw preErr;
           }
-        } else {
-          const { data: inserted, error: insErr } = await supabase
-            .from("round_robin_players")
-            .insert({
-              event_id: event.id,
-              player_id: replacement.playerId,
-              guest_player_id: replacement.guestPlayerId ?? null,
-              guest_name: replacement.guestName ?? null,
-              active: true,
-            } as never)
-            .select("id")
-            .single();
-          if (insErr || !inserted) throw insErr;
-          substituteRosterId = (inserted as any).id;
-        }
 
-        const replaceReason = wasInactive
-          ? "Player reactivated and substituted globally"
-          : "Global player substitution";
-        const successMsg = wasInactive
-          ? "Player reactivated and substituted."
-          : "Player substituted.";
+          const replaceReason = wasInactive
+            ? "Player reactivated and substituted globally"
+            : "Global player substitution";
+          const successMsg = wasInactive
+            ? "Player reactivated and substituted."
+            : "Player substituted.";
 
-        // Slice 4: prefer the orchestration layer (enables auto/reoptimize);
-        // fall back to the direct RPC when it isn't deployed. Returns true when
-        // handled (success or surfaced application error).
-        const handledByOrchestration = async (): Promise<boolean> => {
-          const res = await manageParticipant({
-            eventId: event.id,
-            participantId: originalRosterId,
-            action: "replace",
-            substituteId: substituteRosterId,
-            reason: replaceReason,
-            regenMode: "minimal",
+          // Prefer the orchestration layer (auto-escalates minimal→reoptimize);
+          // fall back to the direct RPC when it isn't deployed. Returns true
+          // when handled (success or surfaced application error).
+          const handledByOrchestration = async (): Promise<boolean> => {
+            const res = await manageParticipantWithEscalation({
+              eventId: event.id,
+              participantId: originalRosterId,
+              action: "replace",
+              substituteId: substituteRosterId,
+              reason: replaceReason,
+            });
+            if (res.ok) {
+              await fetchEventDetails();
+              toast.success(successMsg);
+              return true;
+            }
+            if (isInfrastructureError(res)) return false;
+            toast.error(friendlyParticipantError(res));
+            await fetchEventDetails();
+            throw new Error(res.code ?? "replace_failed");
+          };
 
-          });
-          if (res.ok) {
+          if (!(await handledByOrchestration())) {
+            // Fallback: direct transactional RPC (local-repair only).
+            try {
+              await callRrManageParticipant({
+                eventId: event.id,
+                playerId: originalRosterId,
+                action: "replace",
+                substituteParticipantId: substituteRosterId,
+                reason: replaceReason,
+                regenMode: "minimal",
+              });
+            } catch (rpcErr: unknown) {
+              const err = rpcErr as RRManageParticipantError;
+              toast.error(friendlyRpcError(err));
+              console.error("rr_manage_participant replace failed", err);
+              await fetchEventDetails();
+              throw err;
+            }
             await fetchEventDetails();
             toast.success(successMsg);
-            return true;
           }
-          if (isInfrastructureError(res)) return false;
-          toast.error(friendlyParticipantError(res));
-          await fetchEventDetails();
-          throw new Error(res.code ?? "replace_failed");
-        };
-
-        if (!(await handledByOrchestration())) {
-          // Fallback: direct transactional RPC (local-repair only).
-          try {
-            await callRrManageParticipant({
-              eventId: event.id,
-              playerId: originalRosterId,
-              action: "replace",
-              substituteParticipantId: substituteRosterId,
-              reason: replaceReason,
-              regenMode: "minimal",
-            });
-          } catch (rpcErr: unknown) {
-            const err = rpcErr as RRManageParticipantError;
-            toast.error(friendlyRpcError(err));
-            console.error("rr_manage_participant replace failed", err);
-            await fetchEventDetails();
-            throw err;
-          }
-          await fetchEventDetails();
-          toast.success(successMsg);
+        } finally {
+          rrMutationInFlightRef.current = false;
         }
-      } else {
-        // Single-round substitution: patch the original's seat in each
-        // unscored match of that round. Guest-aware — a seat holds EITHER a
-        // player_id OR a guest_id (DB XOR constraint), so we always set both
-        // columns (one to the replacement id, the other to null).
+      };
+
+      await doReplace();
+      return;
+    }
+
+    // Single-round substitution: patch the original's seat in each unscored,
+    // still-canonical match of that round. Guest-aware — a seat holds EITHER a
+    // player_id OR a guest_id (DB XOR constraint), so we always set both columns
+    // (one to the replacement id, the other to null).
+    rrMutationInFlightRef.current = true;
+    try {
+      {
         const origPid = original.player_id;
         const origGid = original.guest_player_id;
         const seats = ['a1', 'a2', 'b1', 'b2'] as const;
 
-        const roundMatches = schedule.filter(s =>
-          s.round_no === scope &&
-          !s.is_bye &&
-          s.team1_score === null &&
-          s.team2_score === null
-        );
+        // Only touch live, unscored rows — never a voided or superseded row
+        // (those are historical records the standings-eligibility invariant
+        // relies on staying frozen).
+        const roundMatches = schedule.filter((s) => {
+          const row = s as unknown as LiveMatchRow;
+          return (
+            s.round_no === scope &&
+            !s.is_bye &&
+            s.team1_score === null &&
+            s.team2_score === null &&
+            row.voided_at == null &&
+            row.superseded_by_schedule_id == null
+          );
+        });
 
         const seatUpdates = roundMatches
           .map((match) => {
@@ -2723,10 +2801,39 @@ export default function RoundRobinDetail() {
             totalRounds={event.num_rounds}
             groupId={event.group_id}
             genderFilter={event.format === "male" ? "male" : event.format === "female" ? "female" : undefined}
+            ratingEligible={event.rating_eligible}
             onAddPlayer={handleAddPlayer}
             onMarkInactive={handleMarkInactive}
             onSubstitute={handleSubstitute}
           />
+
+          {activeMatchPrompt && (
+            <ActiveMatchResolutionDialog
+              open={!!activeMatchPrompt}
+              onOpenChange={(o) => {
+                if (!o && !resolvingActiveMatch) setActiveMatchPrompt(null);
+              }}
+              participantName={activeMatchPrompt.participantName}
+              courtNo={activeMatchPrompt.courtNo}
+              isScored={activeMatchPrompt.isScored}
+              team1Score={activeMatchPrompt.team1Score}
+              team2Score={activeMatchPrompt.team2Score}
+              loading={resolvingActiveMatch}
+              onResolve={async (kind) => {
+                setResolvingActiveMatch(true);
+                try {
+                  await activeMatchPrompt.run(kind);
+                  setActiveMatchPrompt(null);
+                } catch {
+                  // The run() path already surfaced a specific toast; keep the
+                  // dialog open so the host can pick a different resolution or
+                  // cancel rather than losing their place.
+                } finally {
+                  setResolvingActiveMatch(false);
+                }
+              }}
+            />
+          )}
 
           <CourtsRoundsDialog
             open={courtsRoundsOpen}
