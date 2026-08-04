@@ -52,9 +52,12 @@ export function ConfirmNameDialog({
     try {
       const { error } = await supabase
         .from("profiles")
+        // full_name is read by ProfileHero / match displays — keep it in
+        // sync with the first/last we're locking in.
         .update({
           first_name: firstName.trim(),
           last_name: lastName.trim(),
+          full_name: `${firstName.trim()} ${lastName.trim()}`,
           name_locked: true,
         })
         .eq("id", userId);

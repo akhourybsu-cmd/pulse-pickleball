@@ -69,9 +69,11 @@ BEGIN
   IF OLD.name_locked IS TRUE THEN
     -- Silently preserve the frozen identity so unrelated profile updates
     -- (display_name, avatar, location, ...) still succeed, and prevent a
-    -- client from flipping the lock back off.
+    -- client from flipping the lock back off. full_name is frozen too so
+    -- it can't drift away from first/last.
     NEW.first_name := OLD.first_name;
     NEW.last_name  := OLD.last_name;
+    NEW.full_name  := OLD.full_name;
     NEW.name_locked := TRUE;
   END IF;
 

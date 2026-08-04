@@ -31,6 +31,7 @@ interface ProfileData {
   display_name: string | null;
   first_name: string | null;
   last_name: string | null;
+  full_name: string | null;
   name_locked: boolean;
   avatar_url: string | null;
   town: string | null;
@@ -80,6 +81,7 @@ const EditProfile = () => {
     display_name: null,
     first_name: null,
     last_name: null,
+    full_name: null,
     name_locked: false,
     avatar_url: null,
     town: null,
@@ -127,6 +129,7 @@ const EditProfile = () => {
         display_name: profileData.display_name,
         first_name: profileData.first_name,
         last_name: profileData.last_name,
+        full_name: profileData.full_name,
         name_locked: (profileData as Record<string, unknown>).name_locked as boolean ?? false,
         avatar_url: profileData.avatar_url,
         town: profileData.town,
@@ -280,7 +283,14 @@ const EditProfile = () => {
     try {
       const { error } = await supabase
         .from("profiles")
-        .update({ first_name: first, last_name: last, name_locked: true })
+        // Keep full_name (read by ProfileHero, match displays) in sync with
+        // the canonical first/last we're locking in.
+        .update({
+          first_name: first,
+          last_name: last,
+          full_name: `${first} ${last}`,
+          name_locked: true,
+        })
         .eq("id", user.id);
       if (error) throw error;
       setFormData((prev) => ({
@@ -451,6 +461,9 @@ const EditProfile = () => {
                         : {
                             first_name: formData.first_name,
                             last_name: formData.last_name,
+                            full_name: `${formData.first_name?.trim() ?? ""} ${
+                              formData.last_name?.trim() ?? ""
+                            }`.trim(),
                             display_name: formData.display_name,
                           }
                     )
