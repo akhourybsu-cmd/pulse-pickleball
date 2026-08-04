@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { UserCog, User, MapPin, Trophy, Gamepad2, Bell, KeyRound, ChevronRight, Loader2 } from "lucide-react";
+import { UserCog, User, MapPin, Trophy, Gamepad2, Bell, KeyRound, ChevronRight, Loader2, Lock, ShieldCheck } from "lucide-react";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import {
   Accordion,
@@ -31,6 +31,7 @@ interface ProfileData {
   display_name: string | null;
   first_name: string | null;
   last_name: string | null;
+  name_locked: boolean;
   avatar_url: string | null;
   town: string | null;
   state: string | null;
@@ -63,6 +64,7 @@ const EditProfile = () => {
   const [uploading, setUploading] = useState(false);
   const [resettingPassword, setResettingPassword] = useState(false);
   const [savingSection, setSavingSection] = useState<SectionKey | null>(null);
+  const [confirmingName, setConfirmingName] = useState(false);
   
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -78,6 +80,7 @@ const EditProfile = () => {
     display_name: null,
     first_name: null,
     last_name: null,
+    name_locked: false,
     avatar_url: null,
     town: null,
     state: null,
@@ -124,6 +127,7 @@ const EditProfile = () => {
         display_name: profileData.display_name,
         first_name: profileData.first_name,
         last_name: profileData.last_name,
+        name_locked: (profileData as Record<string, unknown>).name_locked as boolean ?? false,
         avatar_url: profileData.avatar_url,
         town: profileData.town,
         state: profileData.state,
@@ -237,7 +241,10 @@ const EditProfile = () => {
   const saveSection = async (section: SectionKey, payload: Partial<ProfileData>) => {
     if (!user?.id) return;
 
-    if (section === "identity") {
+    // First/last are only in the payload while the name is still editable
+    // (unlocked). Once locked, the identity save carries display_name only,
+    // so skip the required-name check in that case.
+    if (section === "identity" && !formData.name_locked) {
       if (!payload.first_name?.toString().trim() || !payload.last_name?.toString().trim()) {
         toast.error("First and last name are required");
         return;
@@ -254,6 +261,40 @@ const EditProfile = () => {
       toast.error("Failed to save");
     } finally {
       setSavingSection(null);
+    }
+  };
+
+  // Existing users lock in their name once, deliberately. This is the only
+  // client path that flips name_locked false -> true; the DB guard freezes
+  // first/last from that point on.
+  const confirmName = async () => {
+    if (!user?.id) return;
+    const first = formData.first_name?.trim();
+    const last = formData.last_name?.trim();
+    if (!first || !last) {
+      toast.error("Enter your first and last name before locking it in");
+      return;
+    }
+
+    setConfirmingName(true);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ first_name: first, last_name: last, name_locked: true })
+        .eq("id", user.id);
+      if (error) throw error;
+      setFormData((prev) => ({
+        ...prev,
+        first_name: first,
+        last_name: last,
+        name_locked: true,
+      }));
+      toast.success("Name locked in");
+    } catch (error) {
+      console.error("Error confirming name:", error);
+      toast.error("Failed to lock in name");
+    } finally {
+      setConfirmingName(false);
     }
   };
 
@@ -356,16 +397,63 @@ const EditProfile = () => {
                 onFileUpload={handleFileUpload}
                 onRemoveAvatar={handleRemoveAvatar}
                 uploading={uploading}
+                nameLocked={formData.name_locked}
               />
+
+              {!formData.name_locked && (
+                <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-3">
+                  <div className="flex items-start gap-2">
+                    <ShieldCheck className="h-4 w-4 mt-0.5 shrink-0 text-primary" aria-hidden />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">Confirm your name</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        This is your name of record for leagues and tournaments. Once you
+                        lock it in, it can't be changed here — so make sure it's spelled
+                        correctly. Your <span className="font-medium">display name</span> stays
+                        editable.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex justify-end">
+                    <Button
+                      size="sm"
+                      onClick={confirmName}
+                      disabled={
+                        confirmingName ||
+                        !formData.first_name?.trim() ||
+                        !formData.last_name?.trim()
+                      }
+                    >
+                      {confirmingName ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Locking in...
+                        </>
+                      ) : (
+                        <>
+                          <Lock className="w-4 h-4 mr-2" />
+                          Confirm &amp; lock in name
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               <div className="flex justify-end">
                 <SectionSaveButton
                   section="identity"
                   onClick={() =>
-                    saveSection("identity", {
-                      first_name: formData.first_name,
-                      last_name: formData.last_name,
-                      display_name: formData.display_name,
-                    })
+                    saveSection(
+                      "identity",
+                      formData.name_locked
+                        ? { display_name: formData.display_name }
+                        : {
+                            first_name: formData.first_name,
+                            last_name: formData.last_name,
+                            display_name: formData.display_name,
+                          }
+                    )
                   }
                 />
               </div>

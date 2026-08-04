@@ -4867,6 +4867,7 @@ export type Database = {
           location_updated_at: string | null
           losses: number | null
           mfa_method: string | null
+          name_locked: boolean
           notify_badges_email: boolean | null
           notify_badges_push: boolean | null
           notify_badges_sms: boolean | null
@@ -4928,6 +4929,7 @@ export type Database = {
           location_updated_at?: string | null
           losses?: number | null
           mfa_method?: string | null
+          name_locked?: boolean
           notify_badges_email?: boolean | null
           notify_badges_push?: boolean | null
           notify_badges_sms?: boolean | null
@@ -4989,6 +4991,7 @@ export type Database = {
           location_updated_at?: string | null
           losses?: number | null
           mfa_method?: string | null
+          name_locked?: boolean
           notify_badges_email?: boolean | null
           notify_badges_push?: boolean | null
           notify_badges_sms?: boolean | null
