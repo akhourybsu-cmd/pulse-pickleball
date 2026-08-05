@@ -23,11 +23,9 @@ import {
   Shield,
   CalendarDays,
   ListOrdered,
-  Trophy,
   Gauge,
   Trash2,
 } from 'lucide-react';
-import { useLeagueEntitlement } from '@/hooks/useLeagueEntitlement';
 import { isSkillAssessmentEnabled } from '@/lib/skill/featureFlag';
 import { cn } from '@/lib/utils';
 import { SectionHeader } from '@/components/layout/SectionHeader';
@@ -68,17 +66,9 @@ const ACTIVITY_LINKS: HubLink[] = [
   },
 ];
 
-/**
- * Leagues row is composed at render time so the entitlement hook
- * can gate it. If the player isn't entitled we don't want a dead
- * link to /player/leagues in the Activity group.
- */
-const LEAGUES_LINK: HubLink = {
-  to: '/player/leagues',
-  icon: Trophy,
-  label: 'Leagues',
-  description: 'Standings, schedule, and teammates',
-};
+// Leagues is reached from the persistent bottom-nav "Leagues" tab, so it is
+// intentionally NOT duplicated as an Activity row here (one persistent entry
+// point, no conflicting surfaces).
 
 const COMMUNITY_LINKS: HubLink[] = [
   {
@@ -162,14 +152,11 @@ export default function PlayerProfile() {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const { entitled: leagueEntitled } = useLeagueEntitlement();
   const accountLinks = isSkillAssessmentEnabled()
     ? [SKILL_ASSESSMENT_LINK, ...ACCOUNT_LINKS]
     : ACCOUNT_LINKS;
 
-  const activityLinks = leagueEntitled
-    ? [...ACTIVITY_LINKS, LEAGUES_LINK]
-    : ACTIVITY_LINKS;
+  const activityLinks = ACTIVITY_LINKS;
 
   useEffect(() => {
     let cancelled = false;
@@ -323,7 +310,7 @@ export default function PlayerProfile() {
         </div>
 
 
-        {/* Activity group — Leagues row appears when entitled. */}
+        {/* Activity group. Leagues lives in the bottom-nav Leagues tab, not here. */}
         <div>
           <SectionHeader label="Activity" />
           {renderLinkGroup(activityLinks, 180)}

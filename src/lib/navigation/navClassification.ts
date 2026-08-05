@@ -4,9 +4,13 @@
  * One place decides what KIND of transition a route change is, so the shell
  * content wrapper never has to infer behavior from ad-hoc string comparisons
  * (and never treats "a longer URL" as automatically "deeper"). The five
- * primary tabs move laterally; genuine detail routes push forward/back; and
- * everything owned by another transition (Community/League outlets) or by an
- * immersive full-screen shell is explicitly left alone.
+ * lateral-slide primary views move laterally; genuine detail routes push
+ * forward/back; and everything owned by another transition (Community/League
+ * outlets) or by an immersive full-screen shell is explicitly left alone.
+ *
+ * Note: the bottom nav shows six tabs, but Leagues is NOT one of these five
+ * lateral views — its subtree is "league" kind and keeps its own outlet. The
+ * nav bar highlights it (primaryTabs); this module owns its motion (none).
  *
  * Pure + framework-free so every rule is unit-testable in the node env.
  */
@@ -177,5 +181,8 @@ export function routeAnnouncement(pathname: string): string | null {
     const i = primaryTabIndex(pathname);
     return i >= 0 ? PRIMARY_TABS[i].label : null;
   }
+  // Leagues is a nav tab whose subtree keeps its own outlet ("league" kind),
+  // so announce the tap like any other tab lands on its root.
+  if (kind === "league") return pathname === "/player/leagues" ? "Leagues" : null;
   return DETAIL_LABELS[pathname] ?? null;
 }

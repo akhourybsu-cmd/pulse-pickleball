@@ -13,22 +13,24 @@ describe("primaryTabs — ownership", () => {
   it("maps each tab root to its position", () => {
     expect(idx("/player/dashboard")).toBe(0);
     expect(idx("/player/matches")).toBe(1);
-    expect(idx("/player/social")).toBe(2);
-    expect(idx("/player/community")).toBe(3);
-    expect(idx("/player/profile")).toBe(4);
+    expect(idx("/player/leagues")).toBe(2);
+    expect(idx("/player/social")).toBe(3);
+    expect(idx("/player/community")).toBe(4);
+    expect(idx("/player/profile")).toBe(5);
   });
 
   it("Social owns messages + friends aliases", () => {
-    expect(idx("/player/friends")).toBe(2);
+    expect(idx("/player/friends")).toBe(3);
     expect(idx("/player/friends?tab=requests")).toBe(-1); // query is not part of pathname
-    expect(idx("/player/messages")).toBe(2);
-    expect(idx("/player/messages/abc-123")).toBe(2);
+    expect(idx("/player/messages")).toBe(3);
+    expect(idx("/player/messages/abc-123")).toBe(3);
   });
 
   it("tabs own their subtrees (segment-aware)", () => {
     expect(idx("/player/matches/new")).toBe(1);
-    expect(idx("/player/community/group/g1")).toBe(3);
-    expect(idx("/player/profile/edit")).toBe(4);
+    expect(idx("/player/leagues/l1/manage")).toBe(2);
+    expect(idx("/player/community/group/g1")).toBe(4);
+    expect(idx("/player/profile/edit")).toBe(5);
   });
 
   it("does not prefix-match across segment boundaries", () => {
@@ -38,8 +40,6 @@ describe("primaryTabs — ownership", () => {
 
   it("returns -1 for non-primary player routes", () => {
     for (const p of [
-      "/player/leagues",
-      "/player/leagues/l1/manage",
       "/player/play",
       "/player/pulse",
       "/player/round-robins",
@@ -50,15 +50,23 @@ describe("primaryTabs — ownership", () => {
     }
   });
 
+  it("Leagues is a nav tab (highlight) even though its subtree keeps its own outlet", () => {
+    // primaryTabs owns the highlight; navClassification keeps /player/leagues
+    // in the "league" transition kind. Both facts hold at once by design.
+    expect(idx("/player/leagues")).toBe(2);
+    expect(primaryTabPath("/player/leagues/l1")).toBe("/player/leagues");
+    expect(isPrimaryTabPath("/player/leagues")).toBe(true);
+  });
+
   it("primaryTabPath returns the owning root or null", () => {
     expect(primaryTabPath("/player/messages/x")).toBe("/player/social");
     expect(primaryTabPath("/player/community/group/g")).toBe("/player/community");
-    expect(primaryTabPath("/player/leagues")).toBeNull();
+    expect(primaryTabPath("/player/play")).toBeNull();
   });
 
   it("isPrimaryTabPath predicate", () => {
     expect(isPrimaryTabPath("/player/dashboard")).toBe(true);
-    expect(isPrimaryTabPath("/player/leagues")).toBe(false);
+    expect(isPrimaryTabPath("/player/play")).toBe(false);
   });
 });
 
@@ -91,7 +99,7 @@ describe("primaryTabs — slide direction (acceptance criteria)", () => {
   });
 
   it("navigating from a non-primary route yields no direction", () => {
-    expect(slideDirection(idx("/player/leagues"), idx("/player/matches"))).toBe(0);
+    expect(slideDirection(idx("/player/play"), idx("/player/matches"))).toBe(0);
   });
 
   it("direction is consistent across every ordered pair", () => {

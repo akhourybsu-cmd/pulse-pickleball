@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo, Suspense } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Trophy, Users, User, Plus, MessageSquare, MessageCircle } from 'lucide-react';
+import { Home, Trophy, Swords, Users, User, Plus, MessageSquare, MessageCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { NotificationBell } from '@/components/NotificationBell';
@@ -8,8 +8,9 @@ import { NotificationCenter } from '@/components/notifications/NotificationCente
 import { useNotifications } from '@/hooks/useNotifications';
 import { useDirectMessages } from '@/hooks/useDirectMessages';
 import { ShellContentTransition } from '@/components/layout/ShellContentTransition';
-import { PRIMARY_TABS, primaryTabIndex } from '@/lib/navigation/primaryTabs';
+import { PRIMARY_TABS, primaryTabPath } from '@/lib/navigation/primaryTabs';
 import { routeAnnouncement } from '@/lib/navigation/navClassification';
+import { useLeagueEntitlement } from '@/hooks/useLeagueEntitlement';
 import { Skeleton } from '@/components/ui/skeleton';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -22,24 +23,22 @@ import { FriendsPresenceProvider } from '@/contexts/FriendsPresenceContext';
 // Player-first bottom nav. Tab ORDER + labels come from the single
 // authoritative definition (src/lib/navigation/primaryTabs) so the nav and
 // the horizontal page transition can never disagree about which tab is where.
-// Only the icon (a pure view concern) is mapped locally.
+// Only the icon (a pure view concern) is mapped locally. Leagues gets Swords
+// (head-to-head league play) so it reads distinctly from Matches' Trophy.
 const TAB_ICONS: Record<string, typeof Home> = {
   '/player/dashboard': Home,
   '/player/matches': Trophy,
+  '/player/leagues': Swords,
   '/player/social': MessageCircle,
   '/player/community': Users,
   '/player/profile': User,
 };
-const navItems = PRIMARY_TABS.map((t) => ({
-  to: t.path,
-  label: t.label,
-  icon: TAB_ICONS[t.path] ?? Home,
-}));
 
 // Prefetch map for route preloading (hover on desktop, idle on mobile).
 const prefetchMap: Record<string, () => Promise<unknown>> = {
   '/player/dashboard': () => import('@/pages/player/PlayerDashboard'),
   '/player/matches': () => import('@/pages/MatchHistory'),
+  '/player/leagues': () => import('@/pages/player/PlayerLeagues'),
   '/player/social': () => import('@/pages/player/Social'),
   '/player/community': () => import('@/pages/player/Community'),
   '/player/profile': () => import('@/pages/player/PlayerProfile'),
@@ -91,10 +90,27 @@ export function PlayerShell() {
     location.pathname.includes('/player/messages/') ||
     location.pathname === '/player/matches/new';
 
-  // Active tab index for the sliding indicator + per-item active state —
-  // from the shared definition, so the highlight, the indicator, and the
-  // slide direction all agree (incl. the Social→friends/messages aliases).
-  const activeIndex = primaryTabIndex(location.pathname);
+  // Leagues is a nav tab but stays entitlement-gated (the hook is the ONE
+  // place the paid gate flips). When a player isn't entitled we drop it from
+  // the rendered bar entirely, so nav and access flip together.
+  const { entitled: leagueEntitled } = useLeagueEntitlement();
+  const navItems = useMemo(
+    () =>
+      PRIMARY_TABS
+        .filter((t) => t.path !== '/player/leagues' || leagueEntitled)
+        .map((t) => ({ to: t.path, label: t.label, icon: TAB_ICONS[t.path] ?? Home })),
+    [leagueEntitled],
+  );
+
+  // Active tab index for the sliding indicator + per-item active state.
+  // Resolve the owning tab root from the shared definition (incl. the
+  // Social→friends/messages aliases and the Leagues subtree), then locate it
+  // within the RENDERED list — so the highlight and indicator stay correct
+  // whether the bar shows 5 tabs or 6.
+  const activeRootPath = primaryTabPath(location.pathname);
+  const activeIndex = activeRootPath
+    ? navItems.findIndex((i) => i.to === activeRootPath)
+    : -1;
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -150,8 +166,8 @@ export function PlayerShell() {
 
   // Warm every primary tab's code chunk once, at idle, so tapping a tab on
   // mobile (no hover to trigger prefetch) can animate immediately instead of
-  // suspending on a cold chunk. Bounded to the five known tabs; failures are
-  // ignored (the route will still lazy-load normally).
+  // suspending on a cold chunk. Bounded to the known primary-tab chunks;
+  // failures are ignored (the route will still lazy-load normally).
   useEffect(() => {
     const warm = () => Object.values(prefetchMap).forEach((fn) => fn().catch(() => {}));
     const w = window as unknown as {
@@ -314,7 +330,11 @@ export function PlayerShell() {
                   to={item.to}
                   onMouseEnter={() => handlePrefetch(item.to)}
                   className={cn(
-                    'flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg min-w-[56px]',
+                    // flex-1 + min-w-0 so N tabs split the row into equal
+                    // columns that never overflow (the sliding indicator's
+                    // 100/N math assumes equal widths) — matters now that a
+                    // sixth tab (Leagues) shares a small phone's width.
+                    'flex flex-1 min-w-0 flex-col items-center gap-0.5 px-1 py-1.5 rounded-lg',
                     'transition-all duration-[240ms] ease-out',
                     isActive
                       ? 'text-primary'
@@ -333,7 +353,10 @@ export function PlayerShell() {
                     )}
                   </span>
                   <span className={cn(
-                    'nav-label',
+                    // Explicit 11px + truncate (not .nav-label's 12px): keeps
+                    // the longest label ("Community") inside its equal column
+                    // at six tabs on a small phone instead of overflowing.
+                    'block max-w-full truncate text-[11px] tracking-tight',
                     isActive ? 'text-primary font-semibold' : 'font-medium'
                   )}>{item.label}</span>
                 </NavLink>
@@ -353,7 +376,9 @@ export function PlayerShell() {
               style={{
                 width: '48px',
                 marginLeft: '-24px',
-                transform: `translateX(${(activeIndex - Math.floor(navItems.length / 2)) * 116}px)`,
+                // (n-1)/2 centers the stride for any tab count (identical to the
+                // old floor(n/2) for the previous odd 5, correct for 6).
+                transform: `translateX(${(activeIndex - (navItems.length - 1) / 2) * 116}px)`,
               }}
             />
             <div className="flex items-center justify-center gap-6 py-2.5">

@@ -21,10 +21,20 @@ export interface PrimaryTab {
  * Ordered left → right exactly as they appear in the bottom navigation.
  * The index in this array IS the tab's horizontal position, which is what
  * the slide direction is derived from.
+ *
+ * NOTE on Leagues: it is a nav tab (so the bar highlights it and it's one
+ * tap away) but its subtree keeps its OWN transition outlet — navClassification
+ * classifies /player/leagues as "league", not "primary", so it never joins the
+ * lateral tab-slide domain. That split is intentional: this module owns the
+ * highlight; the league outlet owns the motion. The Leagues tab is also
+ * entitlement-gated at render time (PlayerShell filters it out when a player
+ * isn't league-entitled) — this array stays canonical so deep links still
+ * resolve the tab regardless.
  */
 export const PRIMARY_TABS: readonly PrimaryTab[] = [
   { path: "/player/dashboard", label: "Home" },
   { path: "/player/matches", label: "Matches" },
+  { path: "/player/leagues", label: "Leagues" },
   { path: "/player/social", label: "Social" },
   { path: "/player/community", label: "Community" },
   { path: "/player/profile", label: "Profile" },
