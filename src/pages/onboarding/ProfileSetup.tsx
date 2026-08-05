@@ -25,7 +25,7 @@ const ProfileSetupPage = () => {
   }, [navigate]);
 
   const handleComplete = () => {
-    navigate("/onboarding/first-match");
+    navigate("/onboarding/how-it-works");
   };
 
   const handleSkip = () => {

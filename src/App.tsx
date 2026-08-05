@@ -164,7 +164,6 @@ const PlayersLanding = lazy(() => import("./pages/PlayersLanding"));
 
 // Onboarding pages
 const OnboardingProfileSetup = lazy(() => import("./pages/onboarding/ProfileSetup"));
-const OnboardingFirstMatch = lazy(() => import("./pages/onboarding/FirstMatch"));
 const OnboardingRatingReveal = lazy(() => import("./pages/onboarding/RatingReveal"));
 const OnboardingComplete = lazy(() => import("./pages/onboarding/Complete"));
 
@@ -332,16 +331,19 @@ const AppContent = () => {
           <Route path="/events/browse" element={<RedirectWithParams to="/play" />} />
           <Route path="/tournaments/browse" element={<RedirectWithParams to="/play" />} />
           
-          {/* Onboarding routes - require auth but allow onboarding state */}
+          {/* Onboarding routes - require auth but allow onboarding state.
+              Flow (3 steps): profile → how-it-works → complete. The match step
+              was decoupled (recording a match is now a post-onboarding action),
+              so the legacy first-match/rating paths redirect into the new flow
+              to keep any in-flight links working. */}
           <Route path="/onboarding/profile" element={
             <AuthGuard allowOnboarding><OnboardingProfileSetup /></AuthGuard>
           } />
-          <Route path="/onboarding/first-match" element={
-            <AuthGuard allowOnboarding><OnboardingFirstMatch /></AuthGuard>
-          } />
-          <Route path="/onboarding/rating" element={
+          <Route path="/onboarding/how-it-works" element={
             <AuthGuard allowOnboarding><OnboardingRatingReveal /></AuthGuard>
           } />
+          <Route path="/onboarding/first-match" element={<Navigate to="/onboarding/how-it-works" replace />} />
+          <Route path="/onboarding/rating" element={<Navigate to="/onboarding/how-it-works" replace />} />
           <Route path="/onboarding/complete" element={
             <AuthGuard allowOnboarding><OnboardingComplete /></AuthGuard>
           } />

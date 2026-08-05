@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { OnboardingLayout } from "./OnboardingLayout";
-import { Calendar, Users, BarChart3, ChevronRight, Rocket } from "lucide-react";
+import { Calendar, Users, Swords, ChevronRight, Rocket } from "lucide-react";
 
 interface OnboardingCompleteProps {
   onComplete: () => void;
@@ -11,32 +11,35 @@ interface OnboardingCompleteProps {
 export const OnboardingComplete = ({ onComplete }: OnboardingCompleteProps) => {
   const navigate = useNavigate();
 
+  // Lead with recording a match — the decoupled first action that makes the
+  // rating real. The Home "Getting started" checklist mirrors these so nothing
+  // is lost if they tap "Go to Home" first.
   const nextSteps = [
     {
+      icon: Swords,
+      title: "Record your first match",
+      description: "Log a game to make your rating real",
+      action: () => navigate('/player/matches/new'),
+      actionLabel: "Record",
+    },
+    {
       icon: Calendar,
-      title: "Find Events",
-      description: "Round robins, tournaments nearby",
-      action: () => navigate('/events'),
+      title: "Find play nearby",
+      description: "Round robins, open play, leagues",
+      action: () => navigate('/player/play'),
       actionLabel: "Explore",
     },
     {
       icon: Users,
-      title: "Join a Group",
-      description: "Connect with local players",
-      action: () => navigate('/player/community'),
+      title: "Connect with players",
+      description: "Add friends and find your level",
+      action: () => navigate('/player/social'),
       actionLabel: "Browse",
-    },
-    {
-      icon: BarChart3,
-      title: "View Your Stats",
-      description: "Match history, court performance",
-      action: () => navigate('/player/matches'),
-      actionLabel: "View",
     },
   ];
 
   return (
-    <OnboardingLayout currentStep={3}>
+    <OnboardingLayout currentStep={2}>
       <div className="space-y-6">
         {/* Header */}
         <div className="text-center">
@@ -103,7 +106,7 @@ export const OnboardingComplete = ({ onComplete }: OnboardingCompleteProps) => {
             onClick={onComplete}
             className="w-full h-12 text-base font-semibold"
           >
-            Go to Dashboard
+            Go to Home
           </Button>
         </motion.div>
 

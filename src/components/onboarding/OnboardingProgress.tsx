@@ -7,10 +7,10 @@ interface OnboardingProgressProps {
   labels?: string[];
 }
 
-export const OnboardingProgress = ({ 
-  currentStep, 
+export const OnboardingProgress = ({
+  currentStep,
   totalSteps,
-  labels = ['Profile', 'First Match', 'Rating', 'Complete']
+  labels = ['Profile', 'How it works', 'Ready']
 }: OnboardingProgressProps) => {
   return (
     <div className="w-full">
@@ -38,27 +38,6 @@ export const OnboardingProgress = ({
       <p className="text-xs text-muted-foreground text-center">
         Step {currentStep + 1} of {totalSteps}
         {labels[currentStep] && ` — ${labels[currentStep]}`}
-      </p>
-    </div>
-  );
-};
-
-export const OnboardingProgressBar = ({ 
-  currentStep, 
-  totalSteps 
-}: OnboardingProgressProps) => {
-  const progress = ((currentStep + 1) / totalSteps) * 100;
-  
-  return (
-    <div className="w-full">
-      <div className="h-1 bg-muted rounded-full overflow-hidden">
-        <div 
-          className="h-full bg-primary transition-all duration-500 ease-out"
-          style={{ width: `${progress}%` }}
-        />
-      </div>
-      <p className="text-xs text-muted-foreground text-center mt-2">
-        Step {currentStep + 1} of {totalSteps}
       </p>
     </div>
   );

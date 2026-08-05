@@ -1,32 +1,28 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { OnboardingChecklist } from "./OnboardingProgress";
-import { X } from "lucide-react";
 
 interface OnboardingWelcomeProps {
   isOpen: boolean;
-  onClose: () => void;
   onStart: () => void;
   onSkip: () => void;
   hasCompletedProfile?: boolean;
-  hasFirstMatch?: boolean;
 }
 
 export const OnboardingWelcome = ({
   isOpen,
-  onClose,
   onStart,
   onSkip,
   hasCompletedProfile = false,
-  hasFirstMatch = false,
 }: OnboardingWelcomeProps) => {
   if (!isOpen) return null;
 
+  // Mirrors the 3-step flow. No accidental dismiss — the player chooses Start
+  // or Skip, so the moment is deliberate.
   const checklistItems = [
     { label: "Set up your profile", completed: hasCompletedProfile, current: !hasCompletedProfile },
-    { label: "Find an event or record a match", completed: hasFirstMatch, current: hasCompletedProfile && !hasFirstMatch },
-    { label: "See your Pulse Rating", completed: false, current: hasFirstMatch },
-    { label: "You're ready!", completed: false },
+    { label: "Learn how PULSE works", completed: false, current: hasCompletedProfile },
+    { label: "Start playing", completed: false },
   ];
 
   return (
@@ -43,14 +39,6 @@ export const OnboardingWelcome = ({
         transition={{ duration: 0.3, ease: "easeOut" }}
         className="relative w-full max-w-md bg-card border border-border rounded-2xl shadow-2xl overflow-hidden"
       >
-        {/* Close button */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 p-2 rounded-full hover:bg-muted transition-colors"
-        >
-          <X className="w-4 h-4 text-muted-foreground" />
-        </button>
-
         {/* Header */}
         <div className="pt-10 pb-6 px-6 text-center">
           <motion.div

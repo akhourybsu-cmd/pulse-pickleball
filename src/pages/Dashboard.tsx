@@ -15,6 +15,7 @@ import { SectionHeader } from "@/components/layout/SectionHeader";
 //   • ExploreCard           — already removed in the player-first refocus
 import { ProfileHero } from "@/components/dashboard/ProfileHero";
 import { QuickActionsBar } from "@/components/dashboard/QuickActionsBar";
+import { GettingStartedCard } from "@/components/dashboard/GettingStartedCard";
 import { ActivityModule } from "@/components/dashboard/ActivityModule";
 import { PerformanceModule } from "@/components/dashboard/PerformanceModule";
 // StatsByCourtCard removed from home — court-as-tracked-entity is being retired.
@@ -198,9 +199,8 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-background">
       {user && (
-        <OnboardingWelcome 
+        <OnboardingWelcome
           isOpen={showOnboardingWelcome}
-          onClose={() => setShowOnboardingWelcome(false)}
           onStart={() => {
             setShowOnboardingWelcome(false);
             navigate('/onboarding/profile');
@@ -210,7 +210,6 @@ const Dashboard = () => {
             await supabase.from('profiles').update({ tutorial_completed: true }).eq('id', user.id);
           }}
           hasCompletedProfile={!!(profile?.display_name || profile?.full_name)}
-          hasFirstMatch={(profile?.total_matches || 0) > 0}
         />
       )}
 
@@ -250,6 +249,11 @@ const Dashboard = () => {
           was removed in favor of always showing Activity at the top (when
           there's action to take) followed by the player-first stack. */}
       <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-4 lg:py-6">
+
+        {/* Getting started — durable first-run orientation (shown until the
+            steps are done or dismissed). Above the layout split so it leads on
+            both mobile and desktop. Renders null (no phantom spacing) when done. */}
+        <GettingStartedCard userId={user?.id} profile={profile} />
 
         {/* Desktop: Two-column — action stack left, sticky activity right */}
         <div className="hidden lg:grid lg:grid-cols-12 lg:gap-6">
