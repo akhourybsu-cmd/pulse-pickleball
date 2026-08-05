@@ -901,6 +901,33 @@ export type Database = {
         }
         Relationships: []
       }
+      device_tokens: {
+        Row: {
+          created_at: string
+          id: string
+          platform: string
+          token: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          platform: string
+          token: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          platform?: string
+          token?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       direct_messages: {
         Row: {
           content: string
@@ -4867,6 +4894,7 @@ export type Database = {
           location_updated_at: string | null
           losses: number | null
           mfa_method: string | null
+          name_locked: boolean
           notify_badges_email: boolean | null
           notify_badges_push: boolean | null
           notify_badges_sms: boolean | null
@@ -4928,6 +4956,7 @@ export type Database = {
           location_updated_at?: string | null
           losses?: number | null
           mfa_method?: string | null
+          name_locked?: boolean
           notify_badges_email?: boolean | null
           notify_badges_push?: boolean | null
           notify_badges_sms?: boolean | null
@@ -4989,6 +5018,7 @@ export type Database = {
           location_updated_at?: string | null
           losses?: number | null
           mfa_method?: string | null
+          name_locked?: boolean
           notify_badges_email?: boolean | null
           notify_badges_push?: boolean | null
           notify_badges_sms?: boolean | null
