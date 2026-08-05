@@ -18,6 +18,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useAuthState } from "@/hooks/useAuthState";
 import { usePlayerPulse } from "@/hooks/usePlayerPulse";
+import { placementStatus } from "@/lib/rating/placementStatus";
 import {
   filterTimeline,
   type MomentumState,
@@ -294,6 +295,7 @@ function HeroCard({ pulse }: { pulse: NonNullable<ReturnType<typeof usePlayerPul
   const change = pulse.thirtyDayChange;
   const hasChange = change !== null && Math.abs(change) > 0.0001;
   const up = (change ?? 0) > 0;
+  const placement = placementStatus(pulse.matchCount);
 
   return (
     <Card className="relative overflow-hidden p-5 sm:p-6 bg-gradient-to-br from-card via-card to-primary/[0.05]">
@@ -312,9 +314,17 @@ function HeroCard({ pulse }: { pulse: NonNullable<ReturnType<typeof usePlayerPul
               : "—"}
           </span>
           <span className="text-sm font-bold uppercase tracking-widest text-primary">
-            PULSE
+            {placement.isPreliminary ? "Preliminary" : "PULSE"}
           </span>
         </div>
+
+        {placement.isPreliminary && (
+          <p className="mt-1.5 text-xs text-muted-foreground">
+            Placement {placement.played} of {placement.total} — this is a
+            preliminary estimate. It locks in as your PULSE rating on match{" "}
+            {placement.total}.
+          </p>
+        )}
 
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
           {hasChange ? (
