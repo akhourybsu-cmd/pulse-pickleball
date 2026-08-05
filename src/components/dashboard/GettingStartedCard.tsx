@@ -26,10 +26,14 @@ export function GettingStartedCard({
   profile: GettingStartedProfile | null;
 }) {
   const storageKey = userId ? `pulse:getting-started-dismissed:${userId}` : null;
-  const [dismissed, setDismissed] = useState<boolean>(() => {
-    if (!storageKey || typeof window === "undefined") return false;
-    return window.localStorage.getItem(storageKey) === "1";
-  });
+  // Read persistence synchronously each render (cheap). Doing it here — rather
+  // than a useState initializer — means it reflects the real value once the
+  // user id resolves (auth loads async, so the key is null on first mount),
+  // with no reappear-after-dismiss and no one-frame flash.
+  const persistedDismissed =
+    !!storageKey && typeof window !== "undefined" &&
+    window.localStorage.getItem(storageKey) === "1";
+  const [justDismissed, setJustDismissed] = useState(false);
 
   const items = useMemo(() => {
     const hasPhoto = !!profile?.avatar_url;
@@ -45,11 +49,11 @@ export function GettingStartedCard({
   const doneCount = items.filter((i) => i.done).length;
   const allDone = doneCount === items.length;
 
-  if (!userId || !profile || allDone || dismissed) return null;
+  if (!userId || !profile || allDone || persistedDismissed || justDismissed) return null;
 
   const dismiss = () => {
     if (storageKey) window.localStorage.setItem(storageKey, "1");
-    setDismissed(true);
+    setJustDismissed(true);
   };
 
   return (
