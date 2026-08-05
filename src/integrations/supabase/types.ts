@@ -4907,6 +4907,9 @@ export type Database = {
           partner_preferences: string | null
           phone_number: string | null
           phonetic_name: string | null
+          placed_rating: number | null
+          placement_completed_at: string | null
+          placement_model_version: number | null
           play_side: string | null
           player_state: Database["public"]["Enums"]["player_state"] | null
           pronouns: string | null
@@ -4969,6 +4972,9 @@ export type Database = {
           partner_preferences?: string | null
           phone_number?: string | null
           phonetic_name?: string | null
+          placed_rating?: number | null
+          placement_completed_at?: string | null
+          placement_model_version?: number | null
           play_side?: string | null
           player_state?: Database["public"]["Enums"]["player_state"] | null
           pronouns?: string | null
@@ -5031,6 +5037,9 @@ export type Database = {
           partner_preferences?: string | null
           phone_number?: string | null
           phonetic_name?: string | null
+          placed_rating?: number | null
+          placement_completed_at?: string | null
+          placement_model_version?: number | null
           play_side?: string | null
           player_state?: Database["public"]["Enums"]["player_state"] | null
           pronouns?: string | null
@@ -5151,10 +5160,19 @@ export type Database = {
           k_playoffs: number
           mean_rating: number
           mov_cap: number
+          placement_enabled: boolean
+          placement_matches: number
+          placement_model_version: number
+          placement_prior_weight: number
+          placement_team_result_constant: number
+          placing_opponent_elo_multiplier: number
           points_per_game: number
           provisional_bonus: number
           provisional_matches: number
           regress_coeff: number
+          reliability_established: number
+          reliability_placing: number
+          reliability_provisional: number
           tau: number
           updated_at: string
         }
@@ -5171,10 +5189,19 @@ export type Database = {
           k_playoffs?: number
           mean_rating?: number
           mov_cap?: number
+          placement_enabled?: boolean
+          placement_matches?: number
+          placement_model_version?: number
+          placement_prior_weight?: number
+          placement_team_result_constant?: number
+          placing_opponent_elo_multiplier?: number
           points_per_game?: number
           provisional_bonus?: number
           provisional_matches?: number
           regress_coeff?: number
+          reliability_established?: number
+          reliability_placing?: number
+          reliability_provisional?: number
           tau?: number
           updated_at?: string
         }
@@ -5191,10 +5218,19 @@ export type Database = {
           k_playoffs?: number
           mean_rating?: number
           mov_cap?: number
+          placement_enabled?: boolean
+          placement_matches?: number
+          placement_model_version?: number
+          placement_prior_weight?: number
+          placement_team_result_constant?: number
+          placing_opponent_elo_multiplier?: number
           points_per_game?: number
           provisional_bonus?: number
           provisional_matches?: number
           regress_coeff?: number
+          reliability_established?: number
+          reliability_placing?: number
+          reliability_provisional?: number
           tau?: number
           updated_at?: string
         }
