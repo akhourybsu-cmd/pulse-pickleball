@@ -98,6 +98,10 @@ const MatchHistory = () => {
     setSearchParams(params, { replace: true });
   };
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  // Ranked/All filter over the approved list. Only surfaced when the player
+  // actually has non-ranked games (otherwise it would do nothing).
+  const [rankedOnly, setRankedOnly] = useState(false);
+  const hasUnranked = matches.some((m) => m.is_ranked === false);
   const [reportSheetOpen, setReportSheetOpen] = useState(false);
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
   const [issueDetails, setIssueDetails] = useState("");
@@ -964,15 +968,52 @@ const MatchHistory = () => {
         )}
 
         {/* Approved Matches Section — RR matches bundled by event */}
+        {/* Ranked / All filter — only when the player has non-ranked games,
+            so it never appears as a no-op control. */}
+        {hasUnranked && activeTab !== "pending" && matches.length > 0 && (
+          <div className="flex items-center justify-end gap-2">
+            <span className="text-xs text-muted-foreground">Show</span>
+            <div className="inline-flex rounded-full border border-border/60 bg-card p-0.5">
+              {([
+                { v: false, label: "All games" },
+                { v: true, label: "Ranked" },
+              ] as const).map((o) => (
+                <button
+                  key={String(o.v)}
+                  type="button"
+                  onClick={() => setRankedOnly(o.v)}
+                  className={cn(
+                    "rounded-full px-3 py-1 text-xs font-medium transition-colors",
+                    rankedOnly === o.v
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {!playerId && activeTab === "pending" ? null : matches.length === 0 ? null : (() => {
           type Item =
             | { kind: 'single'; match: Match; sortKey: string }
             | { kind: 'group'; group: RoundRobinGroup; sortKey: string };
 
+          const source = rankedOnly ? matches.filter((m) => m.is_ranked) : matches;
+          if (source.length === 0) {
+            return (
+              <p className="py-6 text-center text-sm text-muted-foreground">
+                No ranked matches yet — ranked matches are the ones that move your PULSE.
+              </p>
+            );
+          }
+
           const groups = new Map<string, RoundRobinGroup & { sortKey: string }>();
           const items: Item[] = [];
 
-          for (const m of matches) {
+          for (const m of source) {
             if (m.rr_event_id) {
               const existing = groups.get(m.rr_event_id);
               if (existing) {
