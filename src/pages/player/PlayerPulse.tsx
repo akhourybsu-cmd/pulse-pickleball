@@ -1,5 +1,7 @@
 import { lazy, Suspense, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import CountUp from "react-countup";
 import {
   Activity,
   ArrowLeft,
@@ -145,8 +147,36 @@ export default function PlayerPulse() {
           <EmptyState onRecord={() => navigate("/player/matches/new")} />
         ) : (
           <>
+            {/* Gold wordmark — the brand moment at the top of the page. */}
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.45, ease: "easeOut" }}
+              className="text-center pt-1 pb-1"
+            >
+              <h2 className="font-display text-2xl sm:text-3xl font-extrabold uppercase tracking-[0.12em] bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-500 bg-clip-text text-transparent drop-shadow-[0_1px_0_rgba(0,0,0,0.08)]">
+                Player Pulse
+              </h2>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Your <span className="font-medium text-foreground">ranked</span> rating, explained ·{" "}
+                <button
+                  type="button"
+                  onClick={() => navigate("/player/matches")}
+                  className="text-primary underline-offset-2 hover:underline"
+                >
+                  see all games
+                </button>
+              </p>
+            </motion.div>
+
             {/* HERO */}
-            <HeroCard pulse={pulse} />
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, ease: "easeOut", delay: 0.08 }}
+            >
+              <HeroCard pulse={pulse} />
+            </motion.div>
 
             {/* RATING JOURNEY */}
             <Card className="p-4 sm:p-5">
@@ -198,7 +228,7 @@ export default function PlayerPulse() {
             {/* QUICK INSIGHTS */}
             <div className="grid grid-cols-2 gap-3">
               <StatCard
-                label="Record"
+                label="Ranked record"
                 value={`${pulse.wins}–${pulse.losses}`}
                 sub={`${pulse.winRate}% win rate`}
               />
@@ -309,9 +339,11 @@ function HeroCard({ pulse }: { pulse: NonNullable<ReturnType<typeof usePlayerPul
       <div className="relative">
         <div className="flex items-baseline gap-2">
           <span className="text-5xl sm:text-6xl font-display font-bold tracking-tight tabular-nums">
-            {pulse.currentRating !== null
-              ? pulse.currentRating.toFixed(2)
-              : "—"}
+            {pulse.currentRating !== null ? (
+              <CountUp end={pulse.currentRating} decimals={2} duration={1.1} />
+            ) : (
+              "—"
+            )}
           </span>
           <span className="text-sm font-bold uppercase tracking-widest text-primary">
             {placement.isPreliminary ? "Preliminary" : "PULSE"}

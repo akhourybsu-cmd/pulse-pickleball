@@ -40,6 +40,7 @@ async function fetchPlayerPulse(playerId: string): Promise<PlayerPulse> {
           team2_score,
           status,
           voided,
+          count_for_rating,
           source
         )
       `,
@@ -50,9 +51,31 @@ async function fetchPlayerPulse(playerId: string): Promise<PlayerPulse> {
 
   if (error) throw error;
 
-  const rows: PulseMatchRow[] = (data ?? [])
-    .filter((r: any) => r.matches)
-    .map((r: any) => ({
+  type RawPulseRow = {
+    match_id: string;
+    team: number;
+    rating_before: number | null;
+    rating_after: number | null;
+    rating_change: number | null;
+    matches: {
+      match_date: string;
+      created_at: string;
+      team1_score: number | null;
+      team2_score: number | null;
+      status: string;
+      voided: boolean | null;
+      count_for_rating: boolean | null;
+      source: string | null;
+    } | null;
+  };
+
+  const rows: PulseMatchRow[] = ((data ?? []) as unknown as RawPulseRow[])
+    // Ranked only — Pulse IS the rating story, so it counts exactly the
+    // matches the engine rated: approved + non-voided (enforced above) AND
+    // count_for_rating (default true; only false when explicitly excluded).
+    .filter((r): r is RawPulseRow & { matches: NonNullable<RawPulseRow["matches"]> } =>
+      !!r.matches && r.matches.count_for_rating !== false)
+    .map((r) => ({
       matchId: r.match_id,
       matchDate: r.matches.match_date,
       createdAt: r.matches.created_at,
@@ -76,9 +99,13 @@ async function fetchPlayerPulse(playerId: string): Promise<PlayerPulse> {
     rows,
     {
       currentRating: profile?.current_rating ?? null,
-      totalMatches: profile?.total_matches ?? null,
-      wins: profile?.wins ?? null,
-      losses: profile?.losses ?? null,
+      // Ranked-only: the row set drives record/count. Don't fall back to the
+      // profile aggregates (they count ALL approved matches, ranked or not) —
+      // that would inflate a player's ranked record when they have zero ranked
+      // rows. Headline rating still comes from the profile above.
+      totalMatches: null,
+      wins: null,
+      losses: null,
     },
     Date.now(),
   );
