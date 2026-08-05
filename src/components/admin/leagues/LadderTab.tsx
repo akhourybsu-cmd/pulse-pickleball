@@ -455,13 +455,19 @@ function LadderManage({
     return map;
   }, [groups, games]);
 
-  // "Counts toward the batch" must mirror the server: a valid, non-tied score
-  // AND a status the process/finalize path accepts. A disputed (or otherwise
-  // unverified) game keeps its scores but must NOT read as complete, or the
-  // Process button lies and auto-advance stalls.
+  // "Counts toward the batch" tracks a single source of truth: a game is done
+  // only once it's VERIFIED. That's the same bar auto-advance (ladder-advance)
+  // and the ratings bridge use. In self-report leagues a submit is verified
+  // immediately (submit_league_match_score), so this is a no-op there; in
+  // confirm leagues a score_submitted game is still "waiting on a second
+  // player" and must NOT read as done — otherwise Process would finalize a
+  // batch whose games never feed ratings and auto-advance would (correctly)
+  // refuse the same batch, wedging progression. A disputed game likewise keeps
+  // its score but doesn't count. Organizers can always enter/verify a score
+  // themselves (admin submit lands verified) to unblock a stuck game.
   const countable = (m: LadderGame) =>
     m.team_a_score != null && m.team_b_score != null && m.team_a_score !== m.team_b_score
-    && (m.status === "verified" || m.status === "score_submitted");
+    && m.status === "verified";
   const totalGames = games.length;
   const scoredGames = games.filter(countable).length;
   const batchComplete = totalGames > 0 && scoredGames === totalGames;
@@ -508,7 +514,28 @@ function LadderManage({
           );
         }
       }
-      setPendingTies(resp.ties);
+      // Pre-fill the organizer dialog with any finishing order players already
+      // recorded from their league page (record_ladder_tiebreak). Without this
+      // the manual Process path re-detects the tie and opens a blank dialog,
+      // silently discarding the resolution a player already supplied. Fetch
+      // WITHOUT the resolved_at filter — recording stamps resolved_at.
+      const enrichedTies = await (async (): Promise<TieInfo[]> => {
+        const { data: recorded } = await supabase
+          .from("ladder_tiebreaks" as never)
+          .select("group_id, resolved_order")
+          .eq("batch_id", activeBatch.id);
+        const byGroup = new Map(
+          ((recorded ?? []) as unknown as Array<{ group_id: string; resolved_order: string[] | null }>)
+            .map((r) => [r.group_id, r.resolved_order]),
+        );
+        return resp.ties!.map((t) => {
+          const g = groups[t.group_index];
+          const ro = g ? byGroup.get(g.id) : null;
+          return ro && ro.length === t.player_ids.length ? { ...t, resolved_order: ro } : t;
+        });
+      })();
+      setTies(enrichedTies);
+      setPendingTies(enrichedTies);
       return;
     }
     if (error || resp?.error) {
@@ -637,20 +664,32 @@ function LadderManage({
   };
 
   // Auto-advance: when a batch is complete and tie-free, move on without the
-  // organizer. Fires at most once per batch from this client; the edge
-  // function is idempotent and re-checks every guard server-side.
+  // organizer. The edge function is idempotent and re-checks every guard
+  // server-side. A first attempt can come back tiebreak_required (a tie still
+  // needs deciding) or incomplete (a game the client counts as done via
+  // score_submitted still needs a second verification before advance/ratings
+  // will accept it). Those states get resolved OUT OF BAND — a player records
+  // the tiebreak, or a second participant verifies the score — which does NOT
+  // change activeBatch.id or batchComplete, so a guard keyed on batch id alone
+  // would never re-fire and the autonomous flow would wedge until a manual
+  // reload. Key the guard on the batch's *readiness signals* instead, so each
+  // distinct state attempts exactly once (no tight loop: the key only advances
+  // when real data changes) and a late verification / recorded tiebreak
+  // re-triggers the advance.
   const autoAdvance = settings?.auto_advance ?? false;
   const seasonId = settings?.season_id;
+  const verifiedGameCount = useMemo(
+    () => games.filter((m) => m.status === "verified").length,
+    [games],
+  );
+  const unresolvedTieCount = pendingTies.length;
   const advancedForRef = useRef<string | null>(null);
   useEffect(() => {
-    if (!autoAdvance || paused || !seasonId) return;
-    if (!activeBatch) return;
-    // Reset the once-per-batch guard whenever the batch is NOT complete, so a
-    // batch that later becomes complete again (e.g. after a disputed score is
-    // corrected) re-triggers auto-advance instead of staying wedged.
+    if (!autoAdvance || paused || !seasonId || !activeBatch) return;
     if (!batchComplete) { advancedForRef.current = null; return; }
-    if (advancedForRef.current === activeBatch.id) return;
-    advancedForRef.current = activeBatch.id;
+    const attemptKey = `${activeBatch.id}:${verifiedGameCount}:${unresolvedTieCount}`;
+    if (advancedForRef.current === attemptKey) return;
+    advancedForRef.current = attemptKey;
     (async () => {
       const { data } = await supabase.functions.invoke("ladder-advance", {
         body: { season_id: seasonId },
@@ -664,11 +703,13 @@ function LadderManage({
         );
         onChanged();
       }
-      // tiebreak_required / incomplete: leave it for a human; the Process
-      // button + tiebreak dialog handle resolution.
+      // tiebreak_required / incomplete: leave it for a human OR for the next
+      // out-of-band change (verify / recorded tiebreak), which moves
+      // attemptKey and re-fires this effect. The Process button + tiebreak
+      // dialog remain available as the manual path.
     })().catch(() => { advancedForRef.current = null; });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoAdvance, paused, seasonId, activeBatch?.id, batchComplete]);
+  }, [autoAdvance, paused, seasonId, activeBatch?.id, batchComplete, verifiedGameCount, unresolvedTieCount]);
 
   const toggleAuto = async () => {
     if (!settings) return;
@@ -944,6 +985,9 @@ interface TieInfo {
   court_number: number;
   boundaries: ("promotion" | "relegation")[];
   player_ids: string[];
+  /** Finishing order a player already recorded from their league page, if any
+   *  — used to pre-fill the organizer dialog so it isn't silently discarded. */
+  resolved_order?: string[] | null;
 }
 
 function TiebreakDialog({
@@ -956,8 +1000,12 @@ function TiebreakDialog({
   onResolve: (resolutions: Record<number, string[]>) => void;
 }) {
   // Per-court working order the organizer arranges (top = advances furthest).
+  // Seed from a player-recorded finishing order when one exists so their
+  // resolution carries through instead of being silently overwritten.
   const [orders, setOrders] = useState<Record<number, string[]>>(() =>
-    Object.fromEntries(ties.map((t) => [t.group_index, [...t.player_ids]])),
+    Object.fromEntries(
+      ties.map((t) => [t.group_index, [...(t.resolved_order ?? t.player_ids)]]),
+    ),
   );
 
   const move = (gi: number, i: number, dir: -1 | 1) => {
@@ -987,6 +1035,11 @@ function TiebreakDialog({
             {ties.length === 1 ? "A court" : `${ties.length} courts`} ended level
             on record and points. Play a tiebreaker (e.g. a skinny-singles game)
             and set the finishing order below — top of the list finishes highest.
+            {ties.some((t) => t.resolved_order?.length) && (
+              <span className="mt-1 block text-emerald-600 dark:text-emerald-400">
+                A player already recorded an order for a tied court — it's pre-filled below. Review and process.
+              </span>
+            )}
           </DialogDescription>
         </DialogHeader>
 
