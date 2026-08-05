@@ -27,6 +27,7 @@ import {
   useLadder, type LadderGame, type LadderGroup, type LadderMovementRow,
 } from "@/hooks/useLadder";
 import { cn } from "@/lib/utils";
+import { LadderReplacePanel } from "./LadderReplacePanel";
 import {
   EmptyState, TabSkeleton, LeagueTabProps, FormSection, FormRow, FIELD_H,
   SeasonSelect, ChoiceGrid, SegmentedControl,
@@ -982,6 +983,19 @@ function LadderManage({
 
       {/* Current ladder + last movement */}
       <CurrentLadder ladder={ladder} />
+
+      {/* Mid-season dropout → replace with a new player. Only between rounds
+          (no batch in play) and once the ladder has an order to edit. */}
+      {settings && !activeBatch && ladder.currentOrder.length > 0 && (
+        <LadderReplacePanel
+          seasonId={settings.season_id}
+          currentOrder={ladder.currentOrder}
+          memberIds={ladder.memberIds}
+          nameOf={ladder.nameOf}
+          disabled={paused}
+          onChanged={onChanged}
+        />
+      )}
 
       {/* History */}
       {ladder.history.length > 0 && (
