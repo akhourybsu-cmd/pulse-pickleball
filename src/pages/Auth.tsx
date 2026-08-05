@@ -38,6 +38,7 @@ const AppleIcon = () => (
 // state name (not the 2-letter code), so we use US_STATE_NAMES here. Keep this
 // format until a deliberate data migration switches to codes everywhere.
 import { US_STATE_NAMES } from "@/lib/us-states";
+import { isNativeApp } from "@/lib/platform";
 
 // Zod needs a non-empty tuple at compile time. The shared array is readonly
 // string[], so we cast to the tuple shape Zod expects without changing values.
@@ -474,36 +475,45 @@ const Auth = () => {
               </div>
             ) : (
               <>
-                <div className="space-y-2 mb-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => handleOAuth("google")}
-                    disabled={loading}
-                  >
-                    <GoogleIcon />
-                    <span className="ml-2">Continue with Google</span>
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => handleOAuth("apple")}
-                    disabled={loading}
-                  >
-                    <AppleIcon />
-                    <span className="ml-2">Continue with Apple</span>
-                  </Button>
-                </div>
-                <div className="relative my-4">
-                  <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t" />
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-card px-2 text-muted-foreground">or continue with email</span>
-                  </div>
-                </div>
+                {/* Social sign-in is WEB-ONLY: Google blocks OAuth inside the
+                    native WebView (disallowed_useragent), so on the installed
+                    app we hide these and show email/password only. Re-enable on
+                    native once the Custom-Tab OAuth flow lands (see
+                    GOOGLE_PLAY_LAUNCH.md §8). */}
+                {!isNativeApp() && (
+                  <>
+                    <div className="space-y-2 mb-4">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => handleOAuth("google")}
+                        disabled={loading}
+                      >
+                        <GoogleIcon />
+                        <span className="ml-2">Continue with Google</span>
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => handleOAuth("apple")}
+                        disabled={loading}
+                      >
+                        <AppleIcon />
+                        <span className="ml-2">Continue with Apple</span>
+                      </Button>
+                    </div>
+                    <div className="relative my-4">
+                      <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t" />
+                      </div>
+                      <div className="relative flex justify-center text-xs uppercase">
+                        <span className="bg-card px-2 text-muted-foreground">or continue with email</span>
+                      </div>
+                    </div>
+                  </>
+                )}
               <form onSubmit={handleAuth} className="space-y-4">
                 {!isLogin && (
                   <>
