@@ -357,7 +357,7 @@ function LadderStart({
           <span>
             Ladder groups are foursomes, so the active roster must be divisible
             by four. You have <strong>{order.length}</strong> active player{order.length === 1 ? "" : "s"} —
-            add or bench players on the Players tab so the count is a multiple of four.
+            add or remove players on the Players tab so the count is a multiple of four.
           </span>
         </div>
       )}
@@ -1552,7 +1552,7 @@ function WeekRosterPanel({
           <p className="text-[11px] text-amber-600 dark:text-amber-400 leading-relaxed">
             Groups are foursomes, so the number playing must be a multiple of four.
             Sit out {sitMore} more {sitMore === 1 ? "player" : "players"} (→ {present - sitMore} playing),
-            or bring {subCover} sitting {subCover === 1 ? "player" : "players"} back with a sub (→ {present + subCover} playing).
+            or cover {subCover} sitting {subCover === 1 ? "player" : "players"} with a sub (→ {present + subCover} playing).
           </p>
         </div>
       )}

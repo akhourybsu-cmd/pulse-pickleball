@@ -493,8 +493,8 @@ function SubEditorDialog({
     <FormShell
       icon={<LifeBuoy className="w-5 h-5" />}
       tone="emerald"
-      kicker={mode === "create" ? "New sub" : "Substitute"}
-      title={mode === "create" ? "Add substitute" : "Edit substitute"}
+      kicker={mode === "create" ? "New sub" : "Sub"}
+      title={mode === "create" ? "Add sub" : "Edit sub"}
       subtitle={mode === "create"
         ? "Add a fill-in player to the bench for this season."
         : "Update this sub's status or notes."}

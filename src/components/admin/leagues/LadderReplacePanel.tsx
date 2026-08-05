@@ -74,9 +74,10 @@ export function LadderReplacePanel({
       {open && (
         <div className="mt-3 space-y-3">
           <p className="text-xs text-muted-foreground">
-            Swap a player who's left for a replacement — they inherit the same
+            Bring in a new player for one who's left — they inherit the same
             rung, so the ladder stays a multiple of four and nobody else moves.
-            Takes effect from the next round.
+            This is permanent (different from a one-week sub); it takes effect
+            from the next round.
           </p>
 
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">

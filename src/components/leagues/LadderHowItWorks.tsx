@@ -55,8 +55,8 @@ export function LadderHowItWorks({ defaultOpen = false }: { defaultOpen?: boolea
           <p>
             Can't make a week? Use the{" "}
             <strong className="text-[color:var(--lg-text)]">“Can't make a week?”</strong>{" "}
-            card above to find a substitute or sit out — sitting out holds your spot on
-            the ladder.
+            card above to request a sub. The organizer will either bring in a fill-in
+            or sit you out for that week — either way you keep your spot on the ladder.
           </p>
         </div>
       )}

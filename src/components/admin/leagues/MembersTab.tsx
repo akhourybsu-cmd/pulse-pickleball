@@ -426,10 +426,11 @@ function MemberInlineActions({
                     <span className="mt-2 block text-amber-600 dark:text-amber-400">
                       Heads up: for a ladder that's already running, this does not pull
                       them out of the rotation — the ladder keeps its own order, so a
-                      removed player can still be scheduled and can't be sat out. To take
-                      someone out of a running ladder mid-season, use the week roster to
-                      sit them out (keep them active), or swap in a substitute for their
-                      spot.
+                      removed player can still be scheduled. Manage running-ladder rosters
+                      from the Ladder tab instead: use <strong>Replace a player</strong> to
+                      swap someone who's left for a new player permanently, or the week
+                      roster to <strong>sit a player out</strong> for a single week (they
+                      keep their spot).
                     </span>
                   )}
                 </AlertDialogDescription>
