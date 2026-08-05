@@ -7,7 +7,114 @@ This doc is the end-to-end path from the code in this repo to a live listing.
 > You do the final signed build on a machine with the **Android SDK** (Android
 > Studio). The CI/dev container here has Java + Gradle but **no Android SDK**, so
 > it can scaffold and configure the project (done) but cannot produce the signed
-> `.aab`.
+> `.aab`. The GitHub Actions release workflow *can* build it (§10) — but the
+> fastest first release is Android Studio locally, below.
+
+---
+
+## ⭐ FASTEST FIRST RELEASE — Android Studio, tonight (baby-proof)
+
+Follow this top to bottom. Two phases: **Phase 1** gets the real app on YOUR
+phone (~30–45 min). **Phase 2** is the store paperwork to go public (do after
+Phase 1 works). If any command or Android Studio step throws a red error, paste
+it into Claude Code (repo terminal) or Android Studio's Gemini and fix before
+moving on — don't skip a checkpoint.
+
+### Before you start (one time)
+- Install **Android Studio** (latest) — this installs the Android SDK + JDK 21.
+- Have this repo cloned locally with **Node 20+**. In the repo run: `npm install`
+- Create a **Google Play Console** account ($25, one-time) — you have this. ✅
+
+### Phase 1 — Get the signed app on your phone
+
+**Step 1 — Build the web app + open Android Studio (one command).**
+In the repo (Claude Code terminal):
+```bash
+npm run android:open
+```
+This builds the web bundle, copies it into `android/`, and opens the project in
+Android Studio. ✅ Checkpoint: Android Studio opens and finishes "Gradle sync"
+with no red errors (bottom status bar). First sync can take a few minutes.
+
+> ⚠️ THE #1 MISTAKE: never build the app in Android Studio without running
+> `npm run cap:sync` (or `npm run android:open`) first — Android Studio does NOT
+> rebuild the web code, so you'd ship a stale app.
+
+**Step 2 — Create your signing key + build the AAB (one wizard does both).**
+Android Studio menu ▸ **Build ▸ Generate Signed App Bundle / APK…**
+1. Choose **Android App Bundle** ▸ Next.
+2. Under "Key store path" click **Create new…**
+   - **Key store path:** save it OUTSIDE the repo, e.g. `~/keys/pulse-upload.jks`
+   - Set a **keystore password** (write it down now).
+   - **Alias:** `pulse-upload`  ·  **Key password:** (write it down)  ·  **Validity: 30 years**
+   - Fill the certificate name fields (your name / org), click OK.
+3. Back in the wizard: keystore + passwords are filled ▸ Next.
+4. Build variant: **release** ▸ Finish.
+
+✅ Checkpoint: a "locate / analyze" popup appears. Your file is at
+`android/app/release/app-release.aab`.
+
+> 🔐 BACK UP `pulse-upload.jks` + both passwords in a password manager RIGHT NOW.
+> This is your upload key forever — losing it means pain (recoverable only via
+> Google support). Never commit it (it's gitignored).
+
+**Step 3 — Smoke-test on your own phone first.**
+Plug in your Android phone (USB debugging on) ▸ Android Studio ▸ press **Run ▸**.
+✅ Checkpoint: the app installs and opens. Log in with **email/password** (social
+sign-in is intentionally hidden on the app), record a match, open Player Pulse,
+open a league. If it works, proceed.
+
+**Step 4 — Create the app in Play Console + upload to Internal testing.**
+1. https://play.google.com/console ▸ **Create app**.
+   - App name: **PULSE: Pickleball**  ·  Language: English (US)  ·  Type: **App**  ·  **Free**
+   - Accept the declarations ▸ Create app.
+2. Left nav ▸ **Testing ▸ Internal testing** ▸ **Create new release**.
+3. If prompted about **Play App Signing**, accept the default (**let Google
+   manage the app signing key**) — this is correct.
+4. **Upload** your `app-release.aab`.
+5. Release name auto-fills; paste the v1.0.0 "What's new" text from
+   `PLAY_STORE_LISTING.md` ▸ **Next ▸ Save ▸ Review release ▸ Start rollout to
+   Internal testing**.
+6. Open the **Testers** tab ▸ add your own Google account email ▸ copy the
+   **opt-in link** ▸ open it on your phone ▸ "Download it on Google Play".
+
+✅ Checkpoint: PULSE installs from the Play Store on your phone. **Phase 1 done —
+v1 exists and works.**
+
+### Phase 2 — Go public (store listing + required forms)
+
+Play blocks Production until these are done. Left nav ▸ work through each;
+copy from `PLAY_STORE_LISTING.md`:
+
+1. **Store listing** — App name `PULSE: Pickleball`; short + full description
+   (copy from listing doc); upload assets:
+   - App icon **512×512 PNG**, Feature graphic **1024×500**, **2–8 phone
+     screenshots** (grab from your phone: Home, Matches, a league, Player Pulse).
+2. **Store settings** — Category **Sports**; contact email `support@pulsepb.com`.
+3. **Privacy policy** — a PUBLIC url to your live site's `/privacy` (e.g.
+   `https://pulsepb.com/privacy`). ⚠️ Must be reachable — confirm the web app is
+   deployed at that domain first.
+4. **App content** (each is a short wizard; answers pre-filled in listing doc):
+   - **Data safety** — collects account info, location (opt-in), messages, app
+     activity; encrypted in transit; deletion available at `/delete-account`; no
+     data sold. (See listing doc for the exact per-row answers.)
+   - **Content rating** — run IARC; answer YES to user-to-user communication
+     (chat). Expected: Everyone.
+   - **Target audience** — 18+ (not directed at children).
+   - **Ads** — No ads.
+   - **Government apps / news / COVID** — No.
+5. **Promote to Production:** Testing ▸ Internal testing ▸ **Promote release ▸
+   Production** ▸ (or Production ▸ Create release, upload the same AAB) ▸ roll out.
+   First review is typically hours–days.
+
+### If something breaks
+- **Gradle sync / build error in Android Studio** → ask the built-in **Gemini**,
+  and/or paste the red text into **Claude Code**.
+- **Upload rejected "versionCode already used"** → each upload needs a higher
+  `versionCode`. Local builds default to `1`; for the next one run
+  `VERSION_CODE=2 ./gradlew bundleRelease` from `android/`, or bump the default in
+  `android/app/build.gradle`.
+- **App shows old content** → you forgot `npm run cap:sync` before building.
 
 ---
 
