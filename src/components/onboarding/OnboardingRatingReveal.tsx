@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { OnboardingLayout } from "./OnboardingLayout";
 import { Star, Swords, CheckCircle2, Trophy, UsersRound } from "lucide-react";
 import CountUp from "react-countup";
+import { PLACEMENT_UI_ENABLED } from "@/lib/rating/placementStatus";
 
 interface OnboardingRatingRevealProps {
   /** The player's starting PULSE rating (their self-rating, or 3.00). */
@@ -45,7 +46,9 @@ export const OnboardingRatingReveal = ({
               <Star className="h-7 w-7 text-primary" />
             </div>
             <p className="mt-2 text-xs text-muted-foreground">
-              It becomes real as you record matches — nothing is locked in yet.
+              {PLACEMENT_UI_ENABLED
+                ? "Your first 5 matches place you — we read your results to set your true starting level, fast."
+                : "It becomes real as you record matches — nothing is locked in yet."}
             </p>
           </div>
         </div>

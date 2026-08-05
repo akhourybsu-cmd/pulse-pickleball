@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Logo } from "@/components/Logo";
 import { PageSEO } from "@/components/seo/PageSEO";
+import { PLACEMENT_UI_ENABLED } from "@/lib/rating/placementStatus";
 
 // Top FAQ entries used to power FAQPage JSON-LD for rich Q&A results.
 // Short answers; full content lives in the page below.
@@ -302,6 +303,22 @@ const FAQ = () => {
                 that week forward so the history stays consistent.
               </p>
             </FAQItem>
+
+            {PLACEMENT_UI_ENABLED && (
+              <FAQItem value="placement" icon={Sparkles} question="What are placement matches?">
+                <p>
+                  Your <strong>first 5 matches place you</strong>. Instead of slowly
+                  drifting from your self-rating, we read your results against your
+                  opponents and set your true starting level fast.
+                </p>
+                <p className="text-muted-foreground">
+                  While you're being placed, the number you see is a{" "}
+                  <strong>preliminary estimate</strong> and updates each match. On your
+                  5th match it locks in as your real PULSE rating — from then on it
+                  moves match to match like everyone else's.
+                </p>
+              </FAQItem>
+            )}
 
             <FAQItem value="provisional" icon={Sparkles} question="What does 'Provisional' mean?">
               <p>
