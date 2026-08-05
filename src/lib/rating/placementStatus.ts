@@ -9,8 +9,8 @@
  * the current ELO would be mislabeled "preliminary" when their rating is real.
  */
 
-/** Flip to true at go-live, together with the server placement_enabled flag. */
-export const PLACEMENT_UI_ENABLED = false;
+/** Live: enabled at go-live together with rating_parameters.placement_enabled. */
+export const PLACEMENT_UI_ENABLED = true;
 
 /** Matches needed to complete placement (mirrors rating_parameters). */
 export const PLACEMENT_MATCHES = 5;
