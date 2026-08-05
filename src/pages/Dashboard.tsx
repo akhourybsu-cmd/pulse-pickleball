@@ -25,14 +25,20 @@ import { UpNextLeagueMatchesSection } from "@/components/dashboard/UpNextLeagueM
 import { MyCommunitiesRail } from "@/components/dashboard/MyCommunitiesRail";
 import { MyFriendsRail } from "@/components/dashboard/MyFriendsRail";
 import { EnablePushBanner } from "@/components/dashboard/EnablePushBanner";
+import { ConfirmNameDialog } from "@/components/profile/ConfirmNameDialog";
 // RoleSwitcherCard hidden during the player-only beta. Re-import + render
 // when the venue surface returns.
 // import { RoleSwitcherCard } from "@/components/dashboard/RoleSwitcherCard";
+
+const NAME_CONFIRM_DISMISS_KEY = "pulse:name-confirm-dismissed";
 
 interface Profile {
   id: string;
   full_name: string;
   display_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  name_locked: boolean;
   avatar_url: string | null;
   current_rating: number;
   week_start_rating: number;
@@ -65,6 +71,9 @@ const Dashboard = () => {
 
   // Onboarding welcome modal
   const [showOnboardingWelcome, setShowOnboardingWelcome] = useState(false);
+
+  // One-time "confirm your name" prompt for existing (pre-lock) users.
+  const [showConfirmName, setShowConfirmName] = useState(false);
 
   const fetchPartnerAndCourtStats = async (userId: string) => {
     try {
@@ -136,8 +145,18 @@ const Dashboard = () => {
         setProfile(profileResult.data);
 
         // Show onboarding welcome for new users
-        if (!profileResult.data.tutorial_completed && (profileResult.data.total_matches || 0) === 0) {
+        const showWelcome =
+          !profileResult.data.tutorial_completed && (profileResult.data.total_matches || 0) === 0;
+        if (showWelcome) {
           setShowOnboardingWelcome(true);
+        }
+
+        // Nudge existing (unlocked) users to confirm their name — but never
+        // stack it on the onboarding modal, and only once per session.
+        const dismissedThisSession =
+          sessionStorage.getItem(NAME_CONFIRM_DISMISS_KEY) === "1";
+        if (!showWelcome && !profileResult.data.name_locked && !dismissedThisSession) {
+          setShowConfirmName(true);
         }
 
         fetchPartnerAndCourtStats(user.id);
@@ -192,6 +211,23 @@ const Dashboard = () => {
           }}
           hasCompletedProfile={!!(profile?.display_name || profile?.full_name)}
           hasFirstMatch={(profile?.total_matches || 0) > 0}
+        />
+      )}
+
+      {user && profile && (
+        <ConfirmNameDialog
+          open={showConfirmName}
+          userId={user.id}
+          initialFirstName={profile.first_name}
+          initialLastName={profile.last_name}
+          onConfirmed={() => {
+            setShowConfirmName(false);
+            setProfile((prev) => (prev ? { ...prev, name_locked: true } : prev));
+          }}
+          onDismiss={() => {
+            setShowConfirmName(false);
+            sessionStorage.setItem(NAME_CONFIRM_DISMISS_KEY, "1");
+          }}
         />
       )}
       

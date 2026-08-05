@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Upload, X, UserCog } from "lucide-react";
+import { Upload, X, UserCog, Lock, ShieldCheck } from "lucide-react";
 
 import { US_STATE_CODES } from "@/lib/us-states";
 
@@ -26,6 +26,8 @@ interface IdentitySectionProps {
   onFileUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onRemoveAvatar: () => void;
   uploading: boolean;
+  /** When true, first/last name are frozen and rendered read-only. */
+  nameLocked?: boolean;
 }
 
 export function ProfileIdentitySection({
@@ -34,6 +36,7 @@ export function ProfileIdentitySection({
   onFileUpload,
   onRemoveAvatar,
   uploading,
+  nameLocked = false,
 }: IdentitySectionProps) {
   return (
     <div className="space-y-4">
@@ -88,26 +91,48 @@ export function ProfileIdentitySection({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="first_name">First Name *</Label>
+          <Label htmlFor="first_name" className="flex items-center gap-1.5">
+            First Name *
+            {nameLocked && <Lock className="h-3 w-3 text-muted-foreground" aria-hidden />}
+          </Label>
           <Input
             id="first_name"
             value={formData.first_name || ""}
             onChange={(e) => onFormChange({ first_name: e.target.value })}
             placeholder="John"
             required
+            readOnly={nameLocked}
+            disabled={nameLocked}
+            aria-describedby={nameLocked ? "name-lock-note" : undefined}
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="last_name">Last Name *</Label>
+          <Label htmlFor="last_name" className="flex items-center gap-1.5">
+            Last Name *
+            {nameLocked && <Lock className="h-3 w-3 text-muted-foreground" aria-hidden />}
+          </Label>
           <Input
             id="last_name"
             value={formData.last_name || ""}
             onChange={(e) => onFormChange({ last_name: e.target.value })}
             placeholder="Doe"
             required
+            readOnly={nameLocked}
+            disabled={nameLocked}
+            aria-describedby={nameLocked ? "name-lock-note" : undefined}
           />
         </div>
       </div>
+
+      {nameLocked && (
+        <p id="name-lock-note" className="flex items-start gap-1.5 text-xs text-muted-foreground -mt-1">
+          <ShieldCheck className="h-3.5 w-3.5 mt-px shrink-0 text-primary/70" aria-hidden />
+          <span>
+            Your name is locked in. To correct a typo or record a legal name change,
+            contact an organizer.
+          </span>
+        </p>
+      )}
 
       <div className="space-y-2">
         <Label htmlFor="display_name">Display Name</Label>
