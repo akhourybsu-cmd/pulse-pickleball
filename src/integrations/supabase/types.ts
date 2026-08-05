@@ -4907,6 +4907,9 @@ export type Database = {
           partner_preferences: string | null
           phone_number: string | null
           phonetic_name: string | null
+          placed_rating: number | null
+          placement_completed_at: string | null
+          placement_model_version: number | null
           play_side: string | null
           player_state: Database["public"]["Enums"]["player_state"] | null
           pronouns: string | null
@@ -4969,6 +4972,9 @@ export type Database = {
           partner_preferences?: string | null
           phone_number?: string | null
           phonetic_name?: string | null
+          placed_rating?: number | null
+          placement_completed_at?: string | null
+          placement_model_version?: number | null
           play_side?: string | null
           player_state?: Database["public"]["Enums"]["player_state"] | null
           pronouns?: string | null
@@ -5031,6 +5037,9 @@ export type Database = {
           partner_preferences?: string | null
           phone_number?: string | null
           phonetic_name?: string | null
+          placed_rating?: number | null
+          placement_completed_at?: string | null
+          placement_model_version?: number | null
           play_side?: string | null
           player_state?: Database["public"]["Enums"]["player_state"] | null
           pronouns?: string | null
@@ -5151,10 +5160,19 @@ export type Database = {
           k_playoffs: number
           mean_rating: number
           mov_cap: number
+          placement_enabled: boolean
+          placement_matches: number
+          placement_model_version: number
+          placement_prior_weight: number
+          placement_team_result_constant: number
+          placing_opponent_elo_multiplier: number
           points_per_game: number
           provisional_bonus: number
           provisional_matches: number
           regress_coeff: number
+          reliability_established: number
+          reliability_placing: number
+          reliability_provisional: number
           tau: number
           updated_at: string
         }
@@ -5171,10 +5189,19 @@ export type Database = {
           k_playoffs?: number
           mean_rating?: number
           mov_cap?: number
+          placement_enabled?: boolean
+          placement_matches?: number
+          placement_model_version?: number
+          placement_prior_weight?: number
+          placement_team_result_constant?: number
+          placing_opponent_elo_multiplier?: number
           points_per_game?: number
           provisional_bonus?: number
           provisional_matches?: number
           regress_coeff?: number
+          reliability_established?: number
+          reliability_placing?: number
+          reliability_provisional?: number
           tau?: number
           updated_at?: string
         }
@@ -5191,10 +5218,19 @@ export type Database = {
           k_playoffs?: number
           mean_rating?: number
           mov_cap?: number
+          placement_enabled?: boolean
+          placement_matches?: number
+          placement_model_version?: number
+          placement_prior_weight?: number
+          placement_team_result_constant?: number
+          placing_opponent_elo_multiplier?: number
           points_per_game?: number
           provisional_bonus?: number
           provisional_matches?: number
           regress_coeff?: number
+          reliability_established?: number
+          reliability_placing?: number
+          reliability_provisional?: number
           tau?: number
           updated_at?: string
         }
@@ -9112,20 +9148,36 @@ export type Database = {
         }
         Returns: Json
       }
-      calculate_pulse_rating_change: {
-        Args: {
-          p_match_type?: string
-          p_opponent_score: number
-          p_opponent1_rating: number
-          p_opponent2_rating: number
-          p_partner_rating: number
-          p_player_matches?: number
-          p_player_rating: number
-          p_team_score: number
-          p_won: boolean
-        }
-        Returns: number
-      }
+      calculate_pulse_rating_change:
+        | {
+            Args: {
+              p_match_type?: string
+              p_opponent_score: number
+              p_opponent1_rating: number
+              p_opponent2_rating: number
+              p_partner_rating: number
+              p_player_matches?: number
+              p_player_rating: number
+              p_team_score: number
+              p_won: boolean
+            }
+            Returns: number
+          }
+        | {
+            Args: {
+              p_k_multiplier?: number
+              p_match_type?: string
+              p_opponent_score: number
+              p_opponent1_rating: number
+              p_opponent2_rating: number
+              p_partner_rating: number
+              p_player_matches?: number
+              p_player_rating: number
+              p_team_score: number
+              p_won: boolean
+            }
+            Returns: number
+          }
       calculate_rating_change: {
         Args: {
           opponent1_rating: number
@@ -9640,6 +9692,10 @@ export type Database = {
           notified_user_id: string
         }[]
       }
+      placement_forces_full_recalc: {
+        Args: { p_match_id: string }
+        Returns: boolean
+      }
       player_can_view_league: {
         Args: { p_league_id: string }
         Returns: boolean
@@ -9672,6 +9728,10 @@ export type Database = {
         }[]
       }
       promote_from_waitlist: { Args: { p_event_id: string }; Returns: string }
+      pulse_participant_reliability: {
+        Args: { p_count: number }
+        Returns: number
+      }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
         Returns: {
