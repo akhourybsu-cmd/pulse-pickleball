@@ -31,6 +31,9 @@ export interface PremiumMatchCardProps {
   source?: string | null;
   roundNo?: number | null;
   courtNo?: number | null;
+  /** False = this match does NOT count toward PULSE (shows an "Unranked" chip).
+   *  Defaults true so existing callers and ranked matches are unaffected. */
+  isRanked?: boolean;
   /** Verification roll-up. */
   verifiedCount: number;
   totalPlayers: number;
@@ -82,7 +85,7 @@ export function PremiumMatchCard(props: PremiumMatchCardProps) {
     verifiedCount, totalPlayers, isCurrentUserVerified,
     showVerifyActions, onVerify, onReport,
     pending = false, pendingConfirmedByMe = false, onConfirm,
-    perspective = 'self',
+    perspective = 'self', isRanked = true,
   } = props;
 
   const myScore = myTeam === 1 ? team1Score : team2Score;
@@ -155,6 +158,14 @@ export function PremiumMatchCard(props: PremiumMatchCardProps) {
                 RR
                 {roundNo != null && ` · R${roundNo}`}
                 {courtNo != null && ` · C${courtNo}`}
+              </span>
+            )}
+            {!pending && !isRanked && (
+              <span
+                className="inline-flex items-center px-1.5 py-0.5 rounded bg-muted text-muted-foreground text-[10px] font-bold uppercase tracking-wider flex-shrink-0"
+                title="This match doesn't count toward your PULSE rating"
+              >
+                Unranked
               </span>
             )}
           </div>

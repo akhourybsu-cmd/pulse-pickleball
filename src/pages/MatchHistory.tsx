@@ -64,6 +64,9 @@ interface Match {
   court_name: string;
   other_location: string | null;
   won: boolean;
+  /** Ranked = counts toward PULSE (default true; false only when excluded).
+   *  Set on approved rows; undefined on pending (which aren't rated yet). */
+  is_ranked?: boolean;
   verified_by: string[];
   source?: string;
   round_no?: number;
@@ -209,6 +212,7 @@ const MatchHistory = () => {
           round_no,
           court_no,
           voided,
+          count_for_rating,
           courts(name)
         )
       `)
@@ -294,6 +298,9 @@ const MatchHistory = () => {
           court_name: courtName,
           other_location: otherLocation,
           won,
+          // Approved + non-voided is already guaranteed by the query; ranked
+          // hinges on count_for_rating (default true when unset).
+          is_ranked: (p.matches as { count_for_rating?: boolean | null }).count_for_rating !== false,
           verified_by: p.matches.verified_by || [],
           source: p.matches.source,
           round_no: p.matches.round_no,
@@ -667,6 +674,46 @@ const MatchHistory = () => {
       )}
 
       <div className="container mx-auto px-4 py-6 space-y-6 max-w-3xl">
+        {/* Ranked-vs-all record. Only splits into two columns when the player
+            actually has non-ranked games — otherwise a single record, no
+            clutter. "won" is score-based so it's correct for every match. */}
+        {matches.length > 0 && (() => {
+          const allWins = matches.filter((m) => m.won).length;
+          const ranked = matches.filter((m) => m.is_ranked);
+          const rankedWins = ranked.filter((m) => m.won).length;
+          const hasUnranked = ranked.length < matches.length;
+          return (
+            <div className="flex items-center gap-4 rounded-xl border border-border/60 bg-card px-4 py-3">
+              <div>
+                <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  {hasUnranked ? "PULSE ranked" : "Record"}
+                </div>
+                <div className="text-lg font-bold tabular-nums">
+                  {rankedWins}–{ranked.length - rankedWins}
+                </div>
+              </div>
+              {hasUnranked && (
+                <>
+                  <div className="h-9 w-px bg-border/60" />
+                  <div>
+                    <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                      All games
+                    </div>
+                    <div className="text-lg font-bold tabular-nums text-muted-foreground">
+                      {allWins}–{matches.length - allWins}
+                    </div>
+                  </div>
+                </>
+              )}
+              <p className="ml-auto max-w-[46%] text-right text-xs text-muted-foreground">
+                {hasUnranked
+                  ? "Only ranked matches move your PULSE rating."
+                  : "Every match counts toward your PULSE rating."}
+              </p>
+            </div>
+          );
+        })()}
+
         {/* Tabs — custom strip with a sliding primary underline indicator
             (matches PlayerShell's bottom-nav animation language). Default
             shadcn TabsList swap was a "pill" treatment that felt visually
@@ -1017,6 +1064,7 @@ const MatchHistory = () => {
                         source={match.source}
                         roundNo={match.round_no}
                         courtNo={match.court_no}
+                        isRanked={match.is_ranked}
                         verifiedCount={verifiedCount}
                         totalPlayers={totalPlayers}
                         isCurrentUserVerified={isCurrentUserVerified}
