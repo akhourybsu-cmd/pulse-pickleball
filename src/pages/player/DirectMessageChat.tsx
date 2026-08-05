@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, MoreVertical, BellOff, Bell, Shield, Flag, UserX, Check, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -26,6 +26,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { reportUser, useBlockedUsers } from '@/hooks/useMessagingSafety';
 import { cn } from '@/lib/utils';
 import { useRegisterActiveContext } from '@/contexts/ActiveViewContext';
+import { useVisualViewportPane } from '@/hooks/useVisualViewportPane';
 
 
 // Render http(s) URLs in message text as tappable links — invite links
@@ -77,7 +78,12 @@ export default function DirectMessageChat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const prevCountRef = useRef(0);
+  const didInitialScrollRef = useRef(false);
   const inputRef = useRef<MessageComposerHandle>(null);
+
+  // Pin the whole thread to the visible viewport so the header stays put when
+  // the keyboard opens (see hook for the edge-to-edge / overlay rationale).
+  const paneStyle = useVisualViewportPane();
 
   const { typingUsers, startTyping } = useTypingIndicator(conversationId ? `dm-${conversationId}` : undefined);
 
@@ -133,22 +139,40 @@ export default function DirectMessageChat() {
     })();
   }, [participant?.id, currentUserId, messages.length]);
 
-  // Only auto-scroll to the newest message when it makes sense: on first load,
-  // when the newest message is your own, or when you're already near the
-  // bottom. Otherwise leave the scroll position alone so reading older
-  // history isn't yanked down by an incoming message.
+  // First time this thread's messages land, jump straight to the bottom so an
+  // opened chat always starts on the latest message — like every messaging app.
+  // A layout effect makes the jump happen before paint (no visible scroll
+  // flash), and the deferred re-pins catch late height changes (avatars
+  // decoding, font swap, message bubbles mounting/animating in).
+  useLayoutEffect(() => {
+    if (didInitialScrollRef.current) return;
+    const container = scrollContainerRef.current;
+    if (!container || messages.length === 0) return;
+    didInitialScrollRef.current = true;
+    prevCountRef.current = messages.length;
+    const pin = () => { container.scrollTop = container.scrollHeight; };
+    pin();
+    const raf = requestAnimationFrame(pin);
+    const t = setTimeout(pin, 150);
+    return () => { cancelAnimationFrame(raf); clearTimeout(t); };
+  }, [messages.length]);
+
+  // After the initial jump, only auto-scroll on genuinely NEW messages, and
+  // only when it won't yank the user out of older history they're reading:
+  // their own outgoing message, or when they're already near the bottom.
   useEffect(() => {
     const container = scrollContainerRef.current;
     const end = messagesEndRef.current;
-    if (!container || !end) return;
-    const isInitial = prevCountRef.current === 0 && messages.length > 0;
+    if (!container || !end || !didInitialScrollRef.current) return;
+    const prevCount = prevCountRef.current;
+    prevCountRef.current = messages.length;
+    if (messages.length <= prevCount) return; // status/edit change, not a new msg
     const last = messages[messages.length - 1];
     const lastIsMine = last?.sender_id === currentUserId;
     const nearBottom =
       container.scrollHeight - container.scrollTop - container.clientHeight < 140;
-    prevCountRef.current = messages.length;
-    if (isInitial || lastIsMine || nearBottom) {
-      end.scrollIntoView({ behavior: isInitial ? 'auto' : 'smooth' });
+    if (lastIsMine || nearBottom) {
+      end.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages, currentUserId]);
 
@@ -276,7 +300,7 @@ export default function DirectMessageChat() {
     : restricted;
 
   return (
-    <div className="flex flex-col h-[100dvh]">
+    <div className="flex flex-col h-[100dvh] bg-background z-40" style={paneStyle}>
       <div className="flex items-center gap-3 px-4 pb-3 border-b border-border/30 shrink-0 bg-gradient-to-b from-primary/[0.06] via-background to-background [padding-top:calc(0.75rem+env(safe-area-inset-top))]">
         <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="h-8 w-8">
           <ArrowLeft className="h-4 w-4" />
