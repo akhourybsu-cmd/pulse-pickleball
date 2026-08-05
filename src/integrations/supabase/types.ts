@@ -9148,20 +9148,36 @@ export type Database = {
         }
         Returns: Json
       }
-      calculate_pulse_rating_change: {
-        Args: {
-          p_match_type?: string
-          p_opponent_score: number
-          p_opponent1_rating: number
-          p_opponent2_rating: number
-          p_partner_rating: number
-          p_player_matches?: number
-          p_player_rating: number
-          p_team_score: number
-          p_won: boolean
-        }
-        Returns: number
-      }
+      calculate_pulse_rating_change:
+        | {
+            Args: {
+              p_match_type?: string
+              p_opponent_score: number
+              p_opponent1_rating: number
+              p_opponent2_rating: number
+              p_partner_rating: number
+              p_player_matches?: number
+              p_player_rating: number
+              p_team_score: number
+              p_won: boolean
+            }
+            Returns: number
+          }
+        | {
+            Args: {
+              p_k_multiplier?: number
+              p_match_type?: string
+              p_opponent_score: number
+              p_opponent1_rating: number
+              p_opponent2_rating: number
+              p_partner_rating: number
+              p_player_matches?: number
+              p_player_rating: number
+              p_team_score: number
+              p_won: boolean
+            }
+            Returns: number
+          }
       calculate_rating_change: {
         Args: {
           opponent1_rating: number
@@ -9676,6 +9692,10 @@ export type Database = {
           notified_user_id: string
         }[]
       }
+      placement_forces_full_recalc: {
+        Args: { p_match_id: string }
+        Returns: boolean
+      }
       player_can_view_league: {
         Args: { p_league_id: string }
         Returns: boolean
@@ -9708,6 +9728,10 @@ export type Database = {
         }[]
       }
       promote_from_waitlist: { Args: { p_event_id: string }; Returns: string }
+      pulse_participant_reliability: {
+        Args: { p_count: number }
+        Returns: number
+      }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
         Returns: {
