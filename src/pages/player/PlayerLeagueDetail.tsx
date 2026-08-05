@@ -16,6 +16,7 @@ import { resolvePlayerName } from "@/lib/matchDisplay";
 import { computePlayerStandings, computeTeamStandings } from "@/lib/leagues/standings";
 import { StandingsTable } from "@/components/leagues/StandingsTable";
 import { LadderSubRequestCard } from "@/components/leagues/LadderSubRequestCard";
+import { LadderHowItWorks } from "@/components/leagues/LadderHowItWorks";
 import { LeagueMatchActions } from "@/components/leagues/LeagueMatchActions";
 import { LadderTiebreakPrompt } from "@/components/leagues/LadderTiebreakPrompt";
 import { LeagueScope, LeagueHero, LgSectionHeader } from "@/components/leagues/_leagueScope";
@@ -29,6 +30,18 @@ const MATCH_STATUS_TONE: Record<LeagueMatchStatus, string> = {
   disputed:        "bg-destructive/20 text-destructive",
   canceled:        "bg-muted text-muted-foreground",
   forfeit:         "bg-muted text-muted-foreground",
+};
+
+// Plain-language labels so players don't see raw enum strings like
+// "score_submitted". The badge tone above already colors the state.
+const MATCH_STATUS_LABEL: Record<LeagueMatchStatus, string> = {
+  scheduled:       "Scheduled",
+  in_progress:     "In progress",
+  score_submitted: "Awaiting confirm",
+  verified:        "Final",
+  disputed:        "Disputed",
+  canceled:        "Canceled",
+  forfeit:         "Forfeit",
 };
 
 export default function PlayerLeagueDetail() {
@@ -144,7 +157,12 @@ export default function PlayerLeagueDetail() {
     });
 
   const record = myRow ? `${myRow.wins}–${myRow.losses}` : "0–0";
-  const isOrganizer = currentUserId != null && league.created_by === currentUserId;
+  // Anyone who can manage the league — the creator OR an assistant manager
+  // (membership.role === "manager") — gets the Manage entry. Gating on the
+  // creator alone locked co-organizers out of the console entirely.
+  const canManage =
+    currentUserId != null &&
+    (league.created_by === currentUserId || membership?.role === "manager");
 
   // In-page jump nav (the single-page analog of the admin tabs). Only the
   // sections that actually render are offered, and a click updates the URL
@@ -178,7 +196,7 @@ export default function PlayerLeagueDetail() {
             <ArrowLeft className="w-4 h-4 mr-1.5 motion-safe:transition-transform motion-safe:group-hover:-translate-x-0.5" />
             My leagues
           </ActionButton>
-          {isOrganizer && (
+          {canManage && (
             <ActionButton
               size="sm" variant="outline"
               onClick={() => navigate(`/player/leagues/${league.id}/manage`)}
@@ -231,6 +249,12 @@ export default function PlayerLeagueDetail() {
             seasonId={season?.id ?? null}
             currentUserId={currentUserId}
           />
+        )}
+
+        {/* Format explainer — open by default for a brand-new member who hasn't
+            seen any activity yet, collapsed once the league is in motion. */}
+        {league.league_type === "ladder" && (
+          <LadderHowItWorks defaultOpen={noActivity} />
         )}
 
         {standings.length > 0 && (
@@ -407,7 +431,7 @@ function MatchRow({
           <span className={cn(
             "font-bold uppercase tracking-[0.14em] px-1.5 py-0.5 rounded",
             MATCH_STATUS_TONE[match.status],
-          )}>{match.status.replace("_", " ")}</span>
+          )}>{MATCH_STATUS_LABEL[match.status] ?? match.status.replace("_", " ")}</span>
           {match.scheduled_time && (
             <span className="inline-flex items-center gap-1">
               <CalendarClock className="w-3 h-3" />

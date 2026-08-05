@@ -19,6 +19,7 @@ import { SessionsTab } from "@/components/admin/leagues/SessionsTab";
 import { MatchesTab } from "@/components/admin/leagues/MatchesTab";
 import { StandingsTab } from "@/components/admin/leagues/StandingsTab";
 import { AuditLogTab } from "@/components/admin/leagues/AuditLogTab";
+import { LeagueSetupChecklist } from "@/components/admin/leagues/LeagueSetupChecklist";
 import { LeagueManageNav } from "@/components/admin/leagues/LeagueManageNav";
 import { type ManageTab, MANAGE_TABS, visibleManageTabs } from "@/components/admin/leagues/leagueManageTabs";
 import { LeagueScope, LeagueHero } from "@/components/leagues/_leagueScope";
@@ -260,6 +261,16 @@ export default function AdminLeagueDetail() {
             { icon: CalendarClock, label: "Sessions", value: counts.sessions },
           ] : undefined}
         />
+
+        {/* First-run order-of-operations for ladder managers (dismissible). */}
+        {league.league_type === "ladder" && counts && (
+          <LeagueSetupChecklist
+            leagueId={league.id}
+            seasons={counts.seasons}
+            members={counts.members}
+            onGoToTab={setActiveTab}
+          />
+        )}
 
         {/* Rail + workspace */}
         <div className="flex flex-col lg:flex-row gap-4 lg:gap-6">
