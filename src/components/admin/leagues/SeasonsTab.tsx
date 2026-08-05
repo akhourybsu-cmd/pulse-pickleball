@@ -7,6 +7,10 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Dialog, DialogTrigger,
 } from "@/components/ui/dialog";
 import {
@@ -247,11 +251,19 @@ function SeasonEditor({
   const [endDate, setEndDate] = useState(initial?.end_date ?? "");
   const [regDeadline, setRegDeadline] = useState(initial?.registration_deadline ?? "");
   const [status, setStatus] = useState<SeasonStatus>(initial?.status ?? "draft");
+  const [confirmTerminal, setConfirmTerminal] = useState<null | "completed" | "archived">(null);
   const [saving, setSaving] = useState(false);
   const isNew = !initial;
 
-  const submit = async () => {
+  const submit = async (opts?: { confirmed?: boolean }) => {
     if (!name.trim()) { toast.error("Name is required"); return; }
+    // Moving a live season to a terminal status is impactful and, importantly,
+    // does NOT stop an in-progress ladder on its own — confirm and say so.
+    if (!isNew && initial && (status === "completed" || status === "archived")
+        && initial.status !== status && !opts?.confirmed) {
+      setConfirmTerminal(status);
+      return;
+    }
     setSaving(true);
     const payload = {
       league_id: league.id,
@@ -291,8 +303,30 @@ function SeasonEditor({
       primaryLabel={isNew ? "Create season" : "Save changes"}
       primaryLoading={saving}
       primaryDisabled={!name.trim()}
-      onPrimary={submit}
+      onPrimary={() => submit()}
     >
+      <AlertDialog open={confirmTerminal !== null} onOpenChange={(o) => { if (!o) setConfirmTerminal(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmTerminal === "archived" ? "Archive this season?" : "Mark this season complete?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmTerminal === "archived"
+                ? "Archiving moves the season out of active views."
+                : "Completing ends the season for standings and registration."}{" "}
+              This does not stop an in-progress ladder on its own — if a ladder is still
+              running for this season, pause or finish it from the Ladder tab too.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={async () => { setConfirmTerminal(null); await submit({ confirmed: true }); }}>
+              {confirmTerminal === "archived" ? "Archive season" : "Mark complete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <FormSection label="Basics">
         <FormRow label="Season name" required>
           <Input

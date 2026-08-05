@@ -330,7 +330,9 @@ function MemberInlineActions({
 }) {
   const [busy, setBusy] = useState(false);
   const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false);
+  const [pendingRole, setPendingRole] = useState<MemberRole | null>(null);
   const isRemoved = member.status === "removed";
+  const isLadder = league.league_type === "ladder";
 
   const patch = async (fields: Partial<LeagueMember>, action: string) => {
     setBusy(true);
@@ -351,7 +353,10 @@ function MemberInlineActions({
     <div className="flex items-center gap-1 w-full sm:w-auto">
       <Select
         value={member.role}
-        onValueChange={(v) => patch({ role: v as MemberRole }, "member.role_changed")}
+        onValueChange={(v) => {
+          const next = v as MemberRole;
+          if (next !== member.role) setPendingRole(next);
+        }}
       >
         <SelectTrigger className="h-8 flex-1 sm:flex-none sm:w-[110px] text-xs"><SelectValue /></SelectTrigger>
         <SelectContent>
@@ -359,6 +364,36 @@ function MemberInlineActions({
           <SelectItem value="manager">Assistant manager</SelectItem>
         </SelectContent>
       </Select>
+
+      {/* Role changes grant/revoke full management rights — confirm both ways. */}
+      <AlertDialog open={pendingRole !== null} onOpenChange={(o) => { if (!o) setPendingRole(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {pendingRole === "manager"
+                ? `Make ${memberName} an assistant manager?`
+                : `Change ${memberName} back to player?`}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingRole === "manager"
+                ? "Assistant managers can run the whole league — edit settings, generate and process the ladder, enter and override scores, and add or remove members. Only grant this to someone you trust to manage play."
+                : "This revokes their management access. They go back to a regular player who only sees their own matches and standings."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                const next = pendingRole;
+                setPendingRole(null);
+                if (next) await patch({ role: next }, "member.role_changed");
+              }}
+            >
+              {pendingRole === "manager" ? "Make assistant manager" : "Change to player"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Restore is benign — direct action. Remove needs a confirm. */}
       {isRemoved ? (
@@ -387,6 +422,16 @@ function MemberInlineActions({
                 <AlertDialogDescription>
                   {memberName} will be marked removed. This is a soft delete —
                   you can restore them later.
+                  {isLadder && (
+                    <span className="mt-2 block text-amber-600 dark:text-amber-400">
+                      Heads up: for a ladder that's already running, this does not pull
+                      them out of the rotation — the ladder keeps its own order, so a
+                      removed player can still be scheduled and can't be sat out. To take
+                      someone out of a running ladder mid-season, use the week roster to
+                      sit them out (keep them active), or swap in a substitute for their
+                      spot.
+                    </span>
+                  )}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>

@@ -44,6 +44,7 @@ export function OverviewTab({
   const [skillMax, setSkillMax] = useState(
     league.skill_max != null ? String(league.skill_max) : "");
   const [saving, setSaving] = useState(false);
+  const [confirmStatusArchive, setConfirmStatusArchive] = useState(false);
 
   const dirty =
     name !== league.name ||
@@ -56,9 +57,16 @@ export function OverviewTab({
     skillMin !== (league.skill_min != null ? String(league.skill_min) : "") ||
     skillMax !== (league.skill_max != null ? String(league.skill_max) : "");
 
-  const save = async () => {
+  const save = async (opts?: { archiveConfirmed?: boolean }) => {
     if (!name.trim()) {
       toast.error("Name is required");
+      return;
+    }
+    // Archiving via the Status control reaches the same destructive outcome as
+    // the dedicated "Archive league" button — route it through the same confirm
+    // instead of letting a plain Save slip it through.
+    if (status === "archived" && league.status !== "archived" && !opts?.archiveConfirmed) {
+      setConfirmStatusArchive(true);
       return;
     }
     const parseSkill = (s: string): number | null => {
@@ -244,7 +252,7 @@ export function OverviewTab({
         {/* Save row */}
         <div className="flex items-center justify-between pt-3 border-t border-border/40">
           <Button
-            onClick={save} disabled={!dirty || saving}
+            onClick={() => save()} disabled={!dirty || saving}
             className={cn(
               "h-11 font-bold uppercase tracking-wide px-6",
               dirty && "shadow-[0_2px_8px_-2px_hsl(var(--primary)/0.4)]",
@@ -252,6 +260,24 @@ export function OverviewTab({
           >
             {saving ? "Saving…" : dirty ? "Save changes" : "Saved"}
           </Button>
+          <AlertDialog open={confirmStatusArchive} onOpenChange={(o) => { if (!o) setConfirmStatusArchive(false); }}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Archive this league?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  You set the status to Archived. Archived leagues stay in the database
+                  and remain admin-only, but move out of the default list view. You can
+                  un-archive from the status dropdown.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={async () => { setConfirmStatusArchive(false); await save({ archiveConfirmed: true }); }}>
+                  Archive league
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
           {league.status !== "archived" && (
             <AlertDialog>
               <AlertDialogTrigger asChild>

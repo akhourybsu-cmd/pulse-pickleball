@@ -723,13 +723,17 @@ function LadderManage({
 
   const selfReport = (settings as unknown as { self_report_scoring?: boolean } | null)
     ?.self_report_scoring ?? false;
-  const toggleSelfReport = async () => {
+  const [confirmSelfReport, setConfirmSelfReport] = useState(false);
+  // Turning self-report ON mid-season weakens scoring integrity (drops the
+  // second-player check), so it goes through a confirm. Turning it OFF is safe
+  // and immediate.
+  const setSelfReportTo = async (next: boolean) => {
     if (!settings) return;
     const { error } = await supabase.from("ladder_settings" as never)
-      .update({ self_report_scoring: !selfReport } as never)
+      .update({ self_report_scoring: next } as never)
       .eq("season_id", settings.season_id);
     if (error) { toast.error(error.message); return; }
-    toast.success(selfReport ? "Self-report scoring off" : "Self-report scoring on");
+    toast.success(next ? "Self-report scoring on" : "Self-report scoring off");
     onChanged();
   };
 
@@ -850,8 +854,31 @@ function LadderManage({
                   : "off — a second player must verify each score"}
               </span>
             </div>
-            <Switch checked={selfReport} onCheckedChange={toggleSelfReport} />
+            <Switch
+              checked={selfReport}
+              onCheckedChange={(v) => { if (v) setConfirmSelfReport(true); else void setSelfReportTo(false); }}
+            />
           </label>
+          <AlertDialog open={confirmSelfReport} onOpenChange={(o) => { if (!o) setConfirmSelfReport(false); }}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Turn on self-report scoring?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Any player on a court will be able to lock in that game's final score
+                  themselves — no second player has to confirm it. Scores already
+                  confirmed stay as they are, and you can turn this back off anytime, but
+                  scores locked while it's on won't be re-checked. Turn it on only if you
+                  trust players to self-report.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={async () => { setConfirmSelfReport(false); await setSelfReportTo(true); }}>
+                  Turn on
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
           <div className="flex items-center gap-2">
             <ActionButton variant="outline" onClick={togglePause} loading={pauseBusy}
               className="h-12 shrink-0">
@@ -1238,12 +1265,17 @@ function WeekSchedulePanel({
                   </div>
                 </div>
                 {removeWeek === w ? (
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <span className="text-[11px] text-muted-foreground">Remove?</span>
-                    <ActionButton size="sm" variant="destructive" disabled={busy}
-                      onClick={() => unschedule(w)} className="h-9 text-xs">Yes</ActionButton>
-                    <ActionButton size="sm" variant="ghost" disabled={busy}
-                      onClick={() => setRemoveWeek(null)} className="h-9 text-xs">No</ActionButton>
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <span className="text-[11px] text-amber-600 dark:text-amber-400 text-right max-w-[230px]">
+                      Removes Week {w}'s schedule and cancels any pending sub requests for it.
+                      You can re-schedule it later.
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <ActionButton size="sm" variant="destructive" disabled={busy}
+                        onClick={() => unschedule(w)} className="h-9 text-xs">Remove week</ActionButton>
+                      <ActionButton size="sm" variant="ghost" disabled={busy}
+                        onClick={() => setRemoveWeek(null)} className="h-9 text-xs">Cancel</ActionButton>
+                    </div>
                   </div>
                 ) : (
                   <div className="flex items-center gap-1.5 shrink-0">
