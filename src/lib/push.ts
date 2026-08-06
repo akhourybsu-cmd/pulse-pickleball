@@ -16,6 +16,23 @@ import { isNativeApp } from "@/lib/platform";
  * throws on an un-provisioned build.
  */
 
+/**
+ * Native push is OFF until Firebase is provisioned.
+ *
+ * On Android, PushNotifications.register() calls into FCM, which crashes the
+ * app at the native layer ("Default FirebaseApp is not initialized") when no
+ * google-services.json is bundled — and a native crash can't be caught by the
+ * JS try/catch below. Until a Firebase project + google-services.json (and an
+ * FCM credential for the backend sender) are wired up per GOOGLE_PLAY_LAUNCH.md,
+ * we never call register(). Flip this to true once that config is in place.
+ */
+export const NATIVE_PUSH_ENABLED = false;
+
+/** Whether the native enable-notifications UI should be offered on this build. */
+export function isNativePushConfigured(): boolean {
+  return NATIVE_PUSH_ENABLED && isNativeApp();
+}
+
 let listenersReady = false;
 let navigateFn: ((path: string) => void) | null = null;
 
@@ -47,7 +64,7 @@ async function upsertDeviceToken(token: string): Promise<void> {
  * silently without a permission prompt. Call once at startup. No-op on web.
  */
 export async function initNativePush(): Promise<void> {
-  if (!isNativeApp()) return;
+  if (!isNativeApp() || !NATIVE_PUSH_ENABLED) return;
   try {
     const { PushNotifications } = await import("@capacitor/push-notifications");
 
@@ -80,7 +97,7 @@ export async function initNativePush(): Promise<void> {
  * the native app. No-op / false on web.
  */
 export async function enableNativePush(): Promise<boolean> {
-  if (!isNativeApp()) return false;
+  if (!isNativeApp() || !NATIVE_PUSH_ENABLED) return false;
   try {
     const { PushNotifications } = await import("@capacitor/push-notifications");
     await initNativePush(); // ensure listeners exist before register fires

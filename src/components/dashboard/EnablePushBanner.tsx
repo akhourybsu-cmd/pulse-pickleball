@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { isNativeApp } from "@/lib/platform";
-import { enableNativePush, getNativePushPermission } from "@/lib/push";
+import { enableNativePush, getNativePushPermission, isNativePushConfigured } from "@/lib/push";
 
 const DEFAULT_DISMISS_KEY = "pulse.enablePushBanner.dismissedAt";
 const DISMISS_TTL_MS = 1000 * 60 * 60 * 24 * 7; // 7 days
@@ -33,7 +33,13 @@ interface EnablePushBannerProps {
  * WebView, web push can't run, so we register with the OS push service instead.
  */
 export function EnablePushBanner(props: EnablePushBannerProps = {}) {
-  return isNativeApp() ? <NativeEnablePushBanner {...props} /> : <WebEnablePushBanner {...props} />;
+  if (isNativeApp()) {
+    // Native push (FCM) isn't provisioned yet — don't offer an enable button
+    // that would crash the app on register(). Re-enabled by NATIVE_PUSH_ENABLED.
+    if (!isNativePushConfigured()) return null;
+    return <NativeEnablePushBanner {...props} />;
+  }
+  return <WebEnablePushBanner {...props} />;
 }
 
 function WebEnablePushBanner({ dismissKey, contextLabel }: EnablePushBannerProps = {}) {
