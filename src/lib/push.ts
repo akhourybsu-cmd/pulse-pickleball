@@ -26,7 +26,7 @@ import { isNativeApp } from "@/lib/platform";
  * FCM credential for the backend sender) are wired up per GOOGLE_PLAY_LAUNCH.md,
  * we never call register(). Flip this to true once that config is in place.
  */
-export const NATIVE_PUSH_ENABLED = false;
+export const NATIVE_PUSH_ENABLED = true;
 
 /** Whether the native enable-notifications UI should be offered on this build. */
 export function isNativePushConfigured(): boolean {
