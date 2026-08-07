@@ -9,7 +9,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ActiveViewProvider } from "@/contexts/ActiveViewContext";
 
 import { useAuthPersistence } from "@/hooks/useAuthPersistence";
-import { setPushNavigator } from "@/lib/push";
+import { setPushNavigator, initNativePush } from "@/lib/push";
 import { PlayerShell } from "@/components/layout/PlayerShell";
 import { CommunityTransitionOutlet } from "@/components/community/CommunityTransitionOutlet";
 import { LeagueTransitionOutlet } from "@/components/leagues/LeagueTransitionOutlet";
@@ -281,6 +281,10 @@ const AppContent = () => {
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') && session?.user) {
+        // Now that a user session exists, (re)register for native push so the
+        // device token is saved to device_tokens — the token upsert is a no-op
+        // without an authed user, so registering only at cold startup can miss it.
+        void initNativePush();
         const currentPath = window.location.pathname;
         if (isAuthEntryPath(currentPath)) {
           navigate(consumePostAuthRedirect(), { replace: true });

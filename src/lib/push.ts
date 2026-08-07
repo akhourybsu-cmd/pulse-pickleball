@@ -1,4 +1,5 @@
 import { Capacitor } from "@capacitor/core";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { isNativeApp } from "@/lib/platform";
 
@@ -78,6 +79,21 @@ export async function initNativePush(): Promise<void> {
       await PushNotifications.addListener("pushNotificationActionPerformed", (action) => {
         const link = action.notification?.data?.link;
         if (typeof link === "string" && link && navigateFn) navigateFn(link);
+      });
+      // Foreground receipt: Android does NOT show a system banner for an FCM
+      // notification message while the app is open — it hands it to this
+      // listener instead. Surface it in-app so it isn't silently lost.
+      await PushNotifications.addListener("pushNotificationReceived", (notification) => {
+        const title = notification.title ?? "PULSE";
+        const body = notification.body ?? "";
+        const link = notification.data?.link;
+        toast(title, {
+          description: body || undefined,
+          action:
+            typeof link === "string" && link && navigateFn
+              ? { label: "View", onClick: () => navigateFn?.(link) }
+              : undefined,
+        });
       });
       listenersReady = true;
     }
