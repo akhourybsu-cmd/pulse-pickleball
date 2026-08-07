@@ -9632,6 +9632,14 @@ export type Database = {
         Args: { p_batch_id: string; p_force?: boolean }
         Returns: Json
       }
+      ladder_replace_player: {
+        Args: {
+          p_in_user_id: string
+          p_out_user_id: string
+          p_season_id: string
+        }
+        Returns: Json
+      }
       league_match_participant_user_ids: {
         Args: { p_exclude_user?: string; p_match_id: string }
         Returns: {
