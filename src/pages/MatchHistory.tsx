@@ -181,7 +181,7 @@ const MatchHistory = () => {
 
     // Get player name
     const { data: profile } = await supabase
-      .from("profiles")
+      .from("profiles_public")
       .select("full_name, display_name, avatar_url")
       .eq("id", playerIdToUse)
       .single();

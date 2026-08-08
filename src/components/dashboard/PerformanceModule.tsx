@@ -48,7 +48,7 @@ export const PerformanceModule = ({ userId }: PerformanceModuleProps) => {
 
       // Self profile so the my-team avatar is consistent with the rest of the app.
       const { data: meProfile } = await supabase
-        .from("profiles")
+        .from("profiles_public")
         .select("display_name, full_name, first_name, last_name, avatar_url")
         .eq("id", userId)
         .maybeSingle();

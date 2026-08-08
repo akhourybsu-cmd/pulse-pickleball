@@ -44,8 +44,8 @@ export function TeamsPanel({ divisionId, refreshKey, divisionStatus }: TeamsPane
       .from("tournaments_teams")
       .select(`
         *,
-        player1:profiles!tournaments_teams_player1_id_fkey(full_name, display_name),
-        player2:profiles!tournaments_teams_player2_id_fkey(full_name, display_name)
+        player1:profiles_public!tournaments_teams_player1_id_fkey(full_name, display_name),
+        player2:profiles_public!tournaments_teams_player2_id_fkey(full_name, display_name)
       `)
       .eq("division_id", divisionId)
       .order("seed_number", { ascending: true, nullsFirst: false });

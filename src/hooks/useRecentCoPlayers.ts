@@ -55,7 +55,7 @@ export function useRecentCoPlayers() {
       if (ids.length === 0) return [];
 
       const { data: profiles } = await supabase
-        .from("profiles")
+        .from("profiles_public")
         .select("id, full_name, display_name, avatar_url, current_rating, gender")
         .in("id", ids);
 

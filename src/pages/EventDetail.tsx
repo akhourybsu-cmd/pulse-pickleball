@@ -77,7 +77,7 @@ const EventDetail = () => {
       let organizerProfile = null;
       if (eventData) {
         const { data: profileData } = await supabase
-          .from("profiles")
+          .from("profiles_public")
           .select("full_name, display_name")
           .eq("id", eventData.organizer_id)
           .single();

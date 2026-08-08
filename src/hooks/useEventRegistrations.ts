@@ -76,7 +76,7 @@ export function useEventRegistrations(eventId: string | undefined) {
       // Fetch profiles for all users
       const userIds = registrations.map(r => r.user_id);
       const { data: profiles } = await supabase
-        .from("profiles")
+        .from("profiles_public")
         .select("id, full_name, display_name, avatar_url")
         .in("id", userIds);
 
