@@ -4,17 +4,13 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
-import {
   Dialog, DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Users, ChevronRight, UsersRound, Shield, Crown } from "lucide-react";
+import { Plus, Users, ChevronRight, UsersRound, Shield } from "lucide-react";
 import type {
   League, LeagueSeason, LeagueTeam, LeagueMember,
 } from "@/lib/leagues/types";
 import { logLeagueAction } from "@/lib/leagues/audit";
-import { resolvePlayerName } from "@/lib/matchDisplay";
 import { TeamRosterDialog } from "./TeamRosterDialog";
 import {
   EmptyState, TabSkeleton, LeagueTabProps,
@@ -89,9 +85,7 @@ export function TeamsTab({ league, dataVersion, onMutated }: LeagueTabProps) {
       setRosterCounts({});
     }
 
-    const captainIds = teamList
-      .map((tm) => tm.captain_user_id).filter(Boolean) as string[];
-    const userIds = Array.from(new Set([...captainIds, ...memList.map((m) => m.user_id)]));
+    const userIds = Array.from(new Set(memList.map((m) => m.user_id)));
     if (userIds.length) {
       const { data: profs } = await supabase
         .from("profiles_public" as never)
@@ -142,7 +136,6 @@ export function TeamsTab({ league, dataVersion, onMutated }: LeagueTabProps) {
       ) : (
         <ul className="space-y-2">
           {teams.map((t) => {
-            const captain = t.captain_user_id ? profilesById[t.captain_user_id] : null;
             const rosterCount = rosterCounts[t.id] ?? 0;
             return (
               <li key={t.id}>
@@ -167,16 +160,7 @@ export function TeamsTab({ league, dataVersion, onMutated }: LeagueTabProps) {
                           </span>
                         )}
                       </div>
-                      <div className="text-xs text-muted-foreground mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                        {captain ? (
-                          <span className="inline-flex items-center gap-1">
-                            <Crown className="w-3 h-3 text-amber-500" />
-                            {resolvePlayerName(captain)}
-                          </span>
-                        ) : (
-                          <span>No captain</span>
-                        )}
-                      </div>
+                      <div className="text-xs text-muted-foreground mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5" />
                     </div>
                     {/* Roster stat */}
                     <div className="text-center shrink-0 px-1.5">
@@ -219,7 +203,6 @@ function TeamEditor({
   onDone: () => Promise<void>;
 }) {
   const [name, setName] = useState("");
-  const [captainId, setCaptainId] = useState<string | "none">("none");
   const [saving, setSaving] = useState(false);
 
   const submit = async () => {
@@ -229,7 +212,6 @@ function TeamEditor({
       league_id: league.id,
       season_id: seasonId,
       name: name.trim(),
-      captain_user_id: captainId === "none" ? null : captainId,
     };
     const { data, error } = await supabase
       .from("league_teams" as never).insert(payload as never).select().single();
@@ -240,22 +222,6 @@ function TeamEditor({
       action: "team.created", entityType: "team",
       entityId: team.id, newValue: payload,
     });
-
-    // If a captain was picked, seed them as an active team member so the
-    // roster isn't empty on day one and role/captain stay consistent.
-    if (captainId !== "none") {
-      const rosterPayload = {
-        team_id: team.id,
-        user_id: captainId,
-        role: "captain" as const,
-      };
-      await supabase.from("league_team_members" as never).insert(rosterPayload as never);
-      await logLeagueAction({
-        leagueId: league.id, seasonId,
-        action: "team_member.added", entityType: "team_member",
-        entityId: null, newValue: rosterPayload,
-      });
-    }
 
     toast.success("Team created");
     setSaving(false);
@@ -280,29 +246,6 @@ function TeamEditor({
             value={name} onChange={(e) => setName(e.target.value)}
             placeholder="Team A" className={FIELD_H}
           />
-        </FormRow>
-      </FormSection>
-
-      <FormSection label="Leadership">
-        <FormRow
-          label="Captain"
-          hint={members.length === 0
-            ? "No active league members yet — add them on the Members tab first."
-            : "Auto-added to the roster with the captain role."}
-        >
-          <Select value={captainId} onValueChange={setCaptainId}>
-            <SelectTrigger className={FIELD_H}><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">No captain</SelectItem>
-              {members.map((m) => (
-                <SelectItem key={m.user_id} value={m.user_id}>
-                  {profilesById[m.user_id]
-                    ? resolvePlayerName(profilesById[m.user_id])
-                    : m.user_id.slice(0, 8)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </FormRow>
       </FormSection>
     </FormShell>

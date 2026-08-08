@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { UserPlus, UserX, Crown, Search, Users } from "lucide-react";
+import { UserPlus, UserX, Search, Users } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
@@ -43,12 +43,11 @@ function initialsOf(name: string): string {
 }
 
 function AvatarChip({
-  url, name, size = "sm", captain,
+  url, name, size = "sm",
 }: {
   url?: string | null;
   name: string;
   size?: "sm" | "md";
-  captain?: boolean;
 }) {
   const dim = size === "md" ? "h-9 w-9 text-xs" : "h-8 w-8 text-[11px]";
   return (
@@ -63,11 +62,6 @@ function AvatarChip({
           <span>{initialsOf(name)}</span>
         )}
       </div>
-      {captain && (
-        <span className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-amber-500 ring-2 ring-background flex items-center justify-center">
-          <Crown className="h-2.5 w-2.5 text-white" />
-        </span>
-      )}
     </div>
   );
 }
@@ -178,28 +172,6 @@ export function TeamRosterDialog({
     setBusy(false);
   };
 
-  const promoteCaptain = async (userId: string) => {
-    setBusy(true);
-    const { error } = await supabase
-      .from("league_teams" as never)
-      .update({ captain_user_id: userId } as never)
-      .eq("id", team.id);
-    if (error) {
-      toast.error(error.message);
-      setBusy(false);
-      return;
-    }
-    await logLeagueAction({
-      leagueId: league.id, seasonId: team.season_id,
-      action: "team.captain_changed", entityType: "team", entityId: team.id,
-      oldValue: { captain_user_id: team.captain_user_id },
-      newValue: { captain_user_id: userId },
-    });
-    toast.success("Captain updated");
-    await onChanged();
-    setBusy(false);
-  };
-
   const active = roster.filter((r) => r.status === "active");
   const removed = roster.filter((r) => r.status === "removed");
 
@@ -223,8 +195,6 @@ export function TeamRosterDialog({
               </DialogTitle>
               <p className="text-xs text-muted-foreground mt-1">
                 {active.length} active player{active.length === 1 ? "" : "s"}
-                {" · "}
-                {team.captain_user_id ? "captain set" : "no captain"}
               </p>
             </div>
           </div>
@@ -253,7 +223,6 @@ export function TeamRosterDialog({
                   {active.map((m) => {
                     const p = profilesById[m.user_id];
                     const name = p ? resolvePlayerName(p) : m.user_id.slice(0, 8);
-                    const isCaptain = team.captain_user_id === m.user_id;
                     return (
                       <li
                         key={m.id}
@@ -262,7 +231,6 @@ export function TeamRosterDialog({
                         <AvatarChip
                           url={p?.avatar_url}
                           name={name}
-                          captain={isCaptain}
                         />
                         <span className="text-sm font-medium truncate flex-1">
                           {name}
@@ -278,22 +246,9 @@ export function TeamRosterDialog({
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="player">Player</SelectItem>
-                            <SelectItem value="captain">Captain</SelectItem>
                             <SelectItem value="substitute">Substitute</SelectItem>
                           </SelectContent>
                         </Select>
-                        {!isCaptain && (
-                          <Button
-                            variant="ghost" size="sm"
-                            className="h-8 px-2 hover:text-amber-500"
-                            disabled={busy}
-                            onClick={() => promoteCaptain(m.user_id)}
-                            aria-label="Set as team captain"
-                            title="Make captain"
-                          >
-                            <Crown className="w-4 h-4" />
-                          </Button>
-                        )}
                         <Button
                           variant="ghost" size="sm"
                           className="h-8 px-2 text-muted-foreground hover:text-destructive"
