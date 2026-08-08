@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "190074648214",
+    "project_id": "pulse-pickleball-c60e1",
+    "storage_bucket": "pulse-pickleball-c60e1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:190074648214:android:ac48f07fcc9755335d34b7",
+        "android_client_info": {
+          "package_name": "com.pulsepb.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAFMm95bVcef7cTdViktYytcb_MkCDdPRY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
