@@ -9848,6 +9848,7 @@ export type Database = {
           reason: string
         }[]
       }
+      send_friend_request: { Args: { p_friend_id: string }; Returns: string }
       set_group_message_pin: {
         Args: { p_message_id: string; p_pinned: boolean }
         Returns: undefined
