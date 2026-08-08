@@ -145,7 +145,9 @@ export function MembersTab({ league, dataVersion, onMutated }: LeagueTabProps) {
     const initials = name
       .split(/\s+/).filter(Boolean).slice(0, 2)
       .map((s) => s[0]).join("").toUpperCase() || "?";
-    const roleLabel = m.role === "manager" ? "Assistant manager" : m.role;
+    // Captain is retired as a member role — anyone who isn't a manager shows
+    // as a plain Player.
+    const roleLabel = m.role === "manager" ? "Assistant manager" : "Player";
     const isInactive = m.status !== "active";
     return (
       <li key={m.id} className={cn(
@@ -288,16 +290,25 @@ export function MembersTab({ league, dataVersion, onMutated }: LeagueTabProps) {
         />
       ) : (
         <div className="space-y-4">
-          {(assistantMgrs.length > 0 || activePlayers.length > 0) && (
+          {/* Assistant managers — a labeled sub-list directly under the Manager. */}
+          {assistantMgrs.length > 0 && (
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-                <span>Active roster</span>
-                <span className="text-muted-foreground/70">
-                  · {assistantMgrs.length + activePlayers.length}
-                </span>
+                <span>Assistant managers</span>
+                <span className="text-muted-foreground/70">· {assistantMgrs.length}</span>
               </div>
               <ul className="space-y-2">
                 {assistantMgrs.map(renderMemberRow)}
+              </ul>
+            </div>
+          )}
+          {activePlayers.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                <span>Active roster</span>
+                <span className="text-muted-foreground/70">· {activePlayers.length}</span>
+              </div>
+              <ul className="space-y-2">
                 {activePlayers.map(renderMemberRow)}
               </ul>
             </div>
@@ -352,7 +363,7 @@ function MemberInlineActions({
   return (
     <div className="flex items-center gap-1 w-full sm:w-auto">
       <Select
-        value={member.role}
+        value={member.role === "manager" ? "manager" : "player"}
         onValueChange={(v) => {
           const next = v as MemberRole;
           if (next !== member.role) setPendingRole(next);

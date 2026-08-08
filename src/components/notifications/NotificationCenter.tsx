@@ -214,8 +214,12 @@ export function NotificationCenter({
         transition={{ type: "spring", damping: 25, stiffness: 200 }}
         className="fixed top-0 right-0 h-full w-full sm:w-[420px] bg-background border-l shadow-xl z-50"
       >
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b">
+        {/* Header — pad the top by the device safe-area inset so the title
+            clears the status bar / notch on native. */}
+        <div
+          className="flex items-center justify-between p-4 border-b"
+          style={{ paddingTop: "calc(1rem + env(safe-area-inset-top))" }}
+        >
           <div className="flex items-center gap-2">
             <Bell className="h-5 w-5 text-primary" />
             <h2 className="text-lg font-semibold">Notifications</h2>
