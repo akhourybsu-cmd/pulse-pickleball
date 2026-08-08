@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { isPlatformAdmin } from "@/lib/permissions";
 import { toast } from "sonner";
 import { SystemHealthDashboard } from "@/components/admin/SystemHealthDashboard";
+import { TestPushCard } from "@/components/admin/TestPushCard";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 
 export default function AdminSystemHealth() {
@@ -50,8 +51,9 @@ export default function AdminSystemHealth() {
 
   return (
     <AdminLayout title="System Health">
-      <div className="container mx-auto px-4 py-6">
+      <div className="container mx-auto px-4 py-6 space-y-6">
         <SystemHealthDashboard />
+        <TestPushCard />
       </div>
     </AdminLayout>
   );
