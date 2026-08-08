@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link, useSearchParams, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { sendAuthEmail } from "@/lib/authEmail";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -239,6 +240,11 @@ const Auth = () => {
           toast.success("Account created! Welcome to PULSE!");
           navigate(redirectPath, { replace: true });
         } else if (authData.user) {
+          await sendAuthEmail({
+            type: "signup",
+            email,
+            redirectTo: `${window.location.origin}/`,
+          }).catch((e) => console.error("Signup email failed", e));
           toast.success("Account created! Check your email to finish signing in.");
         }
       }
@@ -263,11 +269,11 @@ const Auth = () => {
         return;
       }
 
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      await sendAuthEmail({
+        type: "recovery",
+        email,
         redirectTo: `${window.location.origin}/reset-password`,
       });
-
-      if (error) throw error;
 
       toast.success("Password reset email sent! Check your inbox.");
       setIsForgotPassword(false);

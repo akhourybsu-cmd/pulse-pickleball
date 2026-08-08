@@ -39,6 +39,8 @@ project_id = "ryxklkayezjnwwunuphn"
     schedule = "*/5 * * * *"
 
 [functions]
+  [functions.auth-email]
+    verify_jwt = false
   [functions.auth-email-hook]
     verify_jwt = false
   [functions.calculate-badges]

@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { sendAuthEmail } from "@/lib/authEmail";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { UserCog, User, MapPin, Trophy, Gamepad2, Bell, KeyRound, ChevronRight, Loader2, Lock, ShieldCheck } from "lucide-react";
@@ -228,10 +229,11 @@ const EditProfile = () => {
     if (!user?.email) return;
     setResettingPassword(true);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
-        redirectTo: `${window.location.origin}/auth`,
+      await sendAuthEmail({
+        type: "recovery",
+        email: user.email,
+        redirectTo: `${window.location.origin}/reset-password`,
       });
-      if (error) throw error;
       toast.success("Password reset email sent! Check your inbox.");
     } catch (error) {
       console.error("Error sending password reset:", error);
