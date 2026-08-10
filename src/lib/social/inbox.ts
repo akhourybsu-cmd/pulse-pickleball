@@ -85,7 +85,17 @@ export function dmToConversation(c: DmSource, currentUserId: string | null): Soc
   };
 }
 
-export function groupToConversation(g: GroupSource, latest?: GroupLatestMessage | null): SocialConversation {
+export function groupToConversation(
+  g: GroupSource,
+  latest?: GroupLatestMessage | null,
+  /**
+   * Unread CHAT messages for this group. The inbox is a chat surface, so
+   * the badge must reflect unread group-chat messages — NOT the group's
+   * `unread_count`, which counts new community-feed posts. Callers that
+   * don't compute chat-unread fall back to `g.unread_count` for back-compat.
+   */
+  chatUnread?: number,
+): SocialConversation {
   const body = latest ? messagePreview(latest.content, !!latest.image_url) : "";
   let preview: string | null = null;
   if (latest && body) {
@@ -99,7 +109,7 @@ export function groupToConversation(g: GroupSource, latest?: GroupLatestMessage 
     avatarUrl: g.icon_url,
     lastMessagePreview: preview,
     lastActivityAt: latest?.created_at ?? g.updated_at,
-    unreadCount: g.unread_count ?? 0,
+    unreadCount: chatUnread ?? g.unread_count ?? 0,
     isMuted: false,
     participantCount: g.member_count,
     route: `/player/community/group/${g.id}?tab=chat`,

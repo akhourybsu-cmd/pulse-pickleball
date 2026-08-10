@@ -43,10 +43,14 @@ export default function SelfAssessment() {
   }
 
   const hasResult = !!a.latest?.scoring_snapshot;
-  // Viewing wins over an unfinished draft unless the player explicitly asked
-  // to retake / resume.
+  // Show the Skill Fingerprint whenever there's a freshly-finalized result
+  // (`phase === "result"`, which finalize sets) OR the player explicitly chose
+  // to view it. The `phase === "result"` case is what makes a RETAKE land on
+  // its new result: previously a stuck `mode === "retake"` vetoed the result
+  // even after finalize, dumping the player back on the intro screen. `mode`
+  // only gates the in-progress wizard below, not a completed result.
   const showFingerprint =
-    hasResult && mode !== "retake" && (mode === "view" || a.phase === "result");
+    hasResult && (a.phase === "result" || mode === "view");
 
   return (
     <div className="container mx-auto max-w-lg px-4 py-5 pb-24">
