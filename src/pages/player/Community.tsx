@@ -66,12 +66,21 @@ export default function Community() {
                   }}
                 />
                 </div>
-                <div className="flex items-center gap-2 mb-1 shrink-0">
+                <div className="flex items-center gap-1.5 mb-1 shrink-0">
                   <Button
                     variant="ghost"
                     size="icon"
                     className="h-9 w-9 rounded-full hover:bg-muted/50"
-                    aria-label="Search"
+                    aria-label="Join with code"
+                    onClick={() => setJoinDialogOpen(true)}
+                  >
+                    <QrCode className="h-5 w-5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9 rounded-full hover:bg-muted/50"
+                    aria-label="Explore groups"
                     onClick={() => setActiveTab('explore')}
                   >
                     <Search className="h-5 w-5" />
@@ -93,45 +102,9 @@ export default function Community() {
         <div className="flex-1 overflow-y-auto">
           {/* My Community */}
           <TabsContent value="my-community" className="m-0 px-4 sm:px-6 pt-4 pb-8 space-y-6">
-            {/* Action row — premium feel via a soft gradient backdrop +
-                primary-tinted icon disc. Pre-overhaul both tiles were
-                flat cards with the same border treatment, which read as
-                "form fields" rather than "primary affordances." */}
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => setJoinDialogOpen(true)}
-                className="group flex items-center gap-3 p-4 rounded-xl bg-gradient-to-br from-primary/[0.06] to-transparent border border-border/40 hover:border-primary/30 hover:from-primary/10 transition-all active:scale-[0.99] text-left"
-              >
-                <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary/12 text-primary shrink-0 transition-transform group-hover:scale-105">
-                  <QrCode className="h-5 w-5" />
-                </span>
-                <span className="flex flex-col leading-tight">
-                  <span className="text-sm font-semibold">Join with Code</span>
-                  <span className="text-[11px] text-muted-foreground">From a friend or admin</span>
-                </span>
-              </button>
-              <button
-                onClick={() => setCreateDialogOpen(true)}
-                className="group flex items-center gap-3 p-4 rounded-xl bg-gradient-to-br from-primary/[0.06] to-transparent border border-border/40 hover:border-primary/30 hover:from-primary/10 transition-all active:scale-[0.99] text-left"
-              >
-                <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary/12 text-primary shrink-0 transition-transform group-hover:scale-105">
-                  <Users className="h-5 w-5" />
-                </span>
-                <span className="flex flex-col leading-tight">
-                  <span className="text-sm font-semibold">Create Group</span>
-                  <span className="text-[11px] text-muted-foreground">Start your own crew</span>
-                </span>
-              </button>
-            </div>
-
-            {/* Friends entry */}
-            <FriendsEntryCard />
-
-
-
-            {/* Your Groups */}
+            {/* Your Groups is the hero — a clean, uniform list is the first
+                thing you see (create/join now live as header icons). */}
             <section className="space-y-3">
-              <h2 className="text-lg font-semibold tracking-tight font-display">Your Groups</h2>
               {loading ? (
                 <div className="space-y-3">
                   {[1, 2].map((i) => (
@@ -141,20 +114,30 @@ export default function Community() {
               ) : myGroups.length > 0 ? (
                 <ReorderableGroupList groups={myGroups} onReorder={updateGroupOrder} />
               ) : (
-                <div className="flex flex-col items-center justify-center py-10 text-center rounded-xl border border-dashed border-border/50">
+                <div className="flex flex-col items-center justify-center py-12 text-center rounded-xl border border-dashed border-border/50">
                   <div className="w-12 h-12 rounded-full bg-muted/40 flex items-center justify-center mb-3">
                     <Users className="h-5 w-5 text-muted-foreground/60" />
                   </div>
-                  <p className="text-sm text-muted-foreground max-w-[260px]">
-                    Join with a code or create a group to get started
+                  <p className="text-sm text-muted-foreground max-w-[260px] mb-4">
+                    Join a group with a code, or create your own to get started.
                   </p>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" className="rounded-full" onClick={() => setJoinDialogOpen(true)}>
+                      <QrCode className="h-4 w-4 mr-1.5" /> Join with code
+                    </Button>
+                    <Button size="sm" className="rounded-full btn-premium" onClick={() => setCreateDialogOpen(true)}>
+                      <Plus className="h-4 w-4 mr-1.5" /> Create
+                    </Button>
+                  </div>
                 </div>
               )}
             </section>
 
-            {/* Recent Activity */}
+            {/* Secondary: friends + recent activity, below the groups list. */}
+            <FriendsEntryCard />
+
             <section className="space-y-3">
-              <h2 className="text-lg font-semibold tracking-tight font-display">Recent Activity</h2>
+              <h2 className="text-sm font-semibold tracking-tight text-muted-foreground uppercase">Recent activity</h2>
               <CommunityActivityFeed />
             </section>
           </TabsContent>
