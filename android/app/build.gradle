@@ -22,8 +22,8 @@ android {
         // auto-increments without hand-editing this file; local builds default
         // to 1. Play requires a strictly higher versionCode per upload.
         // (Single method call — avoids Groovy parsing `versionCode(x).toInteger()`.)
-        versionCode Integer.parseInt(System.getenv("VERSION_CODE") ?: "6")
-        versionName "1.0.5"
+        versionCode Integer.parseInt(System.getenv("VERSION_CODE") ?: "7")
+        versionName "1.0.6"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
