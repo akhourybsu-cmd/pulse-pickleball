@@ -66,9 +66,9 @@ export function ConversationRow({
         aria-label={`Open ${isGroup ? "group" : "conversation"}: ${c.title}`}
       >
         <div className="relative shrink-0">
-          <Avatar className={cn("h-12 w-12", isGroup && "rounded-xl")}>
+          <Avatar className="h-12 w-12">
             <AvatarImage src={c.avatarUrl || undefined} />
-            <AvatarFallback className={cn(isGroup && "rounded-xl bg-primary/10 text-primary")}>
+            <AvatarFallback className={cn(isGroup && "bg-primary/10 text-primary")}>
               {isGroup ? <Users className="h-5 w-5" /> : initials(c.title)}
             </AvatarFallback>
           </Avatar>
