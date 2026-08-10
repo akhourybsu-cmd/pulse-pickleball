@@ -345,7 +345,7 @@ export default function GroupDetail() {
           <line x1="100" y1="192" x2="100" y2="280" />
         </svg>
 
-        <div className="relative flex items-start gap-2">
+        <div className="relative flex items-center gap-2">
           <Button
             variant="ghost"
             size="icon"
@@ -356,30 +356,11 @@ export default function GroupDetail() {
             <ArrowLeft className="h-5 w-5" />
           </Button>
 
-          <div className="flex-1 min-w-0 pt-0.5">
+          <div className="flex-1 min-w-0">
             <h1 className="text-xl sm:text-2xl font-bold truncate leading-tight text-white">
               {group.name}
             </h1>
             <div className="h-[3px] w-10 mt-1.5 rounded-full bg-primary" />
-            <div className="flex items-center gap-1.5 mt-2 text-xs text-white/60 truncate">
-              <VisibilityIcon className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">{subtitle}</span>
-            </div>
-            {/* Active presence — green means genuinely online. */}
-            <div className="flex items-center gap-1.5 mt-1">
-              <span className="relative flex h-2 w-2">
-                {isConnected && (
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400/60 opacity-75" />
-                )}
-                <span className={cn(
-                  "relative inline-flex rounded-full h-2 w-2",
-                  isConnected ? "bg-emerald-400" : "bg-white/30"
-                )} />
-              </span>
-              <span className="text-xs text-white/55">
-                {onlineCount > 0 ? `${onlineCount} active` : 'Idle'}
-              </span>
-            </div>
           </div>
 
           {/* Right-side action cluster — white on the dark band. */}
@@ -611,6 +592,39 @@ export default function GroupDetail() {
           >
             {visitedTabs.has('more') && (
               <>
+                {/* About — the group's visibility/type/size and live presence,
+                    relocated here from the header to reclaim headspace. */}
+                <div className="space-y-2">
+                  <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground px-1">
+                    About
+                  </div>
+                  <div className="rounded-xl border border-border/40 bg-card p-4 space-y-3">
+                    <div className="flex items-center gap-2 text-sm text-foreground">
+                      <VisibilityIcon className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span>{subtitle}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="relative flex h-2 w-2">
+                        {isConnected && (
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500/60 opacity-75" />
+                        )}
+                        <span className={cn(
+                          "relative inline-flex rounded-full h-2 w-2",
+                          isConnected ? "bg-emerald-500" : "bg-muted-foreground/40"
+                        )} />
+                      </span>
+                      <span className="text-muted-foreground">
+                        {onlineCount > 0 ? `${onlineCount} active now` : 'No one active right now'}
+                      </span>
+                    </div>
+                    {group.description && (
+                      <p className="text-sm text-muted-foreground leading-relaxed pt-1 border-t border-border/30">
+                        {group.description}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
                 <div className="space-y-2">
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground px-1">
                     <FolderOpen className="h-3.5 w-3.5" />
