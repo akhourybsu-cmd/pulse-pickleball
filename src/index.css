@@ -817,3 +817,60 @@ All colors MUST be HSL.
 /* Backwards-compat alias so any legacy .league-admin usage still works. */
 .league-admin { }
 
+
+/* =====================================================================
+   iMessage-style chat bubble tails
+   Applied to the LAST bubble in a run of consecutive same-sender
+   messages (see DirectMessageChat / ChatMessage). A color-matched
+   pseudo bulge (::before) sits behind the bubble at its tail corner and
+   a pane-colored pseudo (::after) carves the outer curve, leaving a
+   small tail. Both pseudos sit BEHIND the bubble body (z-index:-1) so
+   the bubble's own fill covers the inner overlap and the tail reads as
+   part of the bubble. Tailed bubbles use SOLID fills so the tail colour
+   matches seamlessly.
+   ===================================================================== */
+.chat-tail-right,
+.chat-tail-left { position: relative; }
+
+.chat-tail-right::before,
+.chat-tail-left::before,
+.chat-tail-right::after,
+.chat-tail-left::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  bottom: 0;
+  pointer-events: none;
+}
+
+/* Outgoing (bubble on the right) — gold bulge + carve */
+.chat-tail-right::before {
+  right: -6px;
+  width: 18px;
+  height: 19px;
+  background: hsl(var(--primary));
+  border-bottom-left-radius: 16px;
+}
+.chat-tail-right::after {
+  right: -13px;
+  width: 14px;
+  height: 20px;
+  background: hsl(var(--background));
+  border-bottom-left-radius: 11px;
+}
+
+/* Incoming (bubble on the left) — muted bulge + carve, mirrored */
+.chat-tail-left::before {
+  left: -6px;
+  width: 18px;
+  height: 19px;
+  background: hsl(var(--muted));
+  border-bottom-right-radius: 16px;
+}
+.chat-tail-left::after {
+  left: -13px;
+  width: 14px;
+  height: 20px;
+  background: hsl(var(--background));
+  border-bottom-right-radius: 11px;
+}

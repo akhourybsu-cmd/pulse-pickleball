@@ -390,9 +390,13 @@ export default function DirectMessageChat() {
         <AnimatePresence initial={false}>
           {messages.map((message, index) => {
             const prev = index > 0 ? messages[index - 1] : null;
+            const next = index < messages.length - 1 ? messages[index + 1] : null;
             const isOwn = message.sender_id === currentUserId;
             const showDate = shouldShowDateSeparator(message, prev);
             const grouped = shouldGroupWithPrevious(message, prev);
+            // Tail only the LAST bubble of a sender's run (iMessage style).
+            const isFailed = message._status === 'failed';
+            const showTail = (!next || !shouldGroupWithPrevious(next, message)) && !isFailed;
             return (
               <div key={message.id}>
                 {showDate && (
@@ -410,13 +414,15 @@ export default function DirectMessageChat() {
                 >
                   <div className={cn(
                     'max-w-[80%] px-3 py-2 rounded-2xl text-sm transition-opacity duration-200',
-                    // Failed own sends drop the gold gradient for a clear
+                    // Failed own sends drop the gold fill for a clear
                     // destructive surface; otherwise use the shared depth styles.
                     isOwn
-                      ? (message._status === 'failed'
-                          ? 'bg-destructive/15 text-destructive-foreground/90 rounded-br-md'
+                      ? (isFailed
+                          ? 'bg-destructive/15 text-destructive-foreground/90'
                           : outgoingBubble)
                       : incomingBubble,
+                    // Tail on the last bubble of a run.
+                    showTail && (isOwn ? 'chat-tail-right' : 'chat-tail-left'),
                     // Faded while in-flight, bright once acked. Mirrors
                     // the iMessage "sending → sent" pulse.
                     message._status === 'sending' && 'opacity-70',

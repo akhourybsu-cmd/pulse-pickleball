@@ -21,6 +21,8 @@ interface ChatMessageProps {
   message: GroupMessage;
   isOwn: boolean;
   showAvatar: boolean;
+  /** Last bubble of a sender's run — gets the iMessage-style tail. */
+  isLastInGroup?: boolean;
   showDateSeparator?: boolean;
   previousMessageDate?: Date;
   /** Roles that gate Pin in the dropdown — only shown when true. */
@@ -45,6 +47,7 @@ export const ChatMessage = memo(function ChatMessage({
   message,
   isOwn,
   showAvatar,
+  isLastInGroup = true,
   showDateSeparator,
   previousMessageDate,
   canPin,
@@ -252,6 +255,9 @@ export const ChatMessage = memo(function ChatMessage({
                   className={cn(
                     'rounded-2xl px-3 py-2 text-sm transition-colors whitespace-pre-wrap',
                     isOwn ? outgoingBubble : incomingBubble,
+                    // Tail on the last bubble of a run, unless the send failed.
+                    isLastInGroup && message._status !== 'failed' &&
+                      (isOwn ? 'chat-tail-right' : 'chat-tail-left'),
                     message.is_pinned && 'ring-1 ring-primary/40',
                     'group-hover:ring-1 group-hover:ring-border/20',
                     message._status === 'sending' && 'opacity-70',

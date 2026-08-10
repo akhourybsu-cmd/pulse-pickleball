@@ -260,6 +260,8 @@ export const GroupChat = memo(function GroupChat({
               {messages.map((message, index) => {
                 const isOwn = message.user_id === currentUserId;
                 const showAvatar = index === 0 || messages[index - 1]?.user_id !== message.user_id;
+                // Tail the last bubble of each sender's run (iMessage style).
+                const isLastInGroup = index === messages.length - 1 || messages[index + 1]?.user_id !== message.user_id;
                 const previousMessageDate = index > 0 ? new Date(messages[index - 1].created_at) : undefined;
                 return (
                   <ChatMessage
@@ -267,6 +269,7 @@ export const GroupChat = memo(function GroupChat({
                     message={message}
                     isOwn={isOwn}
                     showAvatar={showAvatar}
+                    isLastInGroup={isLastInGroup}
                     showDateSeparator={index === 0}
                     previousMessageDate={previousMessageDate}
                     canPin={isAdmin || isOwn}
