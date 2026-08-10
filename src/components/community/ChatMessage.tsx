@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import { outgoingBubble, incomingBubble } from '@/lib/chat/bubbleStyles';
 import { MessageReactions } from './MessageReactions';
 import type { GroupMessage } from '@/hooks/useGroupChat';
 
@@ -250,9 +251,7 @@ export const ChatMessage = memo(function ChatMessage({
                 <div
                   className={cn(
                     'rounded-2xl px-3 py-2 text-sm transition-colors whitespace-pre-wrap',
-                    isOwn
-                      ? 'bg-primary text-primary-foreground rounded-br-md'
-                      : 'bg-muted/70 rounded-bl-md',
+                    isOwn ? outgoingBubble : incomingBubble,
                     message.is_pinned && 'ring-1 ring-primary/40',
                     'group-hover:ring-1 group-hover:ring-border/20',
                     message._status === 'sending' && 'opacity-70',

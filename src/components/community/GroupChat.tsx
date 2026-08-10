@@ -191,7 +191,7 @@ export const GroupChat = memo(function GroupChat({
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-gradient-to-b from-primary/[0.03] via-transparent to-transparent">
       {/* Online Status Header */}
       <div className="flex items-center gap-2 px-4 py-2 border-b border-border/20 bg-muted/20">
         <OnlineIndicator isOnline={isConnected} size="sm" showPulse={false} />

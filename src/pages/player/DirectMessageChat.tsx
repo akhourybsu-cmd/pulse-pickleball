@@ -25,6 +25,7 @@ import { TypingIndicator } from '@/components/community/TypingIndicator';
 import { supabase } from '@/integrations/supabase/client';
 import { reportUser, useBlockedUsers } from '@/hooks/useMessagingSafety';
 import { cn } from '@/lib/utils';
+import { outgoingBubble, incomingBubble } from '@/lib/chat/bubbleStyles';
 import { useRegisterActiveContext } from '@/contexts/ActiveViewContext';
 import { useVisualViewportPane } from '@/hooks/useVisualViewportPane';
 
@@ -300,8 +301,8 @@ export default function DirectMessageChat() {
     : restricted;
 
   return (
-    <div className="flex flex-col h-[100dvh] bg-background z-40" style={paneStyle}>
-      <div className="flex items-center gap-3 px-4 pb-3 border-b border-border/30 shrink-0 bg-gradient-to-b from-primary/[0.06] via-background to-background [padding-top:calc(0.75rem+env(safe-area-inset-top))]">
+    <div className="flex flex-col h-[100dvh] z-40 bg-gradient-to-b from-primary/[0.04] via-background to-background" style={paneStyle}>
+      <div className="flex items-center gap-3 px-4 pb-3 border-b border-border/30 shrink-0 bg-background/80 backdrop-blur-sm shadow-[0_1px_3px_-1px_hsl(220_10%_10%/0.12)] [padding-top:calc(0.75rem+env(safe-area-inset-top))]">
         <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="h-8 w-8">
           <ArrowLeft className="h-4 w-4" />
         </Button>
@@ -396,7 +397,7 @@ export default function DirectMessageChat() {
               <div key={message.id}>
                 {showDate && (
                   <div className="flex justify-center my-4">
-                    <span className="text-xs text-muted-foreground bg-muted/50 px-3 py-1 rounded-full">
+                    <span className="text-xs text-muted-foreground bg-card border border-border/50 shadow-sm px-3 py-1 rounded-full">
                       {formatMessageDate(new Date(message.created_at))}
                     </span>
                   </div>
@@ -409,11 +410,16 @@ export default function DirectMessageChat() {
                 >
                   <div className={cn(
                     'max-w-[80%] px-3 py-2 rounded-2xl text-sm transition-opacity duration-200',
-                    isOwn ? 'bg-primary text-primary-foreground rounded-br-md' : 'bg-muted rounded-bl-md',
+                    // Failed own sends drop the gold gradient for a clear
+                    // destructive surface; otherwise use the shared depth styles.
+                    isOwn
+                      ? (message._status === 'failed'
+                          ? 'bg-destructive/15 text-destructive-foreground/90 rounded-br-md'
+                          : outgoingBubble)
+                      : incomingBubble,
                     // Faded while in-flight, bright once acked. Mirrors
                     // the iMessage "sending → sent" pulse.
                     message._status === 'sending' && 'opacity-70',
-                    message._status === 'failed' && 'bg-destructive/15 text-destructive-foreground/90',
                   )}>
                     <p className="break-words">{linkifyContent(message.content)}</p>
                     {!grouped && (
