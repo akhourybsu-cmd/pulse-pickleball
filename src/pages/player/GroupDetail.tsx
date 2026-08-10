@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { 
-  ArrowLeft, Settings, Users, MessageSquare, MessageCircle, Calendar, 
-  FolderOpen, Plus, Share2, MoreVertical, MoreHorizontal, UserPlus, Bell
+import {
+  ArrowLeft, Settings, Users, MessageSquare, MessageCircle, Calendar,
+  FolderOpen, Plus, Share2, MoreVertical, MoreHorizontal, UserPlus, Bell,
+  Lock, Globe, Eye
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -240,6 +241,9 @@ export default function GroupDetail() {
     : group?.visibility === 'unlisted' ? 'Unlisted' : 'Public';
   const memberCount = group?.member_count ?? 0;
   const subtitle = `${visibilityLabel} ${typeLabel} · ${memberCount} ${memberCount === 1 ? 'member' : 'members'}`;
+  const VisibilityIcon = group?.visibility === 'private'
+    ? Lock
+    : group?.visibility === 'unlisted' ? Eye : Globe;
 
   if (loading) {
     return (
@@ -318,63 +322,73 @@ export default function GroupDetail() {
         '--venue-primary': venueColor,
       } as React.CSSProperties : undefined}
     >
-      {/* Refined Community Header — matches PlayerPageHeader (Match page) treatment */}
-      <div
-        className={cn(
-          "px-3 sm:px-4 pb-3 border-b border-border/40 shrink-0 [padding-top:calc(0.75rem+env(safe-area-inset-top))]",
-          !isVenueGroup && "bg-gradient-to-b from-primary/[0.10] via-primary/[0.03] to-background"
-        )}
-        style={isVenueGroup ? {
-          borderColor: `${venueColor}30`,
-          background: `linear-gradient(to bottom, ${venueColor}14, ${venueColor}06, transparent)`
-        } : undefined}
-      >
-        <div className="flex items-start gap-2">
+      {/* Community header — a compact dark-ink banner. The ink is the app's
+          own charcoal (hue 220 @ ~10% saturation → reads gray, not blue) so
+          it carries real contrast against the cream/ink app chrome while
+          staying on-brand. Deliberately dark in both themes (a hero band).
+          A faint pickleball-court watermark adds depth without noise. */}
+      <div className="relative overflow-hidden shrink-0 border-b border-white/10 px-3 sm:px-4 pb-3.5 [padding-top:calc(0.6rem+env(safe-area-inset-top))] bg-[linear-gradient(158deg,hsl(220_10%_18%)_0%,hsl(220_10%_11%)_58%,hsl(220_11%_9%)_100%)]">
+        {/* Court-line watermark — bleeds off the top-right corner. */}
+        <svg
+          aria-hidden
+          viewBox="0 0 200 300"
+          className="pointer-events-none absolute -right-8 -top-6 h-[150%] w-auto text-white opacity-[0.055]"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2.5}
+        >
+          <rect x="20" y="20" width="160" height="260" rx="3" />
+          <line x1="20" y1="150" x2="180" y2="150" />
+          <line x1="20" y1="108" x2="180" y2="108" />
+          <line x1="20" y1="192" x2="180" y2="192" />
+          <line x1="100" y1="20" x2="100" y2="108" />
+          <line x1="100" y1="192" x2="100" y2="280" />
+        </svg>
+
+        <div className="relative flex items-start gap-2">
           <Button
             variant="ghost"
             size="icon"
-            className="h-9 w-9 -ml-1 shrink-0"
+            className="h-9 w-9 -ml-0.5 shrink-0 rounded-full border border-white/15 text-white/90 hover:text-white hover:bg-white/10"
             onClick={() => navigate('/player/community')}
+            aria-label="Back to Community"
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
 
           <div className="flex-1 min-w-0 pt-0.5">
-            <h1 className="text-lg sm:text-xl font-semibold truncate leading-tight text-foreground">
+            <h1 className="text-xl sm:text-2xl font-bold truncate leading-tight text-white">
               {group.name}
             </h1>
-            <div
-              className="h-[3px] w-10 mt-1.5 rounded-full bg-primary"
-              style={isVenueGroup ? { background: venueColor || undefined } : undefined}
-            />
-            <p className="text-xs text-muted-foreground mt-1.5 truncate">
-              {subtitle}
-            </p>
-            {/* Active indicator — readable, not a mystery dot */}
+            <div className="h-[3px] w-10 mt-1.5 rounded-full bg-primary" />
+            <div className="flex items-center gap-1.5 mt-2 text-xs text-white/60 truncate">
+              <VisibilityIcon className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{subtitle}</span>
+            </div>
+            {/* Active presence — green means genuinely online. */}
             <div className="flex items-center gap-1.5 mt-1">
               <span className="relative flex h-2 w-2">
                 {isConnected && (
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500/60 opacity-75" />
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400/60 opacity-75" />
                 )}
                 <span className={cn(
                   "relative inline-flex rounded-full h-2 w-2",
-                  isConnected ? "bg-emerald-500" : "bg-muted-foreground/40"
+                  isConnected ? "bg-emerald-400" : "bg-white/30"
                 )} />
               </span>
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs text-white/55">
                 {onlineCount > 0 ? `${onlineCount} active` : 'Idle'}
               </span>
             </div>
           </div>
 
-          {/* Right-side action cluster — 40px tap zones with a small
-              gap between so adjacent buttons can't share a tap. */}
-          <div className="flex items-center gap-1 shrink-0">
+          {/* Right-side action cluster — white on the dark band. */}
+          <div className="flex items-center gap-0.5 shrink-0 text-white/85">
             {group.invite_code && (
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 size="icon"
-                className="h-10 w-10"
+                className="h-10 w-10 rounded-full text-white/85 hover:text-white hover:bg-white/10"
                 onClick={() => setInviteModalOpen(true)}
                 aria-label="Invite"
               >
@@ -384,7 +398,7 @@ export default function GroupDetail() {
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-9 w-9" aria-label="Create">
+                <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full text-white/85 hover:text-white hover:bg-white/10" aria-label="Create">
                   <Plus className="h-[18px] w-[18px]" />
                 </Button>
               </DropdownMenuTrigger>
@@ -406,7 +420,7 @@ export default function GroupDetail() {
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-9 w-9" aria-label="More">
+                <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full text-white/85 hover:text-white hover:bg-white/10" aria-label="More">
                   <MoreVertical className="h-[18px] w-[18px]" />
                 </Button>
               </DropdownMenuTrigger>
