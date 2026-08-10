@@ -13,9 +13,12 @@
 //   • Only acts on a FULLY COMPLETE batch (every game scored + counted).
 //   • Refuses to guess a tie: if a court ends tied at a spot that decides
 //     who moves up/down, it stops and leaves the tiebreak for a human.
-//   • Processes the complete batch, then generates the NEXT BATCH IN THE
-//     SAME WEEK only. It never crosses a week boundary — starting the next
-//     week stays an explicit organizer action.
+//   • Processes the complete batch, then generates the next stage:
+//       – the NEXT BATCH of the same week, if the week isn't done yet; or
+//       – BATCH 1 of the NEXT WEEK, but ONLY when that week has already been
+//         scheduled by an organizer (a session exists for it) and all its
+//         sub-requests are resolved. It never invents an unscheduled week —
+//         if none is scheduled it stops and leaves it to the organizer.
 //
 // Body: { "season_id": "<uuid>" }
 // =====================================================================
@@ -115,6 +118,78 @@ Deno.serve(async (req) => {
       return errs
     }
 
+    // Cross a week boundary: start Batch 1 of the week AFTER `prevWeek`,
+    // seeded from the just-processed result order. This is the piece that
+    // makes "advance automatically" actually keep play going instead of
+    // stalling every time a (typically 1-batch) week finishes.
+    //
+    // Safety: a new week is generated ONLY onto a session the organizer has
+    // already scheduled, and only once every sub-request for it is resolved
+    // — the same preconditions the manual ladder-generate-next enforces. If
+    // no session is scheduled yet, we stop and leave starting the week to the
+    // organizer (returning week_complete, exactly as before this fix).
+    const tryStartNextWeek = async (
+      prevWeek: number, resultSnapshotId: string, resultOrder: string[], leagueId: string,
+    ): Promise<Record<string, unknown>> => {
+      const totalWeeks: number | null = settings.total_weeks ?? null
+      if (totalWeeks != null && prevWeek >= totalWeeks) {
+        return { advanced: true, week_complete: true, season_complete: true }
+      }
+      const nextWeek = prevWeek + 1
+      if (batches.some((b) => b.week_number === nextWeek && b.batch_number === 1)) {
+        return { skipped: 'next_week_exists' }
+      }
+      // A new week may only start on a session the organizer already scheduled.
+      const { data: sessRow } = await supabase
+        .from('league_sessions').select('id')
+        .eq('season_id', season_id).eq('week_number', nextWeek)
+        .order('scheduled_date', { ascending: true }).limit(1).maybeSingle()
+      const nextSessionId = (sessRow as { id?: string } | null)?.id ?? null
+      if (!nextSessionId) {
+        return { advanced: true, week_complete: true, awaiting_week_schedule: nextWeek }
+      }
+      // Every sub-request for the week must be resolved first (mirror manual).
+      const { data: pendRows } = await supabase
+        .from('ladder_sub_requests').select('player_id')
+        .eq('session_id', nextSessionId).eq('status', 'pending')
+      if ((pendRows ?? []).length > 0) {
+        return { advanced: true, week_complete: true, awaiting_sub_resolution: (pendRows ?? []).length }
+      }
+      // Sit-outs are per-week: close ranks around players sitting out next week.
+      const sitouts = await loadSitouts(nextWeek, resultOrder)
+      let grps
+      try {
+        grps = buildGroups(excludeSitouts(resultOrder, sitouts))
+      } catch (e) {
+        if (e instanceof LadderError) {
+          return { advanced: true, week_complete: true, generate_skipped: 'invalid_player_count', message: e.message }
+        }
+        throw e
+      }
+      const { data: genData, error: genErr } = await supabase.rpc('ladder_generate_batch', {
+        p_season_id: season_id,
+        p_start_snapshot_id: resultSnapshotId,
+        p_plan: {
+          batch: {
+            week: nextWeek, batch: 1,
+            session_id: nextSessionId,
+            court_waves: Math.ceil(grps.length / courtCount),
+            idempotency_key: `batch:${season_id}:${nextWeek}:1`,
+            groups: grps,
+          },
+        },
+      })
+      if (genErr) return { error: genErr.message, phase: 'generate_week' }
+      const gd = (genData ?? {}) as { batch_id?: string; already_existed?: boolean }
+      const seedErrs = (gd.batch_id && !gd.already_existed)
+        ? await seedSubs(leagueId, nextSessionId, gd.batch_id)
+        : []
+      return {
+        advanced: true, generated: { week: nextWeek, batch: 1 },
+        ...(seedErrs.length ? { sub_seed_errors: seedErrs } : {}),
+      }
+    }
+
     // ---- find the active batch ---------------------------------------
     const { data: batchRows } = await supabase
       .from('ladder_batches').select('*')
@@ -139,7 +214,18 @@ Deno.serve(async (req) => {
           ? b : acc, finalized[0])
       const lastWeek = last.week_number as number
       const lastBatch = last.batch_number as number
-      if (lastBatch >= batchesPerWeek) return json({ skipped: 'week_complete' })
+      if (lastBatch >= batchesPerWeek) {
+        // The week is fully processed — try to auto-start the next week.
+        const { data: lastResult } = await supabase
+          .from('ladder_snapshots').select('id, player_ids')
+          .eq('id', last.result_snapshot_id as string).maybeSingle()
+        if (!lastResult) return json({ skipped: 'week_complete' })
+        const res = await tryStartNextWeek(
+          lastWeek, lastResult.id as string, lastResult.player_ids as string[],
+          last.league_id as string,
+        )
+        return json(res, res.error ? 400 : 200)
+      }
       if (batches.some((b) => b.week_number === lastWeek && b.batch_number === lastBatch + 1)) {
         return json({ skipped: 'next_batch_exists' })
       }
@@ -341,9 +427,15 @@ Deno.serve(async (req) => {
     })
     if (procErr) return json({ error: procErr.message, phase: 'process' }, 400)
 
-    // ---- generate the next batch IN THE SAME WEEK only ---------------
+    // ---- week finished: try to auto-start the next week --------------
     if (bnum >= batchesPerWeek) {
-      return json({ advanced: true, processed: { week, batch: bnum }, week_complete: true })
+      const { data: weekResultSnap } = await supabase
+        .from('ladder_snapshots').select('id')
+        .eq('idempotency_key', `res:${season_id}:${week}:${bnum}`).maybeSingle()
+      const res = weekResultSnap
+        ? await tryStartNextWeek(week, weekResultSnap.id as string, fullNext, active.league_id as string)
+        : { advanced: true, week_complete: true }
+      return json({ processed: { week, batch: bnum }, ...res }, res.error ? 400 : 200)
     }
 
     // The result snapshot we just wrote is the seed for the next batch.
