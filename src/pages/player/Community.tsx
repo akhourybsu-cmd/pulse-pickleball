@@ -8,8 +8,6 @@ import { GroupCard } from '@/components/community/GroupCard';
 import { ReorderableGroupList } from '@/components/community/ReorderableGroupList';
 import { CreateGroupDialog } from '@/components/community/CreateGroupDialog';
 import { JoinGroupDialog } from '@/components/community/JoinGroupDialog';
-import { CommunityActivityFeed } from '@/components/community/CommunityActivityFeed';
-import { FriendsEntryCard } from '@/components/community/FriendsEntryCard';
 import { useGroups } from '@/hooks/useGroups';
 
 export default function Community() {
@@ -100,46 +98,36 @@ export default function Community() {
         </div>
 
         <div className="flex-1 overflow-y-auto">
-          {/* My Community */}
-          <TabsContent value="my-community" className="m-0 px-4 sm:px-6 pt-4 pb-8 space-y-6">
-            {/* Your Groups is the hero — a clean, uniform list is the first
-                thing you see (create/join now live as header icons). */}
-            <section className="space-y-3">
-              {loading ? (
-                <div className="space-y-3">
-                  {[1, 2].map((i) => (
-                    <Skeleton key={i} className="h-20 w-full rounded-xl" />
-                  ))}
+          {/* My Community — a single, focused list of your community
+              cards. Friends + recent-activity were removed so the groups
+              themselves are the only thing here. */}
+          <TabsContent value="my-community" className="m-0 px-4 sm:px-6 pt-4 pb-8">
+            {loading ? (
+              <div className="space-y-3">
+                {[1, 2].map((i) => (
+                  <Skeleton key={i} className="h-20 w-full rounded-xl" />
+                ))}
+              </div>
+            ) : myGroups.length > 0 ? (
+              <ReorderableGroupList groups={myGroups} onReorder={updateGroupOrder} />
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12 text-center rounded-xl border border-dashed border-border/50">
+                <div className="w-12 h-12 rounded-full bg-muted/40 flex items-center justify-center mb-3">
+                  <Users className="h-5 w-5 text-muted-foreground/60" />
                 </div>
-              ) : myGroups.length > 0 ? (
-                <ReorderableGroupList groups={myGroups} onReorder={updateGroupOrder} />
-              ) : (
-                <div className="flex flex-col items-center justify-center py-12 text-center rounded-xl border border-dashed border-border/50">
-                  <div className="w-12 h-12 rounded-full bg-muted/40 flex items-center justify-center mb-3">
-                    <Users className="h-5 w-5 text-muted-foreground/60" />
-                  </div>
-                  <p className="text-sm text-muted-foreground max-w-[260px] mb-4">
-                    Join a group with a code, or create your own to get started.
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" className="rounded-full" onClick={() => setJoinDialogOpen(true)}>
-                      <QrCode className="h-4 w-4 mr-1.5" /> Join with code
-                    </Button>
-                    <Button size="sm" className="rounded-full btn-premium" onClick={() => setCreateDialogOpen(true)}>
-                      <Plus className="h-4 w-4 mr-1.5" /> Create
-                    </Button>
-                  </div>
+                <p className="text-sm text-muted-foreground max-w-[260px] mb-4">
+                  Join a group with a code, or create your own to get started.
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" className="rounded-full" onClick={() => setJoinDialogOpen(true)}>
+                    <QrCode className="h-4 w-4 mr-1.5" /> Join with code
+                  </Button>
+                  <Button size="sm" className="rounded-full btn-premium" onClick={() => setCreateDialogOpen(true)}>
+                    <Plus className="h-4 w-4 mr-1.5" /> Create
+                  </Button>
                 </div>
-              )}
-            </section>
-
-            {/* Secondary: friends + recent activity, below the groups list. */}
-            <FriendsEntryCard />
-
-            <section className="space-y-3">
-              <h2 className="text-sm font-semibold tracking-tight text-muted-foreground uppercase">Recent activity</h2>
-              <CommunityActivityFeed />
-            </section>
+              </div>
+            )}
           </TabsContent>
 
           {/* Explore */}

@@ -54,18 +54,28 @@ function GroupRow({ group }: { group: GroupWithMembership }) {
   const isVerifiedVenue = group.type === 'venue_official' && group.is_venue_verified;
   const initials = group.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
   const colorIndex = group.name.charCodeAt(0) % avatarGradients.length;
+  const hasUnread = !!group.unread_count && group.unread_count > 0;
 
   return (
     <Card
       className={cn(
-        'cursor-pointer border-border/40 transition-all duration-200',
-        // Premium-feeling hover: soft primary tint + subtle lift, no
-        // visual jump on press.
-        'hover:border-primary/30 hover:bg-gradient-to-br hover:from-primary/[0.03] hover:to-transparent',
-        'active:scale-[0.995]',
+        'relative overflow-hidden cursor-pointer border transition-all duration-200 active:scale-[0.995]',
+        // Every card carries a soft gold border so the list reads as a
+        // set of distinct, brand-aligned tiles that pop off the page.
+        hasUnread
+          // A group with a notification stands out hard: brighter gold
+          // border, a faint gold wash, and a lifted shadow.
+          ? 'border-primary/60 bg-gradient-to-br from-primary/[0.07] to-transparent shadow-[0_2px_12px_-4px_hsl(var(--primary)/0.35)]'
+          : 'border-primary/25 hover:border-primary/50 hover:bg-gradient-to-br hover:from-primary/[0.04] hover:to-transparent',
       )}
       onClick={() => navigate(`/player/community/group/${group.id}`)}
     >
+      {/* Left accent bar — a clear at-a-glance "there's something new
+          here" marker, echoing the unread treatment in the chat inbox. */}
+      {hasUnread && (
+        <span className="absolute left-0 top-0 bottom-0 w-1 bg-primary" aria-hidden />
+      )}
+
       <div className="p-4 flex items-center gap-3">
         {/* Avatar — soft gradient swatch when no icon. Subtle ring on
             verified venues for status without yet another pill. */}
@@ -90,9 +100,22 @@ function GroupRow({ group }: { group: GroupWithMembership }) {
             single inline strip with subtle dot separators. */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 min-w-0">
-            <h3 className="font-semibold text-sm text-foreground truncate">{group.name}</h3>
+            <h3 className={cn(
+              'font-bold text-[15px] leading-tight truncate',
+              hasUnread ? 'text-foreground' : 'text-foreground/90',
+            )}>
+              {group.name}
+            </h3>
             {isVerifiedVenue && (
               <BadgeCheck className="h-3.5 w-3.5 text-amber-500 shrink-0" aria-label="Official venue group" />
+            )}
+            {/* Pulsing gold dot — the primary "new activity" tell that sits
+                right against the group name. */}
+            {hasUnread && (
+              <span className="relative flex h-2 w-2 shrink-0" aria-label="New activity">
+                <span className="absolute inline-flex h-full w-full rounded-full bg-primary opacity-60 animate-ping" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+              </span>
             )}
           </div>
 

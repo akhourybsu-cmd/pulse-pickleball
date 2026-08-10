@@ -130,13 +130,17 @@ export function useGroups() {
         })
       );
 
-      // Sort by custom order first, then by unread, then by activity
+      // Any group with unread activity floats to the very top — a group
+      // "with a notification" should always be the first thing you see.
+      // Below that, honor any custom display_order, then most-recent
+      // activity as the final tiebreaker.
       groups.sort((a, b) => {
+        const aUnread = (a.unread_count || 0) > 0;
+        const bUnread = (b.unread_count || 0) > 0;
+        if (aUnread !== bUnread) return aUnread ? -1 : 1;
         const orderA = a.membership?.display_order ?? 999;
         const orderB = b.membership?.display_order ?? 999;
         if (orderA !== orderB) return orderA - orderB;
-        if ((a.unread_count || 0) > 0 && (b.unread_count || 0) === 0) return -1;
-        if ((a.unread_count || 0) === 0 && (b.unread_count || 0) > 0) return 1;
         return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
       });
 
