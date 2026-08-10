@@ -95,9 +95,9 @@ export const GroupCard = memo(function GroupCard({ group, showJoinButton, onJoin
     >
       <div className="flex items-center gap-3">
         {/* Avatar - smaller, more refined */}
-        <div 
+        <div
           className={cn(
-            'h-11 w-11 rounded-lg flex items-center justify-center text-sm font-semibold shrink-0',
+            'h-11 w-11 rounded-full flex items-center justify-center text-sm font-semibold shrink-0',
             group.icon_url ? '' : avatarColors[colorIndex]
           )}
           style={group.icon_url ? { backgroundImage: `url(${group.icon_url})`, backgroundSize: 'cover' } : undefined}
@@ -114,25 +114,22 @@ export const GroupCard = memo(function GroupCard({ group, showJoinButton, onJoin
             )}
           </div>
           
-          {/* Metadata row — keep this to one line of essentials (type +
-              member count) so cards stay compact in list layouts. Role
-              and venue link used to live here too, wrapping to 2-3
-              lines on small viewports. Role moved out to a corner chip
-              when present; venue link surfaces inside GroupDetail
-              rather than the list card. */}
-          <div className="flex items-center gap-2 text-xs text-muted-foreground truncate">
-            <span className="truncate">{typeLabels[group.type]}</span>
-            <span className="opacity-50">•</span>
-            <span className="flex items-center gap-1 shrink-0">
-              <Users className="h-3 w-3" />
-              {group.member_count}
-            </span>
-            {isMember && (
+          {/* Subtitle — for groups you're in, show just your role (clean,
+              TeamReach-style). For public/explore groups you're not in yet,
+              show type + member count so you can evaluate before joining. */}
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground truncate">
+            {isMember ? (
+              <span className="flex items-center gap-1 shrink-0">
+                {roleIcon}
+                {roleLabel}
+              </span>
+            ) : (
               <>
+                <span className="truncate">{typeLabels[group.type]}</span>
                 <span className="opacity-50">•</span>
                 <span className="flex items-center gap-1 shrink-0">
-                  {roleIcon}
-                  {roleLabel}
+                  <Users className="h-3 w-3" />
+                  {group.member_count}
                 </span>
               </>
             )}
