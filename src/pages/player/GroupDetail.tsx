@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft, Settings, Users, MessageSquare, MessageCircle, Calendar,
@@ -38,10 +39,8 @@ export default function GroupDetail() {
   const { groupId } = useParams<{ groupId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  
-  const [group, setGroup] = useState<Group | null>(null);
-  const [membership, setMembership] = useState<GroupMember | null>(null);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+
   // Honor a ?tab= deep link (e.g. from the Social hub's group-chats list) so
   // a shared/tapped link can open straight to Chat, Events, etc.
   const [searchParams] = useSearchParams();
@@ -83,90 +82,75 @@ export default function GroupDetail() {
     });
   }, []);
 
+  // Current user + composer avatar — independent of the group query so
+  // children get currentUserId as soon as auth resolves.
   useEffect(() => {
-    if (groupId) {
-      fetchGroupData();
-    }
-  }, [groupId]);
-
-  const fetchGroupData = async () => {
-    if (!groupId) return;
-    
-    setLoading(true);
-    try {
+    let cancelled = false;
+    (async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        navigate('/auth');
-        return;
-      }
+      if (cancelled) return;
+      if (!user) { navigate('/auth'); return; }
       setCurrentUserId(user.id);
-
-      // Fetch current user profile for composer avatar
-      supabase
+      const { data } = await supabase
         .from('profiles')
         .select('display_name, full_name, avatar_url')
         .eq('id', user.id)
-        .maybeSingle()
-        .then(({ data }) => {
-          if (data) setCurrentUserProfile(data);
-        });
-
-      // Fetch group with venue relationship for venue_official groups
-      const { data: groupData, error: groupError } = await supabase
-        .from('groups')
-        .select(`
-          *,
-          venues:venue_id (
-            id,
-            name,
-            slug,
-            logo_url,
-            primary_color,
-            secondary_color
-          )
-        `)
-        .eq('id', groupId)
-        .single();
-
-      if (groupError) throw groupError;
-      
-      // Map venues to venue for consistency with type
-      const groupWithVenue = {
-        ...groupData,
-        venue: groupData.venues || null
-      };
-      setGroup(groupWithVenue);
-
-      // Fetch membership — maybeSingle(): non-members legitimately have
-      // zero rows here and .single() treats that as an error.
-      const { data: membershipData } = await supabase
-        .from('group_members')
-        .select('*')
-        .eq('group_id', groupId)
-        .eq('user_id', user.id)
         .maybeSingle();
+      if (!cancelled && data) setCurrentUserProfile(data);
+    })();
+    return () => { cancelled = true; };
+  }, [navigate]);
 
-      setMembership(membershipData);
-
-      // Update last_read_at
-      if (membershipData) {
-        await supabase
+  // Group + the viewer's membership, cached so re-entering a group paints
+  // from cache instead of re-spinning. Group and membership are independent
+  // → fetched in parallel (previously serial). maybeSingle() on membership:
+  // non-members legitimately have zero rows and .single() treats that as an error.
+  const { data: groupData, isLoading: loading, isError } = useQuery({
+    queryKey: ['group-detail', groupId],
+    enabled: !!groupId,
+    staleTime: 60 * 1000,
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('not-authenticated');
+      const [groupRes, memberRes] = await Promise.all([
+        supabase
+          .from('groups')
+          .select(`*, venues:venue_id (id, name, slug, logo_url, primary_color, secondary_color)`)
+          .eq('id', groupId!)
+          .single(),
+        supabase
           .from('group_members')
-          .update({ last_read_at: new Date().toISOString() })
-          .eq('id', membershipData.id);
-      }
-    } catch (error) {
-      console.error('Error fetching group:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load group',
-        variant: 'destructive',
-      });
+          .select('*')
+          .eq('group_id', groupId!)
+          .eq('user_id', user.id)
+          .maybeSingle(),
+      ]);
+      if (groupRes.error) throw groupRes.error;
+      const g = { ...(groupRes.data as any), venue: (groupRes.data as any).venues || null } as Group;
+      return { group: g, membership: (memberRes.data as GroupMember | null) ?? null };
+    },
+  });
+
+  const group = groupData?.group ?? null;
+  const membership = groupData?.membership ?? null;
+
+  // Failed load → toast + back to Community (mirrors the old catch).
+  useEffect(() => {
+    if (isError) {
+      toast({ title: 'Error', description: 'Failed to load group', variant: 'destructive' });
       navigate('/player/community');
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [isError, navigate, toast]);
+
+  // Mark the group read on entry (once per membership).
+  useEffect(() => {
+    if (membership?.id) {
+      void supabase
+        .from('group_members')
+        .update({ last_read_at: new Date().toISOString() })
+        .eq('id', membership.id);
+    }
+  }, [membership?.id]);
 
   // Join directly from the gate (public groups only). Mirrors
   // useGroups.joinPublicGroup: respects request_to_join and treats a
@@ -187,7 +171,7 @@ export default function GroupDetail() {
       } else {
         toast({ title: 'Joined!', description: `Welcome to ${group.name}!` });
       }
-      await fetchGroupData();
+      queryClient.invalidateQueries({ queryKey: ['group-detail', groupId] });
     } catch (error: any) {
       console.error('Error joining group:', error);
       toast({
