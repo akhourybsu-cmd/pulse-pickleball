@@ -293,9 +293,15 @@ export function useDirectMessages() {
   };
 }
 
+// How many messages to load per page. The thread opens on the newest page
+// and pulls older messages on demand (no more fetching an entire history).
+const DM_PAGE_SIZE = 40;
+
 export function useConversation(conversationId: string | null) {
   const [messages, setMessages] = useState<DirectMessage[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
   const [participant, setParticipant] = useState<ConversationParticipant | null>(null);
   // True when the conversation has no other participant visible to this
   // user — an invalid id, or a conversation they're not part of (RLS
@@ -311,13 +317,17 @@ export function useConversation(conversationId: string | null) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      // Newest page (descending + limit), reversed to chronological order for
+      // display. Older messages are pulled in via loadOlder().
       const { data, error } = await supabase
         .from('direct_messages')
         .select('*')
         .eq('conversation_id', conversationId)
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: false })
+        .limit(DM_PAGE_SIZE);
       if (error) throw error;
-      setMessages(data || []);
+      setMessages((data || []).slice().reverse());
+      setHasMore((data || []).length === DM_PAGE_SIZE);
 
       const { data: participants } = await supabase
         .from('conversation_participants')
@@ -504,9 +514,44 @@ export function useConversation(conversationId: string | null) {
     }
   }, [conversationId, messages]);
 
+  // Pull the previous page of (older) messages and prepend them. Keyed on the
+  // oldest currently-loaded real message's timestamp; dedupes by id defensively.
+  const loadOlder = useCallback(async () => {
+    if (!conversationId) return;
+    const oldest = messages.find((m) => !m._clientId) ?? messages[0];
+    if (!oldest) return;
+    setLoadingOlder(true);
+    try {
+      const { data, error } = await supabase
+        .from('direct_messages')
+        .select('*')
+        .eq('conversation_id', conversationId)
+        .lt('created_at', oldest.created_at)
+        .order('created_at', { ascending: false })
+        .limit(DM_PAGE_SIZE);
+      if (error) throw error;
+      const older = (data || []).slice().reverse();
+      if (older.length) {
+        setMessages((prev) => {
+          const existing = new Set(prev.map((m) => m.id));
+          const fresh = older.filter((m) => !existing.has(m.id));
+          return [...fresh, ...prev];
+        });
+      }
+      setHasMore((data || []).length === DM_PAGE_SIZE);
+    } catch (error) {
+      console.error('Error loading older messages:', error);
+    } finally {
+      setLoadingOlder(false);
+    }
+  }, [conversationId, messages]);
+
   return {
     messages,
     loading,
+    hasMore,
+    loadingOlder,
+    loadOlder,
     participant,
     notFound,
     sendMessage,

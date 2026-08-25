@@ -60,7 +60,7 @@ function linkifyContent(content: string) {
 export default function DirectMessageChat() {
   const { conversationId } = useParams<{ conversationId: string }>();
   const navigate = useNavigate();
-  const { messages, loading, participant, notFound, sendMessage, retryMessage } = useConversation(conversationId || null);
+  const { messages, loading, hasMore, loadingOlder, loadOlder, participant, notFound, sendMessage, retryMessage } = useConversation(conversationId || null);
   // While this thread is open, its message notifications self-clear.
   useRegisterActiveContext([conversationId ? `conversation:${conversationId}` : null]);
 
@@ -79,6 +79,7 @@ export default function DirectMessageChat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const prevCountRef = useRef(0);
+  const lastMsgIdRef = useRef<string | null>(null);
   const didInitialScrollRef = useRef(false);
   const inputRef = useRef<MessageComposerHandle>(null);
 
@@ -171,8 +172,11 @@ export default function DirectMessageChat() {
     if (!container || !end || !didInitialScrollRef.current) return;
     const prevCount = prevCountRef.current;
     prevCountRef.current = messages.length;
-    if (messages.length <= prevCount) return; // status/edit change, not a new msg
     const last = messages[messages.length - 1];
+    const tailChanged = last?.id !== lastMsgIdRef.current;
+    lastMsgIdRef.current = last?.id ?? null;
+    if (messages.length <= prevCount) return; // status/edit change, not a new msg
+    if (!tailChanged) return; // grew via a prepend (load older), not a new message
     const lastIsMine = last?.sender_id === currentUserId;
     const nearBottom =
       container.scrollHeight - container.scrollTop - container.clientHeight < 140;
@@ -180,6 +184,19 @@ export default function DirectMessageChat() {
       end.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages, currentUserId]);
+
+  // Load older messages and keep the viewport anchored on the message the user
+  // was looking at (prepending above the viewport would otherwise jump them).
+  const handleLoadOlder = async () => {
+    const c = scrollContainerRef.current;
+    const prevHeight = c?.scrollHeight ?? 0;
+    const prevTop = c?.scrollTop ?? 0;
+    await loadOlder();
+    requestAnimationFrame(() => {
+      if (!c) return;
+      c.scrollTop = prevTop + (c.scrollHeight - prevHeight);
+    });
+  };
 
   // Fire-and-forget — sendMessage is optimistic now, so the bubble
   // renders before the network completes. Clear the input synchronously
@@ -391,6 +408,19 @@ export default function DirectMessageChat() {
       </div>
 
       <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4 space-y-1">
+        {hasMore && (
+          <div className="flex justify-center pb-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 rounded-full text-xs text-muted-foreground"
+              onClick={handleLoadOlder}
+              disabled={loadingOlder}
+            >
+              {loadingOlder ? 'Loading…' : 'Load earlier messages'}
+            </Button>
+          </div>
+        )}
         <AnimatePresence initial={false}>
           {messages.map((message, index) => {
             const prev = index > 0 ? messages[index - 1] : null;
