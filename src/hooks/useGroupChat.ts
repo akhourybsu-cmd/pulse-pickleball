@@ -27,16 +27,22 @@ export interface GroupMessage {
 }
 
 async function fetchGroupMessages(groupId: string): Promise<GroupMessage[]> {
+  // Fetch the NEWEST 100 (descending + limit), then reverse to chronological
+  // for display. Ordering ascending + limit(100) returned the OLDEST 100
+  // messages instead — in an active group you'd be stuck looking at ancient
+  // history, never the recent chat.
   const { data: messagesData, error } = await supabase
     .from('group_messages')
     .select('*')
     .eq('group_id', groupId)
-    .order('created_at', { ascending: true })
+    .order('created_at', { ascending: false })
     .limit(100);
 
   if (error) throw error;
 
-  const userIds = [...new Set((messagesData || []).map(m => m.user_id))];
+  const ordered = (messagesData || []).slice().reverse();
+
+  const userIds = [...new Set(ordered.map(m => m.user_id))];
   const { data: profilesData } = userIds.length
     ? await supabase
         .from('profiles_public')
@@ -46,7 +52,7 @@ async function fetchGroupMessages(groupId: string): Promise<GroupMessage[]> {
 
   const profilesMap = new Map((profilesData || []).map(p => [p.id, p]));
 
-  return (messagesData || []).map(m => ({
+  return ordered.map(m => ({
     ...m,
     profile: profilesMap.get(m.user_id),
     _status: 'sent' as const,
