@@ -65,60 +65,11 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  // Partner/Opponent stats (currently fetched but unused after Phase 2 reshuffle;
-  // PerformanceModule shows the rich detail. Kept for future use.)
-  const [, setPartnersCount] = useState(0);
-  const [, setCourtsPlayed] = useState(0);
-
   // Onboarding welcome modal
   const [showOnboardingWelcome, setShowOnboardingWelcome] = useState(false);
 
   // One-time "confirm your name" prompt for existing (pre-lock) users.
   const [showConfirmName, setShowConfirmName] = useState(false);
-
-  const fetchPartnerAndCourtStats = async (userId: string) => {
-    try {
-      const { data: userMatches } = await supabase
-        .from("match_participants")
-        .select(`match_id, team, matches!inner (id, status)`)
-        .eq("player_id", userId)
-        .eq("matches.status", "approved");
-
-      if (userMatches?.length) {
-        const matchIds = userMatches.map(m => m.match_id);
-        const userTeamMap = new Map(userMatches.map(m => [m.match_id, m.team]));
-
-        const { data: allParticipants } = await supabase
-          .from("match_participants")
-          .select("match_id, player_id, team")
-          .in("match_id", matchIds)
-          .neq("player_id", userId);
-
-        if (allParticipants) {
-          const uniquePartners = new Set<string>();
-          allParticipants.forEach(p => {
-            if (p.team === userTeamMap.get(p.match_id)) {
-              uniquePartners.add(p.player_id);
-            }
-          });
-          setPartnersCount(uniquePartners.size);
-        }
-      }
-
-      const { data: courtsData } = await supabase
-        .from("matches")
-        .select("court_id")
-        .in("id", userMatches?.map(m => m.match_id) || [])
-        .not("court_id", "is", null);
-
-      if (courtsData) {
-        const uniqueCourts = new Set(courtsData.map(c => c.court_id).filter(Boolean));
-        setCourtsPlayed(uniqueCourts.size);
-      }
-    } catch (error) {
-      console.error("Error fetching partner/court stats:", error);
-    }
-  };
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -159,8 +110,6 @@ const Dashboard = () => {
         if (!showWelcome && !profileResult.data.name_locked && !dismissedThisSession) {
           setShowConfirmName(true);
         }
-
-        fetchPartnerAndCourtStats(user.id);
 
         setLoading(false);
       } catch (error) {
