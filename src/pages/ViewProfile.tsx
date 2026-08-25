@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -73,13 +74,6 @@ interface RecentMatch {
 }
 
 const ViewProfile = () => {
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [recentMatches, setRecentMatches] = useState<RecentMatch[]>([]);
-  // True when we loaded the player's full recent history via the RPC (works for
-  // any viewer). False means we fell back to the RLS-limited shared-matches
-  // query, so the list only reflects matches the viewer shared with them.
-  const [matchesComplete, setMatchesComplete] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const navigate = useNavigate();
   const { userId } = useParams<{ userId: string }>();
@@ -99,30 +93,19 @@ const ViewProfile = () => {
     return () => { cancelled = true; };
   }, [userId, navigate]);
 
-  useEffect(() => {
-    const fetchProfile = async () => {
-      if (!userId) {
-        toast.error("Invalid user ID");
-        navigate(-1);
-        return;
-      }
-
-      const { data: profileData, error } = await supabase
-        .from("profiles_public")
-        .select(`
-          id, display_name, full_name, first_name, last_name, avatar_url,
-          current_rating, total_matches, wins, losses,
-          handedness, play_side, paddle_brand, paddle_model
-        `)
-        .eq("id", userId)
-        .single();
-
-      if (error) {
-        toast.error("Failed to load profile");
-        navigate(-1);
-        return;
-      }
-
+  // Profile + recent matches, cached by React Query so revisiting a player
+  // (from chat, a leaderboard, a match card) paints from cache instead of
+  // re-spinning. The profile row and the recent-matches RPC are independent,
+  // so they run in PARALLEL (previously a serial waterfall).
+  const {
+    data: profileData,
+    isLoading,
+    isError,
+  } = useQuery({
+    queryKey: ["view-profile", userId],
+    enabled: !!userId,
+    staleTime: 60 * 1000,
+    queryFn: async () => {
       // Normalized participant used by the shared mapper below.
       type NormPart = {
         player_id: string;
@@ -178,16 +161,32 @@ const ViewProfile = () => {
         };
       };
 
-      // Preferred path: SECURITY DEFINER RPC returns the player's real recent
-      // matches to any viewer. Cast because it isn't in the generated types
-      // until they're regenerated post-deploy.
-      const { data: rpcRows, error: rpcError } = await (supabase.rpc as unknown as (
-        fn: string,
-        args: Record<string, unknown>,
-      ) => Promise<{ data: unknown; error: unknown }>)("get_player_recent_matches", {
-        _player_id: userId,
-        _limit: 10,
-      });
+      // Independent → run together. Cast the RPC because it isn't in the
+      // generated types until they're regenerated post-deploy.
+      const [profileRes, rpcRes] = await Promise.all([
+        supabase
+          .from("profiles_public")
+          .select(`
+            id, display_name, full_name, first_name, last_name, avatar_url,
+            current_rating, total_matches, wins, losses,
+            handedness, play_side, paddle_brand, paddle_model
+          `)
+          .eq("id", userId!)
+          .single(),
+        (supabase.rpc as unknown as (
+          fn: string,
+          args: Record<string, unknown>,
+        ) => Promise<{ data: unknown; error: unknown }>)("get_player_recent_matches", {
+          _player_id: userId,
+          _limit: 10,
+        }),
+      ]);
+
+      if (profileRes.error) throw profileRes.error;
+      const { data: rpcRows, error: rpcError } = rpcRes;
+
+      let recentMatches: RecentMatch[] = [];
+      let matchesComplete = false;
 
       if (!rpcError && Array.isArray(rpcRows)) {
         const rows = rpcRows as Array<{
@@ -211,27 +210,25 @@ const ViewProfile = () => {
             avatar_url: string | null;
           }> | null;
         }>;
-        setMatchesComplete(true);
-        setRecentMatches(
-          rows.map((r) =>
-            toRecentMatch({
-              id: r.match_id,
-              match_date: r.match_date,
-              team1_score: r.team1_score,
-              team2_score: r.team2_score,
-              status: r.status,
-              source: r.source,
-              verified_count: r.verified_count,
-              court_name: r.court_name,
-              my_team: (r.player_team as 1 | 2) ?? 1,
-              rating_change: r.rating_change,
-              parts: (r.participants ?? []).map((p) => ({
-                player_id: p.player_id,
-                team: p.team,
-                profile: p,
-              })),
-            }),
-          ),
+        matchesComplete = true;
+        recentMatches = rows.map((r) =>
+          toRecentMatch({
+            id: r.match_id,
+            match_date: r.match_date,
+            team1_score: r.team1_score,
+            team2_score: r.team2_score,
+            status: r.status,
+            source: r.source,
+            verified_count: r.verified_count,
+            court_name: r.court_name,
+            my_team: (r.player_team as 1 | 2) ?? 1,
+            rating_change: r.rating_change,
+            parts: (r.participants ?? []).map((p) => ({
+              player_id: p.player_id,
+              team: p.team,
+              profile: p,
+            })),
+          }),
         );
       } else {
         // Fallback (RPC not deployed): RLS-limited to matches the viewer shared
@@ -246,7 +243,7 @@ const ViewProfile = () => {
               other_location, courts (name)
             )
           `)
-          .eq("player_id", userId)
+          .eq("player_id", userId!)
           .eq("matches.status", "approved")
           .order("created_at", { ascending: false, foreignTable: "matches" })
           .limit(10);
@@ -267,36 +264,51 @@ const ViewProfile = () => {
             return acc;
           }, {});
 
-          setRecentMatches(
-            matchParticipants.map((mp: any) =>
-              toRecentMatch({
-                id: mp.matches.id,
-                match_date: mp.matches.match_date,
-                team1_score: mp.matches.team1_score,
-                team2_score: mp.matches.team2_score,
-                status: mp.matches.status,
-                source: mp.matches.source ?? null,
-                verified_count: (mp.matches.verified_by || []).length,
-                court_name: mp.matches.other_location || mp.matches.courts?.name || null,
-                my_team: mp.team as 1 | 2,
-                rating_change: mp.rating_change ?? null,
-                parts: (partsByMatch[mp.match_id] || []).map((p: any) => ({
-                  player_id: p.player_id,
-                  team: p.team,
-                  profile: p.profiles,
-                })),
-              }),
-            ),
+          recentMatches = matchParticipants.map((mp: any) =>
+            toRecentMatch({
+              id: mp.matches.id,
+              match_date: mp.matches.match_date,
+              team1_score: mp.matches.team1_score,
+              team2_score: mp.matches.team2_score,
+              status: mp.matches.status,
+              source: mp.matches.source ?? null,
+              verified_count: (mp.matches.verified_by || []).length,
+              court_name: mp.matches.other_location || mp.matches.courts?.name || null,
+              my_team: mp.team as 1 | 2,
+              rating_change: mp.rating_change ?? null,
+              parts: (partsByMatch[mp.match_id] || []).map((p: any) => ({
+                player_id: p.player_id,
+                team: p.team,
+                profile: p.profiles,
+              })),
+            }),
           );
         }
       }
 
-      setProfile(profileData as Profile);
-      setLoading(false);
-    };
+      return { profile: profileRes.data as Profile, recentMatches, matchesComplete };
+    },
+  });
 
-    fetchProfile();
+  const profile = profileData?.profile ?? null;
+  const recentMatches = profileData?.recentMatches ?? [];
+  const matchesComplete = profileData?.matchesComplete ?? false;
+  const loading = isLoading;
+
+  // Invalid id, or a failed load → bounce back with a toast (mirrors the old
+  // inline error handling).
+  useEffect(() => {
+    if (!userId) {
+      toast.error("Invalid user ID");
+      navigate(-1);
+    }
   }, [userId, navigate]);
+  useEffect(() => {
+    if (isError) {
+      toast.error("Failed to load profile");
+      navigate(-1);
+    }
+  }, [isError, navigate]);
 
   const displayName = useMemo(() => {
     if (!profile) return "Player";
