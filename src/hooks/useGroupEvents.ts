@@ -221,6 +221,28 @@ export function useGroupEvents(groupId: string | undefined) {
   });
 
   const updateRsvp = async (eventId: string, status: 'going' | 'maybe' | 'not_going') => {
+    // Optimistic: flip the user's RSVP and adjust the counts in the cached
+    // events immediately so the pill responds on tap, then write + reconcile.
+    const key = ['group-events', groupId];
+    const prev = queryClient.getQueryData<GroupEvent[]>(key);
+    queryClient.setQueryData<GroupEvent[]>(key, (old) =>
+      (old ?? []).map((e) => {
+        if (e.id !== eventId) return e;
+        const oldStatus = e.user_rsvp ?? null;
+        if (oldStatus === status) return e;
+        const counts: Record<string, number> = {
+          going: 0, maybe: 0, not_going: 0, waitlist: 0, ...(e.rsvps ?? {}),
+        };
+        if (oldStatus && oldStatus in counts) counts[oldStatus] = Math.max(0, counts[oldStatus] - 1);
+        if (status in counts) counts[status] = counts[status] + 1;
+        return {
+          ...e,
+          user_rsvp: status,
+          rsvps: { going: counts.going, maybe: counts.maybe, not_going: counts.not_going, waitlist: counts.waitlist },
+        };
+      }),
+    );
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
@@ -253,6 +275,8 @@ export function useGroupEvents(groupId: string | undefined) {
 
       queryClient.invalidateQueries({ queryKey: ['group-events', groupId] });
     } catch (error: any) {
+      // Roll back the optimistic change to the last known-good snapshot.
+      if (prev) queryClient.setQueryData(key, prev);
       console.error('Error updating RSVP:', error);
       toast({
         title: 'Error',

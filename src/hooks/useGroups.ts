@@ -243,7 +243,7 @@ export function useGroups() {
       switch (result.status) {
         case 'joined':
           toast({ title: 'Joined!', description: `Welcome to ${result.group_name}!` });
-          await fetchMyGroups();
+          void fetchMyGroups();
           return { id: result.group_id, name: result.group_name } as any;
         case 'pending':
           toast({ title: 'Request Sent', description: 'Your join request has been sent to the group admins' });
@@ -276,6 +276,11 @@ export function useGroups() {
   const leaveGroup = async (groupId: string) => {
     if (!currentUserId) return false;
 
+    // Optimistic: drop the group from the list immediately so the tap feels
+    // instant, then delete + reconcile. Restore on failure.
+    const prevGroups = myGroups;
+    setMyGroups((gs) => gs.filter((g) => g.id !== groupId));
+
     try {
       const { error } = await supabase
         .from('group_members')
@@ -296,9 +301,10 @@ export function useGroups() {
       queryClient.invalidateQueries({ queryKey: ['group-chat', groupId] });
 
       toast({ title: 'Left Group', description: 'You have left the group' });
-      await fetchMyGroups();
+      void fetchMyGroups();
       return true;
     } catch (error: any) {
+      setMyGroups(prevGroups);
       console.error('Error leaving group:', error);
       toast({
         title: 'Error',
@@ -377,8 +383,8 @@ export function useGroups() {
         toast({ title: 'Request Sent', description: 'Your join request has been sent to the group admins' });
       } else {
         toast({ title: 'Joined!', description: `Welcome to ${group.name}!` });
-        await fetchMyGroups();
-        await fetchPublicGroups();
+        void fetchMyGroups();
+        void fetchPublicGroups();
       }
 
       return group;

@@ -211,7 +211,9 @@ export function useFriends(options?: { realtime?: boolean }) {
       } else {
         toast.success('Friend request sent!');
       }
-      await fetchFriends();
+      // Background reconcile — we don't have the target's profile here to
+      // build an optimistic row, but no need to block the button on it.
+      void fetchFriends();
       return true;
     } catch (error) {
       console.error('Error sending friend request:', error);
@@ -220,82 +222,108 @@ export function useFriends(options?: { realtime?: boolean }) {
     }
   }, [fetchFriends]);
 
+  // Accept/decline/cancel/remove/block are all OPTIMISTIC: the local lists
+  // update instantly so the tap feels immediate, then the write runs and a
+  // background fetchFriends() reconciles. On failure we restore the snapshot
+  // and surface a toast. (fetchFriends never flips `loading`, so the
+  // reconcile is invisible.)
   const acceptRequest = useCallback(async (friendshipId: string) => {
+    const prevPending = pendingRequests;
+    const prevFriends = friends;
+    const req = pendingRequests.find((r) => r.id === friendshipId);
+    setPendingRequests((p) => p.filter((r) => r.id !== friendshipId));
+    if (req && currentUserId) {
+      setFriends((f) => [
+        {
+          id: friendshipId,
+          user_id: req.user_id,
+          friend_id: currentUserId,
+          status: 'accepted',
+          created_at: req.created_at,
+          accepted_at: new Date().toISOString(),
+          profile: req.profile,
+        },
+        ...f,
+      ]);
+    }
     try {
       const { error } = await supabase
         .from('friendships')
         .update({ status: 'accepted', accepted_at: new Date().toISOString() })
         .eq('id', friendshipId);
-
       if (error) throw error;
-
       toast.success('Friend request accepted!');
-      await fetchFriends();
+      void fetchFriends();
       return true;
     } catch (error) {
+      setPendingRequests(prevPending);
+      setFriends(prevFriends);
       console.error('Error accepting friend request:', error);
       toast.error('Failed to accept friend request');
       return false;
     }
-  }, [fetchFriends]);
+  }, [pendingRequests, friends, currentUserId, fetchFriends]);
 
   const declineRequest = useCallback(async (friendshipId: string) => {
+    const prevPending = pendingRequests;
+    setPendingRequests((p) => p.filter((r) => r.id !== friendshipId));
     try {
-      const { error } = await supabase
-        .from('friendships')
-        .delete()
-        .eq('id', friendshipId);
-
+      const { error } = await supabase.from('friendships').delete().eq('id', friendshipId);
       if (error) throw error;
-
       toast.success('Friend request declined');
-      await fetchFriends();
+      void fetchFriends();
       return true;
     } catch (error) {
+      setPendingRequests(prevPending);
       console.error('Error declining friend request:', error);
       toast.error('Failed to decline friend request');
       return false;
     }
-  }, [fetchFriends]);
+  }, [pendingRequests, fetchFriends]);
 
   // Cancelling your OWN outbound request — same delete, correct copy.
   const cancelRequest = useCallback(async (friendshipId: string) => {
+    const prevSent = sentRequests;
+    setSentRequests((s) => s.filter((r) => r.id !== friendshipId));
     try {
-      const { error } = await supabase
-        .from('friendships')
-        .delete()
-        .eq('id', friendshipId);
+      const { error } = await supabase.from('friendships').delete().eq('id', friendshipId);
       if (error) throw error;
       toast.success('Friend request canceled');
-      await fetchFriends();
+      void fetchFriends();
       return true;
     } catch (error) {
+      setSentRequests(prevSent);
       console.error('Error canceling friend request:', error);
       toast.error('Failed to cancel friend request');
       return false;
     }
-  }, [fetchFriends]);
+  }, [sentRequests, fetchFriends]);
 
   const removeFriend = useCallback(async (friendshipId: string) => {
+    const prevFriends = friends;
+    setFriends((f) => f.filter((fr) => fr.id !== friendshipId));
     try {
-      const { error } = await supabase
-        .from('friendships')
-        .delete()
-        .eq('id', friendshipId);
-
+      const { error } = await supabase.from('friendships').delete().eq('id', friendshipId);
       if (error) throw error;
-
       toast.success('Friend removed');
-      await fetchFriends();
+      void fetchFriends();
       return true;
     } catch (error) {
+      setFriends(prevFriends);
       console.error('Error removing friend:', error);
       toast.error('Failed to remove friend');
       return false;
     }
-  }, [fetchFriends]);
+  }, [friends, fetchFriends]);
 
   const blockUser = useCallback(async (userId: string) => {
+    const prevFriends = friends;
+    const prevPending = pendingRequests;
+    const prevSent = sentRequests;
+    // Optimistically drop the user from every list.
+    setFriends((f) => f.filter((fr) => fr.user_id !== userId && fr.friend_id !== userId));
+    setPendingRequests((p) => p.filter((r) => r.user_id !== userId));
+    setSentRequests((s) => s.filter((r) => r.user_id !== userId));
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const user = session?.user;
@@ -315,14 +343,17 @@ export function useFriends(options?: { realtime?: boolean }) {
         .or(`and(user_id.eq.${user.id},friend_id.eq.${userId}),and(user_id.eq.${userId},friend_id.eq.${user.id})`);
 
       toast.success('User blocked');
-      await fetchFriends();
+      void fetchFriends();
       return true;
     } catch (error) {
+      setFriends(prevFriends);
+      setPendingRequests(prevPending);
+      setSentRequests(prevSent);
       console.error('Error blocking user:', error);
       toast.error('Failed to block user');
       return false;
     }
-  }, [fetchFriends]);
+  }, [friends, pendingRequests, sentRequests, fetchFriends]);
 
   const getFriendshipStatus = useCallback((userId: string): 'none' | 'pending_sent' | 'pending_received' | 'accepted' | 'blocked' => {
     if (!currentUserId) return 'none';
