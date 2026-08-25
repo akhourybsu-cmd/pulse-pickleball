@@ -3,7 +3,11 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const cardVariants = cva(
-  "rounded-lg border bg-card text-card-foreground shadow-sm transition-all",
+  // Scope the transition to composited/paint props actually used on hover
+  // (shadow, border, background, transform, color) instead of `transition-all`,
+  // which would also transition layout properties (width/height/margin) and
+  // force layout on any incidental change. Same visuals, cheaper in a WebView.
+  "rounded-lg border bg-card text-card-foreground shadow-sm transition-[box-shadow,border-color,background-color,transform,color] duration-200",
   {
     variants: {
       variant: {

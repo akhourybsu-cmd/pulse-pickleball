@@ -56,11 +56,14 @@ export function PollCard({ options, counts, myVote, onVote, disabled }: PollCard
             {/* Filled bar — only after the viewer has voted */}
             {hasVoted && (
               <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${pct}%` }}
+                initial={{ scaleX: 0 }}
+                animate={{ scaleX: pct / 100 }}
                 transition={{ duration: 0.5, ease: 'easeOut' }}
+                style={{ transformOrigin: 'left' }}
                 className={cn(
-                  'absolute inset-y-0 left-0',
+                  // Full-width element scaled on the X axis (GPU-composited)
+                  // instead of animating `width` (which forces layout each frame).
+                  'absolute inset-y-0 left-0 right-0',
                   isMine
                     ? 'bg-primary/15'
                     : isLeader

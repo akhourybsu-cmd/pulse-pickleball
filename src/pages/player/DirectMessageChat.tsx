@@ -138,7 +138,11 @@ export default function DirectMessageChat() {
       }
       setRestricted(null);
     })();
-  }, [participant?.id, currentUserId, messages.length]);
+    // Block/privacy status depends on the two users, not on message volume —
+    // keying on messages.length re-ran this whole check (two extra queries)
+    // on every incoming message.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [participant?.id, currentUserId]);
 
   // First time this thread's messages land, jump straight to the bottom so an
   // opened chat always starts on the latest message — like every messaging app.

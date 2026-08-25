@@ -1058,7 +1058,7 @@ const MatchHistory = () => {
                   key={item.kind === 'group' ? `g-${item.group.eventId}` : `m-${item.match.match_id}`}
                   initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.35, delay: index * 0.04 }}
+                  transition={{ duration: 0.35, delay: Math.min(index, 10) * 0.04 }}
                 >
                   {item.kind === 'group' ? (
                     <RoundRobinMatchGroup
