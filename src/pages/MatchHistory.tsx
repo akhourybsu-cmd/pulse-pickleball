@@ -108,6 +108,9 @@ const MatchHistory = () => {
   const [selectedIssueType, setSelectedIssueType] = useState<string | null>(null);
   const [verifyDialogOpen, setVerifyDialogOpen] = useState(false);
   const [matchToVerify, setMatchToVerify] = useState<string | null>(null);
+  // Window the (heavy) history list so a long record doesn't mount every card
+  // at once; "Load more" reveals the next batch. Data is already fetched.
+  const [historyShown, setHistoryShown] = useState(15);
 
   useEffect(() => {
     fetchMatchHistory();
@@ -1053,7 +1056,7 @@ const MatchHistory = () => {
 
           return (
             <div className="space-y-4">
-              {items.map((item, index) => (
+              {items.slice(0, historyShown).map((item, index) => (
                 <motion.div
                   key={item.kind === 'group' ? `g-${item.group.eventId}` : `m-${item.match.match_id}`}
                   initial={{ opacity: 0, y: 16 }}
@@ -1123,6 +1126,18 @@ const MatchHistory = () => {
                   })()}
                 </motion.div>
               ))}
+              {items.length > historyShown && (
+                <div className="flex justify-center pt-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 rounded-full text-xs text-muted-foreground"
+                    onClick={() => setHistoryShown((c) => c + 15)}
+                  >
+                    Load more
+                  </Button>
+                </div>
+              )}
             </div>
           );
         })()}
