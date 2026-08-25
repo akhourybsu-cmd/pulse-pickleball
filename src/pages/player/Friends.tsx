@@ -136,6 +136,15 @@ export default function Friends({ embedded = false }: { embedded?: boolean } = {
       });
   }, [friends, friendQuery, onlineFriends]);
 
+  // Render the friends grid in windows so a large friends list doesn't mount
+  // hundreds of rows at once. "Show more" reveals the next window.
+  const FRIENDS_PAGE = 24;
+  const [friendsShown, setFriendsShown] = useState(FRIENDS_PAGE);
+  const windowedFriends = useMemo(
+    () => visibleFriends.slice(0, friendsShown),
+    [visibleFriends, friendsShown],
+  );
+
   const onlineCount = useMemo(
     () => friends.reduce((n, f) => n + (onlineFriends.has(f.profile.id) ? 1 : 0), 0),
     [friends, onlineFriends],
@@ -294,7 +303,7 @@ export default function Friends({ embedded = false }: { embedded?: boolean } = {
                   />
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {visibleFriends.map(f => {
+                    {windowedFriends.map(f => {
                       const isOnline = onlineFriends.has(f.profile.id);
                       const name = f.profile.display_name || f.profile.full_name || 'Player';
                       return (
@@ -343,6 +352,18 @@ export default function Friends({ embedded = false }: { embedded?: boolean } = {
                         </div>
                       );
                     })}
+                  </div>
+                )}
+                {visibleFriends.length > friendsShown && (
+                  <div className="flex justify-center pt-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 rounded-full text-xs text-muted-foreground"
+                      onClick={() => setFriendsShown((c) => c + FRIENDS_PAGE)}
+                    >
+                      Show more friends
+                    </Button>
                   </div>
                 )}
               </>

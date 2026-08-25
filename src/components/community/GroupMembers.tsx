@@ -289,7 +289,12 @@ export function GroupMembers({
 
   const { sendFriendRequest, getFriendshipStatus } = useFriends();
   const { startConversation } = useDirectMessages();
-  
+
+  // Render the roster in windows so a large group doesn't mount every member
+  // card at once. "Show more" reveals the next window.
+  const MEMBERS_PAGE = 30;
+  const [membersShown, setMembersShown] = useState(MEMBERS_PAGE);
+
   const [actionDialog, setActionDialog] = useState<{
     type: 'remove' | 'ban' | null;
     member: GroupMemberWithProfile | null;
@@ -401,26 +406,40 @@ export function GroupMembers({
             ]}
           />
         ) : (
-          members.map(m => (
-            <MemberCard
-              key={m.id}
-              member={m}
-              isSelf={currentUserId === m.user_id}
-              isAdmin={isAdmin}
-              isOwner={isOwner}
-              currentUserId={currentUserId}
-              isOnline={checkIsOnline(m.user_id)}
-              onApprove={approveMember}
-              onReject={rejectMember}
-              onUpdateRole={updateRole}
-              onRemove={handleRemove}
-              onBan={handleBan}
-              onStartDM={handleStartDM}
-              onSendFriendRequest={sendFriendRequest}
-              getFriendshipStatus={getFriendshipStatus}
-              onOpenSheet={handleOpenSheet}
-            />
-          ))
+          <>
+            {members.slice(0, membersShown).map(m => (
+              <MemberCard
+                key={m.id}
+                member={m}
+                isSelf={currentUserId === m.user_id}
+                isAdmin={isAdmin}
+                isOwner={isOwner}
+                currentUserId={currentUserId}
+                isOnline={checkIsOnline(m.user_id)}
+                onApprove={approveMember}
+                onReject={rejectMember}
+                onUpdateRole={updateRole}
+                onRemove={handleRemove}
+                onBan={handleBan}
+                onStartDM={handleStartDM}
+                onSendFriendRequest={sendFriendRequest}
+                getFriendshipStatus={getFriendshipStatus}
+                onOpenSheet={handleOpenSheet}
+              />
+            ))}
+            {members.length > membersShown && (
+              <div className="flex justify-center pt-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 rounded-full text-xs text-muted-foreground"
+                  onClick={() => setMembersShown((c) => c + MEMBERS_PAGE)}
+                >
+                  Show more members
+                </Button>
+              </div>
+            )}
+          </>
         )}
       </div>
 
