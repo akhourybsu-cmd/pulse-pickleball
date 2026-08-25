@@ -160,15 +160,26 @@ export function GroupFeed({
   // Group posts by date
   const pinnedPosts = useMemo(() => posts.filter(p => p.pinned), [posts]);
   const regularPosts = useMemo(() => posts.filter(p => !p.pinned), [posts]);
-  
+
+  // Render the feed in windows so a long history doesn't mount hundreds of
+  // heavy PostCards at once. All posts are already fetched; this only bounds
+  // the DOM. "Load more" reveals the next window.
+  const FEED_PAGE = 12;
+  const [visibleCount, setVisibleCount] = useState(FEED_PAGE);
+  const visibleRegular = useMemo(
+    () => regularPosts.slice(0, visibleCount),
+    [regularPosts, visibleCount],
+  );
+  const hasMoreRegular = regularPosts.length > visibleCount;
+
   const groupedPosts = useMemo(() => {
     const groups: { label: string; posts: GroupPost[] }[] = [];
     let currentLabel = '';
-    
-    regularPosts.forEach(post => {
+
+    visibleRegular.forEach(post => {
       const date = new Date(post.created_at);
       const label = getDateLabel(date);
-      
+
       if (label !== currentLabel) {
         currentLabel = label;
         groups.push({ label, posts: [post] });
@@ -176,9 +187,9 @@ export function GroupFeed({
         groups[groups.length - 1].posts.push(post);
       }
     });
-    
+
     return groups;
-  }, [regularPosts]);
+  }, [visibleRegular]);
 
   if (loading) {
     // Use the post-shaped placeholder (avatar + name + content + reaction
@@ -267,6 +278,18 @@ export function GroupFeed({
               </div>
             </div>
           ))}
+          {hasMoreRegular && (
+            <div className="flex justify-center pt-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 rounded-full text-xs text-muted-foreground"
+                onClick={() => setVisibleCount((c) => c + FEED_PAGE)}
+              >
+                Load more posts
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
