@@ -26,32 +26,16 @@ export default defineConfig(({ mode }) => ({
     target: 'es2020',
     cssCodeSplit: true,
     sourcemap: false,
-    rollupOptions: {
-      output: {
-        // Anything named here becomes part of the entry's STATIC graph and is
-        // modulepreloaded in index.html at boot — regardless of whether the
-        // code that imports it is lazy. So this list must contain only vendors
-        // the app shell genuinely needs on first paint. Grouping them keeps
-        // them in stable, separately-cacheable chunks across deploys.
-        manualChunks(id: string) {
-          if (!id.includes('node_modules')) return;
-          // NOTE: recharts is deliberately NOT given a manual chunk. Any
-          // module named here is pulled into the entry's static graph and
-          // modulepreloaded at boot — which was shipping ~110KB gzip of
-          // charting code to every cold start even though its only importers
-          // (PlayerPulse -> PulseTrendChart, AdminBiometrics) are lazy routes.
-          // Left unnamed, Rollup keeps it in the dynamic chunk of whichever
-          // lazy route needs it, so it loads with that screen instead.
-          if (/node_modules\/(react|react-dom|react-router|react-router-dom)\//.test(id)) return 'vendor-react';
-          if (id.includes('node_modules/@tanstack/')) return 'vendor-query';
-          if (id.includes('node_modules/framer-motion/')) return 'vendor-motion';
-          if (id.includes('node_modules/@supabase/')) return 'vendor-supabase';
-          if (id.includes('node_modules/date-fns/')) return 'vendor-date';
-          if (id.includes('node_modules/@radix-ui/')) return 'vendor-radix';
-          if (id.includes('node_modules/lucide-react/')) return 'vendor-icons';
-        }
-      }
-    }
+    // NOTE: no `manualChunks`. Hand-naming vendor chunks (vendor-react,
+    // vendor-radix, …) left shared transitive deps (react-router internals,
+    // radix helpers) in the entry chunk, which created a chunk cycle:
+    // vendor-react -> index -> vendor-radix. Browsers then executed
+    // vendor-radix first, where `React` was still undefined —
+    // "Cannot read properties of undefined (reading 'forwardRef')" and a
+    // blank page in production. Rollup's default chunking derives a
+    // cycle-free order automatically and still keeps lazy routes (and
+    // recharts) out of the boot graph.
   }
+
 
 }));
