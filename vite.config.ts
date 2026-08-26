@@ -28,23 +28,27 @@ export default defineConfig(({ mode }) => ({
     sourcemap: false,
     rollupOptions: {
       output: {
-        manualChunks: {
-          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-          'vendor-query': ['@tanstack/react-query'],
-          'vendor-motion': ['framer-motion'],
-          'vendor-charts': ['recharts'],
-          'vendor-supabase': ['@supabase/supabase-js'],
-          'vendor-date': ['date-fns'],
-          'vendor-radix': [
-            '@radix-ui/react-dialog',
-            '@radix-ui/react-dropdown-menu',
-            '@radix-ui/react-popover',
-            '@radix-ui/react-select',
-            '@radix-ui/react-tabs',
-            '@radix-ui/react-toast',
-            '@radix-ui/react-tooltip',
-          ],
-          'vendor-icons': ['lucide-react'],
+        // Anything named here becomes part of the entry's STATIC graph and is
+        // modulepreloaded in index.html at boot — regardless of whether the
+        // code that imports it is lazy. So this list must contain only vendors
+        // the app shell genuinely needs on first paint. Grouping them keeps
+        // them in stable, separately-cacheable chunks across deploys.
+        manualChunks(id: string) {
+          if (!id.includes('node_modules')) return;
+          // NOTE: recharts is deliberately NOT given a manual chunk. Any
+          // module named here is pulled into the entry's static graph and
+          // modulepreloaded at boot — which was shipping ~110KB gzip of
+          // charting code to every cold start even though its only importers
+          // (PlayerPulse -> PulseTrendChart, AdminBiometrics) are lazy routes.
+          // Left unnamed, Rollup keeps it in the dynamic chunk of whichever
+          // lazy route needs it, so it loads with that screen instead.
+          if (/node_modules\/(react|react-dom|react-router|react-router-dom)\//.test(id)) return 'vendor-react';
+          if (id.includes('node_modules/@tanstack/')) return 'vendor-query';
+          if (id.includes('node_modules/framer-motion/')) return 'vendor-motion';
+          if (id.includes('node_modules/@supabase/')) return 'vendor-supabase';
+          if (id.includes('node_modules/date-fns/')) return 'vendor-date';
+          if (id.includes('node_modules/@radix-ui/')) return 'vendor-radix';
+          if (id.includes('node_modules/lucide-react/')) return 'vendor-icons';
         }
       }
     }
