@@ -59,6 +59,11 @@ const AdminMatches = () => {
   const [loading, setLoading] = useState(true);
   const [matches, setMatches] = useState<MatchRow[]>([]);
   const [filteredMatches, setFilteredMatches] = useState<MatchRow[]>([]);
+  // Window the render — this page loads every match on the platform, so
+  // without a bound it mounts a card per match. Filters/CSV still operate on
+  // the full set; only the rendered slice is capped.
+  const MATCH_PAGE = 50;
+  const [shown, setShown] = useState(MATCH_PAGE);
   const [searchTerm, setSearchTerm] = useState("");
   const [dateFilter, setDateFilter] = useState("all");
   const [verifiedFilter, setVerifiedFilter] = useState("all");
@@ -244,6 +249,8 @@ const AdminMatches = () => {
     }
 
     setFilteredMatches(filtered);
+    // New result set — start the render window over at the top.
+    setShown(MATCH_PAGE);
   };
 
   const exportToCSV = () => {
@@ -419,7 +426,7 @@ const AdminMatches = () => {
 
         {/* Matches list */}
         <div className="space-y-4">
-          {filteredMatches.map((match) => (
+          {filteredMatches.slice(0, shown).map((match) => (
             <Card key={match.match_id} className={match.voided ? "opacity-60" : ""}>
               <CardContent className="p-4">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -487,6 +494,18 @@ const AdminMatches = () => {
               </CardContent>
             </Card>
           ))}
+          {filteredMatches.length > shown && (
+            <div className="flex justify-center">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 rounded-full text-xs text-muted-foreground"
+                onClick={() => setShown((c) => c + MATCH_PAGE)}
+              >
+                Show more ({filteredMatches.length - shown} more)
+              </Button>
+            </div>
+          )}
         </div>
 
         {filteredMatches.length === 0 && (

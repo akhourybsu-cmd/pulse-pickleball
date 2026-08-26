@@ -66,6 +66,14 @@ export default function AdminPlayers() {
     );
   }, [searchQuery, players]);
 
+  // Window the roster render — this page loads the whole player table, so
+  // without a bound it mounts a row per registered user. Search still runs
+  // across everyone; only the rendered slice is capped.
+  const PAGE = 50;
+  const [shown, setShown] = useState(PAGE);
+  useEffect(() => { setShown(PAGE); }, [searchQuery]);
+  const visiblePlayers = filteredPlayers.slice(0, shown);
+
   return (
     <AdminLayout title="Player Directory">
       <div className="container mx-auto p-4 space-y-4 max-w-3xl">
@@ -84,7 +92,7 @@ export default function AdminPlayers() {
         </div>
 
         <ul className="space-y-2">
-          {filteredPlayers.map((player) => {
+          {visiblePlayers.map((player) => {
             const winRate =
               player.total_matches > 0
                 ? Math.round((player.wins / player.total_matches) * 100)
@@ -143,6 +151,19 @@ export default function AdminPlayers() {
               </li>
             );
           })}
+
+          {filteredPlayers.length > shown && (
+            <li className="flex justify-center pt-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 rounded-full text-xs text-muted-foreground"
+                onClick={() => setShown((c) => c + PAGE)}
+              >
+                Show more ({filteredPlayers.length - shown} more)
+              </Button>
+            </li>
+          )}
 
           {!loading && filteredPlayers.length === 0 && (
             <li className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">

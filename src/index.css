@@ -547,7 +547,11 @@ All colors MUST be HSL.
   .tile-hover,
   .icon-halo,
   .skeleton-shimmer,
-  .badge-pulse-glow {
+  .badge-pulse-glow,
+  /* Infinite box-shadow glows — these repaint every frame for as long as
+     they're on screen, so honor the opt-out like the others above. */
+  .pulse-glow,
+  .pulse-score-focal {
     animation: none !important;
     transition: none !important;
   }
