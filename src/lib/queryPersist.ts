@@ -1,6 +1,6 @@
 import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister';
 import { removeOldestQuery, type PersistQueryClientOptions } from '@tanstack/react-query-persist-client';
-import type { Query } from '@tanstack/react-query';
+
 
 /**
  * React Query cache persistence.
