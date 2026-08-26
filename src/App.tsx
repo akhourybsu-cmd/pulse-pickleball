@@ -3,6 +3,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
+import { persistOptions, clearPersistedQueryCache } from "@/lib/queryPersist";
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate, useParams } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -290,6 +292,12 @@ const AppContent = () => {
           navigate(consumePostAuthRedirect(), { replace: true });
         }
       }
+      if (event === 'SIGNED_OUT') {
+        // Drop both the live and the persisted cache so the next account on
+        // this device never restores the previous user's data.
+        queryClient.clear();
+        clearPersistedQueryCache();
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -544,23 +552,34 @@ const AppContent = () => {
   );
 };
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
-      <TooltipProvider delayDuration={0} skipDelayDuration={0}>
-        <ErrorBoundary>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <ActiveViewProvider>
-              <AppContent />
-            </ActiveViewProvider>
-          </BrowserRouter>
+const appTree = (
+  <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
+    <TooltipProvider delayDuration={0} skipDelayDuration={0}>
+      <ErrorBoundary>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <ActiveViewProvider>
+            <AppContent />
+          </ActiveViewProvider>
+        </BrowserRouter>
 
-        </ErrorBoundary>
-      </TooltipProvider>
-    </ThemeProvider>
-  </QueryClientProvider>
+      </ErrorBoundary>
+    </TooltipProvider>
+  </ThemeProvider>
 );
+
+// Persist the query cache when storage is available so cold starts paint from
+// the last known-good data instead of a screen of spinners. Falls back to the
+// plain in-memory provider where localStorage is unavailable (private mode,
+// locked-down webviews) — persistence is an optimization, never a requirement.
+const App = () =>
+  persistOptions ? (
+    <PersistQueryClientProvider client={queryClient} persistOptions={persistOptions}>
+      {appTree}
+    </PersistQueryClientProvider>
+  ) : (
+    <QueryClientProvider client={queryClient}>{appTree}</QueryClientProvider>
+  );
 
 export default App;
