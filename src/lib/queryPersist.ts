@@ -70,7 +70,9 @@ export const persistOptions: Omit<PersistQueryClientOptions, 'queryClient'> | un
         maxAge: MAX_AGE,
         buster: PERSIST_VERSION,
         dehydrateOptions: {
-          shouldDehydrateQuery: (query: Query) => {
+          // Loosely typed: duplicate @tanstack/query-core copies in the tree
+          // make the nominal `Query` types incompatible across packages.
+          shouldDehydrateQuery: (query: any) => {
             // Only persist settled, successful data — never errors or
             // in-flight/partial state.
             if (query.state.status !== 'success') return false;
