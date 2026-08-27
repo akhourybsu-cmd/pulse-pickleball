@@ -91,12 +91,15 @@ export function HostControlsMenu({
           </DropdownMenuItem>
         )}
 
-        {status === "draft" && onCourtsAndGames && (
+        {/* Available live too: courts often free up mid-session. Scored rounds
+            are preserved; only upcoming rounds get rebuilt. */}
+        {(status === "draft" || status === "live") && onCourtsAndGames && (
           <DropdownMenuItem onClick={onCourtsAndGames} className="gap-2 cursor-pointer">
             <Grid3X3 className="h-4 w-4" />
             Courts &amp; games
           </DropdownMenuItem>
         )}
+
 
         {status === "draft" && hasSchedule && onRegenerateSchedule && (
           <DropdownMenuItem onClick={onRegenerateSchedule} className="gap-2 cursor-pointer">
