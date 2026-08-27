@@ -1490,15 +1490,16 @@ export default function RoundRobinDetail() {
     }
   };
 
-  const handleUpdateGamesPerPlayer = async (newGamesPerPlayer: number) => {
+  const handleUpdateGamesPerPlayer = async (newGamesPerPlayer: number, courtsOverride?: number) => {
     if (!event || !userId) return;
 
     try {
       const before = { games_per_player: event.games_per_player };
       const after = { games_per_player: newGamesPerPlayer };
 
-      // Calculate new number of rounds needed using the same algorithm as the dialog
-      const newRounds = suggestRounds(players.length, event.num_courts, newGamesPerPlayer);
+      const numCourts = courtsOverride ?? event.num_courts;
+      const activeCount = players.filter((p: any) => p.active !== false).length;
+      const newRounds = suggestRounds(activeCount, numCourts, newGamesPerPlayer);
 
       // Update event
       const { error: updateError } = await supabase
@@ -1521,10 +1522,16 @@ export default function RoundRobinDetail() {
       });
 
       // Regenerate schedule from current round
-      const fromRound = event.current_round || 1;
-      await regenerateScheduleFromRound(fromRound);
+      const fromRound = event.status === 'draft' ? 1 : (event.current_round || 1);
+      const result = await regenerateScheduleFromRound(fromRound, {
+        numCourts,
+        gamesPerPlayer: newGamesPerPlayer,
+      });
 
-      toast.success(`Games per player updated to ${newGamesPerPlayer} (${newRounds} rounds)`);
+      toast.success(
+        `Games per player updated to ${newGamesPerPlayer} — schedule rebuilt (${result?.targetRounds ?? newRounds} rounds)`,
+      );
+
       await fetchEventDetails();
     } catch (error: unknown) {
       toast.error("Failed to update games per player");
