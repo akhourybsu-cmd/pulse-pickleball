@@ -1471,12 +1471,17 @@ export default function RoundRobinDetail() {
         reason: `Courts ${newCourts > event.num_courts ? 'increased' : 'decreased'} to ${newCourts}, rounds adjusted to ${newRounds}`,
       });
 
-      // In draft mode, regenerate the entire schedule from round 1
-      // In active events, regenerate from current round
+      // In draft mode, regenerate the entire schedule from round 1.
+      // Live events regenerate from the current round forward; scored rounds
+      // are protected inside regenerateScheduleFromRound. The new court count
+      // is passed explicitly because `event` state is still the pre-update copy.
       const fromRound = event.status === 'draft' ? 1 : (event.current_round || 1);
-      await regenerateScheduleFromRound(fromRound);
+      const result = await regenerateScheduleFromRound(fromRound, { numCourts: newCourts });
 
-      toast.success(`Courts updated to ${newCourts} (${newRounds} rounds)`);
+      toast.success(
+        `Courts updated to ${newCourts} — schedule rebuilt (${result?.targetRounds ?? newRounds} rounds)`,
+      );
+
       await fetchEventDetails();
     } catch (error: unknown) {
       toast.error("Failed to update courts");
