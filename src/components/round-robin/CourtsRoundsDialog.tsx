@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -87,7 +87,7 @@ interface CourtsRoundsDialogProps {
   hasScores: boolean;
   totalPlayers: number;
   onUpdateCourts: (newCourts: number) => Promise<void>;
-  onUpdateGamesPerPlayer: (newGamesPerPlayer: number) => Promise<void>;
+  onUpdateGamesPerPlayer: (newGamesPerPlayer: number, courtsOverride?: number) => Promise<void>;
 }
 
 
@@ -107,6 +107,15 @@ export function CourtsRoundsDialog({
   const [newGamesPerPlayer, setNewGamesPerPlayer] = useState(currentGamesPerPlayer);
   const [loading, setLoading] = useState(false);
 
+  // Re-sync when the dialog is reopened — the event may have changed courts
+  // since this component first mounted (useState initial values are sticky).
+  useEffect(() => {
+    if (open) {
+      setNewCourts(currentCourts);
+      setNewGamesPerPlayer(currentGamesPerPlayer);
+    }
+  }, [open, currentCourts, currentGamesPerPlayer]);
+
   // Calculate rounds based on courts and games per player
   const calculatedRounds = suggestRounds(totalPlayers, newCourts, newGamesPerPlayer);
 
@@ -122,7 +131,9 @@ export function CourtsRoundsDialog({
         await onUpdateCourts(newCourts);
       }
       if (gamesChanged) {
-        await onUpdateGamesPerPlayer(newGamesPerPlayer);
+        // Pass the new court count through: the parent's `event` state is still
+        // the pre-update copy when both settings change in one apply.
+        await onUpdateGamesPerPlayer(newGamesPerPlayer, newCourts);
       }
       onOpenChange(false);
     } finally {
@@ -197,11 +208,11 @@ export function CourtsRoundsDialog({
           </div>
 
           {hasChanges && hasScores && (
-            <Alert variant="destructive">
+            <Alert>
               <AlertTriangle className="w-4 h-4" />
               <AlertDescription>
-                <strong>Warning:</strong> This event has scored matches. Changing these settings
-                will regenerate the schedule and may affect scheduled matches.
+                <strong>Heads up:</strong> completed rounds and their scores are kept.
+                Only the current and upcoming rounds are rebuilt with the new court count.
               </AlertDescription>
             </Alert>
           )}
