@@ -1443,10 +1443,13 @@ export default function RoundRobinDetail() {
 
     try {
       const before = { num_courts: event.num_courts };
-      
-      // Calculate new number of rounds needed with the new court count
-      const newRounds = suggestRounds(players.length, newCourts, event.games_per_player || 3);
+
+      // Rounds are derived from the ACTIVE roster only — inactive/removed
+      // members must not inflate the round count.
+      const activeCount = players.filter((p: any) => p.active !== false).length;
+      const newRounds = suggestRounds(activeCount, newCourts, event.games_per_player || 3);
       const after = { num_courts: newCourts, num_rounds: newRounds };
+
 
       // Update event with both courts and rounds
       const { error: updateError } = await supabase
