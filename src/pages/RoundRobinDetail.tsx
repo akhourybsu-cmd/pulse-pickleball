@@ -935,9 +935,11 @@ export default function RoundRobinDetail() {
   };
 
   const regenerateScheduleFromRound = async (
-    fromRound: number
+    fromRound: number,
+    overrides?: { numCourts?: number; gamesPerPlayer?: number },
   ): Promise<{ previousRounds: number; targetRounds: number; roundsChanged: boolean } | undefined> => {
     if (!event) return;
+
 
     // Always read the live roster from the DB — React state may be stale
     // immediately after an add/remove call.
