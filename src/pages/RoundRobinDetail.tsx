@@ -968,12 +968,14 @@ export default function RoundRobinDetail() {
     try {
       // Auto-derive the round count from the host's games-per-player target
       // and the new active roster size. Never shrink below already-played rounds.
-      const gamesPerPlayer = event.games_per_player || 3;
+      const gamesPerPlayer = overrides?.gamesPerPlayer ?? (event.games_per_player || 3);
+      const numCourts = overrides?.numCourts ?? event.num_courts;
       const desiredRounds = suggestRounds(
         activePlayers.length,
-        event.num_courts,
+        numCourts,
         gamesPerPlayer
       );
+
 
       const { data: scoredRows } = await supabase
         .from("round_robin_schedule")
