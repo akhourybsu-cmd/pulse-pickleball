@@ -1013,7 +1013,7 @@ export default function RoundRobinDetail() {
               new_rounds: targetRounds,
               active_players: activePlayers.length,
               games_per_player: gamesPerPlayer,
-              num_courts: event.num_courts,
+              num_courts: numCourts,
             },
             reason: `Rounds auto-adjusted from ${previousRounds} to ${targetRounds} to keep ${gamesPerPlayer} games/player for ${activePlayers.length} active players`,
           });
@@ -1032,7 +1032,7 @@ export default function RoundRobinDetail() {
             player_id: p.player_id,
             guest_id: p.guest_player_id,
           })),
-          num_courts: event.num_courts,
+          num_courts: numCourts,
           num_rounds: targetRounds,
           games_per_player: gamesPerPlayer,
           regenerate_from_round: safeFromRound,
