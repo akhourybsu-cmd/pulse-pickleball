@@ -977,20 +977,23 @@ export default function RoundRobinDetail() {
       );
 
 
+      // A round is "locked" if any of its rows carry a score OR a linked
+      // match_id (a match record already exists in history for it, e.g.
+      // submitted/verified play). Both must survive regeneration.
       const { data: scoredRows } = await supabase
         .from("round_robin_schedule")
         .select("round_no")
         .eq("event_id", event.id)
-        .or("team1_score.not.is.null,team2_score.not.is.null")
+        .or("team1_score.not.is.null,team2_score.not.is.null,match_id.not.is.null")
         .order("round_no", { ascending: false })
         .limit(1);
       const completedRoundsCount = (scoredRows?.[0]?.round_no as number | undefined) || 0;
 
-      // Never regenerate a round that already has scores — the edge
-      // function deletes everything >= regenerate_from_round, and losing
-      // a scored row also severs its match_id link into match history
-      // (breaking later void/complete). Anchor past the last scored round.
+      // Never regenerate a locked round — the edge function deletes every row
+      // >= regenerate_from_round, and losing a scored row also severs its
+      // match_id link into match history (breaking later void/complete).
       const safeFromRound = Math.max(fromRound, completedRoundsCount + 1);
+
 
       const previousRounds = event.num_rounds;
       const targetRounds = Math.max(desiredRounds, completedRoundsCount, safeFromRound - 1, 1);
