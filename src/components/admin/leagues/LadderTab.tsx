@@ -3,20 +3,19 @@ import { motion, useReducedMotion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ActionButton } from "@/components/leagues/ActionButton";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import {
   Layers, Trophy, ArrowUp, ArrowDown, Minus, Info, Play, Pause, CheckCircle2,
   ChevronUp, ChevronDown, RotateCcw, Zap, Swords, UserX, Users, AlertTriangle,
-  CalendarClock,
+  CalendarClock, Scale,
 } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog } from "@/components/ui/dialog";
 import type { League, LeagueSeason } from "@/lib/leagues/types";
 import { resolvePlayerName } from "@/lib/matchDisplay";
 import { formatDistanceToNow } from "date-fns";
@@ -29,9 +28,10 @@ import {
 import { cn } from "@/lib/utils";
 import { LadderReplacePanel } from "./LadderReplacePanel";
 import {
-  EmptyState, TabSkeleton, LeagueTabProps, FormSection, FormRow, FIELD_H,
+  EmptyState, TabSkeleton, LeagueTabProps, FormShell, FormSection, FormRow, FIELD_H,
   SeasonSelect, ChoiceGrid, SegmentedControl,
 } from "./_shared";
+
 
 /**
  * Schedule (or reschedule) a ladder week's session via the RPC, which binds
