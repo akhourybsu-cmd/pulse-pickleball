@@ -1472,7 +1472,10 @@ export default function RoundRobinDetail() {
       // are protected inside regenerateScheduleFromRound. The new court count
       // is passed explicitly because `event` state is still the pre-update copy.
       const fromRound = event.status === 'draft' ? 1 : (event.current_round || 1);
-      const result = await regenerateScheduleFromRound(fromRound, { numCourts: newCourts });
+      const pulse = startPulseActivity("Rebuilding rounds for new court count…");
+      const result = await regenerateScheduleFromRound(fromRound, { numCourts: newCourts })
+        .catch((e) => { pulse.fail(); throw e; });
+      pulse.done(`Rebuilt · ${result?.targetRounds ?? newRounds} rounds`);
 
       toast.success(
         `Courts updated to ${newCourts} — schedule rebuilt (${result?.targetRounds ?? newRounds} rounds)`,
@@ -1484,6 +1487,7 @@ export default function RoundRobinDetail() {
       console.error(error);
       throw error;
     }
+
   };
 
   const handleUpdateGamesPerPlayer = async (newGamesPerPlayer: number, courtsOverride?: number) => {
