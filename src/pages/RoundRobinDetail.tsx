@@ -1523,10 +1523,13 @@ export default function RoundRobinDetail() {
 
       // Regenerate schedule from current round
       const fromRound = event.status === 'draft' ? 1 : (event.current_round || 1);
+      const pulse = startPulseActivity("Rebuilding rounds…");
       const result = await regenerateScheduleFromRound(fromRound, {
         numCourts,
         gamesPerPlayer: newGamesPerPlayer,
-      });
+      }).catch((e) => { pulse.fail(); throw e; });
+      pulse.done(`Rebuilt · ${result?.targetRounds ?? newRounds} rounds`);
+
 
       toast.success(
         `Games per player updated to ${newGamesPerPlayer} — schedule rebuilt (${result?.targetRounds ?? newRounds} rounds)`,
