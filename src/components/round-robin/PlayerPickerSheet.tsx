@@ -13,6 +13,7 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { startPulseActivity } from "@/components/ui/pulse-activity";
 import { cn } from "@/lib/utils";
 
 
@@ -122,9 +123,10 @@ export function PlayerPickerSheet({
   const addGuest = async () => {
     const name = guestName.trim();
     if (!name) return;
+    const pulse = startPulseActivity(`Creating guest ${name}…`);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) { pulse.fail(); return; }
       const { data, error } = await supabase
         .from("guest_players")
         .insert({
@@ -143,7 +145,8 @@ export function PlayerPickerSheet({
       };
       // Refresh the saved-guest roster query so the new entry shows up below
       qc.invalidateQueries({ queryKey: ["guest-players-roster"] });
-      toast.success(`${name} added as a guest`);
+      pulse.done(`${name} added as a guest`);
+
       if (mode === "single") {
         onPlayersChange([guest]);
         setGuestName("");
@@ -153,9 +156,11 @@ export function PlayerPickerSheet({
       setLocal((prev) => [...prev, guest]);
       setGuestName("");
     } catch (e) {
+      pulse.fail();
       console.error("Failed to save guest:", e);
       toast.error("Couldn't add that guest. Try again.");
     }
+
   };
 
 

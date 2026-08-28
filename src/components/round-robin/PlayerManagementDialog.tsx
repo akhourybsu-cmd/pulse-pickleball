@@ -26,6 +26,8 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveRRParticipant, rrParticipantInitials } from "@/lib/roundRobin/resolveParticipant";
+import { startPulseActivity } from "@/components/ui/pulse-activity";
+
 
 interface Player {
   id: string;
@@ -107,6 +109,10 @@ export function PlayerManagementDialog({
   const handleAddPlayer = async () => {
     if (addPicks.length === 0) return;
     setLoading(true);
+    const label = addPicks.length === 1
+      ? `Adding ${addPicks[0].display_name || addPicks[0].full_name}…`
+      : `Adding ${addPicks.length} players…`;
+    const pulse = startPulseActivity(label);
     try {
       for (const pick of addPicks) {
         await onAddPlayer({
@@ -115,8 +121,16 @@ export function PlayerManagementDialog({
           guestName: pick.isGuest ? pick.display_name || pick.full_name : undefined,
         });
       }
+      pulse.done(
+        addPicks.length === 1
+          ? `${addPicks[0].display_name || addPicks[0].full_name} is on the roster`
+          : `${addPicks.length} players added`,
+      );
       setAddPicks([]);
       setMode(null);
+    } catch (e) {
+      pulse.fail();
+      throw e;
     } finally {
       setLoading(false);
     }
@@ -127,14 +141,19 @@ export function PlayerManagementDialog({
     if (!targetId) return;
     setLoading(true);
     setRemovingId(targetId);
+    const pulse = startPulseActivity("Removing player & rebuilding rounds…");
     try {
       await onMarkInactive(targetId);
+      pulse.done("Roster updated");
       setJustRemovedId(targetId);
       // Brief beat so the user sees the "Removed" flash before the dialog closes.
       await new Promise((resolve) => setTimeout(resolve, 650));
       setSelectedPlayer("");
       setConfirmingRemoveId(null);
       setMode(null);
+    } catch (e) {
+      pulse.fail();
+      throw e;
     } finally {
       setLoading(false);
       setRemovingId(null);
@@ -145,6 +164,7 @@ export function PlayerManagementDialog({
   const handleSubstitute = async () => {
     if (!substituteOriginal || !substituteNewPick) return;
     setLoading(true);
+    const pulse = startPulseActivity("Substituting player…");
     try {
       const replacement = {
         playerId: substituteNewPick.isGuest ? null : substituteNewPick.id,
@@ -154,15 +174,22 @@ export function PlayerManagementDialog({
           : undefined,
       };
       await onSubstitute(substituteOriginal, replacement, substituteScope);
+      pulse.done(
+        `${substituteNewPick.display_name || substituteNewPick.full_name} is in`,
+      );
       setSubstituteOriginal("");
       setSubstituteNew("");
       setSubstituteNewPick(null);
       setSubstituteScope('global');
       setMode(null);
+    } catch (e) {
+      pulse.fail();
+      throw e;
     } finally {
       setLoading(false);
     }
   };
+
 
   const handleClose = () => {
     setMode(null);

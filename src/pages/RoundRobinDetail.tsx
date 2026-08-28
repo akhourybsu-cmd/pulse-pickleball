@@ -77,6 +77,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { resolvePlayerInitials } from "@/lib/matchDisplay";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { startPulseActivity } from "@/components/ui/pulse-activity";
+
 
 // Score validation schema
 const scoreSchema = z.object({
@@ -477,6 +479,7 @@ export default function RoundRobinDetail() {
       return;
     }
 
+    const pulse = startPulseActivity("Building schedule…");
     try {
       const { data, error } = await supabase.functions.invoke("generate-round-robin-schedule", {
         body: {
@@ -492,12 +495,14 @@ export default function RoundRobinDetail() {
       });
 
       if (error) throw error;
-      toast.success(`Schedule generated with ${calculatedRounds} rounds!`);
+      pulse.done(`Schedule ready · ${calculatedRounds} rounds`);
       fetchEventDetails();
     } catch (error: unknown) {
+      pulse.fail();
       toast.error("Failed to generate schedule");
       console.error(error);
     }
+
   };
 
   const handleStartEvent = async () => {
@@ -1467,7 +1472,10 @@ export default function RoundRobinDetail() {
       // are protected inside regenerateScheduleFromRound. The new court count
       // is passed explicitly because `event` state is still the pre-update copy.
       const fromRound = event.status === 'draft' ? 1 : (event.current_round || 1);
-      const result = await regenerateScheduleFromRound(fromRound, { numCourts: newCourts });
+      const pulse = startPulseActivity("Rebuilding rounds for new court count…");
+      const result = await regenerateScheduleFromRound(fromRound, { numCourts: newCourts })
+        .catch((e) => { pulse.fail(); throw e; });
+      pulse.done(`Rebuilt · ${result?.targetRounds ?? newRounds} rounds`);
 
       toast.success(
         `Courts updated to ${newCourts} — schedule rebuilt (${result?.targetRounds ?? newRounds} rounds)`,
@@ -1479,6 +1487,7 @@ export default function RoundRobinDetail() {
       console.error(error);
       throw error;
     }
+
   };
 
   const handleUpdateGamesPerPlayer = async (newGamesPerPlayer: number, courtsOverride?: number) => {
@@ -1514,10 +1523,13 @@ export default function RoundRobinDetail() {
 
       // Regenerate schedule from current round
       const fromRound = event.status === 'draft' ? 1 : (event.current_round || 1);
+      const pulse = startPulseActivity("Rebuilding rounds…");
       const result = await regenerateScheduleFromRound(fromRound, {
         numCourts,
         gamesPerPlayer: newGamesPerPlayer,
-      });
+      }).catch((e) => { pulse.fail(); throw e; });
+      pulse.done(`Rebuilt · ${result?.targetRounds ?? newRounds} rounds`);
+
 
       toast.success(
         `Games per player updated to ${newGamesPerPlayer} — schedule rebuilt (${result?.targetRounds ?? newRounds} rounds)`,
