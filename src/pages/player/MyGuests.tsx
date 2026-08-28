@@ -5,8 +5,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,8 +23,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Check } from "lucide-react";
 import {
+  Check,
   Loader2,
   UserPlus,
   Search,
@@ -34,9 +34,15 @@ import {
   GitMerge,
   X,
   Info,
+  Users,
+  UserCheck,
+  Inbox,
 } from "lucide-react";
 import { GuestInviteDialog } from "@/components/round-robin/GuestInviteDialog";
+import { GlassRowGroup } from "@/components/round-robin/PremiumDialogHeader";
 import { PageSEO } from "@/components/seo/PageSEO";
+import { withPulseActivity } from "@/components/ui/pulse-activity";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 type Guest = {
@@ -56,6 +62,8 @@ export default function MyGuests() {
   const [creating, setCreating] = useState(false);
   const [inviteGuest, setInviteGuest] = useState<Guest | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  const [removeTarget, setRemoveTarget] = useState<Guest | null>(null);
+  const [rejectTarget, setRejectTarget] = useState<string | null>(null);
 
   // Merge state
   const [mergeMode, setMergeMode] = useState(false);
@@ -70,7 +78,7 @@ export default function MyGuests() {
     supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
   }, []);
 
-  const { data: guests = [], isLoading } = useQuery({
+  const { data: allGuests = [], isLoading } = useQuery({
     queryKey: ["my-guest-players", userId],
     enabled: !!userId,
     queryFn: async () => {
@@ -84,11 +92,20 @@ export default function MyGuests() {
     },
   });
 
+  // Once a guest claims a PULSE account they graduate off the roster —
+  // they're a real player now and get picked from player search instead.
+  // Their history stays intact on the linked record.
+  const guests = useMemo(
+    () => allGuests.filter((g) => !g.linked_user_id),
+    [allGuests],
+  );
+  const linkedCount = allGuests.length - guests.length;
+
   // Pending guest claims awaiting the current user's (creator's) approval.
   // Without this UI, someone who signs up via a claim invite (with no
   // matching invited_email) gets stuck in "awaiting_approval" forever and
   // the guest → player merge never completes.
-  const { data: pendingClaims = [], isLoading: pendingLoading } = useQuery({
+  const { data: pendingClaims = [] } = useQuery({
     queryKey: ["pending-guest-claims", userId],
     enabled: !!userId,
     queryFn: async () => {
@@ -138,34 +155,47 @@ export default function MyGuests() {
     },
   });
 
-  const [approvingId, setApprovingId] = useState<string | null>(null);
-  const approveClaim = async (inviteId: string) => {
-    setApprovingId(inviteId);
-    const { data, error } = await supabase.rpc("approve_guest_claim", {
-      _invite_id: inviteId,
-    });
-    setApprovingId(null);
-    const res = (data ?? {}) as { ok?: boolean; error?: string };
-    if (error || !res.ok) {
-      toast.error(error?.message || res.error || "Could not approve claim.");
-      return;
-    }
-    toast.success("Claim approved — guest is now linked.");
+  const refresh = () => {
     qc.invalidateQueries({ queryKey: ["pending-guest-claims", userId] });
     qc.invalidateQueries({ queryKey: ["my-guest-players", userId] });
   };
 
+  const [approvingId, setApprovingId] = useState<string | null>(null);
+  const approveClaim = async (inviteId: string) => {
+    setApprovingId(inviteId);
+    try {
+      await withPulseActivity(
+        "Linking guest to their account…",
+        async () => {
+          const { data, error } = await supabase.rpc("approve_guest_claim", {
+            _invite_id: inviteId,
+          });
+          const res = (data ?? {}) as { ok?: boolean; error?: string };
+          if (error || !res.ok) {
+            throw new Error(error?.message || res.error || "Could not approve claim.");
+          }
+        },
+        "Linked — removed from your guest list",
+      );
+      refresh();
+    } catch (e: any) {
+      toast.error(e?.message || "Could not approve claim.");
+    } finally {
+      setApprovingId(null);
+    }
+  };
+
   const rejectClaim = async (inviteId: string) => {
-    if (!confirm("Reject this claim? The invite link becomes unusable.")) return;
     const { error } = await supabase
       .from("guest_claim_invites")
       .update({ status: "revoked" })
       .eq("id", inviteId);
+    setRejectTarget(null);
     if (error) {
       toast.error("Could not reject.");
       return;
     }
-    qc.invalidateQueries({ queryKey: ["pending-guest-claims", userId] });
+    refresh();
   };
 
   const filtered = useMemo(() => {
@@ -182,27 +212,33 @@ export default function MyGuests() {
     const display = name.trim();
     if (!display || !userId) return;
     setCreating(true);
-    const { error } = await supabase
-      .from("guest_players")
-      .insert({ display_name: display, created_by: userId } as never);
-    setCreating(false);
-    if (error) {
+    try {
+      await withPulseActivity(`Adding ${display}…`, async () => {
+        const { error } = await supabase
+          .from("guest_players")
+          .insert({ display_name: display, created_by: userId } as never);
+        if (error) throw error;
+      });
+      setName("");
+      refresh();
+    } catch {
       toast.error("Could not add guest.");
-      return;
+    } finally {
+      setCreating(false);
     }
-    setName("");
-    qc.invalidateQueries({ queryKey: ["my-guest-players", userId] });
-    toast.success("Guest added to your roster.");
   };
 
   const removeGuest = async (g: Guest) => {
-    if (!confirm(`Remove ${g.display_name} from your guest roster?`)) return;
-    const { error } = await supabase.from("guest_players").delete().eq("id", g.id);
-    if (error) {
+    setRemoveTarget(null);
+    try {
+      await withPulseActivity(`Removing ${g.display_name}…`, async () => {
+        const { error } = await supabase.from("guest_players").delete().eq("id", g.id);
+        if (error) throw error;
+      });
+      refresh();
+    } catch {
       toast.error("Could not remove. They may still be linked to past round robins.");
-      return;
     }
-    qc.invalidateQueries({ queryKey: ["my-guest-players", userId] });
   };
 
   const toggleSelected = (id: string) => {
@@ -223,14 +259,8 @@ export default function MyGuests() {
     const a = guests.find((g) => g.id === selectedIds[0]);
     const b = guests.find((g) => g.id === selectedIds[1]);
     if (!a || !b) return;
-    // Prefer keeping the linked one; otherwise the older record.
-    const keep = a.linked_user_id && !b.linked_user_id
-      ? a
-      : !a.linked_user_id && b.linked_user_id
-        ? b
-        : new Date(a.created_at) <= new Date(b.created_at)
-          ? a
-          : b;
+    // Keep the older record when neither is linked.
+    const keep = new Date(a.created_at) <= new Date(b.created_at) ? a : b;
     const remove = keep.id === a.id ? b : a;
     setMergeConfirm({ keep, remove });
   };
@@ -238,25 +268,25 @@ export default function MyGuests() {
   const confirmMerge = async () => {
     if (!mergeConfirm) return;
     setMerging(true);
-    // Param names must match the SQL function signature exactly
-    // (merge_guest_players(_keep_id, _remove_id)) — PostgREST resolves
-    // functions by named arguments, so the previous p_-prefixed names
-    // made every merge fail with "function not found".
-    const { error } = await supabase.rpc("merge_guest_players", {
-      _keep_id: mergeConfirm.keep.id,
-      _remove_id: mergeConfirm.remove.id,
-    } as never);
-    setMerging(false);
-    if (error) {
-      toast.error(error.message || "Merge failed.");
-      return;
+    try {
+      // Param names must match the SQL function signature exactly
+      // (merge_guest_players(_keep_id, _remove_id)) — PostgREST resolves
+      // functions by named arguments.
+      await withPulseActivity("Merging guests…", async () => {
+        const { error } = await supabase.rpc("merge_guest_players", {
+          _keep_id: mergeConfirm.keep.id,
+          _remove_id: mergeConfirm.remove.id,
+        } as never);
+        if (error) throw error;
+      }, `Merged into ${mergeConfirm.keep.display_name}`);
+      setMergeConfirm(null);
+      exitMergeMode();
+      refresh();
+    } catch (e: any) {
+      toast.error(e?.message || "Merge failed.");
+    } finally {
+      setMerging(false);
     }
-    toast.success(
-      `Merged into "${mergeConfirm.keep.display_name}". Past round robins updated.`,
-    );
-    setMergeConfirm(null);
-    exitMergeMode();
-    qc.invalidateQueries({ queryKey: ["my-guest-players", userId] });
   };
 
   // Suggest duplicates (case-insensitive name match).
@@ -280,29 +310,72 @@ export default function MyGuests() {
         description="Manage your reusable guest players for round robins."
         path="/player/guests"
       />
-      <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
-        <header className="space-y-1">
-          <h1 className="text-2xl font-bold">Guest Roster</h1>
-          <p className="text-sm text-muted-foreground">
-            Reusable guest profiles for casual & open-play round robins. Guests
-            don't count toward PULSE Ratings until they claim an account.
-          </p>
-        </header>
 
-        <Card className="p-4 space-y-3">
+      {/* Premium hero — ambient primary bloom, court-line texture,
+          accent-ruled eyebrow, scoreboard tiles. */}
+      <section className="relative overflow-hidden bg-gradient-to-b from-primary/[0.10] via-primary/[0.03] to-background border-b border-border/50">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -top-24 -left-16 h-56 w-56 rounded-full blur-3xl opacity-[0.18]"
+          style={{ background: "radial-gradient(circle, hsl(var(--primary)) 0%, transparent 70%)" }}
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 opacity-[0.05]"
+          style={{
+            backgroundImage:
+              "repeating-linear-gradient(115deg, hsl(var(--foreground)) 0px, hsl(var(--foreground)) 1px, transparent 1px, transparent 22px)",
+          }}
+        />
+
+        <div className="relative container max-w-2xl mx-auto px-4 pt-5 pb-4 sm:pt-6 sm:pb-5">
+          <div className="relative pl-3.5 min-w-0">
+            <span
+              aria-hidden
+              className="absolute left-0 top-1 bottom-1 w-[3px] rounded-full bg-gradient-to-b from-primary to-primary/25"
+            />
+            <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-primary/80 mb-1">
+              Round Robin
+            </div>
+            <h1 className="text-[24px] sm:text-[28px] font-extrabold tracking-[-0.02em] leading-[1.05] text-foreground">
+              Guest Roster
+            </h1>
+            <p className="mt-1 text-[12.5px] text-muted-foreground leading-snug">
+              Reusable guests for casual & open play. They don't affect PULSE
+              Ratings until they claim an account.
+            </p>
+          </div>
+
+          <div className="mt-3.5 grid grid-cols-3 gap-2">
+            <HeroStatTile icon={Users} label="Guests" value={String(guests.length)} />
+            <HeroStatTile icon={Inbox} label="Pending" value={String(pendingClaims.length)} />
+            <HeroStatTile icon={UserCheck} label="Claimed" value={String(linkedCount)} />
+          </div>
+        </div>
+      </section>
+
+      <main className="container max-w-2xl mx-auto px-4 py-5 space-y-4">
+        {/* Add + search */}
+        <div className="rounded-2xl border border-border/70 bg-card/80 backdrop-blur-sm p-3 space-y-2.5 shadow-[0_8px_30px_-18px_hsl(var(--foreground)/0.25)]">
           <div className="flex gap-2">
             <Input
-              placeholder="Guest name"
+              placeholder="Add a guest by name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && addGuest()}
+              className="h-11"
             />
-            <Button onClick={addGuest} disabled={creating || !name.trim()}>
+            <Button
+              onClick={addGuest}
+              disabled={creating || !name.trim()}
+              className="h-11 px-4 gap-1.5 shadow-[0_2px_10px_-2px_hsl(var(--primary)/0.5)]"
+            >
               {creating ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <UserPlus className="h-4 w-4" />
               )}
+              <span className="hidden sm:inline">Add</span>
             </Button>
           </div>
           <div className="relative">
@@ -311,51 +384,49 @@ export default function MyGuests() {
               placeholder="Search guests"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9"
+              className="pl-9 h-10"
             />
           </div>
-        </Card>
+        </div>
 
         {/* Pending claims — organizer must approve before the guest → player link completes. */}
         {pendingClaims.length > 0 && (
-          <Card className="p-4 space-y-3 border-primary/40 bg-primary/5">
-            <div>
-              <h2 className="text-sm font-semibold">
-                Pending claims ({pendingClaims.length})
-              </h2>
-              <p className="text-xs text-muted-foreground">
-                These players signed up and are asking to take over their guest
-                profile. Approve to link their PULSE account so match history
-                merges over.
-              </p>
+          <div className="rounded-2xl border border-primary/35 bg-primary/[0.06] p-3 space-y-2.5">
+            <div className="flex items-center gap-2">
+              <span className="h-8 w-8 rounded-xl flex items-center justify-center border border-primary/25 bg-primary/10 text-primary flex-shrink-0">
+                <Inbox className="h-4 w-4" />
+              </span>
+              <div className="min-w-0">
+                <h2 className="text-[13px] font-bold tracking-tight">
+                  Pending claims ({pendingClaims.length})
+                </h2>
+                <p className="text-[11.5px] text-muted-foreground leading-snug">
+                  Approve to link their PULSE account — history merges over and
+                  they leave your guest list.
+                </p>
+              </div>
             </div>
-            <div className="space-y-2">
+            <GlassRowGroup>
               {pendingClaims.map((c) => (
-                <div
-                  key={c.invite_id}
-                  className="flex items-center gap-3 rounded-md border bg-background p-3"
-                >
+                <div key={c.invite_id} className="flex items-center gap-2.5 p-3">
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">
+                    <p className="text-[13.5px] font-semibold truncate">
                       {c.claimant_name}
-                      {c.claimant_email && (
-                        <span className="text-muted-foreground font-normal">
-                          {" "}· {c.claimant_email}
-                        </span>
-                      )}
                     </p>
-                    <p className="text-xs text-muted-foreground truncate">
+                    <p className="text-[11.5px] text-muted-foreground truncate">
                       wants to claim{" "}
                       <span className="font-medium text-foreground">
                         {c.guest_name}
                       </span>
+                      {c.claimant_email && <> · {c.claimant_email}</>}
                     </p>
                   </div>
                   <Button
                     size="sm"
                     variant="ghost"
-                    onClick={() => rejectClaim(c.invite_id)}
+                    onClick={() => setRejectTarget(c.invite_id)}
                     disabled={approvingId === c.invite_id}
+                    aria-label="Reject claim"
                   >
                     <X className="h-3.5 w-3.5" />
                   </Button>
@@ -374,17 +445,16 @@ export default function MyGuests() {
                   </Button>
                 </div>
               ))}
-            </div>
-          </Card>
+            </GlassRowGroup>
+          </div>
         )}
-
 
         {/* Merge toolbar */}
         {guests.length >= 2 && (
           <div className="flex items-center justify-between gap-2">
             {mergeMode ? (
               <>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-[11.5px] text-muted-foreground">
                   Pick 2 guests to merge ({selectedIds.length}/2)
                 </p>
                 <div className="flex gap-2">
@@ -402,7 +472,7 @@ export default function MyGuests() {
               </>
             ) : (
               <>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-[11.5px] text-muted-foreground">
                   {duplicateNames.size > 0
                     ? `${duplicateNames.size} possible duplicate${duplicateNames.size === 1 ? "" : "s"} detected`
                     : "Tip: use Merge to combine duplicate guests"}
@@ -411,7 +481,10 @@ export default function MyGuests() {
                   <TooltipProvider delayDuration={100}>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <button className="text-muted-foreground hover:text-foreground transition-colors">
+                        <button
+                          className="text-muted-foreground hover:text-foreground transition-colors"
+                          aria-label="About merging"
+                        >
                           <Info className="h-4 w-4" />
                         </button>
                       </TooltipTrigger>
@@ -423,17 +496,12 @@ export default function MyGuests() {
                         </p>
                         <p className="text-xs mt-1 text-muted-foreground">
                           <strong>Why merge:</strong> Clean up accidental
-                          duplicates so player history stays accurate and your
-                          roster stays tidy.
+                          duplicates so player history stays accurate.
                         </p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setMergeMode(true)}
-                  >
+                  <Button size="sm" variant="outline" onClick={() => setMergeMode(true)}>
                     <GitMerge className="h-3.5 w-3.5 mr-1" /> Merge duplicates
                   </Button>
                 </div>
@@ -443,16 +511,27 @@ export default function MyGuests() {
         )}
 
         {isLoading ? (
-          <div className="flex justify-center py-10">
-            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          <div className="space-y-2">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-16 w-full rounded-2xl" />
+            ))}
           </div>
         ) : filtered.length === 0 ? (
-          <Card className="p-8 text-center text-sm text-muted-foreground">
-            No guests yet. Add one above — they'll be available in every future
-            round robin.
-          </Card>
+          <div className="rounded-2xl border border-dashed border-border/70 bg-card/50 p-8 text-center">
+            <span className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
+              <Users className="h-5 w-5" />
+            </span>
+            <p className="text-[13.5px] font-semibold">
+              {search ? "No guests match that search" : "No guests yet"}
+            </p>
+            <p className="mt-1 text-[12px] text-muted-foreground">
+              {search
+                ? "Try a different name or email."
+                : "Add one above — they'll be available in every future round robin."}
+            </p>
+          </div>
         ) : (
-          <div className="space-y-2">
+          <GlassRowGroup className="animate-fade-up">
             {filtered.map((g) => {
               const initials = g.display_name
                 .split(" ")
@@ -464,11 +543,13 @@ export default function MyGuests() {
               const isSelected = selectedIds.includes(g.id);
               const isDup = duplicateNames.has(g.display_name.trim().toLowerCase());
               return (
-                <Card
+                <div
                   key={g.id}
-                  className={`p-3 flex items-center gap-3 transition-colors ${
-                    mergeMode && isSelected ? "border-primary ring-1 ring-primary" : ""
-                  }`}
+                  className={cn(
+                    "flex items-center gap-3 p-3 transition-colors",
+                    mergeMode && "cursor-pointer hover:bg-muted/40",
+                    mergeMode && isSelected && "bg-primary/[0.07]",
+                  )}
                   onClick={mergeMode ? () => toggleSelected(g.id) : undefined}
                   role={mergeMode ? "button" : undefined}
                 >
@@ -479,21 +560,19 @@ export default function MyGuests() {
                       aria-label={`Select ${g.display_name}`}
                     />
                   )}
-                  <Avatar className="h-10 w-10">
-                    <AvatarFallback>{initials}</AvatarFallback>
+                  <Avatar className="h-10 w-10 border border-border/60">
+                    <AvatarFallback className="text-[12px] font-bold">
+                      {initials}
+                    </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <p className="font-medium truncate">{g.display_name}</p>
-                      {g.linked_user_id ? (
-                        <Badge variant="secondary" className="text-[10px] gap-1">
-                          <Link2 className="h-3 w-3" /> Linked
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-[10px]">
-                          Guest
-                        </Badge>
-                      )}
+                      <p className="text-[14px] font-semibold truncate">
+                        {g.display_name}
+                      </p>
+                      <Badge variant="outline" className="text-[10px]">
+                        Guest
+                      </Badge>
                       {isDup && !mergeMode && (
                         <Badge
                           variant="outline"
@@ -504,38 +583,47 @@ export default function MyGuests() {
                       )}
                     </div>
                     {g.email && (
-                      <p className="text-xs text-muted-foreground truncate">
+                      <p className="text-[11.5px] text-muted-foreground truncate">
                         {g.email}
                       </p>
                     )}
                   </div>
                   {!mergeMode && (
-                    <>
-                      {!g.linked_user_id && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setInviteGuest(g)}
-                        >
-                          <Send className="h-3 w-3 mr-1" /> Invite
-                        </Button>
-                      )}
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setInviteGuest(g)}
+                        className="h-9"
+                      >
+                        <Send className="h-3 w-3 sm:mr-1" />
+                        <span className="hidden sm:inline">Invite</span>
+                      </Button>
                       <Button
                         size="icon"
                         variant="ghost"
-                        onClick={() => removeGuest(g)}
-                        aria-label="Remove guest"
+                        onClick={() => setRemoveTarget(g)}
+                        aria-label={`Remove ${g.display_name}`}
+                        className="h-9 w-9"
                       >
                         <Trash2 className="h-4 w-4 text-muted-foreground" />
                       </Button>
-                    </>
+                    </div>
                   )}
-                </Card>
+                </div>
               );
             })}
-          </div>
+          </GlassRowGroup>
         )}
-      </div>
+
+        {linkedCount > 0 && (
+          <p className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
+            <Link2 className="h-3.5 w-3.5 text-primary/70" />
+            {linkedCount} guest{linkedCount === 1 ? "" : "s"} claimed a PULSE
+            account and moved off this list — search for them as players.
+          </p>
+        )}
+      </main>
 
       {inviteGuest && (
         <GuestInviteDialog
@@ -546,6 +634,50 @@ export default function MyGuests() {
           defaultEmail={inviteGuest.email}
         />
       )}
+
+      {/* Remove guest */}
+      <AlertDialog open={!!removeTarget} onOpenChange={(o) => !o && setRemoveTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove this guest?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {removeTarget?.display_name} will be taken off your roster. If they
+              appear in past round robins, the removal will be blocked to protect
+              that history.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => removeTarget && removeGuest(removeTarget)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Reject claim */}
+      <AlertDialog open={!!rejectTarget} onOpenChange={(o) => !o && setRejectTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reject this claim?</AlertDialogTitle>
+            <AlertDialogDescription>
+              The invite link becomes unusable and the guest stays on your roster.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => rejectTarget && rejectClaim(rejectTarget)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Reject
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog
         open={!!mergeConfirm}
@@ -584,15 +716,33 @@ export default function MyGuests() {
           <AlertDialogFooter>
             <AlertDialogCancel disabled={merging}>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={confirmMerge} disabled={merging}>
-              {merging ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                "Merge"
-              )}
+              {merging ? <Loader2 className="h-4 w-4 animate-spin" /> : "Merge"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+  );
+}
+
+function HeroStatTile({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: typeof Users;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-xl border border-border/60 bg-card/70 backdrop-blur-sm px-2.5 py-2 shadow-[0_1px_3px_hsl(var(--foreground)/0.04)]">
+      <div className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+        <Icon className="h-3 w-3 text-primary/80" />
+        {label}
+      </div>
+      <div className="mt-0.5 text-[15px] font-bold tracking-tight text-foreground tabular-nums">
+        {value}
+      </div>
     </div>
   );
 }
