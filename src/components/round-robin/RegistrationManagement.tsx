@@ -82,14 +82,12 @@ export function RegistrationManagement({
         { duration: 5000 }
       );
       refetch();
-    } finally {
-      setIsRemoving(false);
-      setPendingRemove(null);
-    }
-  };
     } catch (error) {
       console.error('Remove error:', error);
       toast.error('Failed to remove player');
+    } finally {
+      setIsRemoving(false);
+      setPendingRemove(null);
     }
   };
 
