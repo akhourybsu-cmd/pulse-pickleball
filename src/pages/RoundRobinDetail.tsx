@@ -70,7 +70,7 @@ import {
 } from "@/lib/roundRobin/activeMatch";
 import { ActiveMatchResolutionDialog } from "@/components/round-robin/ActiveMatchResolutionDialog";
 import { resolveRRParticipant } from "@/lib/roundRobin/resolveParticipant";
-import { countsTowardScore } from "@/lib/roundRobin/standings";
+import { computeStandings, guestSeatLabel } from "@/lib/roundRobin/standings";
 import { suggestRounds } from "@/lib/roundRobinFairness";
 import { isPlatformAdmin } from "@/lib/permissions";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
