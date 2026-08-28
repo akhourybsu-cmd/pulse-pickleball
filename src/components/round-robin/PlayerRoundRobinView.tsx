@@ -9,6 +9,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Calendar, MapPin, Clock, Trophy, Users, Search, Medal, Target, TrendingUp, Star, ArrowLeft } from "lucide-react";
 import { ScheduleRoundCarousel } from "@/components/round-robin/ScheduleRoundCarousel";
+import { TeamNamesStack } from "@/components/round-robin/TeamNamesStack";
+
 import { toast } from "sonner";
 import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
