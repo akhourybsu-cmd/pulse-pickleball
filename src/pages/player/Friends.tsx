@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, MessageCircle, UserMinus, Check, X, UserPlus, Users, AlertCircle, MoreVertical, User } from 'lucide-react';
+import { ArrowLeft, MessageCircle, UserMinus, Check, X, UserPlus, Users, AlertCircle, MoreVertical, User, Radio } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -29,6 +29,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { interpretDmError } from '@/lib/dmErrors';
 import { cn } from '@/lib/utils';
+import { SocialHero, SocialStatTile, glassRow } from '@/components/social/_shared';
 
 const initials = (name: string | null) =>
   (name || 'U').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
@@ -186,50 +187,41 @@ export default function Friends({ embedded = false }: { embedded?: boolean } = {
 
   return (
     <div className={cn("flex flex-col", !embedded && "min-h-[calc(100vh-120px)]")}>
-      {/* Header (standalone only — the Social hub provides its own). */}
+      {/* Premium hero (standalone only — the Social hub provides its own). */}
       {!embedded && (
-        <div className={cn(
-          "border-b border-border/40 bg-gradient-to-b from-primary/[0.06] via-background to-background"
-        )}>
-          <div className="container mx-auto px-4 py-4 md:py-5 max-w-3xl">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-start gap-3 min-w-0 flex-1">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => navigate('/player/community')}
-                  className="h-9 w-9 -ml-1 shrink-0 mt-0.5"
-                  aria-label="Back to Community"
-                >
-                  <ArrowLeft className="h-5 w-5" />
-                </Button>
-                <div className="flex items-start gap-3 min-w-0 flex-1">
-                  <div className="h-9 w-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <Users className="h-[18px] w-[18px]" strokeWidth={2} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h1 className="text-2xl md:text-[28px] font-bold tracking-tight text-foreground leading-tight">
-                      Friends
-                    </h1>
-                    <div className="h-[3px] w-10 mt-1.5 bg-primary rounded-full" />
-                    <p className="text-sm text-muted-foreground mt-2 leading-snug">
-                      Connect with players you know
-                    </p>
-                  </div>
-                </div>
-              </div>
+        <SocialHero
+          eyebrow="Community"
+          title="Friends"
+          action={
+            <div className="flex items-center gap-1.5">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => navigate('/player/community')}
+                className="h-9 w-9 text-muted-foreground"
+                aria-label="Back to Community"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
               <Button
                 onClick={() => setConnectOpen(true)}
                 size="sm"
-                className="h-9 rounded-full btn-premium shrink-0 mt-1"
+                className="h-9 rounded-full btn-premium"
               >
                 <UserPlus className="h-4 w-4 mr-1.5" />
                 Add
               </Button>
             </div>
+          }
+        >
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            <SocialStatTile icon={Users} label="Friends" value={String(friends.length)} />
+            <SocialStatTile icon={Radio} label="Online" value={String(onlineCount)} accent />
+            <SocialStatTile icon={UserPlus} label="Requests" value={String(totalRequests)} accent />
           </div>
-        </div>
+        </SocialHero>
       )}
+
       <ConnectSheet open={connectOpen} onOpenChange={setConnectOpen} />
 
       {error && !loading && (
@@ -271,7 +263,7 @@ export default function Friends({ embedded = false }: { embedded?: boolean } = {
               </div>
             ) : friends.length === 0 ? (
               <EmptyState
-                icon={<Users className="h-5 w-5 text-muted-foreground/70" />}
+                icon={<Users className="h-6 w-6" />}
                 title="No friends yet"
                 description="Find people you play with in Suggestions or invite them to a group."
               />
@@ -297,7 +289,7 @@ export default function Friends({ embedded = false }: { embedded?: boolean } = {
 
                 {visibleFriends.length === 0 ? (
                   <EmptyState
-                    icon={<Users className="h-5 w-5 text-muted-foreground/70" />}
+                    icon={<Users className="h-6 w-6" />}
                     title="No matches"
                     description="No friends match that search."
                   />
@@ -307,7 +299,7 @@ export default function Friends({ embedded = false }: { embedded?: boolean } = {
                       const isOnline = onlineFriends.has(f.profile.id);
                       const name = f.profile.display_name || f.profile.full_name || 'Player';
                       return (
-                        <div key={f.id} className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border/40">
+                        <div key={f.id} className={glassRow}>
                           <button onClick={() => navigate(`/profile/${f.profile.id}`)} aria-label={`View ${name}'s profile`} className="shrink-0">
                             <PresenceAvatar src={f.profile.avatar_url} name={name} online={isOnline} />
                           </button>
@@ -384,7 +376,7 @@ export default function Friends({ embedded = false }: { embedded?: boolean } = {
                     {pendingRequests.map(r => {
                       const name = r.profile.display_name || r.profile.full_name || 'Player';
                       return (
-                        <motion.div key={r.id} layout={!reduced} {...rowExit(reduced)} className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border/40 overflow-hidden">
+                        <motion.div key={r.id} layout={!reduced} {...rowExit(reduced)} className={cn(glassRow, "overflow-hidden")}>
                           <button onClick={() => navigate(`/profile/${r.profile.id}`)} aria-label={`View ${name}'s profile`} className="shrink-0">
                             <PresenceAvatar
                               src={r.profile.avatar_url}
@@ -424,7 +416,7 @@ export default function Friends({ embedded = false }: { embedded?: boolean } = {
                     {sentRequests.map(r => {
                       const name = r.profile.display_name || r.profile.full_name || 'Player';
                       return (
-                        <motion.div key={r.id} layout={!reduced} {...rowExit(reduced)} className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border/40 overflow-hidden">
+                        <motion.div key={r.id} layout={!reduced} {...rowExit(reduced)} className={cn(glassRow, "overflow-hidden")}>
                           <button onClick={() => navigate(`/profile/${r.profile.id}`)} aria-label={`View ${name}'s profile`} className="shrink-0">
                             <PresenceAvatar
                               src={r.profile.avatar_url}
@@ -458,7 +450,7 @@ export default function Friends({ embedded = false }: { embedded?: boolean } = {
               </div>
             ) : suggestions.length === 0 ? (
               <EmptyState
-                icon={<UserPlus className="h-5 w-5 text-muted-foreground/70" />}
+                icon={<UserPlus className="h-6 w-6" />}
                 title="No suggestions right now"
                 description="Play matches or join groups — we'll suggest people you might know."
               />
@@ -471,7 +463,7 @@ export default function Friends({ embedded = false }: { embedded?: boolean } = {
                   // consistent rating · presence line (never a fake reason).
                   const meta = reason ?? personMeta(s.current_rating, onlineFriends.has(s.id));
                   return (
-                    <div key={s.id} className="flex items-center gap-2 p-3 rounded-xl bg-card border border-border/40">
+                    <div key={s.id} className={cn(glassRow, "gap-2")}>
                       <button onClick={() => navigate(`/profile/${s.id}`)} aria-label={`View ${name}'s profile`} className="shrink-0">
                         <PresenceAvatar
                           src={s.avatar_url}
@@ -612,11 +604,14 @@ function PresenceAvatar({
 
 function EmptyState({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
   return (
-    <div className="flex flex-col items-center justify-center py-16 text-center">
-      <div className="w-12 h-12 rounded-full bg-muted/50 flex items-center justify-center mb-4">
-        {icon}
+    <div className="flex flex-col items-center justify-center py-14 text-center">
+      <div className="relative mb-4">
+        <div aria-hidden className="absolute inset-0 rounded-2xl bg-primary/20 blur-xl" />
+        <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
+          {icon}
+        </div>
       </div>
-      <h3 className="text-base font-medium mb-1">{title}</h3>
+      <h3 className="mb-1 text-base font-bold tracking-tight text-foreground">{title}</h3>
       <p className="text-sm text-muted-foreground max-w-[280px]">{description}</p>
     </div>
   );

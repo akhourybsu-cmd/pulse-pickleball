@@ -4,6 +4,8 @@ import { MessageCircle, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Friends from "./Friends";
 import { SocialInbox } from "@/components/social/SocialInbox";
+import { SocialHero } from "@/components/social/_shared";
+
 
 /**
  * Unified Social hub. One destination for Chats (direct + group) and Friends,
@@ -24,21 +26,25 @@ export default function Social() {
 
   return (
     <div className="flex flex-col min-h-[calc(100vh-120px)]">
-      {/* Compact hero — the "Social" title is dropped (it just echoed the
-          bottom-nav label); the Chats/Friends switch leads instead. */}
-      <div className="border-b border-border/40 bg-gradient-to-b from-primary/[0.06] via-background to-background">
-        <div className="container mx-auto px-4 py-3 max-w-3xl">
-          {/* View switcher — premium animated segmented control. */}
-          <div className="inline-flex rounded-xl bg-muted/50 p-1" role="tablist" aria-label="Social views">
-            <SegButton active={view === "chats"} onClick={() => navigate("/player/social")} icon={MessageCircle} reduced={reduced}>
-              Chats
-            </SegButton>
-            <SegButton active={view === "friends"} onClick={() => navigate("/player/friends")} icon={Users} reduced={reduced}>
-              Friends
-            </SegButton>
-          </div>
+      {/* Premium hero band — ambient bloom + court lines, with the
+          Chats/Friends switch leading (no redundant "Social" title). */}
+      <SocialHero
+        eyebrow="Community"
+        title={view === "friends" ? "Friends" : "Chats"}
+      >
+        <div
+          className="mt-3 inline-flex rounded-xl border border-border/60 bg-card/70 p-1 backdrop-blur-sm shadow-[0_2px_14px_-10px_hsl(var(--foreground)/0.35)]"
+          role="tablist"
+          aria-label="Social views"
+        >
+          <SegButton active={view === "chats"} onClick={() => navigate("/player/social")} icon={MessageCircle} reduced={reduced}>
+            Chats
+          </SegButton>
+          <SegButton active={view === "friends"} onClick={() => navigate("/player/friends")} icon={Users} reduced={reduced}>
+            Friends
+          </SegButton>
         </div>
-      </div>
+      </SocialHero>
 
       <div className="flex-1 min-h-0 container mx-auto max-w-3xl px-0">
         {view === "chats" ? <SocialInbox /> : <Friends embedded />}
@@ -46,6 +52,7 @@ export default function Social() {
     </div>
   );
 }
+
 
 function SegButton({
   active, onClick, icon: Icon, reduced, children,

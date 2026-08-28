@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { SocialEmptyState } from "./_shared";
 import {
   filterConversations, type InboxFilter, type SocialConversation,
 } from "@/lib/social/inbox";
@@ -66,7 +67,7 @@ export function SocialInbox() {
             placeholder="Search chats…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="pl-9 h-9"
+            className="h-9 pl-9 rounded-xl border-border/60 bg-card/70 backdrop-blur-sm"
             aria-label="Search chats"
           />
         </div>
@@ -109,7 +110,8 @@ export function SocialInbox() {
           <div className="px-4 space-y-5">
             {sections.map((section) => (
               <section key={section.label}>
-                <h2 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-1">
+                <h2 className="mb-2 flex items-center gap-2 px-1 text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+                  <span aria-hidden className="h-[2px] w-4 rounded-full bg-primary/70" />
                   {section.label}
                 </h2>
                 <motion.ul
@@ -146,10 +148,10 @@ function FilterChip({
     <button
       onClick={onClick}
       className={cn(
-        "h-8 px-3 rounded-full text-xs font-medium transition-colors flex items-center gap-1.5 shrink-0 border",
+        "h-8 px-3 rounded-full text-[11px] font-bold uppercase tracking-[0.08em] transition-colors flex items-center gap-1.5 shrink-0 border backdrop-blur-sm",
         active
-          ? "bg-primary text-primary-foreground border-primary"
-          : "bg-card text-foreground border-border/40 hover:bg-muted/40",
+          ? "bg-primary text-primary-foreground border-primary shadow-[0_2px_12px_-4px_hsl(var(--primary)/0.6)]"
+          : "bg-card/70 text-muted-foreground border-border/50 hover:text-foreground hover:bg-card",
       )}
     >
       {label}
@@ -171,30 +173,22 @@ function FilterChip({
 
 function EmptyState({ onCompose, isFiltered }: { onCompose: () => void; isFiltered: boolean }) {
   return (
-    <div className="flex flex-col items-center justify-center text-center px-6 py-16">
-      <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
-        {isFiltered ? (
-          <Search className="h-6 w-6 text-primary" />
-        ) : (
-          <MessageCircle className="h-6 w-6 text-primary" />
-        )}
-      </div>
-      <h3 className="text-base font-semibold mb-1 font-display">
-        {isFiltered ? "No chats here" : "No conversations yet"}
-      </h3>
-      <p className="text-sm text-muted-foreground max-w-[280px] mb-5">
-        {isFiltered
+    <SocialEmptyState
+      icon={isFiltered ? Search : MessageCircle}
+      title={isFiltered ? "No chats here" : "No conversations yet"}
+      description={
+        isFiltered
           ? "Try a different filter or search term."
-          : "Message a friend or join a community group to start chatting."}
-      </p>
-      {!isFiltered && (
-        <div className="flex items-center gap-2">
+          : "Message a friend or join a community group to start chatting."
+      }
+      action={
+        isFiltered ? undefined : (
           <Button onClick={onCompose} className="rounded-full btn-premium">
             <PenSquare className="h-4 w-4 mr-1.5" />
             New message
           </Button>
-        </div>
-      )}
-    </div>
+        )
+      }
+    />
   );
 }
