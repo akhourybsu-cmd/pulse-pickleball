@@ -168,18 +168,34 @@ export function RoundRobinHostHero({
   return (
     <section
       className={cn(
-        "relative",
-        // Subtle primary wash from top — gives the hero a sense of place
-        // without an obvious bounding box.
-        "bg-gradient-to-b from-primary/[0.06] via-background to-background",
+        "relative overflow-hidden",
+        // Layered wash + hairline base for a sense of place without a box.
+        "bg-gradient-to-b from-primary/[0.10] via-primary/[0.03] to-background",
+        "border-b border-border/50",
         className,
       )}
     >
-      <div className="container max-w-2xl mx-auto px-4 pt-4 pb-3 sm:pt-5 sm:pb-4">
+      {/* Ambient glow — top-left primary bloom */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -top-24 -left-16 h-56 w-56 rounded-full blur-3xl opacity-[0.18]"
+        style={{ background: "radial-gradient(circle, hsl(var(--primary)) 0%, transparent 70%)" }}
+      />
+      {/* Court-line texture — faint diagonal rule, sports-broadcast feel */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 opacity-[0.05]"
+        style={{
+          backgroundImage:
+            "repeating-linear-gradient(115deg, hsl(var(--foreground)) 0px, hsl(var(--foreground)) 1px, transparent 1px, transparent 22px)",
+        }}
+      />
+
+      <div className="relative container max-w-2xl mx-auto px-4 pt-5 pb-4 sm:pt-6 sm:pb-5">
         {/* Status chips first — small, restrained */}
-        <div className="flex items-center gap-1.5 flex-wrap mb-2">
+        <div className="flex items-center gap-1.5 flex-wrap mb-2.5">
           {status === "live" ? (
-            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold tracking-wider uppercase">
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold tracking-[0.14em] uppercase shadow-[0_2px_10px_-2px_hsl(var(--primary)/0.55)]">
               <span className="relative flex h-1.5 w-1.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-current opacity-60" />
                 <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-current" />
@@ -187,28 +203,28 @@ export function RoundRobinHostHero({
               Live
             </span>
           ) : status === "completed" ? (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-foreground/90 text-background text-[10px] font-bold tracking-wider uppercase">
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-foreground/90 text-background text-[10px] font-bold tracking-[0.14em] uppercase">
               <Trophy className="h-2.5 w-2.5" />
               Completed
             </span>
           ) : (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-[10px] font-bold tracking-wider uppercase">
+            <span className="inline-flex items-center px-2.5 py-1 rounded-full border border-border/70 bg-background/60 text-muted-foreground text-[10px] font-bold tracking-[0.14em] uppercase backdrop-blur-sm">
               Draft
             </span>
           )}
           {voided && (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold tracking-wider uppercase">
+            <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold tracking-[0.14em] uppercase">
               Voided
             </span>
           )}
           {ratingEligible ? (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-primary/15 text-primary text-[10px] font-bold tracking-wider uppercase">
+            <span className="inline-flex items-center px-2.5 py-1 rounded-full border border-primary/25 bg-primary/12 text-primary text-[10px] font-bold tracking-[0.14em] uppercase">
               Rating eligible
             </span>
           ) : allowGuests ? (
             <span
               title="Guest players are allowed, so results don't count toward PULSE Ratings."
-              className="inline-flex items-center px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-[10px] font-bold tracking-wider uppercase"
+              className="inline-flex items-center px-2.5 py-1 rounded-full border border-border/70 bg-background/60 text-muted-foreground text-[10px] font-bold tracking-[0.14em] uppercase backdrop-blur-sm"
             >
               Not rating eligible · Guests enabled
             </span>
@@ -216,39 +232,50 @@ export function RoundRobinHostHero({
 
         </div>
 
-        {/* Title — compact, premium */}
-        <h1 className="text-[22px] sm:text-2xl md:text-[28px] font-bold tracking-tight text-foreground leading-[1.1] mb-3">
-          {name}
-        </h1>
+        {/* Eyebrow + title — editorial, with an accent rule for weight */}
+        <div className="relative pl-3.5 mb-3.5">
+          <span
+            aria-hidden
+            className="absolute left-0 top-1 bottom-1 w-[3px] rounded-full bg-gradient-to-b from-primary to-primary/25"
+          />
+          <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-primary/80 mb-1">
+            Round Robin
+          </div>
+          <h1 className="text-[24px] sm:text-[28px] md:text-[32px] font-extrabold tracking-[-0.02em] text-foreground leading-[1.05] text-balance">
+            {name}
+          </h1>
+        </div>
 
-        {/* Metadata — two restrained lines instead of an icon-soup chip row */}
-        <div className="space-y-0.5 text-[13px] sm:text-sm text-muted-foreground">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <Calendar className="h-3.5 w-3.5 text-primary/80 flex-shrink-0" />
-            <span>{format(parseISO(date + "T00:00:00"), "PP")}</span>
-            {startTime && (
-              <>
-                <span className="text-muted-foreground/50">·</span>
-                <Clock className="h-3.5 w-3.5 text-primary/80 flex-shrink-0" />
-                <span>{formatStartTime(startTime)}</span>
-              </>
-            )}
-            <span className="text-muted-foreground/50">·</span>
-            <span>{formatLabel}</span>
-          </div>
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <Users className="h-3.5 w-3.5 text-primary/80 flex-shrink-0" />
-            <span>
-              {playerCount} {playerCount === 1 ? "player" : "players"}
-            </span>
-            <span className="text-muted-foreground/50">·</span>
-            <span>{scheduleStatus}</span>
-          </div>
-          {/* Location row — free-text town/city. Host can tap the pencil
-              to set or update it inline. Hidden entirely for non-hosts
-              when there's nothing to show. */}
+        {/* Metadata — stat strip reads like a scoreboard instead of icon soup */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <StatTile
+            icon={Calendar}
+            label="Date"
+            value={format(parseISO(date + "T00:00:00"), "MMM d")}
+          />
+          <StatTile
+            icon={Clock}
+            label="Start"
+            value={startTime ? formatStartTime(startTime) : "TBD"}
+          />
+          <StatTile
+            icon={Users}
+            label="Players"
+            value={String(playerCount)}
+          />
+          <StatTile
+            icon={Trophy}
+            label="Format"
+            value={formatLabel.replace(" · Doubles", "")}
+          />
+        </div>
+
+        {/* Secondary line — schedule state + location, quiet by design */}
+        <div className="mt-2.5 flex items-center gap-x-2 gap-y-1 flex-wrap text-[12px] sm:text-[13px] text-muted-foreground">
+          <span className="font-medium text-foreground/80">{scheduleStatus}</span>
           {(resolvedLocation || canEditLocation) && (
-            <div className="flex items-center gap-1.5 flex-wrap">
+            <>
+              <span className="text-muted-foreground/40">·</span>
               <MapPin className="h-3.5 w-3.5 text-primary/80 flex-shrink-0" />
               <span>{resolvedLocation || "Add a location"}</span>
               {canEditLocation && (
@@ -261,9 +288,10 @@ export function RoundRobinHostHero({
                   <Pencil className="h-3 w-3" />
                 </button>
               )}
-            </div>
+            </>
           )}
         </div>
+
 
         {/* Invite-code row — compact, inline. Only when invite-only. */}
         {showInviteCode && (
