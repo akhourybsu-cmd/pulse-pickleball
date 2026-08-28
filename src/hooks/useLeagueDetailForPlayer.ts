@@ -80,7 +80,13 @@ export function useLeagueDetailForPlayer(leagueId: string | undefined): PlayerLe
       setData((d) => ({ ...d, loading: true }));
 
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      // Signed out (or a dropped session): stop loading instead of spinning
+      // forever — the page renders its "not found / sign in" state.
+      if (!user) {
+        if (!cancelled) setData((d) => ({ ...d, loading: false, currentUserId: null }));
+        return;
+      }
+
 
       // 1. League + membership. RLS drops anything invisible.
       const [{ data: leagueRow }, { data: memRow }] = await Promise.all([
