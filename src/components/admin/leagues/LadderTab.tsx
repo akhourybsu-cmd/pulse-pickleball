@@ -1980,68 +1980,66 @@ function WeekSessionDialog({
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onCancel(); }}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>{title ?? `Schedule Week ${weekNumber}`}</DialogTitle>
-          <DialogDescription>
-            {description ??
-              "Confirm when this week is played. Players can't enter scores " +
-              "before this start time, so make sure it's right."}
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-3">
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Date</div>
-            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={FIELD_H} />
-          </div>
+      <FormShell
+        icon={<CalendarClock className="w-5 h-5" />}
+        tone="primary"
+        kicker={`Week ${weekNumber}`}
+        title={title ?? `Schedule Week ${weekNumber}`}
+        subtitle={description ??
+          "Confirm when this week is played. Players can't enter scores before this start time, so make sure it's right."}
+        primaryLabel={submitLabel ?? `Generate Week ${weekNumber}`}
+        primaryDisabled={!canSubmit}
+        primaryLoading={busy}
+        onPrimary={() => onConfirm({
+          scheduled_date: date, start_time: start,
+          end_time: end, location: loc,
+          court_count: courts ? Number(courts) : null,
+          capacity: cap ? Number(cap) : null,
+        })}
+        secondary={
+          <Button variant="outline" onClick={onCancel} disabled={busy} className="h-12 sm:w-28">
+            Cancel
+          </Button>
+        }
+      >
+        <FormSection label="When" hint="Required">
+          <FormRow label="Date" htmlFor="wk-date" required>
+            <Input id="wk-date" type="date" value={date}
+              onChange={(e) => setDate(e.target.value)} className={FIELD_H} />
+          </FormRow>
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Start time</div>
-              <Input type="time" value={start} onChange={(e) => setStart(e.target.value)} className={FIELD_H} />
-            </div>
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">End time (optional)</div>
-              <Input type="time" value={end} onChange={(e) => setEnd(e.target.value)} className={FIELD_H} />
-            </div>
+            <FormRow label="Start" htmlFor="wk-start" required>
+              <Input id="wk-start" type="time" value={start}
+                onChange={(e) => setStart(e.target.value)} className={FIELD_H} />
+            </FormRow>
+            <FormRow label="End" htmlFor="wk-end" hint="Optional">
+              <Input id="wk-end" type="time" value={end}
+                onChange={(e) => setEnd(e.target.value)} className={FIELD_H} />
+            </FormRow>
           </div>
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Location (optional)</div>
-            <Input value={loc} onChange={(e) => setLoc(e.target.value)}
+        </FormSection>
+
+        <FormSection label="Where & size" hint="Optional">
+          <FormRow label="Location" htmlFor="wk-loc">
+            <Input id="wk-loc" value={loc} onChange={(e) => setLoc(e.target.value)}
               placeholder="e.g. Nickerson courts" className={FIELD_H} />
-          </div>
+          </FormRow>
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Courts (optional)</div>
-              <Input type="number" min="1" value={courts} onChange={(e) => setCourts(e.target.value)}
-                placeholder="—" className={FIELD_H} />
-            </div>
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Capacity (optional)</div>
-              <Input type="number" min="0" value={cap} onChange={(e) => setCap(e.target.value)}
-                placeholder="—" className={FIELD_H} />
-            </div>
+            <FormRow label="Courts" htmlFor="wk-courts">
+              <Input id="wk-courts" type="number" min="1" value={courts}
+                onChange={(e) => setCourts(e.target.value)} placeholder="—" className={FIELD_H} />
+            </FormRow>
+            <FormRow label="Capacity" htmlFor="wk-cap">
+              <Input id="wk-cap" type="number" min="0" value={cap}
+                onChange={(e) => setCap(e.target.value)} placeholder="—" className={FIELD_H} />
+            </FormRow>
           </div>
-        </div>
-        <DialogFooter>
-          <ActionButton variant="outline" onClick={onCancel} disabled={busy}>Cancel</ActionButton>
-          <ActionButton
-            disabled={!canSubmit}
-            loading={busy}
-            onClick={() => onConfirm({
-              scheduled_date: date, start_time: start,
-              end_time: end, location: loc,
-              court_count: courts ? Number(courts) : null,
-              capacity: cap ? Number(cap) : null,
-            })}
-            className="font-bold uppercase tracking-wide"
-          >
-            {submitLabel ?? `Generate Week ${weekNumber}`}
-          </ActionButton>
-        </DialogFooter>
-      </DialogContent>
+        </FormSection>
+      </FormShell>
     </Dialog>
   );
 }
+
 
 function CourtGroupCard({
   group, games, scoring, nameOf, onScored,
