@@ -1,4 +1,4 @@
-import { ArrowRight, Users, Sparkles, Play, ClipboardCheck, Flag, CheckCircle2, ClipboardList, Pencil, Check } from "lucide-react";
+import { ArrowRight, Users, Sparkles, Play, ClipboardCheck, Flag, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
