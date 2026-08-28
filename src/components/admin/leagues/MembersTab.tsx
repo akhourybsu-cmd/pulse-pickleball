@@ -344,18 +344,26 @@ function MemberInlineActions({
 
   const patch = async (fields: Partial<LeagueMember>, action: string) => {
     setBusy(true);
-    const { error } = await supabase.from("league_members" as never)
-      .update(fields as never).eq("id", member.id);
-    if (error) { toast.error(error.message); setBusy(false); return; }
-    await logLeagueAction({
-      leagueId: league.id, seasonId: member.season_id,
-      action, entityType: "member", entityId: member.id,
-      oldValue: { role: member.role, status: member.status },
-      newValue: fields,
-    });
-    setBusy(false);
-    await onChanged();
+    try {
+      await withPulseActivity(`Updating ${memberName}…`, async () => {
+        const { error } = await supabase.from("league_members" as never)
+          .update(fields as never).eq("id", member.id);
+        if (error) throw error;
+        await logLeagueAction({
+          leagueId: league.id, seasonId: member.season_id,
+          action, entityType: "member", entityId: member.id,
+          oldValue: { role: member.role, status: member.status },
+          newValue: fields,
+        });
+      }, "Roster updated");
+      await onChanged();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Update failed");
+    } finally {
+      setBusy(false);
+    }
   };
+
 
   return (
     <div className="flex items-center gap-1 w-full sm:w-auto">
