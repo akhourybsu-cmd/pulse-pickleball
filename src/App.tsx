@@ -558,6 +558,8 @@ const appTree = (
       <ErrorBoundary>
         <Toaster />
         <Sonner />
+        <PulseActivityBar />
+
         <BrowserRouter>
           <ActiveViewProvider>
             <AppContent />
