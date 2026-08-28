@@ -27,6 +27,8 @@ export function ResponsiveSettingsModal({
   footer,
   children,
   className,
+  /** Small accent eyebrow above the title. */
+  eyebrow = "Round Robin",
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -35,15 +37,37 @@ export function ResponsiveSettingsModal({
   footer?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
+  eyebrow?: string;
 }) {
   const isMobile = useIsMobile();
+
+  const wash = (
+    <div
+      aria-hidden
+      className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-primary/[0.10] to-transparent"
+    />
+  );
+
+  const heading = (
+    <>
+      {eyebrow && (
+        <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-primary/80">
+          {eyebrow}
+        </div>
+      )}
+      <span className="block text-[20px] font-extrabold tracking-[-0.01em] leading-tight">
+        {title}
+      </span>
+    </>
+  );
 
   if (isMobile) {
     return (
       <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent className="max-h-[92vh]">
-          <DrawerHeader className="text-left pb-2 pt-3">
-            <DrawerTitle className="text-lg font-bold leading-tight">{title}</DrawerTitle>
+        <DrawerContent className="max-h-[92vh] border-t border-border/60">
+          {wash}
+          <DrawerHeader className="relative text-left pb-2 pt-3">
+            <DrawerTitle asChild><div>{heading}</div></DrawerTitle>
             {description && (
               <DrawerDescription className="text-xs leading-snug">
                 {description}
@@ -51,12 +75,12 @@ export function ResponsiveSettingsModal({
             )}
           </DrawerHeader>
 
-          <div className="flex-1 overflow-y-auto overscroll-contain px-4 pb-4">
+          <div className="relative flex-1 overflow-y-auto overscroll-contain px-4 pb-4">
             {children}
           </div>
 
           {footer && (
-            <div className="flex-shrink-0 border-t border-border bg-background/95 backdrop-blur px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
+            <div className="relative flex-shrink-0 border-t border-border/60 bg-background/95 backdrop-blur px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
               {footer}
             </div>
           )}
@@ -67,21 +91,28 @@ export function ResponsiveSettingsModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn("sm:max-w-[520px] max-h-[90vh] flex flex-col", className)}>
-        <DialogHeader className="flex-shrink-0">
-          <DialogTitle>{title}</DialogTitle>
+      <DialogContent
+        className={cn(
+          "sm:max-w-[520px] max-h-[90vh] flex flex-col overflow-hidden rounded-xl border-border/70",
+          className,
+        )}
+      >
+        {wash}
+        <DialogHeader className="relative flex-shrink-0 text-left">
+          <DialogTitle asChild><div>{heading}</div></DialogTitle>
           {description && <DialogDescription>{description}</DialogDescription>}
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto px-1">{children}</div>
+        <div className="relative flex-1 overflow-y-auto px-1">{children}</div>
 
         {footer && (
-          <div className="flex-shrink-0 pt-3 border-t border-border/60">{footer}</div>
+          <div className="relative flex-shrink-0 pt-3 border-t border-border/60">{footer}</div>
         )}
       </DialogContent>
     </Dialog>
   );
 }
+
 
 /** Two-button action bar: stacked & full-width on mobile, inline on desktop. */
 export function ModalActions({
