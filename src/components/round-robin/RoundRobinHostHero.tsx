@@ -14,7 +14,7 @@ function formatStartTime(raw: string): string {
   const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
   return min === "00" ? `${h12} ${period}` : `${h12}:${min} ${period}`;
 }
-import { Calendar, Clock, Users, Trophy, Lock, Copy, Check, Share2, MapPin, Pencil } from "lucide-react";
+import { Calendar, Users, Trophy, Lock, Copy, Check, Share2, MapPin, Pencil, Grid3X3 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -250,13 +250,8 @@ export function RoundRobinHostHero({
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           <StatTile
             icon={Calendar}
-            label="Date"
-            value={format(parseISO(date + "T00:00:00"), "MMM d")}
-          />
-          <StatTile
-            icon={Clock}
-            label="Start"
-            value={startTime ? formatStartTime(startTime) : "TBD"}
+            label="When"
+            value={`${format(parseISO(date + "T00:00:00"), "MMM d")}${startTime ? ` · ${formatStartTime(startTime)}` : ""}`}
           />
           <StatTile
             icon={Users}
@@ -264,11 +259,17 @@ export function RoundRobinHostHero({
             value={String(playerCount)}
           />
           <StatTile
+            icon={Grid3X3}
+            label="Courts"
+            value={hasSchedule ? String(numCourts) : "—"}
+          />
+          <StatTile
             icon={Trophy}
             label="Format"
             value={formatLabel.replace(" · Doubles", "")}
           />
         </div>
+
 
         {/* Secondary line — schedule state + location, quiet by design */}
         <div className="mt-2.5 flex items-center gap-x-2 gap-y-1 flex-wrap text-[12px] sm:text-[13px] text-muted-foreground">
