@@ -668,9 +668,16 @@ export function PlayerManagementDialog({
             </Button>
           )}
           {mode === 'remove' && (
-            <Button onClick={handleMarkInactive} disabled={!selectedPlayer || loading} variant="destructive" className="gap-1.5">
-              <UserMinus className="h-4 w-4" />
-              {loading ? "Removing…" : "Remove From Roster"}
+            <Button
+              variant="outline"
+              onClick={() => {
+                setConfirmingRemoveId(null);
+                setSelectedPlayer("");
+              }}
+              disabled={!confirmingRemoveId || loading}
+              className="gap-1.5"
+            >
+              Clear selection
             </Button>
           )}
           {mode === 'substitute' && (
