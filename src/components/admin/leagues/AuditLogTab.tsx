@@ -38,7 +38,7 @@ interface ActionMeta {
  * neutral default so we never break rendering on an unknown action.
  */
 const PREFIX_META: Record<string, ActionMeta> = {
-  league:  { icon: Trophy,       label: "League",  chip: "bg-[#A6DB5A]/15 text-[#A6DB5A]" },
+  league:  { icon: Trophy,       label: "League",  chip: "bg-[color:var(--lg-hero-gold)]/15 text-[color:var(--lg-hero-gold)]" },
   season:  { icon: CalendarDays, label: "Season",  chip: "bg-primary/15 text-primary" },
   division:{ icon: Layers,       label: "Division",chip: "bg-blue-500/15 text-blue-500" },
   team:    { icon: Users,        label: "Team",    chip: "bg-amber-500/15 text-amber-600" },

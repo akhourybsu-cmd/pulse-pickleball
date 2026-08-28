@@ -160,7 +160,7 @@ export function CreateLeagueDialog({
         ) : (
           <>
             {/* Gold accent stripe — brand signature */}
-            <div className="h-1.5 w-full bg-[#A6DB5A]" aria-hidden />
+            <div className="h-1.5 w-full bg-[color:var(--lg-gold)]" aria-hidden />
 
             <DialogHeader className="p-5 pb-3">
               <div className="flex items-start justify-between gap-3">
@@ -248,7 +248,7 @@ export function CreateLeagueDialog({
 
                     <div className="space-y-1.5">
                       <Label htmlFor="new-league-name" className="text-xs font-semibold">
-                        League name <span className="text-[#A6DB5A]">*</span>
+                        League name <span className="text-[color:var(--lg-hero-gold)]">*</span>
                       </Label>
                       <Input
                         id="new-league-name" value={name}

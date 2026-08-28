@@ -355,7 +355,7 @@ const TONE_STYLES: Record<FormTone, { bar: string; chip: string; kicker: string;
   blue:    { bar: "bg-blue-500",    chip: "bg-blue-500/15 text-blue-300",     kicker: "text-blue-300",      glow: "bg-blue-500/25" },
   amber:   { bar: "bg-amber-500",   chip: "bg-amber-500/15 text-amber-300",   kicker: "text-amber-300",     glow: "bg-amber-500/25" },
   violet:  { bar: "bg-violet-500",  chip: "bg-violet-500/15 text-violet-300", kicker: "text-violet-300",    glow: "bg-violet-500/25" },
-  gold:    { bar: "bg-[#A6DB5A]",   chip: "bg-[#A6DB5A]/15 text-[#A6DB5A]",    kicker: "text-[#A6DB5A]",     glow: "bg-[#A6DB5A]/25" },
+  gold:    { bar: "bg-[color:var(--lg-gold)]",   chip: "bg-[color:var(--lg-hero-gold)]/15 text-[color:var(--lg-hero-gold)]",    kicker: "text-[color:var(--lg-hero-gold)]",     glow: "bg-[color:var(--lg-hero-gold)]/25" },
   emerald: { bar: "bg-emerald-500", chip: "bg-emerald-500/15 text-emerald-300", kicker: "text-emerald-300", glow: "bg-emerald-500/25" },
 };
 
@@ -407,7 +407,7 @@ export function FormShell({
           side-rail, diagonal court texture, and a glow behind the icon.
           Gives every league menu a "team sheet" feel instead of a plain
           form. */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-[#0B171F] via-[#142029] to-[#1a2d38]">
+      <div className="relative overflow-hidden bg-gradient-to-br from-[color:var(--lg-emerald-deep)] via-[color:var(--lg-emerald)] to-[color:var(--lg-surface)]">
         <div className={cn("absolute top-0 bottom-0 left-0 w-1.5", t.bar)} aria-hidden />
         <div
           aria-hidden
@@ -415,7 +415,7 @@ export function FormShell({
           style={{
             backgroundImage:
               "repeating-linear-gradient(45deg, transparent 0, transparent 10px, currentColor 10px, currentColor 11px)",
-            color: "#A6DB5A",
+            color: "var(--lg-hero-gold)",
           }}
         />
         <div aria-hidden className={cn("absolute -top-14 -right-10 h-40 w-40 rounded-full blur-3xl pointer-events-none", t.glow)} />
@@ -527,7 +527,7 @@ export function FormRow({
       >
         {label}
         {required && (
-          <span className="text-[#A6DB5A] ml-0.5" aria-label="required">*</span>
+          <span className="text-[color:var(--lg-hero-gold)] ml-0.5" aria-label="required">*</span>
         )}
       </Label>
       {children}
