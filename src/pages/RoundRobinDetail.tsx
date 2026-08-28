@@ -1069,17 +1069,9 @@ export default function RoundRobinDetail() {
 
       // Regenerate from current round (skipped automatically when guests are present)
       const fromRound = event.current_round || 1;
-      const regenResult = await regenerateScheduleFromRound(fromRound).catch(() => null);
-
-      const roundsSuffix = regenResult?.roundsChanged
-        ? ` · Schedule now ${regenResult.targetRounds} rounds to keep ${event.games_per_player || 3} games/player.`
-        : "";
-
-      toast.success(
-        (guestName
-          ? `${guestName} added as a guest`
-          : "Player added - they will see this event in their events list") + roundsSuffix,
-      );
+      await regenerateScheduleFromRound(fromRound).catch(() => null);
+      // No success toast here — the PULSE activity bar is the single
+      // completion signal for roster adds (stacked toasts felt noisy).
     } catch (error: unknown) {
       toast.error("Failed to add player");
       console.error(error);
