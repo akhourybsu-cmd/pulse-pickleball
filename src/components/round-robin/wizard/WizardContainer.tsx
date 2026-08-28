@@ -488,14 +488,45 @@ export function WizardContainer() {
         </div>
       </div>
 
+      {/* Premium title band — same visual language as the Round Robin host
+          hero: ambient primary bloom, faint court-line texture, accent-ruled
+          eyebrow and an editorial extrabold title. */}
+      <section className="relative overflow-hidden bg-gradient-to-b from-primary/[0.10] via-primary/[0.03] to-background border-b border-border/50">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -top-24 -left-16 h-56 w-56 rounded-full blur-3xl opacity-[0.18]"
+          style={{ background: "radial-gradient(circle, hsl(var(--primary)) 0%, transparent 70%)" }}
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 opacity-[0.05]"
+          style={{
+            backgroundImage:
+              "repeating-linear-gradient(115deg, hsl(var(--foreground)) 0px, hsl(var(--foreground)) 1px, transparent 1px, transparent 22px)",
+          }}
+        />
+        <div className="relative max-w-lg mx-auto px-4 pt-5 pb-4">
+          <div className="relative pl-3.5">
+            <span
+              aria-hidden
+              className="absolute left-0 top-1 bottom-1 w-[3px] rounded-full bg-gradient-to-b from-primary to-primary/25"
+            />
+            <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-primary/80 mb-1">
+              Round Robin
+            </div>
+            <h1 className="text-[24px] sm:text-[28px] font-extrabold tracking-[-0.02em] leading-[1.05] text-foreground text-balance">
+              Create your event
+            </h1>
+            <p className="mt-1 text-[12.5px] sm:text-sm text-muted-foreground leading-snug">
+              A few quick steps and your schedule builds itself.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* Content */}
       <div className="max-w-lg mx-auto px-4 py-6 pb-28">
-        <div className="mb-4">
-          <h1 className="text-xl font-semibold leading-tight">Create Round Robin</h1>
-          <p className="text-xs text-muted-foreground leading-tight mt-0.5">
-            Set up your event in a few quick steps
-          </p>
-        </div>
+
 
         <WizardProgress
           currentStep={currentStepIndex}

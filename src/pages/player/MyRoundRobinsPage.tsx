@@ -4,7 +4,6 @@ import { format, parseISO } from "date-fns";
 import { ChevronRight, Repeat, Trophy, ListChecks, History as HistoryIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { PlayerPageHeader } from "@/components/layout/PlayerPageHeader";
 import { SectionHeader } from "@/components/layout/SectionHeader";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -153,23 +152,59 @@ export default function MyRoundRobinsPage() {
 
   const visible = tab === "active" ? active : past;
 
+  const liveCount = active.filter((e) => e.status === "live").length;
+  const hostingCount = entries.filter((e) => e.role === "host").length;
+
   return (
     <div className="min-h-screen bg-background">
-      <PlayerPageHeader
-        icon={Repeat}
-        title="My Round Robins"
-        background="gradient"
-        action={
-          <Button
-            size="sm"
-            onClick={() => navigate("/round-robin/create")}
-            className="gap-1.5 shadow-[0_2px_8px_-2px_hsl(var(--primary)/0.4)]"
-          >
-            <span className="hidden sm:inline">Host one</span>
-            <span className="sm:hidden">+ Host</span>
-          </Button>
-        }
-      />
+      {/* Premium hero — matches the Round Robin host hero: ambient primary
+          bloom, court-line texture, accent-ruled eyebrow, scoreboard tiles. */}
+      <section className="relative overflow-hidden bg-gradient-to-b from-primary/[0.10] via-primary/[0.03] to-background border-b border-border/50">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -top-24 -left-16 h-56 w-56 rounded-full blur-3xl opacity-[0.18]"
+          style={{ background: "radial-gradient(circle, hsl(var(--primary)) 0%, transparent 70%)" }}
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 opacity-[0.05]"
+          style={{
+            backgroundImage:
+              "repeating-linear-gradient(115deg, hsl(var(--foreground)) 0px, hsl(var(--foreground)) 1px, transparent 1px, transparent 22px)",
+          }}
+        />
+
+        <div className="relative container max-w-3xl mx-auto px-4 pt-5 pb-4 sm:pt-6 sm:pb-5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="relative pl-3.5 min-w-0">
+              <span
+                aria-hidden
+                className="absolute left-0 top-1 bottom-1 w-[3px] rounded-full bg-gradient-to-b from-primary to-primary/25"
+              />
+              <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-primary/80 mb-1">
+                Round Robin
+              </div>
+              <h1 className="text-[24px] sm:text-[28px] font-extrabold tracking-[-0.02em] leading-[1.05] text-foreground">
+                My Round Robins
+              </h1>
+            </div>
+            <Button
+              size="sm"
+              onClick={() => navigate("/round-robin/create")}
+              className="flex-shrink-0 gap-1.5 shadow-[0_2px_10px_-2px_hsl(var(--primary)/0.5)]"
+            >
+              <span className="hidden sm:inline">Host one</span>
+              <span className="sm:hidden">+ Host</span>
+            </Button>
+          </div>
+
+          <div className="mt-3.5 grid grid-cols-3 gap-2">
+            <HeroStatTile icon={ListChecks} label="Active" value={String(active.length)} />
+            <HeroStatTile icon={Repeat} label="Live now" value={String(liveCount)} />
+            <HeroStatTile icon={Trophy} label="Hosting" value={String(hostingCount)} />
+          </div>
+        </div>
+      </section>
 
       <main className="container max-w-3xl mx-auto px-4 py-5 space-y-5">
         {/* Tab toggle — sliding underline matches MatchHistory's pattern. */}
@@ -179,6 +214,7 @@ export default function MyRoundRobinsPage() {
           activeCount={active.length}
           pastCount={past.length}
         />
+
 
         {loading ? (
           <div className="space-y-2">
@@ -264,6 +300,28 @@ function TabToggle({ tab, onChange, activeCount, pastCount }: TabToggleProps) {
   );
 }
 
+function HeroStatTile({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: typeof ListChecks;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-xl border border-border/60 bg-card/70 backdrop-blur-sm px-2.5 py-2 shadow-[0_1px_3px_hsl(var(--foreground)/0.04)]">
+      <div className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+        <Icon className="h-3 w-3 text-primary/80" />
+        {label}
+      </div>
+      <div className="mt-0.5 text-[15px] font-bold tracking-tight text-foreground tabular-nums">
+        {value}
+      </div>
+    </div>
+  );
+}
+
 function RREventRow({ entry, onClick }: { entry: RREntry; onClick: () => void }) {
   const statusLine = (() => {
     if (entry.status === "live" && entry.currentRound) {
@@ -291,7 +349,7 @@ function RREventRow({ entry, onClick }: { entry: RREntry; onClick: () => void })
     <button
       onClick={onClick}
       className={cn(
-        "w-full flex items-center gap-3 px-3 py-3 rounded-xl border bg-card",
+        "w-full flex items-center gap-3 px-3 py-3 rounded-2xl border bg-card/80 backdrop-blur-sm shadow-[0_8px_30px_-20px_hsl(var(--foreground)/0.3)]",
         isLive ? "border-primary/40 bg-primary/[0.03]" : "border-border/60",
         "hover:bg-accent/40 hover:border-border active:scale-[0.99] transition-all text-left group",
         entry.status === "voided" && "opacity-75",
