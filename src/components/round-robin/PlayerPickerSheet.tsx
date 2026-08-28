@@ -178,29 +178,38 @@ export function PlayerPickerSheet({
       <SheetTrigger asChild>{trigger}</SheetTrigger>
       <SheetContent
         side="bottom"
-        className="h-[90vh] p-0 flex flex-col gap-0 rounded-t-2xl"
+        className="h-[90vh] p-0 flex flex-col gap-0 rounded-t-2xl border-t border-border/60"
       >
         {/* Sticky header */}
-        <div className="px-4 pt-4 pb-2 border-b bg-background">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-lg font-semibold">
-              {mode === "single" ? "Choose a player" : "Add Players"}
-            </h3>
+        <div className="relative px-4 pt-4 pb-2 border-b border-border/60 bg-background overflow-hidden">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-primary/[0.10] to-transparent"
+          />
+          <div className="relative flex items-start justify-between gap-3 mb-3">
+            <div className="min-w-0">
+              <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-primary/80">
+                Roster
+              </div>
+              <h3 className="text-[20px] font-extrabold tracking-[-0.01em] leading-tight">
+                {mode === "single" ? "Choose a player" : "Add players"}
+              </h3>
+            </div>
             {mode === "multi" && (
-              <span className="text-sm text-muted-foreground">
+              <span className="flex-shrink-0 mt-1 inline-flex items-center rounded-full border border-primary/25 bg-primary/10 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-primary tabular-nums">
                 {local.length} selected
               </span>
             )}
           </div>
 
           {mode === "multi" && local.length > 0 && (
-            <ScrollArea className="max-h-20 mb-3">
+            <ScrollArea className="relative max-h-20 mb-3">
               <div className="flex flex-wrap gap-1.5 pb-1">
                 {local.map((p) => (
                   <Badge
                     key={p.id}
                     variant="secondary"
-                    className="px-2 py-1 gap-1"
+                    className="px-2 py-1 gap-1 rounded-full border border-border/60"
                   >
                     {p.display_name || p.full_name}
                     {p.isGuest && (
@@ -227,7 +236,7 @@ export function PlayerPickerSheet({
             content stays reliable inside the Round Robin wizard on mobile. */}
         <div className="flex-1 flex flex-col min-h-0">
           <div
-            className="mx-4 mt-3 grid rounded-md bg-muted p-1 text-muted-foreground"
+            className="mx-4 mt-3 grid rounded-xl border border-border/60 bg-muted/60 p-1 text-muted-foreground backdrop-blur-sm"
             style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
             role="tablist"
             aria-label="Player sources"
@@ -240,8 +249,10 @@ export function PlayerPickerSheet({
                 aria-selected={tab === value}
                 onClick={() => setTab(value)}
                 className={cn(
-                  "inline-flex min-h-10 items-center justify-center gap-1 rounded-sm px-1.5 py-2 text-xs font-medium transition-all",
-                  tab === value && "bg-background text-foreground shadow-sm",
+                  "inline-flex min-h-10 items-center justify-center gap-1 rounded-lg px-1.5 py-2 text-xs font-semibold transition-all",
+                  tab === value
+                    ? "bg-background text-foreground shadow-[0_2px_10px_-4px_hsl(var(--foreground)/0.3)] ring-1 ring-primary/20"
+                    : "hover:text-foreground",
                 )}
               >
                 <Icon className="h-3.5 w-3.5" />
@@ -249,6 +260,7 @@ export function PlayerPickerSheet({
               </button>
             ))}
           </div>
+
 
           <div className="flex-1 min-h-0 overflow-hidden">
             {tab === "friends" && (

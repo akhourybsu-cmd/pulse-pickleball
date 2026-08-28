@@ -192,25 +192,35 @@ export function PlayerManagementDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Manage Players</DialogTitle>
-          <DialogDescription>
+      <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-[600px] max-h-[90vh] overflow-y-auto rounded-xl border-border/70">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-primary/[0.10] to-transparent"
+        />
+        <DialogHeader className="relative text-left">
+          <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-primary/80">
+            Round Robin
+          </div>
+          <DialogTitle asChild>
+            <div className="text-[20px] font-extrabold tracking-[-0.01em] leading-tight">
+              Manage players
+            </div>
+          </DialogTitle>
+          <DialogDescription className="text-xs leading-snug">
             Add, remove, or substitute players. Changes will regenerate future rounds.
           </DialogDescription>
         </DialogHeader>
 
         {!mode ? (
-          <div className="space-y-4 py-2">
-            {/* Action cards — icon tile + title + description + chevron.
-                Consistent with the dashboard QuickActions tile style so the
-                visual language carries across the organizer experience. */}
-            <div className="space-y-2">
+          <div className="relative space-y-4 py-2">
+            {/* Action rows — one grouped glass card, accent icon tiles, hints.
+                Matches the premium host-controls sheet language. */}
+            <div className="rounded-2xl border border-border/70 bg-card/80 backdrop-blur-sm overflow-hidden divide-y divide-border/60 shadow-[0_8px_30px_-16px_hsl(var(--foreground)/0.25)]">
               {[
                 {
                   id: 'add' as const,
                   icon: UserPlus,
-                  title: 'Add Player',
+                  title: 'Add player',
                   description: 'Late join — regenerates remaining rounds',
                   disabled: false,
                   tone: 'neutral' as const,
@@ -218,7 +228,7 @@ export function PlayerManagementDialog({
                 {
                   id: 'substitute' as const,
                   icon: Users,
-                  title: 'Substitute Player',
+                  title: 'Substitute player',
                   description: 'Swap one player for another, globally or for a single round',
                   disabled: false,
                   tone: 'neutral' as const,
@@ -226,7 +236,7 @@ export function PlayerManagementDialog({
                 {
                   id: 'remove' as const,
                   icon: UserMinus,
-                  title: 'Remove From Roster',
+                  title: 'Remove from roster',
                   description: activePlayers.length <= 4
                     ? `Minimum 4 active players required (you have ${activePlayers.length})`
                     : 'Excludes player from future rounds; past scores preserved',
@@ -242,30 +252,36 @@ export function PlayerManagementDialog({
                     type="button"
                     onClick={() => !action.disabled && setMode(action.id)}
                     disabled={action.disabled}
-                    className={`w-full flex items-center gap-3 p-3 rounded-xl border bg-card active:scale-[0.99] transition-all disabled:opacity-50 disabled:cursor-not-allowed text-left ${
-                      isDestructive
-                        ? 'border-destructive/25 hover:border-destructive/50 hover:bg-destructive/5 disabled:hover:border-destructive/25 disabled:hover:bg-card'
-                        : 'border-border hover:border-primary/40 hover:bg-muted/30 disabled:hover:border-border disabled:hover:bg-card'
-                    }`}
+                    className={cn(
+                      "group w-full min-h-[60px] flex items-center gap-3 px-3.5 py-3 text-left transition-colors active:bg-muted/60 disabled:opacity-45 disabled:cursor-not-allowed",
+                      isDestructive ? "bg-destructive/[0.04] hover:bg-destructive/[0.08]" : "hover:bg-muted/40",
+                    )}
                   >
-                    <div className={`h-10 w-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                    <div className={cn(
+                      "h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0 border",
                       isDestructive
-                        ? 'bg-destructive/10 text-destructive'
-                        : 'bg-primary/10 text-primary'
-                    }`}>
-                      <Icon className="h-5 w-5" />
+                        ? "bg-destructive/10 text-destructive border-destructive/25"
+                        : "bg-primary/10 text-primary border-primary/20",
+                    )}>
+                      <Icon className="h-[18px] w-[18px]" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-sm">{action.title}</div>
-                      <div className="text-xs text-muted-foreground mt-0.5">{action.description}</div>
+                      <div className={cn(
+                        "text-[15px] font-semibold leading-tight tracking-[-0.01em]",
+                        isDestructive && "text-destructive",
+                      )}>
+                        {action.title}
+                      </div>
+                      <div className="mt-0.5 text-[11.5px] text-muted-foreground leading-snug">
+                        {action.description}
+                      </div>
                     </div>
-                    {!action.disabled && (
-                      <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                    )}
+                    <ChevronRight className="h-4 w-4 text-muted-foreground/60 flex-shrink-0 transition-transform group-hover:translate-x-0.5" />
                   </button>
                 );
               })}
             </div>
+
 
             {/* Roster — avatar + name rows grouped by active/inactive. */}
             <div className="pt-3 border-t border-border/60">
