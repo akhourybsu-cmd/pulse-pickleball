@@ -253,7 +253,7 @@ export function TeamRosterDialog({
                     return (
                       <li
                         key={m.id}
-                        className="flex items-center gap-2.5 rounded-lg border border-border/70 bg-card px-3 py-2 hover:border-amber-500/40 transition-colors"
+                        className="flex items-center gap-2.5 rounded-xl border border-border/60 bg-card/70 backdrop-blur-sm shadow-[0_1px_2px_hsl(0_0%_0%/0.04)] px-3 py-2 hover:border-amber-500/50 transition-colors"
                       >
                         <AvatarChip
                           url={p?.avatar_url}
@@ -328,7 +328,7 @@ export function TeamRosterDialog({
                       return (
                         <li
                           key={m.id}
-                          className="flex items-center gap-2.5 rounded-lg border border-border/70 bg-card px-3 py-2 hover:border-amber-500/40 transition-colors"
+                          className="flex items-center gap-2.5 rounded-xl border border-border/60 bg-card/70 backdrop-blur-sm shadow-[0_1px_2px_hsl(0_0%_0%/0.04)] px-3 py-2 hover:border-amber-500/50 transition-colors"
                         >
                           <AvatarChip url={p?.avatar_url} name={name} />
                           <span className="text-sm truncate flex-1">{name}</span>
