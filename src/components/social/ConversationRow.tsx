@@ -50,14 +50,15 @@ export function ConversationRow({
       layout
       whileTap={{ scale: 0.99 }}
       className={cn(
-        "group relative flex items-center gap-3 p-3 rounded-2xl border transition-colors",
+        "group relative flex items-center gap-3 p-3 rounded-2xl border backdrop-blur-sm transition-colors",
+        "shadow-[0_2px_16px_-12px_hsl(var(--foreground)/0.4)]",
         hasUnread
-          ? "bg-card border-primary/30 shadow-sm"
-          : "bg-card border-border/30 hover:bg-muted/30",
+          ? "bg-card/85 border-primary/35 shadow-[0_2px_18px_-10px_hsl(var(--primary)/0.45)]"
+          : "bg-card/70 border-border/50 hover:bg-card",
       )}
     >
       {hasUnread && (
-        <span className="absolute left-0 top-3 bottom-3 w-1 rounded-full bg-primary" aria-hidden />
+        <span className="absolute left-0 top-3 bottom-3 w-1 rounded-full bg-gradient-to-b from-primary to-primary/30" aria-hidden />
       )}
 
       <button
@@ -66,7 +67,7 @@ export function ConversationRow({
         aria-label={`Open ${isGroup ? "group" : "conversation"}: ${c.title}`}
       >
         <div className="relative shrink-0">
-          <Avatar className="h-12 w-12">
+          <Avatar className="h-12 w-12 ring-1 ring-border/60">
             <AvatarImage src={c.avatarUrl || undefined} />
             <AvatarFallback className={cn(isGroup && "bg-primary/10 text-primary")}>
               {isGroup ? <Users className="h-5 w-5" /> : initials(c.title)}
