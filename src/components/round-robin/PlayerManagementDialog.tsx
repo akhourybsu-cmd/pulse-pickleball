@@ -122,14 +122,22 @@ export function PlayerManagementDialog({
   };
 
   const handleMarkInactive = async () => {
-    if (!selectedPlayer) return;
+    const targetId = confirmingRemoveId || selectedPlayer;
+    if (!targetId) return;
     setLoading(true);
+    setRemovingId(targetId);
     try {
-      await onMarkInactive(selectedPlayer);
+      await onMarkInactive(targetId);
+      setJustRemovedId(targetId);
+      // Brief beat so the user sees the "Removed" flash before the dialog closes.
+      await new Promise((resolve) => setTimeout(resolve, 650));
       setSelectedPlayer("");
+      setConfirmingRemoveId(null);
       setMode(null);
     } finally {
       setLoading(false);
+      setRemovingId(null);
+      setJustRemovedId(null);
     }
   };
 
