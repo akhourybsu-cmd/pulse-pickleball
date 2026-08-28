@@ -621,93 +621,37 @@ export default function RoundRobinDetail() {
   };
 
   const calculateStandings = (scheduleData: ScheduleMatch[], playersData: Player[]) => {
-    const stats: Record<string, StandingsRow> = {};
-    const activePlayers = playersData.filter(p => p.active);
-    const removedPlayers = playersData.filter(p => !p.active);
+    // Canonical standings math lives in src/lib/roundRobin/standings.ts so the
+    // organizer page, kiosk, and player view can never diverge on tie-breaks
+    // or on how removed/withdrawn players are ranked.
+    const participants = playersData
+      .map((p) => {
+        const key = p.player_id || (p as any).guest_player_id;
+        if (!key) return null;
+        const guestRow = (p as any).guest_players as
+          | { display_name?: string | null; linked_user_id?: string | null }
+          | undefined;
+        const name = p.profiles
+          ? p.profiles.display_name || p.profiles.full_name
+          : guestSeatLabel(guestRow, (p as any).guest_name);
+        return { key, name, active: !!p.active };
+      })
+      .filter(Boolean) as { key: string; name: string; active: boolean }[];
 
-    // Initialize stats for all players (active and removed).
-    // Guests have no player_id / profiles row, so fall back to guest data
-    // and key the stats map by guest_player_id when needed.
-    playersData.forEach((p) => {
-      const key = p.player_id || (p as any).guest_player_id;
-      if (!key) return;
-      const guestRow = (p as any).guest_players as { display_name?: string | null; linked_user_id?: string | null } | undefined;
-      const guestName =
-        guestRow?.display_name ||
-        (p as any).guest_name ||
-        "Guest";
-      const guestLinked = !!guestRow?.linked_user_id;
-      const name = p.profiles
-        ? p.profiles.display_name || p.profiles.full_name
-        : guestLinked ? guestName : `${guestName} (G)`;
-      stats[key] = {
-        player_id: key,
-        player_name: name,
-        wins: 0,
-        losses: 0,
-        points_for: 0,
-        points_against: 0,
-        point_diff: 0,
-      };
-    });
-
-    scheduleData.forEach((match) => {
-      // Slice 4: only canonical, played rows count — excludes voided,
-      // superseded, and abandoned matches produced by participant management.
-      if (countsTowardScore(match)) {
-        const team1Won = match.team1_score > match.team2_score;
-
-        const teamAIds = [
-          match.a1_player_id ?? match.a1_guest_id,
-          match.a2_player_id ?? match.a2_guest_id,
-        ];
-        const teamBIds = [
-          match.b1_player_id ?? match.b1_guest_id,
-          match.b2_player_id ?? match.b2_guest_id,
-        ];
-
-        teamAIds.forEach((pid) => {
-          if (pid && stats[pid]) {
-            stats[pid].points_for += match.team1_score;
-            stats[pid].points_against += match.team2_score;
-            if (team1Won) stats[pid].wins++;
-            else stats[pid].losses++;
-          }
-        });
-
-        teamBIds.forEach((pid) => {
-          if (pid && stats[pid]) {
-            stats[pid].points_for += match.team2_score;
-            stats[pid].points_against += match.team1_score;
-            if (!team1Won) stats[pid].wins++;
-            else stats[pid].losses++;
-          }
-        });
-      }
-    });
-
-    // Separate standings into active and removed
-    const toRow = (p: Player) => {
-      const key = p.player_id || (p as any).guest_player_id;
-      const s = key ? stats[key] : undefined;
-      if (!s) return null;
-      return { ...s, point_diff: s.points_for - s.points_against };
-    };
-    const activeStandingsArray = activePlayers.map(toRow).filter(Boolean) as StandingsRow[];
-    const removedStandingsArray = removedPlayers
-      .map(toRow)
-      .filter(Boolean)
-      .map((r) => ({ ...(r as StandingsRow), isRemoved: true }));
-
-    // Sort active players normally
-    activeStandingsArray.sort((a, b) => {
-      if (b.wins !== a.wins) return b.wins - a.wins;
-      return b.point_diff - a.point_diff;
-    });
-
-    // Combine: active players first, then removed (DNF) players
-    setStandings([...activeStandingsArray, ...removedStandingsArray.map(r => ({ ...r, isRemoved: true }))]);
+    setStandings(
+      computeStandings(scheduleData, participants).map((r) => ({
+        player_id: r.key,
+        player_name: r.name,
+        wins: r.wins,
+        losses: r.losses,
+        points_for: r.pointsFor,
+        points_against: r.pointsAgainst,
+        point_diff: r.pointDiff,
+        isRemoved: r.isRemoved,
+      })),
+    );
   };
+
 
   const handleSaveScore = async (match: ScheduleMatch) => {
     if (!event || !userId) return;
