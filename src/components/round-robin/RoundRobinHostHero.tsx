@@ -14,7 +14,7 @@ function formatStartTime(raw: string): string {
   const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
   return min === "00" ? `${h12} ${period}` : `${h12}:${min} ${period}`;
 }
-import { Calendar, Clock, Users, Trophy, Lock, Copy, Check, Share2, MapPin, Pencil, Grid3X3 } from "lucide-react";
+import { Calendar, Users, Trophy, Lock, Copy, Check, Share2, MapPin, Pencil, Grid3X3 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";

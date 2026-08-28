@@ -142,45 +142,59 @@ export function HostControlsMenu({
     return (
       <Drawer open={open} onOpenChange={setOpen}>
         <DrawerTrigger asChild>{trigger}</DrawerTrigger>
-        <DrawerContent className="max-h-[85vh]">
-          <DrawerHeader className="text-left pb-1 pt-3">
-            <DrawerTitle className="text-lg font-bold">Event controls</DrawerTitle>
+        <DrawerContent className="max-h-[85vh] border-t border-border/60">
+          {/* Ambient wash so the sheet feels designed, not stock */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-primary/[0.10] to-transparent"
+          />
+          <DrawerHeader className="relative text-left pb-2 pt-3">
+            <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-primary/80">
+              Round Robin
+            </div>
+            <DrawerTitle className="text-[20px] font-extrabold tracking-[-0.01em]">
+              Event controls
+            </DrawerTitle>
           </DrawerHeader>
-          <div className="px-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] space-y-1.5 overflow-y-auto">
-            {entries.map((e) => {
-              const Icon = e.icon;
-              return (
-                <button
-                  key={e.key}
-                  type="button"
-                  disabled={e.disabled}
-                  onClick={() => { setOpen(false); e.onSelect(); }}
-                  className={cn(
-                    "w-full min-h-[56px] flex items-center gap-3 rounded-xl border border-border bg-card px-3 py-2.5 text-left transition-transform active:scale-[0.99] disabled:opacity-50",
-                    e.destructive && "border-destructive/30",
-                  )}
-                >
-                  <div className={cn(
-                    "h-10 w-10 rounded-lg flex items-center justify-center flex-shrink-0",
-                    e.destructive ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary",
-                  )}>
-                    <Icon className="h-[18px] w-[18px]" />
-                  </div>
-                  <div className="min-w-0 flex-1">
+          <div className="relative px-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] overflow-y-auto">
+            <div className="rounded-2xl border border-border/70 bg-card/80 backdrop-blur-sm overflow-hidden divide-y divide-border/60 shadow-[0_8px_30px_-16px_hsl(var(--foreground)/0.25)]">
+              {entries.map((e) => {
+                const Icon = e.icon;
+                return (
+                  <button
+                    key={e.key}
+                    type="button"
+                    disabled={e.disabled}
+                    onClick={() => { setOpen(false); e.onSelect(); }}
+                    className={cn(
+                      "group w-full min-h-[60px] flex items-center gap-3 px-3.5 py-3 text-left transition-colors active:bg-muted/60 disabled:opacity-45",
+                      e.destructive && "bg-destructive/[0.04]",
+                    )}
+                  >
                     <div className={cn(
-                      "text-sm font-semibold leading-tight",
-                      e.destructive && "text-destructive",
+                      "h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0 border",
+                      e.destructive
+                        ? "bg-destructive/10 text-destructive border-destructive/25"
+                        : "bg-primary/10 text-primary border-primary/20",
                     )}>
-                      {e.label}
+                      <Icon className="h-[18px] w-[18px]" />
                     </div>
-                    <div className="text-[11px] text-muted-foreground leading-snug truncate">
-                      {e.hint}
+                    <div className="min-w-0 flex-1">
+                      <div className={cn(
+                        "text-[15px] font-semibold leading-tight tracking-[-0.01em]",
+                        e.destructive && "text-destructive",
+                      )}>
+                        {e.label}
+                      </div>
+                      <div className="mt-0.5 text-[11.5px] text-muted-foreground leading-snug truncate">
+                        {e.hint}
+                      </div>
                     </div>
-                  </div>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                </button>
-              );
-            })}
+                    <ChevronRight className="h-4 w-4 text-muted-foreground/60 flex-shrink-0 transition-transform group-active:translate-x-0.5" />
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </DrawerContent>
       </Drawer>
@@ -191,8 +205,12 @@ export function HostControlsMenu({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <DropdownMenuContent
+        align="end"
+        sideOffset={8}
+        className="w-72 p-1.5 rounded-xl border-border/70 bg-popover/95 backdrop-blur-md shadow-[0_20px_50px_-20px_hsl(var(--foreground)/0.35)]"
+      >
+        <DropdownMenuLabel className="px-2 pt-1.5 pb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-primary/80">
           Event controls
         </DropdownMenuLabel>
 
@@ -200,17 +218,29 @@ export function HostControlsMenu({
           const Icon = e.icon;
           return (
             <div key={e.key}>
-              {e.destructive && <DropdownMenuSeparator />}
+              {e.destructive && <DropdownMenuSeparator className="my-1.5" />}
               <DropdownMenuItem
                 onClick={e.onSelect}
                 disabled={e.disabled}
                 className={cn(
-                  "gap-2 cursor-pointer",
-                  e.destructive && "text-destructive focus:text-destructive",
+                  "gap-3 cursor-pointer rounded-lg px-2 py-2 items-start",
+                  e.destructive && "text-destructive focus:text-destructive focus:bg-destructive/10",
                 )}
               >
-                <Icon className="h-4 w-4" />
-                {e.label}
+                <span className={cn(
+                  "mt-0.5 h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 border",
+                  e.destructive
+                    ? "bg-destructive/10 text-destructive border-destructive/25"
+                    : "bg-primary/10 text-primary border-primary/20",
+                )}>
+                  <Icon className="h-4 w-4" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[13px] font-semibold leading-tight">{e.label}</span>
+                  <span className="block mt-0.5 text-[11px] text-muted-foreground leading-snug">
+                    {e.hint}
+                  </span>
+                </span>
               </DropdownMenuItem>
             </div>
           );
@@ -219,3 +249,4 @@ export function HostControlsMenu({
     </DropdownMenu>
   );
 }
+
