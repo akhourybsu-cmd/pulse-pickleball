@@ -10,6 +10,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { UserPlus, UserX, Search, Users } from "lucide-react";
+import { withPulseActivity } from "@/components/ui/pulse-activity";
+
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
@@ -126,25 +128,29 @@ export function TeamRosterDialog({
   }, [addable, addQuery, profilesById]);
 
   const addMember = async (userId: string) => {
+    const p = profilesById[userId];
+    const nm = p ? resolvePlayerName(p) : "player";
     setBusy(true);
     const payload = { team_id: team.id, user_id: userId, role: "player" as TeamMemberRole };
-    const { data, error } = await supabase
-      .from("league_team_members" as never).insert(payload as never).select().single();
-    if (error || !data) {
-      toast.error(error?.message ?? "Add failed");
+    try {
+      await withPulseActivity(`Adding ${nm}…`, async () => {
+        const { data, error } = await supabase
+          .from("league_team_members" as never).insert(payload as never).select().single();
+        if (error || !data) throw error ?? new Error("Add failed");
+        await logLeagueAction({
+          leagueId: league.id, seasonId: team.season_id,
+          action: "team_member.added", entityType: "team_member",
+          entityId: (data as unknown as LeagueTeamMember).id,
+          newValue: payload,
+        });
+      }, "Added to the team");
+      await load();
+      await onChanged();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Add failed");
+    } finally {
       setBusy(false);
-      return;
     }
-    await logLeagueAction({
-      leagueId: league.id, seasonId: team.season_id,
-      action: "team_member.added", entityType: "team_member",
-      entityId: (data as unknown as LeagueTeamMember).id,
-      newValue: payload,
-    });
-    toast.success("Added to team");
-    await load();
-    await onChanged();
-    setBusy(false);
   };
 
   const patch = async (
@@ -153,24 +159,28 @@ export function TeamRosterDialog({
     action: string,
   ) => {
     setBusy(true);
-    const { error } = await supabase
-      .from("league_team_members" as never)
-      .update(fields as never).eq("id", member.id);
-    if (error) {
-      toast.error(error.message);
+    try {
+      await withPulseActivity("Updating team roster…", async () => {
+        const { error } = await supabase
+          .from("league_team_members" as never)
+          .update(fields as never).eq("id", member.id);
+        if (error) throw error;
+        await logLeagueAction({
+          leagueId: league.id, seasonId: team.season_id,
+          action, entityType: "team_member", entityId: member.id,
+          oldValue: { role: member.role, status: member.status },
+          newValue: fields,
+        });
+      }, "Roster updated");
+      await load();
+      await onChanged();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Update failed");
+    } finally {
       setBusy(false);
-      return;
     }
-    await logLeagueAction({
-      leagueId: league.id, seasonId: team.season_id,
-      action, entityType: "team_member", entityId: member.id,
-      oldValue: { role: member.role, status: member.status },
-      newValue: fields,
-    });
-    await load();
-    await onChanged();
-    setBusy(false);
   };
+
 
   const active = roster.filter((r) => r.status === "active");
   const removed = roster.filter((r) => r.status === "removed");
@@ -178,32 +188,52 @@ export function TeamRosterDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg p-0 overflow-hidden gap-0">
-        {/* Amber accent — teams tone throughout the league system */}
-        <div className="h-1.5 w-full bg-amber-500" aria-hidden />
+        {/* Stadium banner header — matches every other league menu */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-[#0B171F] via-[#142029] to-[#1a2d38]">
+          <div className="absolute top-0 bottom-0 left-0 w-1.5 bg-amber-400" aria-hidden />
+          <div
+            aria-hidden
+            className="absolute inset-0 opacity-[0.05] pointer-events-none"
+            style={{
+              backgroundImage:
+                "repeating-linear-gradient(45deg, transparent 0, transparent 10px, currentColor 10px, currentColor 11px)",
+              color: "#F5C24A",
+            }}
+          />
+          <div aria-hidden className="absolute -top-14 -right-10 h-40 w-40 rounded-full blur-3xl pointer-events-none bg-amber-400/20" />
 
-        <DialogHeader className="p-5 pb-3 space-y-0">
-          <div className="flex items-start gap-3">
-            <div
-              className="h-10 w-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0"
-              aria-hidden
-            >
-              <Users className="w-5 h-5" />
+          <DialogHeader className="relative p-5 pb-4 space-y-0 text-left">
+            <div className="flex items-start gap-3">
+              <div
+                className="h-11 w-11 rounded-xl bg-amber-400/15 text-amber-300 flex items-center justify-center shrink-0 ring-1 ring-white/10"
+                aria-hidden
+              >
+                <Users className="w-5 h-5" />
+              </div>
+              <div className="min-w-0 flex-1 pt-0.5">
+                <div className="text-[10px] font-black uppercase tracking-[0.2em] mb-0.5 text-amber-300/80">
+                  Team roster
+                </div>
+                <DialogTitle className="text-lg font-black tracking-tight leading-tight text-white truncate">
+                  {team.name}
+                </DialogTitle>
+                <p className="text-xs text-slate-400 mt-1">
+                  {active.length} active player{active.length === 1 ? "" : "s"}
+                  {removed.length > 0 && ` · ${removed.length} removed`}
+                </p>
+              </div>
             </div>
-            <div className="min-w-0 flex-1 pt-0.5">
-              <DialogTitle className="text-lg font-bold tracking-tight leading-tight truncate">
-                {team.name}
-              </DialogTitle>
-              <p className="text-xs text-muted-foreground mt-1">
-                {active.length} active player{active.length === 1 ? "" : "s"}
-              </p>
-            </div>
-          </div>
-        </DialogHeader>
-
+          </DialogHeader>
+        </div>
         {loading ? (
-          <p className="text-sm text-muted-foreground py-10 text-center">Loading…</p>
+          <div className="px-5 py-6 space-y-2">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="h-[52px] rounded-xl bg-muted/50 animate-pulse" />
+            ))}
+          </div>
         ) : (
-          <div className="px-5 pb-5 pt-1 space-y-5 max-h-[70vh] overflow-y-auto">
+          <div className="px-5 pb-5 pt-4 space-y-5 max-h-[65vh] overflow-y-auto">
+
             {/* Active roster */}
             <section className="space-y-2.5">
               <div className="flex items-baseline gap-2 border-b border-border/40 pb-1.5">
@@ -226,7 +256,7 @@ export function TeamRosterDialog({
                     return (
                       <li
                         key={m.id}
-                        className="flex items-center gap-2.5 rounded-lg border border-border/70 bg-card px-3 py-2 hover:border-amber-500/40 transition-colors"
+                        className="flex items-center gap-2.5 rounded-xl border border-border/60 bg-card/70 backdrop-blur-sm shadow-[0_1px_2px_hsl(0_0%_0%/0.04)] px-3 py-2 hover:border-amber-500/50 transition-colors"
                       >
                         <AvatarChip
                           url={p?.avatar_url}
@@ -301,7 +331,7 @@ export function TeamRosterDialog({
                       return (
                         <li
                           key={m.id}
-                          className="flex items-center gap-2.5 rounded-lg border border-border/70 bg-card px-3 py-2 hover:border-amber-500/40 transition-colors"
+                          className="flex items-center gap-2.5 rounded-xl border border-border/60 bg-card/70 backdrop-blur-sm shadow-[0_1px_2px_hsl(0_0%_0%/0.04)] px-3 py-2 hover:border-amber-500/50 transition-colors"
                         >
                           <AvatarChip url={p?.avatar_url} name={name} />
                           <span className="text-sm truncate flex-1">{name}</span>
@@ -364,7 +394,17 @@ export function TeamRosterDialog({
             )}
           </div>
         )}
+
+        <div className="p-4 pt-3 border-t border-border/60 bg-muted/20">
+          <Button
+            onClick={() => onOpenChange(false)}
+            className="h-12 w-full font-bold uppercase tracking-wide text-[13px] active:scale-[0.98] transition-transform"
+          >
+            Done
+          </Button>
+        </div>
       </DialogContent>
+
 
       {/* Remove confirmation. Roster removal is soft (status = removed)
           but still worth a confirm — accidental clicks on a full-roster

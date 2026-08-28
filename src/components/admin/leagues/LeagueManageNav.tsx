@@ -135,50 +135,88 @@ function MobileSectionPicker({
             <ChevronsUpDown className="w-4 h-4 text-muted-foreground shrink-0" />
           </button>
         </DrawerTrigger>
-        <DrawerContent>
-          <DrawerHeader className="text-left pb-2">
-            <DrawerTitle>Jump to section</DrawerTitle>
-          </DrawerHeader>
-          <div className="px-4 pb-8 space-y-4 max-h-[65vh] overflow-y-auto">
+        <DrawerContent className="p-0 overflow-hidden">
+          {/* Stadium banner — same broadcast header as every league menu */}
+          <div className="relative overflow-hidden bg-gradient-to-br from-[#0B171F] via-[#142029] to-[#1a2d38]">
+            <div className="absolute top-0 bottom-0 left-0 w-1.5 bg-primary" aria-hidden />
+            <div
+              aria-hidden
+              className="absolute inset-0 opacity-[0.05] pointer-events-none"
+              style={{
+                backgroundImage:
+                  "repeating-linear-gradient(45deg, transparent 0, transparent 10px, currentColor 10px, currentColor 11px)",
+                color: "#A6DB5A",
+              }}
+            />
+            <div aria-hidden className="absolute -top-14 -right-10 h-40 w-40 rounded-full blur-3xl pointer-events-none bg-primary/20" />
+            <DrawerHeader className="relative text-left p-5 pb-4 space-y-0">
+              <div className="text-[10px] font-black uppercase tracking-[0.2em] text-primary/80 mb-0.5">
+                League console
+              </div>
+              <DrawerTitle className="text-lg font-black tracking-tight text-white">
+                Jump to section
+              </DrawerTitle>
+            </DrawerHeader>
+          </div>
+
+          <div className="px-4 pb-8 pt-4 space-y-4 max-h-[62vh] overflow-y-auto">
             {GROUPS.map((group) => {
               const items = tabs.filter((t) => t.group === group);
               if (items.length === 0) return null;
               return (
-                <div key={group} className="space-y-1">
-                  <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground px-1">
-                    {group}
+                <div key={group} className="space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="h-3.5 w-1 rounded-full bg-primary shrink-0" aria-hidden />
+                    <span className="text-[11px] font-black uppercase tracking-[0.16em] text-foreground/75">
+                      {group}
+                    </span>
+                    <span className="h-px flex-1 bg-gradient-to-r from-border to-transparent" aria-hidden />
                   </div>
-                  {items.map((t) => {
-                    const Icon = t.icon;
-                    const isActive = active === t.key;
-                    return (
-                      <button
-                        key={t.key}
-                        type="button"
-                        onClick={() => { onChange(t.key); setOpen(false); }}
-                        className={cn(
-                          "w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors",
-                          isActive
-                            ? "bg-primary/10 text-primary ring-1 ring-primary/25"
-                            : "hover:bg-muted/60 active:bg-muted",
-                        )}
-                      >
-                        <Icon className={cn(
-                          "w-4 h-4 shrink-0",
-                          isActive ? "text-primary" : "text-muted-foreground",
-                        )} />
-                        <div className="min-w-0 flex-1">
-                          <div className="text-sm font-semibold leading-tight">{t.label}</div>
-                          <div className="text-[11px] text-muted-foreground">{t.hint}</div>
-                        </div>
-                        {isActive && <Check className="w-4 h-4 text-primary shrink-0" />}
-                      </button>
-                    );
-                  })}
+                  <div className="space-y-1.5">
+                    {items.map((t) => {
+                      const Icon = t.icon;
+                      const isActive = active === t.key;
+                      return (
+                        <button
+                          key={t.key}
+                          type="button"
+                          onClick={() => { onChange(t.key); setOpen(false); }}
+                          className={cn(
+                            "w-full flex items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors backdrop-blur-sm border",
+                            isActive
+                              ? "bg-primary/10 border-primary/35 shadow-[0_1px_2px_hsl(0_0%_0%/0.05)]"
+                              : "bg-card/70 border-border/60 hover:bg-muted/60 active:bg-muted",
+                          )}
+                        >
+                          <span className={cn(
+                            "h-9 w-9 rounded-lg flex items-center justify-center shrink-0 ring-1",
+                            isActive
+                              ? "bg-primary/15 text-primary ring-primary/30"
+                              : "bg-muted/70 text-muted-foreground ring-border/60",
+                          )}>
+                            <Icon className="w-[18px] h-[18px]" />
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <div className={cn(
+                              "text-sm leading-tight",
+                              isActive ? "font-black text-primary" : "font-bold",
+                            )}>
+                              {t.label}
+                            </div>
+                            <div className="text-[11px] text-muted-foreground leading-snug line-clamp-2">
+                              {t.hint}
+                            </div>
+                          </div>
+                          {isActive && <Check className="w-4 h-4 text-primary shrink-0" />}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               );
             })}
           </div>
+
         </DrawerContent>
       </Drawer>
     </div>

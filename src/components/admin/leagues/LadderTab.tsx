@@ -3,20 +3,21 @@ import { motion, useReducedMotion } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ActionButton } from "@/components/leagues/ActionButton";
+import { Button } from "@/components/ui/button";
+import { withPulseActivity } from "@/components/ui/pulse-activity";
+
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import {
   Layers, Trophy, ArrowUp, ArrowDown, Minus, Info, Play, Pause, CheckCircle2,
   ChevronUp, ChevronDown, RotateCcw, Zap, Swords, UserX, Users, AlertTriangle,
-  CalendarClock,
+  CalendarClock, Scale,
 } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog } from "@/components/ui/dialog";
 import type { League, LeagueSeason } from "@/lib/leagues/types";
 import { resolvePlayerName } from "@/lib/matchDisplay";
 import { formatDistanceToNow } from "date-fns";
@@ -29,9 +30,10 @@ import {
 import { cn } from "@/lib/utils";
 import { LadderReplacePanel } from "./LadderReplacePanel";
 import {
-  EmptyState, TabSkeleton, LeagueTabProps, FormSection, FormRow, FIELD_H,
+  EmptyState, TabSkeleton, LeagueTabProps, FormShell, FormSection, FormRow, FIELD_H,
   SeasonSelect, ChoiceGrid, SegmentedControl,
 } from "./_shared";
+
 
 /**
  * Schedule (or reschedule) a ladder week's session via the RPC, which binds
@@ -310,10 +312,15 @@ function LadderStart({
 
   const invokeStart = async (session_id: string | null) => {
     setStarting(true);
-    const { data, error } = await supabase.functions.invoke("ladder-generate-first-batch", {
-      body: { season_id: seasonId, order, session_id },
-    });
+    const { data, error } = await withPulseActivity(
+      "Building Week 1 courts…",
+      async () => supabase.functions.invoke("ladder-generate-first-batch", {
+        body: { season_id: seasonId, order, session_id },
+      }),
+      "Ladder started",
+    );
     setStarting(false);
+
     if (error || (data as { error?: string })?.error) {
       toast.error((data as { message?: string })?.message ?? error?.message ?? "Couldn't start ladder");
       return;
@@ -492,9 +499,14 @@ function LadderManage({
   const processResults = async (tieResolutions?: Record<number, string[]>) => {
     if (!activeBatch) return;
     setProcessing(true);
-    const { data, error } = await supabase.functions.invoke("ladder-finalize-batch", {
-      body: { batch_id: activeBatch.id, tie_resolutions: tieResolutions },
-    });
+    const { data, error } = await withPulseActivity(
+      "Processing results & movement…",
+      async () => supabase.functions.invoke("ladder-finalize-batch", {
+        body: { batch_id: activeBatch.id, tie_resolutions: tieResolutions },
+      }),
+      "Batch processed",
+    );
+
     setProcessing(false);
     const resp = data as
       { error?: string; message?: string; ties?: TieInfo[] } | null;
@@ -631,9 +643,14 @@ function LadderManage({
   const runGenerate = async (session_id?: string) => {
     if (!settings) return;
     setGenerating(true);
-    const { data, error } = await supabase.functions.invoke("ladder-generate-next", {
-      body: { season_id: settings.season_id, session_id: session_id ?? null },
-    });
+    const { data, error } = await withPulseActivity(
+      "Generating next round of courts…",
+      async () => supabase.functions.invoke("ladder-generate-next", {
+        body: { season_id: settings.season_id, session_id: session_id ?? null },
+      }),
+      "Schedule ready",
+    );
+
     setGenerating(false);
     if (error || (data as { error?: string })?.error) {
       toast.error((data as { message?: string })?.message ?? error?.message ?? "Generation failed");
@@ -1088,22 +1105,30 @@ function TiebreakDialog({
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onCancel(); }}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Who advances?</DialogTitle>
-          <DialogDescription>
-            {ties.length === 1 ? "A court" : `${ties.length} courts`} ended level
-            on record and points. Play a tiebreaker (e.g. a skinny-singles game)
-            and set the finishing order below — top of the list finishes highest.
-            {ties.some((t) => t.resolved_order?.length) && (
-              <span className="mt-1 block text-emerald-600 dark:text-emerald-400">
-                A player already recorded an order for a tied court — it's pre-filled below. Review and process.
-              </span>
-            )}
-          </DialogDescription>
-        </DialogHeader>
+      <FormShell
+        icon={<Scale className="w-5 h-5" />}
+        tone="gold"
+        size="lg"
+        kicker="Tiebreak"
+        title="Who advances?"
+        subtitle={`${ties.length === 1 ? "A court" : `${ties.length} courts`} ended level on record and points. Play a tiebreaker, then set the finishing order — top finishes highest.`}
+        primaryLabel="Confirm & process"
+        primaryLoading={busy}
+        onPrimary={() => onResolve(orders)}
+        secondary={
+          <Button variant="outline" onClick={onCancel} disabled={busy} className="h-12 sm:w-28">
+            Cancel
+          </Button>
+        }
+      >
+        {ties.some((t) => t.resolved_order?.length) && (
+          <div className="rounded-xl border border-primary/30 bg-primary/[0.07] px-3 py-2 text-[11px] leading-relaxed text-foreground/80">
+            A player already recorded an order for a tied court — it's pre-filled below. Review and process.
+          </div>
+        )}
 
-        <div className="space-y-4 max-h-[55vh] overflow-y-auto">
+        <div className="space-y-4">
+
           {ties.map((t) => {
             const promo = t.boundaries.includes("promotion");
             const relo = t.boundaries.includes("relegation");
@@ -1180,14 +1205,8 @@ function TiebreakDialog({
           })}
         </div>
 
-        <DialogFooter>
-          <ActionButton variant="outline" onClick={onCancel} disabled={busy}>Cancel</ActionButton>
-          <ActionButton onClick={() => onResolve(orders)} loading={busy}
-            className="font-bold uppercase tracking-wide">
-            Confirm & process
-          </ActionButton>
-        </DialogFooter>
-      </DialogContent>
+      </FormShell>
+
     </Dialog>
   );
 }
@@ -1978,68 +1997,66 @@ function WeekSessionDialog({
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onCancel(); }}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>{title ?? `Schedule Week ${weekNumber}`}</DialogTitle>
-          <DialogDescription>
-            {description ??
-              "Confirm when this week is played. Players can't enter scores " +
-              "before this start time, so make sure it's right."}
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-3">
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Date</div>
-            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={FIELD_H} />
-          </div>
+      <FormShell
+        icon={<CalendarClock className="w-5 h-5" />}
+        tone="primary"
+        kicker={`Week ${weekNumber}`}
+        title={title ?? `Schedule Week ${weekNumber}`}
+        subtitle={description ??
+          "Confirm when this week is played. Players can't enter scores before this start time, so make sure it's right."}
+        primaryLabel={submitLabel ?? `Generate Week ${weekNumber}`}
+        primaryDisabled={!canSubmit}
+        primaryLoading={busy}
+        onPrimary={() => onConfirm({
+          scheduled_date: date, start_time: start,
+          end_time: end, location: loc,
+          court_count: courts ? Number(courts) : null,
+          capacity: cap ? Number(cap) : null,
+        })}
+        secondary={
+          <Button variant="outline" onClick={onCancel} disabled={busy} className="h-12 sm:w-28">
+            Cancel
+          </Button>
+        }
+      >
+        <FormSection label="When" hint="Required">
+          <FormRow label="Date" htmlFor="wk-date" required>
+            <Input id="wk-date" type="date" value={date}
+              onChange={(e) => setDate(e.target.value)} className={FIELD_H} />
+          </FormRow>
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Start time</div>
-              <Input type="time" value={start} onChange={(e) => setStart(e.target.value)} className={FIELD_H} />
-            </div>
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">End time (optional)</div>
-              <Input type="time" value={end} onChange={(e) => setEnd(e.target.value)} className={FIELD_H} />
-            </div>
+            <FormRow label="Start" htmlFor="wk-start" required>
+              <Input id="wk-start" type="time" value={start}
+                onChange={(e) => setStart(e.target.value)} className={FIELD_H} />
+            </FormRow>
+            <FormRow label="End" htmlFor="wk-end" hint="Optional">
+              <Input id="wk-end" type="time" value={end}
+                onChange={(e) => setEnd(e.target.value)} className={FIELD_H} />
+            </FormRow>
           </div>
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Location (optional)</div>
-            <Input value={loc} onChange={(e) => setLoc(e.target.value)}
+        </FormSection>
+
+        <FormSection label="Where & size" hint="Optional">
+          <FormRow label="Location" htmlFor="wk-loc">
+            <Input id="wk-loc" value={loc} onChange={(e) => setLoc(e.target.value)}
               placeholder="e.g. Nickerson courts" className={FIELD_H} />
-          </div>
+          </FormRow>
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Courts (optional)</div>
-              <Input type="number" min="1" value={courts} onChange={(e) => setCourts(e.target.value)}
-                placeholder="—" className={FIELD_H} />
-            </div>
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Capacity (optional)</div>
-              <Input type="number" min="0" value={cap} onChange={(e) => setCap(e.target.value)}
-                placeholder="—" className={FIELD_H} />
-            </div>
+            <FormRow label="Courts" htmlFor="wk-courts">
+              <Input id="wk-courts" type="number" min="1" value={courts}
+                onChange={(e) => setCourts(e.target.value)} placeholder="—" className={FIELD_H} />
+            </FormRow>
+            <FormRow label="Capacity" htmlFor="wk-cap">
+              <Input id="wk-cap" type="number" min="0" value={cap}
+                onChange={(e) => setCap(e.target.value)} placeholder="—" className={FIELD_H} />
+            </FormRow>
           </div>
-        </div>
-        <DialogFooter>
-          <ActionButton variant="outline" onClick={onCancel} disabled={busy}>Cancel</ActionButton>
-          <ActionButton
-            disabled={!canSubmit}
-            loading={busy}
-            onClick={() => onConfirm({
-              scheduled_date: date, start_time: start,
-              end_time: end, location: loc,
-              court_count: courts ? Number(courts) : null,
-              capacity: cap ? Number(cap) : null,
-            })}
-            className="font-bold uppercase tracking-wide"
-          >
-            {submitLabel ?? `Generate Week ${weekNumber}`}
-          </ActionButton>
-        </DialogFooter>
-      </DialogContent>
+        </FormSection>
+      </FormShell>
     </Dialog>
   );
 }
+
 
 function CourtGroupCard({
   group, games, scoring, nameOf, onScored,
