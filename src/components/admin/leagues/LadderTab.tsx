@@ -754,14 +754,22 @@ function LadderManage({
       {/* Pending sub-requests badge — awareness even mid-week; resolve them
           in the Week roster when preparing that week. */}
       {ladder.pendingSubRequests > 0 && (
-        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-700 dark:text-amber-300 flex items-center gap-2">
-          <UserX className="w-4 h-4 shrink-0" />
-          <span>
-            {ladder.pendingSubRequests} sub request{ladder.pendingSubRequests === 1 ? "" : "s"} awaiting a decision.
-            Resolve {ladder.pendingSubRequests === 1 ? "it" : "them"} in the Week roster when you prepare that week.
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-700 dark:text-amber-300 flex items-center justify-between gap-3 flex-wrap">
+          <span className="flex items-center gap-2 min-w-0">
+            <UserX className="w-4 h-4 shrink-0" />
+            <span>
+              {ladder.pendingSubRequests} sub request{ladder.pendingSubRequests === 1 ? "" : "s"} awaiting a decision.
+            </span>
           </span>
+          {onNavigate && (
+            <ActionButton size="sm" variant="outline" className="h-8 text-xs shrink-0"
+              onClick={() => onNavigate("subs")}>
+              Review requests
+            </ActionButton>
+          )}
         </div>
       )}
+
 
       {/* Progress header */}
       {activeBatch && (
