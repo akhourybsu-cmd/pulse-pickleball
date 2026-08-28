@@ -9755,6 +9755,19 @@ export type Database = {
         Args: { p_player_id: string }
         Returns: undefined
       }
+      recent_play_partners: {
+        Args: { _limit?: number }
+        Returns: {
+          avatar_url: string
+          current_rating: number
+          display_name: string
+          full_name: string
+          handle: string
+          id: string
+          last_played_at: string
+          reason: string
+        }[]
+      }
       record_ladder_tiebreak: {
         Args: { p_group_id: string; p_ordered_ids: string[] }
         Returns: Json
