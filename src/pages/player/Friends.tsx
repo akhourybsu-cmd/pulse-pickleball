@@ -29,6 +29,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { interpretDmError } from '@/lib/dmErrors';
 import { cn } from '@/lib/utils';
+import { SocialHero, SocialStatTile, glassRow } from '@/components/social/_shared';
 
 const initials = (name: string | null) =>
   (name || 'U').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
@@ -307,7 +308,7 @@ export default function Friends({ embedded = false }: { embedded?: boolean } = {
                       const isOnline = onlineFriends.has(f.profile.id);
                       const name = f.profile.display_name || f.profile.full_name || 'Player';
                       return (
-                        <div key={f.id} className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border/40">
+                        <div key={f.id} className={glassRow}>
                           <button onClick={() => navigate(`/profile/${f.profile.id}`)} aria-label={`View ${name}'s profile`} className="shrink-0">
                             <PresenceAvatar src={f.profile.avatar_url} name={name} online={isOnline} />
                           </button>
@@ -384,7 +385,7 @@ export default function Friends({ embedded = false }: { embedded?: boolean } = {
                     {pendingRequests.map(r => {
                       const name = r.profile.display_name || r.profile.full_name || 'Player';
                       return (
-                        <motion.div key={r.id} layout={!reduced} {...rowExit(reduced)} className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border/40 overflow-hidden">
+                        <motion.div key={r.id} layout={!reduced} {...rowExit(reduced)} className={cn(glassRow, "overflow-hidden")}>
                           <button onClick={() => navigate(`/profile/${r.profile.id}`)} aria-label={`View ${name}'s profile`} className="shrink-0">
                             <PresenceAvatar
                               src={r.profile.avatar_url}
@@ -424,7 +425,7 @@ export default function Friends({ embedded = false }: { embedded?: boolean } = {
                     {sentRequests.map(r => {
                       const name = r.profile.display_name || r.profile.full_name || 'Player';
                       return (
-                        <motion.div key={r.id} layout={!reduced} {...rowExit(reduced)} className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border/40 overflow-hidden">
+                        <motion.div key={r.id} layout={!reduced} {...rowExit(reduced)} className={cn(glassRow, "overflow-hidden")}>
                           <button onClick={() => navigate(`/profile/${r.profile.id}`)} aria-label={`View ${name}'s profile`} className="shrink-0">
                             <PresenceAvatar
                               src={r.profile.avatar_url}
@@ -471,7 +472,7 @@ export default function Friends({ embedded = false }: { embedded?: boolean } = {
                   // consistent rating · presence line (never a fake reason).
                   const meta = reason ?? personMeta(s.current_rating, onlineFriends.has(s.id));
                   return (
-                    <div key={s.id} className="flex items-center gap-2 p-3 rounded-xl bg-card border border-border/40">
+                    <div key={s.id} className={cn(glassRow, "gap-2")}>
                       <button onClick={() => navigate(`/profile/${s.id}`)} aria-label={`View ${name}'s profile`} className="shrink-0">
                         <PresenceAvatar
                           src={s.avatar_url}
