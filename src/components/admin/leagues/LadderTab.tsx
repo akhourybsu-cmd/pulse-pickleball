@@ -641,9 +641,14 @@ function LadderManage({
   const runGenerate = async (session_id?: string) => {
     if (!settings) return;
     setGenerating(true);
-    const { data, error } = await supabase.functions.invoke("ladder-generate-next", {
-      body: { season_id: settings.season_id, session_id: session_id ?? null },
-    });
+    const { data, error } = await withPulseActivity(
+      "Generating next round of courts…",
+      async () => supabase.functions.invoke("ladder-generate-next", {
+        body: { season_id: settings.season_id, session_id: session_id ?? null },
+      }),
+      "Schedule ready",
+    );
+
     setGenerating(false);
     if (error || (data as { error?: string })?.error) {
       toast.error((data as { message?: string })?.message ?? error?.message ?? "Generation failed");
