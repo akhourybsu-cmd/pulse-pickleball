@@ -1180,12 +1180,25 @@ export default function RoundRobinDetail() {
         });
 
         const roundsSuffix = regenResult?.roundsChanged
-          ? ` Remaining rounds rebuilt — schedule is now ${regenResult.targetRounds} rounds.`
+          ? `Schedule rebuilt — now ${regenResult.targetRounds} rounds.`
           : regenResult
-            ? " Remaining rounds rebuilt."
+            ? "Schedule rebuilt."
             : "";
 
-        toast.success(`${participantName} removed — they can rejoin later.${roundsSuffix}`);
+        toast.success(
+          <div className="flex items-start gap-3">
+            <div className="h-9 w-9 rounded-full bg-destructive/15 text-destructive flex items-center justify-center flex-shrink-0 mt-0.5">
+              <UserMinus className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="font-semibold text-base">{participantName} removed</div>
+              <div className="text-sm opacity-90 leading-snug">
+                They can rejoin later.{roundsSuffix ? ` ${roundsSuffix}` : ""}
+              </div>
+            </div>
+          </div>,
+          { duration: 5000 }
+        );
       };
 
       // Prefer the Slice 2b orchestration layer (snapshot → Slice 3 planner →
