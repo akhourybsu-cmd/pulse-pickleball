@@ -955,11 +955,16 @@ export default function RoundRobinDetail() {
       return;
     }
 
+    // Guests are first-class here: a row with guest_player_id schedules exactly
+    // like a registered player. Only legacy ad-hoc rows (a bare guest_name with
+    // no guest record) can't be seated by the generator.
     const unfilled = activePlayers.filter(
       (p: any) => !p.player_id && !p.guest_player_id,
     );
     if (unfilled.length > 0) {
-      toast.error("Every active roster slot must be either a registered player or a guest.");
+      toast.error(
+        `${unfilled.length} roster slot${unfilled.length === 1 ? "" : "s"} ${unfilled.length === 1 ? "is" : "are"} an unlinked legacy guest — substitute ${unfilled.length === 1 ? "it" : "them"} for a saved guest or player, then regenerate.`,
+      );
       return;
     }
 
@@ -1142,6 +1147,9 @@ export default function RoundRobinDetail() {
     const player = players.find(p => p.id === playerEventId);
     if (!player) return;
 
+    // Resolved name works for registered players, reusable guests, and legacy
+    // ad-hoc guests alike.
+    const participantName = resolveRRParticipant(player as never).name;
     const reason = "Player removed from roster (past scores preserved)";
 
     // Core apply path — optionally carrying the host's decision about a live
@@ -1155,7 +1163,29 @@ export default function RoundRobinDetail() {
         // The `active` boolean is kept in sync with `status` by a DB trigger,
         // so all existing readers reflect the change immediately.
         await fetchEventDetails();
-        toast.success("Player removed — they can rejoin later.");
+
+        // The orchestration layer only *repairs* the seats the departing
+        // participant held. That can leave the remaining rounds shaped for the
+        // old roster size (short-handed foursomes / stale round count), so we
+        // follow every removal with a real regeneration from the first
+        // unlocked round. Scored rounds and rounds with a linked match_id are
+        // protected inside regenerateScheduleFromRound. This is identity-
+        // agnostic: the live roster is read back from the DB and mapped by
+        // player_id / guest_player_id, so guests regenerate exactly like
+        // registered players.
+        const fromRound = event.current_round || 1;
+        const regenResult = await regenerateScheduleFromRound(fromRound).catch((err) => {
+          console.error("post-removal regeneration failed", err);
+          return null;
+        });
+
+        const roundsSuffix = regenResult?.roundsChanged
+          ? ` Remaining rounds rebuilt — schedule is now ${regenResult.targetRounds} rounds.`
+          : regenResult
+            ? " Remaining rounds rebuilt."
+            : "";
+
+        toast.success(`${participantName} removed — they can rejoin later.${roundsSuffix}`);
       };
 
       // Prefer the Slice 2b orchestration layer (snapshot → Slice 3 planner →
