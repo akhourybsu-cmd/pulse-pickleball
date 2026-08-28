@@ -29,6 +29,8 @@ import {
 import { Play, Trophy, AlertCircle, Settings, Trash2, Ban, CheckCircle, Edit, Edit3, Bell, Monitor, ExternalLink, Share2, Users, UserMinus, Calendar, MapPin, Zap, RefreshCw, Medal, Clock, ShieldCheck, ChevronRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { ScheduleRoundCarousel } from "@/components/round-robin/ScheduleRoundCarousel";
+import { TeamNamesStack } from "@/components/round-robin/TeamNamesStack";
+
 import { toast } from "sonner";
 
 import { format, parseISO } from "date-fns";
@@ -2354,68 +2356,75 @@ export default function RoundRobinDetail() {
                                     </div>
                                     
                                     <div className="space-y-2">
-                                      <div className={`flex items-center justify-between p-3 rounded-xl transition-colors ${
+                                      <div className={`flex items-center gap-2 p-3 rounded-xl transition-colors ${
                                         team1Won 
                                           ? 'bg-primary/15 border border-primary/30' 
                                           : 'bg-muted/50'
                                       }`}>
-                                        <div className={`text-sm truncate flex-1 min-w-0 flex items-center gap-2 ${team1Won ? 'font-semibold' : ''}`}>
-                                          {team1Won && <Trophy className="h-3.5 w-3.5 text-primary flex-shrink-0" />}
-                                          <SeatAvatars seats={[
-                                            { name: getSeatName(match, 'a1'), avatarUrl: getSeatAvatar(match, 'a1') },
-                                            { name: getSeatName(match, 'a2'), avatarUrl: getSeatAvatar(match, 'a2') },
-                                          ]} />
-                                          <span className="truncate">{getSeatName(match, 'a1')} / {getSeatName(match, 'a2')}</span>
-                                        </div>
+                                        {team1Won && <Trophy className="h-3.5 w-3.5 text-primary flex-shrink-0" />}
+                                        <SeatAvatars seats={[
+                                          { name: getSeatName(match, 'a1'), avatarUrl: getSeatAvatar(match, 'a1') },
+                                          { name: getSeatName(match, 'a2'), avatarUrl: getSeatAvatar(match, 'a2') },
+                                        ]} />
+                                        <TeamNamesStack
+                                          className="flex-1"
+                                          isWinner={team1Won}
+                                          player1={getSeatName(match, 'a1')}
+                                          player2={getSeatName(match, 'a2')}
+                                        />
                                         {match.team1_score !== null ? (
-                                          <div className={`text-xl font-bold font-mono ml-2 ${team1Won ? 'text-primary' : ''}`}>{match.team1_score}</div>
+                                          <div className={`text-xl font-bold font-mono ml-1 flex-shrink-0 ${team1Won ? 'text-primary' : ''}`}>{match.team1_score}</div>
                                         ) : isOrganizer && event.status === "live" && isCurrentRound ? (
                                           <Input
                                             type="number"
                                             min="0"
                                             max="99"
                                             inputMode="numeric"
-                                            className="w-20 h-12 text-center text-lg font-bold tabular-nums ml-2 focus-visible:ring-2 focus-visible:ring-primary"
+                                            className="w-16 h-11 text-center text-lg font-bold tabular-nums ml-1 flex-shrink-0 focus-visible:ring-2 focus-visible:ring-primary"
                                             placeholder="0"
                                             value={scores[match.id]?.team1_score ?? ''}
                                             onChange={(e) => handleScoreChange(match.id, 'team1', e.target.value)}
                                           />
                                         ) : (
-                                          <div className="text-muted-foreground ml-2">—</div>
+                                          <div className="text-muted-foreground ml-1 flex-shrink-0">—</div>
                                         )}
                                       </div>
                                       
-                                      <div className={`flex items-center justify-between p-3 rounded-xl transition-colors ${
+                                      <div className={`flex items-center gap-2 p-3 rounded-xl transition-colors ${
                                         team2Won 
                                           ? 'bg-primary/15 border border-primary/30' 
                                           : 'bg-muted/50'
                                       }`}>
-                                        <div className={`text-sm truncate flex-1 min-w-0 flex items-center gap-2 ${team2Won ? 'font-semibold' : ''}`}>
-                                          {team2Won && <Trophy className="h-3.5 w-3.5 text-primary flex-shrink-0" />}
-                                          <SeatAvatars seats={[
-                                            { name: getSeatName(match, 'b1'), avatarUrl: getSeatAvatar(match, 'b1') },
-                                            { name: getSeatName(match, 'b2'), avatarUrl: getSeatAvatar(match, 'b2') },
-                                          ]} />
-                                          <span className="truncate">{getSeatName(match, 'b1')} / {getSeatName(match, 'b2')}</span>
-                                        </div>
+                                        {team2Won && <Trophy className="h-3.5 w-3.5 text-primary flex-shrink-0" />}
+                                        <SeatAvatars seats={[
+                                          { name: getSeatName(match, 'b1'), avatarUrl: getSeatAvatar(match, 'b1') },
+                                          { name: getSeatName(match, 'b2'), avatarUrl: getSeatAvatar(match, 'b2') },
+                                        ]} />
+                                        <TeamNamesStack
+                                          className="flex-1"
+                                          isWinner={team2Won}
+                                          player1={getSeatName(match, 'b1')}
+                                          player2={getSeatName(match, 'b2')}
+                                        />
                                         {match.team2_score !== null ? (
-                                          <div className={`text-xl font-bold font-mono ml-2 ${team2Won ? 'text-primary' : ''}`}>{match.team2_score}</div>
+                                          <div className={`text-xl font-bold font-mono ml-1 flex-shrink-0 ${team2Won ? 'text-primary' : ''}`}>{match.team2_score}</div>
                                         ) : isOrganizer && event.status === "live" && isCurrentRound ? (
                                           <Input
                                             type="number"
                                             min="0"
                                             max="99"
                                             inputMode="numeric"
-                                            className="w-20 h-12 text-center text-lg font-bold tabular-nums ml-2 focus-visible:ring-2 focus-visible:ring-primary"
+                                            className="w-16 h-11 text-center text-lg font-bold tabular-nums ml-1 flex-shrink-0 focus-visible:ring-2 focus-visible:ring-primary"
                                             placeholder="0"
                                             value={scores[match.id]?.team2_score ?? ''}
                                             onChange={(e) => handleScoreChange(match.id, 'team2', e.target.value)}
                                           />
                                         ) : (
-                                          <div className="text-muted-foreground ml-2">—</div>
+                                          <div className="text-muted-foreground ml-1 flex-shrink-0">—</div>
                                         )}
                                       </div>
                                     </div>
+
                                     
                                     {isOrganizer && event.status === "live" && isCurrentRound && match.team1_score === null && (
                                       <Button
