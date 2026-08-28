@@ -1,4 +1,7 @@
-import { MoreVertical, Settings, Grid3X3, RefreshCw, Monitor, Trash2, ChevronRight } from "lucide-react";
+import {
+  MoreVertical, Settings, Grid3X3, RefreshCw, Monitor, Trash2, ChevronRight,
+  ArrowLeftRight, ClipboardList, History,
+} from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -6,7 +9,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -27,6 +29,9 @@ interface HostControlsMenuProps {
   onSettings?: () => void;
   onCourtsAndGames?: () => void;
   onRegenerateSchedule?: () => void;
+  onEditSchedule?: () => void;
+  onScoreCorrections?: () => void;
+  onActivityLog?: () => void;
   onOpenKiosk?: () => void;
   onDeleteOrVoid?: () => void;
 
@@ -34,8 +39,11 @@ interface HostControlsMenuProps {
   canDestroy?: boolean;
 }
 
+type GroupKey = "display" | "setup" | "matches" | "danger";
+
 type Entry = {
   key: string;
+  group: GroupKey;
   label: string;
   hint: string;
   icon: typeof Settings;
@@ -44,16 +52,27 @@ type Entry = {
   destructive?: boolean;
 };
 
+const GROUP_LABELS: Record<GroupKey, string> = {
+  display: "Display",
+  setup: "Event setup",
+  matches: "Matches & history",
+  danger: "Danger zone",
+};
+
+const GROUP_ORDER: GroupKey[] = ["display", "setup", "matches", "danger"];
+
 /**
  * Overflow menu for secondary host actions.
  *
  * Desktop: compact dropdown next to the top bar.
- * Mobile: a bottom sheet with full-width 56px rows, an icon tile, and a
+ * Mobile: a bottom sheet with full-width 60px rows, an icon tile, and a
  *   one-line hint per action — a 3-dot dropdown anchored to the screen edge
  *   was both hard to hit and hard to read courtside.
  *
- * Items are scoped by event state — e.g. Kiosk only appears for live or
- * completed events, Regenerate only for draft, etc.
+ * Entries are grouped (Display / Event setup / Matches & history / Danger zone)
+ * so the sheet stays scannable as the host toolset grows, and every entry is
+ * scoped by event state — Kiosk only for live or completed, Regenerate only for
+ * draft, etc.
  */
 export function HostControlsMenu({
   status,
@@ -62,6 +81,9 @@ export function HostControlsMenu({
   onSettings,
   onCourtsAndGames,
   onRegenerateSchedule,
+  onEditSchedule,
+  onScoreCorrections,
+  onActivityLog,
   onOpenKiosk,
   onDeleteOrVoid,
   canDestroy = false,
@@ -76,6 +98,7 @@ export function HostControlsMenu({
   if ((status === "live" || status === "completed") && onOpenKiosk) {
     entries.push({
       key: "kiosk",
+      group: "display",
       label: "Open kiosk display",
       hint: "Full-screen standings for a TV",
       icon: Monitor,
@@ -86,6 +109,7 @@ export function HostControlsMenu({
   if (onSettings) {
     entries.push({
       key: "settings",
+      group: "setup",
       label: "Settings",
       hint: isEditMode ? "Unavailable while editing the schedule" : "Name, date, notes and rating",
       icon: Settings,
@@ -99,6 +123,7 @@ export function HostControlsMenu({
   if ((status === "draft" || status === "live") && onCourtsAndGames) {
     entries.push({
       key: "courts",
+      group: "setup",
       label: "Courts & games",
       hint: "Adjust courts or games per player",
       icon: Grid3X3,
@@ -109,6 +134,7 @@ export function HostControlsMenu({
   if (status === "draft" && hasSchedule && onRegenerateSchedule) {
     entries.push({
       key: "regen",
+      group: "setup",
       label: "Regenerate schedule",
       hint: "Rebuild all rounds from the roster",
       icon: RefreshCw,
@@ -116,9 +142,43 @@ export function HostControlsMenu({
     });
   }
 
+  if (hasSchedule && onEditSchedule) {
+    entries.push({
+      key: "edit-schedule",
+      group: "matches",
+      label: "Schedule editor",
+      hint: "Swap partners, opponents or courts",
+      icon: ArrowLeftRight,
+      onSelect: onEditSchedule,
+    });
+  }
+
+  if (hasSchedule && onScoreCorrections) {
+    entries.push({
+      key: "scores",
+      group: "matches",
+      label: "Score corrections",
+      hint: "Fix, void or delete a reported result",
+      icon: ClipboardList,
+      onSelect: onScoreCorrections,
+    });
+  }
+
+  if (onActivityLog) {
+    entries.push({
+      key: "activity",
+      group: "matches",
+      label: "Activity log",
+      hint: "Every host change, newest first",
+      icon: History,
+      onSelect: onActivityLog,
+    });
+  }
+
   if (canDestroy && onDeleteOrVoid) {
     entries.push({
       key: "destroy",
+      group: "danger",
       label: status === "completed" ? "Void event" : "Cancel event",
       hint: status === "completed" ? "Removes results from ratings" : "This can't be undone",
       icon: Trash2,
@@ -126,6 +186,10 @@ export function HostControlsMenu({
       destructive: true,
     });
   }
+
+  const groups = GROUP_ORDER
+    .map((key) => ({ key, items: entries.filter((e) => e.group === key) }))
+    .filter((g) => g.items.length > 0);
 
   const trigger = (
     <Button
@@ -136,6 +200,12 @@ export function HostControlsMenu({
     >
       <MoreVertical className="h-5 w-5" />
     </Button>
+  );
+
+  const groupLabel = (key: GroupKey) => (
+    <div className="px-1 pt-3 pb-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/80">
+      {GROUP_LABELS[key]}
+    </div>
   );
 
   if (isMobile) {
@@ -157,44 +227,49 @@ export function HostControlsMenu({
             </DrawerTitle>
           </DrawerHeader>
           <div className="relative px-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] overflow-y-auto">
-            <div className="rounded-2xl border border-border/70 bg-card/80 backdrop-blur-sm overflow-hidden divide-y divide-border/60 shadow-[0_8px_30px_-16px_hsl(var(--foreground)/0.25)]">
-              {entries.map((e) => {
-                const Icon = e.icon;
-                return (
-                  <button
-                    key={e.key}
-                    type="button"
-                    disabled={e.disabled}
-                    onClick={() => { setOpen(false); e.onSelect(); }}
-                    className={cn(
-                      "group w-full min-h-[60px] flex items-center gap-3 px-3.5 py-3 text-left transition-colors active:bg-muted/60 disabled:opacity-45",
-                      e.destructive && "bg-destructive/[0.04]",
-                    )}
-                  >
-                    <div className={cn(
-                      "h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0 border",
-                      e.destructive
-                        ? "bg-destructive/10 text-destructive border-destructive/25"
-                        : "bg-primary/10 text-primary border-primary/20",
-                    )}>
-                      <Icon className="h-[18px] w-[18px]" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className={cn(
-                        "text-[15px] font-semibold leading-tight tracking-[-0.01em]",
-                        e.destructive && "text-destructive",
-                      )}>
-                        {e.label}
-                      </div>
-                      <div className="mt-0.5 text-[11.5px] text-muted-foreground leading-snug truncate">
-                        {e.hint}
-                      </div>
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground/60 flex-shrink-0 transition-transform group-active:translate-x-0.5" />
-                  </button>
-                );
-              })}
-            </div>
+            {groups.map((group) => (
+              <div key={group.key}>
+                {groupLabel(group.key)}
+                <div className="rounded-2xl border border-border/70 bg-card/80 backdrop-blur-sm overflow-hidden divide-y divide-border/60 shadow-[0_8px_30px_-16px_hsl(var(--foreground)/0.25)]">
+                  {group.items.map((e) => {
+                    const Icon = e.icon;
+                    return (
+                      <button
+                        key={e.key}
+                        type="button"
+                        disabled={e.disabled}
+                        onClick={() => { setOpen(false); e.onSelect(); }}
+                        className={cn(
+                          "group w-full min-h-[60px] flex items-center gap-3 px-3.5 py-3 text-left transition-colors active:bg-muted/60 disabled:opacity-45",
+                          e.destructive && "bg-destructive/[0.04]",
+                        )}
+                      >
+                        <div className={cn(
+                          "h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0 border",
+                          e.destructive
+                            ? "bg-destructive/10 text-destructive border-destructive/25"
+                            : "bg-primary/10 text-primary border-primary/20",
+                        )}>
+                          <Icon className="h-[18px] w-[18px]" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className={cn(
+                            "text-[15px] font-semibold leading-tight tracking-[-0.01em]",
+                            e.destructive && "text-destructive",
+                          )}>
+                            {e.label}
+                          </div>
+                          <div className="mt-0.5 text-[11.5px] text-muted-foreground leading-snug truncate">
+                            {e.hint}
+                          </div>
+                        </div>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground/60 flex-shrink-0 transition-transform group-active:translate-x-0.5" />
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         </DrawerContent>
       </Drawer>
@@ -214,39 +289,45 @@ export function HostControlsMenu({
           Event controls
         </DropdownMenuLabel>
 
-        {entries.map((e) => {
-          const Icon = e.icon;
-          return (
-            <div key={e.key}>
-              {e.destructive && <DropdownMenuSeparator className="my-1.5" />}
-              <DropdownMenuItem
-                onClick={e.onSelect}
-                disabled={e.disabled}
-                className={cn(
-                  "gap-3 cursor-pointer rounded-lg px-2 py-2 items-start",
-                  e.destructive && "text-destructive focus:text-destructive focus:bg-destructive/10",
-                )}
-              >
-                <span className={cn(
-                  "mt-0.5 h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 border",
-                  e.destructive
-                    ? "bg-destructive/10 text-destructive border-destructive/25"
-                    : "bg-primary/10 text-primary border-primary/20",
-                )}>
-                  <Icon className="h-4 w-4" />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-[13px] font-semibold leading-tight">{e.label}</span>
-                  <span className="block mt-0.5 text-[11px] text-muted-foreground leading-snug">
-                    {e.hint}
-                  </span>
-                </span>
-              </DropdownMenuItem>
+        {groups.map((group) => (
+          <div key={group.key}>
+            <div className="px-2 pt-2 pb-1 text-[9.5px] font-bold uppercase tracking-[0.18em] text-muted-foreground/70">
+              {GROUP_LABELS[group.key]}
             </div>
-          );
-        })}
+            <div className="rounded-lg border border-border/50 bg-card/50 overflow-hidden divide-y divide-border/40">
+              {group.items.map((e) => {
+                const Icon = e.icon;
+                return (
+                  <DropdownMenuItem
+                    key={e.key}
+                    onClick={e.onSelect}
+                    disabled={e.disabled}
+                    className={cn(
+                      "gap-3 cursor-pointer rounded-none px-2 py-2 items-start focus:bg-muted/70",
+                      e.destructive && "text-destructive focus:text-destructive focus:bg-destructive/10",
+                    )}
+                  >
+                    <span className={cn(
+                      "mt-0.5 h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 border",
+                      e.destructive
+                        ? "bg-destructive/10 text-destructive border-destructive/25"
+                        : "bg-primary/10 text-primary border-primary/20",
+                    )}>
+                      <Icon className="h-4 w-4" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[13px] font-semibold leading-tight">{e.label}</span>
+                      <span className="block mt-0.5 text-[11px] text-muted-foreground leading-snug">
+                        {e.hint}
+                      </span>
+                    </span>
+                  </DropdownMenuItem>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </DropdownMenuContent>
     </DropdownMenu>
   );
 }
-
