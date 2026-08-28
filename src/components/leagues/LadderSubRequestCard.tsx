@@ -9,6 +9,7 @@ import {
 import { CalendarClock, UserX, CheckCircle2, Ban, Clock, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PRESSABLE_CARD } from "@/lib/leagues/motion";
+import { resolvePlayerName } from "@/lib/matchDisplay";
 
 interface WeekShell {
   id: string;
@@ -22,6 +23,7 @@ interface MyRequest {
   session_id: string;
   week_number: number;
   status: "pending" | "sub" | "sitout" | "declined" | "canceled";
+  assigned_sub_id: string | null;
 }
 
 /**
@@ -44,6 +46,9 @@ export function LadderSubRequestCard({
   const [pickWeek, setPickWeek] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
+  /** Upcoming scheduled weeks whose batch is already generated — too late. */
+  const [lockedWeeks, setLockedWeeks] = useState<number[]>([]);
+  const [subNames, setSubNames] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     if (!seasonId || !currentUserId) { setLoading(false); return; }
@@ -54,19 +59,38 @@ export function LadderSubRequestCard({
         .order("week_number", { ascending: true }),
       supabase.from("ladder_batches" as never).select("week_number").eq("season_id", seasonId),
       supabase.from("ladder_sub_requests" as never)
-        .select("id, session_id, week_number, status")
+        .select("id, session_id, week_number, status, assigned_sub_id")
         .eq("season_id", seasonId).eq("player_id", currentUserId),
     ]);
     const generated = new Set(
       ((batchRes.data ?? []) as Array<{ week_number: number }>).map((b) => b.week_number),
     );
     const today = new Date().toISOString().slice(0, 10);
-    // Requestable = week >= 2, not yet generated, and not already in the past.
-    setWeeks(((sessRes.data ?? []) as unknown as WeekShell[]).filter((w) =>
-      w.week_number >= 2
-      && !generated.has(w.week_number)
-      && (!w.scheduled_date || w.scheduled_date >= today)));
-    setRequests((reqRes.data ?? []) as unknown as MyRequest[]);
+    const upcoming = ((sessRes.data ?? []) as unknown as WeekShell[]).filter((w) =>
+      w.week_number >= 2 && (!w.scheduled_date || w.scheduled_date >= today));
+    // Requestable = upcoming and not yet generated. Weeks already generated are
+    // surfaced separately so the option doesn't just silently disappear.
+    setWeeks(upcoming.filter((w) => !generated.has(w.week_number)));
+    setLockedWeeks(upcoming.filter((w) => generated.has(w.week_number)).map((w) => w.week_number));
+    const reqs = (reqRes.data ?? []) as unknown as MyRequest[];
+    setRequests(reqs);
+
+    // Resolve the names of any assigned subs so "Sub arranged" says who.
+    const subIds = Array.from(new Set(reqs.map((r) => r.assigned_sub_id).filter(Boolean) as string[]));
+    if (subIds.length) {
+      const { data: profs } = await supabase
+        .from("profiles_public" as never)
+        .select("id, display_name, full_name, first_name, last_name")
+        .in("id", subIds);
+      const map: Record<string, string> = {};
+      (profs ?? []).forEach((p) => {
+        const r = p as { id: string };
+        map[r.id] = resolvePlayerName(p as never);
+      });
+      setSubNames(map);
+    } else {
+      setSubNames({});
+    }
     setLoading(false);
   }, [seasonId, currentUserId]);
 
@@ -74,15 +98,19 @@ export function LadderSubRequestCard({
 
   if (loading || !seasonId || !currentUserId) return null;
 
+  // A declined request is a closed outcome — it must NOT block the player from
+  // asking again for that week (plans change, organizer may find a sub later).
   const activeReqByWeek = new Map(
-    requests.filter((r) => r.status !== "canceled").map((r) => [r.week_number, r]),
+    requests
+      .filter((r) => r.status !== "canceled" && r.status !== "declined")
+      .map((r) => [r.week_number, r]),
   );
   // Weeks the player can still request for (no active request yet).
   const openWeeks = weeks.filter((w) => !activeReqByWeek.has(w.week_number));
   const myActive = requests.filter((r) => r.status !== "canceled");
 
   // Nothing to schedule against and nothing outstanding → hide entirely.
-  if (openWeeks.length === 0 && myActive.length === 0) return null;
+  if (openWeeks.length === 0 && myActive.length === 0 && lockedWeeks.length === 0) return null;
 
   const fmt = (w: WeekShell) => {
     const d = w.scheduled_date
@@ -159,7 +187,11 @@ export function LadderSubRequestCard({
                   <span className="flex flex-wrap items-center gap-1.5 min-w-0 break-words">
                     <span className="font-semibold">Week {r.week_number}</span>
                     <span className={`inline-flex items-center gap-1 ${m.cls}`}>
-                      {m.icon}{m.label}
+                      {m.icon}
+                      {m.label}
+                      {r.status === "sub" && r.assigned_sub_id && subNames[r.assigned_sub_id]
+                        ? ` — ${subNames[r.assigned_sub_id]}`
+                        : ""}
                     </span>
                   </span>
                   {r.status === "pending" && (
@@ -176,6 +208,14 @@ export function LadderSubRequestCard({
         <p className="text-xs text-muted-foreground">
           If you can't make an upcoming week, request a sub so the organizer can
           find a fill-in or hold your spot.
+        </p>
+      )}
+
+      {lockedWeeks.length > 0 && (
+        <p className="text-[11px] text-muted-foreground">
+          Week{lockedWeeks.length === 1 ? "" : "s"} {lockedWeeks.join(", ")}{" "}
+          {lockedWeeks.length === 1 ? "is" : "are"} already drawn — too late to request a sub.
+          Message your organizer directly if something came up.
         </p>
       )}
 
