@@ -22,7 +22,8 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Edit3, Trash2, Ban, AlertTriangle, ChevronRight, ChevronLeft, ShieldCheck } from "lucide-react";
+import { Edit3, Trash2, Ban, AlertTriangle, ChevronRight, ChevronLeft, ShieldCheck, ClipboardList } from "lucide-react";
+import { PremiumDialogHeader } from "./PremiumDialogHeader";
 import { MatchTeamLine } from "./MatchTeamLine";
 import {
   Select,
@@ -166,12 +167,11 @@ export function ScoreManagementDialog({
     <>
       <Dialog open={open} onOpenChange={handleClose}>
         <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Score & Match Management</DialogTitle>
-            <DialogDescription>
-              Edit scores, void matches, or delete match records.
-            </DialogDescription>
-          </DialogHeader>
+          <PremiumDialogHeader
+            icon={ClipboardList}
+            title="Score corrections"
+            description="Edit a reported score, void a result, or delete a match record."
+          />
 
           <div className="space-y-4 py-4">
             {allMatches.length === 0 ? (

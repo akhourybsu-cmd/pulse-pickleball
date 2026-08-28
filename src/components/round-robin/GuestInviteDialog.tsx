@@ -10,7 +10,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Copy, Loader2, Mail, Link as LinkIcon, Check } from "lucide-react";
+import { Copy, Loader2, Mail, Link as LinkIcon, Check, UserPlus } from "lucide-react";
+import { PremiumDialogHeader } from "./PremiumDialogHeader";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -124,15 +125,12 @@ export function GuestInviteDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>
-            {shareLink ? "Invite ready" : "Invite to claim profile"}
-          </DialogTitle>
-          <DialogDescription>
-            Let <strong>{guestDisplayName}</strong> link their guest history
-            to a registered PULSE account.
-          </DialogDescription>
-        </DialogHeader>
+        <PremiumDialogHeader
+          icon={UserPlus}
+          eyebrow="Guest profile"
+          title={shareLink ? "Invite ready" : "Invite to claim profile"}
+          description={<>Let <strong className="text-foreground">{guestDisplayName}</strong> link their guest history to a registered PULSE account.</>}
+        />
 
         {!shareLink ? (
           <div className="space-y-4 py-2">

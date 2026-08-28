@@ -3,6 +3,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { Clock, User, FileEdit } from "lucide-react";
+import { PremiumDialogHeader } from "./PremiumDialogHeader";
 
 interface AuditEntry {
   id: string;
@@ -74,12 +75,11 @@ export function AuditHistoryDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[80vh]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <FileEdit className="w-5 h-5" />
-            Audit History
-          </DialogTitle>
-        </DialogHeader>
+        <PremiumDialogHeader
+          icon={FileEdit}
+          title="Activity log"
+          description="Every host change to this event, newest first."
+        />
 
         <ScrollArea className="h-[60vh] pr-4">
           {auditEntries.length === 0 ? (

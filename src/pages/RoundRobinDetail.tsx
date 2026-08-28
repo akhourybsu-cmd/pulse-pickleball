@@ -234,6 +234,7 @@ export default function RoundRobinDetail() {
   const [savingScore, setSavingScore] = useState<string | null>(null);
   const [standings, setStandings] = useState<StandingsRow[]>([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [regenConfirmOpen, setRegenConfirmOpen] = useState(false);
   const [deleteMode, setDeleteMode] = useState<'void' | 'hard'>('void');
   const [isEditMode, setIsEditMode] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -1931,9 +1932,12 @@ export default function RoundRobinDetail() {
   // Wraps the existing regenerateScheduleFromRound helper with a
   // confirm + toast envelope, matching what the old inline button did.
   const handleRegenerateSchedule = async () => {
-    if (!confirm("Regenerate the entire schedule from scratch? This will reset all court assignments to match current settings.")) {
-      return;
-    }
+    setRegenConfirmOpen(true);
+  };
+
+  // Actual rebuild, run once the styled confirmation is accepted.
+  const runRegenerateSchedule = async () => {
+    setRegenConfirmOpen(false);
     try {
       toast.loading("Regenerating schedule...");
       await regenerateScheduleFromRound(1);
@@ -1964,6 +1968,9 @@ export default function RoundRobinDetail() {
               onSettings={() => setEditDialogOpen(true)}
               onCourtsAndGames={() => setCourtsRoundsOpen(true)}
               onRegenerateSchedule={handleRegenerateSchedule}
+              onEditSchedule={() => setScheduleEditorOpen(true)}
+              onScoreCorrections={() => setScoreManagementOpen(true)}
+              onActivityLog={() => setAuditHistoryOpen(true)}
               onOpenKiosk={() => {
                 const kioskUrl = `/round-robin/${event.id}/kiosk`;
                 window.open(kioskUrl, "_blank", "width=1920,height=1080");
@@ -2695,6 +2702,29 @@ export default function RoundRobinDetail() {
           )}
         </div>{/* /desktop grid */}
       </main>
+
+      {/* Styled confirmation for a full schedule rebuild — replaces window.confirm
+          so the destructive-ish action matches the rest of the host surfaces. */}
+      <AlertDialog open={regenConfirmOpen} onOpenChange={setRegenConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-primary/80">
+              Round Robin
+            </div>
+            <AlertDialogTitle className="text-[20px] font-extrabold tracking-[-0.01em]">
+              Rebuild the whole schedule?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Every round is regenerated from the current roster and settings. Court assignments
+              will change.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep current schedule</AlertDialogCancel>
+            <AlertDialogAction onClick={runRegenerateSchedule}>Regenerate</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
