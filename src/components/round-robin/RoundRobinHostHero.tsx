@@ -342,3 +342,29 @@ export function RoundRobinHostHero({
     </section>
   );
 }
+
+/**
+ * Small scoreboard-style metric tile used in the hero stat strip.
+ * Glassy card on the hero wash — label above, tabular value below.
+ */
+function StatTile({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: typeof Calendar;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-xl border border-border/60 bg-card/70 backdrop-blur-sm px-2.5 py-2 shadow-[0_1px_3px_hsl(var(--foreground)/0.04)]">
+      <div className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+        <Icon className="h-3 w-3 text-primary/80" />
+        {label}
+      </div>
+      <div className="mt-0.5 text-[15px] font-bold tracking-tight text-foreground tabular-nums truncate">
+        {value}
+      </div>
+    </div>
+  );
+}
