@@ -137,7 +137,7 @@ function MobileSectionPicker({
         </DrawerTrigger>
         <DrawerContent className="p-0 overflow-hidden">
           {/* Stadium banner — same broadcast header as every league menu */}
-          <div className="relative overflow-hidden bg-gradient-to-br from-[#0B171F] via-[#142029] to-[#1a2d38]">
+          <div className="relative overflow-hidden bg-gradient-to-br from-[color:var(--lg-emerald-deep)] via-[color:var(--lg-emerald)] to-[color:var(--lg-surface)]">
             <div className="absolute top-0 bottom-0 left-0 w-1.5 bg-primary" aria-hidden />
             <div
               aria-hidden
@@ -145,7 +145,7 @@ function MobileSectionPicker({
               style={{
                 backgroundImage:
                   "repeating-linear-gradient(45deg, transparent 0, transparent 10px, currentColor 10px, currentColor 11px)",
-                color: "#A6DB5A",
+                color: "var(--lg-hero-gold)",
               }}
             />
             <div aria-hidden className="absolute -top-14 -right-10 h-40 w-40 rounded-full blur-3xl pointer-events-none bg-primary/20" />
@@ -153,7 +153,7 @@ function MobileSectionPicker({
               <div className="text-[10px] font-black uppercase tracking-[0.2em] text-primary/80 mb-0.5">
                 League console
               </div>
-              <DrawerTitle className="text-lg font-black tracking-tight text-white">
+              <DrawerTitle className="text-lg font-black tracking-tight text-[color:var(--lg-hero-text)]">
                 Jump to section
               </DrawerTitle>
             </DrawerHeader>

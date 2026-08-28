@@ -145,7 +145,7 @@ export function SeasonsTab({ league, dataVersion, onMutated }: LeagueTabProps) {
           {syncable && (
             <Button
               size="sm" variant="outline" onClick={syncStatuses}
-              disabled={syncing} className="h-8"
+              disabled={syncing} className="h-11 px-4 shrink-0"
               title="Advance any season past its start/end date"
             >
               <RefreshCw className={cn("w-3.5 h-3.5 mr-1.5", syncing && "animate-spin")} />
@@ -154,7 +154,7 @@ export function SeasonsTab({ league, dataVersion, onMutated }: LeagueTabProps) {
           )}
           <Dialog open={createOpen} onOpenChange={setCreateOpen}>
             <DialogTrigger asChild>
-              <Button size="sm"><Plus className="w-4 h-4 mr-1" />New season</Button>
+              <Button size="sm" className="h-11 px-4 shrink-0 font-bold"><Plus className="w-4 h-4 mr-1.5" />New season</Button>
             </DialogTrigger>
             <SeasonEditor
               league={league}

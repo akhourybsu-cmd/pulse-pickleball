@@ -208,7 +208,7 @@ export function MembersTab({ league, dataVersion, onMutated }: LeagueTabProps) {
         <SeasonSelect seasons={seasons} value={seasonId} onChange={setSeasonId} className="flex-1" />
         <Dialog open={addOpen} onOpenChange={setAddOpen}>
           <DialogTrigger asChild>
-            <Button size="sm"><Plus className="w-4 h-4 mr-1" />Add member</Button>
+            <Button size="sm" className="h-11 px-4 shrink-0 font-bold"><Plus className="w-4 h-4 mr-1.5" />Add member</Button>
           </DialogTrigger>
           {seasonId && (
             <AddMemberDialog

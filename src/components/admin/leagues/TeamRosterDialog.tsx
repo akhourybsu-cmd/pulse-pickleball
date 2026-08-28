@@ -189,7 +189,7 @@ export function TeamRosterDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg p-0 overflow-hidden gap-0">
         {/* Stadium banner header — matches every other league menu */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-[#0B171F] via-[#142029] to-[#1a2d38]">
+        <div className="relative overflow-hidden bg-gradient-to-br from-[color:var(--lg-emerald-deep)] via-[color:var(--lg-emerald)] to-[color:var(--lg-surface)]">
           <div className="absolute top-0 bottom-0 left-0 w-1.5 bg-amber-400" aria-hidden />
           <div
             aria-hidden
@@ -197,7 +197,7 @@ export function TeamRosterDialog({
             style={{
               backgroundImage:
                 "repeating-linear-gradient(45deg, transparent 0, transparent 10px, currentColor 10px, currentColor 11px)",
-              color: "#F5C24A",
+              color: "var(--lg-hero-gold)",
             }}
           />
           <div aria-hidden className="absolute -top-14 -right-10 h-40 w-40 rounded-full blur-3xl pointer-events-none bg-amber-400/20" />
@@ -214,10 +214,10 @@ export function TeamRosterDialog({
                 <div className="text-[10px] font-black uppercase tracking-[0.2em] mb-0.5 text-amber-300/80">
                   Team roster
                 </div>
-                <DialogTitle className="text-lg font-black tracking-tight leading-tight text-white truncate">
+                <DialogTitle className="text-lg font-black tracking-tight leading-tight text-[color:var(--lg-hero-text)] truncate">
                   {team.name}
                 </DialogTitle>
-                <p className="text-xs text-slate-400 mt-1">
+                <p className="text-xs text-[color:var(--lg-hero-text-dim)] mt-1">
                   {active.length} active player{active.length === 1 ? "" : "s"}
                   {removed.length > 0 && ` · ${removed.length} removed`}
                 </p>

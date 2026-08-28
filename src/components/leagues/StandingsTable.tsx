@@ -161,11 +161,11 @@ function RankBadge({ rank }: { rank: number }) {
   // muted text.
   const tone =
     rank === 1
-      ? "bg-amber-500/15 text-amber-600 ring-1 ring-amber-500/30"
+      ? "bg-[color:var(--lg-gold)]/15 text-[color:var(--lg-accent-gold)] ring-1 ring-[color:var(--lg-gold)]/40"
       : rank === 2
-      ? "bg-slate-400/20 text-slate-500 ring-1 ring-slate-400/40"
+      ? "bg-muted text-foreground/80 ring-1 ring-border"
       : rank === 3
-      ? "bg-orange-500/15 text-orange-600 ring-1 ring-orange-500/30"
+      ? "bg-orange-500/15 text-orange-600 dark:text-orange-300 ring-1 ring-orange-500/30"
       : "bg-muted text-muted-foreground";
   return (
     <span

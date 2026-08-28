@@ -170,7 +170,7 @@ export function SubstitutesTab({ league, dataVersion, onMutated }: LeagueTabProp
         <SeasonSelect seasons={seasons} value={seasonId} onChange={setSeasonId} className="flex-1" />
         <Dialog open={addOpen} onOpenChange={setAddOpen}>
           <DialogTrigger asChild>
-            <Button size="sm"><Plus className="w-4 h-4 mr-1" />Add sub</Button>
+            <Button size="sm" className="h-11 px-4 shrink-0 font-bold"><Plus className="w-4 h-4 mr-1.5" />Add sub</Button>
           </DialogTrigger>
           {seasonId && (
             <SubEditorDialog

@@ -790,10 +790,10 @@ function LadderManage({
 
       {/* Progress header */}
       {activeBatch && (
-        <div className="rounded-xl border border-border/70 bg-gradient-to-br from-[#0B171F] to-[#142029] p-4 text-white">
+        <div className="rounded-xl border border-border/70 bg-gradient-to-br from-[color:var(--lg-emerald-deep)] to-[color:var(--lg-surface)] p-4 text-[color:var(--lg-hero-text)]">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div>
-              <div className="text-[10px] font-black uppercase tracking-[0.2em] text-[#A6DB5A]">
+              <div className="text-[10px] font-black uppercase tracking-[0.2em] text-[color:var(--lg-hero-gold)]">
                 Week {activeBatch.week_number}
                 {settings?.total_weeks ? ` of ${settings.total_weeks}` : ""}
               </div>
@@ -803,16 +803,16 @@ function LadderManage({
             </div>
             <div className="text-right">
               <div className="text-2xl font-black tabular-nums">
-                {scoredGames}<span className="text-slate-500">/{totalGames}</span>
+                {scoredGames}<span className="text-[color:var(--lg-hero-text-dim)]/70">/{totalGames}</span>
               </div>
-              <div className="text-[10px] uppercase tracking-wider text-slate-400">games in</div>
+              <div className="text-[10px] uppercase tracking-wider text-[color:var(--lg-hero-text-dim)]">games in</div>
             </div>
           </div>
-          <div className="mt-3 h-1.5 rounded-full bg-slate-700 overflow-hidden">
-            <div className="h-full bg-[#A6DB5A] transition-all"
+          <div className="mt-3 h-1.5 rounded-full bg-white/15 overflow-hidden">
+            <div className="h-full bg-[color:var(--lg-gold)] transition-all"
               style={{ width: `${totalGames ? (scoredGames / totalGames) * 100 : 0}%` }} />
           </div>
-          <p className="text-[11px] text-slate-400 mt-2">
+          <p className="text-[11px] text-[color:var(--lg-hero-text-dim)] mt-2">
             {batchComplete
               ? "All games in — process results to apply movement. You'll then generate the next stage as a separate step."
               : "Enter every game's final score, then process the results to move players up and down."}
@@ -871,7 +871,7 @@ function LadderManage({
         <>
           <label className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-background/50 px-3 py-2 cursor-pointer">
             <div className="flex items-center gap-2 text-xs">
-              <Zap className={cn("w-3.5 h-3.5", autoAdvance ? "text-[#A6DB5A]" : "text-muted-foreground")} />
+              <Zap className={cn("w-3.5 h-3.5", autoAdvance ? "text-[color:var(--lg-accent-gold)]" : "text-muted-foreground")} />
               <span className="font-semibold">Auto-advance</span>
               <span className="text-muted-foreground">
                 {autoAdvance
@@ -883,7 +883,7 @@ function LadderManage({
           </label>
           <label className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-background/50 px-3 py-2 cursor-pointer">
             <div className="flex items-center gap-2 text-xs">
-              <CheckCircle2 className={cn("w-3.5 h-3.5", selfReport ? "text-[#A6DB5A]" : "text-muted-foreground")} />
+              <CheckCircle2 className={cn("w-3.5 h-3.5", selfReport ? "text-[color:var(--lg-accent-gold)]" : "text-muted-foreground")} />
               <span className="font-semibold">Self-report scoring</span>
               <span className="text-muted-foreground">
                 {selfReport
@@ -1923,8 +1923,8 @@ function GenerateNextPanel({
 
   const isWeek = nextStage.kind === "week";
   return (
-    <motion.div {...reveal} className="rounded-xl border border-border/70 bg-gradient-to-br from-[#0B171F] to-[#142029] p-4 text-white">
-      <div className="text-[10px] font-black uppercase tracking-[0.2em] text-[#A6DB5A]">
+    <motion.div {...reveal} className="rounded-xl border border-border/70 bg-gradient-to-br from-[color:var(--lg-emerald-deep)] to-[color:var(--lg-surface)] p-4 text-[color:var(--lg-hero-text)]">
+      <div className="text-[10px] font-black uppercase tracking-[0.2em] text-[color:var(--lg-hero-gold)]">
         {isWeek ? "Week complete" : "Batch processed"}
       </div>
       <div className="text-lg font-black mt-0.5">
@@ -1932,7 +1932,7 @@ function GenerateNextPanel({
           ? `Ready to start Week ${nextStage.week}`
           : `Ready for Batch ${nextStage.batch}`}
       </div>
-      <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
+      <p className="text-[11px] text-[color:var(--lg-hero-text-dim)] mt-1 leading-relaxed">
         {isWeek
           ? "The week's final positions are locked in. Generating Week " +
             `${nextStage.week} builds new foursomes from the current ladder — ` +
@@ -1944,7 +1944,7 @@ function GenerateNextPanel({
         onClick={onGenerate}
         loading={generating}
         disabled={paused || blocked}
-        className="mt-3 w-full h-12 font-bold uppercase tracking-wide bg-[#A6DB5A] text-[#0B171F] hover:bg-[#95c94f]"
+        className="mt-3 w-full h-12 font-bold uppercase tracking-wide bg-[color:var(--lg-gold)] text-[#1a1408] hover:bg-[color:var(--lg-gold-bright)]"
       >
         <Play className="w-4 h-4 mr-1.5" />
         {nextStage.label}
