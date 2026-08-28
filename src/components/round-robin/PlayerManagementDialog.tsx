@@ -96,6 +96,9 @@ export function PlayerManagementDialog({
   const [substituteScope, setSubstituteScope] = useState<'global' | number>('global');
   const [loading, setLoading] = useState(false);
   const [substituteNewName, setSubstituteNewName] = useState<string>("");
+  const [confirmingRemoveId, setConfirmingRemoveId] = useState<string | null>(null);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+  const [justRemovedId, setJustRemovedId] = useState<string | null>(null);
 
   const activePlayers = players.filter(p => p.active);
   const inactivePlayers = players.filter(p => !p.active);
