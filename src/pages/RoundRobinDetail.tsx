@@ -477,6 +477,7 @@ export default function RoundRobinDetail() {
       return;
     }
 
+    const pulse = startPulseActivity("Building schedule…");
     try {
       const { data, error } = await supabase.functions.invoke("generate-round-robin-schedule", {
         body: {
@@ -492,12 +493,14 @@ export default function RoundRobinDetail() {
       });
 
       if (error) throw error;
-      toast.success(`Schedule generated with ${calculatedRounds} rounds!`);
+      pulse.done(`Schedule ready · ${calculatedRounds} rounds`);
       fetchEventDetails();
     } catch (error: unknown) {
+      pulse.fail();
       toast.error("Failed to generate schedule");
       console.error(error);
     }
+
   };
 
   const handleStartEvent = async () => {
