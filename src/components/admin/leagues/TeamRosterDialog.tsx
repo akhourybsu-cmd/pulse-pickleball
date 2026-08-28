@@ -225,12 +225,15 @@ export function TeamRosterDialog({
             </div>
           </DialogHeader>
         </div>
-
-
         {loading ? (
-          <p className="text-sm text-muted-foreground py-10 text-center">Loading…</p>
+          <div className="px-5 py-6 space-y-2">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="h-[52px] rounded-xl bg-muted/50 animate-pulse" />
+            ))}
+          </div>
         ) : (
-          <div className="px-5 pb-5 pt-1 space-y-5 max-h-[70vh] overflow-y-auto">
+          <div className="px-5 pb-5 pt-4 space-y-5 max-h-[65vh] overflow-y-auto">
+
             {/* Active roster */}
             <section className="space-y-2.5">
               <div className="flex items-baseline gap-2 border-b border-border/40 pb-1.5">
