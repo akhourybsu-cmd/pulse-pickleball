@@ -257,12 +257,13 @@ function LadderSetup({
 /* ------------------------------------------------------------------ */
 
 function LadderStart({
-  league, seasonId, ladder, onStarted,
+  league, seasonId, ladder, onStarted, onNavigate,
 }: {
   league: League;
   seasonId: string;
   ladder: ReturnType<typeof useLadder>;
   onStarted: () => void;
+  onNavigate?: LeagueTabProps["onNavigate"];
 }) {
   const [order, setOrder] = useState<string[]>([]);
   const [starting, setStarting] = useState(false);
@@ -418,11 +419,12 @@ function LadderStart({
 /* ------------------------------------------------------------------ */
 
 function LadderManage({
-  league, ladder, onChanged,
+  league, ladder, onChanged, onNavigate,
 }: {
   league: League;
   ladder: ReturnType<typeof useLadder>;
   onChanged: () => void;
+  onNavigate?: LeagueTabProps["onNavigate"];
 }) {
   const { activeBatch, groups, games, settings } = ladder;
   const [processing, setProcessing] = useState(false);
