@@ -596,44 +596,60 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
                                       : "bg-card border-border/50 hover:border-border"
                                   }`}
                                 >
-                                  <div className="flex items-center gap-4">
-                                    <Badge 
-                                      variant="outline" 
-                                      className="min-w-[70px] justify-center font-mono text-xs bg-muted/50"
-                                    >
-                                      Court {match.court_no}
-                                    </Badge>
-                                    
-                                    {isBye ? (
-                                      <div className="text-muted-foreground italic">
-                                        <span className="font-medium text-foreground">{seatName(match, 'a1')}</span> — BYE
+                                  {isBye ? (
+                                    <div className="flex items-center gap-3">
+                                      <Badge
+                                        variant="outline"
+                                        className="min-w-[62px] justify-center font-mono text-[11px] bg-muted/50"
+                                      >
+                                        Bye
+                                      </Badge>
+                                      <div className="text-sm text-muted-foreground min-w-0 truncate">
+                                        <span className="font-medium text-foreground">{seatName(match, 'a1')}</span> — resting
                                       </div>
-                                    ) : (
-                                      <div className="flex-1 min-w-0 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] gap-3 items-center">
-                                        <div className={`text-sm truncate ${teamAWon ? "font-semibold text-primary" : ""}`}>
-                                          {seatName(match, 'a1')} / {seatName(match, 'a2')}
-                                        </div>
-                                        <div className="text-center">
-                                          {match.completed ? (
-                                            <div className="flex items-center gap-2">
-                                              <span className={`text-lg font-mono font-bold ${teamAWon ? "text-primary" : "text-muted-foreground"}`}>
-                                                {teamAScore}
-                                              </span>
-                                              <span className="text-muted-foreground">-</span>
-                                              <span className={`text-lg font-mono font-bold ${teamBWon ? "text-primary" : "text-muted-foreground"}`}>
-                                                {teamBScore}
-                                              </span>
-                                            </div>
-                                          ) : (
-                                            <span className="text-muted-foreground text-sm">vs</span>
-                                          )}
-                                        </div>
-                                        <div className={`text-sm text-right truncate ${teamBWon ? "font-semibold text-primary" : ""}`}>
-                                          {seatName(match, 'b1')} / {seatName(match, 'b2')}
-                                        </div>
+                                    </div>
+                                  ) : (
+                                    <div className="space-y-2">
+                                      <div className="flex items-center justify-between gap-2">
+                                        <Badge
+                                          variant="outline"
+                                          className="justify-center font-mono text-[11px] bg-muted/50"
+                                        >
+                                          Court {match.court_no}
+                                        </Badge>
+                                        {!match.completed && (
+                                          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                                            Upcoming
+                                          </span>
+                                        )}
                                       </div>
-                                    )}
-                                  </div>
+
+                                      <div className={`flex items-center gap-2 rounded-lg px-2.5 py-2 ${teamAWon ? "bg-primary/10 border border-primary/25" : "bg-muted/40"}`}>
+                                        <TeamNamesStack
+                                          className="flex-1"
+                                          isWinner={teamAWon}
+                                          player1={seatName(match, 'a1')}
+                                          player2={seatName(match, 'a2')}
+                                        />
+                                        <span className={`text-lg font-mono font-bold tabular-nums flex-shrink-0 ${teamAWon ? "text-primary" : "text-muted-foreground"}`}>
+                                          {teamAScore ?? "–"}
+                                        </span>
+                                      </div>
+
+                                      <div className={`flex items-center gap-2 rounded-lg px-2.5 py-2 ${teamBWon ? "bg-primary/10 border border-primary/25" : "bg-muted/40"}`}>
+                                        <TeamNamesStack
+                                          className="flex-1"
+                                          isWinner={teamBWon}
+                                          player1={seatName(match, 'b1')}
+                                          player2={seatName(match, 'b2')}
+                                        />
+                                        <span className={`text-lg font-mono font-bold tabular-nums flex-shrink-0 ${teamBWon ? "text-primary" : "text-muted-foreground"}`}>
+                                          {teamBScore ?? "–"}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  )}
+
                                 </motion.div>
                               );
                             })}
