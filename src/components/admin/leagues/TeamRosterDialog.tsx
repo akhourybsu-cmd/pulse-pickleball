@@ -188,27 +188,44 @@ export function TeamRosterDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg p-0 overflow-hidden gap-0">
-        {/* Amber accent — teams tone throughout the league system */}
-        <div className="h-1.5 w-full bg-amber-500" aria-hidden />
+        {/* Stadium banner header — matches every other league menu */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-[#0B171F] via-[#142029] to-[#1a2d38]">
+          <div className="absolute top-0 bottom-0 left-0 w-1.5 bg-amber-400" aria-hidden />
+          <div
+            aria-hidden
+            className="absolute inset-0 opacity-[0.05] pointer-events-none"
+            style={{
+              backgroundImage:
+                "repeating-linear-gradient(45deg, transparent 0, transparent 10px, currentColor 10px, currentColor 11px)",
+              color: "#F5C24A",
+            }}
+          />
+          <div aria-hidden className="absolute -top-14 -right-10 h-40 w-40 rounded-full blur-3xl pointer-events-none bg-amber-400/20" />
 
-        <DialogHeader className="p-5 pb-3 space-y-0">
-          <div className="flex items-start gap-3">
-            <div
-              className="h-10 w-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0"
-              aria-hidden
-            >
-              <Users className="w-5 h-5" />
+          <DialogHeader className="relative p-5 pb-4 space-y-0 text-left">
+            <div className="flex items-start gap-3">
+              <div
+                className="h-11 w-11 rounded-xl bg-amber-400/15 text-amber-300 flex items-center justify-center shrink-0 ring-1 ring-white/10"
+                aria-hidden
+              >
+                <Users className="w-5 h-5" />
+              </div>
+              <div className="min-w-0 flex-1 pt-0.5">
+                <div className="text-[10px] font-black uppercase tracking-[0.2em] mb-0.5 text-amber-300/80">
+                  Team roster
+                </div>
+                <DialogTitle className="text-lg font-black tracking-tight leading-tight text-white truncate">
+                  {team.name}
+                </DialogTitle>
+                <p className="text-xs text-slate-400 mt-1">
+                  {active.length} active player{active.length === 1 ? "" : "s"}
+                  {removed.length > 0 && ` · ${removed.length} removed`}
+                </p>
+              </div>
             </div>
-            <div className="min-w-0 flex-1 pt-0.5">
-              <DialogTitle className="text-lg font-bold tracking-tight leading-tight truncate">
-                {team.name}
-              </DialogTitle>
-              <p className="text-xs text-muted-foreground mt-1">
-                {active.length} active player{active.length === 1 ? "" : "s"}
-              </p>
-            </div>
-          </div>
-        </DialogHeader>
+          </DialogHeader>
+        </div>
+
 
         {loading ? (
           <p className="text-sm text-muted-foreground py-10 text-center">Loading…</p>
