@@ -353,15 +353,24 @@ function LadderStart({
       </div>
 
       {!divisibleByFour && (
-        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-700 dark:text-amber-300 flex gap-2">
-          <Info className="w-4 h-4 shrink-0 mt-0.5" />
-          <span>
-            Ladder groups are foursomes, so the active roster must be divisible
-            by four. You have <strong>{order.length}</strong> active player{order.length === 1 ? "" : "s"} —
-            add or remove players on the Players tab so the count is a multiple of four.
-          </span>
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-700 dark:text-amber-300 space-y-2">
+          <div className="flex gap-2">
+            <Info className="w-4 h-4 shrink-0 mt-0.5" />
+            <span>
+              Ladder groups are foursomes, so the active roster must be divisible
+              by four. You have <strong>{order.length}</strong> active player{order.length === 1 ? "" : "s"} —
+              add or remove players so the count is a multiple of four.
+            </span>
+          </div>
+          {onNavigate && (
+            <ActionButton size="sm" variant="outline" className="h-8 text-xs"
+              onClick={() => onNavigate("members")}>
+              Go to Players
+            </ActionButton>
+          )}
         </div>
       )}
+
 
       <ol className="space-y-1.5">
         {order.map((pid, i) => (
