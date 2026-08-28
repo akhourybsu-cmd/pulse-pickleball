@@ -708,7 +708,11 @@ function GuestRosterList({
   }, [data]);
 
   const items = data
+    // Guests who claimed a PULSE account graduate off the guest roster —
+    // pick them from the player search instead so their rating counts.
+    .filter((g) => !g.linked_user_id)
     .filter((g) => !excludeSet?.has(g.id))
+
     .map((g) => {
       const isDup = (nameCounts.get(g.display_name.toLowerCase()) ?? 0) > 1;
       const created = g.created_at
