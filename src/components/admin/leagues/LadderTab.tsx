@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ActionButton } from "@/components/leagues/ActionButton";
 import { Button } from "@/components/ui/button";
+import { withPulseActivity } from "@/components/ui/pulse-activity";
+
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import {
