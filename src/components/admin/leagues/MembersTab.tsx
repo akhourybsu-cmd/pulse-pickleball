@@ -596,23 +596,30 @@ function AddMemberDialog({
       user_id: pickedId,
       role, status,
     };
-    const { data, error } = await supabase
-      .from("league_members" as never).insert(payload as never).select().single();
-    if (error || !data) {
-      toast.error(error?.message ?? "Add failed");
+    try {
+      await withPulseActivity(
+        `Adding ${pickedName || "member"}…`,
+        async () => {
+          const { data, error } = await supabase
+            .from("league_members" as never).insert(payload as never).select().single();
+          if (error || !data) throw error ?? new Error("Add failed");
+          await logLeagueAction({
+            leagueId: league.id, seasonId,
+            action: "member.added", entityType: "member",
+            entityId: (data as unknown as LeagueMember).id,
+            newValue: payload,
+          });
+        },
+        "Added to the roster",
+      );
+      await onDone();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Add failed");
+    } finally {
       setSaving(false);
-      return;
     }
-    await logLeagueAction({
-      leagueId: league.id, seasonId,
-      action: "member.added", entityType: "member",
-      entityId: (data as unknown as LeagueMember).id,
-      newValue: payload,
-    });
-    toast.success("Member added");
-    setSaving(false);
-    await onDone();
   };
+
 
   const pickedRow =
     pickedRowOverride
