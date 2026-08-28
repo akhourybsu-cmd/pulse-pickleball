@@ -15,7 +15,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationBell } from "@/components/NotificationBell";
 import { motion } from "framer-motion";
 import { formatDateEST, formatTime12Hour } from "@/lib/utils";
-import { countsTowardScore } from "@/lib/roundRobin/standings";
+import { computeStandings, guestSeatLabel } from "@/lib/roundRobin/standings";
 import {
   Table,
   TableBody,
@@ -90,6 +90,7 @@ interface StandingsRow {
   pointsFor: number;
   pointsAgainst: number;
   gamesPlayed: number;
+  isRemoved?: boolean;
 }
 
 export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewProps) {
@@ -254,80 +255,37 @@ export function PlayerRoundRobinView({ eventId, userId }: PlayerRoundRobinViewPr
   };
 
   const calculateStandings = (matches: ScheduleMatch[], playersList: Player[]) => {
-    const stats: Record<string, StandingsRow> = {};
-
-    // Initialize stats for all players. Guests have no player_id — key them
-    // by guest_player_id instead, matching how the schedule seats attribute
-    // results (player_id ?? guest_id below). Keying everyone by player_id
-    // collapsed all guests into one stats[null] row with zero credit.
-    playersList.forEach((p) => {
-      const key = p.player_id || (p as any).guest_player_id;
-      if (!key) return;
-      stats[key] = {
-        playerId: key,
-        playerName:
+    // Canonical math shared with the organizer page and kiosk.
+    const participants = playersList
+      .map((p) => {
+        const key = p.player_id || (p as any).guest_player_id;
+        if (!key) return null;
+        const name =
           p.profiles?.display_name ||
           p.profiles?.full_name ||
           (p.is_guest
-            ? (p.guest_linked_user_id
-                ? (p.guest_display_name || "Guest")
-                : `${p.guest_display_name || "Guest"} (G)`)
-            : "Someone"),
-        wins: 0,
-        losses: 0,
-        pointsFor: 0,
-        pointsAgainst: 0,
-        gamesPlayed: 0,
-      };
-    });
+            ? guestSeatLabel(
+                { display_name: p.guest_display_name, linked_user_id: p.guest_linked_user_id },
+                p.guest_display_name,
+              )
+            : "Someone");
+        const active = (p as any).active;
+        return { key, name, active: active === undefined ? true : !!active };
+      })
+      .filter(Boolean) as { key: string; name: string; active: boolean }[];
 
-    // Calculate from completed matches
-    matches.forEach((match) => {
-      const teamAScore = match.team_a_score ?? match.team1_score ?? null;
-      const teamBScore = match.team_b_score ?? match.team2_score ?? null;
-
-      // Slice 4: skip byes, unscored, voided, superseded, and abandoned rows.
-      if (!countsTowardScore(match)) return;
-      if (teamAScore === null || teamBScore === null) return;
-
-      const teamAPlayers = [
-        match.a1_player_id ?? match.a1_guest_id,
-        match.a2_player_id ?? match.a2_guest_id,
-      ].filter(Boolean) as string[];
-      const teamBPlayers = [
-        match.b1_player_id ?? match.b1_guest_id,
-        match.b2_player_id ?? match.b2_guest_id,
-      ].filter(Boolean) as string[];
-
-      const teamAWon = teamAScore > teamBScore;
-
-      teamAPlayers.forEach((playerId) => {
-        if (stats[playerId]) {
-          stats[playerId].gamesPlayed += 1;
-          stats[playerId].pointsFor += teamAScore;
-          stats[playerId].pointsAgainst += teamBScore;
-          if (teamAWon) stats[playerId].wins += 1;
-          else stats[playerId].losses += 1;
-        }
-      });
-
-      teamBPlayers.forEach((playerId) => {
-        if (stats[playerId]) {
-          stats[playerId].gamesPlayed += 1;
-          stats[playerId].pointsFor += teamBScore;
-          stats[playerId].pointsAgainst += teamAScore;
-          if (!teamAWon) stats[playerId].wins += 1;
-          else stats[playerId].losses += 1;
-        }
-      });
-    });
-
-    const sortedStandings = Object.values(stats).sort((a, b) => {
-      if (b.wins !== a.wins) return b.wins - a.wins;
-      return b.pointsFor - b.pointsAgainst - (a.pointsFor - a.pointsAgainst);
-    });
-
-    setStandings(sortedStandings);
+    setStandings(
+      computeStandings(matches as any, participants).map((r) => ({
+        playerId: r.key,
+        playerName: r.name,
+        wins: r.wins,
+        losses: r.losses,
+        pointsFor: r.pointsFor,
+        pointsAgainst: r.pointsAgainst,
+        gamesPlayed: r.gamesPlayed,
+        isRemoved: r.isRemoved,
+      })),
+    );
   };
 
   const getPlayerName = (playerId: string | null) => {

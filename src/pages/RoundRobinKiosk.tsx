@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { Radio, Lock, Clock, Trophy, Palette } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { countsTowardScore } from "@/lib/roundRobin/standings";
+import { computeStandings, participantsFromSchedule, guestSeatLabel } from "@/lib/roundRobin/standings";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -189,72 +189,17 @@ export default function RoundRobinKiosk() {
     };
   }, [eventId]);
 
-  const calculateStandings = (schedule: ScheduleMatch[]) => {
-    const playerStats = new Map<string, StandingsRow>();
-
-    schedule
-      .filter(countsTowardScore)
-      .forEach((match) => {
-        const team1 = [
-          match.a1_player_id ?? match.a1_guest_id,
-          match.a2_player_id ?? match.a2_guest_id,
-        ].filter((id): id is string => id !== null);
-        const team2 = [
-          match.b1_player_id ?? match.b1_guest_id,
-          match.b2_player_id ?? match.b2_guest_id,
-        ].filter((id): id is string => id !== null);
-
-        const t1score = match.team1_score!;
-        const t2score = match.team2_score!;
-        const team1Won = t1score > t2score;
-
-        [...team1, ...team2].forEach((playerId) => {
-          if (!playerId) return;
-          if (!playerStats.has(playerId)) {
-            const playerName = getPlayerIdName(playerId, schedule);
-            playerStats.set(playerId, {
-              player_id: playerId,
-              player_name: playerName,
-              wins: 0,
-              losses: 0,
-              points_for: 0,
-              points_against: 0,
-              point_diff: 0
-            });
-          }
-        });
-
-        team1.forEach((playerId) => {
-          if (!playerId) return;
-          const stats = playerStats.get(playerId)!;
-          stats.points_for += t1score;
-          stats.points_against += t2score;
-          if (team1Won) stats.wins++;
-          else stats.losses++;
-        });
-
-        team2.forEach((playerId) => {
-          if (!playerId) return;
-          const stats = playerStats.get(playerId)!;
-          stats.points_for += t2score;
-          stats.points_against += t1score;
-          if (!team1Won) stats.wins++;
-          else stats.losses++;
-        });
-      });
-
-    const result = Array.from(playerStats.values())
-      .map((row) => ({
-        ...row,
-        point_diff: row.points_for - row.points_against
-      }))
-      .sort((a, b) => {
-        if (b.wins !== a.wins) return b.wins - a.wins;
-        if (b.point_diff !== a.point_diff) return b.point_diff - a.point_diff;
-        return b.points_for - a.points_for;
-      });
-
-    return result;
+  const calculateStandings = (schedule: ScheduleMatch[]): StandingsRow[] => {
+    // Canonical math shared with the organizer page and player view.
+    return computeStandings(schedule, participantsFromSchedule(schedule as any)).map((r) => ({
+      player_id: r.key,
+      player_name: r.name,
+      wins: r.wins,
+      losses: r.losses,
+      points_for: r.pointsFor,
+      points_against: r.pointsAgainst,
+      point_diff: r.pointDiff,
+    }));
   };
 
   const getPlayerIdName = (playerId: string, schedule: ScheduleMatch[]): string => {
