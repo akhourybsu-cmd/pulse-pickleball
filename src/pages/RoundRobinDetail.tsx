@@ -1142,6 +1142,9 @@ export default function RoundRobinDetail() {
     const player = players.find(p => p.id === playerEventId);
     if (!player) return;
 
+    // Resolved name works for registered players, reusable guests, and legacy
+    // ad-hoc guests alike.
+    const participantName = resolveRRParticipant(player as never).name;
     const reason = "Player removed from roster (past scores preserved)";
 
     // Core apply path — optionally carrying the host's decision about a live
