@@ -955,11 +955,16 @@ export default function RoundRobinDetail() {
       return;
     }
 
+    // Guests are first-class here: a row with guest_player_id schedules exactly
+    // like a registered player. Only legacy ad-hoc rows (a bare guest_name with
+    // no guest record) can't be seated by the generator.
     const unfilled = activePlayers.filter(
       (p: any) => !p.player_id && !p.guest_player_id,
     );
     if (unfilled.length > 0) {
-      toast.error("Every active roster slot must be either a registered player or a guest.");
+      toast.error(
+        `${unfilled.length} roster slot${unfilled.length === 1 ? "" : "s"} ${unfilled.length === 1 ? "is" : "are"} an unlinked legacy guest — substitute ${unfilled.length === 1 ? "it" : "them"} for a saved guest or player, then regenerate.`,
+      );
       return;
     }
 
