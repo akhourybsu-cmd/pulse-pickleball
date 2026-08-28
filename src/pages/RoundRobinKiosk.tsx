@@ -150,12 +150,10 @@ export default function RoundRobinKiosk() {
           filter: `id=eq.${eventId}`,
         },
         (payload) => {
-          console.log('Kiosk: Event changed', payload);
           fetchEventData();
         }
       )
       .subscribe((status) => {
-        console.log('Kiosk: Events channel status', status);
       });
 
     const scheduleChannel = supabase
@@ -169,12 +167,10 @@ export default function RoundRobinKiosk() {
           filter: `event_id=eq.${eventId}`,
         },
         (payload) => {
-          console.log('Kiosk: Schedule changed', payload);
           fetchEventData();
         }
       )
       .subscribe((status) => {
-        console.log('Kiosk: Schedule channel status', status);
       });
 
     // Auto-refresh every 5 seconds for immediate score updates
