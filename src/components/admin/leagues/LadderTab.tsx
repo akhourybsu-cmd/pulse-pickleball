@@ -310,10 +310,15 @@ function LadderStart({
 
   const invokeStart = async (session_id: string | null) => {
     setStarting(true);
-    const { data, error } = await supabase.functions.invoke("ladder-generate-first-batch", {
-      body: { season_id: seasonId, order, session_id },
-    });
+    const { data, error } = await withPulseActivity(
+      "Building Week 1 courts…",
+      async () => supabase.functions.invoke("ladder-generate-first-batch", {
+        body: { season_id: seasonId, order, session_id },
+      }),
+      "Ladder started",
+    );
     setStarting(false);
+
     if (error || (data as { error?: string })?.error) {
       toast.error((data as { message?: string })?.message ?? error?.message ?? "Couldn't start ladder");
       return;
