@@ -891,14 +891,18 @@ function BulkAddMembersDialog({
   const runDryRun = async () => {
     if (emails.length === 0) { toast.error("Paste some emails first"); return; }
     setBusy(true);
-    const { data, error } = await supabase.rpc(
-      "bulk_add_league_members" as never,
-      {
-        p_league_id: league.id,
-        p_season_id: seasonId,
-        p_emails: emails,
-        p_dry_run: true,
-      } as never,
+    const { data, error } = await withPulseActivity(
+      `Checking ${emails.length} email${emails.length === 1 ? "" : "s"}…`,
+      async () => supabase.rpc(
+        "bulk_add_league_members" as never,
+        {
+          p_league_id: league.id,
+          p_season_id: seasonId,
+          p_emails: emails,
+          p_dry_run: true,
+        } as never,
+      ),
+      "Preview ready",
     );
     setBusy(false);
     if (error) { toast.error(error.message); return; }
@@ -908,17 +912,22 @@ function BulkAddMembersDialog({
   const commit = async () => {
     if (!preview) return;
     setBusy(true);
-    const { data, error } = await supabase.rpc(
-      "bulk_add_league_members" as never,
-      {
-        p_league_id: league.id,
-        p_season_id: seasonId,
-        p_emails: emails,
-        p_dry_run: false,
-      } as never,
+    const { data, error } = await withPulseActivity(
+      "Importing members…",
+      async () => supabase.rpc(
+        "bulk_add_league_members" as never,
+        {
+          p_league_id: league.id,
+          p_season_id: seasonId,
+          p_emails: emails,
+          p_dry_run: false,
+        } as never,
+      ),
+      "Roster imported",
     );
     setBusy(false);
     if (error) { toast.error(error.message); return; }
+
     const report = data as unknown as DryRunReport;
     const parts: string[] = [];
     if (report.added_count) parts.push(`${report.added_count} added`);
