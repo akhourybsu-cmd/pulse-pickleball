@@ -12,8 +12,9 @@ import {
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { PlayerPickerSheet, type PickerPlayer } from "./PlayerPickerSheet";
-import { Pencil } from "lucide-react";
+import { Pencil, Ban, RefreshCw } from "lucide-react";
 import { UserPlus, UserMinus, Users, ChevronRight, ChevronLeft } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Select,
