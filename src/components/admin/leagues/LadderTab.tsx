@@ -1088,22 +1088,30 @@ function TiebreakDialog({
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onCancel(); }}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Who advances?</DialogTitle>
-          <DialogDescription>
-            {ties.length === 1 ? "A court" : `${ties.length} courts`} ended level
-            on record and points. Play a tiebreaker (e.g. a skinny-singles game)
-            and set the finishing order below — top of the list finishes highest.
-            {ties.some((t) => t.resolved_order?.length) && (
-              <span className="mt-1 block text-emerald-600 dark:text-emerald-400">
-                A player already recorded an order for a tied court — it's pre-filled below. Review and process.
-              </span>
-            )}
-          </DialogDescription>
-        </DialogHeader>
+      <FormShell
+        icon={<Scale className="w-5 h-5" />}
+        tone="gold"
+        size="lg"
+        kicker="Tiebreak"
+        title="Who advances?"
+        subtitle={`${ties.length === 1 ? "A court" : `${ties.length} courts`} ended level on record and points. Play a tiebreaker, then set the finishing order — top finishes highest.`}
+        primaryLabel="Confirm & process"
+        primaryLoading={busy}
+        onPrimary={() => onResolve(orders)}
+        secondary={
+          <Button variant="outline" onClick={onCancel} disabled={busy} className="h-12 sm:w-28">
+            Cancel
+          </Button>
+        }
+      >
+        {ties.some((t) => t.resolved_order?.length) && (
+          <div className="rounded-xl border border-primary/30 bg-primary/[0.07] px-3 py-2 text-[11px] leading-relaxed text-foreground/80">
+            A player already recorded an order for a tied court — it's pre-filled below. Review and process.
+          </div>
+        )}
 
-        <div className="space-y-4 max-h-[55vh] overflow-y-auto">
+        <div className="space-y-4">
+
           {ties.map((t) => {
             const promo = t.boundaries.includes("promotion");
             const relo = t.boundaries.includes("relegation");
