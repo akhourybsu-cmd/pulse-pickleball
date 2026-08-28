@@ -1,13 +1,5 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -19,7 +11,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Save } from "lucide-react";
+import { Save, Info, Star, CalendarClock, Grid3x3, Gamepad2, Users } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { NumericStepper } from "./NumericStepper";
+import { ResponsiveSettingsModal, ModalActions } from "./ResponsiveSettingsModal";
 
 interface Event {
   id: string;
@@ -45,6 +40,14 @@ interface EditEventDialogProps {
   playerCount?: number; // Current player count for display
 }
 
+type SectionKey = "basics" | "rating" | "schedule";
+
+const SECTIONS: { key: SectionKey; label: string; icon: typeof Info }[] = [
+  { key: "basics", label: "Basics", icon: Info },
+  { key: "rating", label: "Rating", icon: Star },
+  { key: "schedule", label: "Schedule", icon: CalendarClock },
+];
+
 export function EditEventDialog({ open, onOpenChange, event, onSave, playerCount }: EditEventDialogProps) {
   const [name, setName] = useState(event.name);
   const [date, setDate] = useState(event.date);
@@ -59,6 +62,9 @@ export function EditEventDialog({ open, onOpenChange, event, onSave, playerCount
     event.registration_deadline ? new Date(event.registration_deadline).toISOString().slice(0, 16) : ""
   );
   const [saving, setSaving] = useState(false);
+  /** Mobile only: one section at a time, so the sheet never becomes a
+   *  never-ending scroll. Desktop keeps every section stacked. */
+  const [section, setSection] = useState<SectionKey>("basics");
 
   // Calculate rounds automatically based on players, courts, and games
   const calculateRounds = (players: number, courts: number, games: number) => {
@@ -119,214 +125,241 @@ export function EditEventDialog({ open, onOpenChange, event, onSave, playerCount
     }
   };
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-[500px] max-h-[90vh] flex flex-col">
-        <DialogHeader className="flex-shrink-0">
-          <DialogTitle>Edit Event Settings</DialogTitle>
-          <DialogDescription>
-            Changes to rating settings will only apply to future, unscored matches.
-          </DialogDescription>
-        </DialogHeader>
+  /* Section visibility: on mobile only the picked section renders; at sm+ the
+     `sm:block` override brings every section back into one scroll. */
+  const show = (key: SectionKey) => (section === key ? "block" : "hidden sm:block");
 
-        <div className="space-y-5 py-4 overflow-y-auto flex-1 px-1">
-          {/* Section: Basics */}
-          <section className="space-y-3">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Basics
-            </h3>
-            <div className="space-y-2">
-              <Label htmlFor="name">Event Name</Label>
-              <Input
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Event name"
-              />
-            </div>
+  const basics = (
+    <section className={cn("space-y-3", show("basics"))}>
+      <SectionHeading>Basics</SectionHeading>
+      <div className="space-y-1.5">
+        <Label htmlFor="name">Event name</Label>
+        <Input
+          id="name"
+          className="h-11"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Event name"
+        />
+      </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="date">Event Date</Label>
-                <Input
-                  id="date"
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="time">Start Time</Label>
-                <Input
-                  id="time"
-                  type="time"
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="notes">Notes</Label>
-              <Textarea
-                id="notes"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Additional notes or instructions"
-                rows={3}
-              />
-            </div>
-          </section>
-
-          {/* Section: Rating */}
-          <section className="space-y-3 pt-1 border-t border-border/60">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground pt-3">
-              Rating
-            </h3>
-            <div className="flex items-center justify-between gap-3">
-              <div className="space-y-0.5 min-w-0">
-                <Label>Rating eligible</Label>
-                <p className="text-xs text-muted-foreground">
-                  Future matches only — past scores aren't affected
-                </p>
-              </div>
-              <Switch
-                checked={ratingEligible}
-                onCheckedChange={setRatingEligible}
-              />
-            </div>
-
-            {ratingEligible && (
-              <div className="space-y-2">
-                <Label htmlFor="rating-type">Match type</Label>
-                <Select
-                  value={ratingType}
-                  onValueChange={(value) => setRatingType(value as "ladder" | "league" | "playoffs" | "casual")}
-                >
-                  <SelectTrigger id="rating-type">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ladder">Ladder</SelectItem>
-                    <SelectItem value="league">League</SelectItem>
-                    <SelectItem value="playoffs">Playoffs</SelectItem>
-                    <SelectItem value="casual">Casual</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-          </section>
-
-          {/* Section: Schedule */}
-          <section className="space-y-3 pt-1 border-t border-border/60">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground pt-3">
-              Schedule
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="courts">Courts available</Label>
-                <Input
-                  id="courts"
-                  type="number"
-                  inputMode="numeric"
-                  min="1"
-                  max="20"
-                  value={numCourts}
-                  onChange={(e) => setNumCourts(parseInt(e.target.value) || 1)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="games-per-player">Games per player</Label>
-                <Input
-                  id="games-per-player"
-                  type="number"
-                  inputMode="numeric"
-                  min="1"
-                  max="20"
-                  value={gamesPerPlayer}
-                  onChange={(e) => setGamesPerPlayer(parseInt(e.target.value) || 3)}
-                />
-              </div>
-            </div>
-
-            {event.registration_mode === 'open_registration' && (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="max-players">Number of players</Label>
-                  <Input
-                    id="max-players"
-                    type="number"
-                    inputMode="numeric"
-                    min="4"
-                    max="100"
-                    value={maxPlayers}
-                    onChange={(e) => setMaxPlayers(parseInt(e.target.value) || 8)}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="registration-deadline">Registration deadline</Label>
-                  <Input
-                    id="registration-deadline"
-                    type="datetime-local"
-                    value={registrationDeadline}
-                    onChange={(e) => setRegistrationDeadline(e.target.value)}
-                    min={new Date().toISOString().slice(0, 16)}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Players can register until this date and time
-                  </p>
-                </div>
-              </>
-            )}
-
-            {/* Schedule preview — primary-tinted, large numeric, same pattern
-                as CourtsRoundsDialog so the visual language stays consistent. */}
-            <div
-              className="rounded-xl border border-primary/20 p-3.5"
-              style={{ backgroundColor: "hsl(var(--primary) / 0.05)" }}
-            >
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="text-xs font-semibold text-primary uppercase tracking-wide">
-                    Schedule preview
-                  </div>
-                  <div className="text-sm text-muted-foreground mt-0.5">
-                    {event.registration_mode === 'open_registration' ? maxPlayers : (playerCount || 8)} players ·{" "}
-                    {numCourts} {numCourts === 1 ? 'court' : 'courts'} ·{" "}
-                    {gamesPerPlayer} {gamesPerPlayer === 1 ? 'game' : 'games'}
-                  </div>
-                  {calculatedRounds !== event.num_rounds && (
-                    <div className="text-xs text-amber-600 dark:text-amber-400 mt-1">
-                      Rounds will change from {event.num_rounds} to {calculatedRounds}
-                    </div>
-                  )}
-                </div>
-                <div className="flex-shrink-0 text-right">
-                  <div className="text-2xl font-bold text-primary tabular-nums leading-none">
-                    {calculatedRounds}
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-0.5">
-                    {calculatedRounds === 1 ? 'round' : 'rounds'}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
+      <div className="grid grid-cols-2 gap-2.5">
+        <div className="space-y-1.5">
+          <Label htmlFor="date">Date</Label>
+          <Input
+            id="date"
+            type="date"
+            className="h-11"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+          />
         </div>
 
-        <DialogFooter className="flex-shrink-0 gap-2 sm:gap-2">
+        <div className="space-y-1.5">
+          <Label htmlFor="time">Start time</Label>
+          <Input
+            id="time"
+            type="time"
+            className="h-11"
+            value={startTime}
+            onChange={(e) => setStartTime(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="notes">Notes</Label>
+        <Textarea
+          id="notes"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="Additional notes or instructions"
+          rows={3}
+        />
+      </div>
+    </section>
+  );
+
+  const rating = (
+    <section className={cn("space-y-3 sm:pt-4 sm:border-t sm:border-border/60", show("rating"))}>
+      <SectionHeading>Rating</SectionHeading>
+      <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card p-3">
+        <div className="space-y-0.5 min-w-0">
+          <Label className="text-sm font-semibold">Rating eligible</Label>
+          <p className="text-[11px] text-muted-foreground leading-snug">
+            Future matches only — past scores aren't affected
+          </p>
+        </div>
+        <Switch checked={ratingEligible} onCheckedChange={setRatingEligible} />
+      </div>
+
+      {ratingEligible && (
+        <div className="space-y-1.5">
+          <Label htmlFor="rating-type">Match type</Label>
+          <Select
+            value={ratingType}
+            onValueChange={(value) => setRatingType(value as "ladder" | "league" | "playoffs" | "casual")}
+          >
+            <SelectTrigger id="rating-type" className="h-11">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ladder">Ladder</SelectItem>
+              <SelectItem value="league">League</SelectItem>
+              <SelectItem value="playoffs">Playoffs</SelectItem>
+              <SelectItem value="casual">Casual</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+    </section>
+  );
+
+  const schedule = (
+    <section className={cn("space-y-3 sm:pt-4 sm:border-t sm:border-border/60", show("schedule"))}>
+      <SectionHeading>Schedule</SectionHeading>
+
+      <NumericStepper
+        value={numCourts}
+        onChange={setNumCourts}
+        min={1}
+        max={20}
+        icon={Grid3x3}
+        label="Courts available"
+        suffix="Simultaneous matches per round"
+      />
+      <NumericStepper
+        value={gamesPerPlayer}
+        onChange={setGamesPerPlayer}
+        min={1}
+        max={20}
+        icon={Gamepad2}
+        label="Games per player"
+        suffix="Total matches each player gets"
+      />
+
+      {event.registration_mode === 'open_registration' && (
+        <>
+          <NumericStepper
+            value={maxPlayers}
+            onChange={setMaxPlayers}
+            min={4}
+            max={100}
+            icon={Users}
+            label="Number of players"
+            suffix="Registration cap"
+          />
+
+          <div className="space-y-1.5">
+            <Label htmlFor="registration-deadline">Registration deadline</Label>
+            <Input
+              id="registration-deadline"
+              type="datetime-local"
+              className="h-11"
+              value={registrationDeadline}
+              onChange={(e) => setRegistrationDeadline(e.target.value)}
+              min={new Date().toISOString().slice(0, 16)}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Players can register until this date and time
+            </p>
+          </div>
+        </>
+      )}
+
+      {/* Schedule preview — same visual language as CourtsRoundsDialog. */}
+      <div
+        className="rounded-xl border border-primary/20 p-3.5"
+        style={{ backgroundColor: "hsl(var(--primary) / 0.05)" }}
+      >
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-[10px] font-bold text-primary uppercase tracking-[0.14em]">
+              Schedule preview
+            </div>
+            <div className="text-sm text-muted-foreground mt-0.5">
+              {event.registration_mode === 'open_registration' ? maxPlayers : (playerCount || 8)} players ·{" "}
+              {numCourts} {numCourts === 1 ? 'court' : 'courts'} ·{" "}
+              {gamesPerPlayer} {gamesPerPlayer === 1 ? 'game' : 'games'}
+            </div>
+            {calculatedRounds !== event.num_rounds && (
+              <div className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                Rounds will change from {event.num_rounds} to {calculatedRounds}
+              </div>
+            )}
+          </div>
+          <div className="flex-shrink-0 text-right">
+            <div className="text-2xl font-bold text-primary tabular-nums leading-none">
+              {calculatedRounds}
+            </div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              {calculatedRounds === 1 ? 'round' : 'rounds'}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+
+  return (
+    <ResponsiveSettingsModal
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Event settings"
+      description="Changes to rating settings only apply to future, unscored matches."
+      footer={
+        <ModalActions>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button onClick={handleSave} disabled={!hasChanges || saving} className="gap-1.5">
             <Save className="h-4 w-4" />
-            {saving ? "Saving…" : "Save Changes"}
+            {saving ? "Saving…" : hasChanges ? "Save changes" : "No changes"}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </ModalActions>
+      }
+    >
+      {/* Mobile section switcher — keeps each screen to a thumb's worth of
+          scrolling instead of one long form. Hidden at sm+. */}
+      <div className="sm:hidden sticky top-0 z-10 -mx-4 px-4 py-2 bg-background/95 backdrop-blur border-b border-border/60 mb-3">
+        <div className="grid grid-cols-3 gap-1.5 rounded-xl bg-muted/60 p-1">
+          {SECTIONS.map((s) => {
+            const Icon = s.icon;
+            const isActive = section === s.key;
+            return (
+              <button
+                key={s.key}
+                type="button"
+                onClick={() => setSection(s.key)}
+                aria-current={isActive}
+                className={cn(
+                  "h-10 rounded-lg text-xs font-semibold inline-flex items-center justify-center gap-1.5 transition-colors",
+                  isActive
+                    ? "bg-background text-foreground shadow-sm ring-1 ring-border"
+                    : "text-muted-foreground active:bg-background/60",
+                )}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {s.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="space-y-4 sm:space-y-5 pb-2">
+        {basics}
+        {rating}
+        {schedule}
+      </div>
+    </ResponsiveSettingsModal>
+  );
+}
+
+function SectionHeading({ children }: { children: React.ReactNode }) {
+  return (
+    <h3 className="hidden sm:block text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+      {children}
+    </h3>
   );
 }
