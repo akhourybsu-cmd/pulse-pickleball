@@ -77,6 +77,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { resolvePlayerInitials } from "@/lib/matchDisplay";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { startPulseActivity } from "@/components/ui/pulse-activity";
+
 
 // Score validation schema
 const scoreSchema = z.object({
