@@ -248,7 +248,7 @@ export function CreateLeagueDialog({
 
                     <div className="space-y-1.5">
                       <Label htmlFor="new-league-name" className="text-xs font-semibold">
-                        League name <span className="text-[color:var(--lg-hero-gold)]">*</span>
+                        League name <span className="text-[color:var(--lg-accent-gold)]">*</span>
                       </Label>
                       <Input
                         id="new-league-name" value={name}

@@ -871,7 +871,7 @@ function LadderManage({
         <>
           <label className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-background/50 px-3 py-2 cursor-pointer">
             <div className="flex items-center gap-2 text-xs">
-              <Zap className={cn("w-3.5 h-3.5", autoAdvance ? "text-[color:var(--lg-hero-gold)]" : "text-muted-foreground")} />
+              <Zap className={cn("w-3.5 h-3.5", autoAdvance ? "text-[color:var(--lg-accent-gold)]" : "text-muted-foreground")} />
               <span className="font-semibold">Auto-advance</span>
               <span className="text-muted-foreground">
                 {autoAdvance
@@ -883,7 +883,7 @@ function LadderManage({
           </label>
           <label className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-background/50 px-3 py-2 cursor-pointer">
             <div className="flex items-center gap-2 text-xs">
-              <CheckCircle2 className={cn("w-3.5 h-3.5", selfReport ? "text-[color:var(--lg-hero-gold)]" : "text-muted-foreground")} />
+              <CheckCircle2 className={cn("w-3.5 h-3.5", selfReport ? "text-[color:var(--lg-accent-gold)]" : "text-muted-foreground")} />
               <span className="font-semibold">Self-report scoring</span>
               <span className="text-muted-foreground">
                 {selfReport

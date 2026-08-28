@@ -527,7 +527,7 @@ export function FormRow({
       >
         {label}
         {required && (
-          <span className="text-[color:var(--lg-hero-gold)] ml-0.5" aria-label="required">*</span>
+          <span className="text-[color:var(--lg-accent-gold)] ml-0.5" aria-label="required">*</span>
         )}
       </Label>
       {children}
