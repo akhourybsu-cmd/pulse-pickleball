@@ -187,50 +187,41 @@ export default function Friends({ embedded = false }: { embedded?: boolean } = {
 
   return (
     <div className={cn("flex flex-col", !embedded && "min-h-[calc(100vh-120px)]")}>
-      {/* Header (standalone only — the Social hub provides its own). */}
+      {/* Premium hero (standalone only — the Social hub provides its own). */}
       {!embedded && (
-        <div className={cn(
-          "border-b border-border/40 bg-gradient-to-b from-primary/[0.06] via-background to-background"
-        )}>
-          <div className="container mx-auto px-4 py-4 md:py-5 max-w-3xl">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-start gap-3 min-w-0 flex-1">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => navigate('/player/community')}
-                  className="h-9 w-9 -ml-1 shrink-0 mt-0.5"
-                  aria-label="Back to Community"
-                >
-                  <ArrowLeft className="h-5 w-5" />
-                </Button>
-                <div className="flex items-start gap-3 min-w-0 flex-1">
-                  <div className="h-9 w-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <Users className="h-[18px] w-[18px]" strokeWidth={2} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h1 className="text-2xl md:text-[28px] font-bold tracking-tight text-foreground leading-tight">
-                      Friends
-                    </h1>
-                    <div className="h-[3px] w-10 mt-1.5 bg-primary rounded-full" />
-                    <p className="text-sm text-muted-foreground mt-2 leading-snug">
-                      Connect with players you know
-                    </p>
-                  </div>
-                </div>
-              </div>
+        <SocialHero
+          eyebrow="Community"
+          title="Friends"
+          action={
+            <div className="flex items-center gap-1.5">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => navigate('/player/community')}
+                className="h-9 w-9 text-muted-foreground"
+                aria-label="Back to Community"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
               <Button
                 onClick={() => setConnectOpen(true)}
                 size="sm"
-                className="h-9 rounded-full btn-premium shrink-0 mt-1"
+                className="h-9 rounded-full btn-premium"
               >
                 <UserPlus className="h-4 w-4 mr-1.5" />
                 Add
               </Button>
             </div>
+          }
+        >
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            <SocialStatTile icon={Users} label="Friends" value={String(friends.length)} />
+            <SocialStatTile icon={Radio} label="Online" value={String(onlineCount)} accent />
+            <SocialStatTile icon={UserPlus} label="Requests" value={String(totalRequests)} accent />
           </div>
-        </div>
+        </SocialHero>
       )}
+
       <ConnectSheet open={connectOpen} onOpenChange={setConnectOpen} />
 
       {error && !loading && (
