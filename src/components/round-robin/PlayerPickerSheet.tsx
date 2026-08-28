@@ -156,9 +156,11 @@ export function PlayerPickerSheet({
       setLocal((prev) => [...prev, guest]);
       setGuestName("");
     } catch (e) {
+      pulse.fail();
       console.error("Failed to save guest:", e);
       toast.error("Couldn't add that guest. Try again.");
     }
+
   };
 
 
