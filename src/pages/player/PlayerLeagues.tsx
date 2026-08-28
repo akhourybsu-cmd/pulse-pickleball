@@ -21,11 +21,13 @@ const TYPE_META = LEAGUE_TYPE_META;
 
 export default function PlayerLeagues() {
   const navigate = useNavigate();
-  const { rows, loading, error } = useMyLeagues();
+  const { rows, archivedRows, loading, error } = useMyLeagues();
   const { leagues: browseable, loading: browseLoading } = useBrowseableLeagues();
   const [joinOpen, setJoinOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
   const [prefillCode, setPrefillCode] = useState<string | undefined>(undefined);
+
 
   // Deep-link support: /player/leagues?join=SPRING26
   const [searchParams, setSearchParams] = useSearchParams();
