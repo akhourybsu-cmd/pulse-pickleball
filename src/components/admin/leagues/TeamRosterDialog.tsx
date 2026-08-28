@@ -126,25 +126,29 @@ export function TeamRosterDialog({
   }, [addable, addQuery, profilesById]);
 
   const addMember = async (userId: string) => {
+    const p = profilesById[userId];
+    const nm = p ? resolvePlayerName(p) : "player";
     setBusy(true);
     const payload = { team_id: team.id, user_id: userId, role: "player" as TeamMemberRole };
-    const { data, error } = await supabase
-      .from("league_team_members" as never).insert(payload as never).select().single();
-    if (error || !data) {
-      toast.error(error?.message ?? "Add failed");
+    try {
+      await withPulseActivity(`Adding ${nm}…`, async () => {
+        const { data, error } = await supabase
+          .from("league_team_members" as never).insert(payload as never).select().single();
+        if (error || !data) throw error ?? new Error("Add failed");
+        await logLeagueAction({
+          leagueId: league.id, seasonId: team.season_id,
+          action: "team_member.added", entityType: "team_member",
+          entityId: (data as unknown as LeagueTeamMember).id,
+          newValue: payload,
+        });
+      }, "Added to the team");
+      await load();
+      await onChanged();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Add failed");
+    } finally {
       setBusy(false);
-      return;
     }
-    await logLeagueAction({
-      leagueId: league.id, seasonId: team.season_id,
-      action: "team_member.added", entityType: "team_member",
-      entityId: (data as unknown as LeagueTeamMember).id,
-      newValue: payload,
-    });
-    toast.success("Added to team");
-    await load();
-    await onChanged();
-    setBusy(false);
   };
 
   const patch = async (
@@ -153,24 +157,28 @@ export function TeamRosterDialog({
     action: string,
   ) => {
     setBusy(true);
-    const { error } = await supabase
-      .from("league_team_members" as never)
-      .update(fields as never).eq("id", member.id);
-    if (error) {
-      toast.error(error.message);
+    try {
+      await withPulseActivity("Updating team roster…", async () => {
+        const { error } = await supabase
+          .from("league_team_members" as never)
+          .update(fields as never).eq("id", member.id);
+        if (error) throw error;
+        await logLeagueAction({
+          leagueId: league.id, seasonId: team.season_id,
+          action, entityType: "team_member", entityId: member.id,
+          oldValue: { role: member.role, status: member.status },
+          newValue: fields,
+        });
+      }, "Roster updated");
+      await load();
+      await onChanged();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Update failed");
+    } finally {
       setBusy(false);
-      return;
     }
-    await logLeagueAction({
-      leagueId: league.id, seasonId: team.season_id,
-      action, entityType: "team_member", entityId: member.id,
-      oldValue: { role: member.role, status: member.status },
-      newValue: fields,
-    });
-    await load();
-    await onChanged();
-    setBusy(false);
   };
+
 
   const active = roster.filter((r) => r.status === "active");
   const removed = roster.filter((r) => r.status === "removed");
