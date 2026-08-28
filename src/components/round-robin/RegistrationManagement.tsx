@@ -245,10 +245,10 @@ export function RegistrationManagement({
                     player.player_id,
                     player.profiles?.display_name || player.profiles?.full_name || 'Unknown'
                   ) : undefined}
-                  onRemove={isOrganizer ? () => handleRemovePlayer(
-                    player.player_id,
-                    player.profiles?.display_name || player.profiles?.full_name || 'Unknown'
-                  ) : undefined}
+                  onRemove={isOrganizer ? () => setPendingRemove({
+                    id: player.player_id,
+                    name: player.profiles?.display_name || player.profiles?.full_name || 'Unknown'
+                  }) : undefined}
                 />
               ))}
             </div>
