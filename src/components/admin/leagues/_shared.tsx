@@ -437,11 +437,11 @@ export function FormShell({
                   {kicker}
                 </div>
               )}
-              <DialogTitle className="text-lg font-black tracking-tight leading-tight text-white">
+              <DialogTitle className="text-lg font-black tracking-tight leading-tight text-[color:var(--lg-hero-text)]">
                 {title}
               </DialogTitle>
               {subtitle && (
-                <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                <p className="text-xs text-[color:var(--lg-hero-text-dim)] mt-1 leading-relaxed">
                   {subtitle}
                 </p>
               )}

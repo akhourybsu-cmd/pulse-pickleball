@@ -153,7 +153,7 @@ function MobileSectionPicker({
               <div className="text-[10px] font-black uppercase tracking-[0.2em] text-primary/80 mb-0.5">
                 League console
               </div>
-              <DrawerTitle className="text-lg font-black tracking-tight text-white">
+              <DrawerTitle className="text-lg font-black tracking-tight text-[color:var(--lg-hero-text)]">
                 Jump to section
               </DrawerTitle>
             </DrawerHeader>

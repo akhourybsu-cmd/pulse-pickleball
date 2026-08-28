@@ -790,7 +790,7 @@ function LadderManage({
 
       {/* Progress header */}
       {activeBatch && (
-        <div className="rounded-xl border border-border/70 bg-gradient-to-br from-[color:var(--lg-emerald-deep)] to-[color:var(--lg-surface)] p-4 text-white">
+        <div className="rounded-xl border border-border/70 bg-gradient-to-br from-[color:var(--lg-emerald-deep)] to-[color:var(--lg-surface)] p-4 text-[color:var(--lg-hero-text)]">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div>
               <div className="text-[10px] font-black uppercase tracking-[0.2em] text-[color:var(--lg-hero-gold)]">
@@ -803,16 +803,16 @@ function LadderManage({
             </div>
             <div className="text-right">
               <div className="text-2xl font-black tabular-nums">
-                {scoredGames}<span className="text-slate-500">/{totalGames}</span>
+                {scoredGames}<span className="text-[color:var(--lg-hero-text-dim)]/70">/{totalGames}</span>
               </div>
-              <div className="text-[10px] uppercase tracking-wider text-slate-400">games in</div>
+              <div className="text-[10px] uppercase tracking-wider text-[color:var(--lg-hero-text-dim)]">games in</div>
             </div>
           </div>
-          <div className="mt-3 h-1.5 rounded-full bg-slate-700 overflow-hidden">
+          <div className="mt-3 h-1.5 rounded-full bg-white/15 overflow-hidden">
             <div className="h-full bg-[color:var(--lg-gold)] transition-all"
               style={{ width: `${totalGames ? (scoredGames / totalGames) * 100 : 0}%` }} />
           </div>
-          <p className="text-[11px] text-slate-400 mt-2">
+          <p className="text-[11px] text-[color:var(--lg-hero-text-dim)] mt-2">
             {batchComplete
               ? "All games in — process results to apply movement. You'll then generate the next stage as a separate step."
               : "Enter every game's final score, then process the results to move players up and down."}
@@ -1923,7 +1923,7 @@ function GenerateNextPanel({
 
   const isWeek = nextStage.kind === "week";
   return (
-    <motion.div {...reveal} className="rounded-xl border border-border/70 bg-gradient-to-br from-[color:var(--lg-emerald-deep)] to-[color:var(--lg-surface)] p-4 text-white">
+    <motion.div {...reveal} className="rounded-xl border border-border/70 bg-gradient-to-br from-[color:var(--lg-emerald-deep)] to-[color:var(--lg-surface)] p-4 text-[color:var(--lg-hero-text)]">
       <div className="text-[10px] font-black uppercase tracking-[0.2em] text-[color:var(--lg-hero-gold)]">
         {isWeek ? "Week complete" : "Batch processed"}
       </div>
@@ -1932,7 +1932,7 @@ function GenerateNextPanel({
           ? `Ready to start Week ${nextStage.week}`
           : `Ready for Batch ${nextStage.batch}`}
       </div>
-      <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
+      <p className="text-[11px] text-[color:var(--lg-hero-text-dim)] mt-1 leading-relaxed">
         {isWeek
           ? "The week's final positions are locked in. Generating Week " +
             `${nextStage.week} builds new foursomes from the current ladder — ` +

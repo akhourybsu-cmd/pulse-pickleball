@@ -214,10 +214,10 @@ export function TeamRosterDialog({
                 <div className="text-[10px] font-black uppercase tracking-[0.2em] mb-0.5 text-amber-300/80">
                   Team roster
                 </div>
-                <DialogTitle className="text-lg font-black tracking-tight leading-tight text-white truncate">
+                <DialogTitle className="text-lg font-black tracking-tight leading-tight text-[color:var(--lg-hero-text)] truncate">
                   {team.name}
                 </DialogTitle>
-                <p className="text-xs text-slate-400 mt-1">
+                <p className="text-xs text-[color:var(--lg-hero-text-dim)] mt-1">
                   {active.length} active player{active.length === 1 ? "" : "s"}
                   {removed.length > 0 && ` · ${removed.length} removed`}
                 </p>
