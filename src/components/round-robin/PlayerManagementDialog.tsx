@@ -26,6 +26,8 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 import { resolveRRParticipant, rrParticipantInitials } from "@/lib/roundRobin/resolveParticipant";
+import { startPulseActivity } from "@/components/ui/pulse-activity";
+
 
 interface Player {
   id: string;
