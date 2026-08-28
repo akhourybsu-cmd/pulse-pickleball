@@ -25,3 +25,40 @@ describe("countsTowardScore", () => {
     expect(countsTowardScore({ is_bye: false, team1_score: 11, team2_score: 4 })).toBe(true);
   });
 });
+
+describe("computeStandings", () => {
+  const seat = (a1: string, a2: string, b1: string, b2: string, s1: number, s2: number) => ({
+    a1_player_id: a1, a2_player_id: a2, b1_player_id: b1, b2_player_id: b2,
+    team1_score: s1, team2_score: s2,
+  });
+
+  it("ranks by wins, then diff, then points for, and pins removed players last", () => {
+    const schedule = [
+      seat("a", "b", "c", "d", 11, 5),
+      seat("a", "c", "b", "d", 11, 9),
+      seat("a", "d", "b", "c", 11, 2),
+    ];
+    const rows = computeStandings(schedule, [
+      { key: "a", name: "A", active: true },
+      { key: "b", name: "B", active: true },
+      { key: "c", name: "C", active: true },
+      { key: "d", name: "D", active: false },
+    ]);
+    expect(rows[0].key).toBe("a");
+    expect(rows[0].wins).toBe(3);
+    expect(rows[rows.length - 1].key).toBe("d");
+    expect(rows[rows.length - 1].isRemoved).toBe(true);
+  });
+
+  it("ignores voided, bye, and unscored rows", () => {
+    const rows = computeStandings(
+      [
+        { ...seat("a", "b", "c", "d", 11, 5), voided_at: "now" },
+        { ...seat("a", "b", "c", "d", 11, 5), is_bye: true },
+        seat("a", "b", "c", "d", null as any, null as any),
+      ],
+      [{ key: "a", name: "A" }],
+    );
+    expect(rows[0].gamesPlayed).toBe(0);
+  });
+});
