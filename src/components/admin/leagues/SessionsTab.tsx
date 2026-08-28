@@ -84,7 +84,7 @@ export function SessionsTab({ league, dataVersion, onMutated }: LeagueTabProps) 
         <SeasonSelect seasons={seasons} value={seasonId} onChange={setSeasonId} className="flex-1" />
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild>
-            <Button size="sm"><Plus className="w-4 h-4 mr-1" />New session</Button>
+            <Button size="sm" className="h-11 px-4 shrink-0 font-bold"><Plus className="w-4 h-4 mr-1.5" />New session</Button>
           </DialogTrigger>
           {seasonId && (
             <SessionEditor

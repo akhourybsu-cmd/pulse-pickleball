@@ -155,8 +155,8 @@ export function MatchesTab({ league, dataVersion, onMutated, onNavigate }: Leagu
         <SeasonSelect seasons={seasons} value={seasonId} onChange={setSeasonId} className="flex-1" />
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild>
-            <Button size="sm" disabled={sessions.length === 0}>
-              <Plus className="w-4 h-4 mr-1" />New match
+            <Button size="sm" disabled={sessions.length === 0} className="h-11 px-4 shrink-0 font-bold">
+              <Plus className="w-4 h-4 mr-1.5" />New match
             </Button>
           </DialogTrigger>
           {seasonId && sessions.length > 0 && (
