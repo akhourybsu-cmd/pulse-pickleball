@@ -29,6 +29,8 @@ import {
 import { Play, Trophy, AlertCircle, Settings, Trash2, Ban, CheckCircle, Edit, Edit3, Bell, Monitor, ExternalLink, Share2, Users, UserMinus, Calendar, MapPin, Zap, RefreshCw, Medal, Clock, ShieldCheck, ChevronRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { ScheduleRoundCarousel } from "@/components/round-robin/ScheduleRoundCarousel";
+import { TeamNamesStack } from "@/components/round-robin/TeamNamesStack";
+
 import { toast } from "sonner";
 
 import { format, parseISO } from "date-fns";
