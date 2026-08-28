@@ -257,12 +257,13 @@ function LadderSetup({
 /* ------------------------------------------------------------------ */
 
 function LadderStart({
-  league, seasonId, ladder, onStarted,
+  league, seasonId, ladder, onStarted, onNavigate,
 }: {
   league: League;
   seasonId: string;
   ladder: ReturnType<typeof useLadder>;
   onStarted: () => void;
+  onNavigate?: LeagueTabProps["onNavigate"];
 }) {
   const [order, setOrder] = useState<string[]>([]);
   const [starting, setStarting] = useState(false);
@@ -352,15 +353,24 @@ function LadderStart({
       </div>
 
       {!divisibleByFour && (
-        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-700 dark:text-amber-300 flex gap-2">
-          <Info className="w-4 h-4 shrink-0 mt-0.5" />
-          <span>
-            Ladder groups are foursomes, so the active roster must be divisible
-            by four. You have <strong>{order.length}</strong> active player{order.length === 1 ? "" : "s"} —
-            add or remove players on the Players tab so the count is a multiple of four.
-          </span>
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-700 dark:text-amber-300 space-y-2">
+          <div className="flex gap-2">
+            <Info className="w-4 h-4 shrink-0 mt-0.5" />
+            <span>
+              Ladder groups are foursomes, so the active roster must be divisible
+              by four. You have <strong>{order.length}</strong> active player{order.length === 1 ? "" : "s"} —
+              add or remove players so the count is a multiple of four.
+            </span>
+          </div>
+          {onNavigate && (
+            <ActionButton size="sm" variant="outline" className="h-8 text-xs"
+              onClick={() => onNavigate("members")}>
+              Go to Players
+            </ActionButton>
+          )}
         </div>
       )}
+
 
       <ol className="space-y-1.5">
         {order.map((pid, i) => (
@@ -418,11 +428,12 @@ function LadderStart({
 /* ------------------------------------------------------------------ */
 
 function LadderManage({
-  league, ladder, onChanged,
+  league, ladder, onChanged, onNavigate,
 }: {
   league: League;
   ladder: ReturnType<typeof useLadder>;
   onChanged: () => void;
+  onNavigate?: LeagueTabProps["onNavigate"];
 }) {
   const { activeBatch, groups, games, settings } = ladder;
   const [processing, setProcessing] = useState(false);
@@ -743,14 +754,22 @@ function LadderManage({
       {/* Pending sub-requests badge — awareness even mid-week; resolve them
           in the Week roster when preparing that week. */}
       {ladder.pendingSubRequests > 0 && (
-        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-700 dark:text-amber-300 flex items-center gap-2">
-          <UserX className="w-4 h-4 shrink-0" />
-          <span>
-            {ladder.pendingSubRequests} sub request{ladder.pendingSubRequests === 1 ? "" : "s"} awaiting a decision.
-            Resolve {ladder.pendingSubRequests === 1 ? "it" : "them"} in the Week roster when you prepare that week.
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-700 dark:text-amber-300 flex items-center justify-between gap-3 flex-wrap">
+          <span className="flex items-center gap-2 min-w-0">
+            <UserX className="w-4 h-4 shrink-0" />
+            <span>
+              {ladder.pendingSubRequests} sub request{ladder.pendingSubRequests === 1 ? "" : "s"} awaiting a decision.
+            </span>
           </span>
+          {onNavigate && (
+            <ActionButton size="sm" variant="outline" className="h-8 text-xs shrink-0"
+              onClick={() => onNavigate("subs")}>
+              Review requests
+            </ActionButton>
+          )}
         </div>
       )}
+
 
       {/* Progress header */}
       {activeBatch && (

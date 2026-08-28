@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { Check, ChevronRight, ListChecks, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ManageTab } from "./leagueManageTabs";
@@ -21,17 +22,39 @@ export function LeagueSetupChecklist({
   members: number;
   onGoToTab: (tab: ManageTab) => void;
 }) {
+  // Steps 3 & 4 are derived from real ladder state so the checklist can't sit
+  // there claiming "not done" after the organizer has already started play.
+  const [ladderConfigured, setLadderConfigured] = useState(false);
+  const [ladderStarted, setLadderStarted] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const [cfg, batches] = await Promise.all([
+        supabase.from("ladder_settings" as never).select("id", { count: "exact", head: true })
+          .eq("league_id", leagueId),
+        supabase.from("ladder_batches" as never).select("id", { count: "exact", head: true })
+          .eq("league_id", leagueId),
+      ]);
+      if (cancelled) return;
+      setLadderConfigured((cfg.count ?? 0) > 0);
+      setLadderStarted((batches.count ?? 0) > 0);
+    })();
+    return () => { cancelled = true; };
+  }, [leagueId]);
+
   const key = DISMISS_PREFIX + leagueId;
   const [dismissed, setDismissed] = useState(() => {
     try { return localStorage.getItem(key) === "1"; } catch { return false; }
   });
   if (dismissed) return null;
+  // Setup is over — stop occupying the top of the manage page.
+  if (ladderStarted) return null;
 
   const steps: { label: string; hint: string; tab: ManageTab; done: boolean }[] = [
     { label: "Create a season", hint: "The container for play, standings, and the ladder.", tab: "seasons", done: seasons > 0 },
     { label: "Add your players", hint: "Individuals join the roster — you need at least 4, in multiples of 4.", tab: "members", done: members >= 4 && members % 4 === 0 },
-    { label: "Configure the ladder & set the starting order", hint: "Pick batches and scoring, then seed the initial order.", tab: "ladder", done: false },
-    { label: "Generate Week 1", hint: "Builds the first foursomes — play begins.", tab: "ladder", done: false },
+    { label: "Configure the ladder & set the starting order", hint: "Pick batches and scoring, then seed the initial order.", tab: "ladder", done: ladderConfigured },
+    { label: "Generate Week 1", hint: "Builds the first foursomes — play begins.", tab: "ladder", done: ladderStarted },
   ];
   const doneCount = steps.filter((s) => s.done).length;
 

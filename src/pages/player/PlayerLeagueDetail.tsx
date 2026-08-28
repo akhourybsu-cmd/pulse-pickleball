@@ -16,6 +16,7 @@ import { resolvePlayerName } from "@/lib/matchDisplay";
 import { computePlayerStandings, computeTeamStandings } from "@/lib/leagues/standings";
 import { StandingsTable } from "@/components/leagues/StandingsTable";
 import { LadderSubRequestCard } from "@/components/leagues/LadderSubRequestCard";
+import { LadderMyWeekCard } from "@/components/leagues/LadderMyWeekCard";
 import { LadderHowItWorks } from "@/components/leagues/LadderHowItWorks";
 import { LeagueMatchActions } from "@/components/leagues/LeagueMatchActions";
 import { LadderTiebreakPrompt } from "@/components/leagues/LadderTiebreakPrompt";
@@ -241,6 +242,13 @@ export default function PlayerLeagueDetail() {
               </button>
             ))}
           </nav>
+        )}
+
+        {league.league_type === "ladder" && (
+          <LadderMyWeekCard
+            seasonId={season?.id ?? null}
+            currentUserId={currentUserId}
+          />
         )}
 
         {league.league_type === "ladder" && (

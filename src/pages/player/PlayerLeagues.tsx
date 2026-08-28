@@ -97,7 +97,7 @@ export default function PlayerLeagues() {
                 MY LEAGUES
               </h1>
               <p className="text-[color:var(--lg-hero-text-dim)] text-sm mt-2 max-w-md">
-                Leagues you own, play in, or captain — all in one place.
+                Leagues you own, play in, or manage — all in one place.
               </p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
