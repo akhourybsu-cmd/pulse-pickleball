@@ -4,6 +4,8 @@ import { MessageCircle, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Friends from "./Friends";
 import { SocialInbox } from "@/components/social/SocialInbox";
+import { SocialHero } from "@/components/social/_shared";
+
 
 /**
  * Unified Social hub. One destination for Chats (direct + group) and Friends,
