@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { Radio, Lock, Clock, Trophy, Palette } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { computeStandings, participantsFromSchedule, guestSeatLabel } from "@/lib/roundRobin/standings";
+import { computeStandings, participantsFromSchedule } from "@/lib/roundRobin/standings";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -200,38 +200,6 @@ export default function RoundRobinKiosk() {
       points_against: r.pointsAgainst,
       point_diff: r.pointDiff,
     }));
-  };
-
-  const getPlayerIdName = (playerId: string, schedule: ScheduleMatch[]): string => {
-    for (const match of schedule) {
-      if (match.a1_player_id === playerId && match.a1_profile) {
-        return match.a1_profile.display_name || match.a1_profile.full_name;
-      }
-      if (match.a2_player_id === playerId && match.a2_profile) {
-        return match.a2_profile.display_name || match.a2_profile.full_name;
-      }
-      if (match.b1_player_id === playerId && match.b1_profile) {
-        return match.b1_profile.display_name || match.b1_profile.full_name;
-      }
-      if (match.b2_player_id === playerId && match.b2_profile) {
-        return match.b2_profile.display_name || match.b2_profile.full_name;
-      }
-      const guestLabel = (g?: { display_name?: string | null; linked_user_id?: string | null } | null) =>
-        g?.display_name ? (g.linked_user_id ? g.display_name : `${g.display_name} (G)`) : null;
-      if (match.a1_guest_id === playerId && match.a1_guest?.display_name) {
-        return guestLabel(match.a1_guest)!;
-      }
-      if (match.a2_guest_id === playerId && match.a2_guest?.display_name) {
-        return guestLabel(match.a2_guest)!;
-      }
-      if (match.b1_guest_id === playerId && match.b1_guest?.display_name) {
-        return guestLabel(match.b1_guest)!;
-      }
-      if (match.b2_guest_id === playerId && match.b2_guest?.display_name) {
-        return guestLabel(match.b2_guest)!;
-      }
-    }
-    return "Unknown";
   };
 
   const fetchEventData = async () => {
