@@ -183,5 +183,12 @@ export function useMyLeagues() {
     return () => { cancelled = true; };
   }, []);
 
-  return { rows, loading, error };
+  // Archived leagues are tucked away: `rows` (what every surface renders
+  // by default) holds only live leagues, while `archivedRows` is opt-in
+  // for the collapsed "Archived" section on the leagues hub.
+  const activeRows = rows.filter((r) => r.league.status !== "archived");
+  const archivedRows = rows.filter((r) => r.league.status === "archived");
+
+  return { rows: activeRows, archivedRows, allRows: rows, loading, error };
 }
+
