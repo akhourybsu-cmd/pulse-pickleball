@@ -924,112 +924,107 @@ function BulkAddMembersDialog({
   const groupOutcome = (o: ResolvedRow["outcome"]) =>
     preview?.resolved.filter((r) => r.outcome === o) ?? [];
 
-  return (
-    <DialogContent className="sm:max-w-lg">
-      <DialogHeader>
-        <DialogTitle className="flex items-center gap-2">
-          <ClipboardList className="w-4 h-4" />
-          Bulk add members
-        </DialogTitle>
-      </DialogHeader>
+  const commitCount = preview ? preview.added_count + preview.reactivated_count : 0;
 
+  return (
+    <FormShell
+      icon={<ClipboardList className="w-5 h-5" />}
+      tone="gold"
+      size="lg"
+      kicker={preview ? "Step 2 · Review" : "Step 1 · Paste"}
+      title={preview ? "Review the import" : "Bulk add members"}
+      subtitle={preview
+        ? "Nothing has changed yet — confirm below to commit."
+        : "Paste an email list. We resolve every address before anything is saved."}
+      primaryLabel={preview
+        ? `Add ${commitCount} member${commitCount === 1 ? "" : "s"}`
+        : `Preview ${emails.length || ""} match${emails.length === 1 ? "" : "es"}`}
+      primaryLoading={busy}
+      primaryDisabled={preview ? commitCount === 0 : emails.length === 0}
+      onPrimary={preview ? commit : runDryRun}
+      secondary={preview ? (
+        <Button variant="outline" onClick={reset} disabled={busy} className="h-12 sm:w-28">
+          Back
+        </Button>
+      ) : undefined}
+    >
       {/* Phase 1 — paste + preview */}
       {!preview ? (
-        <div className="space-y-3">
-          <div className="space-y-1.5">
-            <Label className="text-xs">Emails</Label>
-            <Textarea
-              value={raw}
-              onChange={(e) => setRaw(e.target.value)}
-              placeholder={"one per line, or comma-separated\ne.g. alice@example.com\n     bob@example.com"}
-              rows={6}
-              className="font-mono text-sm"
-            />
-            <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+        <FormSection label="Emails" hint="One per line, or comma-separated">
+          <Textarea
+            value={raw}
+            onChange={(e) => setRaw(e.target.value)}
+            placeholder={"alice@example.com\nbob@example.com"}
+            rows={7}
+            className="rounded-lg font-mono text-sm"
+          />
+          <div className="flex items-center justify-between gap-2 text-[11px]">
+            <span className="text-muted-foreground inline-flex items-center gap-1.5">
               <Mail className="w-3 h-3" />
-              Case-insensitive. Matches must be existing PULSE accounts.
-            </p>
-          </div>
-          {emails.length > 0 && (
-            <div className="text-[11px] text-muted-foreground">
-              {emails.length} unique email{emails.length === 1 ? "" : "s"} ready to check
-            </div>
-          )}
-          <DialogFooter>
-            <Button
-              onClick={runDryRun}
-              disabled={busy || emails.length === 0}
-              className="w-full"
-            >
-              {busy ? "Checking…" : `Preview ${emails.length > 0 ? emails.length : ""} match${emails.length === 1 ? "" : "es"}`}
-            </Button>
-          </DialogFooter>
-        </div>
-      ) : (
-        // Phase 2 — review + commit
-        <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <StatCard label="Add" count={preview.added_count} tone="primary" icon={CheckCircle2} />
-            <StatCard label="Reactivate" count={preview.reactivated_count} tone="amber" icon={RotateCw} />
-            <StatCard label="Already in" count={preview.already_active_count} tone="muted" icon={Users} />
-            <StatCard label="Unmatched" count={preview.unmatched.length} tone="destructive" icon={AlertCircle} />
-          </div>
-
-          <div className="max-h-64 overflow-y-auto space-y-2 rounded-lg border border-border/60 bg-muted/20 p-2">
-            <GroupSection
-              title="Will be added" tone="text-primary"
-              icon={CheckCircle2}
-              rows={groupOutcome("added")}
-            />
-            <GroupSection
-              title="Will be reactivated" tone="text-amber-600"
-              icon={RotateCw}
-              rows={groupOutcome("reactivated")}
-            />
-            <GroupSection
-              title="Already active" tone="text-muted-foreground"
-              icon={Users}
-              rows={groupOutcome("already_active")}
-            />
-            {preview.unmatched.length > 0 && (
-              <div>
-                <div className="text-[10px] font-bold uppercase tracking-wider text-destructive mb-1 flex items-center gap-1">
-                  <XCircle className="w-3 h-3" />
-                  Not found ({preview.unmatched.length})
-                </div>
-                <ul className="text-xs font-mono space-y-0.5 pl-1">
-                  {preview.unmatched.map((e) => (
-                    <li key={e} className="text-muted-foreground line-through">
-                      {e}
-                    </li>
-                  ))}
-                </ul>
-                <p className="text-[10px] text-muted-foreground mt-1 pl-1">
-                  No PULSE account matches these. Ask them to sign up first.
-                </p>
-              </div>
+              Case-insensitive · must be existing PULSE accounts
+            </span>
+            {emails.length > 0 && (
+              <span className="font-bold tabular-nums text-primary shrink-0">
+                {emails.length} unique
+              </span>
             )}
           </div>
+        </FormSection>
+      ) : (
+        // Phase 2 — review + commit
+        <>
+          <FormSection label="Summary">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <StatCard label="Add" count={preview.added_count} tone="primary" icon={CheckCircle2} />
+              <StatCard label="Reactivate" count={preview.reactivated_count} tone="amber" icon={RotateCw} />
+              <StatCard label="Already in" count={preview.already_active_count} tone="muted" icon={Users} />
+              <StatCard label="Unmatched" count={preview.unmatched.length} tone="destructive" icon={AlertCircle} />
+            </div>
+          </FormSection>
 
-          <DialogFooter className="gap-2 sm:gap-2">
-            <Button variant="ghost" onClick={reset} disabled={busy}>
-              Back
-            </Button>
-            <Button
-              onClick={commit}
-              disabled={busy || (preview.added_count + preview.reactivated_count === 0)}
-              className="flex-1"
-            >
-              {busy
-                ? "Committing…"
-                : `Add ${preview.added_count + preview.reactivated_count} member${preview.added_count + preview.reactivated_count === 1 ? "" : "s"}`}
-            </Button>
-          </DialogFooter>
-        </div>
+          <FormSection label="Details">
+            <div className="max-h-64 overflow-y-auto space-y-3 rounded-xl border border-border/70 bg-card/70 p-3">
+              <GroupSection
+                title="Will be added" tone="text-primary"
+                icon={CheckCircle2}
+                rows={groupOutcome("added")}
+              />
+              <GroupSection
+                title="Will be reactivated" tone="text-amber-600"
+                icon={RotateCw}
+                rows={groupOutcome("reactivated")}
+              />
+              <GroupSection
+                title="Already active" tone="text-muted-foreground"
+                icon={Users}
+                rows={groupOutcome("already_active")}
+              />
+              {preview.unmatched.length > 0 && (
+                <div>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-destructive mb-1 flex items-center gap-1">
+                    <XCircle className="w-3 h-3" />
+                    Not found ({preview.unmatched.length})
+                  </div>
+                  <ul className="text-xs font-mono space-y-0.5 pl-1">
+                    {preview.unmatched.map((e) => (
+                      <li key={e} className="text-muted-foreground line-through">
+                        {e}
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="text-[10px] text-muted-foreground mt-1 pl-1">
+                    No PULSE account matches these. Ask them to sign up first.
+                  </p>
+                </div>
+              )}
+            </div>
+          </FormSection>
+        </>
       )}
-    </DialogContent>
+    </FormShell>
   );
 }
+
 
 function StatCard({
   label, count, tone, icon: Icon,
