@@ -4,7 +4,6 @@ import { format, parseISO } from "date-fns";
 import { ChevronRight, Repeat, Trophy, ListChecks, History as HistoryIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { PlayerPageHeader } from "@/components/layout/PlayerPageHeader";
 import { SectionHeader } from "@/components/layout/SectionHeader";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -301,6 +300,28 @@ function TabToggle({ tab, onChange, activeCount, pastCount }: TabToggleProps) {
   );
 }
 
+function HeroStatTile({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: typeof ListChecks;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-xl border border-border/60 bg-card/70 backdrop-blur-sm px-2.5 py-2 shadow-[0_1px_3px_hsl(var(--foreground)/0.04)]">
+      <div className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+        <Icon className="h-3 w-3 text-primary/80" />
+        {label}
+      </div>
+      <div className="mt-0.5 text-[15px] font-bold tracking-tight text-foreground tabular-nums">
+        {value}
+      </div>
+    </div>
+  );
+}
+
 function RREventRow({ entry, onClick }: { entry: RREntry; onClick: () => void }) {
   const statusLine = (() => {
     if (entry.status === "live" && entry.currentRound) {
@@ -328,7 +349,7 @@ function RREventRow({ entry, onClick }: { entry: RREntry; onClick: () => void })
     <button
       onClick={onClick}
       className={cn(
-        "w-full flex items-center gap-3 px-3 py-3 rounded-xl border bg-card",
+        "w-full flex items-center gap-3 px-3 py-3 rounded-2xl border bg-card/80 backdrop-blur-sm shadow-[0_8px_30px_-20px_hsl(var(--foreground)/0.3)]",
         isLive ? "border-primary/40 bg-primary/[0.03]" : "border-border/60",
         "hover:bg-accent/40 hover:border-border active:scale-[0.99] transition-all text-left group",
         entry.status === "voided" && "opacity-75",
