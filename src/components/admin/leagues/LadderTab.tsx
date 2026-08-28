@@ -1188,14 +1188,8 @@ function TiebreakDialog({
           })}
         </div>
 
-        <DialogFooter>
-          <ActionButton variant="outline" onClick={onCancel} disabled={busy}>Cancel</ActionButton>
-          <ActionButton onClick={() => onResolve(orders)} loading={busy}
-            className="font-bold uppercase tracking-wide">
-            Confirm & process
-          </ActionButton>
-        </DialogFooter>
-      </DialogContent>
+      </FormShell>
+
     </Dialog>
   );
 }
