@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   CalendarDays, Trophy, ChevronRight, MapPin,
-  KeyRound, Plus, Sparkles,
+  KeyRound, Plus, Sparkles, Archive,
 } from "lucide-react";
 import { useMyLeagues } from "@/hooks/useMyLeagues";
 import { useBrowseableLeagues } from "@/hooks/useBrowseableLeagues";
@@ -21,11 +21,13 @@ const TYPE_META = LEAGUE_TYPE_META;
 
 export default function PlayerLeagues() {
   const navigate = useNavigate();
-  const { rows, loading, error } = useMyLeagues();
+  const { rows, archivedRows, loading, error } = useMyLeagues();
   const { leagues: browseable, loading: browseLoading } = useBrowseableLeagues();
   const [joinOpen, setJoinOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
   const [prefillCode, setPrefillCode] = useState<string | undefined>(undefined);
+
 
   // Deep-link support: /player/leagues?join=SPRING26
   const [searchParams, setSearchParams] = useSearchParams();
@@ -285,7 +287,73 @@ export default function PlayerLeagues() {
           </section>
         )}
 
-        <LeaguesExplainer defaultOpen={!loading && rows.length === 0} />
+        {/* ---------- Archived (collapsed by default) ---------- */}
+        {!loading && archivedRows.length > 0 && (
+          <section className="pt-2">
+            <button
+              type="button"
+              onClick={() => setShowArchived((v) => !v)}
+              aria-expanded={showArchived}
+              className="w-full lg-card px-3.5 py-3 flex items-center gap-3 text-left hover:border-[color:var(--lg-gold)]/40 transition-colors"
+            >
+              <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 bg-[color:var(--lg-text-dim)]/10 text-[color:var(--lg-text-dim)] ring-1 ring-inset ring-[color:var(--lg-border)]">
+                <Archive className="w-4 h-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-semibold text-[color:var(--lg-text)]">
+                  Archived leagues
+                </div>
+                <div className="text-[11px] text-[color:var(--lg-text-dim)]">
+                  {archivedRows.length} finished {archivedRows.length === 1 ? "league" : "leagues"} — kept for records
+                </div>
+              </div>
+              <ChevronRight
+                className={cn(
+                  "w-4 h-4 text-[color:var(--lg-text-dim)] shrink-0 transition-transform",
+                  showArchived && "rotate-90",
+                )}
+              />
+            </button>
+
+            {showArchived && (
+              <ul className="space-y-2 mt-2">
+                {archivedRows.map(({ league, membership, season }) => (
+                  <li key={membership.id}>
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/player/leagues/${league.id}`)}
+                      className="group w-full text-left lg-card lg-card-hover opacity-75 hover:opacity-100 transition-all overflow-hidden"
+                    >
+                      <div className="flex items-center gap-3 p-3.5">
+                        <div className="h-9 w-9 rounded-lg flex items-center justify-center shrink-0 bg-[color:var(--lg-text-dim)]/10 text-[color:var(--lg-text-dim)] ring-1 ring-inset ring-[color:var(--lg-border)]">
+                          <Archive className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-semibold text-sm truncate text-[color:var(--lg-text)]">
+                              {league.name}
+                            </span>
+                            <LeagueTypeChip type={league.league_type} />
+                          </div>
+                          {season && (
+                            <div className="text-[11px] text-[color:var(--lg-text-dim)] mt-0.5 inline-flex items-center gap-1">
+                              <CalendarDays className="w-3 h-3" />
+                              {season.name}
+                            </div>
+                          )}
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-[color:var(--lg-text-dim)] shrink-0 group-hover:translate-x-0.5 transition-all" />
+                      </div>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        )}
+
+        <LeaguesExplainer defaultOpen={!loading && rows.length === 0 && archivedRows.length === 0} />
+
 
         <JoinByCodeDialog
           open={joinOpen}
