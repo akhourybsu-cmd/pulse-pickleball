@@ -497,9 +497,14 @@ function LadderManage({
   const processResults = async (tieResolutions?: Record<number, string[]>) => {
     if (!activeBatch) return;
     setProcessing(true);
-    const { data, error } = await supabase.functions.invoke("ladder-finalize-batch", {
-      body: { batch_id: activeBatch.id, tie_resolutions: tieResolutions },
-    });
+    const { data, error } = await withPulseActivity(
+      "Processing results & movement…",
+      async () => supabase.functions.invoke("ladder-finalize-batch", {
+        body: { batch_id: activeBatch.id, tie_resolutions: tieResolutions },
+      }),
+      "Batch processed",
+    );
+
     setProcessing(false);
     const resp = data as
       { error?: string; message?: string; ties?: TieInfo[] } | null;
