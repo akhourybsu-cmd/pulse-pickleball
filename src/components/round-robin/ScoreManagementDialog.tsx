@@ -22,7 +22,8 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Edit3, Trash2, Ban, AlertTriangle, ChevronRight, ChevronLeft, ShieldCheck } from "lucide-react";
+import { Edit3, Trash2, Ban, AlertTriangle, ChevronRight, ChevronLeft, ShieldCheck, ClipboardList } from "lucide-react";
+import { PremiumDialogHeader } from "./PremiumDialogHeader";
 import { MatchTeamLine } from "./MatchTeamLine";
 import {
   Select,

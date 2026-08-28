@@ -8,7 +8,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Trash2, Radio } from "lucide-react";
+import { CheckCircle2, Trash2, Radio, AlertTriangle } from "lucide-react";
+import { PremiumDialogHeader } from "./PremiumDialogHeader";
 import { cn } from "@/lib/utils";
 import type { ActiveMatchResolutionKind } from "@/lib/roundRobin/activeMatch";
 

@@ -10,7 +10,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Copy, Loader2, Mail, Link as LinkIcon, Check } from "lucide-react";
+import { Copy, Loader2, Mail, Link as LinkIcon, Check, UserPlus } from "lucide-react";
+import { PremiumDialogHeader } from "./PremiumDialogHeader";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
