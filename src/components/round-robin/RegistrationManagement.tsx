@@ -52,22 +52,41 @@ export function RegistrationManagement({
     }
   });
 
+  const [pendingRemove, setPendingRemove] = useState<{ id: string; name: string } | null>(null);
+  const [isRemoving, setIsRemoving] = useState(false);
+
   const confirmed = players.filter(p => p.registration_status === 'confirmed');
   const waitlisted = players.filter(p => p.registration_status === 'waitlisted');
 
-  const handleRemovePlayer = async (playerId: string, playerName: string) => {
-    if (!confirm(`Remove ${playerName} from this event? They can rejoin later.`)) return;
-
+  const handleRemovePlayer = async () => {
+    if (!pendingRemove) return;
+    setIsRemoving(true);
     try {
       const { error } = await supabase
         .from('round_robin_players')
         .delete()
         .eq('event_id', eventId)
-        .eq('player_id', playerId);
+        .eq('player_id', pendingRemove.id);
 
       if (error) throw error;
-      toast.success('Player removed - they can rejoin later');
+      toast.success(
+        <div className="flex items-start gap-3">
+          <div className="h-9 w-9 rounded-full bg-destructive/15 text-destructive flex items-center justify-center flex-shrink-0 mt-0.5">
+            <UserMinus className="h-5 w-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="font-semibold text-base">{pendingRemove.name} removed</div>
+            <div className="text-sm opacity-90 leading-snug">They can rejoin later.</div>
+          </div>
+        </div>,
+        { duration: 5000 }
+      );
       refetch();
+    } finally {
+      setIsRemoving(false);
+      setPendingRemove(null);
+    }
+  };
     } catch (error) {
       console.error('Remove error:', error);
       toast.error('Failed to remove player');
