@@ -1,10 +1,21 @@
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { UserMinus, UserPlus, Share2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { UserMinus, UserPlus, Share2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
@@ -41,25 +52,42 @@ export function RegistrationManagement({
     }
   });
 
+  const [pendingRemove, setPendingRemove] = useState<{ id: string; name: string } | null>(null);
+  const [isRemoving, setIsRemoving] = useState(false);
+
   const confirmed = players.filter(p => p.registration_status === 'confirmed');
   const waitlisted = players.filter(p => p.registration_status === 'waitlisted');
 
-  const handleRemovePlayer = async (playerId: string, playerName: string) => {
-    if (!confirm(`Remove ${playerName} from this event? They can rejoin later.`)) return;
-
+  const handleRemovePlayer = async () => {
+    if (!pendingRemove) return;
+    setIsRemoving(true);
     try {
       const { error } = await supabase
         .from('round_robin_players')
         .delete()
         .eq('event_id', eventId)
-        .eq('player_id', playerId);
+        .eq('player_id', pendingRemove.id);
 
       if (error) throw error;
-      toast.success('Player removed - they can rejoin later');
+      toast.success(
+        <div className="flex items-start gap-3">
+          <div className="h-9 w-9 rounded-full bg-destructive/15 text-destructive flex items-center justify-center flex-shrink-0 mt-0.5">
+            <UserMinus className="h-5 w-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="font-semibold text-base">{pendingRemove.name} removed</div>
+            <div className="text-sm opacity-90 leading-snug">They can rejoin later.</div>
+          </div>
+        </div>,
+        { duration: 5000 }
+      );
       refetch();
     } catch (error) {
       console.error('Remove error:', error);
       toast.error('Failed to remove player');
+    } finally {
+      setIsRemoving(false);
+      setPendingRemove(null);
     }
   };
 
@@ -191,10 +219,10 @@ export function RegistrationManagement({
                 <PlayerRow
                   key={player.id}
                   player={player}
-                  onRemove={isOrganizer ? () => handleRemovePlayer(
-                    player.player_id,
-                    player.profiles?.display_name || player.profiles?.full_name || 'Unknown'
-                  ) : undefined}
+                  onRemove={isOrganizer ? () => setPendingRemove({
+                    id: player.player_id,
+                    name: player.profiles?.display_name || player.profiles?.full_name || 'Unknown'
+                  }) : undefined}
                 />
               ))
             )}
@@ -217,16 +245,43 @@ export function RegistrationManagement({
                     player.player_id,
                     player.profiles?.display_name || player.profiles?.full_name || 'Unknown'
                   ) : undefined}
-                  onRemove={isOrganizer ? () => handleRemovePlayer(
-                    player.player_id,
-                    player.profiles?.display_name || player.profiles?.full_name || 'Unknown'
-                  ) : undefined}
+                  onRemove={isOrganizer ? () => setPendingRemove({
+                    id: player.player_id,
+                    name: player.profiles?.display_name || player.profiles?.full_name || 'Unknown'
+                  }) : undefined}
                 />
               ))}
             </div>
           </div>
         )}
       </CardContent>
+
+      <AlertDialog open={!!pendingRemove} onOpenChange={(open) => !open && setPendingRemove(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove {pendingRemove?.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes them from the event roster. They can rejoin later, but any
+              scheduled matches involving them may need to be regenerated.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isRemoving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRemovePlayer}
+              disabled={isRemoving}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 gap-1.5"
+            >
+              {isRemoving ? (
+                <RefreshCw className="h-4 w-4 animate-spin" />
+              ) : (
+                <UserMinus className="h-4 w-4" />
+              )}
+              {isRemoving ? "Removing…" : "Remove"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

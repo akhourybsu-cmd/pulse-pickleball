@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -11,8 +12,9 @@ import {
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { PlayerPickerSheet, type PickerPlayer } from "./PlayerPickerSheet";
-import { Pencil } from "lucide-react";
+import { Pencil, Ban, RefreshCw } from "lucide-react";
 import { UserPlus, UserMinus, Users, ChevronRight, ChevronLeft } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Select,
@@ -95,6 +97,9 @@ export function PlayerManagementDialog({
   const [substituteScope, setSubstituteScope] = useState<'global' | number>('global');
   const [loading, setLoading] = useState(false);
   const [substituteNewName, setSubstituteNewName] = useState<string>("");
+  const [confirmingRemoveId, setConfirmingRemoveId] = useState<string | null>(null);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+  const [justRemovedId, setJustRemovedId] = useState<string | null>(null);
 
   const activePlayers = players.filter(p => p.active);
   const inactivePlayers = players.filter(p => !p.active);
@@ -118,14 +123,22 @@ export function PlayerManagementDialog({
   };
 
   const handleMarkInactive = async () => {
-    if (!selectedPlayer) return;
+    const targetId = confirmingRemoveId || selectedPlayer;
+    if (!targetId) return;
     setLoading(true);
+    setRemovingId(targetId);
     try {
-      await onMarkInactive(selectedPlayer);
+      await onMarkInactive(targetId);
+      setJustRemovedId(targetId);
+      // Brief beat so the user sees the "Removed" flash before the dialog closes.
+      await new Promise((resolve) => setTimeout(resolve, 650));
       setSelectedPlayer("");
+      setConfirmingRemoveId(null);
       setMode(null);
     } finally {
       setLoading(false);
+      setRemovingId(null);
+      setJustRemovedId(null);
     }
   };
 
@@ -387,31 +400,119 @@ export function PlayerManagementDialog({
           </div>
         ) : mode === 'remove' ? (
           <div className="space-y-4 py-4">
-            <Alert>
+            <Alert variant="destructive" className="border-destructive/30 bg-destructive/5">
               <UserMinus className="w-4 h-4" />
-              <AlertDescription>
-                Marking a player inactive removes them from Round {currentRound || 1} onward.
-                Past rounds remain unchanged. Minimum 4 active players required.
+              <AlertDescription className="font-medium">
+                Removing a player marks them inactive from Round {currentRound || 1} onward.
+                Past rounds and scores stay untouched. Minimum 4 active players required.
               </AlertDescription>
             </Alert>
 
             <div className="space-y-2">
-              <Label>Select Player to Mark Inactive</Label>
-              <Select value={selectedPlayer} onValueChange={setSelectedPlayer}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Choose a player..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {activePlayers.map(p => {
+              <Label className="text-sm font-semibold">Tap a player to remove</Label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <AnimatePresence mode="popLayout">
+                  {activePlayers.map((p) => {
                     const resolved = resolveRRParticipant(p as any);
+                    const name = resolved.name;
+                    const initials = rrParticipantInitials(resolved);
+                    const isConfirming = confirmingRemoveId === p.id;
+                    const isRemoving = removingId === p.id;
+                    const isJustRemoved = justRemovedId === p.id;
+
                     return (
-                      <SelectItem key={p.id} value={p.id}>
-                        {resolved.name}{resolved.isGuest && !resolved.isLinkedGuest ? ' (G)' : ''}
-                      </SelectItem>
+                      <motion.div
+                        key={p.id}
+                        layout
+                        initial={{ opacity: 1, scale: 1 }}
+                        animate={{
+                          opacity: isJustRemoved ? 0.5 : 1,
+                          scale: isJustRemoved ? 0.97 : 1,
+                          backgroundColor: isJustRemoved
+                            ? 'hsl(var(--destructive) / 0.12)'
+                            : isConfirming
+                              ? 'hsl(var(--destructive) / 0.06)'
+                              : 'hsl(var(--muted) / 0.4)',
+                        }}
+                        exit={{ opacity: 0, scale: 0.92, transition: { duration: 0.18 } }}
+                        transition={{ duration: 0.18 }}
+                        className={cn(
+                          "relative flex flex-col gap-2 rounded-xl border p-3",
+                          isConfirming
+                            ? "border-destructive/40 shadow-sm"
+                            : "border-transparent",
+                          isJustRemoved && "border-destructive/50"
+                        )}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Avatar className="h-8 w-8">
+                            <AvatarFallback className="text-[11px] font-semibold bg-primary/15 text-primary">
+                              {initials}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-sm font-medium truncate">{name}</div>
+                            {resolved.isGuest && !resolved.isLinkedGuest && (
+                              <Badge variant="outline" className="text-[10px] uppercase w-fit">guest</Badge>
+                            )}
+                          </div>
+                        </div>
+
+                        {isJustRemoved ? (
+                          <div className="flex items-center gap-2 text-destructive text-sm font-semibold">
+                            <Ban className="h-4 w-4" />
+                            Removed — schedule rebuilt
+                          </div>
+                        ) : isConfirming ? (
+                          <div className="flex flex-col gap-2">
+                            <p className="text-xs text-destructive font-medium">
+                              Remove {name} from future rounds?
+                            </p>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="flex-1"
+                                onClick={() => setConfirmingRemoveId(null)}
+                                disabled={isRemoving}
+                              >
+                                Cancel
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                className="flex-1 gap-1.5"
+                                onClick={handleMarkInactive}
+                                disabled={isRemoving}
+                              >
+                                {isRemoving ? (
+                                  <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  <UserMinus className="h-3.5 w-3.5" />
+                                )}
+                                {isRemoving ? "Removing…" : "Remove"}
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="w-full gap-1.5 border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            onClick={() => {
+                              setConfirmingRemoveId(p.id);
+                              setSelectedPlayer(p.id);
+                            }}
+                          >
+                            <UserMinus className="h-3.5 w-3.5" />
+                            Remove from roster
+                          </Button>
+                        )}
+                      </motion.div>
                     );
                   })}
-                </SelectContent>
-              </Select>
+                </AnimatePresence>
+              </div>
             </div>
           </div>
         ) : (
@@ -567,9 +668,16 @@ export function PlayerManagementDialog({
             </Button>
           )}
           {mode === 'remove' && (
-            <Button onClick={handleMarkInactive} disabled={!selectedPlayer || loading} variant="destructive" className="gap-1.5">
-              <UserMinus className="h-4 w-4" />
-              {loading ? "Removing…" : "Remove From Roster"}
+            <Button
+              variant="outline"
+              onClick={() => {
+                setConfirmingRemoveId(null);
+                setSelectedPlayer("");
+              }}
+              disabled={!confirmingRemoveId || loading}
+              className="gap-1.5"
+            >
+              Clear selection
             </Button>
           )}
           {mode === 'substitute' && (
