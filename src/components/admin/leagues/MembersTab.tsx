@@ -618,31 +618,29 @@ function AddMemberDialog({
       ?? null;
   const pickedName = pickedRow ? resolvePlayerName(pickedRow) : "";
 
-  const renderList = (rows: PlayerRow[], emptyLabel: string) => {
-    if (sourcesLoading) {
-      return <p className="text-xs text-muted-foreground px-1">Loading…</p>;
-    }
-    if (rows.length === 0) {
-      return <p className="text-xs text-muted-foreground px-1">{emptyLabel}</p>;
-    }
-    return (
-      <div className="max-h-56 overflow-y-auto rounded-lg border border-border divide-y divide-border/60">
-        {rows.map((r) => (
-          <button
-            key={r.id}
-            type="button"
-            onClick={() => { setPickedId(r.id); setPickedRowOverride(r); }}
-            className={cn(
-              "w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors",
-              pickedId === r.id && "bg-primary/10 text-primary font-semibold",
-            )}
-          >
-            {resolvePlayerName(r)}
-          </button>
-        ))}
-      </div>
-    );
+  const sourceRows: Record<typeof tab, PlayerRow[]> = {
+    search: filteredResults,
+    friends: applyFilter(friends),
+    community: applyFilter(community),
+    guests: applyFilter(guests),
   };
+
+  const SOURCES = [
+    { key: "search" as const, label: "Search", icon: Search, count: null as number | null },
+    { key: "friends" as const, label: "Friends", icon: UserRound, count: friends.length },
+    { key: "community" as const, label: "Community", icon: Users, count: community.length },
+    { key: "guests" as const, label: "Guests", icon: UserPlus2, count: guests.length },
+  ];
+
+  const emptyLabel: Record<typeof tab, string> = {
+    search: "No matches — already-added players are filtered out.",
+    friends: "No friends yet. Add some from the Community tab.",
+    community: "No community members found. Join a group to see teammates here.",
+    guests: "No claimed guests. Only guests linked to a real account can join a league.",
+  };
+
+  const rows = sourceRows[tab];
+  const listLoading = tab === "search" ? false : sourcesLoading;
 
   return (
     <FormShell
@@ -656,81 +654,145 @@ function AddMemberDialog({
       primaryDisabled={!pickedId}
       onPrimary={submit}
     >
-      <FormSection label="Player">
-        <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
-          <TabsList className="grid grid-cols-4 w-full">
-            <TabsTrigger value="search">Search</TabsTrigger>
-            <TabsTrigger value="friends">Friends</TabsTrigger>
-            <TabsTrigger value="community">Community</TabsTrigger>
-            <TabsTrigger value="guests">Guests</TabsTrigger>
-          </TabsList>
+      <FormSection label="Player" hint="Pick one">
+        {/* Source rail — scrolls horizontally on narrow screens instead of
+            squashing four labels into unreadable columns. */}
+        <div className="-mx-1 overflow-x-auto scrollbar-none">
+          <div
+            role="tablist"
+            aria-label="Player source"
+            className="mx-1 inline-flex min-w-full gap-1 rounded-xl bg-muted/60 p-1 ring-1 ring-inset ring-border/50"
+          >
+            {SOURCES.map((s) => {
+              const active = tab === s.key;
+              return (
+                <button
+                  key={s.key}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => { setTab(s.key); setSourceFilter(""); }}
+                  className={cn(
+                    "flex-1 whitespace-nowrap rounded-lg px-2.5 py-2 text-[11.5px] font-bold uppercase tracking-wide transition-colors inline-flex items-center justify-center gap-1.5",
+                    active
+                      ? "bg-card text-foreground shadow-sm ring-1 ring-border/60"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  <s.icon className={cn("w-3.5 h-3.5", active && "text-primary")} />
+                  {s.label}
+                  {s.count !== null && s.count > 0 && (
+                    <span className="tabular-nums text-[10px] font-black text-muted-foreground/80">
+                      {s.count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
-          <TabsContent value="search" className="space-y-2 pt-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                id="mem-search"
-                value={query} onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search everyone by name…" className={cn(FIELD_H, "pl-9")}
-              />
-            </div>
-            {filteredResults.length > 0 && (
-              <div className="max-h-44 overflow-y-auto rounded-lg border border-border divide-y divide-border/60">
-                {filteredResults.map((r) => (
-                  <button
-                    key={r.id}
-                    type="button"
-                    onClick={() => { setPickedId(r.id); setPickedRowOverride(r); }}
-                    className={cn(
-                      "w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors",
-                      pickedId === r.id && "bg-primary/10 text-primary font-semibold",
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            id="mem-search"
+            value={tab === "search" ? query : sourceFilter}
+            onChange={(e) =>
+              tab === "search" ? setQuery(e.target.value) : setSourceFilter(e.target.value)
+            }
+            placeholder={tab === "search" ? "Search everyone by name…" : "Filter this list…"}
+            className={cn(FIELD_H, "pl-9")}
+          />
+        </div>
+
+        {listLoading ? (
+          <div className="space-y-2">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="h-[52px] rounded-xl bg-muted/50 animate-pulse" />
+            ))}
+          </div>
+        ) : rows.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 px-3 py-6 text-center">
+            <p className="text-xs text-muted-foreground">
+              {tab === "search" && !query.trim()
+                ? "Start typing a name to search every PULSE player."
+                : emptyLabel[tab]}
+            </p>
+          </div>
+        ) : (
+          <div className="max-h-[248px] overflow-y-auto rounded-xl border border-border/70 bg-card/70 divide-y divide-border/60">
+            {rows.map((r) => {
+              const name = resolvePlayerName(r);
+              const picked = pickedId === r.id;
+              const initials = name.split(/\s+/).filter(Boolean).slice(0, 2)
+                .map((s) => s[0]).join("").toUpperCase() || "?";
+              return (
+                <button
+                  key={r.id}
+                  type="button"
+                  onClick={() => {
+                    setPickedId(picked ? null : r.id);
+                    setPickedRowOverride(picked ? null : r);
+                  }}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors",
+                    picked ? "bg-primary/10" : "hover:bg-muted/60",
+                  )}
+                  aria-pressed={picked}
+                >
+                  <span className="h-8 w-8 rounded-full bg-muted ring-1 ring-border overflow-hidden flex items-center justify-center shrink-0">
+                    {r.avatar_url ? (
+                      <img src={r.avatar_url} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <span className="text-[10px] font-bold text-muted-foreground">{initials}</span>
                     )}
-                  >
-                    {resolvePlayerName(r)}
-                  </button>
-                ))}
-              </div>
-            )}
-            {query && filteredResults.length === 0 && (
-              <p className="text-xs text-muted-foreground">
-                No matches (already-added players are filtered out).
-              </p>
-            )}
-          </TabsContent>
-
-          {(["friends", "community", "guests"] as const).map((key) => (
-            <TabsContent key={key} value={key} className="space-y-2 pt-3">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  value={sourceFilter} onChange={(e) => setSourceFilter(e.target.value)}
-                  placeholder="Filter this list…" className={cn(FIELD_H, "pl-9")}
-                />
-              </div>
-              {key === "friends" && renderList(
-                applyFilter(friends),
-                "No friends yet — add some from the Community tab.",
-              )}
-              {key === "community" && renderList(
-                applyFilter(community),
-                "No community members found. Join a group to see teammates here.",
-              )}
-              {key === "guests" && renderList(
-                applyFilter(guests),
-                "No claimed guests. Only guests linked to a real profile can join a league.",
-              )}
-            </TabsContent>
-          ))}
-        </Tabs>
+                  </span>
+                  <span className={cn(
+                    "min-w-0 flex-1 truncate text-sm",
+                    picked ? "font-bold text-primary" : "font-medium",
+                  )}>
+                    {name}
+                  </span>
+                  <span className={cn(
+                    "h-5 w-5 rounded-full flex items-center justify-center shrink-0 ring-1",
+                    picked
+                      ? "bg-primary text-primary-foreground ring-primary"
+                      : "ring-border text-transparent",
+                  )}>
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {pickedId && pickedName && (
-          <p className="text-xs text-primary font-medium">Signed: {pickedName}</p>
+          <div className="flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/[0.07] px-3 py-2">
+            <CheckCircle2 className="w-4 h-4 text-primary shrink-0" />
+            <span className="min-w-0 flex-1 truncate text-xs">
+              <span className="text-muted-foreground">Selected · </span>
+              <span className="font-bold">{pickedName}</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => { setPickedId(null); setPickedRowOverride(null); }}
+              className="text-muted-foreground hover:text-foreground shrink-0"
+              aria-label="Clear selection"
+            >
+              <XCircle className="w-4 h-4" />
+            </button>
+          </div>
         )}
       </FormSection>
 
-
       <FormSection label="Assignment">
-        <FormRow label="Role">
+        <FormRow
+          label="Role"
+          hint={role === "manager"
+            ? "Assistant managers can run the league — settings, ladder, scores and roster."
+            : "Players appear on the roster and in ladder/match generation."}
+        >
           <SegmentedControl
             value={role}
             onChange={(v) => setRole(v as MemberRole)}
@@ -740,7 +802,12 @@ function AddMemberDialog({
             ]}
           />
         </FormRow>
-        <FormRow label="Status">
+        <FormRow
+          label="Status"
+          hint={status === "pending"
+            ? "Pending members don't get scheduled until you activate them."
+            : "Active members are eligible for scheduling right away."}
+        >
           <SegmentedControl
             value={status}
             onChange={(v) => setStatus(v as MemberStatus)}
@@ -754,6 +821,7 @@ function AddMemberDialog({
     </FormShell>
   );
 }
+
 
 /* ------------------------------------------------------------------ */
 /*  Bulk-add dialog                                                    */
