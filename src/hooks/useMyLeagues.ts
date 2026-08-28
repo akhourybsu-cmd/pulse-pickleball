@@ -143,10 +143,14 @@ export function useMyLeagues() {
       const { data: { user } } = await supabase.auth.getUser();
       let merged = list;
       if (user) {
-        const { data: ownedRaw } = await supabase
+        const { data: ownedRaw, error: ownedErr } = await supabase
           .from("leagues" as never)
           .select("*")
           .eq("created_by", user.id);
+        if (ownedErr) {
+          // Silently dropping this made an organizer's own league look deleted.
+          console.error("useMyLeagues: owned-leagues fetch failed", ownedErr);
+        }
         const owned = (ownedRaw ?? []) as unknown as League[];
         const have = new Set(list.map((r) => r.league.id));
         const synthetic: MyLeagueRow[] = owned
