@@ -106,13 +106,12 @@ export function ActiveMatchResolutionDialog({
   return (
     <Dialog open={open} onOpenChange={loading ? undefined : onOpenChange}>
       <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-[480px]">
-        <DialogHeader>
-          <DialogTitle>{participantName} is on court right now</DialogTitle>
-          <DialogDescription>
-            They're in the live match on Court {courtNo}. Choose what happens to that game before
-            removing them.
-          </DialogDescription>
-        </DialogHeader>
+        <PremiumDialogHeader
+          icon={AlertTriangle}
+          eyebrow="Live match"
+          title={`${participantName} is on court right now`}
+          description={`They're in the live match on Court ${courtNo}. Choose what happens to that game before removing them.`}
+        />
 
         <div className="space-y-2 py-1" role="radiogroup" aria-label="Resolve the live match">
           {options.map((opt) => {

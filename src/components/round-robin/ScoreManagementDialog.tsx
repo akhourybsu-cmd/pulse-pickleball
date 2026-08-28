@@ -166,12 +166,11 @@ export function ScoreManagementDialog({
     <>
       <Dialog open={open} onOpenChange={handleClose}>
         <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Score & Match Management</DialogTitle>
-            <DialogDescription>
-              Edit scores, void matches, or delete match records.
-            </DialogDescription>
-          </DialogHeader>
+          <PremiumDialogHeader
+            icon={ClipboardList}
+            title="Score corrections"
+            description="Edit a reported score, void a result, or delete a match record."
+          />
 
           <div className="space-y-4 py-4">
             {allMatches.length === 0 ? (

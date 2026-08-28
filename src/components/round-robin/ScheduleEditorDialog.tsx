@@ -19,6 +19,7 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ArrowLeftRight, MoveHorizontal, Navigation, Lock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { PremiumDialogHeader } from "./PremiumDialogHeader";
 
 interface ScheduleMatch {
   id: string;
@@ -127,12 +128,11 @@ export function ScheduleEditorDialog({
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Schedule Editor</DialogTitle>
-          <DialogDescription>
-            Make changes to the match schedule for a specific round.
-          </DialogDescription>
-        </DialogHeader>
+        <PremiumDialogHeader
+          icon={ArrowLeftRight}
+          title="Schedule editor"
+          description="Swap partners, trade opponents or move a match to a different court."
+        />
 
         <div className="space-y-4 py-4">
           {/* Round Selector */}

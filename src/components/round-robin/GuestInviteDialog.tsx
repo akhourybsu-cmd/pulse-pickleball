@@ -124,15 +124,12 @@ export function GuestInviteDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>
-            {shareLink ? "Invite ready" : "Invite to claim profile"}
-          </DialogTitle>
-          <DialogDescription>
-            Let <strong>{guestDisplayName}</strong> link their guest history
-            to a registered PULSE account.
-          </DialogDescription>
-        </DialogHeader>
+        <PremiumDialogHeader
+          icon={UserPlus}
+          eyebrow="Guest profile"
+          title={shareLink ? "Invite ready" : "Invite to claim profile"}
+          description={<>Let <strong className="text-foreground">{guestDisplayName}</strong> link their guest history to a registered PULSE account.</>}
+        />
 
         {!shareLink ? (
           <div className="space-y-4 py-2">
