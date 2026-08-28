@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { countsTowardScore } from "./standings";
+import { countsTowardScore, computeStandings } from "./standings";
 
 describe("countsTowardScore", () => {
   const played = { is_bye: false, team1_score: 11, team2_score: 7 };
