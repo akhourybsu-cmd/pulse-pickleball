@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, MessageCircle, UserMinus, Check, X, UserPlus, Users, AlertCircle, MoreVertical, User } from 'lucide-react';
+import { ArrowLeft, MessageCircle, UserMinus, Check, X, UserPlus, Users, AlertCircle, MoreVertical, User, Radio } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -263,7 +263,7 @@ export default function Friends({ embedded = false }: { embedded?: boolean } = {
               </div>
             ) : friends.length === 0 ? (
               <EmptyState
-                icon={<Users className="h-5 w-5 text-muted-foreground/70" />}
+                icon={<Users className="h-6 w-6" />}
                 title="No friends yet"
                 description="Find people you play with in Suggestions or invite them to a group."
               />
@@ -289,7 +289,7 @@ export default function Friends({ embedded = false }: { embedded?: boolean } = {
 
                 {visibleFriends.length === 0 ? (
                   <EmptyState
-                    icon={<Users className="h-5 w-5 text-muted-foreground/70" />}
+                    icon={<Users className="h-6 w-6" />}
                     title="No matches"
                     description="No friends match that search."
                   />
@@ -450,7 +450,7 @@ export default function Friends({ embedded = false }: { embedded?: boolean } = {
               </div>
             ) : suggestions.length === 0 ? (
               <EmptyState
-                icon={<UserPlus className="h-5 w-5 text-muted-foreground/70" />}
+                icon={<UserPlus className="h-6 w-6" />}
                 title="No suggestions right now"
                 description="Play matches or join groups — we'll suggest people you might know."
               />
@@ -604,11 +604,14 @@ function PresenceAvatar({
 
 function EmptyState({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
   return (
-    <div className="flex flex-col items-center justify-center py-16 text-center">
-      <div className="w-12 h-12 rounded-full bg-muted/50 flex items-center justify-center mb-4">
-        {icon}
+    <div className="flex flex-col items-center justify-center py-14 text-center">
+      <div className="relative mb-4">
+        <div aria-hidden className="absolute inset-0 rounded-2xl bg-primary/20 blur-xl" />
+        <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
+          {icon}
+        </div>
       </div>
-      <h3 className="text-base font-medium mb-1">{title}</h3>
+      <h3 className="mb-1 text-base font-bold tracking-tight text-foreground">{title}</h3>
       <p className="text-sm text-muted-foreground max-w-[280px]">{description}</p>
     </div>
   );
