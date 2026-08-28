@@ -13,8 +13,9 @@ import {
 } from "@/components/ui/dialog";
 import {
   Plus, Search, UserX, Users, RotateCcw, ClipboardList, Mail, CheckCircle2,
-  XCircle, RotateCw, AlertCircle, Crown,
+  XCircle, RotateCw, AlertCircle, Crown, UserRound, UserPlus2,
 } from "lucide-react";
+
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
