@@ -550,7 +550,7 @@ function AddMemberDialog({
         const { data: gs } = await supabase
           .from("guest_players" as never)
           .select("linked_user_id")
-          .eq("added_by_user_id", uid)
+          .eq("created_by", uid)
           .not("linked_user_id", "is", null);
         const guestIds = Array.from(new Set(
           ((gs ?? []) as Array<{ linked_user_id: string | null }>)
