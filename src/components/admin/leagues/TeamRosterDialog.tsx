@@ -394,7 +394,17 @@ export function TeamRosterDialog({
             )}
           </div>
         )}
+
+        <div className="p-4 pt-3 border-t border-border/60 bg-muted/20">
+          <Button
+            onClick={() => onOpenChange(false)}
+            className="h-12 w-full font-bold uppercase tracking-wide text-[13px] active:scale-[0.98] transition-transform"
+          >
+            Done
+          </Button>
+        </div>
       </DialogContent>
+
 
       {/* Remove confirmation. Roster removal is soft (status = removed)
           but still worth a confirm — accidental clicks on a full-roster
