@@ -588,8 +588,10 @@ export default function RoundRobinKiosk() {
                   style={{
                     backgroundColor: themeColors.cardBg,
                     color: themeColors.mutedText,
+                    border: `2px solid rgba(${themeColors.accentRgb},0.3)`,
                   }}
                 >
+
                   <span className="text-[1.4vw]">Waiting for matchup...</span>
                 </div>
               )}
