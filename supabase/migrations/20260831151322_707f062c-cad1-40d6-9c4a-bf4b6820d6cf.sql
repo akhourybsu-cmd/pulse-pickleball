@@ -1,0 +1,1 @@
+ALTER TYPE public.group_type ADD VALUE IF NOT EXISTS 'club';

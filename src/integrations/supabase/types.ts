@@ -10019,6 +10019,7 @@ export type Database = {
         | "open_play"
         | "venue_official"
         | "tournament"
+        | "club"
       group_visibility: "public" | "unlisted" | "private"
       match_source:
         | "manual"
@@ -10202,6 +10203,7 @@ export const Constants = {
         "open_play",
         "venue_official",
         "tournament",
+        "club",
       ],
       group_visibility: ["public", "unlisted", "private"],
       match_source: ["manual", "round_robin", "tournament", "league", "import"],
