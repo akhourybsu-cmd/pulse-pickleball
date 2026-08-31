@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Calendar, Clock, MapPin, Users, Check, HelpCircle, X, Plus, Trash2, List, CalendarDays, Repeat } from 'lucide-react';
+import { Calendar, Clock, MapPin, Users, Check, HelpCircle, X, Plus, Trash2, List, CalendarDays, Repeat, Settings2, ListOrdered } from 'lucide-react';
 import { format, isSameDay, parseISO } from 'date-fns';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { GroupEmptyState } from './GroupEmptyState';
 import { EventWizardContainer } from './event-wizard/EventWizardContainer';
 import { GroupScheduleCalendar } from './GroupScheduleCalendar';
-import { useGroupEvents } from '@/hooks/useGroupEvents';
+import { useGroupEvents, type GroupEvent } from '@/hooks/useGroupEvents';
+import { useGroupSettings } from '@/hooks/useGroupSettings';
+import { EventSettingsDialog } from './EventSettingsDialog';
+import { EVENT_TYPE_OPTIONS } from './event-wizard/types';
 import { cn } from '@/lib/utils';
 
 interface GroupScheduleProps {
@@ -18,8 +21,12 @@ interface GroupScheduleProps {
 }
 
 export function GroupSchedule({ groupId, isAdmin, currentUserId }: GroupScheduleProps) {
-  const { events, loading, deleteEvent, updateRsvp } = useGroupEvents(groupId);
+  const { events, loading, deleteEvent, updateRsvp, updateEvent } = useGroupEvents(groupId);
+  const { settings } = useGroupSettings(groupId);
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [settingsEvent, setSettingsEvent] = useState<GroupEvent | null>(null);
+  // Non-admin members can only schedule when the group allows it.
+  const canCreate = isAdmin || settings.allow_member_events !== false;
   // View toggle — list (default, "what's next") vs month (glanceable
   // calendar with day dots; tapping a day filters the list to that day).
   const [view, setView] = useState<'list' | 'month'>('list');
@@ -51,12 +58,12 @@ export function GroupSchedule({ groupId, isAdmin, currentUserId }: GroupSchedule
           onClose={() => setWizardOpen(false)}
           onSuccess={() => setWizardOpen(false)}
         />
-      ) : (
-        <Button onClick={() => setWizardOpen(true)} className="w-full gap-2">
+      ) : canCreate ? (
+        <Button onClick={() => setWizardOpen(true)} className="h-12 w-full gap-2 font-bold">
           <Plus className="h-4 w-4" />
           Create Event
         </Button>
-      )}
+      ) : null}
 
       {/* View toggle pill — hidden when there are no events (cleaner empty state). */}
       {!wizardOpen && events.length > 0 && (
@@ -107,9 +114,11 @@ export function GroupSchedule({ groupId, isAdmin, currentUserId }: GroupSchedule
           icon={Calendar}
           title="No upcoming events"
           description="Schedule a session, round robin, or open play for your group."
-          actions={[
-            { label: 'Create Event', onClick: () => setWizardOpen(true), icon: Plus },
-          ]}
+          actions={
+            canCreate
+              ? [{ label: 'Create Event', onClick: () => setWizardOpen(true), icon: Plus }]
+              : []
+          }
           size="sm"
         />
       ) : visibleEvents.length === 0 && selectedDay ? (
@@ -126,7 +135,14 @@ export function GroupSchedule({ groupId, isAdmin, currentUserId }: GroupSchedule
           const endDate = event.end_time ? new Date(event.end_time) : null;
           const isCreator = currentUserId === event.created_by;
           const totalGoing = event.rsvps?.going || 0;
+          const waitlistCount = event.rsvps?.waitlist || 0;
           const isFull = event.capacity ? totalGoing >= event.capacity : false;
+          const waitlistFull =
+            event.waitlist_limit != null ? waitlistCount >= event.waitlist_limit : false;
+          const canJoinWaitlist = isFull && event.waitlist_enabled && !waitlistFull;
+          const formatMeta = EVENT_TYPE_OPTIONS.find((o) => o.value === event.event_format);
+          const goingLabel =
+            event.user_rsvp === 'waitlist' ? 'Waitlisted' : canJoinWaitlist ? 'Join waitlist' : 'Going';
 
           return (
             <Card key={event.id}>
@@ -135,6 +151,11 @@ export function GroupSchedule({ groupId, isAdmin, currentUserId }: GroupSchedule
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <CardTitle className="text-lg">{event.title}</CardTitle>
+                      {formatMeta && (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-muted/50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                          {formatMeta.label}
+                        </span>
+                      )}
                       {event.is_recurring && (
                         <span
                           className="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5"
@@ -158,14 +179,26 @@ export function GroupSchedule({ groupId, isAdmin, currentUserId }: GroupSchedule
                     </div>
                   </div>
                   {(isCreator || isAdmin) && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                      onClick={() => deleteEvent(event.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 text-muted-foreground hover:text-foreground"
+                        aria-label="Event settings"
+                        onClick={() => setSettingsEvent(event)}
+                      >
+                        <Settings2 className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 text-muted-foreground hover:text-destructive"
+                        aria-label="Delete event"
+                        onClick={() => deleteEvent(event.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   )}
                 </div>
               </CardHeader>
@@ -197,23 +230,40 @@ export function GroupSchedule({ groupId, isAdmin, currentUserId }: GroupSchedule
                       {event.rsvps.maybe} maybe
                     </div>
                   ) : null}
-                  {isFull && (
-                    <Badge variant="secondary">Full</Badge>
+                  {waitlistCount > 0 && (
+                    <div className="flex items-center gap-1 text-muted-foreground">
+                      <ListOrdered className="h-4 w-4" />
+                      <span className="tabular-nums">{waitlistCount}</span> waiting
+                    </div>
                   )}
+                  {isFull && <Badge variant="secondary">Full</Badge>}
                 </div>
               </CardContent>
 
               <CardFooter className="pt-0">
                 <div className="flex items-center gap-1.5 sm:gap-2 w-full">
                   <Button
-                    variant={event.user_rsvp === 'going' ? 'default' : 'outline'}
+                    variant={
+                      event.user_rsvp === 'going' || event.user_rsvp === 'waitlist'
+                        ? 'default'
+                        : 'outline'
+                    }
                     size="sm"
                     className="flex-1 gap-1 px-2 sm:px-3"
                     onClick={() => updateRsvp(event.id, 'going')}
-                    disabled={isFull && event.user_rsvp !== 'going'}
+                    disabled={
+                      isFull &&
+                      event.user_rsvp !== 'going' &&
+                      event.user_rsvp !== 'waitlist' &&
+                      !canJoinWaitlist
+                    }
                   >
-                    <Check className="h-4 w-4" />
-                    <span className="hidden sm:inline">Going</span>
+                    {event.user_rsvp === 'waitlist' ? (
+                      <ListOrdered className="h-4 w-4" />
+                    ) : (
+                      <Check className="h-4 w-4" />
+                    )}
+                    <span className="hidden sm:inline">{goingLabel}</span>
                   </Button>
                   <Button
                     variant={event.user_rsvp === 'maybe' ? 'default' : 'outline'}
@@ -239,6 +289,15 @@ export function GroupSchedule({ groupId, isAdmin, currentUserId }: GroupSchedule
           );
         })
       )}
+
+      <EventSettingsDialog
+        event={settingsEvent}
+        open={!!settingsEvent}
+        onOpenChange={(open) => !open && setSettingsEvent(null)}
+        onSave={(updates) =>
+          updateEvent({ eventId: settingsEvent!.id, updates })
+        }
+      />
     </div>
   );
 }

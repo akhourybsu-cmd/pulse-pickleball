@@ -1,7 +1,10 @@
 export type RecurringFrequency = 'none' | 'daily' | 'weekly' | 'biweekly' | 'monthly';
 
+/** Persisted on group_events.event_format. */
+export type EventFormat = 'open_play' | 'round_robin' | 'practice' | 'social' | 'clinic' | 'other';
+
 export interface EventWizardFormData {
-  eventType: 'open_play' | 'practice' | 'social' | 'other' | null;
+  eventType: EventFormat | null;
   title: string;
   description: string;
   date: string;
@@ -9,6 +12,14 @@ export interface EventWizardFormData {
   endTime: string;
   location: string;
   capacity: number | null;
+  /** Waitlist accepts overflow RSVPs once capacity is reached. */
+  waitlistEnabled: boolean;
+  /** Optional cap on the waitlist itself. null = unlimited. */
+  waitlistLimit: number | null;
+  /** Round robin only — number of courts available. */
+  rrCourts: number | null;
+  /** Round robin only — games each player should get. */
+  rrGamesPerPlayer: number | null;
   /** Recurrence frequency — 'none' = single event. */
   recurringFrequency: RecurringFrequency;
   /** Total occurrences including the first one, 2-12. Ignored when frequency='none'. */
@@ -66,26 +77,61 @@ export interface EventWizardStep {
 }
 
 export const EVENT_WIZARD_STEPS: EventWizardStep[] = [
-  { id: 'type', label: 'Type' },
+  { id: 'type', label: 'Format' },
   { id: 'name', label: 'Name' },
   { id: 'datetime', label: 'When' },
   { id: 'details', label: 'Details', isOptional: true },
   { id: 'review', label: 'Review' },
 ];
 
-export const EVENT_TYPE_OPTIONS = [
-  { value: 'open_play', label: 'Open Play', icon: '🏓' },
-  { value: 'practice', label: 'Practice', icon: '🎯' },
-  { value: 'social', label: 'Social', icon: '🎉' },
-  { value: 'other', label: 'Other', icon: '📅' },
-] as const;
+export const EVENT_TYPE_OPTIONS: {
+  value: EventFormat;
+  label: string;
+  tagline: string;
+  icon: string;
+}[] = [
+  { value: 'open_play',   label: 'Open Play',   tagline: 'Drop-in rotation, casual games', icon: '🏓' },
+  { value: 'round_robin', label: 'Round Robin', tagline: 'Structured rounds & courts',      icon: '🔄' },
+  { value: 'practice',    label: 'Practice',    tagline: 'Drills and skills work',          icon: '🎯' },
+  { value: 'clinic',      label: 'Clinic',      tagline: 'Coach-led instruction',           icon: '📣' },
+  { value: 'social',      label: 'Social',      tagline: 'Food, hangs, off-court',          icon: '🎉' },
+  { value: 'other',       label: 'Other',       tagline: 'Anything else on the calendar',   icon: '📅' },
+];
 
-export function generateDefaultEventTitle(eventType: EventWizardFormData['eventType']): string {
-  const typeLabels: Record<string, string> = {
+export const EVENT_FORMAT_LABELS: Record<EventFormat, string> = {
+  open_play: 'Open Play',
+  round_robin: 'Round Robin',
+  practice: 'Practice',
+  clinic: 'Clinic',
+  social: 'Social',
+  other: 'Event',
+};
+
+export function generateDefaultEventTitle(eventType: EventFormat | null): string {
+  const typeLabels: Record<EventFormat, string> = {
     open_play: 'Open Play Session',
+    round_robin: 'Round Robin',
     practice: 'Practice Session',
+    clinic: 'Skills Clinic',
     social: 'Social Meetup',
     other: 'Group Event',
   };
   return eventType ? typeLabels[eventType] : 'Group Event';
 }
+
+export const INITIAL_EVENT_WIZARD_DATA: EventWizardFormData = {
+  eventType: null,
+  title: '',
+  description: '',
+  date: '',
+  startTime: '',
+  endTime: '',
+  location: '',
+  capacity: null,
+  waitlistEnabled: true,
+  waitlistLimit: null,
+  rrCourts: null,
+  rrGamesPerPlayer: null,
+  recurringFrequency: 'none',
+  recurringCount: 4,
+};

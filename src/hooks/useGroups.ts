@@ -8,7 +8,7 @@ export interface Group {
   id: string;
   name: string;
   description: string | null;
-  type: 'crew' | 'league' | 'open_play' | 'venue_official' | 'tournament';
+  type: 'crew' | 'league' | 'open_play' | 'venue_official' | 'tournament' | 'club';
   visibility: 'public' | 'unlisted' | 'private';
   join_method: 'open' | 'request_to_join' | 'invite_only';
   invite_code: string | null;

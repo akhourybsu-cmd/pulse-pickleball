@@ -20,6 +20,7 @@ const typeLabels: Record<string, string> = {
   open_play: 'Open Play',
   venue_official: 'Venue Official',
   tournament: 'Tournament',
+  club: 'Club / Venue',
 };
 
 // Avatar fallback gradients — soft, brand-aligned. Replaced the prior

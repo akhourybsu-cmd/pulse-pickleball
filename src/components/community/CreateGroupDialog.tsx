@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Users, Trophy, Calendar, Lock, Globe, Eye, UserPlus, ShieldCheck, Mail } from 'lucide-react';
+import { Users, Trophy, Calendar, Lock, Globe, Eye, UserPlus, ShieldCheck, Mail, Building2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -32,6 +32,7 @@ const groupTypes = [
   { value: 'crew', label: 'Crew', description: 'Friends & recurring group', icon: Users },
   { value: 'league', label: 'League', description: 'Competitive play', icon: Trophy },
   { value: 'open_play', label: 'Open Play', description: 'Casual sessions', icon: Calendar },
+  { value: 'club', label: 'Pickleball Club / Venue', description: 'Club or facility community', icon: Building2 },
 ] as const;
 
 const visibilityOptions = [

@@ -18,6 +18,12 @@ export interface GroupEvent {
   skill_level_max: number | null;
   is_recurring: boolean;
   recurring_rule: string | null;
+  event_format: 'open_play' | 'round_robin' | 'practice' | 'social' | 'clinic' | 'other';
+  waitlist_enabled: boolean;
+  waitlist_limit: number | null;
+  series_id: string | null;
+  rr_courts: number | null;
+  rr_games_per_player: number | null;
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -86,6 +92,7 @@ async function fetchGroupEvents(groupId: string): Promise<GroupEvent[]> {
     return {
       ...e,
       location_type: e.location_type as GroupEvent['location_type'],
+      event_format: (e.event_format ?? 'open_play') as GroupEvent['event_format'],
       creator_profile: profilesMap.get(e.created_by),
       rsvps: rsvpEntry ? {
         going: rsvpEntry.going,
@@ -132,6 +139,11 @@ export function useGroupEvents(groupId: string | undefined) {
       additional_starts?: string[];
       /** Recurrence rule string, e.g. "WEEKLY:8". Applied to every inserted row. */
       recurring_rule?: string;
+      event_format?: 'open_play' | 'round_robin' | 'practice' | 'social' | 'clinic' | 'other';
+      waitlist_enabled?: boolean;
+      waitlist_limit?: number;
+      rr_courts?: number;
+      rr_games_per_player?: number;
     }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
@@ -147,12 +159,18 @@ export function useGroupEvents(groupId: string | undefined) {
           ? new Date(base.end_time).getTime() - new Date(base.start_time).getTime()
           : null;
 
+      // Recurring occurrences share one series_id so the series can be
+      // identified (and bulk-managed) without a separate table.
+      const seriesId = isSeries
+        ? (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`)
+        : null;
+
       const baseRow = {
         group_id: groupId,
         created_by: user.id,
         ...base,
         ...(isSeries
-          ? { is_recurring: true, recurring_rule }
+          ? { is_recurring: true, recurring_rule, series_id: seriesId }
           : { is_recurring: false }),
       };
 
@@ -220,6 +238,46 @@ export function useGroupEvents(groupId: string | undefined) {
     },
   });
 
+  // Admin-only in practice (RLS restricts updates to admins/creators):
+  // capacity + waitlist settings for a single event.
+  const updateEventMutation = useMutation({
+    mutationFn: async ({
+      eventId,
+      updates,
+    }: {
+      eventId: string;
+      updates: Partial<{
+        title: string;
+        description: string | null;
+        capacity: number | null;
+        waitlist_enabled: boolean;
+        waitlist_limit: number | null;
+        custom_location: string | null;
+        rr_courts: number | null;
+        rr_games_per_player: number | null;
+      }>;
+    }) => {
+      const { error } = await supabase
+        .from('group_events')
+        .update(updates)
+        .eq('id', eventId);
+      if (error) throw error;
+      // Loosening capacity can free spots — promote whoever is queued.
+      await supabase.rpc('promote_group_event_waitlist', { p_event_id: eventId });
+    },
+    onSuccess: () => {
+      toast({ title: 'Saved', description: 'Event settings updated' });
+      queryClient.invalidateQueries({ queryKey: ['group-events', groupId] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update event',
+        variant: 'destructive',
+      });
+    },
+  });
+
   const updateRsvp = async (eventId: string, status: 'going' | 'maybe' | 'not_going') => {
     // Optimistic: flip the user's RSVP and adjust the counts in the cached
     // events immediately so the pill responds on tap, then write + reconcile.
@@ -244,33 +302,19 @@ export function useGroupEvents(groupId: string | undefined) {
     );
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
+      // Single server entry point: enforces capacity, routes overflow to the
+      // waitlist, and auto-promotes the next person when someone drops out.
+      const { data: finalStatus, error } = await supabase.rpc('set_group_event_rsvp', {
+        p_event_id: eventId,
+        p_status: status,
+      });
+      if (error) throw error;
 
-      // maybeSingle — single() errors when no row exists (the
-      // first-RSVP case for every user), which fell into the catch
-      // and surfaced "Failed to update RSVP" even though the user's
-      // first RSVP would have succeeded via the insert branch below.
-      const { data: existing } = await supabase
-        .from('group_event_rsvps')
-        .select('id')
-        .eq('event_id', eventId)
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (existing) {
-        await supabase
-          .from('group_event_rsvps')
-          .update({ status })
-          .eq('id', existing.id);
-      } else {
-        await supabase
-          .from('group_event_rsvps')
-          .insert({
-            event_id: eventId,
-            user_id: user.id,
-            status,
-          });
+      if (finalStatus === 'waitlist' && status === 'going') {
+        toast({
+          title: "You're on the waitlist",
+          description: 'This event is full — we\'ll move you in automatically if a spot opens.',
+        });
       }
 
       queryClient.invalidateQueries({ queryKey: ['group-events', groupId] });
@@ -291,6 +335,7 @@ export function useGroupEvents(groupId: string | undefined) {
     loading,
     createEvent: createEventMutation.mutateAsync,
     deleteEvent: deleteEventMutation.mutateAsync,
+    updateEvent: updateEventMutation.mutateAsync,
     updateRsvp,
     refetch,
   };

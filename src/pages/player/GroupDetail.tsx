@@ -217,6 +217,7 @@ export default function GroupDetail() {
       open_play: 'Open Play',
       venue_official: 'Venue',
       tournament: 'Tournament',
+      club: 'Club / Venue',
     };
     return group ? (map[group.type] || 'Group') : 'Group';
   }, [group]);
