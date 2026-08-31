@@ -2,7 +2,14 @@ import { useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { Card } from '@/components/ui/card';
 import { useGroupEvents } from '@/hooks/useGroupEvents';
-import { EventWizardFormData, EVENT_WIZARD_STEPS, encodeRecurringRule, generateOccurrenceStarts } from './types';
+import {
+  EventWizardFormData,
+  EVENT_WIZARD_STEPS,
+  INITIAL_EVENT_WIZARD_DATA,
+  encodeRecurringRule,
+  generateOccurrenceStarts,
+  generateDefaultEventTitle,
+} from './types';
 import { EventWizardProgress } from './EventWizardProgress';
 import { EventWizardNav } from './EventWizardNav';
 import { EventWizardCard } from './EventWizardCard';
@@ -23,19 +30,8 @@ export function EventWizardContainer({ groupId, onClose, onSuccess }: EventWizar
   const [currentStep, setCurrentStep] = useState(0);
   const [direction, setDirection] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
-  
-  const [formData, setFormData] = useState<EventWizardFormData>({
-    eventType: null,
-    title: '',
-    description: '',
-    date: '',
-    startTime: '',
-    endTime: '',
-    location: '',
-    capacity: null,
-    recurringFrequency: 'none',
-    recurringCount: 4,
-  });
+
+  const [formData, setFormData] = useState<EventWizardFormData>(INITIAL_EVENT_WIZARD_DATA);
 
   const step = EVENT_WIZARD_STEPS[currentStep];
   const isLastStep = currentStep === EVENT_WIZARD_STEPS.length - 1;
@@ -110,6 +106,16 @@ export function EventWizardContainer({ groupId, onClose, onSuccess }: EventWizar
         end_time: endDateTime?.toISOString(),
         custom_location: formData.location || undefined,
         capacity: formData.capacity || undefined,
+        event_format: formData.eventType ?? 'open_play',
+        // Waitlist only means anything with a capacity ceiling.
+        waitlist_enabled: formData.capacity ? formData.waitlistEnabled : false,
+        waitlist_limit:
+          formData.capacity && formData.waitlistEnabled
+            ? formData.waitlistLimit ?? undefined
+            : undefined,
+        rr_courts: formData.eventType === 'round_robin' ? formData.rrCourts ?? undefined : undefined,
+        rr_games_per_player:
+          formData.eventType === 'round_robin' ? formData.rrGamesPerPlayer ?? undefined : undefined,
         ...(recurringRule
           ? { recurring_rule: recurringRule, additional_starts: additionalStarts }
           : {}),
@@ -128,7 +134,12 @@ export function EventWizardContainer({ groupId, onClose, onSuccess }: EventWizar
           <EventTypeStep
             value={formData.eventType}
             onChange={(type) => {
-              setFormData((prev) => ({ ...prev, eventType: type }));
+              setFormData((prev) => ({
+                ...prev,
+                eventType: type,
+                // Prefill a sensible title so the next step is one tap.
+                title: prev.title || generateDefaultEventTitle(type),
+              }));
               // Auto-advance after selection
               setTimeout(() => goNext(), 150);
             }}
@@ -166,10 +177,25 @@ export function EventWizardContainer({ groupId, onClose, onSuccess }: EventWizar
       case 'details':
         return (
           <EventDetailsStep
+            eventType={formData.eventType}
             location={formData.location}
             capacity={formData.capacity}
+            waitlistEnabled={formData.waitlistEnabled}
+            waitlistLimit={formData.waitlistLimit}
+            rrCourts={formData.rrCourts}
+            rrGamesPerPlayer={formData.rrGamesPerPlayer}
             onLocationChange={(location) => setFormData((prev) => ({ ...prev, location }))}
             onCapacityChange={(capacity) => setFormData((prev) => ({ ...prev, capacity }))}
+            onWaitlistEnabledChange={(waitlistEnabled) =>
+              setFormData((prev) => ({ ...prev, waitlistEnabled }))
+            }
+            onWaitlistLimitChange={(waitlistLimit) =>
+              setFormData((prev) => ({ ...prev, waitlistLimit }))
+            }
+            onRrCourtsChange={(rrCourts) => setFormData((prev) => ({ ...prev, rrCourts }))}
+            onRrGamesChange={(rrGamesPerPlayer) =>
+              setFormData((prev) => ({ ...prev, rrGamesPerPlayer }))
+            }
           />
         );
       case 'review':
@@ -180,14 +206,14 @@ export function EventWizardContainer({ groupId, onClose, onSuccess }: EventWizar
   };
 
   return (
-    <Card className="p-4 overflow-hidden">
+    <Card className="relative overflow-hidden border-border/70 p-4 shadow-[0_18px_50px_-30px_hsl(var(--foreground)/0.4)]">
       <EventWizardProgress
         currentStep={currentStep}
         onBack={goBack}
         onClose={onClose}
         canGoBack={currentStep > 0}
       />
-      
+
       <div className="overflow-hidden">
         <AnimatePresence mode="wait" custom={direction}>
           <EventWizardCard key={step.id} direction={direction}>
@@ -195,7 +221,7 @@ export function EventWizardContainer({ groupId, onClose, onSuccess }: EventWizar
           </EventWizardCard>
         </AnimatePresence>
       </div>
-      
+
       {/* Don't show nav on type step since it auto-advances */}
       {step.id !== 'type' && (
         <EventWizardNav
