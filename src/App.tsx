@@ -119,14 +119,11 @@ const TournamentEventDetail = lazy(() => import("./pages/TournamentEventDetail")
 const TournamentDivisionDetail = lazy(() => import("./pages/TournamentDivisionDetail"));
 const TournamentLiveView = lazy(() => import("./pages/TournamentLiveView"));
 const TournamentTeamView = lazy(() => import("./pages/TournamentTeamView"));
-const Tournaments = lazy(() => import("./pages/Tournaments"));
-const BrowseTournaments = lazy(() => import("./pages/BrowseTournaments"));
 const ManageTournaments = lazy(() => import("./pages/ManageTournaments"));
 const TournamentRegister = lazy(() => import("./pages/TournamentRegister"));
 const TournamentLanding = lazy(() => import("./pages/TournamentLanding"));
 const TournamentCustomize = lazy(() => import("./pages/TournamentCustomize"));
 const TournamentMatchScore = lazy(() => import("./pages/TournamentMatchScore"));
-const TournamentNew = lazy(() => import("./pages/TournamentNew"));
 const TournamentNewWithGating = lazy(() => import("./pages/TournamentNewWithGating"));
 const TournamentDetail = lazy(() => import("./pages/TournamentDetail"));
 const TournamentDivisionDetailNew = lazy(() => import("./pages/TournamentDivisionDetailNew"));

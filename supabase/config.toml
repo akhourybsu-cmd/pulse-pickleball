@@ -33,10 +33,15 @@ project_id = "ryxklkayezjnwwunuphn"
     name = "delete-old-posts"
     schedule = "0 3 * * *"
 
-  [[edge_runtime.cron]]
-    function_name = "send-tournament-reminders"
-    name = "send-tournament-reminders"
-    schedule = "*/5 * * * *"
+  # Paused while tournaments are dark behind VITE_TOURNAMENTS. This scanned
+  # tournaments_matches every 5 minutes and could emit "match starting soon"
+  # notifications for a feature nobody is supposed to see yet — the client
+  # feature flag does not reach a cron-triggered edge function. Re-enable
+  # together with the tournament launch.
+  # [[edge_runtime.cron]]
+  #   function_name = "send-tournament-reminders"
+  #   name = "send-tournament-reminders"
+  #   schedule = "*/5 * * * *"
 
 [functions]
   [functions.auth-email]
