@@ -47,23 +47,29 @@ export function CommunityPulse({
       initial={{ opacity: 0, y: -5 }}
       animate={{ opacity: 1, y: 0 }}
       className={cn(
-        'rounded-xl bg-muted/50 border border-border/30 p-3',
+        'relative overflow-hidden rounded-2xl border border-border/70 bg-card p-3 shadow-[0_2px_10px_-6px_hsl(var(--foreground)/0.18)]',
         className
       )}
     >
+      {/* Gold hairline — matches the community header band. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-px"
+        style={{ background: 'linear-gradient(90deg, transparent, hsl(var(--primary) / 0.7), transparent)' }}
+      />
       {/* Header with pulsing dot */}
       <div className="flex items-center gap-2 mb-2">
         <span className="relative flex h-2 w-2">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary/60 opacity-75" />
           <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
         </span>
-        <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+        <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
           Community Status
         </span>
       </div>
       
       {/* Divider */}
-      <div className="h-px bg-border/40 mb-2" />
+      <div className="mb-2 h-px bg-border/60" />
       
       {/* Stats row - wrap friendly */}
       <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-muted-foreground">

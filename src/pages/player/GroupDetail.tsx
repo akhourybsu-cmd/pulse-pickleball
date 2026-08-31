@@ -312,7 +312,32 @@ export default function GroupDetail() {
           it carries real contrast against the cream/ink app chrome while
           staying on-brand. Deliberately dark in both themes (a hero band).
           A faint pickleball-court watermark adds depth without noise. */}
-      <div className="relative overflow-hidden shrink-0 border-b border-white/10 px-3 sm:px-4 pb-3.5 [padding-top:calc(0.6rem+env(safe-area-inset-top))] bg-[linear-gradient(158deg,hsl(220_10%_18%)_0%,hsl(220_10%_11%)_58%,hsl(220_11%_9%)_100%)]">
+      <div
+        className="relative overflow-hidden shrink-0 px-3 sm:px-4 pb-3.5 [padding-top:calc(0.6rem+env(safe-area-inset-top))]"
+        style={{
+          // PULSE hero ink — same emerald/gold band the league + round
+          // robin heroes use, so community reads as one product.
+          // PULSE ink band — same ink ramp as the rest of the app chrome
+          // (hsl 220 10%), finished with a gold hairline.
+          backgroundImage:
+            'linear-gradient(158deg, hsl(var(--ink-700)) 0%, hsl(var(--ink-900)) 60%, hsl(220 12% 8%) 100%)',
+          borderBottom: '1px solid hsl(var(--primary) / 0.28)',
+        }}
+      >
+        {/* Gold hairline + ambient bloom — broadcast framing. */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-px"
+          style={{
+            background:
+              'linear-gradient(90deg, transparent, hsl(var(--primary) / 0.9), transparent)',
+          }}
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -left-16 -top-20 h-52 w-52 rounded-full blur-3xl"
+          style={{ background: 'hsl(var(--primary) / 0.16)' }}
+        />
         {/* Court-line watermark — bleeds off the top-right corner. */}
         <svg
           aria-hidden
@@ -345,7 +370,10 @@ export default function GroupDetail() {
             <h1 className="text-xl sm:text-2xl font-bold truncate leading-tight text-white">
               {group.name}
             </h1>
-            <div className="h-[3px] w-10 mt-1.5 rounded-full bg-primary" />
+            <div
+              className="h-[3px] w-10 mt-1.5 rounded-full"
+              style={{ background: 'hsl(var(--primary))' }}
+            />
           </div>
 
           {/* Right-side action cluster — white on the dark band. */}

@@ -47,7 +47,7 @@ export default function Community() {
                         key={tab.value}
                         onClick={() => setActiveTab(tab.value)}
                         className={cn(
-                          'relative py-2.5 text-sm font-medium transition-colors duration-200',
+                          'relative py-2.5 text-[13px] font-bold uppercase tracking-[0.1em] transition-colors duration-200',
                           isActive ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
                         )}
                       >
@@ -68,7 +68,7 @@ export default function Community() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-9 w-9 rounded-full hover:bg-muted/50"
+                    className="h-10 w-10 rounded-full border border-border/70 bg-card shadow-sm hover:bg-muted/60"
                     aria-label="Join with code"
                     onClick={() => setJoinDialogOpen(true)}
                   >
@@ -77,7 +77,7 @@ export default function Community() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-9 w-9 rounded-full hover:bg-muted/50"
+                    className="h-10 w-10 rounded-full border border-border/70 bg-card shadow-sm hover:bg-muted/60"
                     aria-label="Explore groups"
                     onClick={() => setActiveTab('explore')}
                   >
@@ -86,7 +86,7 @@ export default function Community() {
                   <Button
                     onClick={() => setCreateDialogOpen(true)}
                     size="sm"
-                    className="h-9 px-4 rounded-full btn-premium"
+                    className="h-10 rounded-full px-5 text-xs font-bold uppercase tracking-[0.1em] btn-premium"
                   >
                     <Plus className="h-4 w-4 mr-1.5" />
                     Create
