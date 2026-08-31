@@ -355,9 +355,12 @@ export default function RoundRobinKiosk() {
   const seatName = (match: ScheduleMatch, seat: "a1" | "a2" | "b1" | "b2") => {
     const profile = (match as any)[`${seat}_profile`];
     const guest = (match as any)[`${seat}_guest`];
+    // Kiosk is a broadcast surface — prefer the full legal name over a short
+    // nickname so spectators can identify players unambiguously.
     const name =
-      profile?.display_name ||
       profile?.full_name ||
+      profile?.display_name ||
+      guest?.full_name ||
       guest?.display_name ||
       null;
     if (name && String(name).trim()) return String(name).trim();
@@ -367,6 +370,7 @@ export default function RoundRobinKiosk() {
       !!(match as any)[`${seat}_player_id`] || !!(match as any)[`${seat}_guest_id`];
     return hasOccupant ? "Player" : "TBD";
   };
+
 
   const handleExitKiosk = () => {
     setPinModalOpen(true);
@@ -584,8 +588,10 @@ export default function RoundRobinKiosk() {
                   style={{
                     backgroundColor: themeColors.cardBg,
                     color: themeColors.mutedText,
+                    border: `2px solid rgba(${themeColors.accentRgb},0.3)`,
                   }}
                 >
+
                   <span className="text-[1.4vw]">Waiting for matchup...</span>
                 </div>
               )}
@@ -613,7 +619,8 @@ export default function RoundRobinKiosk() {
                     className="relative rounded-2xl overflow-hidden flex flex-col min-h-0"
                     style={{
                       backgroundColor: themeColors.cardBg,
-                      boxShadow: `0 8px 30px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(${themeColors.accentRgb},0.12)`,
+                      border: `2px solid rgba(${themeColors.accentRgb},0.45)`,
+                      boxShadow: `0 10px 34px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06)`,
                     }}
                   >
                     {/* Court label */}
@@ -659,10 +666,10 @@ export default function RoundRobinKiosk() {
                           </div>
                         ) : (
                           <>
-                            <div className={`${nameTextClass} font-bold truncate`} style={{ color: themeColors.text }}>
+                            <div className={`${nameTextClass} font-bold leading-[1.15] break-words`} style={{ color: themeColors.text }}>
                               {a1}
                             </div>
-                            <div className={`${nameTextClass} font-bold truncate`} style={{ color: themeColors.text }}>
+                            <div className={`${nameTextClass} font-bold leading-[1.15] break-words`} style={{ color: themeColors.text }}>
                               {a2}
                             </div>
                           </>
@@ -708,10 +715,10 @@ export default function RoundRobinKiosk() {
                           </div>
                         ) : (
                           <>
-                            <div className={`${nameTextClass} font-bold truncate`} style={{ color: themeColors.text }}>
+                            <div className={`${nameTextClass} font-bold leading-[1.15] break-words`} style={{ color: themeColors.text }}>
                               {b1}
                             </div>
-                            <div className={`${nameTextClass} font-bold truncate`} style={{ color: themeColors.text }}>
+                            <div className={`${nameTextClass} font-bold leading-[1.15] break-words`} style={{ color: themeColors.text }}>
                               {b2}
                             </div>
                           </>
@@ -731,7 +738,8 @@ export default function RoundRobinKiosk() {
               className="rounded-2xl flex flex-col min-h-0"
               style={{
                 backgroundColor: themeColors.cardBg,
-                boxShadow: `0 8px 30px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(${themeColors.accentRgb},0.12)`,
+                border: `2px solid rgba(${themeColors.accentRgb},0.45)`,
+                      boxShadow: `0 10px 34px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06)`,
               }}
             >
               <div
@@ -753,7 +761,11 @@ export default function RoundRobinKiosk() {
                     {standings.slice(0, 5).map((row, idx) => (
                       <div
                         key={row.player_id}
-                        className="flex items-center gap-3 px-2 py-2 rounded-lg"
+                        className="flex items-center gap-3 px-3 py-2 rounded-xl mb-2"
+                        style={{
+                          backgroundColor: `rgba(255,255,255,0.03)`,
+                          border: `1px solid rgba(${themeColors.accentRgb},0.28)`,
+                        }}
                       >
                         <div
                           className="w-7 h-7 rounded-full flex items-center justify-center text-[0.9vw] font-bold flex-shrink-0"
@@ -765,7 +777,7 @@ export default function RoundRobinKiosk() {
                         >
                           {idx + 1}
                         </div>
-                        <div className="flex-1 min-w-0 text-[1.05vw] font-semibold truncate" style={{ color: themeColors.text }}>
+                        <div className="flex-1 min-w-0 text-[1.05vw] font-semibold leading-tight break-words" style={{ color: themeColors.text }}>
                           {row.player_name}
                         </div>
                         <div className="flex items-center gap-3 text-[0.95vw] font-semibold tabular-nums">
@@ -799,7 +811,8 @@ export default function RoundRobinKiosk() {
               className="rounded-2xl flex flex-col min-h-0"
               style={{
                 backgroundColor: themeColors.cardBg,
-                boxShadow: `0 8px 30px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(${themeColors.accentRgb},0.12)`,
+                border: `2px solid rgba(${themeColors.accentRgb},0.45)`,
+                      boxShadow: `0 10px 34px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06)`,
               }}
             >
               <div
@@ -824,25 +837,42 @@ export default function RoundRobinKiosk() {
                   nextRoundMatches.slice(0, 4).map((match) => (
                     <div
                       key={`next-${match.id}`}
-                      className="flex items-center gap-3 px-3 py-2 rounded-lg"
-                      style={{ backgroundColor: `rgba(255,255,255,0.04)` }}
+                      className="flex items-center gap-3 px-3 py-2 rounded-xl"
+                      style={{
+                        backgroundColor: `rgba(255,255,255,0.03)`,
+                        border: `1px solid rgba(${themeColors.accentRgb},0.28)`,
+                      }}
                     >
                       <div
                         className="px-2 py-1 rounded text-[0.8vw] font-bold tracking-wider flex-shrink-0"
-                        style={{ backgroundColor: `rgba(${themeColors.accentRgb},0.15)`, color: themeColors.accent }}
+                        style={{
+                          backgroundColor: `rgba(${themeColors.accentRgb},0.15)`,
+                          color: themeColors.accent,
+                          border: `1px solid rgba(${themeColors.accentRgb},0.5)`,
+                        }}
                       >
                         C{match.court_no}
                       </div>
                       <div className="flex-1 min-w-0 text-[0.95vw] leading-snug" style={{ color: themeColors.text }}>
-                        <div className="truncate">
-                          {seatName(match, "a1")} / {seatName(match, "a2")}
+                        {/* Full names on their own lines so nothing clips */}
+                        <div className="break-words font-semibold">{seatName(match, "a1")}</div>
+                        <div className="break-words font-semibold">{seatName(match, "a2")}</div>
+                        <div
+                          className="text-[0.8vw] font-bold tracking-widest my-0.5"
+                          style={{ color: themeColors.accent }}
+                        >
+                          VS
                         </div>
-                        <div className="truncate" style={{ color: themeColors.mutedText }}>
-                          vs {seatName(match, "b1")} / {seatName(match, "b2")}
+                        <div className="break-words" style={{ color: themeColors.mutedText }}>
+                          {seatName(match, "b1")}
+                        </div>
+                        <div className="break-words" style={{ color: themeColors.mutedText }}>
+                          {seatName(match, "b2")}
                         </div>
                       </div>
                     </div>
                   ))
+
                 )}
               </div>
             </div>
