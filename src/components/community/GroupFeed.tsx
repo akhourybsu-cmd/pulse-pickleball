@@ -47,12 +47,12 @@ interface GroupFeedProps {
 }
 
 const POST_TYPE_BADGES: Record<string, { label: string; className: string }> = {
-  announcement: { label: 'Announcement', className: 'bg-amber-500/10 text-amber-600 border-amber-200' },
-  lfg: { label: 'LFG', className: 'bg-emerald-500/10 text-emerald-600 border-emerald-200' },
-  highlight: { label: 'Highlight', className: 'bg-purple-500/10 text-purple-600 border-purple-200' },
-  poll: { label: 'Poll', className: 'bg-blue-500/10 text-blue-600 border-blue-200' },
-  round_robin: { label: 'Round Robin', className: 'bg-primary/10 text-primary border-primary/30' },
-  feed: { label: 'Post', className: 'bg-muted text-muted-foreground' },
+  announcement: { label: 'Announcement', className: 'bg-amber-500/12 text-amber-600 border-amber-500/35 dark:text-amber-300' },
+  lfg: { label: 'LFG', className: 'bg-emerald-500/12 text-emerald-600 border-emerald-500/35 dark:text-emerald-300' },
+  highlight: { label: 'Highlight', className: 'bg-purple-500/12 text-purple-600 border-purple-500/35 dark:text-purple-300' },
+  poll: { label: 'Poll', className: 'bg-blue-500/12 text-blue-600 border-blue-500/35 dark:text-blue-300' },
+  round_robin: { label: 'Round Robin', className: 'bg-primary/12 text-primary border-primary/40' },
+  feed: { label: 'Post', className: 'bg-muted text-muted-foreground border-border/60' },
 };
 
 // Type accent colors for left border
@@ -63,7 +63,7 @@ const POST_TYPE_ACCENT: Record<string, string> = {
   poll: 'border-l-blue-500',
   round_robin: 'border-l-primary',
   venue: 'border-l-primary',
-  feed: 'border-l-transparent',
+  feed: 'border-l-border',
 };
 
 const REACTION_EMOJIS = [
@@ -76,12 +76,12 @@ const REACTION_EMOJIS = [
 // Date separator component
 function DateSeparator({ label }: { label: string }) {
   return (
-    <div className="flex items-center gap-3 py-3">
-      <div className="flex-1 h-px bg-border/30" />
-      <span className="text-[11px] font-medium text-muted-foreground/60 uppercase tracking-wider">
+    <div className="flex items-center gap-3 pb-4 pt-1">
+      <div className="h-px flex-1 bg-gradient-to-r from-transparent to-border" />
+      <span className="rounded-full border border-border/70 bg-card px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
         {label}
       </span>
-      <div className="flex-1 h-px bg-border/30" />
+      <div className="h-px flex-1 bg-gradient-to-l from-transparent to-border" />
     </div>
   );
 }
@@ -210,11 +210,11 @@ export function GroupFeed({
       {/* Pinned Posts Section */}
       {pinnedPosts.length > 0 && (
         <div className="space-y-2">
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground px-1">
+          <div className="flex items-center gap-1.5 px-1 text-primary">
             <Pin className="h-3 w-3" />
-            <span className="font-medium uppercase tracking-wide">Pinned</span>
+            <span className="text-[10px] font-bold uppercase tracking-[0.18em]">Pinned</span>
           </div>
-          <div className="space-y-4">
+          <div className="space-y-5">
             {pinnedPosts.map((post) => (
               <PostCard
                 key={post.id}
@@ -253,14 +253,14 @@ export function GroupFeed({
           size="sm"
         />
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-6">
           {groupedPosts.map((group, groupIndex) => (
             <div key={group.label}>
               {/* Date separator - only show if more than one group or not "Today" */}
               {(groupedPosts.length > 1 || group.label !== 'Today') && (
                 <DateSeparator label={group.label} />
               )}
-              <div className="space-y-4">
+              <div className="space-y-5">
                 {group.posts.map((post) => (
                   <PostCard
                     key={post.id}
@@ -283,7 +283,7 @@ export function GroupFeed({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 rounded-full text-xs text-muted-foreground"
+                className="h-10 rounded-full border border-border/70 bg-card px-5 text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground shadow-sm hover:text-foreground"
                 onClick={() => setVisibleCount((c) => c + FEED_PAGE)}
               >
                 Load more posts
@@ -377,10 +377,14 @@ const PostCard = memo(function PostCard({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       className={cn(
-        'p-4 rounded-xl bg-card border transition-colors',
-        'shadow-[0_1px_3px_rgba(0,0,0,0.04)]',
-        'border-l-[3px]',
-        post.pinned ? 'border-primary/20 bg-primary/5 border-l-primary' : cn('border-border/30', typeAccent)
+        // Each post is its own distinct slab: full-strength border, a real
+        // lifted shadow, and a type-colored spine on the left edge.
+        'relative overflow-hidden rounded-2xl bg-card p-4 transition-shadow',
+        'border border-border/70 border-l-[4px]',
+        'shadow-[0_2px_10px_-4px_hsl(var(--foreground)/0.14)] hover:shadow-[0_10px_28px_-16px_hsl(var(--foreground)/0.28)]',
+        post.pinned
+          ? 'border-primary/45 border-l-primary bg-primary/[0.06]'
+          : typeAccent,
       )}
     >
       {/* Header - Mobile Optimized */}
@@ -403,7 +407,13 @@ const PostCard = memo(function PostCard({
             </div>
             <div className="flex items-center gap-1.5 mt-0.5 sm:mt-1">
               {post.type !== 'feed' && (
-                <Badge variant="outline" className={cn('text-[10px] h-5 px-1.5', typeInfo.className)}>
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    'h-5 rounded-full px-2 text-[10px] font-bold uppercase tracking-[0.1em]',
+                    typeInfo.className,
+                  )}
+                >
                   {typeInfo.label}
                 </Badge>
               )}
@@ -486,9 +496,9 @@ const PostCard = memo(function PostCard({
       </div>
 
       {/* Footer with Enhanced Reactions - Mobile Optimized */}
-      <div className="pt-2 flex items-center justify-between border-t border-border/15">
-        {/* Grouped reaction container - smaller on mobile */}
-        <div className="flex items-center gap-0.5 bg-muted/40 rounded-full px-0.5 sm:px-1 py-0.5">
+      <div className="mt-1 flex items-center justify-between border-t border-border/50 pt-2.5">
+        {/* Grouped reaction rail — glassy pill with a hairline ring. */}
+        <div className="flex items-center gap-0.5 rounded-full border border-border/60 bg-muted/50 px-0.5 py-0.5 shadow-inner sm:px-1">
           {REACTION_EMOJIS.map(({ emoji }) => {
             const reactionData = post.reactions?.find(r => r.emoji === emoji);
             const hasReacted = reactionData?.user_reacted;
@@ -500,9 +510,10 @@ const PostCard = memo(function PostCard({
                 variant="ghost"
                 size="sm"
                 className={cn(
-                  'h-6 sm:h-7 gap-0.5 sm:gap-1 px-1.5 sm:px-2 text-xs rounded-full transition-all',
-                  hasReacted && 'bg-primary/15 text-primary hover:bg-primary/20',
-                  !hasReacted && 'hover:bg-muted/60'
+                  'h-8 gap-0.5 rounded-full px-2 text-xs font-semibold tabular-nums transition-all active:scale-95 sm:gap-1 sm:px-2.5',
+                  hasReacted
+                    ? 'bg-primary/15 text-primary shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.35)] hover:bg-primary/20'
+                    : 'hover:bg-background/80',
                 )}
                 onClick={() => onToggleReaction(post.id, emoji)}
               >
@@ -513,14 +524,15 @@ const PostCard = memo(function PostCard({
           })}
         </div>
 
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          className="h-7 gap-1 text-xs text-muted-foreground hover:text-foreground"
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 gap-1.5 rounded-full border border-border/60 px-3 text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
           onClick={onOpenComments}
+          aria-label="Open comments"
         >
           <MessageSquare className="h-3.5 w-3.5" />
-          {post.comment_count || 0}
+          <span className="tabular-nums">{post.comment_count || 0}</span>
         </Button>
       </div>
     </motion.div>
