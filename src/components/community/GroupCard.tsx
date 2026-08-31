@@ -22,6 +22,7 @@ const typeLabels: Record<string, string> = {
   open_play: 'Open Play',
   venue_official: 'Venue Official',
   tournament: 'Tournament',
+  club: 'Club / Venue',
 };
 
 const typeColors: Record<string, string> = {
@@ -30,6 +31,7 @@ const typeColors: Record<string, string> = {
   open_play: 'bg-green-500/10 text-green-600 dark:text-green-400',
   venue_official: 'bg-purple-500/10 text-purple-600 dark:text-purple-400',
   tournament: 'bg-red-500/10 text-red-600 dark:text-red-400',
+  club: 'bg-primary/10 text-primary',
 };
 
 export const GroupCard = memo(function GroupCard({ group, showJoinButton, onJoin, isJoining }: GroupCardProps) {
