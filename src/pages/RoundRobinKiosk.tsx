@@ -260,25 +260,27 @@ export default function RoundRobinKiosk() {
         if (match.b2_guest_id) allGuestIds.add(match.b2_guest_id);
       });
 
-      // Fetch all profiles at once (public view — kiosk may run unauthenticated)
-      const { data: profiles, error: profilesError } = allPlayerIds.size > 0
-        ? await supabase
-            .from("profiles_public")
-            .select("id, display_name, full_name")
-            .in("id", Array.from(allPlayerIds))
-        : { data: [], error: null };
+      // Names come from a single public lookup so the kiosk renders correctly
+      // on an unauthenticated display: `profiles_public` requires a session
+      // (auth.uid() IS NOT NULL) and guest_players is participant-scoped, so
+      // both return zero rows on a lobby TV. The RPC only exposes names for
+      // schedules of live/completed events.
+      const { data: nameRows, error: namesError } = await supabase.rpc(
+        "rr_kiosk_participant_names",
+        { _event_id: eventId },
+      );
 
-      if (profilesError) {
-        console.error("Profiles error:", profilesError);
+      if (namesError) {
+        console.error("Participant names error:", namesError);
       }
 
-      // Fetch guest display names
-      const { data: guests } = allGuestIds.size > 0
-        ? await supabase
-            .from("guest_players")
-            .select("id, display_name, linked_user_id")
-            .in("id", Array.from(allGuestIds))
-        : { data: [] };
+      const profiles = (nameRows || [])
+        .filter((r: any) => !r.is_guest)
+        .map((r: any) => ({ id: r.participant_id, display_name: r.name, full_name: r.name }));
+
+      const guests = (nameRows || [])
+        .filter((r: any) => r.is_guest)
+        .map((r: any) => ({ id: r.participant_id, display_name: r.name, linked_user_id: null }));
 
       const profileMap = new Map<string, any>((profiles || []).map((p: any) => [p.id, p]));
       const guestMap = new Map<string, any>(
