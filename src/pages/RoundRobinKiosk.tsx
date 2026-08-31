@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 // -- Theme Configuration
-type KioskTheme = 'proBroadcast' | 'courtGreen' | 'oceanBlue';
+type KioskTheme = 'proBroadcast' | 'courtGreen' | 'oceanBlue' | 'pulseLight';
 
 const THEME_CONFIG = {
   proBroadcast: {
@@ -30,6 +30,10 @@ const THEME_CONFIG = {
     accentRgb: '255, 182, 39',
     text: '#ffffff',
     mutedText: '#9ca3af',
+    rowBg: 'rgba(255,255,255,0.03)',
+    chipBg: 'rgba(255,255,255,0.08)',
+    divider: 'rgba(255,255,255,0.15)',
+    cardShadow: '0 10px 34px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06)',
   },
   courtGreen: {
     name: 'Court Green',
@@ -40,6 +44,10 @@ const THEME_CONFIG = {
     accentRgb: '166, 219, 90',
     text: '#ffffff',
     mutedText: '#94a3b8',
+    rowBg: 'rgba(255,255,255,0.03)',
+    chipBg: 'rgba(255,255,255,0.08)',
+    divider: 'rgba(255,255,255,0.15)',
+    cardShadow: '0 10px 34px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06)',
   },
   oceanBlue: {
     name: 'Ocean Blue',
@@ -50,6 +58,24 @@ const THEME_CONFIG = {
     accentRgb: '59, 130, 246',
     text: '#ffffff',
     mutedText: '#94a3b8',
+    rowBg: 'rgba(255,255,255,0.03)',
+    chipBg: 'rgba(255,255,255,0.08)',
+    divider: 'rgba(255,255,255,0.15)',
+    cardShadow: '0 10px 34px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06)',
+  },
+  pulseLight: {
+    name: 'Pulse Light',
+    bg: '#F4F6F4',
+    headerBg: '#FFFFFF',
+    cardBg: '#FFFFFF',
+    accent: '#0D7A5F',
+    accentRgb: '13, 122, 95',
+    text: '#0A1F1A',
+    mutedText: '#55665F',
+    rowBg: 'rgba(13,122,95,0.05)',
+    chipBg: 'rgba(13,122,95,0.12)',
+    divider: 'rgba(10,31,26,0.15)',
+    cardShadow: '0 10px 30px rgba(10,31,26,0.12), inset 0 1px 0 rgba(255,255,255,0.9)',
   },
 };
 
@@ -521,7 +547,7 @@ export default function RoundRobinKiosk() {
             </div>
             <div
               className="h-[5vh] min-h-9 w-px"
-              style={{ backgroundColor: `rgba(255,255,255,0.15)` }}
+              style={{ backgroundColor: themeColors.divider }}
             />
             <div className="flex flex-col leading-tight">
               <h1 className="text-[1.8vw] font-bold tracking-tight" style={{ color: themeColors.text }}>
@@ -620,7 +646,7 @@ export default function RoundRobinKiosk() {
                     style={{
                       backgroundColor: themeColors.cardBg,
                       border: `2px solid rgba(${themeColors.accentRgb},0.45)`,
-                      boxShadow: `0 10px 34px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06)`,
+                      boxShadow: themeColors.cardShadow,
                     }}
                   >
                     {/* Court label */}
@@ -757,7 +783,7 @@ export default function RoundRobinKiosk() {
               style={{
                 backgroundColor: themeColors.cardBg,
                 border: `2px solid rgba(${themeColors.accentRgb},0.45)`,
-                      boxShadow: `0 10px 34px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06)`,
+                      boxShadow: themeColors.cardShadow,
               }}
             >
               <div
@@ -781,7 +807,7 @@ export default function RoundRobinKiosk() {
                         key={row.player_id}
                         className="flex items-center gap-3 px-3 py-2 rounded-xl mb-2"
                         style={{
-                          backgroundColor: `rgba(255,255,255,0.03)`,
+                          backgroundColor: themeColors.rowBg,
                           border: `1px solid rgba(${themeColors.accentRgb},0.28)`,
                         }}
                       >
@@ -789,7 +815,7 @@ export default function RoundRobinKiosk() {
                           className="w-7 h-7 rounded-full flex items-center justify-center text-[0.9vw] font-bold flex-shrink-0"
                           style={{
                             backgroundColor:
-                              idx === 0 ? themeColors.accent : `rgba(255,255,255,0.08)`,
+                              idx === 0 ? themeColors.accent : themeColors.chipBg,
                             color: idx === 0 ? themeColors.headerBg : themeColors.text,
                           }}
                         >
@@ -830,7 +856,7 @@ export default function RoundRobinKiosk() {
               style={{
                 backgroundColor: themeColors.cardBg,
                 border: `2px solid rgba(${themeColors.accentRgb},0.45)`,
-                      boxShadow: `0 10px 34px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06)`,
+                      boxShadow: themeColors.cardShadow,
               }}
             >
               <div
@@ -857,7 +883,7 @@ export default function RoundRobinKiosk() {
                       key={`next-${match.id}`}
                       className="flex items-center gap-3 px-3 py-2 rounded-xl"
                       style={{
-                        backgroundColor: `rgba(255,255,255,0.03)`,
+                        backgroundColor: themeColors.rowBg,
                         border: `1px solid rgba(${themeColors.accentRgb},0.28)`,
                       }}
                     >
@@ -1120,7 +1146,7 @@ function FinalLeaderboardScreen({
             <div style={{ color: themeColors.mutedText }}>
               <Logo className="h-[5vh] min-h-9 w-auto" />
             </div>
-            <div className="h-[5vh] min-h-9 w-px" style={{ backgroundColor: `rgba(255,255,255,0.15)` }} />
+            <div className="h-[5vh] min-h-9 w-px" style={{ backgroundColor: themeColors.divider }} />
             <div className="flex flex-col leading-tight">
               <h1 className="text-[1.8vw] font-bold tracking-tight" style={{ color: themeColors.text }}>
                 {event.name}
@@ -1231,7 +1257,7 @@ function FinalLeaderboardScreen({
                   >
                     <div
                       className="w-8 h-8 rounded-full flex items-center justify-center text-[1vw] font-extrabold flex-shrink-0"
-                      style={{ backgroundColor: `rgba(255,255,255,0.08)`, color: themeColors.text }}
+                      style={{ backgroundColor: themeColors.chipBg, color: themeColors.text }}
                     >
                       {i + 4}
                     </div>
