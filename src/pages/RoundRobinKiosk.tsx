@@ -260,25 +260,27 @@ export default function RoundRobinKiosk() {
         if (match.b2_guest_id) allGuestIds.add(match.b2_guest_id);
       });
 
-      // Fetch all profiles at once (public view — kiosk may run unauthenticated)
-      const { data: profiles, error: profilesError } = allPlayerIds.size > 0
-        ? await supabase
-            .from("profiles_public")
-            .select("id, display_name, full_name")
-            .in("id", Array.from(allPlayerIds))
-        : { data: [], error: null };
+      // Names come from a single public lookup so the kiosk renders correctly
+      // on an unauthenticated display: `profiles_public` requires a session
+      // (auth.uid() IS NOT NULL) and guest_players is participant-scoped, so
+      // both return zero rows on a lobby TV. The RPC only exposes names for
+      // schedules of live/completed events.
+      const { data: nameRows, error: namesError } = await supabase.rpc(
+        "rr_kiosk_participant_names",
+        { _event_id: eventId },
+      );
 
-      if (profilesError) {
-        console.error("Profiles error:", profilesError);
+      if (namesError) {
+        console.error("Participant names error:", namesError);
       }
 
-      // Fetch guest display names
-      const { data: guests } = allGuestIds.size > 0
-        ? await supabase
-            .from("guest_players")
-            .select("id, display_name, linked_user_id")
-            .in("id", Array.from(allGuestIds))
-        : { data: [] };
+      const profiles = (nameRows || [])
+        .filter((r: any) => !r.is_guest)
+        .map((r: any) => ({ id: r.participant_id, display_name: r.name, full_name: r.name }));
+
+      const guests = (nameRows || [])
+        .filter((r: any) => r.is_guest)
+        .map((r: any) => ({ id: r.participant_id, display_name: r.name, linked_user_id: null }));
 
       const profileMap = new Map<string, any>((profiles || []).map((p: any) => [p.id, p]));
       const guestMap = new Map<string, any>(
@@ -342,9 +344,28 @@ export default function RoundRobinKiosk() {
     }
   };
 
-  const getPlayerName = (profile: any) => {
-    if (!profile) return "TBD";
-    return profile.display_name || profile.full_name || "TBD";
+  /**
+   * Resolve a single seat (a1/a2/b1/b2) to a display name.
+   *
+   * A seat can be filled by a registered player (`*_player_id` → profile) OR a
+   * guest (`*_guest_id` → guest_players). The kiosk used to read the profile
+   * join only, so every guest seat fell through to "TBD" and the court card
+   * showed "Players assigning…" even though the round was fully assigned.
+   */
+  const seatName = (match: ScheduleMatch, seat: "a1" | "a2" | "b1" | "b2") => {
+    const profile = (match as any)[`${seat}_profile`];
+    const guest = (match as any)[`${seat}_guest`];
+    const name =
+      profile?.display_name ||
+      profile?.full_name ||
+      guest?.display_name ||
+      null;
+    if (name && String(name).trim()) return String(name).trim();
+    // Seat references someone we couldn't resolve (missing join) vs. a truly
+    // empty seat — only an empty seat is "TBD".
+    const hasOccupant =
+      !!(match as any)[`${seat}_player_id`] || !!(match as any)[`${seat}_guest_id`];
+    return hasOccupant ? "Player" : "TBD";
   };
 
   const handleExitKiosk = () => {
@@ -574,10 +595,10 @@ export default function RoundRobinKiosk() {
                 const t2 = match.team2_score ?? 0;
                 const team1Won = hasScore && t1 > t2;
                 const team2Won = hasScore && t2 > t1;
-                const a1 = getPlayerName(match.a1_profile);
-                const a2 = getPlayerName(match.a2_profile);
-                const b1 = getPlayerName(match.b1_profile);
-                const b2 = getPlayerName(match.b2_profile);
+                const a1 = seatName(match, "a1");
+                const a2 = seatName(match, "a2");
+                const b1 = seatName(match, "b1");
+                const b2 = seatName(match, "b2");
                 const teamAPending = a1 === "TBD" && a2 === "TBD";
                 const teamBPending = b1 === "TBD" && b2 === "TBD";
                 const statusLabel = hasScore
@@ -814,10 +835,10 @@ export default function RoundRobinKiosk() {
                       </div>
                       <div className="flex-1 min-w-0 text-[0.95vw] leading-snug" style={{ color: themeColors.text }}>
                         <div className="truncate">
-                          {getPlayerName(match.a1_profile)} / {getPlayerName(match.a2_profile)}
+                          {seatName(match, "a1")} / {seatName(match, "a2")}
                         </div>
                         <div className="truncate" style={{ color: themeColors.mutedText }}>
-                          vs {getPlayerName(match.b1_profile)} / {getPlayerName(match.b2_profile)}
+                          vs {seatName(match, "b1")} / {seatName(match, "b2")}
                         </div>
                       </div>
                     </div>

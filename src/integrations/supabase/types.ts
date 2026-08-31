@@ -9834,6 +9834,14 @@ export type Database = {
         Returns: undefined
       }
       resolved_profile_name: { Args: { p_user_id: string }; Returns: string }
+      rr_kiosk_participant_names: {
+        Args: { _event_id: string }
+        Returns: {
+          is_guest: boolean
+          name: string
+          participant_id: string
+        }[]
+      }
       rr_manage_participant: {
         Args: {
           p_action: string
