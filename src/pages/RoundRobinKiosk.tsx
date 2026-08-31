@@ -342,11 +342,6 @@ export default function RoundRobinKiosk() {
     }
   };
 
-  const getPlayerName = (profile: any) => {
-    if (!profile) return "TBD";
-    return profile.display_name || profile.full_name || "TBD";
-  };
-
   /**
    * Resolve a single seat (a1/a2/b1/b2) to a display name.
    *
