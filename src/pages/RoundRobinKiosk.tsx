@@ -761,7 +761,11 @@ export default function RoundRobinKiosk() {
                     {standings.slice(0, 5).map((row, idx) => (
                       <div
                         key={row.player_id}
-                        className="flex items-center gap-3 px-2 py-2 rounded-lg"
+                        className="flex items-center gap-3 px-3 py-2 rounded-xl mb-2"
+                        style={{
+                          backgroundColor: `rgba(255,255,255,0.03)`,
+                          border: `1px solid rgba(${themeColors.accentRgb},0.28)`,
+                        }}
                       >
                         <div
                           className="w-7 h-7 rounded-full flex items-center justify-center text-[0.9vw] font-bold flex-shrink-0"
@@ -773,7 +777,7 @@ export default function RoundRobinKiosk() {
                         >
                           {idx + 1}
                         </div>
-                        <div className="flex-1 min-w-0 text-[1.05vw] font-semibold truncate" style={{ color: themeColors.text }}>
+                        <div className="flex-1 min-w-0 text-[1.05vw] font-semibold leading-tight break-words" style={{ color: themeColors.text }}>
                           {row.player_name}
                         </div>
                         <div className="flex items-center gap-3 text-[0.95vw] font-semibold tabular-nums">
