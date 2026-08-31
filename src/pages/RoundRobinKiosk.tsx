@@ -831,25 +831,42 @@ export default function RoundRobinKiosk() {
                   nextRoundMatches.slice(0, 4).map((match) => (
                     <div
                       key={`next-${match.id}`}
-                      className="flex items-center gap-3 px-3 py-2 rounded-lg"
-                      style={{ backgroundColor: `rgba(255,255,255,0.04)` }}
+                      className="flex items-center gap-3 px-3 py-2 rounded-xl"
+                      style={{
+                        backgroundColor: `rgba(255,255,255,0.03)`,
+                        border: `1px solid rgba(${themeColors.accentRgb},0.28)`,
+                      }}
                     >
                       <div
                         className="px-2 py-1 rounded text-[0.8vw] font-bold tracking-wider flex-shrink-0"
-                        style={{ backgroundColor: `rgba(${themeColors.accentRgb},0.15)`, color: themeColors.accent }}
+                        style={{
+                          backgroundColor: `rgba(${themeColors.accentRgb},0.15)`,
+                          color: themeColors.accent,
+                          border: `1px solid rgba(${themeColors.accentRgb},0.5)`,
+                        }}
                       >
                         C{match.court_no}
                       </div>
                       <div className="flex-1 min-w-0 text-[0.95vw] leading-snug" style={{ color: themeColors.text }}>
-                        <div className="truncate">
-                          {seatName(match, "a1")} / {seatName(match, "a2")}
+                        {/* Full names on their own lines so nothing clips */}
+                        <div className="break-words font-semibold">{seatName(match, "a1")}</div>
+                        <div className="break-words font-semibold">{seatName(match, "a2")}</div>
+                        <div
+                          className="text-[0.8vw] font-bold tracking-widest my-0.5"
+                          style={{ color: themeColors.accent }}
+                        >
+                          VS
                         </div>
-                        <div className="truncate" style={{ color: themeColors.mutedText }}>
-                          vs {seatName(match, "b1")} / {seatName(match, "b2")}
+                        <div className="break-words" style={{ color: themeColors.mutedText }}>
+                          {seatName(match, "b1")}
+                        </div>
+                        <div className="break-words" style={{ color: themeColors.mutedText }}>
+                          {seatName(match, "b2")}
                         </div>
                       </div>
                     </div>
                   ))
+
                 )}
               </div>
             </div>
