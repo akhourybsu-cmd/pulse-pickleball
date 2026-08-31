@@ -873,18 +873,18 @@ export default function RoundRobinKiosk() {
                       </div>
                       <div className="flex-1 min-w-0 text-[0.95vw] leading-snug" style={{ color: themeColors.text }}>
                         {/* Full names on their own lines so nothing clips */}
-                        <div className="break-words font-semibold">{seatName(match, "a1")}</div>
-                        <div className="break-words font-semibold">{seatName(match, "a2")}</div>
+                        <div className="truncate font-semibold">{seatName(match, "a1")}</div>
+                        <div className="truncate font-semibold">{seatName(match, "a2")}</div>
                         <div
                           className="text-[0.8vw] font-bold tracking-widest my-0.5"
                           style={{ color: themeColors.accent }}
                         >
                           VS
                         </div>
-                        <div className="break-words" style={{ color: themeColors.mutedText }}>
+                        <div className="truncate" style={{ color: themeColors.mutedText }}>
                           {seatName(match, "b1")}
                         </div>
-                        <div className="break-words" style={{ color: themeColors.mutedText }}>
+                        <div className="truncate" style={{ color: themeColors.mutedText }}>
                           {seatName(match, "b2")}
                         </div>
                       </div>
