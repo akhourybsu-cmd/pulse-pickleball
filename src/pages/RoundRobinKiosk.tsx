@@ -355,9 +355,12 @@ export default function RoundRobinKiosk() {
   const seatName = (match: ScheduleMatch, seat: "a1" | "a2" | "b1" | "b2") => {
     const profile = (match as any)[`${seat}_profile`];
     const guest = (match as any)[`${seat}_guest`];
+    // Kiosk is a broadcast surface — prefer the full legal name over a short
+    // nickname so spectators can identify players unambiguously.
     const name =
-      profile?.display_name ||
       profile?.full_name ||
+      profile?.display_name ||
+      guest?.full_name ||
       guest?.display_name ||
       null;
     if (name && String(name).trim()) return String(name).trim();
@@ -367,6 +370,7 @@ export default function RoundRobinKiosk() {
       !!(match as any)[`${seat}_player_id`] || !!(match as any)[`${seat}_guest_id`];
     return hasOccupant ? "Player" : "TBD";
   };
+
 
   const handleExitKiosk = () => {
     setPinModalOpen(true);
