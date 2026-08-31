@@ -1613,6 +1613,7 @@ export type Database = {
           status: string
           updated_at: string | null
           user_id: string
+          waitlist_position: number | null
         }
         Insert: {
           created_at?: string | null
@@ -1621,6 +1622,7 @@ export type Database = {
           status?: string
           updated_at?: string | null
           user_id: string
+          waitlist_position?: number | null
         }
         Update: {
           created_at?: string | null
@@ -1629,6 +1631,7 @@ export type Database = {
           status?: string
           updated_at?: string | null
           user_id?: string
+          waitlist_position?: number | null
         }
         Relationships: [
           {
@@ -1649,17 +1652,23 @@ export type Database = {
           custom_location: string | null
           description: string | null
           end_time: string | null
+          event_format: string
           group_id: string
           id: string
           is_recurring: boolean | null
           location_type: string | null
           recurring_rule: string | null
+          rr_courts: number | null
+          rr_games_per_player: number | null
+          series_id: string | null
           skill_level_max: number | null
           skill_level_min: number | null
           start_time: string
           title: string
           updated_at: string | null
           venue_id: string | null
+          waitlist_enabled: boolean
+          waitlist_limit: number | null
         }
         Insert: {
           capacity?: number | null
@@ -1669,17 +1678,23 @@ export type Database = {
           custom_location?: string | null
           description?: string | null
           end_time?: string | null
+          event_format?: string
           group_id: string
           id?: string
           is_recurring?: boolean | null
           location_type?: string | null
           recurring_rule?: string | null
+          rr_courts?: number | null
+          rr_games_per_player?: number | null
+          series_id?: string | null
           skill_level_max?: number | null
           skill_level_min?: number | null
           start_time: string
           title: string
           updated_at?: string | null
           venue_id?: string | null
+          waitlist_enabled?: boolean
+          waitlist_limit?: number | null
         }
         Update: {
           capacity?: number | null
@@ -1689,17 +1704,23 @@ export type Database = {
           custom_location?: string | null
           description?: string | null
           end_time?: string | null
+          event_format?: string
           group_id?: string
           id?: string
           is_recurring?: boolean | null
           location_type?: string | null
           recurring_rule?: string | null
+          rr_courts?: number | null
+          rr_games_per_player?: number | null
+          series_id?: string | null
           skill_level_max?: number | null
           skill_level_min?: number | null
           start_time?: string
           title?: string
           updated_at?: string | null
           venue_id?: string | null
+          waitlist_enabled?: boolean
+          waitlist_limit?: number | null
         }
         Relationships: [
           {
@@ -9736,6 +9757,10 @@ export type Database = {
         }[]
       }
       promote_from_waitlist: { Args: { p_event_id: string }; Returns: string }
+      promote_group_event_waitlist: {
+        Args: { p_event_id: string }
+        Returns: number
+      }
       pulse_participant_reliability: {
         Args: { p_count: number }
         Returns: number
@@ -9862,6 +9887,10 @@ export type Database = {
         }[]
       }
       send_friend_request: { Args: { p_friend_id: string }; Returns: string }
+      set_group_event_rsvp: {
+        Args: { p_event_id: string; p_status: string }
+        Returns: string
+      }
       set_group_message_pin: {
         Args: { p_message_id: string; p_pinned: boolean }
         Returns: undefined
