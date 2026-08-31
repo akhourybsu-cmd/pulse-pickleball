@@ -317,20 +317,26 @@ export default function GroupDetail() {
         style={{
           // PULSE hero ink — same emerald/gold band the league + round
           // robin heroes use, so community reads as one product.
-          backgroundImage: 'linear-gradient(158deg, var(--lg-emerald-deep) 0%, var(--lg-emerald) 48%, var(--lg-surface) 100%)',
-          borderBottom: '1px solid var(--lg-hairline)',
+          // PULSE ink band — same ink ramp as the rest of the app chrome
+          // (hsl 220 10%), finished with a gold hairline.
+          backgroundImage:
+            'linear-gradient(158deg, hsl(var(--ink-700)) 0%, hsl(var(--ink-900)) 60%, hsl(220 12% 8%) 100%)',
+          borderBottom: '1px solid hsl(var(--primary) / 0.28)',
         }}
       >
         {/* Gold hairline + ambient bloom — broadcast framing. */}
         <div
           aria-hidden
           className="pointer-events-none absolute inset-x-0 bottom-0 h-px"
-          style={{ background: 'linear-gradient(90deg, transparent, var(--lg-hero-gold), transparent)', opacity: 0.5 }}
+          style={{
+            background:
+              'linear-gradient(90deg, transparent, hsl(var(--primary) / 0.9), transparent)',
+          }}
         />
         <div
           aria-hidden
           className="pointer-events-none absolute -left-16 -top-20 h-52 w-52 rounded-full blur-3xl"
-          style={{ background: 'var(--lg-hero-radial)' }}
+          style={{ background: 'hsl(var(--primary) / 0.16)' }}
         />
         {/* Court-line watermark — bleeds off the top-right corner. */}
         <svg
@@ -366,7 +372,7 @@ export default function GroupDetail() {
             </h1>
             <div
               className="h-[3px] w-10 mt-1.5 rounded-full"
-              style={{ background: 'var(--lg-hero-gold)' }}
+              style={{ background: 'hsl(var(--primary))' }}
             />
           </div>
 
