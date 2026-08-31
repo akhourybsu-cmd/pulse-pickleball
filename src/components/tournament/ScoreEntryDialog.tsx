@@ -12,6 +12,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card } from "@/components/ui/card";
 import { Loader2, CheckCircle, XCircle, AlertCircle } from "lucide-react";
 import { useState, useEffect } from "react";
+import { advanceWinner, winnerOf } from "@/lib/tournaments/advance";
 
 interface Match {
   id: string;
@@ -190,6 +191,31 @@ export function ScoreEntryDialog({ open, onOpenChange, match, onSuccess }: Score
         title: isEdit ? "Score updated" : "Score saved",
         description: `${match.team1.team_name} ${data.team1_score} - ${data.team2_score} ${match.team2.team_name}`,
       });
+
+      // Push the winner into the next bracket slot. Non-elimination formats and
+      // the final are no-ops. Failures here must not lose the saved score, so
+      // they surface as their own toast rather than failing the submit.
+      const winner = winnerOf(match.team1_id, match.team2_id, data.team1_score, data.team2_score);
+      if (winner) {
+        try {
+          const outcome = await advanceWinner({ matchId: match.id, winnerTeamId: winner });
+          if (outcome.advanced && outcome.downstreamDirty) {
+            toast({
+              title: "Later round already played",
+              description:
+                "The next match had already been completed. Its slot was corrected, but results further down the bracket may need review.",
+              variant: "destructive",
+            });
+          }
+        } catch (advanceError: any) {
+          toast({
+            title: "Score saved, but the bracket did not advance",
+            description: advanceError?.message ?? "Could not update the next round.",
+            variant: "destructive",
+          });
+        }
+      }
+
       onSuccess();
       onOpenChange(false);
     }

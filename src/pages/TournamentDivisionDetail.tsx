@@ -21,6 +21,7 @@ import { SeedingManager } from "@/components/tournament/seeding/SeedingManager";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Footer } from "@/components/Footer";
 import { Logo } from "@/components/Logo";
+import { generateRoundRobin } from "@/lib/tournaments/roundRobin";
 
 interface Division {
   id: string;
@@ -243,79 +244,45 @@ export default function TournamentDivisionDetail() {
       return;
     }
 
-    // Delete existing matches
-    await supabase
+    // Never silently erase played results — this used to delete every match in
+    // the division unconditionally, so regenerating a live division wiped it.
+    const { data: playedMatches } = await supabase
       .from("tournaments_matches")
-      .delete()
-      .eq("division_id", divisionId);
+      .select("id")
+      .eq("division_id", divisionId)
+      .eq("status", "completed")
+      .limit(1);
 
-    // Generate round robin pairings with proper round scheduling
-    const matches: any[] = [];
-    let matchNumber = 1;
-    
-    // Use round robin algorithm that ensures each team plays once per round
-    const numTeams = teams.length;
-    const numRounds = numTeams % 2 === 0 ? numTeams - 1 : numTeams;
-    const matchesPerRound = Math.floor(numTeams / 2);
-    
-    // Create a working array - if odd number of teams, add a bye
-    const participants: (typeof teams[0] | { id: null; team_name: string; seed_number: null })[] = [...teams];
-    if (numTeams % 2 === 1) {
-      participants.push({ id: null, team_name: "BYE", seed_number: null }); // Bye placeholder
-    }
-    
-    // Round robin rotation algorithm
-    for (let round = 0; round < numRounds; round++) {
-      for (let match = 0; match < matchesPerRound; match++) {
-        const home = match === 0 ? 0 : match;
-        const away = participants.length - 1 - match;
-        
-        // Skip if either team is a bye
-        if (participants[home].id && participants[away].id) {
-          matches.push({
-            division_id: divisionId,
-            round_number: round + 1,
-            match_number: matchNumber++,
-            team1_id: participants[home].id,
-            team2_id: participants[away].id,
-            status: "scheduled",
-          });
-        }
-      }
-      
-      // Rotate all teams except the first one (fixed position)
-      const fixed = participants[0];
-      const rotated = [fixed, participants[participants.length - 1], ...participants.slice(1, participants.length - 1)];
-      participants.splice(0, participants.length, ...rotated);
-    }
-
-    // Validation: Ensure each team appears only once per round
-    const validationErrors: string[] = [];
-    for (let round = 1; round <= numRounds; round++) {
-      const roundMatches = matches.filter((m) => m.round_number === round);
-      const teamsInRound = new Set<string>();
-      
-      roundMatches.forEach((match) => {
-        if (teamsInRound.has(match.team1_id)) {
-          validationErrors.push(`Team appears twice in Round ${round}`);
-        }
-        if (teamsInRound.has(match.team2_id)) {
-          validationErrors.push(`Team appears twice in Round ${round}`);
-        }
-        teamsInRound.add(match.team1_id);
-        teamsInRound.add(match.team2_id);
-      });
-    }
-
-    if (validationErrors.length > 0) {
+    if (playedMatches && playedMatches.length > 0) {
       toast({
-        title: "Validation error",
-        description: validationErrors[0],
+        title: "Cannot regenerate matches",
+        description:
+          "This division already has completed matches. Regenerating would erase those results.",
         variant: "destructive",
       });
       setGenerating(false);
       return;
     }
+
+    // Delete existing (unplayed) matches
+    await supabase
+      .from("tournaments_matches")
+      .delete()
+      .eq("division_id", divisionId);
+
+    // Round-robin schedule from the shared, unit-tested engine. It guarantees
+    // every pair meets exactly once and no team is scheduled twice in a round
+    // (the invariant the old inline copy re-checked by hand afterwards).
+    const schedule = generateRoundRobin(teams.map((t) => t.id));
+    const numRounds = schedule.rounds;
+    const matches = schedule.matches.map((m) => ({
+      division_id: divisionId,
+      round_number: m.round,
+      match_number: m.matchNumber,
+      team1_id: m.teamA,
+      team2_id: m.teamB,
+      status: "scheduled",
+    }));
 
     // Insert matches
     const { error: insertError } = await supabase
