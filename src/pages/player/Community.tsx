@@ -1,21 +1,32 @@
 import { useState } from 'react';
-import { Plus, QrCode, Users, Search } from 'lucide-react';
+import { motion, useReducedMotion } from 'framer-motion';
+import { Plus, QrCode, Users, Search, Compass } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { GroupCard } from '@/components/community/GroupCard';
 import { ReorderableGroupList } from '@/components/community/ReorderableGroupList';
 import { CreateGroupDialog } from '@/components/community/CreateGroupDialog';
 import { JoinGroupDialog } from '@/components/community/JoinGroupDialog';
+import { SocialHero, SocialEmptyState } from '@/components/social/_shared';
 import { useGroups } from '@/hooks/useGroups';
 
+type View = 'mine' | 'explore';
+
+/**
+ * Community hub. The old layout crammed a 2-column tab strip and three action
+ * buttons onto one row, which collided on narrow screens. It now uses the
+ * shared premium hero with a glassy segmented switch (matching the Social hub)
+ * and a separate action row, so the two views are clearly differentiated and
+ * everything fits on mobile.
+ */
 export default function Community() {
   const { myGroups, publicGroups, loading, createGroup, joinGroupByCode, joinPublicGroup, updateGroupOrder } = useGroups();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [joinDialogOpen, setJoinDialogOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('my-community');
+  const [view, setView] = useState<View>('mine');
   const [joiningGroupId, setJoiningGroupId] = useState<string | null>(null);
+  const reduced = useReducedMotion();
 
   const handleJoinPublicGroup = async (groupId: string) => {
     setJoiningGroupId(groupId);
@@ -23,159 +34,123 @@ export default function Community() {
     setJoiningGroupId(null);
   };
 
+  const joinableCount = publicGroups.filter((g) => !myGroups.some((m) => m.id === g.id)).length;
+
   return (
     <div className="flex flex-col min-h-[calc(100vh-120px)]">
-      {/* Sliding-underline Tabs — index-driven so adding a tab is one
-          array entry rather than a new manual left:% branch. Matches
-          the MatchHistory / RoundRobinDetail pattern. */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-        <div className="px-4 sm:px-6 pt-4">
-          {(() => {
-            const tabs = [
-              { value: 'my-community', label: 'My Community' },
-              { value: 'explore', label: 'Explore' },
-            ];
-            const activeIndex = tabs.findIndex((t) => t.value === activeTab);
-            return (
-              <div className="flex items-end justify-between gap-3">
-              <div className="relative border-b border-border/40 flex-1">
-                <div className="grid grid-cols-2">
-                  {tabs.map((tab) => {
-                    const isActive = activeTab === tab.value;
-                    return (
-                      <button
-                        key={tab.value}
-                        onClick={() => setActiveTab(tab.value)}
-                        className={cn(
-                          'relative py-2.5 text-[13px] font-bold uppercase tracking-[0.1em] transition-colors duration-200',
-                          isActive ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
-                        )}
-                      >
-                        <span>{tab.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-                <div
-                  className="absolute bottom-0 h-[2px] bg-primary rounded-full transition-all duration-[240ms] ease-out"
-                  style={{
-                    width: `${100 / tabs.length}%`,
-                    left: `${(100 / tabs.length) * Math.max(0, activeIndex)}%`,
-                  }}
-                />
-                </div>
-                <div className="flex items-center gap-1.5 mb-1 shrink-0">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-10 w-10 rounded-full border border-border/70 bg-card shadow-sm hover:bg-muted/60"
-                    aria-label="Join with code"
-                    onClick={() => setJoinDialogOpen(true)}
-                  >
-                    <QrCode className="h-5 w-5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-10 w-10 rounded-full border border-border/70 bg-card shadow-sm hover:bg-muted/60"
-                    aria-label="Explore groups"
-                    onClick={() => setActiveTab('explore')}
-                  >
-                    <Search className="h-5 w-5" />
-                  </Button>
-                  <Button
-                    onClick={() => setCreateDialogOpen(true)}
-                    size="sm"
-                    className="h-10 rounded-full px-5 text-xs font-bold uppercase tracking-[0.1em] btn-premium"
-                  >
-                    <Plus className="h-4 w-4 mr-1.5" />
-                    Create
-                  </Button>
-                </div>
-              </div>
-            );
-          })()}
-        </div>
+      <SocialHero eyebrow="Community" title={view === 'mine' ? 'My Communities' : 'Explore'}>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <div
+            className="inline-flex rounded-xl border border-border/60 bg-card/70 p-1 backdrop-blur-sm shadow-[0_2px_14px_-10px_hsl(var(--foreground)/0.35)]"
+            role="tablist"
+            aria-label="Community views"
+          >
+            <SegButton
+              active={view === 'mine'}
+              onClick={() => setView('mine')}
+              icon={Users}
+              reduced={reduced}
+              count={myGroups.length}
+            >
+              Mine
+            </SegButton>
+            <SegButton
+              active={view === 'explore'}
+              onClick={() => setView('explore')}
+              icon={Compass}
+              reduced={reduced}
+              count={joinableCount}
+            >
+              Explore
+            </SegButton>
+          </div>
 
-        <div className="flex-1 overflow-y-auto">
-          {/* My Community — a single, focused list of your community
-              cards. Friends + recent-activity were removed so the groups
-              themselves are the only thing here. */}
-          <TabsContent value="my-community" className="m-0 px-4 sm:px-6 pt-4 pb-8">
-            {loading ? (
-              <div className="space-y-3">
-                {[1, 2].map((i) => (
-                  <Skeleton key={i} className="h-20 w-full rounded-xl" />
-                ))}
-              </div>
-            ) : myGroups.length > 0 ? (
-              <ReorderableGroupList groups={myGroups} onReorder={updateGroupOrder} />
-            ) : (
-              <div className="flex flex-col items-center justify-center py-12 text-center rounded-xl border border-dashed border-border/50">
-                <div className="w-12 h-12 rounded-full bg-muted/40 flex items-center justify-center mb-3">
-                  <Users className="h-5 w-5 text-muted-foreground/60" />
-                </div>
-                <p className="text-sm text-muted-foreground max-w-[260px] mb-4">
-                  Join a group with a code, or create your own to get started.
-                </p>
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" className="rounded-full" onClick={() => setJoinDialogOpen(true)}>
+          <div className="ml-auto flex items-center gap-1.5">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-10 w-10 rounded-full border border-border/60 bg-card/70 backdrop-blur-sm shadow-sm hover:bg-card"
+              aria-label="Join with code"
+              onClick={() => setJoinDialogOpen(true)}
+            >
+              <QrCode className="h-[18px] w-[18px]" />
+            </Button>
+            <Button
+              onClick={() => setCreateDialogOpen(true)}
+              size="sm"
+              className="h-10 rounded-full px-4 text-[11px] font-bold uppercase tracking-[0.12em] btn-premium"
+            >
+              <Plus className="h-4 w-4 mr-1.5" />
+              Create
+            </Button>
+          </div>
+        </div>
+      </SocialHero>
+
+      <div className="flex-1 min-h-0 container mx-auto max-w-3xl px-4 sm:px-6 pt-4 pb-8">
+        {loading ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-20 w-full rounded-2xl" />
+            ))}
+          </div>
+        ) : view === 'mine' ? (
+          myGroups.length > 0 ? (
+            <ReorderableGroupList groups={myGroups} onReorder={updateGroupOrder} />
+          ) : (
+            <SocialEmptyState
+              icon={Users}
+              title="No communities yet"
+              description="Join a group with an invite code, or start your own crew, league, or club."
+              action={
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <Button variant="outline" size="sm" className="h-10 rounded-full" onClick={() => setJoinDialogOpen(true)}>
                     <QrCode className="h-4 w-4 mr-1.5" /> Join with code
                   </Button>
-                  <Button size="sm" className="rounded-full btn-premium" onClick={() => setCreateDialogOpen(true)}>
-                    <Plus className="h-4 w-4 mr-1.5" /> Create
+                  <Button size="sm" className="h-10 rounded-full btn-premium" onClick={() => setView('explore')}>
+                    <Compass className="h-4 w-4 mr-1.5" /> Explore groups
                   </Button>
                 </div>
-              </div>
-            )}
-          </TabsContent>
-
-          {/* Explore */}
-          <TabsContent value="explore" className="m-0 px-4 sm:px-6 pt-4 pb-8 space-y-3">
-            {loading ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <Skeleton key={i} className="h-20 w-full rounded-xl" />
-                ))}
-              </div>
-            ) : publicGroups.length > 0 ? (
-              <>
-                <p className="text-xs text-muted-foreground/70">
-                  Public groups you can join
-                </p>
-                <div className="space-y-3">
-                  {publicGroups.map((group) => {
-                    const isAlreadyMember = myGroups.some((g) => g.id === group.id);
-                    return (
-                      <GroupCard
-                        key={group.id}
-                        group={{
-                          ...group,
-                          membership: isAlreadyMember ? myGroups.find((g) => g.id === group.id)?.membership : undefined,
-                          unread_count: 0,
-                        }}
-                        showJoinButton={!isAlreadyMember}
-                        onJoin={handleJoinPublicGroup}
-                        isJoining={joiningGroupId === group.id}
-                      />
-                    );
-                  })}
-                </div>
-              </>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-16 text-center">
-                <div className="w-12 h-12 rounded-full bg-muted/50 flex items-center justify-center mb-4">
-                  <Search className="h-5 w-5 text-muted-foreground/70" />
-                </div>
-                <h3 className="text-base font-medium mb-1">No public groups</h3>
-                <p className="text-sm text-muted-foreground max-w-[280px]">
-                  Check back later or create your own group
-                </p>
-              </div>
-            )}
-          </TabsContent>
-        </div>
-      </Tabs>
+              }
+            />
+          )
+        ) : publicGroups.length > 0 ? (
+          <div className="space-y-3">
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">
+              Public groups you can join
+            </p>
+            <div className="space-y-3">
+              {publicGroups.map((group) => {
+                const isAlreadyMember = myGroups.some((g) => g.id === group.id);
+                return (
+                  <GroupCard
+                    key={group.id}
+                    group={{
+                      ...group,
+                      membership: isAlreadyMember ? myGroups.find((g) => g.id === group.id)?.membership : undefined,
+                      unread_count: 0,
+                    }}
+                    showJoinButton={!isAlreadyMember}
+                    onJoin={handleJoinPublicGroup}
+                    isJoining={joiningGroupId === group.id}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        ) : (
+          <SocialEmptyState
+            icon={Search}
+            title="No public groups"
+            description="Check back later, or create your own community and invite your players."
+            action={
+              <Button size="sm" className="h-10 rounded-full btn-premium" onClick={() => setCreateDialogOpen(true)}>
+                <Plus className="h-4 w-4 mr-1.5" /> Create a community
+              </Button>
+            }
+          />
+        )}
+      </div>
 
       <CreateGroupDialog
         open={createDialogOpen}
@@ -188,5 +163,50 @@ export default function Community() {
         onJoin={joinGroupByCode}
       />
     </div>
+  );
+}
+
+function SegButton({
+  active, onClick, icon: Icon, reduced, count, children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: typeof Users;
+  reduced: boolean | null;
+  count?: number;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      onClick={onClick}
+      className={cn(
+        'relative inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-semibold transition-colors',
+        active ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
+      )}
+    >
+      {active && (
+        <motion.span
+          layoutId="community-seg-active"
+          aria-hidden
+          className="absolute inset-0 rounded-lg bg-background shadow-sm ring-1 ring-border/60"
+          transition={reduced ? { duration: 0 } : { type: 'spring', stiffness: 500, damping: 40 }}
+        />
+      )}
+      <Icon className="relative h-4 w-4" />
+      <span className="relative">{children}</span>
+      {typeof count === 'number' && count > 0 && (
+        <span
+          className={cn(
+            'relative rounded-full px-1.5 py-[1px] text-[10px] font-bold tabular-nums',
+            active ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground',
+          )}
+        >
+          {count}
+        </span>
+      )}
+    </button>
   );
 }
