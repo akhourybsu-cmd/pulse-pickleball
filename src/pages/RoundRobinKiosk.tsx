@@ -617,7 +617,8 @@ export default function RoundRobinKiosk() {
                     className="relative rounded-2xl overflow-hidden flex flex-col min-h-0"
                     style={{
                       backgroundColor: themeColors.cardBg,
-                      boxShadow: `0 8px 30px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(${themeColors.accentRgb},0.12)`,
+                      border: `2px solid rgba(${themeColors.accentRgb},0.45)`,
+                      boxShadow: `0 10px 34px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06)`,
                     }}
                   >
                     {/* Court label */}
@@ -663,10 +664,10 @@ export default function RoundRobinKiosk() {
                           </div>
                         ) : (
                           <>
-                            <div className={`${nameTextClass} font-bold truncate`} style={{ color: themeColors.text }}>
+                            <div className={`${nameTextClass} font-bold leading-[1.15] break-words`} style={{ color: themeColors.text }}>
                               {a1}
                             </div>
-                            <div className={`${nameTextClass} font-bold truncate`} style={{ color: themeColors.text }}>
+                            <div className={`${nameTextClass} font-bold leading-[1.15] break-words`} style={{ color: themeColors.text }}>
                               {a2}
                             </div>
                           </>
@@ -712,10 +713,10 @@ export default function RoundRobinKiosk() {
                           </div>
                         ) : (
                           <>
-                            <div className={`${nameTextClass} font-bold truncate`} style={{ color: themeColors.text }}>
+                            <div className={`${nameTextClass} font-bold leading-[1.15] break-words`} style={{ color: themeColors.text }}>
                               {b1}
                             </div>
-                            <div className={`${nameTextClass} font-bold truncate`} style={{ color: themeColors.text }}>
+                            <div className={`${nameTextClass} font-bold leading-[1.15] break-words`} style={{ color: themeColors.text }}>
                               {b2}
                             </div>
                           </>
@@ -735,7 +736,8 @@ export default function RoundRobinKiosk() {
               className="rounded-2xl flex flex-col min-h-0"
               style={{
                 backgroundColor: themeColors.cardBg,
-                boxShadow: `0 8px 30px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(${themeColors.accentRgb},0.12)`,
+                border: `2px solid rgba(${themeColors.accentRgb},0.45)`,
+                      boxShadow: `0 10px 34px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06)`,
               }}
             >
               <div
@@ -803,7 +805,8 @@ export default function RoundRobinKiosk() {
               className="rounded-2xl flex flex-col min-h-0"
               style={{
                 backgroundColor: themeColors.cardBg,
-                boxShadow: `0 8px 30px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(${themeColors.accentRgb},0.12)`,
+                border: `2px solid rgba(${themeColors.accentRgb},0.45)`,
+                      boxShadow: `0 10px 34px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06)`,
               }}
             >
               <div
