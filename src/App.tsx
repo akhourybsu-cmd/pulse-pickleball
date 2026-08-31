@@ -126,7 +126,6 @@ const TournamentCustomize = lazy(() => import("./pages/TournamentCustomize"));
 const TournamentMatchScore = lazy(() => import("./pages/TournamentMatchScore"));
 const TournamentNewWithGating = lazy(() => import("./pages/TournamentNewWithGating"));
 const TournamentDetail = lazy(() => import("./pages/TournamentDetail"));
-const TournamentDivisionDetailNew = lazy(() => import("./pages/TournamentDivisionDetailNew"));
 const TournamentPaymentSuccess = lazy(() => import("./pages/TournamentPaymentSuccess"));
 const TournamentPaymentCancelled = lazy(() => import("./pages/TournamentPaymentCancelled"));
 const TournamentsLanding = lazy(() => import("./pages/TournamentsLanding"));
@@ -538,7 +537,7 @@ const AppContent = () => {
               <Route path="/tournaments/manage" element={<AdminGuard><ManageTournaments /></AdminGuard>} />
               <Route path="/tournaments/new" element={<AdminGuard><TournamentNewWithGating /></AdminGuard>} />
               <Route path="/tournaments/:id" element={<AdminGuard><TournamentDetail /></AdminGuard>} />
-              <Route path="/tournaments/:id/divisions/:divisionId" element={<AdminGuard><TournamentDivisionDetailNew /></AdminGuard>} />
+              <Route path="/tournaments/:id/divisions/:divisionId" element={<AdminGuard><TournamentDivisionDetail /></AdminGuard>} />
               <Route path="/tournaments/:id/customize" element={<AdminGuard><TournamentCustomize /></AdminGuard>} />
               <Route path="/tournaments/:id/payment-success" element={<AdminGuard><TournamentPaymentSuccess /></AdminGuard>} />
               <Route path="/tournaments/:id/payment-cancelled" element={<AdminGuard><TournamentPaymentCancelled /></AdminGuard>} />

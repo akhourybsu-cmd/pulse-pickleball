@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { Plus, Loader2, Shuffle, Edit, Trash2, CheckCircle2, Award, ListOrdered } from "lucide-react";
+import { Plus, Loader2, Shuffle, Edit, Trash2, CheckCircle2, Award, ListOrdered, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,7 @@ import { BracketView } from "@/components/tournament/BracketView";
 import { ScoreEntryDialog } from "@/components/tournament/ScoreEntryDialog";
 import { SeedingManager } from "@/components/tournament/seeding/SeedingManager";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { Footer } from "@/components/Footer";
 import { Logo } from "@/components/Logo";
 
 interface Division {
@@ -156,7 +157,7 @@ export default function TournamentDivisionDetail() {
     }
 
     toast({ title: "Division deleted successfully" });
-    navigate(`/tournament-admin/event/${division?.event_id}`);
+    navigate(`/tournaments/${division?.event_id}`);
   };
 
   const handleActivateDivision = async () => {
@@ -354,7 +355,7 @@ export default function TournamentDivisionDetail() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
       </div>
     );
@@ -366,14 +367,24 @@ export default function TournamentDivisionDetail() {
     <div className="min-h-screen bg-background">
       <nav className="bg-secondary border-b border-secondary-foreground/10 shadow-sm">
         <div className="w-full max-w-[1280px] mx-auto px-4 lg:px-6 py-5 flex items-center justify-between h-[72px]">
-          <Link to={`/tournament-admin/event/${division.event_id}`}>
-            <Logo className="h-[52px] sm:h-[65px] w-auto text-secondary-foreground hover:opacity-80 transition-opacity" />
+          <Link to={`/tournaments/${division.event_id}`} className="text-secondary-foreground hover:opacity-80 transition-opacity">
+            <Logo className="h-[52px] sm:h-[65px] w-auto" />
           </Link>
           <ThemeToggle />
         </div>
       </nav>
 
       <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => navigate(`/tournaments/${division.event_id}`)}
+          className="text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Tournament
+        </Button>
+
         <div className="space-y-2">
           <div className="flex items-center gap-3">
             <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold">{division.name}</h1>
@@ -386,7 +397,7 @@ export default function TournamentDivisionDetail() {
         </div>
 
         <div className="flex items-start justify-between">
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {division.status !== "completed" && (
               <>
                 <Button onClick={() => setIsEditDivisionOpen(true)} variant="outline">
@@ -461,16 +472,16 @@ export default function TournamentDivisionDetail() {
         )}
 
         <Tabs defaultValue="teams" className="w-full">
-          <TabsList className="flex-wrap h-auto gap-1">
-            <TabsTrigger value="teams">Teams</TabsTrigger>
-            <TabsTrigger value="seeding">
+          <TabsList className="flex-wrap h-auto gap-1 bg-card/50 border border-border/50 p-1">
+            <TabsTrigger value="teams" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Teams</TabsTrigger>
+            <TabsTrigger value="seeding" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               <ListOrdered className="h-4 w-4 mr-1" />
               Seeding
             </TabsTrigger>
-            <TabsTrigger value="matches">Matches</TabsTrigger>
-            <TabsTrigger value="standings">Standings</TabsTrigger>
+            <TabsTrigger value="matches" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Matches</TabsTrigger>
+            <TabsTrigger value="standings" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Standings</TabsTrigger>
             {(division.format === "single_elimination" || division.format === "double_elimination") && (
-              <TabsTrigger value="bracket">Bracket</TabsTrigger>
+              <TabsTrigger value="bracket" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Bracket</TabsTrigger>
             )}
           </TabsList>
 
@@ -515,6 +526,8 @@ export default function TournamentDivisionDetail() {
           )}
         </Tabs>
       </div>
+
+      <Footer />
 
       <CreateTeamDialog
         open={isCreateTeamOpen}
