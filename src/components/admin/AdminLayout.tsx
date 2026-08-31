@@ -11,6 +11,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { Footer } from "@/components/Footer";
 import { Logo } from "@/components/Logo";
 import { cn } from "@/lib/utils";
+import { isTournamentsEnabled } from "@/lib/tournaments/featureFlag";
 
 /**
  * Every admin surface renders inside this shell. Gives us one place to
@@ -71,7 +72,12 @@ export const AdminLayout = ({ title, subtitle, children }: AdminLayoutProps) => 
   const groups = (["live", "manage", "diagnostics", "advanced"] as const).map((g) => ({
     key: g,
     label: GROUP_LABEL[g],
-    items: NAV.filter((n) => n.group === g),
+    // Tournaments stay hidden from the admin nav while the feature is being
+    // rebuilt behind its flag — the route isn't registered either, so leaving
+    // the link would just dead-end in a 404.
+    items: NAV.filter(
+      (n) => n.group === g && (isTournamentsEnabled() || !n.href.startsWith("/tournament")),
+    ),
   }));
 
   const goto = (href: string) => {

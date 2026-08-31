@@ -4,6 +4,7 @@ import { Archive, Trophy, ExternalLink, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { isTournamentsEnabled } from "@/lib/tournaments/featureFlag";
 
 /**
  * AdminArchive — single index page for all surfaces that have been
@@ -44,23 +45,38 @@ export default function AdminArchive() {
       </div>
 
       <div className="container max-w-4xl mx-auto px-4 py-6 space-y-6">
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Trophy className="h-5 w-5 text-primary" />
-              <CardTitle>Tournaments</CardTitle>
-            </div>
-            <CardDescription>
-              Tournament discovery, registration, live view, and admin tools.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <ArchiveLink to="/tournaments" label="Tournaments landing" />
-            <ArchiveLink to="/tournaments/manage" label="Manage tournaments" />
-            <ArchiveLink to="/tournament-admin" label="Tournament admin console" />
-            <ArchiveLink to="/tournaments/new" label="Create a tournament" />
-          </CardContent>
-        </Card>
+        {/* Tournaments are being rebuilt behind VITE_TOURNAMENTS. While the
+            flag is off the routes aren't registered, so these links would
+            dead-end — hide the whole card rather than offer broken entries. */}
+        {isTournamentsEnabled() ? (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Trophy className="h-5 w-5 text-primary" />
+                <CardTitle>Tournaments</CardTitle>
+              </div>
+              <CardDescription>
+                Tournament discovery, registration, live view, and admin tools.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <ArchiveLink to="/tournaments" label="Tournaments landing" />
+              <ArchiveLink to="/tournaments/manage" label="Manage tournaments" />
+              <ArchiveLink to="/tournament-admin" label="Tournament admin console" />
+              <ArchiveLink to="/tournaments/new" label="Create a tournament" />
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Nothing archived right now</CardTitle>
+              <CardDescription>
+                Retired surfaces show up here when they're taken out of the main
+                navigation.
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        )}
       </div>
     </div>
   );

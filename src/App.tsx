@@ -18,6 +18,7 @@ import { PlayerShell } from "@/components/layout/PlayerShell";
 import { CommunityTransitionOutlet } from "@/components/community/CommunityTransitionOutlet";
 import { LeagueTransitionOutlet } from "@/components/leagues/LeagueTransitionOutlet";
 import { isSkillAssessmentEnabled } from "@/lib/skill/featureFlag";
+import { isTournamentsEnabled } from "@/lib/tournaments/featureFlag";
 import { AuthGuard, AdminGuard } from "@/components/guards";
 import { supabase } from "@/integrations/supabase/client";
 // RoundRobinBanner was a global "Round Robin Match In Progress" strip
@@ -528,25 +529,35 @@ const AppContent = () => {
           />
           <Route path="/round-robin/:id" element={<RoundRobinDetail />} />
           <Route path="/round-robin/:id/kiosk" element={<RoundRobinKiosk />} />
-          {/* Tournament surface archived — admin-only */}
-          <Route path="/tournaments" element={<AdminGuard><TournamentsLanding /></AdminGuard>} />
-          <Route path="/tournaments/manage" element={<AdminGuard><ManageTournaments /></AdminGuard>} />
-          <Route path="/tournaments/new" element={<AdminGuard><TournamentNewWithGating /></AdminGuard>} />
-          <Route path="/tournaments/:id" element={<AdminGuard><TournamentDetail /></AdminGuard>} />
-          <Route path="/tournaments/:id/divisions/:divisionId" element={<AdminGuard><TournamentDivisionDetailNew /></AdminGuard>} />
-          <Route path="/tournaments/:id/customize" element={<AdminGuard><TournamentCustomize /></AdminGuard>} />
-          <Route path="/tournaments/:id/payment-success" element={<AdminGuard><TournamentPaymentSuccess /></AdminGuard>} />
-          <Route path="/tournaments/:id/payment-cancelled" element={<AdminGuard><TournamentPaymentCancelled /></AdminGuard>} />
-          <Route path="/tournament/:slug" element={<AdminGuard><TournamentLanding /></AdminGuard>} />
-          <Route path="/tournament/:eventId/register" element={<AdminGuard><TournamentRegister /></AdminGuard>} />          <Route path="/tournament/:eventId/live" element={<AdminGuard><TournamentLiveView /></AdminGuard>} />
-          <Route path="/tournament/:eventId/team/:teamId" element={<AdminGuard><TournamentTeamView /></AdminGuard>} />
-          <Route path="/tournament/:eventId/match/:matchId/score" element={<AdminGuard><TournamentMatchScore /></AdminGuard>} />
-          {/* Platform tournament admin — gated at the router level (security fix Phase 5) */}
-          <Route path="/tournament-admin" element={<AdminGuard><TournamentAdmin /></AdminGuard>} />
-          <Route path="/tournament-admin/:eventId/customize" element={<AdminGuard><TournamentCustomize /></AdminGuard>} />
-          <Route path="/tournament-admin/event/:eventId" element={<AdminGuard><TournamentEventDetail /></AdminGuard>} />
-          <Route path="/tournament-admin/event/:eventId/division/:divisionId" element={<AdminGuard><TournamentDivisionDetail /></AdminGuard>} />
-          <Route path="/tournament-admin/division/:divisionId" element={<AdminGuard><TournamentDivisionDetail /></AdminGuard>} />
+          {/* Tournament surface — under reconstruction and invisible to
+              everyone (players, organizers, other admins) until the
+              consolidated product is ready. When VITE_TOURNAMENTS is off these
+              routes are never registered, so the URLs 404 and the lazy chunks
+              are never fetched. AdminGuard stays on top as defense in depth:
+              admin-only is not the same as invisible. */}
+          {isTournamentsEnabled() && (
+            <>
+              <Route path="/tournaments" element={<AdminGuard><TournamentsLanding /></AdminGuard>} />
+              <Route path="/tournaments/manage" element={<AdminGuard><ManageTournaments /></AdminGuard>} />
+              <Route path="/tournaments/new" element={<AdminGuard><TournamentNewWithGating /></AdminGuard>} />
+              <Route path="/tournaments/:id" element={<AdminGuard><TournamentDetail /></AdminGuard>} />
+              <Route path="/tournaments/:id/divisions/:divisionId" element={<AdminGuard><TournamentDivisionDetailNew /></AdminGuard>} />
+              <Route path="/tournaments/:id/customize" element={<AdminGuard><TournamentCustomize /></AdminGuard>} />
+              <Route path="/tournaments/:id/payment-success" element={<AdminGuard><TournamentPaymentSuccess /></AdminGuard>} />
+              <Route path="/tournaments/:id/payment-cancelled" element={<AdminGuard><TournamentPaymentCancelled /></AdminGuard>} />
+              <Route path="/tournament/:slug" element={<AdminGuard><TournamentLanding /></AdminGuard>} />
+              <Route path="/tournament/:eventId/register" element={<AdminGuard><TournamentRegister /></AdminGuard>} />
+              <Route path="/tournament/:eventId/live" element={<AdminGuard><TournamentLiveView /></AdminGuard>} />
+              <Route path="/tournament/:eventId/team/:teamId" element={<AdminGuard><TournamentTeamView /></AdminGuard>} />
+              <Route path="/tournament/:eventId/match/:matchId/score" element={<AdminGuard><TournamentMatchScore /></AdminGuard>} />
+              {/* Platform tournament admin — gated at the router level (security fix Phase 5) */}
+              <Route path="/tournament-admin" element={<AdminGuard><TournamentAdmin /></AdminGuard>} />
+              <Route path="/tournament-admin/:eventId/customize" element={<AdminGuard><TournamentCustomize /></AdminGuard>} />
+              <Route path="/tournament-admin/event/:eventId" element={<AdminGuard><TournamentEventDetail /></AdminGuard>} />
+              <Route path="/tournament-admin/event/:eventId/division/:divisionId" element={<AdminGuard><TournamentDivisionDetail /></AdminGuard>} />
+              <Route path="/tournament-admin/division/:divisionId" element={<AdminGuard><TournamentDivisionDetail /></AdminGuard>} />
+            </>
+          )}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>

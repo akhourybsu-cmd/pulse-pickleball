@@ -19,6 +19,7 @@ import {
 import { QRCodeSVG } from "qrcode.react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { cn } from "@/lib/utils";
+import { isTournamentsEnabled } from "@/lib/tournaments/featureFlag";
 
 const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -244,11 +245,14 @@ const AdminDashboard = () => {
                 title="Marketing Materials"
                 onClick={() => navigate("/admin/marketing")}
               />
-              <ChipTile
-                icon={Swords}
-                title="Tournament Portal"
-                onClick={() => navigate("/tournament-admin")}
-              />
+              {/* Hidden while tournaments are rebuilt behind their flag. */}
+              {isTournamentsEnabled() && (
+                <ChipTile
+                  icon={Swords}
+                  title="Tournament Portal"
+                  onClick={() => navigate("/tournament-admin")}
+                />
+              )}
             </div>
           </CollapsibleContent>
         </Collapsible>

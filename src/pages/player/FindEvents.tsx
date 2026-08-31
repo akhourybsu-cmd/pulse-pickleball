@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useDiscoverEvents, EventTypeFilter, DateRangeFilter } from "@/hooks/useDiscoverEvents";
+import { isTournamentsEnabled } from "@/lib/tournaments/featureFlag";
 import { UnifiedEventCard } from "@/components/events/UnifiedEventCard";
 import { PlayContextBar } from "@/components/play/PlayContextBar";
 
@@ -40,6 +41,11 @@ const KNOWN_EVENT_TYPES: ReadonlySet<EventTypeFilter> = new Set([
 ]);
 function readTypeParam(value: string | null): EventTypeFilter {
   if (value && KNOWN_EVENT_TYPES.has(value as EventTypeFilter)) {
+    // While tournaments are behind their feature flag they must not be
+    // reachable at all. `excludeEventTypes` below is overridden by an explicit
+    // eventType, so a legacy `?type=tournament` deep link would otherwise
+    // surface tournament rows in the player feed — fall back to 'all'.
+    if (value === 'tournament' && !isTournamentsEnabled()) return 'all';
     return value as EventTypeFilter;
   }
   return 'all';
