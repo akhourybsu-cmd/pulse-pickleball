@@ -312,7 +312,26 @@ export default function GroupDetail() {
           it carries real contrast against the cream/ink app chrome while
           staying on-brand. Deliberately dark in both themes (a hero band).
           A faint pickleball-court watermark adds depth without noise. */}
-      <div className="relative overflow-hidden shrink-0 border-b border-white/10 px-3 sm:px-4 pb-3.5 [padding-top:calc(0.6rem+env(safe-area-inset-top))] bg-[linear-gradient(158deg,hsl(220_10%_18%)_0%,hsl(220_10%_11%)_58%,hsl(220_11%_9%)_100%)]">
+      <div
+        className="relative overflow-hidden shrink-0 px-3 sm:px-4 pb-3.5 [padding-top:calc(0.6rem+env(safe-area-inset-top))]"
+        style={{
+          // PULSE hero ink — same emerald/gold band the league + round
+          // robin heroes use, so community reads as one product.
+          backgroundImage: 'linear-gradient(158deg, var(--lg-emerald-deep) 0%, var(--lg-emerald) 48%, var(--lg-surface) 100%)',
+          borderBottom: '1px solid var(--lg-hairline)',
+        }}
+      >
+        {/* Gold hairline + ambient bloom — broadcast framing. */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-px"
+          style={{ background: 'linear-gradient(90deg, transparent, var(--lg-hero-gold), transparent)', opacity: 0.5 }}
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -left-16 -top-20 h-52 w-52 rounded-full blur-3xl"
+          style={{ background: 'var(--lg-hero-radial)' }}
+        />
         {/* Court-line watermark — bleeds off the top-right corner. */}
         <svg
           aria-hidden
@@ -345,7 +364,10 @@ export default function GroupDetail() {
             <h1 className="text-xl sm:text-2xl font-bold truncate leading-tight text-white">
               {group.name}
             </h1>
-            <div className="h-[3px] w-10 mt-1.5 rounded-full bg-primary" />
+            <div
+              className="h-[3px] w-10 mt-1.5 rounded-full"
+              style={{ background: 'var(--lg-hero-gold)' }}
+            />
           </div>
 
           {/* Right-side action cluster — white on the dark band. */}
