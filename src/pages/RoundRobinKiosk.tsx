@@ -646,11 +646,11 @@ export default function RoundRobinKiosk() {
                       </span>
                     </div>
 
-                    {/* Match row */}
-                    <div className="flex-1 grid grid-cols-[1fr_auto_1fr] items-center gap-4 px-5 pb-5 pt-2 min-h-0">
+                    {/* Match body — teams stacked so each full name gets one line */}
+                    <div className="flex-1 flex flex-col justify-center gap-2 px-5 pb-5 pt-2 min-h-0">
                       {/* Team A */}
                       <div
-                        className={`flex flex-col justify-center min-w-0 transition-opacity ${
+                        className={`flex items-center gap-4 min-w-0 transition-opacity ${
                           hasScore && !team1Won ? "opacity-50" : "opacity-100"
                         }`}
                         style={{
@@ -660,71 +660,89 @@ export default function RoundRobinKiosk() {
                           paddingLeft: 12,
                         }}
                       >
-                        {teamAPending ? (
-                          <div className={`${nameTextClass} font-medium italic`} style={{ color: themeColors.mutedText }}>
-                            Players assigning…
+                        <div className="flex-1 min-w-0 flex flex-col">
+                          {teamAPending ? (
+                            <div className={`${nameTextClass} font-medium italic`} style={{ color: themeColors.mutedText }}>
+                              Players assigning…
+                            </div>
+                          ) : (
+                            <>
+                              <div className={`${nameTextClass} font-bold leading-[1.2] truncate`} title={a1} style={{ color: themeColors.text }}>
+                                {a1}
+                              </div>
+                              <div className={`${nameTextClass} font-bold leading-[1.2] truncate`} title={a2} style={{ color: themeColors.text }}>
+                                {a2}
+                              </div>
+                            </>
+                          )}
+                        </div>
+                        {hasScore && (
+                          <div
+                            className={`${scoreTextClass} font-black tabular-nums tracking-tighter flex-shrink-0`}
+                            style={{ color: themeColors.text, opacity: team1Won ? 1 : 0.55 }}
+                          >
+                            {t1}
                           </div>
-                        ) : (
-                          <>
-                            <div className={`${nameTextClass} font-bold leading-[1.15] break-words`} style={{ color: themeColors.text }}>
-                              {a1}
-                            </div>
-                            <div className={`${nameTextClass} font-bold leading-[1.15] break-words`} style={{ color: themeColors.text }}>
-                              {a2}
-                            </div>
-                          </>
                         )}
                       </div>
 
-                      {/* Score / Status */}
-                      <div className="flex flex-col items-center justify-center px-2">
-                        {hasScore ? (
-                          <div
-                            className={`${scoreTextClass} font-black tabular-nums tracking-tighter`}
-                            style={{ color: themeColors.text }}
-                          >
-                            <span style={{ opacity: team1Won ? 1 : 0.55 }}>{t1}</span>
-                            <span className="px-2" style={{ color: themeColors.mutedText }}>–</span>
-                            <span style={{ opacity: team2Won ? 1 : 0.55 }}>{t2}</span>
-                          </div>
-                        ) : (
-                          <div
-                            className={`${scoreTextClass} font-black tracking-tighter`}
-                            style={{ color: themeColors.accent }}
-                          >
-                            VS
-                          </div>
-                        )}
+                      {/* Divider / VS */}
+                      <div className="flex items-center gap-3 py-1">
+                        <div
+                          className="h-px flex-1"
+                          style={{ backgroundColor: `rgba(${themeColors.accentRgb},0.28)` }}
+                        />
+                        <span
+                          className="text-[0.95vw] font-black tracking-[0.2em] flex-shrink-0"
+                          style={{ color: themeColors.accent }}
+                        >
+                          VS
+                        </span>
+                        <div
+                          className="h-px flex-1"
+                          style={{ backgroundColor: `rgba(${themeColors.accentRgb},0.28)` }}
+                        />
                       </div>
 
                       {/* Team B */}
                       <div
-                        className={`flex flex-col justify-center min-w-0 text-right transition-opacity ${
+                        className={`flex items-center gap-4 min-w-0 transition-opacity ${
                           hasScore && !team2Won ? "opacity-50" : "opacity-100"
                         }`}
                         style={{
-                          borderRight: team2Won
+                          borderLeft: team2Won
                             ? `4px solid ${themeColors.accent}`
                             : "4px solid transparent",
-                          paddingRight: 12,
+                          paddingLeft: 12,
                         }}
                       >
-                        {teamBPending ? (
-                          <div className={`${nameTextClass} font-medium italic`} style={{ color: themeColors.mutedText }}>
-                            Players assigning…
+                        <div className="flex-1 min-w-0 flex flex-col">
+                          {teamBPending ? (
+                            <div className={`${nameTextClass} font-medium italic`} style={{ color: themeColors.mutedText }}>
+                              Players assigning…
+                            </div>
+                          ) : (
+                            <>
+                              <div className={`${nameTextClass} font-bold leading-[1.2] truncate`} title={b1} style={{ color: themeColors.text }}>
+                                {b1}
+                              </div>
+                              <div className={`${nameTextClass} font-bold leading-[1.2] truncate`} title={b2} style={{ color: themeColors.text }}>
+                                {b2}
+                              </div>
+                            </>
+                          )}
+                        </div>
+                        {hasScore && (
+                          <div
+                            className={`${scoreTextClass} font-black tabular-nums tracking-tighter flex-shrink-0`}
+                            style={{ color: themeColors.text, opacity: team2Won ? 1 : 0.55 }}
+                          >
+                            {t2}
                           </div>
-                        ) : (
-                          <>
-                            <div className={`${nameTextClass} font-bold leading-[1.15] break-words`} style={{ color: themeColors.text }}>
-                              {b1}
-                            </div>
-                            <div className={`${nameTextClass} font-bold leading-[1.15] break-words`} style={{ color: themeColors.text }}>
-                              {b2}
-                            </div>
-                          </>
                         )}
                       </div>
                     </div>
+
                   </div>
                 );
               })}
@@ -855,18 +873,18 @@ export default function RoundRobinKiosk() {
                       </div>
                       <div className="flex-1 min-w-0 text-[0.95vw] leading-snug" style={{ color: themeColors.text }}>
                         {/* Full names on their own lines so nothing clips */}
-                        <div className="break-words font-semibold">{seatName(match, "a1")}</div>
-                        <div className="break-words font-semibold">{seatName(match, "a2")}</div>
+                        <div className="truncate font-semibold">{seatName(match, "a1")}</div>
+                        <div className="truncate font-semibold">{seatName(match, "a2")}</div>
                         <div
                           className="text-[0.8vw] font-bold tracking-widest my-0.5"
                           style={{ color: themeColors.accent }}
                         >
                           VS
                         </div>
-                        <div className="break-words" style={{ color: themeColors.mutedText }}>
+                        <div className="truncate" style={{ color: themeColors.mutedText }}>
                           {seatName(match, "b1")}
                         </div>
-                        <div className="break-words" style={{ color: themeColors.mutedText }}>
+                        <div className="truncate" style={{ color: themeColors.mutedText }}>
                           {seatName(match, "b2")}
                         </div>
                       </div>
