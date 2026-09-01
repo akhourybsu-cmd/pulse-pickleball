@@ -1667,6 +1667,7 @@ export type Database = {
           title: string
           updated_at: string | null
           venue_id: string | null
+          venue_court_id: string | null
           waitlist_enabled: boolean
           waitlist_limit: number | null
         }
@@ -1693,6 +1694,7 @@ export type Database = {
           title: string
           updated_at?: string | null
           venue_id?: string | null
+          venue_court_id?: string | null
           waitlist_enabled?: boolean
           waitlist_limit?: number | null
         }
@@ -1719,6 +1721,7 @@ export type Database = {
           title?: string
           updated_at?: string | null
           venue_id?: string | null
+          venue_court_id?: string | null
           waitlist_enabled?: boolean
           waitlist_limit?: number | null
         }
