@@ -36,6 +36,7 @@ import { useGroupPosts, type GroupPost } from '@/hooks/useGroupPosts';
 import { useGroupEvents } from '@/hooks/useGroupEvents';
 import { cn } from '@/lib/utils';
 import { RoundRobinPostCard } from '@/components/community/posts/RoundRobinPostCard';
+import { StaffBadge, useStaffEmphasis } from '@/components/venue/StaffBadge';
 
 interface GroupFeedProps {
   groupId: string;
@@ -401,6 +402,9 @@ const PostCard = memo(function PostCard({
               <button onClick={goToProfile} className="font-medium text-sm truncate max-w-[120px] sm:max-w-none hover:underline text-left">
                 {post.profile?.display_name || post.profile?.full_name || 'Someone'}
               </button>
+              {/* Renders nothing outside a venue, so ordinary communities are
+                  unchanged. */}
+              <StaffBadge userId={post.user_id} />
               <span className="text-xs text-muted-foreground/70">
                 {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
               </span>

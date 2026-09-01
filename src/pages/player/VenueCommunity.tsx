@@ -13,7 +13,9 @@ import { cn } from '@/lib/utils';
 import { useGroupDetail } from '@/hooks/useGroupDetail';
 import { useVenueDay } from '@/hooks/useVenueDay';
 import { venueChrome } from '@/lib/venues/branding';
-import { DEFAULT_GRID, formatSlotTime } from '@/lib/venues/availability';
+import { formatSlotTime } from '@/lib/venues/availability';
+import { parseVenueHours, describeDay, DAY_NAMES } from '@/lib/venues/hours';
+import { VenueStaffProvider, useMyVenueRole, canOperateVenue, canManageVenue } from '@/components/venue/VenueStaffContext';
 import { VenueBookingGrid } from '@/components/venue/VenueBookingGrid';
 import { VenueProgramming } from '@/components/venue/VenueProgramming';
 import { DayStrip } from '@/components/venue/DayStrip';
@@ -55,12 +57,20 @@ export default function VenueCommunity() {
 
   const venue = group?.venue ?? null;
   const chrome = useMemo(() => venueChrome(venue), [venue]);
+  const hours = useMemo(() => parseVenueHours(venue?.hours_of_operation), [venue]);
 
-  const { courts, programming, going, grid, freeNow, loading: dayLoading, refresh, hasCourts } =
-    useVenueDay(group?.venue_id, groupId, day, DEFAULT_GRID);
+  const { role: venueRole } = useMyVenueRole(group?.venue_id);
+
+  const {
+    courts, programming, going, grid, closed, slotMinutes, freeNow,
+    loading: dayLoading, refresh, hasCourts,
+  } = useVenueDay(group?.venue_id, groupId, day, hours);
 
   const isMember = membership?.status === 'active';
-  const isAdmin = membership?.role === 'owner' || membership?.role === 'moderator';
+  // Venue authority comes from venue_staff, not from community moderation —
+  // running the courts and moderating the conversation are different jobs.
+  const isAdmin = canManageVenue(venueRole) || membership?.role === 'owner';
+  const isOperator = canOperateVenue(venueRole) || membership?.role === 'owner';
   // Members may book unless the group has turned member-created events off —
   // the same setting that gates every other kind of session, so a venue has one
   // switch to think about rather than two.
@@ -87,6 +97,11 @@ export default function VenueCommunity() {
     .slice(0, 3);
 
   return (
+    <VenueStaffProvider
+      venueId={group.venue_id}
+      venueName={venue?.name ?? null}
+      accent={chrome?.accentHex}
+    >
     <div className="flex min-h-[100dvh] flex-col bg-background">
       {/* Venue hero — a facility masthead, not the community's ink band. The
           cover carries the identity, the stats carry the answer most people
@@ -124,7 +139,7 @@ export default function VenueCommunity() {
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div className="ml-auto flex items-center gap-1.5">
-              {isAdmin && (
+              {isOperator && (
                 <>
                   {/* Operations is the staff surface: same data as this page,
                       more authority over it. */}
@@ -137,15 +152,17 @@ export default function VenueCommunity() {
                   >
                     <Gauge className="h-[18px] w-[18px]" />
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-9 w-9 rounded-full border border-white/20 bg-black/25 text-white backdrop-blur-sm hover:bg-black/40 hover:text-white"
-                    onClick={() => navigate(`/player/community/group/${groupId}/manage`)}
-                    aria-label="Venue settings"
-                  >
-                    <Settings className="h-[18px] w-[18px]" />
-                  </Button>
+                  {isAdmin && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 rounded-full border border-white/20 bg-black/25 text-white backdrop-blur-sm hover:bg-black/40 hover:text-white"
+                      onClick={() => navigate(`/player/community/group/${groupId}/manage`)}
+                      aria-label="Venue settings"
+                    >
+                      <Settings className="h-[18px] w-[18px]" />
+                    </Button>
+                  )}
                 </>
               )}
             </div>
@@ -243,6 +260,23 @@ export default function VenueCommunity() {
                   </ContactRow>
                 )}
                 {venue.phone && <ContactRow icon={Phone}>{venue.phone}</ContactRow>}
+                <div className="pt-1">
+                  <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+                    Hours
+                  </p>
+                  {/* Today first, so the answer most people want is the first
+                      line rather than buried under Sunday. */}
+                  {Array.from({ length: 7 }, (_, i) => (new Date().getDay() + i) % 7).map((d) => (
+                    <div key={d} className="flex justify-between gap-3 text-xs">
+                      <span className={cn('text-muted-foreground', d === new Date().getDay() && 'font-semibold text-foreground')}>
+                        {DAY_NAMES[d]}
+                      </span>
+                      <span className={cn('tabular-nums text-muted-foreground', d === new Date().getDay() && 'font-semibold text-foreground')}>
+                        {describeDay(hours.days[d])}
+                      </span>
+                    </div>
+                  ))}
+                </div>
                 {venue.website_url && (
                   <ContactRow icon={Globe}>
                     <a
@@ -261,6 +295,11 @@ export default function VenueCommunity() {
 
           {hasCourts && (
             <TabsContent value="book" className="mt-0">
+              {closed && (
+                <p className="mb-3 rounded-lg border border-border bg-muted/40 px-3 py-3 text-center text-sm text-muted-foreground">
+                  Closed on this day.
+                </p>
+              )}
               <VenueBookingGrid
                 grid={grid}
                 day={day}
@@ -339,13 +378,14 @@ export default function VenueCommunity() {
           venueId={group.venue_id}
           court={bookingCourt}
           start={bookingStart}
-          slotMinutes={DEFAULT_GRID.slotMinutes}
+          slotMinutes={slotMinutes}
           presetMinutes={bookingMinutes}
           dayEnd={dayEnd}
           onBooked={refresh}
         />
       )}
     </div>
+    </VenueStaffProvider>
   );
 }
 

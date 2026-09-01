@@ -1,4 +1,5 @@
 import { memo, useState, useRef, useEffect } from 'react';
+import { StaffBadge } from '@/components/venue/StaffBadge';
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow, format, isToday, isYesterday, isSameDay } from 'date-fns';
 import { motion } from 'framer-motion';
@@ -173,6 +174,7 @@ export const ChatMessage = memo(function ChatMessage({
               <span className="text-[11px] font-medium text-muted-foreground">
                 {displayName}
               </span>
+              <StaffBadge userId={message.user_id} />
               <span className="text-[10px] text-muted-foreground/60">
                 {formatDistanceToNow(messageDate, { addSuffix: true })}
               </span>

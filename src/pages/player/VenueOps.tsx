@@ -6,7 +6,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useGroupDetail } from '@/hooks/useGroupDetail';
 import { useVenueDay } from '@/hooks/useVenueDay';
 import { venueChrome } from '@/lib/venues/branding';
-import { DEFAULT_GRID, formatSlotTime } from '@/lib/venues/availability';
+import { formatSlotTime } from '@/lib/venues/availability';
+import { parseVenueHours } from '@/lib/venues/hours';
+import { useMyVenueRole, canOperateVenue } from '@/components/venue/VenueStaffContext';
 import { courtStatuses, daySummary, formatDuration, upcomingGaps } from '@/lib/venues/ops';
 import { CourtStatusBoard } from '@/components/venue/ops/CourtStatusBoard';
 import { OpsStatRail } from '@/components/venue/ops/OpsStatRail';
@@ -56,15 +58,18 @@ export default function VenueOps() {
 
   const venue = group?.venue ?? null;
   const chrome = useMemo(() => venueChrome(venue), [venue]);
+  const hours = useMemo(() => parseVenueHours(venue?.hours_of_operation), [venue]);
 
-  const { courts, sessions, grid, loading: dayLoading, refresh } = useVenueDay(
-    group?.venue_id,
-    groupId,
-    day,
-    DEFAULT_GRID,
-  );
+  const { role: venueRole, loading: roleLoading } = useMyVenueRole(group?.venue_id);
 
-  const isStaff = membership?.role === 'owner' || membership?.role === 'moderator';
+  const { courts, sessions, grid, closed, slotMinutes, loading: dayLoading, refresh } =
+    useVenueDay(group?.venue_id, groupId, day, hours);
+
+  // Access is a venue role, not community moderation: a front-desk person can
+  // run the day without being handed moderator powers over the conversation.
+  // The group owner keeps access as a floor so a venue can never lock itself
+  // out of its own operations.
+  const isStaff = canOperateVenue(venueRole) || membership?.role === 'owner';
 
   const statuses = useMemo(() => courtStatuses(courts, sessions, now), [courts, sessions, now]);
   const summary = useMemo(() => daySummary(grid, statuses, now), [grid, statuses, now]);
@@ -78,12 +83,13 @@ export default function VenueOps() {
 
   // Non-staff must never see the operations view, even by URL.
   useEffect(() => {
-    if (!loading && group && !isStaff) {
+    // Wait for the role to resolve, or a staff member is bounced on first paint.
+    if (!loading && !roleLoading && group && !isStaff) {
       navigate(`/player/community/group/${groupId}`, { replace: true });
     }
-  }, [loading, group, isStaff, groupId, navigate]);
+  }, [loading, roleLoading, group, isStaff, groupId, navigate]);
 
-  if (loading || !group || !isStaff) {
+  if (loading || roleLoading || !group || !isStaff) {
     return (
       <div className="space-y-4 p-4">
         <Skeleton className="h-24 w-full rounded-xl" />
@@ -225,6 +231,11 @@ export default function VenueOps() {
 
         <section className="space-y-2.5">
           <SectionHeading title="Schedule" />
+          {closed && (
+            <p className="rounded-lg border border-border bg-muted/40 px-3 py-3 text-center text-sm text-muted-foreground">
+              The venue is closed on this day. Change opening hours in venue settings.
+            </p>
+          )}
           <VenueBookingGrid
             grid={grid}
             day={day}
@@ -269,7 +280,7 @@ export default function VenueOps() {
             venueId={group.venue_id}
             court={bookCourt}
             start={bookStart}
-            slotMinutes={DEFAULT_GRID.slotMinutes}
+            slotMinutes={slotMinutes}
             presetMinutes={bookMinutes}
             dayEnd={dayEnd}
             onBooked={refresh}

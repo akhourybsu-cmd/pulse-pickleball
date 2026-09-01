@@ -35,6 +35,12 @@ export interface Group {
     tagline: string | null;
     welcome_headline: string | null;
     welcome_message: string | null;
+    city?: string | null;
+    state?: string | null;
+    phone?: string | null;
+    email?: string | null;
+    website_url?: string | null;
+    hours_of_operation?: unknown;
   } | null;
 }
 

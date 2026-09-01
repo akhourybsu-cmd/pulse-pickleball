@@ -4,11 +4,10 @@ import { supabase } from '@/integrations/supabase/client';
 import {
   buildDayGrid,
   courtsFreeAt,
-  DEFAULT_GRID,
   type Court,
-  type DayGridOptions,
   type Reservation,
 } from '@/lib/venues/availability';
+import { defaultVenueHours, gridOptionsFor, type VenueHours } from '@/lib/venues/hours';
 
 /**
  * One venue, one day: its courts, and everything scheduled on them.
@@ -56,7 +55,8 @@ export function useVenueDay(
   venueId: string | null | undefined,
   groupId: string | null | undefined,
   day: Date,
-  gridOptions: DayGridOptions = DEFAULT_GRID,
+  /** The venue's own opening hours. Defaults only when none are stored. */
+  hours: VenueHours = defaultVenueHours(),
 ) {
   const queryClient = useQueryClient();
 
@@ -125,8 +125,14 @@ export function useVenueDay(
   const sessions = useMemo(() => query.data?.sessions ?? [], [query.data]);
   const going = useMemo(() => query.data?.going ?? {}, [query.data]);
 
+  // Null on a day the venue is shut. An empty grid and a closed day look the
+  // same to a renderer, so the difference is reported explicitly rather than
+  // left for the UI to infer from "no rows".
+  const gridOptions = useMemo(() => gridOptionsFor(hours, day), [hours, day]);
+  const closed = gridOptions === null;
+
   const grid = useMemo(
-    () => buildDayGrid(courts, sessions, day, gridOptions),
+    () => (gridOptions ? buildDayGrid(courts, sessions, day, gridOptions) : []),
     // `courts` is derived from query.data, so keying on it directly is stable.
     [query.data, day, gridOptions], // eslint-disable-line react-hooks/exhaustive-deps
   );
@@ -153,6 +159,8 @@ export function useVenueDay(
     going,
     programming,
     grid,
+    closed,
+    slotMinutes: hours.slotMinutes,
     freeNow,
     loading: query.isLoading,
     error: query.error as Error | null,

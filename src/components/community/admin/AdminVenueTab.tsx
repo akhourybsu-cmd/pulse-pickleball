@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { VenueCourtsSection } from './VenueCourtsSection';
+import { VenueHoursSection } from './VenueHoursSection';
 
 /**
  * Venue identity for a venue community.
@@ -537,6 +538,8 @@ export function AdminVenueTab({ groupId, venueId, isVerified }: AdminVenueTabPro
       </Card>
 
       <VenueCourtsSection venueId={venueId} />
+
+      <VenueHoursSection venueId={venueId} />
 
       <div className="flex justify-end">
         <Button onClick={save} disabled={saving || uploading !== null}>
