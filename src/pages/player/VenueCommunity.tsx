@@ -5,6 +5,7 @@ import {
   MapPin, MessageSquare, MoreHorizontal, Settings, Users, Globe, Phone, Gauge,
   Ticket, ChevronRight, MessageCircle,
 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -28,6 +29,7 @@ import { useGroupPresence } from '@/hooks/useGroupPresence';
 import { useGroupRealtime } from '@/hooks/useGroupRealtime';
 import { useGroupPosts } from '@/hooks/useGroupPosts';
 import { QuickPostComposer, type PostType } from '@/components/community/QuickPostComposer';
+import { CollapsedComposerBar } from '@/components/community/CollapsedComposerBar';
 
 /**
  * A venue's community.
@@ -82,6 +84,31 @@ export default function VenueCommunity() {
     setQuickPostType(type);
     setQuickPostOpen(true);
   };
+
+  const [profile, setProfile] = useState<{
+    display_name: string | null;
+    full_name: string | null;
+    avatar_url: string | null;
+  } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user || cancelled) return;
+      const { data } = await supabase
+        .from('profiles')
+        .select('display_name, full_name, avatar_url')
+        .eq('id', user.id)
+        .maybeSingle();
+      if (!cancelled && data) setProfile(data);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const [bookingCourtId, setBookingCourtId] = useState<string | null>(null);
   const [bookingStart, setBookingStart] = useState<Date | null>(null);
@@ -398,6 +425,20 @@ export default function VenueCommunity() {
           </div>
         </div>
       </Tabs>
+
+      {/* The feed's only way to write a post.
+          GroupFeed renders no composer of its own — its newPostContent state is
+          dead code and focusComposer() targets a textarea that does not exist —
+          so the bar is the parent's responsibility. Without it the venue feed
+          could be read and not written to. */}
+      {activeTab === 'feed' && isMember && (
+        <CollapsedComposerBar
+          onExpand={() => openQuickPost('post')}
+          onPhotoClick={() => openQuickPost('photo')}
+          avatarUrl={profile?.avatar_url}
+          displayName={profile?.display_name || profile?.full_name}
+        />
+      )}
 
       <QuickPostComposer
         open={quickPostOpen}
