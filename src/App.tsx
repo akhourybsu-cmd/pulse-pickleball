@@ -155,6 +155,7 @@ const MyEvents = lazy(() => import("./pages/player/MyEvents"));
 const FindEvents = lazy(() => import("./pages/player/FindEvents"));
 const Community = lazy(() => import("./pages/player/Community"));
 const GroupRoute = lazy(() => import("./pages/player/GroupRoute"));
+const VenueOps = lazy(() => import("./pages/player/VenueOps"));
 const JoinGroupByCode = lazy(() => import("./pages/player/JoinGroupByCode"));
 const JoinLeagueByCode = lazy(() => import("./pages/player/JoinLeagueByCode"));
 const GroupManage = lazy(() => import("./pages/player/GroupManage"));
@@ -452,6 +453,7 @@ const AppContent = () => {
               <Route path="community" element={<Community />} />
               <Route path="community/group/:groupId" element={<GroupRoute />} />
               <Route path="community/group/:groupId/manage" element={<GroupManage />} />
+              <Route path="community/group/:groupId/ops" element={<VenueOps />} />
             </Route>
             <Route path="messages" element={<Social />} />
             <Route path="messages/:conversationId" element={<DirectMessageChat />} />

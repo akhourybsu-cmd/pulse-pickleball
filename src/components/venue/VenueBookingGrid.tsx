@@ -31,6 +31,13 @@ interface VenueBookingGridProps {
   accent?: string | null;
   onDayChange: (day: Date) => void;
   onPickSlot: (courtId: string, start: Date) => void;
+  /**
+   * Staff only. When given, an OCCUPIED cell becomes actionable too, which is
+   * the whole difference between a player's booking grid and an operator's day
+   * view. Keeping it one component means the two can never disagree about what
+   * is on a court.
+   */
+  onPickSession?: (sessionId: string) => void;
 }
 
 export function VenueBookingGrid({
@@ -41,6 +48,7 @@ export function VenueBookingGrid({
   accent,
   onDayChange,
   onPickSlot,
+  onPickSession,
 }: VenueBookingGridProps) {
   const isMobile = useIsMobile();
   const [mode, setMode] = useState<'courts' | 'times'>('times');
@@ -144,7 +152,13 @@ export function VenueBookingGrid({
       ) : effectiveMode === 'times' ? (
         <TimesView grid={grid} canBook={canBook} accent={accent} onPickSlot={onPickSlot} />
       ) : (
-        <CourtsView grid={grid} canBook={canBook} accent={accent} onPickSlot={onPickSlot} />
+        <CourtsView
+          grid={grid}
+          canBook={canBook}
+          accent={accent}
+          onPickSlot={onPickSlot}
+          onPickSession={onPickSession}
+        />
       )}
     </div>
   );
@@ -265,11 +279,13 @@ function CourtsView({
   canBook,
   accent,
   onPickSlot,
+  onPickSession,
 }: {
   grid: CourtColumn[];
   canBook: boolean;
   accent?: string | null;
   onPickSlot: (courtId: string, start: Date) => void;
+  onPickSession?: (sessionId: string) => void;
 }) {
   const slotCount = grid[0]?.slots.length ?? 0;
 
@@ -310,6 +326,7 @@ function CourtsView({
                 canBook={canBook}
                 accent={accent}
                 onClick={() => onPickSlot(col.court.id, col.slots[i].start)}
+                onPickSession={onPickSession}
               />
             ))}
           </div>
@@ -324,25 +341,43 @@ function GridCell({
   canBook,
   accent,
   onClick,
+  onPickSession,
 }: {
   slot: Slot;
   canBook: boolean;
   accent?: string | null;
   onClick: () => void;
+  onPickSession?: (sessionId: string) => void;
 }) {
   if (slot.reservation) {
+    const closed = slot.reservation.event_format === 'maintenance';
+    const Cell = onPickSession ? 'button' : 'div';
     return (
-      <div
-        className="w-[104px] shrink-0 border-l border-border px-1.5 py-1.5"
+      <Cell
+        {...(onPickSession
+          ? {
+              type: 'button' as const,
+              onClick: () => onPickSession(slot.reservation!.id),
+            }
+          : {})}
+        className={cn(
+          'w-[104px] shrink-0 border-l border-border px-1.5 py-1.5 text-left',
+          onPickSession && 'transition-colors hover:bg-muted/60',
+        )}
         title={slot.reservation.title ?? undefined}
       >
         <div
-          className="truncate rounded-md bg-primary/10 px-1.5 py-1 text-[11px] font-medium"
-          style={accent ? { backgroundColor: `${accent}1f`, color: accent } : undefined}
+          className={cn(
+            'truncate rounded-md px-1.5 py-1 text-[11px] font-medium',
+            closed
+              ? 'bg-muted text-muted-foreground line-through decoration-1'
+              : 'bg-primary/10',
+          )}
+          style={!closed && accent ? { backgroundColor: `${accent}1f`, color: accent } : undefined}
         >
-          {slot.reservation.title || 'Booked'}
+          {slot.reservation.title || (closed ? 'Closed' : 'Booked')}
         </div>
-      </div>
+      </Cell>
     );
   }
 

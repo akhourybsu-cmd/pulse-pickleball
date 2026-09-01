@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft, BadgeCheck, CalendarClock, CalendarDays, LayoutGrid,
-  MapPin, MessageSquare, MoreHorizontal, Settings, Users, Globe, Phone,
+  MapPin, MessageSquare, MoreHorizontal, Settings, Users, Globe, Phone, Gauge,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -122,15 +122,28 @@ export default function VenueCommunity() {
             </Button>
             <div className="ml-auto flex items-center gap-1.5">
               {isAdmin && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-9 w-9 rounded-full border border-white/20 bg-black/25 text-white backdrop-blur-sm hover:bg-black/40 hover:text-white"
-                  onClick={() => navigate(`/player/community/group/${groupId}/manage`)}
-                  aria-label="Venue settings"
-                >
-                  <Settings className="h-[18px] w-[18px]" />
-                </Button>
+                <>
+                  {/* Operations is the staff surface: same data as this page,
+                      more authority over it. */}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9 rounded-full border border-white/20 bg-black/25 text-white backdrop-blur-sm hover:bg-black/40 hover:text-white"
+                    onClick={() => navigate(`/player/community/group/${groupId}/ops`)}
+                    aria-label="Venue operations"
+                  >
+                    <Gauge className="h-[18px] w-[18px]" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9 rounded-full border border-white/20 bg-black/25 text-white backdrop-blur-sm hover:bg-black/40 hover:text-white"
+                    onClick={() => navigate(`/player/community/group/${groupId}/manage`)}
+                    aria-label="Venue settings"
+                  >
+                    <Settings className="h-[18px] w-[18px]" />
+                  </Button>
+                </>
               )}
             </div>
           </div>
