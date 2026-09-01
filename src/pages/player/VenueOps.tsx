@@ -1,20 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Plus, Wrench, Sparkles, ChevronRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useGroupDetail } from '@/hooks/useGroupDetail';
 import { useVenueDay } from '@/hooks/useVenueDay';
 import { venueChrome } from '@/lib/venues/branding';
-import { formatSlotTime } from '@/lib/venues/availability';
 import { parseVenueHours } from '@/lib/venues/hours';
-import { useMyVenueRole, canOperateVenue } from '@/components/venue/VenueStaffContext';
-import { courtStatuses, daySummary, formatDuration, upcomingGaps } from '@/lib/venues/ops';
-import { CourtStatusBoard } from '@/components/venue/ops/CourtStatusBoard';
-import { OpsStatRail } from '@/components/venue/ops/OpsStatRail';
+import { useMyVenueRole, canOperateVenue, canManageVenue } from '@/components/venue/VenueStaffContext';
+import { courtStatuses, daySummary, upcomingGaps } from '@/lib/venues/ops';
+import { OpsDashboard } from '@/components/venue/ops/OpsDashboard';
 import { CloseCourtDialog } from '@/components/venue/ops/CloseCourtDialog';
 import { SessionSheet } from '@/components/venue/ops/SessionSheet';
-import { VenueBookingGrid } from '@/components/venue/VenueBookingGrid';
 import { BookCourtDialog } from '@/components/venue/BookCourtDialog';
 
 /**
@@ -107,151 +102,52 @@ export default function VenueOps() {
   const dayEnd = grid[0]?.slots[grid[0].slots.length - 1]?.end ?? null;
 
   return (
-    <div className="min-h-[100dvh] bg-background pb-[env(safe-area-inset-bottom)]">
-      <header className="sticky top-0 z-20 border-b border-border bg-background/85 px-4 pb-3 pt-[calc(0.6rem+env(safe-area-inset-top))] backdrop-blur-xl">
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="-ml-1 h-9 w-9 shrink-0 rounded-full"
-            onClick={() => navigate(`/player/community/group/${groupId}`)}
-            aria-label="Back to venue"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
-              Operations
-            </p>
-            <h1 className="truncate text-lg font-bold leading-tight">
-              {venue?.name ?? group.name}
-            </h1>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-9 shrink-0"
-            onClick={() => {
-              setCloseCourtId(null);
-              setCloseOpen(true);
-            }}
-          >
-            <Wrench className="mr-1.5 h-4 w-4" />
-            <span className="hidden sm:inline">Close court</span>
-          </Button>
-        </div>
-      </header>
-
-      <div className="space-y-6 p-4">
-        <section className="space-y-2.5">
-          <SectionHeading
-            title={isToday ? 'On the floor' : 'Courts'}
-            hint={
-              isToday
-                ? now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
-                : day.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' })
-            }
-          />
-          {dayLoading ? (
-            <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
-              {[0, 1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-[104px] rounded-xl" />
-              ))}
-            </div>
-          ) : (
-            <CourtStatusBoard
-              statuses={statuses}
-              accent={chrome?.accentHex}
-              onPickCourt={(courtId) => {
-                const status = statuses.find((s) => s.court.id === courtId);
-                // Tapping a live court goes to what's on it; tapping a free one
-                // is a request to put something there.
-                if (status?.current) {
-                  setSessionId(status.current.id);
-                } else {
-                  const nextSlot = grid
-                    .find((c) => c.court.id === courtId)
-                    ?.slots.find((s) => s.bookable);
-                  if (nextSlot) {
-                    setBookCourtId(courtId);
-                    setBookStart(nextSlot.start);
-                  }
-                }
-              }}
-            />
-          )}
-        </section>
-
-        <section className="space-y-2.5">
-          <SectionHeading title="The day" />
-          <OpsStatRail summary={summary} accent={chrome?.accentHex} />
-        </section>
-
-        {gaps.length > 0 && (
-          <section className="space-y-2.5">
-            <SectionHeading
-              title="Sellable gaps"
-              hint={`${formatDuration(summary.openMinutes)} open`}
-            />
-            <p className="text-xs text-muted-foreground">
-              The longest unbooked stretches left today. Tap one to put something in it.
-            </p>
-            <div className="space-y-1.5">
-              {gaps.map((gap) => (
-                <button
-                  key={`${gap.court.id}-${gap.start.toISOString()}`}
-                  type="button"
-                  onClick={() => {
-                    setBookCourtId(gap.court.id);
-                    setBookStart(gap.start);
-                  }}
-                  className="flex w-full items-center gap-3 rounded-xl border border-border bg-card px-3 py-2.5 text-left transition-colors hover:border-primary/40"
-                >
-                  <Sparkles
-                    className="h-4 w-4 shrink-0 text-primary"
-                    style={chrome?.accentHex ? { color: chrome.accentHex } : undefined}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold">
-                      {gap.court.name ?? `Court ${gap.court.court_number}`}
-                    </p>
-                    <p className="text-xs tabular-nums text-muted-foreground">
-                      {formatSlotTime(gap.start)}–{formatSlotTime(gap.end)}
-                    </p>
-                  </div>
-                  <span className="shrink-0 text-sm font-bold tabular-nums">
-                    {formatDuration(gap.minutes)}
-                  </span>
-                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-                </button>
-              ))}
-            </div>
-          </section>
-        )}
-
-        <section className="space-y-2.5">
-          <SectionHeading title="Schedule" />
-          {closed && (
-            <p className="rounded-lg border border-border bg-muted/40 px-3 py-3 text-center text-sm text-muted-foreground">
-              The venue is closed on this day. Change opening hours in venue settings.
-            </p>
-          )}
-          <VenueBookingGrid
-            grid={grid}
-            day={day}
-            loading={dayLoading}
-            canBook
-            accent={chrome?.accentHex}
-            onDayChange={setDay}
-            onPickSlot={(courtId, start, minutes) => {
+    <>
+      <OpsDashboard
+        venueName={venue?.name ?? group.name}
+        day={day}
+        now={now}
+        isToday={isToday}
+        loading={dayLoading}
+        closed={closed}
+        statuses={statuses}
+        summary={summary}
+        gaps={gaps}
+        grid={grid}
+        accent={chrome?.accentHex}
+        canManage={canManageVenue(venueRole) || membership?.role === 'owner'}
+        onBack={() => navigate(`/player/community/group/${groupId}`)}
+        onSettings={() => navigate(`/player/community/group/${groupId}/manage`)}
+        onCloseCourt={() => {
+          setCloseCourtId(null);
+          setCloseOpen(true);
+        }}
+        onPickCourt={(courtId) => {
+          const status = statuses.find((s) => s.court.id === courtId);
+          // Tapping a live court goes to what's on it; tapping a free one is a
+          // request to put something there.
+          if (status?.current) {
+            setSessionId(status.current.id);
+          } else {
+            const nextSlot = grid.find((c) => c.court.id === courtId)?.slots.find((s) => s.bookable);
+            if (nextSlot) {
               setBookCourtId(courtId);
-              setBookStart(start);
-              setBookMinutes(minutes || null);
-            }}
-            onPickSession={setSessionId}
-          />
-        </section>
-      </div>
+              setBookStart(nextSlot.start);
+            }
+          }
+        }}
+        onDayChange={setDay}
+        onPickSlot={(courtId, start, minutes) => {
+          setBookCourtId(courtId);
+          setBookStart(start);
+          setBookMinutes(minutes || null);
+        }}
+        onPickSession={setSessionId}
+        onFillGap={(gap) => {
+          setBookCourtId(gap.court.id);
+          setBookStart(gap.start);
+        }}
+      />
 
       {group.venue_id && (
         <>
@@ -297,17 +193,6 @@ export default function VenueOps() {
         }}
         onChanged={refresh}
       />
-    </div>
-  );
-}
-
-function SectionHeading({ title, hint }: { title: string; hint?: string }) {
-  return (
-    <div className="flex items-baseline justify-between gap-2">
-      <h2 className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
-        {title}
-      </h2>
-      {hint && <span className="text-xs tabular-nums text-muted-foreground">{hint}</span>}
-    </div>
+    </>
   );
 }

@@ -18,6 +18,13 @@ interface DayStripProps {
   /** How many days forward to offer. */
   days?: number;
   accent?: string | null;
+  /**
+   * Pinned to the right of the strip, outside its scroll area. Controls that
+   * belong to the same day of data ride here rather than claiming a row of
+   * their own — three stacked header rows before any content is most of what
+   * makes a screen feel assembled rather than designed.
+   */
+  trailing?: React.ReactNode;
 }
 
 function startOfDay(d: Date): Date {
@@ -26,7 +33,7 @@ function startOfDay(d: Date): Date {
   return out;
 }
 
-export function DayStrip({ value, onChange, days = 14, accent }: DayStripProps) {
+export function DayStrip({ value, onChange, days = 14, accent, trailing }: DayStripProps) {
   const scroller = useRef<HTMLDivElement>(null);
   const activeRef = useRef<HTMLButtonElement>(null);
 
@@ -46,13 +53,14 @@ export function DayStrip({ value, onChange, days = 14, accent }: DayStripProps) 
   }, [value]);
 
   return (
-    <div
-      ref={scroller}
-      className="-mx-4 overflow-x-auto border-b border-border px-4"
-      role="tablist"
-      aria-label="Choose a day"
-    >
-      <div className="flex min-w-max items-stretch gap-1">
+    <div className="-mx-4 flex items-end gap-3 border-b border-border px-4">
+      <div
+        ref={scroller}
+        className="min-w-0 flex-1 overflow-x-auto"
+        role="tablist"
+        aria-label="Choose a day"
+      >
+        <div className="flex min-w-max items-stretch gap-1">
         {options.map((day, i) => {
           const active = day.getTime() === startOfDay(value).getTime();
           const label =
@@ -89,10 +97,13 @@ export function DayStrip({ value, onChange, days = 14, accent }: DayStripProps) 
                 )}
                 style={active && accent ? { backgroundColor: accent } : undefined}
               />
-            </button>
-          );
-        })}
+              </button>
+            );
+          })}
+        </div>
       </div>
+
+      {trailing && <div className="shrink-0 pb-1.5">{trailing}</div>}
     </div>
   );
 }

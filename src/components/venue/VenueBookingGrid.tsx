@@ -90,29 +90,31 @@ export function VenueBookingGrid({
 
   return (
     <div className="space-y-3">
-      <DayStrip value={day} onChange={onDayChange} accent={accent} />
-
-      <div className="flex items-center justify-between gap-3">
-        <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
-          Availability
-        </span>
-        <div className="inline-flex rounded-lg border border-border bg-card p-0.5">
-          <ViewButton
-            active={effectiveMode === 'times'}
-            onClick={() => setModeExplicit('times')}
-            icon={Rows3}
-          >
-            Times
-          </ViewButton>
-          <ViewButton
-            active={effectiveMode === 'courts'}
-            onClick={() => setModeExplicit('courts')}
-            icon={Grid3x3}
-          >
-            Courts
-          </ViewButton>
-        </div>
-      </div>
+      {/* The view toggle rides on the day strip: it belongs to the same day of
+          data, and a row of its own was pure overhead. */}
+      <DayStrip
+        value={day}
+        onChange={onDayChange}
+        accent={accent}
+        trailing={
+          <div className="inline-flex rounded-lg border border-border bg-card p-0.5">
+            <ViewButton
+              active={effectiveMode === 'times'}
+              onClick={() => setModeExplicit('times')}
+              icon={Rows3}
+            >
+              Times
+            </ViewButton>
+            <ViewButton
+              active={effectiveMode === 'courts'}
+              onClick={() => setModeExplicit('courts')}
+              icon={Grid3x3}
+            >
+              Courts
+            </ViewButton>
+          </div>
+        }
+      />
 
       {!canBook && (
         <p className="flex items-center gap-1.5 rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
@@ -202,20 +204,24 @@ function ViewButton({
   active: boolean;
   onClick: () => void;
   icon: typeof Rows3;
-  children: React.ReactNode;
+  children: string;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-pressed={active}
+      // Icon-only on a phone. Sharing the day strip's row costs ~80px of label,
+      // which on a 390px screen is two days of navigation — and the strip is
+      // the more important control of the two.
+      aria-label={children}
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-[7px] px-2.5 py-1.5 text-xs font-semibold transition-colors',
+        'inline-flex items-center gap-1.5 rounded-[7px] px-2 py-1.5 text-xs font-semibold transition-colors sm:px-2.5',
         active ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
       )}
     >
       <Icon className="h-3.5 w-3.5" />
-      {children}
+      <span className="hidden sm:inline">{children}</span>
     </button>
   );
 }

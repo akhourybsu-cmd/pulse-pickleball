@@ -129,9 +129,11 @@ function CourtCard({
         )}
       </div>
 
-      {/* Thin progress rule for a live court — how far through, at a glance. */}
-      {live && (
-        <div className="mt-2 h-[3px] overflow-hidden rounded-full bg-muted">
+      {/* Thin progress rule for a live court — how far through, at a glance.
+          The track is always rendered so every card is the same height and the
+          board sits on an even baseline. */}
+      <div className="mt-2 h-[3px] overflow-hidden rounded-full bg-muted/70">
+        {live && (
           <div
             className="h-full rounded-full bg-primary transition-[width] duration-500"
             style={{
@@ -139,8 +141,8 @@ function CourtCard({
               ...(accent ? { backgroundColor: accent } : {}),
             }}
           />
-        </div>
-      )}
+        )}
+      </div>
     </button>
   );
 }

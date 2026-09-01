@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { buildDayGrid, type Court } from '@/lib/venues/availability';
 import { courtStatuses, daySummary } from '@/lib/venues/ops';
-import { CourtStatusBoard } from '@/components/venue/ops/CourtStatusBoard';
-import { OpsStatRail } from '@/components/venue/ops/OpsStatRail';
-import { VenueBookingGrid } from '@/components/venue/VenueBookingGrid';
+import { upcomingGaps } from '@/lib/venues/ops';
+import { OpsDashboard } from '@/components/venue/ops/OpsDashboard';
 import { VenueProgramming } from '@/components/venue/VenueProgramming';
 import type { VenueDaySession } from '@/hooks/useVenueDay';
 
@@ -86,38 +85,45 @@ export default function VenuePreview() {
     (s) => s.event_format !== 'reservation' && s.event_format !== 'maintenance',
   );
 
+  const gaps = upcomingGaps(grid, NOW, 60).slice(0, 4);
+
   return (
-    <div className="mx-auto max-w-5xl space-y-8 p-4">
-      <Section title="On the floor">
-        <CourtStatusBoard statuses={statuses} accent={ACCENT} onPickCourt={() => {}} />
-      </Section>
+    <>
+      <OpsDashboard
+        venueName="Riverside Pickleball"
+        day={day}
+        now={NOW}
+        isToday
+        loading={false}
+        closed={false}
+        statuses={statuses}
+        summary={summary}
+        gaps={gaps}
+        grid={grid}
+        accent={ACCENT}
+        canManage
+        onBack={() => {}}
+        onSettings={() => {}}
+        onCloseCourt={() => {}}
+        onPickCourt={() => {}}
+        onDayChange={setDay}
+        onPickSlot={() => {}}
+        onPickSession={() => {}}
+        onFillGap={() => {}}
+      />
 
-      <Section title="The day">
-        <OpsStatRail summary={summary} accent={ACCENT} />
-      </Section>
-
-      <Section title="Book">
-        <VenueBookingGrid
-          grid={grid}
-          day={day}
-          loading={false}
-          canBook
-          accent={ACCENT}
-          onDayChange={setDay}
-          onPickSlot={() => {}}
-        />
-      </Section>
-
-      <Section title="Play">
-        <VenueProgramming
-          sessions={programming}
-          going={GOING}
-          loading={false}
-          venueName="Riverside Pickleball"
-          accent={ACCENT}
-        />
-      </Section>
-    </div>
+      <div className="mx-auto max-w-[1400px] px-4 py-5 sm:px-6">
+        <Section title="Play (player-facing)">
+          <VenueProgramming
+            sessions={programming}
+            going={GOING}
+            loading={false}
+            venueName="Riverside Pickleball"
+            accent={ACCENT}
+          />
+        </Section>
+      </div>
+    </>
   );
 }
 

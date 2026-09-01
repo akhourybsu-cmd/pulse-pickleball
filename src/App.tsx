@@ -158,7 +158,12 @@ const Community = lazy(() => import("./pages/player/Community"));
 const GroupRoute = lazy(() => import("./pages/player/GroupRoute"));
 const VenueOps = lazy(() => import("./pages/player/VenueOps"));
 const MyBookings = lazy(() => import("./pages/player/MyBookings"));
-const VenuePreview = lazy(() => import("./pages/dev/VenuePreview"));
+// Guarded at the import, not just at the route: a bare lazy() still emits the
+// chunk even when nothing routes to it. With DEV replaced by `false` at build
+// time the dynamic import is unreachable and Rollup drops it entirely.
+const VenuePreview = import.meta.env.DEV
+  ? lazy(() => import("./pages/dev/VenuePreview"))
+  : null;
 const JoinGroupByCode = lazy(() => import("./pages/player/JoinGroupByCode"));
 const JoinLeagueByCode = lazy(() => import("./pages/player/JoinLeagueByCode"));
 const GroupManage = lazy(() => import("./pages/player/GroupManage"));
@@ -318,7 +323,7 @@ const AppContent = () => {
         <Routes>
           {/* Design harness for the venue surfaces. Not registered in a
               production build, so it cannot ship. */}
-          {import.meta.env.DEV && (
+          {VenuePreview && (
             <Route path="/__venue-preview" element={<VenuePreview />} />
           )}
           {/* Public routes */}

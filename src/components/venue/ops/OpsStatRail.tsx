@@ -2,13 +2,17 @@ import { cn } from '@/lib/utils';
 import { formatDuration, type DaySummary } from '@/lib/venues/ops';
 
 /**
- * The day in four numbers.
+ * The day in three numbers.
  *
  * Every one is chosen to be actionable at the desk, which is why there is no
- * booking count here: knowing there were 31 bookings changes nothing you can
- * do. Utilisation tells you how the day compares to a normal one; the court
- * ribbon tells you what is happening this second; unsold time is literally the
- * inventory you could still fill this afternoon.
+ * booking count: knowing there were 31 bookings changes nothing you can do at
+ * 5pm. Utilisation says how the day compares to a normal one, the court ribbon
+ * says what is happening this second, and unsold time is literally the
+ * inventory still sellable this afternoon.
+ *
+ * One panel with hairline dividers rather than three bordered tiles. Three
+ * boxes in a row read as three unrelated widgets; a divided panel reads as one
+ * instrument, which is what a rail beside the floor should feel like.
  */
 
 interface OpsStatRailProps {
@@ -21,83 +25,85 @@ export function OpsStatRail({ summary, accent }: OpsStatRailProps) {
   const courts = inPlay + open + closed;
 
   return (
-    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-      {/* Utilisation, with the bar doing the comparing rather than a number
-          floating on its own. */}
-      <div className="rounded-xl border border-border bg-card p-3">
-        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-          Utilisation
-        </p>
-        <p className="mt-1 text-2xl font-bold leading-none tabular-nums">
-          {util.percent}
-          <span className="text-sm font-semibold text-muted-foreground">%</span>
-        </p>
-        <div className="mt-2 h-[3px] overflow-hidden rounded-full bg-muted">
-          <div
-            className="h-full rounded-full bg-primary"
-            style={{
-              width: `${util.percent}%`,
-              ...(accent ? { backgroundColor: accent } : {}),
-            }}
-          />
-        </div>
-        <p className="mt-1.5 text-[11px] text-muted-foreground tabular-nums">
-          {util.booked} of {util.total} court-hours
-        </p>
-      </div>
+    <div className="divide-y divide-border/70 overflow-hidden rounded-xl border border-border bg-card">
+      <Row label="Utilisation" value={`${util.percent}%`} caption={`${util.booked} of ${util.total} court-hours`}>
+        <Track>
+          <Fill portion={util.percent / 100} className="bg-primary" accent={accent} />
+        </Track>
+      </Row>
 
-      {/* Court ribbon — the floor as one bar, proportional to reality. */}
-      <div className="rounded-xl border border-border bg-card p-3">
-        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-          Courts
-        </p>
-        <p className="mt-1 text-2xl font-bold leading-none tabular-nums">
-          {inPlay}
-          <span className="text-sm font-semibold text-muted-foreground">/{courts}</span>
-        </p>
-        <div className="mt-2 flex h-[3px] overflow-hidden rounded-full bg-muted">
-          <Segment count={inPlay} total={courts} className="bg-primary" accent={accent} />
-          <Segment count={open} total={courts} className="bg-emerald-500/70" />
-          <Segment count={closed} total={courts} className="bg-muted-foreground/30" />
-        </div>
-        <p className="mt-1.5 truncate text-[11px] text-muted-foreground tabular-nums">
-          {inPlay} in play · {open} free{closed > 0 ? ` · ${closed} closed` : ''}
-        </p>
-      </div>
+      <Row
+        label="Courts"
+        value={
+          <>
+            {inPlay}
+            <span className="text-base font-semibold text-muted-foreground">/{courts}</span>
+          </>
+        }
+        caption={`${inPlay} in play · ${open} free${closed > 0 ? ` · ${closed} closed` : ''}`}
+      >
+        <Track>
+          <Fill portion={courts ? inPlay / courts : 0} className="bg-primary" accent={accent} />
+          <Fill portion={courts ? open / courts : 0} className="bg-emerald-500/70" />
+          <Fill portion={courts ? closed / courts : 0} className="bg-muted-foreground/30" />
+        </Track>
+      </Row>
 
-      {/* The commercial one: time still sellable today. */}
-      <div className="col-span-2 rounded-xl border border-border bg-card p-3 sm:col-span-1">
-        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-          Unsold today
-        </p>
-        <p className="mt-1 text-2xl font-bold leading-none tabular-nums">
-          {formatDuration(openMinutes)}
-        </p>
-        <p className="mt-[calc(0.5rem+3px)] text-[11px] text-muted-foreground">
-          {openMinutes === 0 ? 'Fully committed' : 'Court time still open'}
-        </p>
-      </div>
+      <Row
+        label="Unsold today"
+        value={formatDuration(openMinutes)}
+        caption={openMinutes === 0 ? 'Fully committed' : 'Court time still open'}
+      />
     </div>
   );
 }
 
-function Segment({
-  count,
-  total,
+function Row({
+  label,
+  value,
+  caption,
+  children,
+}: {
+  label: string;
+  value: React.ReactNode;
+  caption: string;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className="px-3.5 py-3">
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+          {label}
+        </span>
+        <span className="text-2xl font-bold leading-none tabular-nums">{value}</span>
+      </div>
+      {children && <div className="mt-2.5">{children}</div>}
+      <p className={cn('text-[11px] tabular-nums text-muted-foreground', children ? 'mt-1.5' : 'mt-1')}>
+        {caption}
+      </p>
+    </div>
+  );
+}
+
+function Track({ children }: { children: React.ReactNode }) {
+  return <div className="flex h-[3px] overflow-hidden rounded-full bg-muted">{children}</div>;
+}
+
+function Fill({
+  portion,
   className,
   accent,
 }: {
-  count: number;
-  total: number;
+  portion: number;
   className: string;
   accent?: string | null;
 }) {
-  if (count === 0 || total === 0) return null;
+  if (portion <= 0) return null;
   return (
     <span
       className={cn('h-full', className)}
       style={{
-        width: `${(count / total) * 100}%`,
+        width: `${Math.min(100, portion * 100)}%`,
         ...(accent && className.includes('bg-primary') ? { backgroundColor: accent } : {}),
       }}
     />
