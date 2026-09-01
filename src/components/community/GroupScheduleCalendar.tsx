@@ -134,9 +134,8 @@ export function GroupScheduleCalendar({ events, selectedDate, onSelectDate }: Gr
         ))}
       </div>
 
-
       {/* Day grid */}
-      <div className="grid grid-cols-7 gap-1">
+      <div className="relative grid grid-cols-7 gap-1">
         {days.map((day, idx) => {
           const key = format(day, 'yyyy-MM-dd');
           const dayEvents = eventsByDay.get(key) ?? [];
@@ -157,16 +156,19 @@ export function GroupScheduleCalendar({ events, selectedDate, onSelectDate }: Gr
                 else onSelectDate(day);
               }}
               className={cn(
-                'relative aspect-square rounded-md flex flex-col items-center justify-center',
-                'text-xs transition-all duration-150',
+                'relative aspect-square rounded-lg flex flex-col items-center justify-center',
+                'text-xs transition-all duration-150 border border-transparent',
                 'hover:bg-muted/60 active:scale-95',
-                !inMonth && 'text-muted-foreground/40',
+                !inMonth && 'text-muted-foreground/35',
                 inMonth && !isSelected && !today && 'text-foreground',
-                today && !isSelected && 'ring-1 ring-primary/40 text-primary font-semibold',
-                isSelected && 'bg-primary text-primary-foreground font-semibold shadow-sm',
+                inMonth && hasEvents && !isSelected && 'bg-muted/40 border-border/40',
+                today && !isSelected && 'ring-1 ring-primary/50 text-primary font-bold',
+                isSelected &&
+                  'bg-primary text-primary-foreground font-bold shadow-[0_6px_18px_-8px_hsl(var(--primary)/0.9)] border-primary',
               )}
               aria-label={`${format(day, 'MMMM d')}${hasEvents ? ` — ${dayEvents.length} event${dayEvents.length === 1 ? '' : 's'}` : ''}`}
             >
+
               <span className="leading-none">{format(day, 'd')}</span>
               {hasEvents && (
                 <div className="flex items-center gap-0.5 mt-1">
