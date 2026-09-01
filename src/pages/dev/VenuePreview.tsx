@@ -5,10 +5,20 @@ import { upcomingGaps } from '@/lib/venues/ops';
 import { OpsDashboard } from '@/components/venue/ops/OpsDashboard';
 import { VenueProgramming } from '@/components/venue/VenueProgramming';
 import { VenueHome } from '@/components/venue/VenueHome';
+import { VenueBookingGrid } from '@/components/venue/VenueBookingGrid';
+import {
+  VenueDesktopNavigation,
+  VenueDesktopRail,
+  VenueMasthead,
+  VenueMobileTabs,
+  type VenuePageTab,
+} from '@/components/venue/VenuePageChrome';
 import { ChatMessage } from '@/components/community/ChatMessage';
 import { GroupFeed } from '@/components/community/GroupFeed';
 import { QuickPostComposer, type PostType } from '@/components/community/QuickPostComposer';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { parseVenueHours } from '@/lib/venues/hours';
+import { cn } from '@/lib/utils';
 import type { VenueDaySession } from '@/hooks/useVenueDay';
 import type { GroupMessage } from '@/hooks/useGroupChat';
 import type { GroupPost } from '@/hooks/useGroupPosts';
@@ -24,6 +34,18 @@ import type { GroupPost } from '@/hooks/useGroupPosts';
 // Mirrors the ELEVENO test venue so visual work is judged against the same
 // brand palette and operating hours used in staging.
 const ACCENT = '#C5AD11';
+const VENUE_HOURS = parseVenueHours({
+  slotMinutes: 60,
+  days: {
+    '0': { open: '09:00', close: '22:00' },
+    '1': { open: '09:00', close: '22:00' },
+    '2': { open: '09:00', close: '22:00' },
+    '3': { open: '09:00', close: '22:00' },
+    '4': { open: '09:00', close: '22:00' },
+    '5': { open: '09:00', close: '22:00' },
+    '6': { open: '09:00', close: '22:00' },
+  },
+});
 const DAY = new Date();
 DAY.setHours(0, 0, 0, 0);
 
@@ -220,6 +242,10 @@ export default function VenuePreview() {
     );
   }
 
+  if (previewMode === 'desktop') {
+    return <VenueDesktopPagePreview />;
+  }
+
   const grid = buildDayGrid(COURTS, SESSIONS, day, {
     openHour: 8,
     closeHour: 22,
@@ -314,18 +340,7 @@ export default function VenuePreview() {
             state="MA"
             phone={null}
             websiteUrl={null}
-            hours={parseVenueHours({
-              slotMinutes: 60,
-              days: {
-                '0': { open: '09:00', close: '22:00' },
-                '1': { open: '09:00', close: '22:00' },
-                '2': { open: '09:00', close: '22:00' },
-                '3': { open: '09:00', close: '22:00' },
-                '4': { open: '09:00', close: '22:00' },
-                '5': { open: '09:00', close: '22:00' },
-                '6': { open: '09:00', close: '22:00' },
-              },
-            })}
+            hours={VENUE_HOURS}
             nextUp={programming.slice(0, 3).map((p) => ({
               id: p.id,
               title: p.title,
@@ -353,6 +368,202 @@ export default function VenuePreview() {
       </div>
 
     </>
+  );
+}
+
+function VenueDesktopPagePreview() {
+  const [activeTab, setActiveTab] = useState<VenuePageTab>('home');
+  const [day, setDay] = useState(DAY);
+  const programming = SESSIONS.filter(
+    (session) => session.event_format !== 'reservation' && session.event_format !== 'maintenance',
+  );
+  const nextUp = programming.slice(0, 3).map((session) => ({
+    id: session.id,
+    title: session.title,
+    description: session.description,
+    start_time: session.start_time,
+  }));
+  const grid = buildDayGrid(COURTS, SESSIONS, day, {
+    openHour: 8,
+    closeHour: 22,
+    slotMinutes: 60,
+    now: NOW,
+  });
+  const showDesktopRail =
+    activeTab === 'play' ||
+    activeTab === 'feed' ||
+    activeTab === 'chat' ||
+    activeTab === 'more';
+
+  return (
+    <div className="flex min-h-screen flex-col bg-muted/[0.16]">
+      <VenueMasthead
+        venueName="ELEVENO"
+        tagline="Premium pickleball, thoughtfully played"
+        fallbackBackground="linear-gradient(145deg, #202329 0%, #141619 58%, #090a0c 100%)"
+        bloom="rgba(197, 173, 17, 0.28)"
+        accent={ACCENT}
+        verified
+        hasCourts
+        freeNow={2}
+        courtCount={6}
+        memberCount={284}
+        nextStart={nextUp[0]?.start_time}
+        isOperator
+        isAdmin
+        onBack={() => {}}
+        onOperations={() => {}}
+        onSettings={() => {}}
+      />
+
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => setActiveTab(value as VenuePageTab)}
+        className="flex min-h-0 flex-1 flex-col"
+        style={{ '--venue-accent': ACCENT } as React.CSSProperties}
+      >
+        <VenueMobileTabs hasCourts />
+        <div className="flex-1">
+          <div className="mx-auto max-w-[1480px] px-4 py-6 sm:px-6 sm:py-8 lg:py-10">
+            <div
+              className={cn(
+                'lg:grid lg:grid-cols-[210px_minmax(0,1fr)] lg:items-start lg:gap-8 min-[1180px]:gap-10',
+                showDesktopRail && 'min-[1180px]:grid-cols-[210px_minmax(0,1fr)_292px]',
+              )}
+            >
+              <VenueDesktopNavigation
+                hasCourts
+                isOperator
+                isAdmin
+                onOperations={() => {}}
+                onSettings={() => {}}
+              />
+
+              <main className="min-w-0">
+                <TabsContent value="home" className="mt-0">
+                  <VenueHome
+                    welcomeHeadline="Welcome to ELEVENO"
+                    welcomeMessage="Book court time, find today’s sessions, and stay connected with the players and staff at ELEVENO."
+                    city="Foxboro"
+                    state="MA"
+                    phone="(508) 555-0111"
+                    websiteUrl="https://eleveno.example"
+                    hours={VENUE_HOURS}
+                    nextUp={nextUp}
+                    hasCourts
+                    freeNow={2}
+                    courtCount={6}
+                    accent={ACCENT}
+                    onBook={() => setActiveTab('book')}
+                    onOpenPlay={() => setActiveTab('play')}
+                  />
+                </TabsContent>
+
+                <TabsContent value="book" className="mt-0">
+                  <VenueBookingGrid
+                    grid={grid}
+                    day={day}
+                    loading={false}
+                    canBook
+                    accent={ACCENT}
+                    onDayChange={setDay}
+                    onPickSlot={() => {}}
+                  />
+                </TabsContent>
+
+                <TabsContent value="play" className="mt-0 max-w-3xl">
+                  <VenueProgramming
+                    sessions={programming}
+                    going={GOING}
+                    loading={false}
+                    venueName="ELEVENO"
+                    accent={ACCENT}
+                  />
+                </TabsContent>
+
+                <TabsContent value="feed" className="mt-0 max-w-[760px]">
+                  <VenueFeedPreview />
+                </TabsContent>
+
+                <TabsContent value="chat" className="mt-0 max-w-[820px]">
+                  <div className="h-[620px] overflow-hidden rounded-[20px] border border-border/80 bg-card shadow-[0_16px_45px_-30px_hsl(var(--foreground)/0.42)]">
+                    <VenueChatPreview />
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="more" className="mt-0 max-w-[820px]">
+                  <div className="rounded-2xl border border-border/70 bg-card p-6">
+                    <p className="text-lg font-semibold tracking-tight">ELEVENO community</p>
+                    <p className="mt-1 text-sm text-muted-foreground">284 members · 8 online now</p>
+                  </div>
+                </TabsContent>
+              </main>
+
+              {showDesktopRail && (
+                <VenueDesktopRail
+                  venueName="ELEVENO"
+                  activeTab={activeTab}
+                  hasCourts
+                  freeNow={2}
+                  courtCount={6}
+                  memberCount={284}
+                  onlineCount={8}
+                  nextUp={nextUp}
+                  hours={VENUE_HOURS}
+                  accent={ACCENT}
+                  onOpenTab={setActiveTab}
+                  onBookings={() => {}}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      </Tabs>
+    </div>
+  );
+}
+
+function VenueChatPreview() {
+  return (
+    <div className="flex h-full min-h-0 flex-col bg-background">
+      <div className="flex items-center gap-3 border-b border-border/60 px-5 py-4">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-xs font-bold text-primary">
+          EL
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold">ELEVENO</p>
+          <p className="text-[11px] text-muted-foreground">Venue chat · 8 online</p>
+        </div>
+        <span className="h-2 w-2 rounded-full bg-emerald-500" aria-label="Connected" />
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5 pt-2">
+        {CHAT_MESSAGES.map((message, index) => {
+          const previous = CHAT_MESSAGES[index - 1];
+          const next = CHAT_MESSAGES[index + 1];
+          const firstInRun = !previous || previous.user_id !== message.user_id;
+          const lastInRun = !next || next.user_id !== message.user_id;
+          return (
+            <ChatMessage
+              key={message.id}
+              message={message}
+              isOwn={message.user_id === 'me'}
+              showAvatar={message.user_id !== 'me' && lastInRun}
+              showHeader={firstInRun}
+              isLastInGroup={lastInRun}
+              showDateSeparator={index === 0}
+              previousMessageDate={previous ? new Date(previous.created_at) : undefined}
+              onReactionAdd={() => {}}
+            />
+          );
+        })}
+      </div>
+      <div className="flex items-center gap-2 border-t border-border/60 px-4 py-3">
+        <div className="flex h-11 flex-1 items-center rounded-full border border-border/70 bg-muted/35 px-4 text-sm text-muted-foreground">
+          Message ELEVENO…
+        </div>
+        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-foreground text-background">↑</div>
+      </div>
+    </div>
   );
 }
 

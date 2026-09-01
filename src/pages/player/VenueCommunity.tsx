@@ -1,20 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import {
-  ArrowLeft, BadgeCheck, CalendarClock, CalendarDays, LayoutGrid,
-  MapPin, MessageSquare, MoreHorizontal, Settings, Users, Gauge,
-  Ticket, ChevronRight, MessageCircle,
-} from 'lucide-react';
+import { Ticket, ChevronRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { useGroupDetail } from '@/hooks/useGroupDetail';
 import { useVenueDay } from '@/hooks/useVenueDay';
 import { venueChrome } from '@/lib/venues/branding';
-import { formatSlotTime } from '@/lib/venues/availability';
-import { parseVenueHours, describeDay, DAY_NAMES } from '@/lib/venues/hours';
+import { parseVenueHours } from '@/lib/venues/hours';
 import { VenueStaffProvider, useMyVenueRole, canOperateVenue, canManageVenue } from '@/components/venue/VenueStaffContext';
 import { VenueBookingGrid } from '@/components/venue/VenueBookingGrid';
 import { VenueProgramming } from '@/components/venue/VenueProgramming';
@@ -31,6 +25,13 @@ import { QuickPostComposer, type PostType } from '@/components/community/QuickPo
 import { CollapsedComposerBar } from '@/components/community/CollapsedComposerBar';
 import { useVisualViewportPane } from '@/hooks/useVisualViewportPane';
 import { initialVenueCommunityTab } from '@/lib/venues/navigation';
+import {
+  VenueDesktopNavigation,
+  VenueDesktopRail,
+  VenueMasthead,
+  VenueMobileTabs,
+  type VenuePageTab,
+} from '@/components/venue/VenuePageChrome';
 
 /**
  * A venue's community.
@@ -64,13 +65,24 @@ export default function VenueCommunity() {
   // Social inbox rows deep-link with ?tab=chat. The venue shell previously
   // ignored that parameter and always opened Home, making the row feel broken.
   const initialTab = initialVenueCommunityTab(searchParams);
-  const [activeTab, setActiveTab] = useState(initialTab);
+  const [activeTab, setActiveTab] = useState<VenuePageTab>(initialTab);
   // Chat and feed are expensive and subscribe to realtime, so they mount only
   // once visited and then stay mounted — remounting a chat loses its scroll
   // position and re-runs its queries every time you glance at another tab.
   const [visitedTabs, setVisitedTabs] = useState<Set<string>>(() => new Set([initialTab]));
+  const [isDesktopLayout, setIsDesktopLayout] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches,
+  );
 
-  const openTab = (tab: string) => {
+  useEffect(() => {
+    const query = window.matchMedia('(min-width: 1024px)');
+    const sync = () => setIsDesktopLayout(query.matches);
+    query.addEventListener('change', sync);
+    sync();
+    return () => query.removeEventListener('change', sync);
+  }, []);
+
+  const openTab = (tab: VenuePageTab) => {
     setActiveTab(tab);
     setVisitedTabs((seen) => (seen.has(tab) ? seen : new Set([...seen, tab])));
     const next = new URLSearchParams(searchParams);
@@ -189,11 +201,17 @@ export default function VenueCommunity() {
     .filter((p) => new Date(p.start_time) >= new Date())
     .slice(0, 3);
 
+  const showDesktopRail =
+    activeTab === 'play' ||
+    activeTab === 'feed' ||
+    activeTab === 'chat' ||
+    activeTab === 'more';
+
   // Chat is a conversation, not a card in the middle of a venue brochure.
   // Give it the whole visible viewport so focusing the composer cannot move
   // the hero, tab strip, or document around it. The normal venue shell remains
   // mounted only for Home/Book/Play/Feed/More.
-  if (activeTab === 'chat') {
+  if (activeTab === 'chat' && !isDesktopLayout) {
     const cameFromSocial = Boolean(
       (location.state as { fromSocialInbox?: boolean } | null)?.fromSocialInbox,
     );
@@ -238,295 +256,205 @@ export default function VenueCommunity() {
       accent={chrome?.accentHex}
     >
     <div className="flex min-h-[100dvh] flex-col bg-muted/[0.16]">
-      {/* Venue hero — a facility masthead, not the community's ink band. The
-          cover carries the identity, the stats carry the answer most people
-          arrived for. */}
-      <header className="relative shrink-0 overflow-hidden">
-        <div
-          className="relative h-44 sm:h-56"
-          style={{
-            backgroundImage: venue?.cover_image_url
-              ? `url(${venue.cover_image_url})`
-              : chrome?.backgroundImage ??
-                'linear-gradient(158deg, hsl(var(--ink-700)) 0%, hsl(var(--ink-900)) 100%)',
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-          }}
-        >
-          {/* Scrim so white text survives any cover photo. */}
-          <div
-            aria-hidden
-            className="absolute inset-0"
-            style={{
-              background:
-                'linear-gradient(to top, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.28) 55%, rgba(0,0,0,0.12) 100%)',
-            }}
-          />
-          {chrome?.bloom && (
-            <div
-              aria-hidden="true"
-              className="absolute inset-0"
-              style={{
-                background: `radial-gradient(circle at 78% 18%, ${chrome.bloom} 0%, transparent 34%)`,
-              }}
-            />
-          )}
-
-          <div className="absolute inset-x-0 top-0 flex items-center gap-2 px-3 pt-[calc(0.6rem+env(safe-area-inset-top))]">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-9 w-9 rounded-full border border-white/20 bg-black/25 text-white backdrop-blur-sm hover:bg-black/40 hover:text-white"
-              onClick={() => navigate('/player/community')}
-              aria-label="Back to Community"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div className="ml-auto flex items-center gap-1.5">
-              {isOperator && (
-                <>
-                  {/* Operations is the staff surface: same data as this page,
-                      more authority over it. */}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-9 w-9 rounded-full border border-white/20 bg-black/25 text-white backdrop-blur-sm hover:bg-black/40 hover:text-white"
-                    onClick={() => navigate(`/player/community/group/${groupId}/ops`)}
-                    aria-label="Venue operations"
-                  >
-                    <Gauge className="h-[18px] w-[18px]" />
-                  </Button>
-                  {isAdmin && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-9 w-9 rounded-full border border-white/20 bg-black/25 text-white backdrop-blur-sm hover:bg-black/40 hover:text-white"
-                      onClick={() => navigate(`/player/community/group/${groupId}/manage`)}
-                      aria-label="Venue settings"
-                    >
-                      <Settings className="h-[18px] w-[18px]" />
-                    </Button>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-
-          <div className="absolute inset-x-0 bottom-0 mx-auto flex max-w-[1400px] items-end gap-3 px-4 pb-4 sm:px-6">
-            {venue?.logo_url ? (
-              <img
-                src={venue.logo_url}
-                alt={`${venue.name} logo`}
-                className="h-14 w-14 shrink-0 rounded-xl bg-white/10 object-cover shadow-lg ring-1 ring-white/30 sm:h-16 sm:w-16"
-              />
-            ) : (
-              <div
-                aria-hidden="true"
-                className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-white/25 bg-white/10 text-xl font-bold text-white shadow-lg backdrop-blur-sm sm:h-16 sm:w-16 sm:text-2xl"
-              >
-                {(venue?.name ?? group.name).trim().slice(0, 1).toUpperCase()}
-              </div>
-            )}
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5">
-                <h1 className="truncate text-2xl font-bold leading-none tracking-[-0.025em] text-white sm:text-3xl">
-                  {venue?.name ?? group.name}
-                </h1>
-                {group.is_venue_verified && (
-                  <BadgeCheck className="h-4 w-4 shrink-0 text-amber-400" aria-label="Verified venue" />
-                )}
-              </div>
-              {venue?.tagline && (
-                <p className="mt-1 truncate text-sm text-white/78">{venue.tagline}</p>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Stat strip — the court-reservation answer, above everything else. */}
-        <div className="border-b border-border/70 bg-card">
-          <div className="mx-auto flex max-w-[1400px] items-center overflow-x-auto px-4 py-3 sm:px-6">
-            <Stat
-              icon={LayoutGrid}
-              label={hasCourts ? `${freeNow} of ${courts.length} free` : 'No courts yet'}
-              accent={chrome?.accentHex}
-            />
-            <Stat icon={Users} label={`${group.member_count ?? 0} members`} />
-            {nextUp[0] && (
-              <Stat
-                icon={CalendarClock}
-                label={`Next at ${formatSlotTime(new Date(nextUp[0].start_time))}`}
-              />
-            )}
-          </div>
-        </div>
-      </header>
+      <VenueMasthead
+        venueName={venue?.name ?? group.name}
+        tagline={venue?.tagline}
+        logoUrl={venue?.logo_url ?? group.icon_url}
+        coverImageUrl={venue?.cover_image_url}
+        fallbackBackground={chrome?.backgroundImage}
+        bloom={chrome?.bloom}
+        accent={chrome?.accentHex}
+        verified={group.is_venue_verified}
+        hasCourts={hasCourts}
+        freeNow={freeNow}
+        courtCount={courts.length}
+        memberCount={group.member_count ?? 0}
+        nextStart={nextUp[0]?.start_time}
+        isOperator={isOperator}
+        isAdmin={isAdmin}
+        onBack={() => navigate('/player/community')}
+        onOperations={() => navigate(`/player/community/group/${groupId}/ops`)}
+        onSettings={() => navigate(`/player/community/group/${groupId}/manage`)}
+      />
 
       <Tabs
         value={activeTab}
-        onValueChange={openTab}
+        onValueChange={(value) => openTab(value as VenuePageTab)}
         className="flex min-h-0 flex-1 flex-col"
         style={{ '--venue-accent': chrome?.accentHex ?? 'hsl(var(--primary))' } as React.CSSProperties}
       >
-        {/* A scrolling strip rather than a squeezed row: six destinations do not
-            fit a phone at a readable size, and shrinking them all to fit is how
-            tab bars become unreadable. */}
-        <div className="border-b border-border/70 bg-card">
-          <div className="mx-auto max-w-[1400px] overflow-x-auto px-2 sm:px-4">
-            <TabsList className="h-auto w-max justify-start gap-0 rounded-none border-0 bg-transparent p-0">
-              <VenueTab value="home" icon={MapPin}>Home</VenueTab>
-              {hasCourts && <VenueTab value="book" icon={LayoutGrid}>Book</VenueTab>}
-              <VenueTab value="play" icon={CalendarDays}>Play</VenueTab>
-              <VenueTab value="feed" icon={MessageSquare}>Feed</VenueTab>
-              <VenueTab value="chat" icon={MessageCircle}>Chat</VenueTab>
-              <VenueTab value="more" icon={MoreHorizontal}>More</VenueTab>
-            </TabsList>
-          </div>
-        </div>
+        <VenueMobileTabs hasCourts={hasCourts} />
 
         <div className="flex-1 overflow-y-auto">
-          <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 sm:py-8">
-            <TabsContent value="home" className="mt-0">
-              <VenueHome
-                welcomeHeadline={venue?.welcome_headline ?? null}
-                welcomeMessage={venue?.welcome_message ?? null}
-                city={venue?.city ?? null}
-                state={venue?.state ?? null}
-                phone={venue?.phone ?? null}
-                websiteUrl={venue?.website_url ?? null}
-                hours={hours}
-                nextUp={nextUp}
+          <div className="mx-auto max-w-[1480px] px-4 py-6 sm:px-6 sm:py-8 lg:py-10">
+            <div
+              className={cn(
+                'lg:grid lg:grid-cols-[210px_minmax(0,1fr)] lg:items-start lg:gap-8 min-[1180px]:gap-10',
+                showDesktopRail && 'min-[1180px]:grid-cols-[210px_minmax(0,1fr)_292px]',
+              )}
+            >
+              <VenueDesktopNavigation
                 hasCourts={hasCourts}
-                freeNow={freeNow}
-                courtCount={courts.length}
-                accent={chrome?.accentHex}
-                onBook={() => openTab('book')}
-                onOpenPlay={() => openTab('play')}
+                isOperator={isOperator}
+                isAdmin={isAdmin}
+                onOperations={() => navigate(`/player/community/group/${groupId}/ops`)}
+                onSettings={() => navigate(`/player/community/group/${groupId}/manage`)}
               />
-            </TabsContent>
 
-            {hasCourts && (
-              <TabsContent value="book" className="mt-0">
-                {closed && (
-                  <p className="mb-3 rounded-lg border border-border bg-muted/40 px-3 py-3 text-center text-sm text-muted-foreground">
-                    Closed on this day.
-                  </p>
+              <main className="min-w-0">
+                <TabsContent value="home" className="mt-0">
+                  <VenueHome
+                    welcomeHeadline={venue?.welcome_headline ?? null}
+                    welcomeMessage={venue?.welcome_message ?? null}
+                    city={venue?.city ?? null}
+                    state={venue?.state ?? null}
+                    phone={venue?.phone ?? null}
+                    websiteUrl={venue?.website_url ?? null}
+                    hours={hours}
+                    nextUp={nextUp}
+                    hasCourts={hasCourts}
+                    freeNow={freeNow}
+                    courtCount={courts.length}
+                    accent={chrome?.accentHex}
+                    onBook={() => openTab('book')}
+                    onOpenPlay={() => openTab('play')}
+                  />
+                </TabsContent>
+
+                {hasCourts && (
+                  <TabsContent value="book" className="mt-0">
+                    {closed && (
+                      <p className="mb-3 rounded-lg border border-border bg-muted/40 px-3 py-3 text-center text-sm text-muted-foreground">
+                        Closed on this day.
+                      </p>
+                    )}
+                    <VenueBookingGrid
+                      grid={grid}
+                      day={day}
+                      loading={dayLoading}
+                      canBook={canBook}
+                      accent={chrome?.accentHex}
+                      onDayChange={setDay}
+                      onPickSlot={(courtId, start, minutes) => {
+                        setBookingCourtId(courtId);
+                        setBookingStart(start);
+                        setBookingMinutes(minutes || null);
+                      }}
+                    />
+                  </TabsContent>
                 )}
-                <VenueBookingGrid
-                  grid={grid}
-                  day={day}
-                  loading={dayLoading}
-                  canBook={canBook}
-                  accent={chrome?.accentHex}
-                  onDayChange={setDay}
-                  onPickSlot={(courtId, start, minutes) => {
-                    setBookingCourtId(courtId);
-                    setBookingStart(start);
-                    setBookingMinutes(minutes || null);
-                  }}
-                />
-              </TabsContent>
-            )}
 
-            <TabsContent value="play" className="mt-0">
-              <div className="max-w-3xl space-y-3">
-                {/* Same day model as Book, so moving between the two keeps the
-                    viewer on the day they were already looking at. */}
-                <DayStrip value={day} onChange={setDay} accent={chrome?.accentHex} />
-                <VenueProgramming
-                  sessions={programming}
-                  going={going}
-                  loading={dayLoading}
-                  venueName={venue?.name ?? null}
-                  accent={chrome?.accentHex}
-                />
-              </div>
-            </TabsContent>
-
-            {/* A feed constrained to a readable measure. Posts running the full
-                width of a laptop are unreadable however well they are styled. */}
-            <TabsContent
-              value="feed"
-              className={cn('mt-0 max-w-2xl', activeTab !== 'feed' && 'hidden')}
-              forceMount={visitedTabs.has('feed') ? true : undefined}
-            >
-              {visitedTabs.has('feed') && (
-                <GroupFeed
-                  groupId={groupId!}
-                  groupName={venue?.name ?? group.name}
-                  isAdmin={isAdmin}
-                  currentUserId={membership?.user_id ?? null}
-                  venueMode
-                  onOpenQuickPost={(type) => openQuickPost(type as PostType)}
-                  onSwitchToEvents={() => openTab('play')}
-                />
-              )}
-            </TabsContent>
-
-            {/* Chat needs a concrete height: GroupChat is h-full and would
-                collapse inside a page that grows with its content. */}
-            <TabsContent
-              value="chat"
-              className={cn('mt-0 max-w-3xl', activeTab !== 'chat' && 'hidden')}
-              forceMount={visitedTabs.has('chat') ? true : undefined}
-            >
-              {visitedTabs.has('chat') && (
-                <div className="h-[70dvh] min-h-[420px] overflow-hidden rounded-2xl border border-border/80 bg-card shadow-[0_10px_32px_rgba(0,0,0,0.06)]">
-                  <GroupChat
-                    groupId={groupId!}
-                    currentUserId={membership?.user_id ?? null}
-                    onlineCount={onlineCount}
-                    isConnected={isConnected}
-                    isAdmin={isAdmin}
-                    lastReadAt={lastReadRef.current}
-                    isActive={activeTab === 'chat'}
-                  />
-                </div>
-              )}
-            </TabsContent>
-
-            <TabsContent value="more" className="mt-0">
-              <div className="max-w-3xl space-y-4">
-                {/* A player who books here needs somewhere to see what they
-                    booked; that list spans every venue, not just this one. */}
-                <button
-                  type="button"
-                  onClick={() => navigate('/player/bookings')}
-                  className="flex w-full items-center gap-3 rounded-xl border border-border bg-card px-3.5 py-3 text-left transition-colors hover:border-primary/40"
-                >
-                  <Ticket
-                    className="h-4 w-4 shrink-0 text-primary"
-                    style={chrome?.accentHex ? { color: chrome.accentHex } : undefined}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold">My bookings</p>
-                    <p className="text-xs text-muted-foreground">
-                      Courts you're holding and sessions you've joined
-                    </p>
+                <TabsContent value="play" className="mt-0">
+                  <div className="max-w-3xl space-y-3">
+                    <DayStrip value={day} onChange={setDay} accent={chrome?.accentHex} />
+                    <VenueProgramming
+                      sessions={programming}
+                      going={going}
+                      loading={dayLoading}
+                      venueName={venue?.name ?? null}
+                      accent={chrome?.accentHex}
+                    />
                   </div>
-                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-                </button>
+                </TabsContent>
 
-                <GroupMembers
-                  groupId={groupId!}
-                  isAdmin={isAdmin}
-                  isOwner={membership?.role === 'owner'}
-                  currentUserId={membership?.user_id ?? null}
-                  isOnline={isOnline}
+                <TabsContent
+                  value="feed"
+                  className={cn('mt-0 max-w-[760px]', activeTab !== 'feed' && 'hidden')}
+                  forceMount={visitedTabs.has('feed') ? true : undefined}
+                >
+                  {visitedTabs.has('feed') && (
+                    <GroupFeed
+                      groupId={groupId!}
+                      groupName={venue?.name ?? group.name}
+                      isAdmin={isAdmin}
+                      currentUserId={membership?.user_id ?? null}
+                      venueMode
+                      onOpenQuickPost={(type) => openQuickPost(type as PostType)}
+                      onSwitchToEvents={() => openTab('play')}
+                    />
+                  )}
+                </TabsContent>
+
+                <TabsContent
+                  value="chat"
+                  className={cn('mt-0 max-w-[820px]', activeTab !== 'chat' && 'hidden')}
+                  forceMount={visitedTabs.has('chat') ? true : undefined}
+                >
+                  {visitedTabs.has('chat') && (
+                    <div className="h-[min(720px,calc(100dvh-8rem))] min-h-[520px] overflow-hidden rounded-[20px] border border-border/80 bg-card shadow-[0_16px_45px_-30px_hsl(var(--foreground)/0.42)]">
+                      <GroupChat
+                        groupId={groupId!}
+                        currentUserId={membership?.user_id ?? null}
+                        onlineCount={onlineCount}
+                        isConnected={isConnected}
+                        isAdmin={isAdmin}
+                        lastReadAt={lastReadRef.current}
+                        isActive={activeTab === 'chat'}
+                        title={venue?.name ?? group.name}
+                        subtitle="Venue chat"
+                        avatarUrl={venue?.logo_url ?? group.icon_url ?? null}
+                      />
+                    </div>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="more" className="mt-0">
+                  <div className="max-w-[820px] space-y-4">
+                    <button
+                      type="button"
+                      onClick={() => navigate('/player/bookings')}
+                      className="flex w-full items-center gap-3 rounded-xl border border-border bg-card px-3.5 py-3 text-left transition-colors hover:border-primary/40"
+                    >
+                      <Ticket
+                        className="h-4 w-4 shrink-0 text-primary"
+                        style={chrome?.accentHex ? { color: chrome.accentHex } : undefined}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold">My bookings</p>
+                        <p className="text-xs text-muted-foreground">
+                          Courts you're holding and sessions you've joined
+                        </p>
+                      </div>
+                      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    </button>
+
+                    <GroupMembers
+                      groupId={groupId!}
+                      isAdmin={isAdmin}
+                      isOwner={membership?.role === 'owner'}
+                      currentUserId={membership?.user_id ?? null}
+                      isOnline={isOnline}
+                    />
+                  </div>
+                </TabsContent>
+              </main>
+
+              {showDesktopRail && (
+                <VenueDesktopRail
+                  venueName={venue?.name ?? group.name}
+                  activeTab={activeTab}
+                  hasCourts={hasCourts}
+                  freeNow={freeNow}
+                  courtCount={courts.length}
+                  memberCount={group.member_count ?? 0}
+                  onlineCount={onlineCount}
+                  nextUp={nextUp}
+                  hours={hours}
+                  accent={chrome?.accentHex}
+                  onOpenTab={openTab}
+                  onBookings={() => navigate('/player/bookings')}
                 />
-              </div>
-            </TabsContent>
+              )}
+            </div>
           </div>
         </div>
       </Tabs>
 
-      {/* The feed's only way to write a post.
-          GroupFeed renders no composer of its own — its newPostContent state is
-          dead code and focusComposer() targets a textarea that does not exist —
-          so the bar is the parent's responsibility. Without it the venue feed
-          could be read and not written to. */}
+      {/* Keep the fixed composer as a thumb-reachable mobile affordance. On
+          desktop the feed's in-column Share card is the clearer entry point. */}
       {activeTab === 'feed' && isMember && (
         <CollapsedComposerBar
+          className="lg:hidden"
           onExpand={() => openQuickPost('post')}
           onPhotoClick={() => openQuickPost('photo')}
           avatarUrl={profile?.avatar_url}
@@ -569,47 +497,6 @@ export default function VenueCommunity() {
       )}
     </div>
     </VenueStaffProvider>
-  );
-}
-
-/** Heading with a rule, matching the operations dashboard's rhythm. */
-function VenueTab({
-  value,
-  icon: Icon,
-  children,
-}: {
-  value: string;
-  icon: typeof MapPin;
-  children: React.ReactNode;
-}) {
-  return (
-    <TabsTrigger
-      value={value}
-      className="relative gap-1.5 rounded-none border-0 bg-transparent px-3 py-3 text-xs font-semibold text-muted-foreground shadow-none after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:origin-center after:scale-x-0 after:rounded-full after:bg-[var(--venue-accent)] after:transition-transform data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:after:scale-x-100"
-    >
-      <Icon className="h-3.5 w-3.5" />
-      {children}
-    </TabsTrigger>
-  );
-}
-
-function Stat({
-  icon: Icon,
-  label,
-  accent,
-}: {
-  icon: typeof MapPin;
-  label: string;
-  accent?: string | null;
-}) {
-  return (
-    <div className="flex shrink-0 items-center gap-2 whitespace-nowrap px-3 first:pl-0 [&+&]:border-l [&+&]:border-border/70">
-      <Icon
-        className="h-3.5 w-3.5 text-muted-foreground"
-        style={accent ? { color: accent } : undefined}
-      />
-      <span className="text-xs font-semibold text-foreground/80">{label}</span>
-    </div>
   );
 }
 

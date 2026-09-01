@@ -24,6 +24,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { ImageDropzone } from './ImageDropzone';
 import { useImageUpload } from '@/hooks/useImageUpload';
+import { cn } from '@/lib/utils';
 
 export type PostType = 'post' | 'photo' | 'poll' | 'event' | 'lfg' | 'result' | 'announcement';
 export type ComposerPostType = 'post' | 'photo' | 'poll' | 'lfg' | 'announcement';
@@ -275,7 +276,13 @@ export function QuickPostComposer({
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="flex h-[92dvh] max-h-[92dvh] flex-col gap-0 overflow-hidden rounded-t-[28px] border-border/70 p-0">
+      <DrawerContent
+        className={cn(
+          'flex h-[92dvh] max-h-[92dvh] flex-col gap-0 overflow-hidden rounded-t-[28px] border-border/70 p-0',
+          venueMode &&
+            'lg:bottom-6 lg:left-1/2 lg:right-auto lg:h-[min(760px,calc(100dvh-3rem))] lg:max-h-[760px] lg:w-[min(640px,calc(100vw-3rem))] lg:-translate-x-1/2 lg:rounded-[28px] lg:shadow-2xl [&>div:first-child]:lg:hidden',
+        )}
+      >
         <DrawerHeader className="shrink-0 border-b border-border/60 px-0 pb-4 pt-4 text-left">
           <div className="mx-auto w-full max-w-xl px-4 sm:px-6">
             <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
@@ -292,12 +299,20 @@ export function QuickPostComposer({
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
           <div className="mx-auto w-full max-w-xl px-4 py-4 sm:px-6">
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as ComposerPostType)} className="w-full">
-            <TabsList className="-mx-4 flex h-auto w-[calc(100%+2rem)] justify-start gap-2 overflow-x-auto rounded-none bg-transparent px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:w-full sm:px-0">
+            <TabsList
+              className={cn(
+                '-mx-4 flex h-auto w-[calc(100%+2rem)] justify-start gap-2 overflow-x-auto rounded-none bg-transparent px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:w-full sm:px-0',
+                venueMode && 'lg:gap-1.5 lg:overflow-visible',
+              )}
+            >
               {visibleTypes.map(({ value, label, icon: Icon }) => (
                 <TabsTrigger
                   key={value}
                   value={value}
-                  className="h-10 shrink-0 gap-1.5 rounded-full border border-border/70 bg-card px-3.5 text-xs font-semibold text-muted-foreground shadow-none data-[state=active]:border-foreground data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-sm"
+                  className={cn(
+                    'h-10 shrink-0 gap-1.5 rounded-full border border-border/70 bg-card px-3.5 text-xs font-semibold text-muted-foreground shadow-none data-[state=active]:border-foreground data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-sm',
+                    venueMode && 'lg:px-2.5',
+                  )}
                 >
                   <Icon className="h-3.5 w-3.5" aria-hidden />
                   {label}
