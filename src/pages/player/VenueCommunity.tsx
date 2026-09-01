@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft, BadgeCheck, CalendarClock, CalendarDays, LayoutGrid,
   MapPin, MessageSquare, MoreHorizontal, Settings, Users, Globe, Phone, Gauge,
+  Ticket, ChevronRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -299,6 +300,26 @@ export default function VenueCommunity() {
           </TabsContent>
 
           <TabsContent value="more" className="mt-0 space-y-4">
+            {/* A player who books here needs somewhere to see what they booked;
+                the list itself spans every venue, not just this one. */}
+            <button
+              type="button"
+              onClick={() => navigate('/player/bookings')}
+              className="flex w-full items-center gap-3 rounded-xl border border-border bg-card px-3 py-3 text-left transition-colors hover:border-primary/40"
+            >
+              <Ticket
+                className="h-4 w-4 shrink-0 text-primary"
+                style={chrome?.accentHex ? { color: chrome.accentHex } : undefined}
+              />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold">My bookings</p>
+                <p className="text-xs text-muted-foreground">
+                  Courts you're holding and sessions you've joined
+                </p>
+              </div>
+              <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+            </button>
+
             <GroupMembers groupId={groupId!} isAdmin={isAdmin} currentUserId={membership?.user_id ?? null} />
           </TabsContent>
         </div>

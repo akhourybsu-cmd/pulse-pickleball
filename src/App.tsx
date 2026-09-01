@@ -1,4 +1,5 @@
 import React, { Suspense, lazy, useEffect, useState } from "react";
+import { isVenueCommunitiesEnabled } from "@/lib/venues/featureFlag";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { PulseActivityBar } from "@/components/ui/pulse-activity";
@@ -156,6 +157,7 @@ const FindEvents = lazy(() => import("./pages/player/FindEvents"));
 const Community = lazy(() => import("./pages/player/Community"));
 const GroupRoute = lazy(() => import("./pages/player/GroupRoute"));
 const VenueOps = lazy(() => import("./pages/player/VenueOps"));
+const MyBookings = lazy(() => import("./pages/player/MyBookings"));
 const JoinGroupByCode = lazy(() => import("./pages/player/JoinGroupByCode"));
 const JoinLeagueByCode = lazy(() => import("./pages/player/JoinLeagueByCode"));
 const GroupManage = lazy(() => import("./pages/player/GroupManage"));
@@ -429,8 +431,17 @@ const AppContent = () => {
                 links land safely instead of 404-ing. */}
             <Route path="venues" element={<Navigate to="/player/play" replace />} />
             <Route path="coaching" element={<Navigate to="/player/dashboard" replace />} />
-            <Route path="bookings" element={<Navigate to="/player/dashboard" replace />} />
-            <Route path="my-bookings" element={<Navigate to="/player/dashboard" replace />} />
+            {/* Bookings only exist where venues do, so the route follows the
+                same flag; with it off these stay the redirects they were. */}
+            <Route
+              path="bookings"
+              element={
+                isVenueCommunitiesEnabled()
+                  ? <MyBookings />
+                  : <Navigate to="/player/dashboard" replace />
+              }
+            />
+            <Route path="my-bookings" element={<Navigate to="/player/bookings" replace />} />
             <Route path="my-events" element={<MyEvents />} />
             {/* Friends now lives inside the unified Social hub; the path is
                 kept so existing links (incl. ?tab=requests) still resolve. */}
