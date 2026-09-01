@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+import { VenueCourtsSection } from './VenueCourtsSection';
 
 /**
  * Venue identity for a venue community.
@@ -534,6 +535,8 @@ export function AdminVenueTab({ groupId, venueId, isVerified }: AdminVenueTabPro
           </div>
         </CardContent>
       </Card>
+
+      <VenueCourtsSection venueId={venueId} />
 
       <div className="flex justify-end">
         <Button onClick={save} disabled={saving || uploading !== null}>

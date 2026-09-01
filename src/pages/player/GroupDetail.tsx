@@ -29,6 +29,7 @@ import { GroupChat } from '@/components/community/GroupChat';
 import { InviteModal } from '@/components/community/InviteModal';
 import { QuickPostComposer, type PostType } from '@/components/community/QuickPostComposer';
 import { CollapsedComposerBar } from '@/components/community/CollapsedComposerBar';
+import { useGroupDetail } from '@/hooks/useGroupDetail';
 import { useGroupPosts } from '@/hooks/useGroupPosts';
 import { useGroupPresence } from '@/hooks/useGroupPresence';
 import { useGroupRealtime } from '@/hooks/useGroupRealtime';
@@ -108,34 +109,10 @@ export default function GroupDetail() {
   // from cache instead of re-spinning. Group and membership are independent
   // → fetched in parallel (previously serial). maybeSingle() on membership:
   // non-members legitimately have zero rows and .single() treats that as an error.
-  const { data: groupData, isLoading: loading, isError } = useQuery({
-    queryKey: ['group-detail', groupId],
-    enabled: !!groupId,
-    staleTime: 60 * 1000,
-    queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('not-authenticated');
-      const [groupRes, memberRes] = await Promise.all([
-        supabase
-          .from('groups')
-          .select(`*, venues:venue_id (id, name, slug, logo_url, cover_image_url, primary_color, secondary_color, tagline, welcome_headline, welcome_message)`)
-          .eq('id', groupId!)
-          .single(),
-        supabase
-          .from('group_members')
-          .select('*')
-          .eq('group_id', groupId!)
-          .eq('user_id', user.id)
-          .maybeSingle(),
-      ]);
-      if (groupRes.error) throw groupRes.error;
-      const g = { ...(groupRes.data as any), venue: (groupRes.data as any).venues || null } as Group;
-      return { group: g, membership: (memberRes.data as GroupMember | null) ?? null };
-    },
-  });
+  // Shared with GroupRoute and the venue shell so all three read one query
+  // under one cache key — see hooks/useGroupDetail.
+  const { group, membership, loading, isError } = useGroupDetail(groupId);
 
-  const group = groupData?.group ?? null;
-  const membership = groupData?.membership ?? null;
 
   // Failed load → toast + back to Community (mirrors the old catch).
   useEffect(() => {

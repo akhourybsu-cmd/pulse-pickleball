@@ -1,0 +1,133 @@
+import { useCallback, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import {
+  buildDayGrid,
+  courtsFreeAt,
+  DEFAULT_GRID,
+  type Court,
+  type DayGridOptions,
+  type Reservation,
+} from '@/lib/venues/availability';
+
+/**
+ * One venue, one day: its courts, and everything scheduled on them.
+ *
+ * This is deliberately the ONLY place a venue's day is loaded. The player-facing
+ * booking grid and the staff/ops dashboard that will sit alongside it are two
+ * views of exactly the same question — "what is happening at this venue today"
+ * — and the fastest way to end up with two products that disagree is to let
+ * each fetch and shape its own answer. Both read this hook; permissions decide
+ * what they may do with it, not what they may see.
+ */
+
+export interface VenueDaySession extends Reservation {
+  id: string;
+  group_id: string;
+  title: string;
+  description: string | null;
+  event_format: string;
+  capacity: number | null;
+  created_by: string;
+  waitlist_enabled: boolean;
+}
+
+/** A session on a court is a reservation; anything else is programming. */
+export function isReservation(s: { event_format?: string | null }): boolean {
+  return s.event_format === 'reservation';
+}
+
+/** Local midnight-to-midnight bounds for a day, as ISO strings. */
+export function dayBounds(day: Date): { from: string; to: string } {
+  const from = new Date(day);
+  from.setHours(0, 0, 0, 0);
+  const to = new Date(from);
+  to.setDate(to.getDate() + 1);
+  return { from: from.toISOString(), to: to.toISOString() };
+}
+
+export function venueDayKey(venueId: string | null | undefined, day: Date) {
+  const d = new Date(day);
+  d.setHours(0, 0, 0, 0);
+  return ['venue-day', venueId ?? null, d.toISOString()] as const;
+}
+
+export function useVenueDay(
+  venueId: string | null | undefined,
+  groupId: string | null | undefined,
+  day: Date,
+  gridOptions: DayGridOptions = DEFAULT_GRID,
+) {
+  const queryClient = useQueryClient();
+
+  const query = useQuery({
+    queryKey: venueDayKey(venueId, day),
+    enabled: !!venueId,
+    staleTime: 30 * 1000,
+    queryFn: async () => {
+      const { from, to } = dayBounds(day);
+
+      const [courtsRes, sessionsRes] = await Promise.all([
+        supabase
+          .from('venue_courts')
+          .select('id, name, court_number, is_active, is_premium, surface_type')
+          .eq('venue_id', venueId!)
+          .order('court_number', { ascending: true }),
+        // Scoped by venue rather than by group: a venue's courts can carry
+        // sessions from more than one group (a league using the facility), and
+        // the grid has to show every one of them or it will offer a slot that
+        // is already taken.
+        supabase
+          .from('group_events')
+          .select(
+            'id, group_id, title, description, event_format, capacity, created_by, ' +
+              'waitlist_enabled, start_time, end_time, venue_court_id',
+          )
+          .eq('venue_id', venueId!)
+          .gte('start_time', from)
+          .lt('start_time', to)
+          .order('start_time', { ascending: true }),
+      ]);
+
+      if (courtsRes.error) throw courtsRes.error;
+      if (sessionsRes.error) throw sessionsRes.error;
+
+      return {
+        courts: (courtsRes.data ?? []) as Court[],
+        sessions: (sessionsRes.data ?? []) as VenueDaySession[],
+      };
+    },
+  });
+
+  const courts = query.data?.courts ?? [];
+  const sessions = useMemo(() => query.data?.sessions ?? [], [query.data]);
+
+  const grid = useMemo(
+    () => buildDayGrid(courts, sessions, day, gridOptions),
+    // `courts` is derived from query.data, so keying on it directly is stable.
+    [query.data, day, gridOptions], // eslint-disable-line react-hooks/exhaustive-deps
+  );
+
+  /** Programming — open play, clinics, leagues. Everything that isn't a court hold. */
+  const programming = useMemo(() => sessions.filter((s) => !isReservation(s)), [sessions]);
+
+  const freeNow = useMemo(() => courtsFreeAt(courts, sessions, new Date()), [query.data]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const refresh = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: venueDayKey(venueId, day) });
+  }, [queryClient, venueId, day]);
+
+  return {
+    courts,
+    sessions,
+    programming,
+    grid,
+    freeNow,
+    loading: query.isLoading,
+    error: query.error as Error | null,
+    refresh,
+    /** True once the venue has courts — what the Book tab is gated on. */
+    hasCourts: courts.length > 0,
+    groupId: groupId ?? null,
+  };
+}
